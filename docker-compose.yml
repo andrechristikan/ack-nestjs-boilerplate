@@ -1,0 +1,14 @@
+version: "3.6"
+services:
+  nest:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: nest
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./src:/app/src
+      - .env:/app/.env
+    ports:
+      - 3000:3000
