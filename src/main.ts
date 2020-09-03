@@ -1,15 +1,17 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './main/app.module';
-import { setup as setupSwagger } from './swagger/swagger';
+// import { setup as setupSwagger } from './swagger/swagger';
 import { ConfigService } from './config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = new ConfigService();
 
-  setupSwagger(app);
   app.enableCors();
   // app.useGlobalPipes(new ValidationPipe());
+  // setupSwagger(app);
+
+  
   await app.listen(
     configService.getEnv('APP_PORT'),
     configService.getEnv('APP_URL'),
