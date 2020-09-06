@@ -2,21 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import {
-    User,
-    UserStoreFillableFields,
-    UserUpdateFillableFields,
-} from 'user/user.model';
-import { AuthService } from 'auth/auth.service';
+import { Country } from 'country/country.model';
 
 @Injectable()
-export class UserService {
+export class CountryService {
     constructor(
-        @InjectModel('users') private userModel: Model<User>,
-        private readonly authService: AuthService,
+        @InjectModel('countries') private countryModel: Model<Country>
     ) {}
 
-    async getAll(skip: number, limit: number): Promise<User[]> {
+    async getAll(skip: number, limit: number): Promise<Country[]> {
         return this.userModel
             .find({})
             .select('-password')
@@ -25,7 +19,7 @@ export class UserService {
             .exec();
     }
 
-    async getOneById(id: string, full?: boolean): Promise<User> {
+    async getOneById(id: string, full?: boolean): Promise<Country> {
         const user = this.userModel.findById(id);
         if (!full) {
             user.select('-password');
@@ -55,7 +49,7 @@ export class UserService {
         data.firstName = data.firstName.toLowerCase();
         data.lastName = data.lastName.toLowerCase();
 
-        const user: User = new this.userModel(data);
+        const user = new this.userModel(data);
         return user.save();
     }
 
