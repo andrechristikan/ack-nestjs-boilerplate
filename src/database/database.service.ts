@@ -15,14 +15,14 @@ export class DatabaseService implements MongooseOptionsFactory {
             this.configService.getEnv('DB_USER') &&
             this.configService.getEnv('DB_PASSWORD')
         ) {
-            uri = `${uri}${this.configService.getEnv('DB_USER')}:${this.configService.getEnv(
-                'DB_PASSWORD',
-            )}@`;
+            uri = `${uri}${this.configService.getEnv(
+                'DB_USER',
+            )}:${this.configService.getEnv('DB_PASSWORD')}@`;
         }
 
-        uri = `${uri}${this.configService.getEnv('DB_HOST')}/${this.configService.getEnv(
-            'DB_NAME',
-        )}`;
+        uri = `${uri}${this.configService.getEnv(
+            'DB_HOST',
+        )}/${this.configService.getEnv('DB_NAME')}`;
         console.log(`Database running on ${uri}`);
 
         return {

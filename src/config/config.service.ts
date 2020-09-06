@@ -18,7 +18,9 @@ export class ConfigService {
         return this.env[key];
     }
 
-    getConfig(key: string): Record<string, unknown> | string | Array<string> | number {
+    getConfig(
+        key: string,
+    ): Record<string, unknown> | string | Array<string> | number {
         const index: Array<string> = key.split('.');
         let config: Record<string, unknown> | string | Array<string> | number;
 

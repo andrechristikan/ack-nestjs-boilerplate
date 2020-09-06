@@ -13,7 +13,7 @@ import { HelperModule } from 'helper/helper.module';
         MongooseModule.forFeature([{ name: 'users', schema: UserSchema }]),
         AuthModule,
         ErrorModule,
-        HelperModule
+        HelperModule,
     ],
     exports: [UserService],
     providers: [UserService],
