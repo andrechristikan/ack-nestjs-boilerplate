@@ -40,7 +40,7 @@ export class User extends DocumentMongoose {
 
 export const UserSchema = SchemaFactory.createForClass(User);
 
-export class UserFillableFields {
+export class UserStoreFillableFields {
     email: string;
     firstName: string;
     lastName: string;
@@ -48,19 +48,7 @@ export class UserFillableFields {
     password: string;
 }
 
-export class UserFields {
-    id: string;
-    email: string;
+export class UserUpdateFillableFields {
     firstName: string;
     lastName: string;
-    mobileNumber: string;
-}
-
-export class UserFullFields {
-    id: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    mobileNumber: string;
-    password: string;
 }

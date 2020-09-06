@@ -18,16 +18,15 @@ export class ConfigService {
         return this.env[key];
     }
 
-    getConfig(key: string): Record<string, unknown> | string | Array<string> {
+    getConfig(key: string): Record<string, unknown> | string | Array<string> | number {
         const index: Array<string> = key.split('.');
-        let config: Record<string, unknown> | string | Array<string>;
+        let config: Record<string, unknown> | string | Array<string> | number;
 
         for (let i = 0; i < index.length; i += 1) {
             config = this.configs[index[i]];
         }
 
-        const result: Record<string, unknown> | string | Array<string> = config;
-        return result;
+        return config;
     }
 
     isEnv(env: string): boolean {

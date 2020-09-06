@@ -4,9 +4,8 @@ import { Model } from 'mongoose';
 
 import {
     User,
-    UserFillableFields,
-    UserFields,
-    UserFullFields,
+    UserStoreFillableFields,
+    UserUpdateFillableFields,
 } from 'user/user.model';
 import { AuthService } from 'auth/auth.service';
 
@@ -17,11 +16,24 @@ export class UserService {
         private readonly authService: AuthService,
     ) {}
 
-    async getById(id: string): Promise<User> {
-        return this.userModel.findById(id).exec();
+    async getAll(skip: number, limit: number): Promise<User[]> {
+        return this.userModel
+            .find({})
+            .select('-password')
+            .skip(skip)
+            .limit(limit)
+            .exec();
     }
 
-    async getByEmail(email: string): Promise<User> {
+    async getOneById(id: string, full?: boolean): Promise<User> {
+        const user = this.userModel.findById(id);
+        if (!full) {
+            user.select('-password');
+        }
+        return user.exec();
+    }
+
+    async getOneByEmail(email: string): Promise<User> {
         return this.userModel
             .findOne({
                 email: email.toLowerCase(),
@@ -29,7 +41,7 @@ export class UserService {
             .exec();
     }
 
-    async getByMobileNumber(mobileNumber: string): Promise<User> {
+    async getOneByMobileNumber(mobileNumber: string): Promise<User> {
         return this.userModel
             .findOne({
                 mobileNumber: mobileNumber,
@@ -37,7 +49,7 @@ export class UserService {
             .exec();
     }
 
-    async store(data: UserFillableFields): Promise<User> {
+    async store(data: UserStoreFillableFields): Promise<User> {
         data.password = await this.authService.hashPassword(data.password);
         data.email = data.email.toLowerCase();
         data.firstName = data.firstName.toLowerCase();
@@ -47,17 +59,14 @@ export class UserService {
         return user.save();
     }
 
-    async filterUserField(data: UserFullFields): Promise<UserFields> {
-        return {
-            id: data.id,
-            email: data.email,
-            firstName: data.firstName,
-            lastName: data.lastName,
-            mobileNumber: data.mobileNumber,
-        };
-    }
-
     async destroy(id: string): Promise<User> {
         return this.userModel.findByIdAndDelete(id).exec();
+    }
+
+    async update(id: string, data: UserUpdateFillableFields): Promise<User> {
+        const user: User = await this.getOneById(id);
+        user.firstName = data.firstName.toLowerCase();
+        user.lastName = data.lastName.toLowerCase();
+        return user.save();
     }
 }
