@@ -1,12 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import {
-    Document as DocumentMongoose,
-    Schema as SchemaMongoose,
-} from 'mongoose';
+import { Document as DocumentMongoose } from 'mongoose';
 
 @Schema()
 export class User extends DocumentMongoose {
-
     @Prop({
         required: true,
         index: true,
@@ -59,7 +55,6 @@ export class UserFields {
     lastName: string;
     mobileNumber: string;
 }
-
 
 export class UserFullFields {
     id: string;

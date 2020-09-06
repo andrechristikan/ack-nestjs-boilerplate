@@ -21,10 +21,18 @@ export class UserService {
         return this.userModel.findById(id).exec();
     }
 
-    async exist(email: string, mobileNumber: string): Promise<User> {
+    async getByEmail(email: string): Promise<User> {
         return this.userModel
             .findOne({
-                $or: [{ email: email.toLowerCase() }, { mobileNumber: mobileNumber }],
+                email: email.toLowerCase(),
+            })
+            .exec();
+    }
+
+    async getByMobileNumber(mobileNumber: string): Promise<User> {
+        return this.userModel
+            .findOne({
+                mobileNumber: mobileNumber,
             })
             .exec();
     }
