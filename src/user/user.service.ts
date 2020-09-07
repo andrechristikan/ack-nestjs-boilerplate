@@ -3,13 +3,20 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
 import { User } from 'user/user.model';
-import { UserStore, UserUpdate, UserSearch } from 'user/user.constant';
+import { Country } from 'country/country.model';
+import {
+    UserStore,
+    UserUpdate,
+    UserSearch,
+    UserSearchCollection,
+} from 'user/user.constant';
 import { AuthService } from 'auth/auth.service';
 
 @Injectable()
 export class UserService {
     constructor(
-        @InjectModel('users') private userModel: Model<User>,
+        @InjectModel('user') private userModel: Model<User>,
+        @InjectModel('country') private readonly countryModel: Model<Country>,
         private readonly authService: AuthService,
     ) {}
 
@@ -21,6 +28,7 @@ export class UserService {
         return this.userModel
             .find(search)
             .select('-password')
+            .populate('country', '-countryName -_id', this.countryModel)
             .skip(skip)
             .limit(limit)
             .exec();
@@ -28,12 +36,16 @@ export class UserService {
 
     async getOneById(id: string, full?: boolean): Promise<User> {
         if (!full) {
-            this.userModel
+            return this.userModel
                 .findById(id)
                 .select('-password')
+                .populate('country', '-countryName -_id', this.countryModel)
                 .exec();
         }
-        return this.userModel.findById(id).exec();
+        return this.userModel
+            .findById(id)
+            .populate('country', '-countryName -_id', this.countryModel)
+            .exec();
     }
 
     async getOneByEmail(email: string): Promise<User> {
@@ -57,7 +69,7 @@ export class UserService {
         data.email = data.email.toLowerCase();
         data.firstName = data.firstName.toLowerCase();
         data.lastName = data.lastName.toLowerCase();
-
+        console.log(data);
         const user: User = new this.userModel(data);
         return user.save();
     }
@@ -73,8 +85,8 @@ export class UserService {
         return user.save();
     }
 
-    async search(data: UserSearch): Promise<UserSearch> {
-        const search: UserSearch = {};
+    async search(data: UserSearch): Promise<UserSearchCollection> {
+        const search: UserSearchCollection = {};
         if (data.firstName) {
             search.firstName = {
                 $regex: `.*${data.firstName}.*`,
@@ -89,6 +101,12 @@ export class UserService {
         }
         if (data.email) {
             search.email = { $regex: `.*${data.email}.*`, $options: 'i' };
+        }
+        if (data.mobileNumberCode) {
+            search.country.mobileNumberCode = data.mobileNumberCode;
+        }
+        if (data.countryCode) {
+            search.country.countryCode = data.countryCode;
         }
         return search;
     }

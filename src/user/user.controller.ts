@@ -12,9 +12,15 @@ import { UserService } from 'user/user.service';
 import { ErrorService } from 'error/error.service';
 import { SystemErrorStatusCode } from 'error/error.constant';
 import { User } from 'user/user.model';
-import { UserStore, UserUpdate, UserSearch } from 'user/user.constant';
+import {
+    UserStore,
+    UserUpdate,
+    UserSearch,
+    UserSearchCollection,
+} from 'user/user.constant';
 import { HelperService } from 'helper/helper.service';
 import { ResponseSuccess } from 'helper/helper.constant';
+import { ApiError } from 'error/error.constant';
 
 @Controller('api/user')
 export class UserController {
@@ -31,7 +37,9 @@ export class UserController {
             data.limit,
         );
 
-        const search: UserSearch = await this.userService.search(data);
+        const search: UserSearchCollection = await this.userService.search(
+            data,
+        );
         const user: User[] = await this.userService.getAll(skip, limit, search);
         return this.helperService.response(200, 'All user', user);
     }
@@ -58,7 +66,7 @@ export class UserController {
 
         return Promise.all([existEmail, existMobileNumber])
             .then(async ([userExistEmail, userExistMobileNumber]) => {
-                const errors: Array<Record<string, any>> = [];
+                const errors: ApiError[] = [];
                 if (userExistEmail) {
                     errors.push({
                         statusCode: SystemErrorStatusCode.USER_EMAIL_EXIST,

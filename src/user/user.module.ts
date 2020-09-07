@@ -7,10 +7,14 @@ import { UserController } from 'user/user.controller';
 import { AuthModule } from 'auth/auth.module';
 import { ErrorModule } from 'error/error.module';
 import { HelperModule } from 'helper/helper.module';
+import { CountrySchema } from 'country/country.model';
 
 @Module({
     imports: [
-        MongooseModule.forFeature([{ name: 'users', schema: UserSchema }]),
+        MongooseModule.forFeature([
+            { name: 'user', schema: UserSchema },
+            { name: 'country', schema: CountrySchema },
+        ]),
         AuthModule,
         ErrorModule,
         HelperModule,

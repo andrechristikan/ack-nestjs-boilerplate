@@ -9,9 +9,7 @@ import { HelperModule } from 'helper/helper.module';
 
 @Module({
     imports: [
-        MongooseModule.forFeature([
-            { name: 'countries', schema: CountrySchema },
-        ]),
+        MongooseModule.forFeature([{ name: 'country', schema: CountrySchema }]),
         ErrorModule,
         HelperModule,
     ],
