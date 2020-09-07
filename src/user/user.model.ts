@@ -39,16 +39,3 @@ export class User extends Document {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
-
-export class UserStoreFillableFields {
-    email: string;
-    firstName: string;
-    lastName: string;
-    mobileNumber: string;
-    password: string;
-}
-
-export class UserUpdateFillableFields {
-    firstName: string;
-    lastName: string;
-}

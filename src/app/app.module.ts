@@ -5,6 +5,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { DatabaseService } from 'database/database.service';
 import { DatabaseModule } from 'database/database.module';
 import { UserModule } from 'user/user.module';
+import { CountryModule } from 'country/country.module';
+import { HelperModule } from 'helper/helper.module';
 
 @Module({
     controllers: [AppController],
@@ -17,6 +19,8 @@ import { UserModule } from 'user/user.module';
                 databaseService.createMongooseOptions(),
         }),
         UserModule,
+        CountryModule,
+        HelperModule,
     ],
 })
 export class AppModule {}

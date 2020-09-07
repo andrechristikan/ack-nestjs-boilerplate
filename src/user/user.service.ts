@@ -2,11 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import {
-    User,
-    UserStoreFillableFields,
-    UserUpdateFillableFields,
-} from 'user/user.model';
+import { User } from 'user/user.model';
+import { UserStore, UserUpdate, UserSearch } from 'user/user.constant';
 import { AuthService } from 'auth/auth.service';
 
 @Injectable()
@@ -16,9 +13,13 @@ export class UserService {
         private readonly authService: AuthService,
     ) {}
 
-    async getAll(skip: number, limit: number): Promise<User[]> {
+    async getAll(
+        skip: number,
+        limit: number,
+        search?: UserSearch,
+    ): Promise<User[]> {
         return this.userModel
-            .find({})
+            .find(search)
             .select('-password')
             .skip(skip)
             .limit(limit)
@@ -26,11 +27,13 @@ export class UserService {
     }
 
     async getOneById(id: string, full?: boolean): Promise<User> {
-        const user = this.userModel.findById(id);
         if (!full) {
-            user.select('-password');
+            this.userModel
+                .findById(id)
+                .select('-password')
+                .exec();
         }
-        return user.exec();
+        return this.userModel.findById(id).exec();
     }
 
     async getOneByEmail(email: string): Promise<User> {
@@ -49,7 +52,7 @@ export class UserService {
             .exec();
     }
 
-    async store(data: UserStoreFillableFields): Promise<User> {
+    async store(data: UserStore): Promise<User> {
         data.password = await this.authService.hashPassword(data.password);
         data.email = data.email.toLowerCase();
         data.firstName = data.firstName.toLowerCase();
@@ -63,10 +66,30 @@ export class UserService {
         return this.userModel.findByIdAndDelete(id).exec();
     }
 
-    async update(id: string, data: UserUpdateFillableFields): Promise<User> {
+    async update(id: string, data: UserUpdate): Promise<User> {
         const user: User = await this.getOneById(id);
         user.firstName = data.firstName.toLowerCase();
         user.lastName = data.lastName.toLowerCase();
         return user.save();
+    }
+
+    async search(data: UserSearch): Promise<UserSearch> {
+        const search: UserSearch = {};
+        if (data.firstName) {
+            search.firstName = {
+                $regex: `.*${data.firstName}.*`,
+                $options: 'i',
+            };
+        }
+        if (data.lastName) {
+            search.lastName = { $regex: `.*${data.lastName}.*`, $options: 'i' };
+        }
+        if (data.mobileNumber) {
+            search.mobileNumber = data.mobileNumber;
+        }
+        if (data.email) {
+            search.email = { $regex: `.*${data.email}.*`, $options: 'i' };
+        }
+        return search;
     }
 }

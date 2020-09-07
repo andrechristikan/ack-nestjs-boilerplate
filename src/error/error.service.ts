@@ -7,14 +7,14 @@ import {
 import {
     HttpErrorStatusCode,
     SystemErrorStatusCode,
+    ApiError,
 } from 'error/error.constant';
 
 export class ErrorMessage {
-    static setErrorMessage(
-        statusCode: SystemErrorStatusCode,
-    ): Record<string, any> {
+    static setErrorMessage(statusCode: SystemErrorStatusCode): ApiError {
         switch (statusCode) {
             // ? FORM ERROR
+
             // ! USER
             case SystemErrorStatusCode.USER_NOT_FOUND:
                 return {
@@ -36,7 +36,28 @@ export class ErrorMessage {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
                     message: 'User existed',
                 };
-            // ? SYSTEM ERROR
+
+            // ! COUNTRY
+            case SystemErrorStatusCode.COUNTRY_NOT_FOUND:
+                return {
+                    httpCode: HttpErrorStatusCode.BAD_REQUEST,
+                    message: 'Country not found',
+                };
+            case SystemErrorStatusCode.COUNTRY_MOBILE_NUMBER_CODE_EXIST:
+                return {
+                    httpCode: HttpErrorStatusCode.BAD_REQUEST,
+                    message: 'Country mobile number code used',
+                };
+            case SystemErrorStatusCode.COUNTRY_CODE_EXIST:
+                return {
+                    httpCode: HttpErrorStatusCode.BAD_REQUEST,
+                    message: 'Country code used',
+                };
+            case SystemErrorStatusCode.COUNTRY_EXIST:
+                return {
+                    httpCode: HttpErrorStatusCode.BAD_REQUEST,
+                    message: 'Country existed',
+                };
 
             // ? FATAL ERROR
             case SystemErrorStatusCode.GENERAL_ERROR:
@@ -52,14 +73,10 @@ export class ErrorMessage {
         }
     }
 
-    static setErrorMessages(
-        errors: Array<Record<string, any>>,
-    ): Array<Record<string, any>> {
-        const newError: Array<Record<string, any>> = [];
-        errors.forEach((value: Record<string, any>) => {
-            const error: Record<string, any> = this.setErrorMessage(
-                value.statusCode,
-            );
+    static setErrorMessages(errors: ApiError[]): ApiError[] {
+        const newError: ApiError[] = [];
+        errors.forEach((value: ApiError) => {
+            const error: ApiError = this.setErrorMessage(value.statusCode);
             newError.push({
                 ...value,
                 message: error.message,
@@ -73,12 +90,11 @@ export class ErrorMessage {
 export class ErrorService {
     apiError(
         statusCode: SystemErrorStatusCode,
-        errors?: Array<Record<string, any>>,
+        errors?: ApiError[],
     ): HttpException {
-        const {
-            httpCode,
-            message,
-        }: Record<string, any> = ErrorMessage.setErrorMessage(statusCode);
+        const { httpCode, message }: ApiError = ErrorMessage.setErrorMessage(
+            statusCode,
+        );
         if (errors && errors.length > 0) {
             errors = ErrorMessage.setErrorMessages(errors);
         }

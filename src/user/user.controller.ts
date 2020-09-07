@@ -11,12 +11,10 @@ import {
 import { UserService } from 'user/user.service';
 import { ErrorService } from 'error/error.service';
 import { SystemErrorStatusCode } from 'error/error.constant';
-import {
-    User,
-    UserStoreFillableFields,
-    UserUpdateFillableFields,
-} from 'user/user.model';
+import { User } from 'user/user.model';
+import { UserStore, UserUpdate, UserSearch } from 'user/user.constant';
 import { HelperService } from 'helper/helper.service';
+import { ResponseSuccess } from 'helper/helper.constant';
 
 @Controller('api/user')
 export class UserController {
@@ -27,20 +25,19 @@ export class UserController {
     ) {}
 
     @Get('/')
-    async getAll(
-        @Query() data: Record<string, any>,
-    ): Promise<Record<string, any>> {
+    async getAll(@Query() data: UserSearch): Promise<ResponseSuccess> {
         const { skip, limit } = this.helperService.paging(
             data.page,
             data.limit,
         );
 
-        const user: User[] = await this.userService.getAll(skip, limit);
+        const search: UserSearch = await this.userService.search(data);
+        const user: User[] = await this.userService.getAll(skip, limit, search);
         return this.helperService.response(200, 'All user', user);
     }
 
     @Get('/:id')
-    async getOneById(@Param('id') id: string): Promise<Record<string, any>> {
+    async getOneById(@Param('id') id: string): Promise<ResponseSuccess> {
         const user: User = await this.userService.getOneById(id);
         if (!user) {
             throw this.errorService.apiError(
@@ -51,9 +48,7 @@ export class UserController {
     }
 
     @Post('/store')
-    async store(
-        @Body() data: UserStoreFillableFields,
-    ): Promise<Record<string, any>> {
+    async store(@Body() data: UserStore): Promise<ResponseSuccess> {
         const existEmail: Promise<User> = this.userService.getOneByEmail(
             data.email,
         );
@@ -94,7 +89,7 @@ export class UserController {
     }
 
     @Delete('/destroy/:id')
-    async destroy(@Param('id') id: string): Promise<Record<string, any>> {
+    async destroy(@Param('id') id: string): Promise<ResponseSuccess> {
         const user: User = await this.userService.getOneById(id);
         if (!user) {
             throw this.errorService.apiError(
@@ -109,8 +104,8 @@ export class UserController {
     @Put('/update/:id')
     async update(
         @Param('id') id: string,
-        @Body() data: UserUpdateFillableFields,
-    ): Promise<Record<string, any>> {
+        @Body() data: UserUpdate,
+    ): Promise<ResponseSuccess> {
         const user: User = await this.userService.getOneById(id);
         if (!user) {
             throw this.errorService.apiError(

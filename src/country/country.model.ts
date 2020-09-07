@@ -27,15 +27,3 @@ export class Country extends Document {
 }
 
 export const CountrySchema = SchemaFactory.createForClass(Country);
-
-export class CountryStoreFillableFields {
-    mobileNumberCode: string;
-    countryCode: string;
-    countryName: string;
-}
-
-export class CountryUpdateFillableFields {
-    mobileNumberCode: string;
-    countryCode: string;
-    countryName: string;
-}

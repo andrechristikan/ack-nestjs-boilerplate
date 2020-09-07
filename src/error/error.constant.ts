@@ -16,12 +16,27 @@ export enum HttpErrorStatusCode {
 
 export enum SystemErrorStatusCode {
     // ? FORM ERROR
+
     // ! USER
     USER_NOT_FOUND = 3100,
     USER_EXIST = 3101,
     USER_MOBILE_NUMBER_EXIST = 3102,
     USER_EMAIL_EXIST = 3103,
 
+    // ! COUNTRY
+    COUNTRY_NOT_FOUND = 3110,
+    COUNTRY_MOBILE_NUMBER_CODE_EXIST = 3111,
+    COUNTRY_CODE_EXIST = 3112,
+    COUNTRY_EXIST = 3113,
+
     // ? FATAL ERROR
     GENERAL_ERROR = 10000,
+}
+
+export class ApiError {
+    field?: string;
+    statusCode?: number;
+    message?: string;
+    httpCode?: number;
+    errors?: Array<Record<string, any>>;
 }
