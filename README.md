@@ -176,6 +176,10 @@ Distributed under the MIT License. See `LICENSE.md` for more information.
 
 
 
+---
+
+
+
 <!-- CONTACT -->
 ## Contact
 
@@ -183,11 +187,6 @@ Andre Christi Kan
 * [andrechristikan@gmail.com](author-email) - Email
 * [Andrechristikan](author-linkedin) - Linkedin
 * [@___ac.k](author-instagram) - Instagram
-
-
-
-
----
 
 
 
