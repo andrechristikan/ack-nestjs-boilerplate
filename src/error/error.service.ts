@@ -90,13 +90,13 @@ export class ErrorMessage {
 export class ErrorService {
     apiError(
         statusCode: SystemErrorStatusCode,
-        errors?: ApiError[],
+        errors?: ApiError[] | string,
     ): HttpException {
         const { httpCode, message }: ApiError = ErrorMessage.setErrorMessage(
             statusCode,
         );
-        if (errors && errors.length > 0) {
-            errors = ErrorMessage.setErrorMessages(errors);
+        if (errors && Array.isArray(errors) && errors.length > 0) {
+            errors = ErrorMessage.setErrorMessages(errors as ApiError[]);
         }
 
         switch (httpCode) {
@@ -108,11 +108,11 @@ export class ErrorService {
                     errors,
                 });
             default:
+                console.log('errors', errors);
                 return new InternalServerErrorException({
                     statusCode,
                     httpCode,
                     message,
-                    errors,
                 });
         }
     }

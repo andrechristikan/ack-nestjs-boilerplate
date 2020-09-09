@@ -32,7 +32,7 @@ export class UserController {
 
     @Get('/')
     async getAll(@Query() data: UserSearch): Promise<ResponseSuccess> {
-        const { skip, limit } = this.helperService.paging(
+        const { skip, limit } = this.helperService.pagination(
             data.page,
             data.limit,
         );

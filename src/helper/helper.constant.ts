@@ -10,7 +10,7 @@ export class ResponseSuccess {
     data?: Record<string, any> | Array<Record<string, any>>;
 }
 
-export class Paging {
+export class Pagination {
     limit: number;
     skip: number;
 }

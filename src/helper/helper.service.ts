@@ -3,15 +3,15 @@ import { ConfigService } from 'config/config.service';
 import {
     HttpSuccessStatusCode,
     ResponseSuccess,
-    Paging,
+    Pagination,
 } from 'helper/helper.constant';
 
 @Injectable()
 export class HelperService {
     constructor(private readonly configService: ConfigService) {}
-    paging(setPage: number, setLimit?: number): Paging {
+    pagination(setPage: number, setLimit?: number): Pagination {
         const limit: number =
-            (this.configService.getConfig('paging.user.limit') as number) ||
+            (this.configService.getConfig('pagination.user.limit') as number) ||
             setLimit;
         const page = setPage || 1;
 

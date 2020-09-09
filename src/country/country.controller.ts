@@ -26,7 +26,7 @@ export class CountryController {
 
     @Get('/')
     async getAll(@Query() data: CountrySearch): Promise<ResponseSuccess> {
-        const { skip, limit } = this.helperService.paging(
+        const { skip, limit } = this.helperService.pagination(
             data.page,
             data.limit,
         );

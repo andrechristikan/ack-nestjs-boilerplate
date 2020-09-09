@@ -1,5 +1,5 @@
 export default {
-    paging: {
+    pagination: {
         user: 10,
     },
 };
