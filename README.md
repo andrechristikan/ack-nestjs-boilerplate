@@ -186,12 +186,14 @@ Andre Christi Kan
 
 
 
-## Thanks For
-* [Best-README-Template](https://github.com/othneildrew/Best-README-Template) - ReadMe Template.
-
-
 
 ---
+
+
+
+
+## Thanks For
+* [Best-README-Template](https://github.com/othneildrew/Best-README-Template) - ReadMe Template.
 
 
 
