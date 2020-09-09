@@ -102,7 +102,7 @@ This section should list any major package usage for this boilerplate
 * [Supertest](https://github.com/visionmedia/supertest) - Testing Package.
 * [EsLint](https://eslint.org) - Linter Package.
 * [Prettier](https://prettier.io) - Helper Package Package for Formatter Code.
-* [DotENV](https://github.com/motdotla/dotenv) - Helper Package for load environment variables.
+* [DotEnv](https://github.com/motdotla/dotenv) - Helper Package for load environment variables.
 
 ---
 
@@ -181,7 +181,7 @@ Distributed under the MIT License. See `LICENSE.md` for more information.
 
 Andre Christi Kan 
 * [andrechristikan@gmail.com](author-email) - Email
-* [LinkedIn](author-linkedin) - Linkedin
+* [Andrechristikan](author-linkedin) - Linkedin
 * [@___ac.k](author-instagram) - Instagram
 
 
