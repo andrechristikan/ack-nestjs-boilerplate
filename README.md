@@ -48,41 +48,41 @@ There are many great Boilerplate nestJs for Restful API available on GitHub, how
 
 Here's why:
 
-  [ ] Best Practice for NodeJs
+    [ ] Best Practice for NodeJs
 
-  [ ] Support for Multi language
+    [ ] Support for Multi language
 
-  [x] MongoDB as The Database
+    [x] MongoDB as The Database
 
-  [x] Handle Errors Centrally and Easily for Maintenance Our Error Code 
+    [x] Handle Errors Centrally and Easily for Maintenance Our Error Code 
 
-  [x] Config in File *.env*
+    [x] Config in File *.env*
 
-  [x] Pagination on Server Side
+    [x] Pagination on Server Side
 
-  [x] JWT as Authorization
+    [x] JWT as Authorization
 
-  [x] HmacSHA512 as Password Encryption
+    [x] HmacSHA512 as Password Encryption
 
-  [ ] Better Logger with Winston
+    [ ] Better Logger with Winston
 
-  [ ] Request Validation
+    [ ] Request Validation
 
-  [ ] Docker
+    [ ] Docker
 
-  [ ] CI/CD Jenkins
+    [ ] CI/CD Jenkins
 
-  [x] EsLint as Linter
+    [x] EsLint as Linter
 
-  [ ] Blacklist JWT Token
+    [ ] Blacklist JWT Token
 
-  [ ] User have They Settings on Database
+    [ ] User have They Settings on Database
 
-  [ ] Master Setting for Our Project on Database
+    [ ] Master Setting for Our Project on Database
 
-  [ ] Database Migration for Init Project
+    [ ] Database Migration for Init Project
 
-  [x] CRUD Example
+    [x] CRUD Example
 
 Of course, no one boilerplate will serve all projects since your needs may be different. So I'll be adding more in the near future. You may also suggest changes by forking this repo and creating a pull request or opening an issue.
 
