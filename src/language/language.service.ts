@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from 'config/config.service';
-import id from 'language/resource/id';
-import en from 'language/resource/en';
+import id from 'language/resources/id';
+import en from 'language/resources/en';
 
 @Injectable()
 export class LanguageService {

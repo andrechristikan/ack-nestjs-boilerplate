@@ -95,7 +95,7 @@ This section should list any major package usage for this boilerplate
 * [TypeScript](https://www.typescriptlang.org) - Common Programming Language.
 * [Mongoose](https://github.com/nestjs/mongoose) - Package for integrating with the MongoDB database.
 * [Docker](https://www.docker.com) - ...
-* [Winston](https://github.com/winstonjs/winston) - Logger Package.
+* [Winston](https://github.com/gremo/nest-winston) - Logger Package.
 * [Crypto](https://github.com/brix/crypto-js) - Password Hash Package.
 * [JWT](https://github.com/nestjs/jwt) - Authentication Package.
 * [Jest](https://github.com/facebook/jest) - Testing Package.

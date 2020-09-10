@@ -1,6 +1,9 @@
+import { Injectable } from '@nestjs/common';
 import * as dotenv from 'dotenv';
-import * as dotConfigs from 'config/config';
+import logger from 'config/resources/logger';
+import pagination from 'config/resources/pagination';
 
+@Injectable()
 export class ConfigService {
     private readonly env: Record<string, any>;
     private readonly configs: Record<string, any> | string | string[];
@@ -8,10 +11,10 @@ export class ConfigService {
     constructor() {
         dotenv.config();
         this.env = process.env as Record<string, any>;
-        this.configs = dotConfigs as
-            | Record<string, unknown>
-            | string
-            | Array<string>;
+        this.configs = {
+            pagination,
+            logger,
+        };
     }
 
     getEnv(key: string): string {
