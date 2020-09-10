@@ -1,5 +1,5 @@
 export default {
     pagination: {
-        user: 10,
+        limit: 10,
     },
 };

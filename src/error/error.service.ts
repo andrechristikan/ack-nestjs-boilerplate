@@ -9,9 +9,15 @@ import {
     SystemErrorStatusCode,
     ApiError,
 } from 'error/error.constant';
+import { LanguageService } from 'language/language.service';
 
-export class ErrorMessage {
-    static setErrorMessage(statusCode: SystemErrorStatusCode): ApiError {
+export class ErrorMessage {}
+
+@Injectable()
+export class ErrorService {
+    constructor(private readonly languageService: LanguageService) {}
+
+    private setErrorMessage(statusCode: SystemErrorStatusCode): ApiError {
         switch (statusCode) {
             // ? FORM ERROR
 
@@ -19,61 +25,73 @@ export class ErrorMessage {
             case SystemErrorStatusCode.USER_NOT_FOUND:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
-                    message: 'User not found',
+                    message: this.languageService.get('user.error.notFound'),
                 };
             case SystemErrorStatusCode.USER_MOBILE_NUMBER_EXIST:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
-                    message: 'Mobile number used',
+                    message: this.languageService.get(
+                        'user.error.mobileNumberExist',
+                    ),
                 };
             case SystemErrorStatusCode.USER_EMAIL_EXIST:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
-                    message: 'Email used',
+                    message: this.languageService.get('user.error.emailExist'),
                 };
             case SystemErrorStatusCode.USER_EXIST:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
-                    message: 'User existed',
+                    message: this.languageService.get('user.error.userExist'),
                 };
 
             // ! COUNTRY
             case SystemErrorStatusCode.COUNTRY_NOT_FOUND:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
-                    message: 'Country not found',
+                    message: this.languageService.get('country.error.notFound'),
                 };
             case SystemErrorStatusCode.COUNTRY_MOBILE_NUMBER_CODE_EXIST:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
-                    message: 'Country mobile number code used',
+                    message: this.languageService.get(
+                        'country.error.mobileNumberCodeExist',
+                    ),
                 };
             case SystemErrorStatusCode.COUNTRY_CODE_EXIST:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
-                    message: 'Country code used',
+                    message: this.languageService.get(
+                        'country.error.countryCode',
+                    ),
                 };
             case SystemErrorStatusCode.COUNTRY_EXIST:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
-                    message: 'Country existed',
+                    message: this.languageService.get(
+                        'country.error.countryExist',
+                    ),
                 };
 
             // ? FATAL ERROR
             case SystemErrorStatusCode.GENERAL_ERROR:
                 return {
                     httpCode: HttpErrorStatusCode.INTERNAL_SERVER_ERROR,
-                    message: 'Internal Server Error',
+                    message: this.languageService.get(
+                        'system.error.internalServerError',
+                    ),
                 };
             default:
                 return {
                     httpCode: HttpErrorStatusCode.INTERNAL_SERVER_ERROR,
-                    message: 'Internal Server Error',
+                    message: this.languageService.get(
+                        'system.error.internalServerError',
+                    ),
                 };
         }
     }
 
-    static setErrorMessages(errors: ApiError[]): ApiError[] {
+    private setErrorMessages(errors: ApiError[]): ApiError[] {
         const newError: ApiError[] = [];
         errors.forEach((value: ApiError) => {
             const error: ApiError = this.setErrorMessage(value.statusCode);
@@ -84,19 +102,16 @@ export class ErrorMessage {
         });
         return newError;
     }
-}
 
-@Injectable()
-export class ErrorService {
     apiError(
         statusCode: SystemErrorStatusCode,
-        errors?: ApiError[] | string,
+        errors?: ApiError[],
     ): HttpException {
-        const { httpCode, message }: ApiError = ErrorMessage.setErrorMessage(
+        const { httpCode, message }: ApiError = this.setErrorMessage(
             statusCode,
         );
         if (errors && Array.isArray(errors) && errors.length > 0) {
-            errors = ErrorMessage.setErrorMessages(errors as ApiError[]);
+            errors = this.setErrorMessages(errors as ApiError[]);
         }
 
         switch (httpCode) {
@@ -108,7 +123,6 @@ export class ErrorService {
                     errors,
                 });
             default:
-                console.log('errors', errors);
                 return new InternalServerErrorException({
                     statusCode,
                     httpCode,

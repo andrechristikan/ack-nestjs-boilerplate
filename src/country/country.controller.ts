@@ -15,6 +15,7 @@ import { HelperService } from 'helper/helper.service';
 import { SystemErrorStatusCode } from 'error/error.constant';
 import { ResponseSuccess } from 'helper/helper.constant';
 import { ApiError } from 'error/error.constant';
+import { LanguageService } from 'language/language.service';
 
 @Controller('api/country')
 export class CountryController {
@@ -22,6 +23,7 @@ export class CountryController {
         private readonly countryService: CountryService,
         private readonly errorService: ErrorService,
         private readonly helperService: HelperService,
+        private readonly languageService: LanguageService,
     ) {}
 
     @Get('/')
@@ -37,7 +39,7 @@ export class CountryController {
             limit,
             search,
         );
-        return this.helperService.response(200, 'All Country', country);
+        return this.helperService.response(200, this.languageService.get('user.getAll.success'), country);
     }
 
     @Post('/store')
@@ -75,7 +77,7 @@ export class CountryController {
                 const create: Country = await this.countryService.store(data);
                 return this.helperService.response(
                     201,
-                    'Create Country',
+                    this.languageService.get('user.store.success'),
                     create,
                 );
             })
@@ -92,7 +94,7 @@ export class CountryController {
                 SystemErrorStatusCode.COUNTRY_NOT_FOUND,
             );
         }
-        return this.helperService.response(200, 'Get Country', country);
+        return this.helperService.response(200, this.languageService.get('user.getById.success'), country);
     }
 
     @Delete('/destroy/:id')
@@ -105,6 +107,6 @@ export class CountryController {
         }
 
         await this.countryService.destroy(id);
-        return this.helperService.response(200, 'Delete Country');
+        return this.helperService.response(200, this.languageService.get('user.destroy.success'));
     }
 }

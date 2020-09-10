@@ -11,7 +11,7 @@ export class HelperService {
     constructor(private readonly configService: ConfigService) {}
     pagination(setPage: number, setLimit?: number): Pagination {
         const limit: number =
-            (this.configService.getConfig('pagination.user.limit') as number) ||
+            (this.configService.getConfig('pagination.limit') as number) ||
             setLimit;
         const page = setPage || 1;
 

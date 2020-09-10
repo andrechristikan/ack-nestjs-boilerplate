@@ -21,6 +21,7 @@ import {
 import { HelperService } from 'helper/helper.service';
 import { ResponseSuccess } from 'helper/helper.constant';
 import { ApiError } from 'error/error.constant';
+import { LanguageService } from 'language/language.service';
 
 @Controller('api/user')
 export class UserController {
@@ -28,6 +29,7 @@ export class UserController {
         private readonly userService: UserService,
         private readonly errorService: ErrorService,
         private readonly helperService: HelperService,
+        private readonly languageService: LanguageService,
     ) {}
 
     @Get('/')
@@ -41,7 +43,11 @@ export class UserController {
             data,
         );
         const user: User[] = await this.userService.getAll(skip, limit, search);
-        return this.helperService.response(200, 'All user', user);
+        return this.helperService.response(
+            200,
+            this.languageService.get('user.getAll.success'),
+            user,
+        );
     }
 
     @Get('/:id')
@@ -52,7 +58,11 @@ export class UserController {
                 SystemErrorStatusCode.USER_NOT_FOUND,
             );
         }
-        return this.helperService.response(200, 'Get user', user);
+        return this.helperService.response(
+            200,
+            this.languageService.get('user.getById.success'),
+            user,
+        );
     }
 
     @Post('/store')
@@ -89,7 +99,11 @@ export class UserController {
                 }
                 const create: User = await this.userService.store(data);
                 const user: User = await this.userService.getOneById(create.id);
-                return this.helperService.response(201, 'Create user', user);
+                return this.helperService.response(
+                    201,
+                    this.languageService.get('user.store.success'),
+                    user,
+                );
             })
             .catch(err => {
                 throw err;
@@ -106,7 +120,10 @@ export class UserController {
         }
 
         await this.userService.destroy(id);
-        return this.helperService.response(200, 'Delete user');
+        return this.helperService.response(
+            200,
+            this.languageService.get('user.destroy.success'),
+        );
     }
 
     @Put('/update/:id')
@@ -122,6 +139,10 @@ export class UserController {
         }
 
         const update: User = await this.userService.update(id, data);
-        return this.helperService.response(200, 'Update user', update);
+        return this.helperService.response(
+            200,
+            this.languageService.get('user.update.success'),
+            update,
+        );
     }
 }

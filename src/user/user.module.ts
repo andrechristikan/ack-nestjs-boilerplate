@@ -8,6 +8,7 @@ import { AuthModule } from 'auth/auth.module';
 import { ErrorModule } from 'error/error.module';
 import { HelperModule } from 'helper/helper.module';
 import { CountrySchema } from 'country/country.model';
+import { LanguageModule } from 'language/language.module';
 
 @Module({
     imports: [
@@ -18,6 +19,7 @@ import { CountrySchema } from 'country/country.model';
         AuthModule,
         ErrorModule,
         HelperModule,
+        LanguageModule,
     ],
     exports: [UserService],
     providers: [UserService],

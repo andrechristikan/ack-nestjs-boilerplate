@@ -44,13 +44,13 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-There are many great Boilerplate nestJs for Restful API available on GitHub, however, I didn't find one that really suit my needs so I created this enhanced one. I want to create a Boilerplate nestJs that it'll be the last one you ever need.
+There are many great Boilerplate NestJs for Restful API available on GitHub, however, I didn't find one that really suit my needs so I created this enhanced one. I want to create a Boilerplate NestJs that it'll be the last one you ever need.
 
 Here's why:
 
-    [ ] Best Practice for NodeJs
+    [ ] Best Practice for NestJs
 
-    [ ] Support for Multi language
+    [x] Support for Multi language
 
     [x] MongoDB as The Database
 
@@ -60,7 +60,7 @@ Here's why:
 
     [x] Pagination on Server Side
 
-    [x] JWT as Authorization
+    [ ] JWT as Authorization
 
     [x] HmacSHA512 as Password Encryption
 
@@ -104,7 +104,11 @@ This section should list any major package usage for this boilerplate
 * [Prettier](https://prettier.io) - Helper Package Package for Formatter Code.
 * [DotEnv](https://github.com/motdotla/dotenv) - Helper Package for load environment variables.
 
+
+
 ---
+
+
 
 <!-- GETTING STARTED -->
 ## Getting Started
@@ -146,13 +150,16 @@ Use this space to show useful examples of how a project can be used. Additional 
 _For more examples, please refer to the [Documentation](project-docs)_
 
 
----
-
-
 <!-- ROADMAP -->
 ## Roadmap
 
 See the [open issues](project-issues) for a list of proposed features (and known issues).
+
+
+
+
+---
+
 
 
 
@@ -173,11 +180,6 @@ Contributions are what make the open source community such an amazing place to b
 ## License
 
 Distributed under the MIT License. See `LICENSE.md` for more information.
-
-
-
----
-
 
 
 <!-- CONTACT -->
