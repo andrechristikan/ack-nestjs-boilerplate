@@ -64,7 +64,9 @@ Here's why:
 
     [x] HmacSHA512 as Password Encryption
 
-    [ ] Better Logger with Winston (ongoing)
+    [x] Logger in File (day by day) with Winston
+
+    [ ] Logger Http Request in File (day by day) with morgan (ongoing)
 
     [ ] Request Validation
 
