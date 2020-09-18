@@ -1,7 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { AppService } from 'app/app.service';
 import { HelperService } from 'helper/helper.service';
-import { ResponseSuccess } from 'helper/helper.constant';
+import { IResponseSuccess } from 'helper/helper.interface';
 
 @Controller('/api/test')
 export class AppController {
@@ -11,7 +11,7 @@ export class AppController {
     ) {}
 
     @Get('/')
-    getHello(): ResponseSuccess {
+    getHello(): IResponseSuccess {
         const message: string = this.appService.getHello();
         return this.helperService.response(200, message);
     }

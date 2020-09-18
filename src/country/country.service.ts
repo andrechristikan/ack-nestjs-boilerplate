@@ -3,11 +3,12 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
 import { Country } from 'country/country.model';
-import { CountryStore, CountrySearch } from 'country/country.constant';
+import { CountryStore, CountrySearch } from 'country/country.interface';
 
 @Injectable()
 export class CountryService {
-    constructor(@InjectModel('country') private countryModel: Model<Country>) {}
+    constructor(
+        @InjectModel('country') private countryModel: Model<Country>) {}
 
     async getAll(
         skip: number,

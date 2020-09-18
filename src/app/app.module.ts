@@ -7,6 +7,9 @@ import { DatabaseModule } from 'database/database.module';
 import { UserModule } from 'user/user.module';
 import { CountryModule } from 'country/country.module';
 import { HelperModule } from 'helper/helper.module';
+import { WinstonModule } from 'nest-winston';
+import { LoggerService } from 'logger/logger.service';
+import { LoggerModule } from 'logger/logger.module';
 
 @Module({
     controllers: [AppController],
@@ -15,8 +18,14 @@ import { HelperModule } from 'helper/helper.module';
         MongooseModule.forRootAsync({
             imports: [DatabaseModule],
             inject: [DatabaseService],
-            useFactory: async (databaseService: DatabaseService) =>
+            useFactory: (databaseService: DatabaseService) =>
                 databaseService.createMongooseOptions(),
+        }),
+        WinstonModule.forRootAsync({
+            inject: [LoggerService],
+            imports: [LoggerModule],
+            useFactory: (loggerService: LoggerService) =>
+                loggerService.createLogger(),
         }),
         UserModule,
         CountryModule,

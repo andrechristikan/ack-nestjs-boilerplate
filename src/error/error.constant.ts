@@ -32,11 +32,3 @@ export enum SystemErrorStatusCode {
     // ? FATAL ERROR
     GENERAL_ERROR = 10000,
 }
-
-export class ApiError {
-    field?: string;
-    statusCode?: number;
-    message?: string;
-    httpCode?: number;
-    errors?: Array<Record<string, any>>;
-}

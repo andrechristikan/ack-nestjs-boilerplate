@@ -1,4 +1,4 @@
-export class UserStore {
+export interface UserStore {
     country: string;
     email: string;
     firstName: string;
@@ -7,12 +7,12 @@ export class UserStore {
     password: string;
 }
 
-export class UserUpdate {
+export interface UserUpdate {
     firstName: string;
     lastName: string;
 }
 
-export class UserSearch {
+export interface UserSearch {
     email?: string | Record<string, any>;
     firstName?: string | Record<string, any>;
     lastName?: string | Record<string, any>;
@@ -23,7 +23,7 @@ export class UserSearch {
     page?: number;
 }
 
-export class UserSearchCollection {
+export interface UserSearchCollection {
     email?: string | Record<string, any>;
     firstName?: string | Record<string, any>;
     lastName?: string | Record<string, any>;

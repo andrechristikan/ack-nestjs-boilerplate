@@ -6,15 +6,16 @@ import {
     Body,
     Delete,
     Query,
+    Inject,
 } from '@nestjs/common';
 import { CountryService } from 'country/country.service';
-import { Country} from 'country/country.model';
-import { CountryStore, CountrySearch } from 'country/country.constant';
+import { Country } from 'country/country.model';
+import { CountryStore, CountrySearch } from 'country/country.interface';
 import { ErrorService } from 'error/error.service';
 import { HelperService } from 'helper/helper.service';
 import { SystemErrorStatusCode } from 'error/error.constant';
-import { ResponseSuccess } from 'helper/helper.constant';
-import { ApiError } from 'error/error.constant';
+import { IResponseSuccess } from 'helper/helper.interface';
+import { IApiError } from 'error/error.interface';
 import { LanguageService } from 'language/language.service';
 
 @Controller('api/country')
@@ -27,7 +28,7 @@ export class CountryController {
     ) {}
 
     @Get('/')
-    async getAll(@Query() data: CountrySearch): Promise<ResponseSuccess> {
+    async getAll(@Query() data: CountrySearch): Promise<IResponseSuccess> {
         const { skip, limit } = this.helperService.pagination(
             data.page,
             data.limit,
@@ -39,11 +40,16 @@ export class CountryController {
             limit,
             search,
         );
-        return this.helperService.response(200, this.languageService.get('user.getAll.success'), country);
+
+        return this.helperService.response(
+            200,
+            this.languageService.get('user.getAll.success'),
+            country,
+        );
     }
 
     @Post('/store')
-    async store(@Body() data: CountryStore): Promise<ResponseSuccess> {
+    async store(@Body() data: CountryStore): Promise<IResponseSuccess> {
         const existCountryCode: Promise<Country> = this.countryService.getOneByCountryCode(
             data.countryCode,
         );
@@ -53,7 +59,7 @@ export class CountryController {
 
         return Promise.all([existCountryCode, existMobileNumberCode])
             .then(async ([resExistCountryCode, resExistMobileNumberCode]) => {
-                const errors: ApiError[] = [];
+                const errors: IApiError[] = [];
                 if (resExistCountryCode) {
                     errors.push({
                         statusCode: SystemErrorStatusCode.COUNTRY_CODE_EXIST,
@@ -87,18 +93,23 @@ export class CountryController {
     }
 
     @Get('/:id')
-    async getOneById(@Param('id') id: string): Promise<ResponseSuccess> {
+    async getOneById(@Param('id') id: string): Promise<IResponseSuccess> {
         const country: Country = await this.countryService.getOneById(id);
         if (!country) {
             throw this.errorService.apiError(
                 SystemErrorStatusCode.COUNTRY_NOT_FOUND,
             );
         }
-        return this.helperService.response(200, this.languageService.get('user.getById.success'), country);
+
+        return this.helperService.response(
+            200,
+            this.languageService.get('user.getById.success'),
+            country,
+        );
     }
 
     @Delete('/destroy/:id')
-    async destroy(@Param('id') id: string): Promise<ResponseSuccess> {
+    async destroy(@Param('id') id: string): Promise<IResponseSuccess> {
         const country: Country = await this.countryService.getOneById(id);
         if (!country) {
             throw this.errorService.apiError(
@@ -107,6 +118,9 @@ export class CountryController {
         }
 
         await this.countryService.destroy(id);
-        return this.helperService.response(200, this.languageService.get('user.destroy.success'));
+        return this.helperService.response(
+            200,
+            this.languageService.get('user.destroy.success'),
+        );
     }
 }

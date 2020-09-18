@@ -1,10 +1,10 @@
-export class CountryStore {
+export interface CountryStore {
     mobileNumberCode: string;
     countryCode: string;
     countryName: string;
 }
 
-export class CountrySearch {
+export interface CountrySearch {
     mobileNumberCode?: string;
     countryCode?: string;
     limit?: number;

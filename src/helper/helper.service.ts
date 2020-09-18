@@ -1,18 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from 'config/config.service';
-import {
-    HttpSuccessStatusCode,
-    ResponseSuccess,
-    Pagination,
-} from 'helper/helper.constant';
-
+import { HttpSuccessStatusCode, Pagination } from 'helper/helper.constant';
+import { IResponseSuccess, IPagination } from 'helper/helper.interface';
 @Injectable()
 export class HelperService {
-    constructor(private readonly configService: ConfigService) {}
-    pagination(setPage: number, setLimit?: number): Pagination {
-        const limit: number =
-            (this.configService.getConfig('pagination.limit') as number) ||
-            setLimit;
+    pagination(setPage: number, setLimit?: number): IPagination {
+        const limit: number = Pagination.limit || setLimit;
         const page = setPage || 1;
 
         const skip: number = (page - 1) * limit;
@@ -23,8 +16,8 @@ export class HelperService {
         httpCode: HttpSuccessStatusCode,
         message: string,
         data?: Record<string, any> | Array<Record<string, any>>,
-    ): ResponseSuccess {
-        const response: ResponseSuccess = {
+    ): IResponseSuccess {
+        const response: IResponseSuccess = {
             statusCode: httpCode,
             httpCode,
             message,

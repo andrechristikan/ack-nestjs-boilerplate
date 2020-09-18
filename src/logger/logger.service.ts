@@ -1,30 +1,29 @@
 import { Injectable } from '@nestjs/common';
 import * as DailyRotateFile from 'winston-daily-rotate-file';
 import * as winston from 'winston';
+import { MaxSize, MaxFiles, Name as LoggerName } from 'logger/logger.constant';
 
 @Injectable()
 export class LoggerService {
-    logger(loggerConfig: Record<string, any>): Record<string, any> {
+    createLogger(): Record<string, any> {
         const configTransportDefault = new DailyRotateFile({
-            filename: `./logs/${loggerConfig.name}/%DATE%.log`,
+            filename: `./logs/${LoggerName}/default/%DATE%.log`,
             datePattern: 'YYYY-MM-DD',
             zippedArchive: true,
-            maxSize: loggerConfig.maxSize,
-            maxFiles: loggerConfig.maxFiles,
+            maxSize: MaxSize,
+            maxFiles: MaxFiles,
         });
 
         const configTransportError = new DailyRotateFile({
-            filename: `./logs/${loggerConfig.getConfig(
-                'logger.name',
-            )}/errors/%DATE%.log`,
+            filename: `./logs/${LoggerName}/error/%DATE%.log`,
             datePattern: 'YYYY-MM-DD',
             zippedArchive: true,
-            maxSize: loggerConfig.maxSize,
-            maxFiles: loggerConfig.maxFiles,
+            maxSize: MaxSize,
+            maxFiles: MaxFiles,
             level: 'error',
         });
 
-        return {
+        const loggerOptions: Record<string, any> = {
             format: winston.format.combine(
                 winston.format.timestamp(),
                 winston.format.prettyPrint(),
@@ -35,5 +34,6 @@ export class LoggerService {
                 configTransportDefault,
             ],
         };
+        return loggerOptions;
     }
 }

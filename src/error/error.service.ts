@@ -3,21 +3,27 @@ import {
     BadRequestException,
     HttpException,
     InternalServerErrorException,
+    Inject,
 } from '@nestjs/common';
 import {
     HttpErrorStatusCode,
     SystemErrorStatusCode,
-    ApiError,
 } from 'error/error.constant';
+import { IApiError } from 'error/error.interface';
 import { LanguageService } from 'language/language.service';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 
 export class ErrorMessage {}
 
 @Injectable()
 export class ErrorService {
-    constructor(private readonly languageService: LanguageService) {}
+    constructor(
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+        private readonly languageService: LanguageService,
+    ) {}
 
-    private setErrorMessage(statusCode: SystemErrorStatusCode): ApiError {
+    private setErrorMessage(statusCode: SystemErrorStatusCode): IApiError {
         switch (statusCode) {
             // ? FORM ERROR
 
@@ -91,10 +97,10 @@ export class ErrorService {
         }
     }
 
-    private setErrorMessages(errors: ApiError[]): ApiError[] {
-        const newError: ApiError[] = [];
-        errors.forEach((value: ApiError) => {
-            const error: ApiError = this.setErrorMessage(value.statusCode);
+    private setErrorMessages(errors: IApiError[]): IApiError[] {
+        const newError: IApiError[] = [];
+        errors.forEach((value: IApiError) => {
+            const error: IApiError = this.setErrorMessage(value.statusCode);
             newError.push({
                 ...value,
                 message: error.message,
@@ -105,29 +111,35 @@ export class ErrorService {
 
     apiError(
         statusCode: SystemErrorStatusCode,
-        errors?: ApiError[],
+        errors?: IApiError[],
     ): HttpException {
-        const { httpCode, message }: ApiError = this.setErrorMessage(
+        let res: HttpException;
+        const { httpCode, message }: IApiError = this.setErrorMessage(
             statusCode,
         );
         if (errors && Array.isArray(errors) && errors.length > 0) {
-            errors = this.setErrorMessages(errors as ApiError[]);
+            errors = this.setErrorMessages(errors as IApiError[]);
         }
 
         switch (httpCode) {
             case 400:
-                return new BadRequestException({
+                res = new BadRequestException({
                     statusCode,
                     httpCode,
                     message,
                     errors,
                 });
+                break;
             default:
-                return new InternalServerErrorException({
+                res = new InternalServerErrorException({
                     statusCode,
                     httpCode,
                     message,
                 });
+                break;
         }
+
+        this.logger.error(res);
+        return res;
     }
 }

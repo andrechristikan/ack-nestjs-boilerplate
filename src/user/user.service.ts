@@ -9,7 +9,7 @@ import {
     UserUpdate,
     UserSearch,
     UserSearchCollection,
-} from 'user/user.constant';
+} from 'user/user.interface';
 import { AuthService } from 'auth/auth.service';
 
 @Injectable()

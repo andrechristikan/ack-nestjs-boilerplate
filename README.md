@@ -64,7 +64,7 @@ Here's why:
 
     [x] HmacSHA512 as Password Encryption
 
-    [ ] Better Logger with Winston
+    [ ] Better Logger with Winston (ongoing)
 
     [ ] Request Validation
 
