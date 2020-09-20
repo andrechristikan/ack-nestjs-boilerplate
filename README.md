@@ -104,7 +104,8 @@ This section should list any major package usage for this boilerplate
 * [Supertest](https://github.com/visionmedia/supertest) - Testing Package.
 * [EsLint](https://eslint.org) - Linter Package.
 * [Prettier](https://prettier.io) - Helper Package Package for Formatter Code.
-* [DotEnv](https://github.com/motdotla/dotenv) - Helper Package for load environment variables.
+* [DotEnv](https://github.com/motdotla/dotenv) - Helper Package for Environment Variables.
+* [Middleware](https://github.com/wbhob/nest-middlewares) - References for Middleware
 
 
 
