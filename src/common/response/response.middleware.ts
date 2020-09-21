@@ -3,10 +3,6 @@ import { Request, Response, NextFunction } from 'express';
 
 @Injectable()
 export class ResponseBodyMiddleware implements NestMiddleware {
-    static configure(): void {
-        return;
-    }
-
     use(req: Request, res: Response, next: NextFunction): void {
         const send: any = res.send;
         const resOld: any = res;
@@ -18,5 +14,7 @@ export class ResponseBodyMiddleware implements NestMiddleware {
             resOld.send(body);
             res = resOld as Response;
         };
+
+        next();
     }
 }

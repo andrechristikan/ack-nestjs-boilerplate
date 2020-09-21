@@ -13,7 +13,7 @@ import { LoggerModule } from 'common/logger/logger.module';
 import { LoggerMiddleware } from 'common/logger/logger.middleware';
 import { BodyParserUrlencodedMiddleware } from 'common/body-parser/body-parser-urlencoded.middleware';
 import { BodyParserJsonMiddleware } from 'common/body-parser/body-parser-json.middleware';
-// import { ResponseBodyMiddleware } from 'middleware/response-body.middleware';
+import { ResponseBodyMiddleware } from 'common/response/response.middleware';
 
 @Module({
     controllers: [AppController],
@@ -46,7 +46,7 @@ export class AppModule implements NestModule {
                 LoggerMiddleware,
                 BodyParserUrlencodedMiddleware,
                 BodyParserJsonMiddleware,
-                // ResponseBodyMiddleware,
+                ResponseBodyMiddleware,
             )
             .forRoutes('*');
     }
