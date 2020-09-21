@@ -2,7 +2,7 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 
 @Injectable()
-export class ResponseBodyMiddleware implements NestMiddleware {
+export class ApiResponseBodyMiddleware implements NestMiddleware {
     use(req: Request, res: Response, next: NextFunction): void {
         const send: any = res.send;
         const resOld: any = res;

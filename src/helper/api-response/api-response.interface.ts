@@ -1,4 +1,4 @@
-export interface IResponseSuccess {
+export interface IApiResponseSuccess {
     statusCode: number;
     httpCode: number;
     message: string;

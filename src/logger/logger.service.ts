@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Scope } from '@nestjs/common';
 import * as DailyRotateFile from 'winston-daily-rotate-file';
 import { createStream } from 'rotating-file-stream';
 import * as winston from 'winston';
@@ -12,7 +12,7 @@ import {
     HttpLoggerName,
 } from 'logger/logger.constant';
 
-@Injectable()
+@Injectable({ scope: Scope.TRANSIENT })
 export class LoggerService {
     createLogger(): Record<string, any> {
         const configTransportDefault = new DailyRotateFile({

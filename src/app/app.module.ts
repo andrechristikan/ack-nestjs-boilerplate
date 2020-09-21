@@ -1,39 +1,52 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { AppController } from 'app/app.controller';
 import { AppService } from 'app/app.service';
-import { MongooseModule } from '@nestjs/mongoose';
-import { DatabaseService } from 'database/database.service';
-import { DatabaseModule } from 'database/database.module';
-import { UserModule } from 'user/user.module';
-import { CountryModule } from 'country/country.module';
-import { ResponseModule } from 'helper/response/response.module';
+
 import { WinstonModule } from 'nest-winston';
 import { LoggerService } from 'logger/logger.service';
 import { LoggerModule } from 'logger/logger.module';
+
 import { LoggerMiddleware } from 'logger/logger.middleware';
 import { BodyParserUrlencodedMiddleware } from 'helper/body-parser/body-parser-urlencoded.middleware';
 import { BodyParserJsonMiddleware } from 'helper/body-parser/body-parser-json.middleware';
-import { ResponseBodyMiddleware } from 'helper/response/response.middleware';
+import { ApiResponseBodyMiddleware } from 'helper/api-response/api-response.middleware';
+
+import { MongooseModule } from '@nestjs/mongoose';
+import { DatabaseService } from 'database/database.service';
+import { DatabaseModule } from 'database/database.module';
+
+import { ApiResponseModule } from 'helper/api-response/api-response.module';
+import { LanguageModule } from 'language/language.module';
+import { ErrorModule } from 'error/error.module';
+import { ConfigModule } from 'config/config.module';
+
+import { CountryModule } from 'country/country.module';
+import { UserModule } from 'user/user.module';
 
 @Module({
     controllers: [AppController],
     providers: [AppService],
     imports: [
-        MongooseModule.forRootAsync({
-            imports: [DatabaseModule],
-            inject: [DatabaseService],
-            useFactory: (databaseService: DatabaseService) =>
-                databaseService.createMongooseOptions(),
-        }),
+        ConfigModule,
         WinstonModule.forRootAsync({
             inject: [LoggerService],
             imports: [LoggerModule],
             useFactory: (loggerService: LoggerService) =>
                 loggerService.createLogger(),
         }),
-        UserModule,
+        MongooseModule.forRootAsync({
+            imports: [DatabaseModule],
+            inject: [DatabaseService],
+            useFactory: (databaseService: DatabaseService) =>
+                databaseService.createMongooseOptions(),
+        }),
+        ApiResponseModule,
+        LanguageModule,
+        ErrorModule,
+        LoggerModule,
+
         CountryModule,
-        ResponseModule,
+        UserModule
     ],
 })
 export class AppModule implements NestModule {
@@ -46,7 +59,7 @@ export class AppModule implements NestModule {
                 LoggerMiddleware,
                 BodyParserUrlencodedMiddleware,
                 BodyParserJsonMiddleware,
-                ResponseBodyMiddleware,
+                ApiResponseBodyMiddleware,
             )
             .forRoutes('*');
     }

@@ -3,7 +3,7 @@ import {
     BadRequestException,
     HttpException,
     InternalServerErrorException,
-    Inject,
+    Scope,
 } from '@nestjs/common';
 import {
     HttpErrorStatusCode,
@@ -11,16 +11,17 @@ import {
 } from 'error/error.constant';
 import { IApiError } from 'error/error.interface';
 import { LanguageService } from 'language/language.service';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Logger } from 'winston';
+import { Logger as LoggerService } from 'winston';
+import { Logger } from 'logger/logger.decorator';
+import { Language } from 'language/language.decorator';
 
 export class ErrorMessage {}
 
-@Injectable()
+@Injectable({ scope: Scope.TRANSIENT })
 export class ErrorService {
     constructor(
-        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
-        private readonly languageService: LanguageService,
+        @Logger() private readonly logger: LoggerService,
+        @Language() private readonly languageService: LanguageService,
     ) {}
 
     private setErrorMessage(statusCode: SystemErrorStatusCode): IApiError {

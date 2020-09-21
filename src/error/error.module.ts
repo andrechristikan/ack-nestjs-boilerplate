@@ -1,10 +1,15 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { ErrorService } from 'error/error.service';
-import { LanguageModule } from 'language/language.module';
 
+@Global()
 @Module({
-    providers: [ErrorService],
-    exports: [ErrorService],
-    imports: [LanguageModule],
+    providers: [
+        {
+            provide: 'ErrorService',
+            useClass: ErrorService,
+        },
+    ],
+    exports: ['ErrorService'],
+    imports: [],
 })
 export class ErrorModule {}

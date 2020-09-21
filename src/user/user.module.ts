@@ -5,10 +5,7 @@ import { UserSchema } from 'user/user.model';
 import { UserService } from 'user/user.service';
 import { UserController } from 'user/user.controller';
 import { AuthModule } from 'auth/auth.module';
-import { ErrorModule } from 'error/error.module';
-import { ResponseModule } from 'helper/response/response.module';
 import { CountrySchema } from 'country/country.model';
-import { LanguageModule } from 'language/language.module';
 
 @Module({
     imports: [
@@ -17,9 +14,6 @@ import { LanguageModule } from 'language/language.module';
             { name: 'country', schema: CountrySchema },
         ]),
         AuthModule,
-        ErrorModule,
-        ResponseModule,
-        LanguageModule,
     ],
     exports: [UserService],
     providers: [UserService],

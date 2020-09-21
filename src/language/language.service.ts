@@ -1,12 +1,13 @@
-import { Injectable, Scope  } from '@nestjs/common';
+import { Injectable, Scope } from '@nestjs/common';
 import { ConfigService } from 'config/config.service';
 import { Languages } from 'language/language.constant';
+import { Config } from 'config/config.decorator';
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class LanguageService {
     private readonly languages: Record<string, any> = Languages;
 
-    constructor(private readonly configService: ConfigService) {}
+    constructor(@Config() private readonly configService: ConfigService) {}
 
     get(keys: string): string {
         const key: string[] = keys.split('.');

@@ -1,17 +1,18 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Scope } from '@nestjs/common';
 import {
     MongooseOptionsFactory,
     MongooseModuleOptions,
 } from '@nestjs/mongoose';
+import { Config } from 'config/config.decorator';
 import { ConfigService } from 'config/config.service';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Logger } from 'winston';
+import { Logger as LoggerService } from 'winston';
+import { Logger } from 'logger/logger.decorator';
 
-@Injectable()
+@Injectable({ scope: Scope.TRANSIENT })
 export class DatabaseService implements MongooseOptionsFactory {
     constructor(
-        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
-        private readonly configService: ConfigService,
+        @Logger() private readonly logger: LoggerService,
+        @Config() private readonly configService: ConfigService,
     ) {}
 
     createMongooseOptions(): MongooseModuleOptions {

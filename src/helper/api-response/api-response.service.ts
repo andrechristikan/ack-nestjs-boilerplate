@@ -1,9 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from 'config/config.service';
-import { HttpSuccessStatusCode, Pagination } from 'helper/response/response.constant';
-import { IResponseSuccess, IPagination } from 'helper/response/response.interface';
-@Injectable()
-export class ResponseService {
+import { Injectable, Scope } from '@nestjs/common';
+import {
+    HttpSuccessStatusCode,
+    Pagination,
+} from 'helper/api-response/api-response.constant';
+import {
+    IApiResponseSuccess,
+    IPagination,
+} from 'helper/api-response/api-response.interface';
+
+@Injectable({ scope: Scope.TRANSIENT })
+export class ApiResponseService {
     pagination(setPage: number, setLimit?: number): IPagination {
         const limit: number = Pagination.limit || setLimit;
         const page = setPage || 1;
@@ -16,8 +22,8 @@ export class ResponseService {
         httpCode: HttpSuccessStatusCode,
         message: string,
         data?: Record<string, any> | Array<Record<string, any>>,
-    ): IResponseSuccess {
-        const response: IResponseSuccess = {
+    ): IApiResponseSuccess {
+        const response: IApiResponseSuccess = {
             statusCode: httpCode,
             httpCode,
             message,

@@ -7,8 +7,7 @@ import { CountryStore, CountrySearch } from 'country/country.interface';
 
 @Injectable()
 export class CountryService {
-    constructor(
-        @InjectModel('country') private countryModel: Model<Country>) {}
+    constructor(@InjectModel('country') private countryModel: Model<Country>) {}
 
     async getAll(
         skip: number,

@@ -18,22 +18,25 @@ import {
     UserSearch,
     UserSearchCollection,
 } from 'user/user.interface';
-import { ResponseService } from 'helper/response/response.service';
-import { IResponseSuccess } from 'helper/response/response.interface';
+import { ApiResponseService } from 'helper/api-response/api-response.service';
+import { IApiResponseSuccess } from 'helper/api-response/api-response.interface';
 import { IApiError } from 'error/error.interface';
 import { LanguageService } from 'language/language.service';
+import { Language } from 'language/language.decorator';
+import { ApiResponse } from 'helper/api-response/api-response.decorator';
+import { ApiResponseError } from 'error/error.decorator';
 
 @Controller('api/user')
 export class UserController {
     constructor(
+        @ApiResponseError() private readonly errorService: ErrorService,
+        @ApiResponse() private readonly responseService: ApiResponseService,
+        @Language() private readonly languageService: LanguageService,
         private readonly userService: UserService,
-        private readonly errorService: ErrorService,
-        private readonly responseService: ResponseService,
-        private readonly languageService: LanguageService,
     ) {}
 
     @Get('/')
-    async getAll(@Query() data: UserSearch): Promise<IResponseSuccess> {
+    async getAll(@Query() data: UserSearch): Promise<IApiResponseSuccess> {
         const { skip, limit } = this.responseService.pagination(
             data.page,
             data.limit,
@@ -51,7 +54,7 @@ export class UserController {
     }
 
     @Get('/:id')
-    async getOneById(@Param('id') id: string): Promise<IResponseSuccess> {
+    async getOneById(@Param('id') id: string): Promise<IApiResponseSuccess> {
         const user: User = await this.userService.getOneById(id);
         if (!user) {
             throw this.errorService.apiError(
@@ -66,7 +69,7 @@ export class UserController {
     }
 
     @Post('/store')
-    async store(@Body() data: UserStore): Promise<IResponseSuccess> {
+    async store(@Body() data: UserStore): Promise<IApiResponseSuccess> {
         const existEmail: Promise<User> = this.userService.getOneByEmail(
             data.email,
         );
@@ -111,7 +114,7 @@ export class UserController {
     }
 
     @Delete('/destroy/:id')
-    async destroy(@Param('id') id: string): Promise<IResponseSuccess> {
+    async destroy(@Param('id') id: string): Promise<IApiResponseSuccess> {
         const user: User = await this.userService.getOneById(id);
         if (!user) {
             throw this.errorService.apiError(
@@ -130,7 +133,7 @@ export class UserController {
     async update(
         @Param('id') id: string,
         @Body() data: UserUpdate,
-    ): Promise<IResponseSuccess> {
+    ): Promise<IApiResponseSuccess> {
         const user: User = await this.userService.getOneById(id);
         if (!user) {
             throw this.errorService.apiError(

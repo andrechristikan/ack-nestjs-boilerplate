@@ -6,29 +6,31 @@ import {
     Body,
     Delete,
     Query,
-    Inject,
 } from '@nestjs/common';
 import { CountryService } from 'country/country.service';
 import { Country } from 'country/country.model';
 import { CountryStore, CountrySearch } from 'country/country.interface';
 import { ErrorService } from 'error/error.service';
-import { ResponseService } from 'helper/response/response.service';
+import { ApiResponseService } from 'helper/api-response/api-response.service';
 import { SystemErrorStatusCode } from 'error/error.constant';
-import { IResponseSuccess } from 'helper/response/response.interface';
+import { IApiResponseSuccess } from 'helper/api-response/api-response.interface';
 import { IApiError } from 'error/error.interface';
 import { LanguageService } from 'language/language.service';
+import { Language } from 'language/language.decorator';
+import { ApiResponse } from 'helper/api-response/api-response.decorator';
+import { ApiResponseError } from 'error/error.decorator';
 
 @Controller('api/country')
 export class CountryController {
     constructor(
+        @Language() private readonly languageService: LanguageService,
+        @ApiResponse() private readonly responseService: ApiResponseService,
+        @ApiResponseError() private readonly errorService: ErrorService,
         private readonly countryService: CountryService,
-        private readonly errorService: ErrorService,
-        private readonly responseService: ResponseService,
-        private readonly languageService: LanguageService,
     ) {}
 
     @Get('/')
-    async getAll(@Query() data: CountrySearch): Promise<IResponseSuccess> {
+    async getAll(@Query() data: CountrySearch): Promise<IApiResponseSuccess> {
         const { skip, limit } = this.responseService.pagination(
             data.page,
             data.limit,
@@ -49,7 +51,7 @@ export class CountryController {
     }
 
     @Post('/store')
-    async store(@Body() data: CountryStore): Promise<IResponseSuccess> {
+    async store(@Body() data: CountryStore): Promise<IApiResponseSuccess> {
         const existCountryCode: Promise<Country> = this.countryService.getOneByCountryCode(
             data.countryCode,
         );
@@ -93,7 +95,7 @@ export class CountryController {
     }
 
     @Get('/:id')
-    async getOneById(@Param('id') id: string): Promise<IResponseSuccess> {
+    async getOneById(@Param('id') id: string): Promise<IApiResponseSuccess> {
         const country: Country = await this.countryService.getOneById(id);
         if (!country) {
             throw this.errorService.apiError(
@@ -109,7 +111,7 @@ export class CountryController {
     }
 
     @Delete('/destroy/:id')
-    async destroy(@Param('id') id: string): Promise<IResponseSuccess> {
+    async destroy(@Param('id') id: string): Promise<IApiResponseSuccess> {
         const country: Country = await this.countryService.getOneById(id);
         if (!country) {
             throw this.errorService.apiError(
