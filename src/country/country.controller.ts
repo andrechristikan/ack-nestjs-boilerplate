@@ -18,20 +18,21 @@ import { IApiError } from 'error/error.interface';
 import { LanguageService } from 'language/language.service';
 import { Language } from 'language/language.decorator';
 import { ApiResponse } from 'helper/api-response/api-response.decorator';
-import { ApiResponseError } from 'error/error.decorator';
+import { Error } from 'error/error.decorator';
+import { CountryStorePipe } from 'country/pipe/country.store.pipe';
 
 @Controller('api/country')
 export class CountryController {
     constructor(
         @Language() private readonly languageService: LanguageService,
-        @ApiResponse() private readonly responseService: ApiResponseService,
-        @ApiResponseError() private readonly errorService: ErrorService,
+        @ApiResponse() private readonly apiResponseService: ApiResponseService,
+        @Error() private readonly errorService: ErrorService,
         private readonly countryService: CountryService,
     ) {}
 
     @Get('/')
     async getAll(@Query() data: CountrySearch): Promise<IApiResponseSuccess> {
-        const { skip, limit } = this.responseService.pagination(
+        const { skip, limit } = this.apiResponseService.pagination(
             data.page,
             data.limit,
         );
@@ -43,7 +44,7 @@ export class CountryController {
             search,
         );
 
-        return this.responseService.response(
+        return this.apiResponseService.response(
             200,
             this.languageService.get('user.getAll.success'),
             country,
@@ -51,7 +52,9 @@ export class CountryController {
     }
 
     @Post('/store')
-    async store(@Body() data: CountryStore): Promise<IApiResponseSuccess> {
+    async store(
+        @Body(new CountryStorePipe()) data: CountryStore,
+    ): Promise<IApiResponseSuccess> {
         const existCountryCode: Promise<Country> = this.countryService.getOneByCountryCode(
             data.countryCode,
         );
@@ -83,7 +86,7 @@ export class CountryController {
                     );
                 }
                 const create: Country = await this.countryService.store(data);
-                return this.responseService.response(
+                return this.apiResponseService.response(
                     201,
                     this.languageService.get('user.store.success'),
                     create,
@@ -103,7 +106,7 @@ export class CountryController {
             );
         }
 
-        return this.responseService.response(
+        return this.apiResponseService.response(
             200,
             this.languageService.get('user.getById.success'),
             country,
@@ -120,7 +123,7 @@ export class CountryController {
         }
 
         await this.countryService.destroy(id);
-        return this.responseService.response(
+        return this.apiResponseService.response(
             200,
             this.languageService.get('user.destroy.success'),
         );

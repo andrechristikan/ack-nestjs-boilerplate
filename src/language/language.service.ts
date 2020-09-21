@@ -3,7 +3,7 @@ import { ConfigService } from 'config/config.service';
 import { Languages } from 'language/language.constant';
 import { Config } from 'config/config.decorator';
 
-@Injectable({ scope: Scope.TRANSIENT })
+@Injectable({ scope: Scope.DEFAULT })
 export class LanguageService {
     private readonly languages: Record<string, any> = Languages;
 

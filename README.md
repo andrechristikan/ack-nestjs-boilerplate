@@ -66,7 +66,7 @@ Here's why:
 
     [x] Logger in File (day by day) with Winston
 
-    [ ] Logger Http Request in File (day by day) with morgan (ongoing)
+    [x] Logger Http Request in File (day by day) with morgan
 
     [ ] Request Validation
 

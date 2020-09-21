@@ -40,10 +40,10 @@ import { UserModule } from 'user/user.module';
             useFactory: (databaseService: DatabaseService) =>
                 databaseService.createMongooseOptions(),
         }),
-        ApiResponseModule,
         LanguageModule,
-        ErrorModule,
         LoggerModule,
+        ApiResponseModule,
+        ErrorModule,
 
         CountryModule,
         UserModule
