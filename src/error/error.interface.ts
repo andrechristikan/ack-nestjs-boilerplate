@@ -1,7 +1,7 @@
 export interface IApiError {
-    field?: string;
+    property?: string;
     statusCode?: number;
     message?: string;
     httpCode?: number;
-    errors?: Array<Record<string, any>>;
+    errors?: Record<string, any>[];
 }

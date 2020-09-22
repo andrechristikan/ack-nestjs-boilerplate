@@ -4,7 +4,7 @@ import {
     ArgumentMetadata,
     BadRequestException,
 } from '@nestjs/common';
-import { CountryStore } from 'country/pipe/country.store';
+import { CountryStore } from 'country/pipe/country.store.dto';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { Error } from 'error/error.decorator';
@@ -12,7 +12,7 @@ import { ErrorService } from 'error/error.service';
 
 @Injectable()
 export class CountryStorePipe implements PipeTransform<any> {
-    constructor() {}
+    constructor(@Error() private readonly errorService: ErrorService) {}
 
     async transform(
         value: Record<string, any>,
@@ -22,11 +22,10 @@ export class CountryStorePipe implements PipeTransform<any> {
             return value;
         }
 
-        const data = plainToClass(CountryStore, value);
-        const errors = await validate(data);
-        console.log('errors', errors);
+        const data: CountryStore = plainToClass(CountryStore, value);
+        const errors: Record<string, any>[] = await validate(data);
         if (errors.length > 0) {
-            throw new BadRequestException('Validation failed');
+            throw this.errorService.apiRequestError(errors);
         }
         return value;
     }

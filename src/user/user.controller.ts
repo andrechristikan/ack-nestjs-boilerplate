@@ -83,14 +83,14 @@ export class UserController {
                 if (userExistEmail) {
                     errors.push({
                         statusCode: SystemErrorStatusCode.USER_EMAIL_EXIST,
-                        field: 'email',
+                        property: 'email',
                     });
                 }
                 if (userExistMobileNumber) {
                     errors.push({
                         statusCode:
                             SystemErrorStatusCode.USER_MOBILE_NUMBER_EXIST,
-                        field: 'mobileNumber',
+                        property: 'mobileNumber',
                     });
                 }
 

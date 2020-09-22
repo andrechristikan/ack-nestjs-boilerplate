@@ -21,7 +21,7 @@ export class ApiResponseService {
     response(
         httpCode: HttpSuccessStatusCode,
         message: string,
-        data?: Record<string, any> | Array<Record<string, any>>,
+        data?: Record<string, any> | Record<string, any>[],
     ): IApiResponseSuccess {
         const response: IApiResponseSuccess = {
             statusCode: httpCode,

@@ -53,7 +53,7 @@ export class CountryController {
 
     @Post('/store')
     async store(
-        @Body(new CountryStorePipe()) data: CountryStore,
+        @Body(CountryStorePipe) data: CountryStore,
     ): Promise<IApiResponseSuccess> {
         const existCountryCode: Promise<Country> = this.countryService.getOneByCountryCode(
             data.countryCode,
@@ -68,14 +68,14 @@ export class CountryController {
                 if (resExistCountryCode) {
                     errors.push({
                         statusCode: SystemErrorStatusCode.COUNTRY_CODE_EXIST,
-                        field: 'countryCode',
+                        property: 'countryCode',
                     });
                 }
                 if (resExistMobileNumberCode) {
                     errors.push({
                         statusCode:
                             SystemErrorStatusCode.COUNTRY_MOBILE_NUMBER_CODE_EXIST,
-                        field: 'mobileNumberCode',
+                        property: 'mobileNumberCode',
                     });
                 }
 

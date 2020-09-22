@@ -69,7 +69,6 @@ export class UserService {
         data.email = data.email.toLowerCase();
         data.firstName = data.firstName.toLowerCase();
         data.lastName = data.lastName.toLowerCase();
-        console.log(data);
         const user: User = new this.userModel(data);
         return user.save();
     }

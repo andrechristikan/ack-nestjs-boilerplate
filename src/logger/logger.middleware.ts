@@ -22,7 +22,6 @@ export class LoggerMiddleware implements NestMiddleware {
         });
 
         LoggerMiddleware.token('res-body', (req: Request, res: any) => {
-            // console.log(res.body);
             return res.body;
         });
 

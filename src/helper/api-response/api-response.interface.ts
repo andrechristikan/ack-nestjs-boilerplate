@@ -2,7 +2,7 @@ export interface IApiResponseSuccess {
     statusCode: number;
     httpCode: number;
     message: string;
-    data?: Record<string, any> | Array<Record<string, any>>;
+    data?: Record<string, any> | Record<string, any>[];
 }
 
 export interface IPagination {

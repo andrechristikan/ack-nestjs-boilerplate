@@ -80,7 +80,43 @@ export class ErrorService {
                     ),
                 };
 
-            // ? FATAL ERROR
+            case SystemErrorStatusCode.COUNTRY_MOBILE_NUMBER_CODE_LENGTH:
+                return {
+                    httpCode: HttpErrorStatusCode.BAD_REQUEST,
+                    message: this.languageService.get(
+                        'country.error.mobileNumberCodeLength',
+                    ),
+                };
+            case SystemErrorStatusCode.COUNTRY_CODE_LENGTH:
+                return {
+                    httpCode: HttpErrorStatusCode.BAD_REQUEST,
+                    message: this.languageService.get(
+                        'country.error.countryCodeLength',
+                    ),
+                };
+            case SystemErrorStatusCode.COUNTRY_MOBILE_NUMBER_CODE_STRING:
+                return {
+                    httpCode: HttpErrorStatusCode.BAD_REQUEST,
+                    message: this.languageService.get(
+                        'country.error.mobileNumberCodeString',
+                    ),
+                };
+            case SystemErrorStatusCode.COUNTRY_CODE_STRING:
+                return {
+                    httpCode: HttpErrorStatusCode.BAD_REQUEST,
+                    message: this.languageService.get(
+                        'country.error.countryCodeString',
+                    ),
+                };
+            case SystemErrorStatusCode.COUNTRY_NAME_STRING:
+                return {
+                    httpCode: HttpErrorStatusCode.BAD_REQUEST,
+                    message: this.languageService.get(
+                        'country.error.countryNameString',
+                    ),
+                };
+
+            // ? HTTP ERROR
             case SystemErrorStatusCode.GENERAL_ERROR:
                 return {
                     httpCode: HttpErrorStatusCode.INTERNAL_SERVER_ERROR,
@@ -88,6 +124,14 @@ export class ErrorService {
                         'system.error.internalServerError',
                     ),
                 };
+            case SystemErrorStatusCode.REQUEST_ERROR:
+                return {
+                    httpCode: HttpErrorStatusCode.BAD_REQUEST,
+                    message: this.languageService.get(
+                        'system.error.badRequestError',
+                    ),
+                };
+
             default:
                 return {
                     httpCode: HttpErrorStatusCode.INTERNAL_SERVER_ERROR,
@@ -103,7 +147,7 @@ export class ErrorService {
         errors.forEach((value: IApiError) => {
             const error: IApiError = this.setErrorMessage(value.statusCode);
             newError.push({
-                ...value,
+                property: value.property,
                 message: error.message,
             });
         });
@@ -114,7 +158,6 @@ export class ErrorService {
         statusCode: SystemErrorStatusCode,
         errors?: IApiError[],
     ): HttpException {
-        let res: HttpException;
         const { httpCode, message }: IApiError = this.setErrorMessage(
             statusCode,
         );
@@ -124,23 +167,32 @@ export class ErrorService {
 
         switch (httpCode) {
             case 400:
-                res = new BadRequestException({
+                return new BadRequestException({
                     statusCode,
                     httpCode,
                     message,
                     errors,
                 });
-                break;
             default:
-                res = new InternalServerErrorException({
+                this.logger.error({
                     statusCode,
                     httpCode,
                     message,
                 });
-                break;
+                return new InternalServerErrorException({
+                    statusCode,
+                    httpCode,
+                    message,
+                });
         }
+    }
 
-        this.logger.error(res);
-        return res;
+    apiRequestError(errors?: Record<string, any>[]): HttpException {
+        return new BadRequestException({
+            statusCode: SystemErrorStatusCode.REQUEST_ERROR,
+            httpCode: HttpErrorStatusCode.BAD_REQUEST,
+            message: this.languageService.get('system.error.badRequestError'),
+            errors,
+        });
     }
 }
