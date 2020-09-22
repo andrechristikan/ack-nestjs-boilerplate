@@ -188,11 +188,29 @@ export class ErrorService {
     }
 
     apiRequestError(errors?: Record<string, any>[]): HttpException {
+        const newErrors = [];
+        errors.forEach(value => {
+            let message;
+            if (value.constraints.length) {
+                message = this.languageService
+                    .get('request.length')
+                    .replace('#property', value.property);
+            } else if (value.constraints.isString) {
+                message = this.languageService
+                    .get('request.isString')
+                    .replace('#property', value.property);
+            }
+            newErrors.push({
+                property: value.property,
+                message,
+            });
+        });
+
         return new BadRequestException({
             statusCode: SystemErrorStatusCode.REQUEST_ERROR,
             httpCode: HttpErrorStatusCode.BAD_REQUEST,
             message: this.languageService.get('system.error.badRequestError'),
-            errors,
+            errors: newErrors,
         });
     }
 }
