@@ -7,6 +7,4 @@ export interface CountryStore {
 export interface CountrySearch {
     mobileNumberCode?: string;
     countryCode?: string;
-    limit?: number;
-    page?: number;
 }

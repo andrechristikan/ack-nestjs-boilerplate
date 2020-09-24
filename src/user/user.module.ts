@@ -5,7 +5,7 @@ import { UserSchema } from 'user/user.model';
 import { UserService } from 'user/user.service';
 import { UserController } from 'user/user.controller';
 import { AuthModule } from 'auth/auth.module';
-import { CountrySchema } from 'country/country.model';
+import { CountrySchema } from 'country/country.schema';
 
 @Module({
     imports: [

@@ -6,9 +6,12 @@ import {
     Body,
     Delete,
     Query,
+    UsePipes,
+    ParseIntPipe,
+    DefaultValuePipe,
 } from '@nestjs/common';
 import { CountryService } from 'country/country.service';
-import { Country } from 'country/country.model';
+import { Country } from 'country/country.schema';
 import { CountryStore, CountrySearch } from 'country/country.interface';
 import { ErrorService } from 'error/error.service';
 import { ApiResponseService } from 'helper/api-response/api-response.service';
@@ -19,7 +22,8 @@ import { LanguageService } from 'language/language.service';
 import { Language } from 'language/language.decorator';
 import { ApiResponse } from 'helper/api-response/api-response.decorator';
 import { Error } from 'error/error.decorator';
-import { CountryStorePipe } from 'country/pipe/country.store.pipe';
+import { ValidationPipe } from 'pipe/validation.pipe';
+import { CountryStoreSchema } from 'country/validation/country.store';
 
 @Controller('api/country')
 export class CountryController {
@@ -31,10 +35,14 @@ export class CountryController {
     ) {}
 
     @Get('/')
-    async getAll(@Query() data: CountrySearch): Promise<IApiResponseSuccess> {
+    async getAll(
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) perPage: number,
+        @Query() data: CountrySearch,
+    ): Promise<IApiResponseSuccess> {
         const { skip, limit } = this.apiResponseService.pagination(
-            data.page,
-            data.limit,
+            page,
+            perPage,
         );
 
         const search: CountrySearch = await this.countryService.search(data);
@@ -52,9 +60,8 @@ export class CountryController {
     }
 
     @Post('/store')
-    async store(
-        @Body(CountryStorePipe) data: CountryStore,
-    ): Promise<IApiResponseSuccess> {
+    // @UsePipes(new ValidationPipe(CountryStoreSchema))
+    async store(@Body() data: CountryStore): Promise<IApiResponseSuccess> {
         const existCountryCode: Promise<Country> = this.countryService.getOneByCountryCode(
             data.countryCode,
         );

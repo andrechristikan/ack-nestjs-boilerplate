@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
 import { User } from 'user/user.model';
-import { Country } from 'country/country.model';
+import { Country } from 'country/country.schema';
 import {
     UserStore,
     UserUpdate,
