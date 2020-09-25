@@ -22,7 +22,7 @@ import { LanguageService } from 'language/language.service';
 import { Language } from 'language/language.decorator';
 import { ApiResponse } from 'helper/api-response/api-response.decorator';
 import { Error } from 'error/error.decorator';
-import { ValidationPipe } from 'pipe/validation.pipe';
+import { RequestValidationPipe } from 'pipe/request-validation.pipe';
 import { CountryStoreSchema } from 'country/validation/country.store';
 
 @Controller('api/country')
@@ -60,8 +60,10 @@ export class CountryController {
     }
 
     @Post('/store')
-    // @UsePipes(new ValidationPipe(CountryStoreSchema))
-    async store(@Body() data: CountryStore): Promise<IApiResponseSuccess> {
+    async store(
+        @Body(RequestValidationPipe(CountryStoreSchema))
+        data: CountryStore,
+    ): Promise<IApiResponseSuccess> {
         const existCountryCode: Promise<Country> = this.countryService.getOneByCountryCode(
             data.countryCode,
         );

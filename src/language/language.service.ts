@@ -9,16 +9,30 @@ export class LanguageService {
 
     constructor(@Config() private readonly configService: ConfigService) {}
 
-    get(keys: string): string {
-        const key: string[] = keys.split('.');
+    get(key: string): string {
+        const keys: string[] = key.split('.');
         let selectedLanguage: Record<string, any> | string = this.languages[
             this.configService.getEnv('APP_LANGUAGE')
         ];
 
-        for (let i = 0; i < key.length; i += 1) {
-            selectedLanguage = selectedLanguage[key[i]];
+        for (const i of keys) {
+            selectedLanguage = selectedLanguage[i];
         }
 
         return selectedLanguage as string;
+    }
+
+    getAll(key: string): Record<string, any> {
+        const keys: string[] = key.split('.');
+        let selectedLanguage: Record<string, any> | string = this.languages[
+            this.configService.getEnv('APP_LANGUAGE')
+        ];
+
+        for (const [i, v] of keys.entries()) {
+            selectedLanguage = selectedLanguage[v];
+            if ((i + 1) >= keys.length) continue;
+        }
+
+        return selectedLanguage as Record<string, any>;
     }
 }
