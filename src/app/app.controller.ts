@@ -8,7 +8,7 @@ import { Response } from 'response/response.decorator';
 export class AppController {
     constructor(
         @Response() private readonly responseService: ResponseService,
-        private readonly appService: AppService,
+        private readonly appService: AppService
     ) {}
 
     @Get('/')

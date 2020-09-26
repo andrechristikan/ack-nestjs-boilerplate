@@ -4,7 +4,7 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 export function Logger(): (
     target: Record<string, any>,
     key: string | symbol,
-    index?: number,
+    index?: number
 ) => void {
     return Inject(WINSTON_MODULE_PROVIDER);
 }

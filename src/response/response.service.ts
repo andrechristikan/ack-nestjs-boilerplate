@@ -2,7 +2,7 @@ import {
     BadRequestException,
     Injectable,
     InternalServerErrorException,
-    Scope,
+    Scope
 } from '@nestjs/common';
 import { IApiError } from 'error/error.interface';
 import { HttpSuccessStatusCode, Pagination } from 'response/response.constant';
@@ -10,7 +10,7 @@ import { SystemErrorStatusCode } from 'error/error.constant';
 import {
     IApiResponseSuccess,
     IPagination,
-    IApiResponseError,
+    IApiResponseError
 } from 'response/response.interface';
 
 @Injectable({ scope: Scope.TRANSIENT })
@@ -26,13 +26,13 @@ export class ResponseService {
     success(
         httpCode: HttpSuccessStatusCode,
         message: string,
-        data?: Record<string, any> | Record<string, any>[],
+        data?: Record<string, any> | Record<string, any>[]
     ): IApiResponseSuccess {
         const response: IApiResponseSuccess = {
             statusCode: httpCode,
             httpCode,
             message,
-            data,
+            data
         };
         return response;
     }

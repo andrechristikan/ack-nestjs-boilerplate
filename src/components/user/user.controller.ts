@@ -7,17 +7,18 @@ import {
     Delete,
     Put,
     Query,
+    UsePipes
 } from '@nestjs/common';
-import { UserService } from 'user/user.service';
+import { UserService } from 'components/user/user.service';
 import { ErrorService } from 'error/error.service';
 import { SystemErrorStatusCode } from 'error/error.constant';
-import { User } from 'user/user.model';
+import { User } from 'components/user/user.model';
 import {
     UserStore,
     UserUpdate,
     UserSearch,
-    UserSearchCollection,
-} from 'user/user.interface';
+    UserSearchCollection
+} from 'components/user/user.interface';
 import { ResponseService } from 'response/response.service';
 import { IApiResponseSuccess } from 'response/response.interface';
 import { IApiError } from 'error/error.interface';
@@ -25,6 +26,10 @@ import { LanguageService } from 'language/language.service';
 import { Language } from 'language/language.decorator';
 import { Response } from 'response/response.decorator';
 import { Error } from 'error/error.decorator';
+import { RequestValidationPipe } from 'pipe/request-validation.pipe';
+import { UserSearchRequest } from 'components/user/validation/user.search';
+import { UserStoreRequest } from 'components/user/validation/user.store';
+import { UserUpdateRequest } from 'components/user/validation/user.update';
 
 @Controller('api/user')
 export class UserController {
@@ -32,24 +37,25 @@ export class UserController {
         @Error() private readonly errorService: ErrorService,
         @Response() private readonly responseService: ResponseService,
         @Language() private readonly languageService: LanguageService,
-        private readonly userService: UserService,
+        private readonly userService: UserService
     ) {}
 
     @Get('/')
+    @UsePipes(RequestValidationPipe(UserSearchRequest))
     async getAll(@Query() data: UserSearch): Promise<IApiResponseSuccess> {
         const { skip, limit } = this.responseService.pagination(
             data.page,
-            data.limit,
+            data.limit
         );
 
         const search: UserSearchCollection = await this.userService.search(
-            data,
+            data
         );
         const user: User[] = await this.userService.getAll(skip, limit, search);
         return this.responseService.success(
             200,
             this.languageService.get('user.getAll.success'),
-            user,
+            user
         );
     }
 
@@ -58,24 +64,25 @@ export class UserController {
         const user: User = await this.userService.getOneById(id);
         if (!user) {
             const res: IApiError = this.errorService.setError(
-                SystemErrorStatusCode.USER_NOT_FOUND,
+                SystemErrorStatusCode.USER_NOT_FOUND
             );
             return this.responseService.error(res);
         }
         return this.responseService.success(
             200,
             this.languageService.get('user.getById.success'),
-            user,
+            user
         );
     }
 
     @Post('/store')
+    @UsePipes(RequestValidationPipe(UserStoreRequest))
     async store(@Body() data: UserStore): Promise<IApiResponseSuccess> {
         const existEmail: Promise<User> = this.userService.getOneByEmail(
-            data.email,
+            data.email
         );
         const existMobileNumber: Promise<User> = this.userService.getOneByMobileNumber(
-            data.mobileNumber,
+            data.mobileNumber
         );
 
         return Promise.all([existEmail, existMobileNumber])
@@ -84,21 +91,21 @@ export class UserController {
                 if (userExistEmail) {
                     errors.push({
                         statusCode: SystemErrorStatusCode.USER_EMAIL_EXIST,
-                        property: 'email',
+                        property: 'email'
                     });
                 }
                 if (userExistMobileNumber) {
                     errors.push({
                         statusCode:
                             SystemErrorStatusCode.USER_MOBILE_NUMBER_EXIST,
-                        property: 'mobileNumber',
+                        property: 'mobileNumber'
                     });
                 }
 
                 if (errors.length > 0) {
                     const res: IApiError = this.errorService.setError(
                         SystemErrorStatusCode.USER_EXIST,
-                        errors,
+                        errors
                     );
                     return this.responseService.error(res);
                 }
@@ -107,7 +114,7 @@ export class UserController {
                 return this.responseService.success(
                     201,
                     this.languageService.get('user.store.success'),
-                    user,
+                    user
                 );
             })
             .catch(err => {
@@ -120,7 +127,7 @@ export class UserController {
         const user: User = await this.userService.getOneById(id);
         if (!user) {
             const res: IApiError = this.errorService.setError(
-                SystemErrorStatusCode.USER_NOT_FOUND,
+                SystemErrorStatusCode.USER_NOT_FOUND
             );
             return this.responseService.error(res);
         }
@@ -128,19 +135,20 @@ export class UserController {
         await this.userService.destroy(id);
         return this.responseService.success(
             200,
-            this.languageService.get('user.destroy.success'),
+            this.languageService.get('user.destroy.success')
         );
     }
 
     @Put('/update/:id')
+    @UsePipes(RequestValidationPipe(UserUpdateRequest))
     async update(
         @Param('id') id: string,
-        @Body() data: UserUpdate,
+        @Body() data: UserUpdate
     ): Promise<IApiResponseSuccess> {
         const user: User = await this.userService.getOneById(id);
         if (!user) {
             const res: IApiError = this.errorService.setError(
-                SystemErrorStatusCode.USER_NOT_FOUND,
+                SystemErrorStatusCode.USER_NOT_FOUND
             );
             return this.responseService.error(res);
         }
@@ -149,7 +157,7 @@ export class UserController {
         return this.responseService.success(
             200,
             this.languageService.get('user.update.success'),
-            update,
+            update
         );
     }
 }

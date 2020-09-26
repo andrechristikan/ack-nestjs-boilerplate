@@ -1,9 +1,9 @@
 export const CountrySearchRequest = {
     mobileNumberCode: {
-        type: 'string',
+        type: 'string'
     },
 
     countryCode: {
-        type: 'string',
-    },
+        type: 'string'
+    }
 };

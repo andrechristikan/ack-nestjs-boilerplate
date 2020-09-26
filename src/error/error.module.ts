@@ -6,10 +6,10 @@ import { ErrorService } from 'error/error.service';
     providers: [
         {
             provide: 'ErrorService',
-            useClass: ErrorService,
-        },
+            useClass: ErrorService
+        }
     ],
     exports: ['ErrorService'],
-    imports: [],
+    imports: []
 })
 export class ErrorModule {}

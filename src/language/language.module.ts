@@ -6,10 +6,10 @@ import { LanguageService } from 'language/language.service';
     providers: [
         {
             provide: 'LanguageService',
-            useClass: LanguageService,
-        },
+            useClass: LanguageService
+        }
     ],
     exports: ['LanguageService'],
-    imports: [],
+    imports: []
 })
 export class LanguageModule {}

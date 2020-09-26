@@ -68,7 +68,7 @@ Here's why:
 
     [x] Logger Http Request in File (day by day) with morgan
 
-    [ ] Request Validation
+    [x] Request Validation
 
     [ ] Docker
 

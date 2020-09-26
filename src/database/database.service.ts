@@ -1,7 +1,7 @@
 import { Injectable, Scope } from '@nestjs/common';
 import {
     MongooseOptionsFactory,
-    MongooseModuleOptions,
+    MongooseModuleOptions
 } from '@nestjs/mongoose';
 import { Config } from 'config/config.decorator';
 import { ConfigService } from 'config/config.service';
@@ -12,7 +12,7 @@ import { Logger } from 'logger/logger.decorator';
 export class DatabaseService implements MongooseOptionsFactory {
     constructor(
         @Logger() private readonly logger: LoggerService,
-        @Config() private readonly configService: ConfigService,
+        @Config() private readonly configService: ConfigService
     ) {}
 
     createMongooseOptions(): MongooseModuleOptions {
@@ -22,12 +22,12 @@ export class DatabaseService implements MongooseOptionsFactory {
             this.configService.getEnv('DB_PASSWORD')
         ) {
             uri = `${uri}${this.configService.getEnv(
-                'DB_USER',
+                'DB_USER'
             )}:${this.configService.getEnv('DB_PASSWORD')}@`;
         }
 
         uri = `${uri}${this.configService.getEnv(
-            'DB_HOST',
+            'DB_HOST'
         )}/${this.configService.getEnv('DB_NAME')}`;
         this.logger.info(`Database running on ${uri}`);
 
@@ -35,7 +35,7 @@ export class DatabaseService implements MongooseOptionsFactory {
             uri,
             useNewUrlParser: true,
             useUnifiedTopology: true,
-            useCreateIndex: true,
+            useCreateIndex: true
         };
     }
 }

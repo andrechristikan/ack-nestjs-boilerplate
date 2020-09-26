@@ -11,7 +11,7 @@ export class LoggerMiddleware implements NestMiddleware {
 
     static configure(
         format: string | morgan.FormatFn,
-        opts?: Record<string, any>,
+        opts?: Record<string, any>
     ): void {
         LoggerMiddleware.token('req-params', (req: Request) => {
             return JSON.stringify(req.params);
@@ -31,7 +31,7 @@ export class LoggerMiddleware implements NestMiddleware {
 
     static token(
         name: string,
-        callback: (req: Request, res?: Response) => string | undefined,
+        callback: (req: Request, res?: Response) => string | undefined
     ): morgan.Morgan<IncomingMessage, ServerResponse> {
         return morgan.token(name, callback);
     }
@@ -39,13 +39,13 @@ export class LoggerMiddleware implements NestMiddleware {
     use(req: Request, res: Response, next: NextFunction): void {
         LoggerMiddleware.configure(
             LoggerService.httpLogger().HttpLoggerFormat,
-            LoggerService.httpLogger().HttpLoggerOptions,
+            LoggerService.httpLogger().HttpLoggerOptions
         );
 
         morgan(LoggerMiddleware.format as any, LoggerMiddleware.options)(
             req,
             res,
-            next,
+            next
         );
     }
 }

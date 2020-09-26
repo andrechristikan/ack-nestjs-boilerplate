@@ -20,8 +20,8 @@ import { LanguageModule } from 'language/language.module';
 import { ErrorModule } from 'error/error.module';
 import { ConfigModule } from 'config/config.module';
 
-import { CountryModule } from 'country/country.module';
-import { UserModule } from 'user/user.module';
+import { CountryModule } from 'components/country/country.module';
+import { UserModule } from 'components/user/user.module';
 
 @Module({
     controllers: [AppController],
@@ -32,13 +32,13 @@ import { UserModule } from 'user/user.module';
             inject: [LoggerService],
             imports: [LoggerModule],
             useFactory: (loggerService: LoggerService) =>
-                loggerService.createLogger(),
+                loggerService.createLogger()
         }),
         MongooseModule.forRootAsync({
             imports: [DatabaseModule],
             inject: [DatabaseService],
             useFactory: (databaseService: DatabaseService) =>
-                databaseService.createMongooseOptions(),
+                databaseService.createMongooseOptions()
         }),
         LanguageModule,
         LoggerModule,
@@ -46,8 +46,8 @@ import { UserModule } from 'user/user.module';
         ErrorModule,
 
         CountryModule,
-        UserModule,
-    ],
+        UserModule
+    ]
 })
 export class AppModule implements NestModule {
     configure(consumer: MiddlewareConsumer): void {
@@ -59,7 +59,7 @@ export class AppModule implements NestModule {
                 LoggerMiddleware,
                 BodyParserUrlencodedMiddleware,
                 BodyParserJsonMiddleware,
-                ResponseBodyMiddleware,
+                ResponseBodyMiddleware
             )
             .forRoutes('*');
     }

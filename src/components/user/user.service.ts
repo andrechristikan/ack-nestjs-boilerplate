@@ -2,14 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import { User } from 'user/user.model';
-import { Country } from 'country/country.schema';
+import { User } from 'components/user/user.model';
+import { Country } from 'components/country/country.schema';
 import {
     UserStore,
     UserUpdate,
     UserSearch,
-    UserSearchCollection,
-} from 'user/user.interface';
+    UserSearchCollection
+} from 'components/user/user.interface';
 import { AuthService } from 'auth/auth.service';
 
 @Injectable()
@@ -17,13 +17,13 @@ export class UserService {
     constructor(
         @InjectModel('user') private userModel: Model<User>,
         @InjectModel('country') private readonly countryModel: Model<Country>,
-        private readonly authService: AuthService,
+        private readonly authService: AuthService
     ) {}
 
     async getAll(
         skip: number,
         limit: number,
-        search?: UserSearch,
+        search?: UserSearch
     ): Promise<User[]> {
         return this.userModel
             .find(search)
@@ -51,7 +51,7 @@ export class UserService {
     async getOneByEmail(email: string): Promise<User> {
         return this.userModel
             .findOne({
-                email: email.toLowerCase(),
+                email: email.toLowerCase()
             })
             .exec();
     }
@@ -59,7 +59,7 @@ export class UserService {
     async getOneByMobileNumber(mobileNumber: string): Promise<User> {
         return this.userModel
             .findOne({
-                mobileNumber: mobileNumber,
+                mobileNumber: mobileNumber
             })
             .exec();
     }
@@ -89,7 +89,7 @@ export class UserService {
         if (data.firstName) {
             search.firstName = {
                 $regex: `.*${data.firstName}.*`,
-                $options: 'i',
+                $options: 'i'
             };
         }
         if (data.lastName) {

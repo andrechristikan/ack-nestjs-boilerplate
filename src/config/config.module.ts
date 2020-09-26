@@ -6,10 +6,10 @@ import { ConfigService } from 'config/config.service';
     providers: [
         {
             provide: 'ConfigService',
-            useClass: ConfigService,
-        },
+            useClass: ConfigService
+        }
     ],
     exports: ['ConfigService'],
-    imports: [],
+    imports: []
 })
 export class ConfigModule {}

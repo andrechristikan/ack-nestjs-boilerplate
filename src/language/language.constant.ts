@@ -3,5 +3,5 @@ import en from 'language/resources/en';
 
 export const Languages: Record<string, any> = {
     id,
-    en,
+    en
 };

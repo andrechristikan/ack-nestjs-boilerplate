@@ -1,7 +1,7 @@
 import { Injectable, Scope } from '@nestjs/common';
 import {
     HttpErrorStatusCode,
-    SystemErrorStatusCode,
+    SystemErrorStatusCode
 } from 'error/error.constant';
 import { IApiError } from 'error/error.interface';
 import { LanguageService } from 'language/language.service';
@@ -15,7 +15,7 @@ export class ErrorMessage {}
 export class ErrorService {
     constructor(
         @Logger() private readonly logger: LoggerService,
-        @Language() private readonly languageService: LanguageService,
+        @Language() private readonly languageService: LanguageService
     ) {}
 
     private setErrorMessage(statusCode: SystemErrorStatusCode): IApiError {
@@ -26,88 +26,88 @@ export class ErrorService {
             case SystemErrorStatusCode.USER_NOT_FOUND:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
-                    message: this.languageService.get('user.error.notFound'),
+                    message: this.languageService.get('user.error.notFound')
                 };
             case SystemErrorStatusCode.USER_MOBILE_NUMBER_EXIST:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
                     message: this.languageService.get(
-                        'user.error.mobileNumberExist',
-                    ),
+                        'user.error.mobileNumberExist'
+                    )
                 };
             case SystemErrorStatusCode.USER_EMAIL_EXIST:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
-                    message: this.languageService.get('user.error.emailExist'),
+                    message: this.languageService.get('user.error.emailExist')
                 };
             case SystemErrorStatusCode.USER_EXIST:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
-                    message: this.languageService.get('user.error.userExist'),
+                    message: this.languageService.get('user.error.userExist')
                 };
 
             // ! COUNTRY
             case SystemErrorStatusCode.COUNTRY_NOT_FOUND:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
-                    message: this.languageService.get('country.error.notFound'),
+                    message: this.languageService.get('country.error.notFound')
                 };
             case SystemErrorStatusCode.COUNTRY_MOBILE_NUMBER_CODE_EXIST:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
                     message: this.languageService.get(
-                        'country.error.mobileNumberCodeExist',
-                    ),
+                        'country.error.mobileNumberCodeExist'
+                    )
                 };
             case SystemErrorStatusCode.COUNTRY_CODE_EXIST:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
                     message: this.languageService.get(
-                        'country.error.countryCode',
-                    ),
+                        'country.error.countryCode'
+                    )
                 };
             case SystemErrorStatusCode.COUNTRY_EXIST:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
                     message: this.languageService.get(
-                        'country.error.countryExist',
-                    ),
+                        'country.error.countryExist'
+                    )
                 };
 
             case SystemErrorStatusCode.COUNTRY_MOBILE_NUMBER_CODE_LENGTH:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
                     message: this.languageService.get(
-                        'country.error.mobileNumberCodeLength',
-                    ),
+                        'country.error.mobileNumberCodeLength'
+                    )
                 };
             case SystemErrorStatusCode.COUNTRY_CODE_LENGTH:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
                     message: this.languageService.get(
-                        'country.error.countryCodeLength',
-                    ),
+                        'country.error.countryCodeLength'
+                    )
                 };
             case SystemErrorStatusCode.COUNTRY_MOBILE_NUMBER_CODE_STRING:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
                     message: this.languageService.get(
-                        'country.error.mobileNumberCodeString',
-                    ),
+                        'country.error.mobileNumberCodeString'
+                    )
                 };
             case SystemErrorStatusCode.COUNTRY_CODE_STRING:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
                     message: this.languageService.get(
-                        'country.error.countryCodeString',
-                    ),
+                        'country.error.countryCodeString'
+                    )
                 };
             case SystemErrorStatusCode.COUNTRY_NAME_STRING:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
                     message: this.languageService.get(
-                        'country.error.countryNameString',
-                    ),
+                        'country.error.countryNameString'
+                    )
                 };
 
             // ? HTTP ERROR
@@ -115,23 +115,23 @@ export class ErrorService {
                 return {
                     httpCode: HttpErrorStatusCode.INTERNAL_SERVER_ERROR,
                     message: this.languageService.get(
-                        'system.error.internalServerError',
-                    ),
+                        'system.error.internalServerError'
+                    )
                 };
             case SystemErrorStatusCode.REQUEST_ERROR:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,
                     message: this.languageService.get(
-                        'system.error.badRequestError',
-                    ),
+                        'system.error.badRequestError'
+                    )
                 };
 
             default:
                 return {
                     httpCode: HttpErrorStatusCode.INTERNAL_SERVER_ERROR,
                     message: this.languageService.get(
-                        'system.error.internalServerError',
-                    ),
+                        'system.error.internalServerError'
+                    )
                 };
         }
     }
@@ -142,7 +142,7 @@ export class ErrorService {
             const error: IApiError = this.setErrorMessage(value.statusCode);
             newError.push({
                 property: value.property,
-                message: error.message,
+                message: error.message
             });
         });
         return newError;
@@ -150,10 +150,10 @@ export class ErrorService {
 
     setError(
         statusCode: SystemErrorStatusCode,
-        errors?: IApiError[],
+        errors?: IApiError[]
     ): IApiError {
         const { httpCode, message }: IApiError = this.setErrorMessage(
-            statusCode,
+            statusCode
         );
         if (errors && Array.isArray(errors) && errors.length > 0) {
             errors = this.setErrorMessages(errors as IApiError[]);
@@ -165,18 +165,18 @@ export class ErrorService {
                     statusCode,
                     httpCode,
                     message,
-                    errors,
+                    errors
                 };
             default:
                 this.logger.error({
                     statusCode,
                     httpCode,
-                    message,
+                    message
                 });
                 return {
                     statusCode,
                     httpCode,
-                    message,
+                    message
                 };
         }
     }
@@ -186,14 +186,14 @@ export class ErrorService {
         for (const i of errors.details) {
             responseApiError.push({
                 property: i.path[0],
-                message: i.message,
+                message: i.message
             });
         }
         return {
             statusCode: SystemErrorStatusCode.REQUEST_ERROR,
             httpCode: HttpErrorStatusCode.BAD_REQUEST,
             message: this.languageService.get('request.default'),
-            errors: responseApiError,
+            errors: responseApiError
         };
     }
 

@@ -8,11 +8,14 @@ import {
     Query,
     ParseIntPipe,
     DefaultValuePipe,
-    UsePipes,
+    UsePipes
 } from '@nestjs/common';
-import { CountryService } from 'country/country.service';
-import { Country } from 'country/country.schema';
-import { ICountryStore, ICountrySearch } from 'country/country.interface';
+import { CountryService } from 'components/country/country.service';
+import { Country } from 'components/country/country.schema';
+import {
+    ICountryStore,
+    ICountrySearch
+} from 'components/country/country.interface';
 import { Error } from 'error/error.decorator';
 import { ErrorService } from 'error/error.service';
 import { ResponseService } from 'response/response.service';
@@ -23,8 +26,8 @@ import { LanguageService } from 'language/language.service';
 import { Language } from 'language/language.decorator';
 import { Response } from 'response/response.decorator';
 import { RequestValidationPipe } from 'pipe/request-validation.pipe';
-import { CountryStoreRequest } from 'country/validation/country.store';
-import { CountrySearchRequest } from 'country/validation/country.search';
+import { CountryStoreRequest } from 'components/country/validation/country.store';
+import { CountrySearchRequest } from 'components/country/validation/country.search';
 
 @Controller('api/country')
 export class CountryController {
@@ -32,7 +35,7 @@ export class CountryController {
         @Language() private readonly languageService: LanguageService,
         @Response() private readonly responseService: ResponseService,
         @Error() private readonly errorService: ErrorService,
-        private readonly countryService: CountryService,
+        private readonly countryService: CountryService
     ) {}
 
     @Get('/')
@@ -40,7 +43,7 @@ export class CountryController {
     async getAll(
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(10), ParseIntPipe) perPage: number,
-        @Query() data: ICountrySearch,
+        @Query() data: ICountrySearch
     ): Promise<IApiResponseSuccess> {
         const { skip, limit } = this.responseService.pagination(page, perPage);
 
@@ -48,13 +51,13 @@ export class CountryController {
         const country: Country[] = await this.countryService.getAll(
             skip,
             limit,
-            search,
+            search
         );
 
         return this.responseService.success(
             200,
             this.languageService.get('user.getAll.success'),
-            country,
+            country
         );
     }
 
@@ -62,13 +65,13 @@ export class CountryController {
     @UsePipes(RequestValidationPipe(CountryStoreRequest))
     async store(
         @Body()
-        data: ICountryStore,
+        data: ICountryStore
     ): Promise<IApiResponseSuccess> {
         const existCountryCode: Promise<Country> = this.countryService.getOneByCountryCode(
-            data.countryCode,
+            data.countryCode
         );
         const existMobileNumberCode: Promise<Country> = this.countryService.getOneByMobileNumberCode(
-            data.mobileNumberCode,
+            data.mobileNumberCode
         );
 
         return Promise.all([existCountryCode, existMobileNumberCode])
@@ -77,21 +80,21 @@ export class CountryController {
                 if (resExistCountryCode) {
                     errors.push({
                         statusCode: SystemErrorStatusCode.COUNTRY_CODE_EXIST,
-                        property: 'countryCode',
+                        property: 'countryCode'
                     });
                 }
                 if (resExistMobileNumberCode) {
                     errors.push({
                         statusCode:
                             SystemErrorStatusCode.COUNTRY_MOBILE_NUMBER_CODE_EXIST,
-                        property: 'mobileNumberCode',
+                        property: 'mobileNumberCode'
                     });
                 }
 
                 if (errors.length > 0) {
                     const res: IApiError = this.errorService.setError(
                         SystemErrorStatusCode.USER_EXIST,
-                        errors,
+                        errors
                     );
                     return this.responseService.error(res);
                 }
@@ -99,7 +102,7 @@ export class CountryController {
                 return this.responseService.success(
                     201,
                     this.languageService.get('user.store.success'),
-                    create,
+                    create
                 );
             })
             .catch(err => {
@@ -112,7 +115,7 @@ export class CountryController {
         const country: Country = await this.countryService.getOneById(id);
         if (!country) {
             const res: IApiError = this.errorService.setError(
-                SystemErrorStatusCode.COUNTRY_NOT_FOUND,
+                SystemErrorStatusCode.COUNTRY_NOT_FOUND
             );
             return this.responseService.error(res);
         }
@@ -120,7 +123,7 @@ export class CountryController {
         return this.responseService.success(
             200,
             this.languageService.get('user.getById.success'),
-            country,
+            country
         );
     }
 
@@ -129,7 +132,7 @@ export class CountryController {
         const country: Country = await this.countryService.getOneById(id);
         if (!country) {
             const res: IApiError = this.errorService.setError(
-                SystemErrorStatusCode.COUNTRY_NOT_FOUND,
+                SystemErrorStatusCode.COUNTRY_NOT_FOUND
             );
             return this.responseService.error(res);
         }
@@ -137,7 +140,7 @@ export class CountryController {
         await this.countryService.destroy(id);
         return this.responseService.success(
             200,
-            this.languageService.get('user.destroy.success'),
+            this.languageService.get('user.destroy.success')
         );
     }
 }

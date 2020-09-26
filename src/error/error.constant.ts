@@ -11,7 +11,7 @@ export enum HttpErrorStatusCode {
     INTERNAL_SERVER_ERROR = 500,
     NOT_IMPLEMENTED = 501,
     BAD_GATEWAY = 502,
-    SERVICE_UNAVAILABLE = 503,
+    SERVICE_UNAVAILABLE = 503
 }
 
 export enum SystemErrorStatusCode {
@@ -38,5 +38,5 @@ export enum SystemErrorStatusCode {
 
     // ? FATAL ERROR
     GENERAL_ERROR = 10000,
-    REQUEST_ERROR = 10001,
+    REQUEST_ERROR = 10001
 }

@@ -6,10 +6,10 @@ import { ResponseService } from 'response/response.service';
     providers: [
         {
             provide: 'ResponseService',
-            useClass: ResponseService,
-        },
+            useClass: ResponseService
+        }
     ],
     exports: ['ResponseService'],
-    imports: [],
+    imports: []
 })
 export class ResponseModule {}

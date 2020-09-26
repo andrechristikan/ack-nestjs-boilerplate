@@ -16,7 +16,7 @@ export class BodyParserUrlencodedMiddleware implements NestMiddleware {
         bodyParser.urlencoded(BodyParserUrlencodedMiddleware.urlencoded)(
             req,
             res,
-            next,
+            next
         );
     }
 }

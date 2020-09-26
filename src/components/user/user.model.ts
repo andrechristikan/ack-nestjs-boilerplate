@@ -6,28 +6,28 @@ export class User extends Document {
     @Prop({
         required: true,
         index: true,
-        ref: 'country',
+        ref: 'country'
     })
     country: SchemaMongoose.Types.ObjectId;
 
     @Prop({
         required: true,
         index: true,
-        lowercase: true,
+        lowercase: true
     })
     firstName: string;
 
     @Prop({
         required: true,
         index: true,
-        lowercase: true,
+        lowercase: true
     })
     lastName: string;
 
     @Prop({
         required: true,
         index: true,
-        unique: true,
+        unique: true
     })
     mobileNumber: string;
 
@@ -35,12 +35,12 @@ export class User extends Document {
         required: true,
         index: true,
         unique: true,
-        lowercase: true,
+        lowercase: true
     })
     email: string;
 
     @Prop({
-        required: true,
+        required: true
     })
     password: string;
 }

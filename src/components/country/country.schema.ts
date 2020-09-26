@@ -6,7 +6,7 @@ export class Country extends Document {
     @Prop({
         required: true,
         index: true,
-        unique: true,
+        unique: true
     })
     mobileNumberCode: string;
 
@@ -14,14 +14,14 @@ export class Country extends Document {
         required: true,
         index: true,
         unique: true,
-        lowercase: true,
+        lowercase: true
     })
     countryCode: string;
 
     @Prop({
         required: true,
         index: true,
-        lowercase: true,
+        lowercase: true
     })
     countryName: string;
 }

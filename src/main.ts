@@ -15,10 +15,10 @@ async function bootstrap() {
         () => {
             console.log(
                 `Server running on http://${configService.getEnv(
-                    'APP_URL',
-                )}:${configService.getEnv('APP_PORT')}`,
+                    'APP_URL'
+                )}:${configService.getEnv('APP_PORT')}`
             );
-        },
+        }
     );
 }
 bootstrap();

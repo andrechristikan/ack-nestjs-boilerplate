@@ -9,7 +9,7 @@ import {
     HttpLoggerFormat,
     HttpLoggerSize,
     HttpLoggerMaxSize,
-    HttpLoggerName,
+    HttpLoggerName
 } from 'logger/logger.constant';
 
 @Injectable({ scope: Scope.TRANSIENT })
@@ -20,7 +20,7 @@ export class LoggerService {
             datePattern: 'YYYY-MM-DD',
             zippedArchive: true,
             maxSize: LoggerMaxSize,
-            maxFiles: LoggerMaxFiles,
+            maxFiles: LoggerMaxFiles
         });
 
         const configTransportError = new DailyRotateFile({
@@ -29,19 +29,19 @@ export class LoggerService {
             zippedArchive: true,
             maxSize: LoggerMaxSize,
             maxFiles: LoggerMaxFiles,
-            level: 'error',
+            level: 'error'
         });
 
         const loggerOptions: Record<string, any> = {
             format: winston.format.combine(
                 winston.format.timestamp(),
-                winston.format.prettyPrint(),
+                winston.format.prettyPrint()
             ),
             transports: [
                 configTransportError,
                 new winston.transports.Console(),
-                configTransportDefault,
-            ],
+                configTransportDefault
+            ]
         };
         return loggerOptions;
     }
@@ -53,13 +53,13 @@ export class LoggerService {
                 size: HttpLoggerSize,
                 maxSize: HttpLoggerMaxSize,
                 compress: true,
-                interval: '1d',
-            }),
+                interval: '1d'
+            })
         };
 
         return {
             HttpLoggerFormat,
-            HttpLoggerOptions,
+            HttpLoggerOptions
         };
     }
 }

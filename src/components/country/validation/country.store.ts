@@ -3,7 +3,7 @@ export const CountryStoreRequest = {
         type: 'string',
         required: true,
         min: 1,
-        max: 6,
+        max: 6
     },
 
     countryCode: {
@@ -11,12 +11,12 @@ export const CountryStoreRequest = {
         required: true,
         lowercase: true,
         min: 1,
-        max: 3,
+        max: 3
     },
 
     countryName: {
         type: 'string',
         required: true,
-        lowercase: true,
-    },
+        lowercase: true
+    }
 };

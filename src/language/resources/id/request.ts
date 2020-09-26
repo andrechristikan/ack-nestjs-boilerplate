@@ -111,5 +111,5 @@ export default {
     'string.uriCustomScheme': `{#key} isn't a valid URI considering the custom schemes.`,
     'string.uriRelativeOnly': `{#key} is a valid relative URI.`,
     'symbol.base': `{#key} is not a Symbol.`,
-    'symbol.map': `{#key} is not a Symbol or could not be converted to one.`,
+    'symbol.map': `{#key} is not a Symbol or could not be converted to one.`
 };

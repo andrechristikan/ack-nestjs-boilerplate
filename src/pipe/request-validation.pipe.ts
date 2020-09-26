@@ -3,7 +3,7 @@ import {
     ArgumentMetadata,
     BadRequestException,
     Type,
-    mixin,
+    mixin
 } from '@nestjs/common';
 import {
     ObjectSchema,
@@ -12,7 +12,7 @@ import {
     date as jfDate,
     boolean as jfBoolean,
     number as jfNumber,
-    array as jfArray,
+    array as jfArray
 } from '@hapi/joi';
 import { LanguageService } from 'language/language.service';
 import { Language } from 'language/language.decorator';
@@ -20,17 +20,17 @@ import { Error } from 'error/error.decorator';
 import { ErrorService } from 'error/error.service';
 
 export function RequestValidationPipe(
-    schema: Record<string, any>,
+    schema: Record<string, any>
 ): Type<PipeTransform> {
     class MixinRequestValidationPipe implements PipeTransform {
         constructor(
             @Language() private readonly languageService: LanguageService,
-            @Error() private readonly errorService: ErrorService,
+            @Error() private readonly errorService: ErrorService
         ) {}
 
         async transform(
             value: Record<string, any>,
-            { metatype }: ArgumentMetadata,
+            { metatype }: ArgumentMetadata
         ): Promise<Record<string, any>> {
             if (!metatype || !this.toValidate(metatype)) {
                 return value;
@@ -43,7 +43,7 @@ export function RequestValidationPipe(
             > = this.languageService.getAll('request');
             const { error } = validator.validate(value, {
                 abortEarly: false,
-                messages: messages,
+                messages: messages
             });
 
             if (error) {
@@ -59,7 +59,7 @@ export function RequestValidationPipe(
                 Boolean,
                 Number,
                 Array,
-                Object,
+                Object
             ];
             return types.includes(metatype);
         }
@@ -70,28 +70,28 @@ export function RequestValidationPipe(
                 switch (value[property].type) {
                     case 'base64':
                         newSchema[property] = jfString().base64({
-                            urlSafe: true,
+                            urlSafe: true
                         });
                         break;
                     case 'domain':
                         newSchema[property] = jfString().domain({
                             allowUnicode: false,
-                            tlds: { allow: true },
+                            tlds: { allow: true }
                         });
                         break;
                     case 'hex':
                         newSchema[property] = jfString().hex({
-                            byteAligned: false,
+                            byteAligned: false
                         });
                         break;
                     case 'uuid':
                         newSchema[property] = jfString().uuid({
-                            version: ['uuidv5', 'uuidv4'],
+                            version: ['uuidv5', 'uuidv4']
                         });
                         break;
                     case 'ip':
                         newSchema[property] = jfString().ip({
-                            version: 'ipv4',
+                            version: 'ipv4'
                         });
                         break;
                     case 'time':
@@ -106,7 +106,7 @@ export function RequestValidationPipe(
                             ignoreLength: false,
                             multiple: true,
                             separator: ';',
-                            tlds: { allow: true },
+                            tlds: { allow: true }
                         });
                         break;
                     case 'port':
@@ -117,13 +117,13 @@ export function RequestValidationPipe(
 
                         if (value[property].lowercase) {
                             newSchema[property] = newSchema[property].case(
-                                'lower',
+                                'lower'
                             );
                         }
 
                         if (value[property].uppercase) {
                             newSchema[property] = newSchema[property].case(
-                                'upper',
+                                'upper'
                             );
                         }
 
@@ -141,13 +141,13 @@ export function RequestValidationPipe(
 
                         if (value[property].max > 0) {
                             newSchema[property] = newSchema[property].max(
-                                value[property].max,
+                                value[property].max
                             );
                         }
 
                         if (value[property].min > 0) {
                             newSchema[property] = newSchema[property].min(
-                                value[property].min,
+                                value[property].min
                             );
                         }
                         break;
@@ -158,12 +158,12 @@ export function RequestValidationPipe(
 
                         if (newSchema[property].greater) {
                             newSchema[property] = newSchema[property].greater(
-                                newSchema[property].greater,
+                                newSchema[property].greater
                             );
                         }
                         if (newSchema[property].less) {
                             newSchema[property] = newSchema[property].less(
-                                newSchema[property].less,
+                                newSchema[property].less
                             );
                         }
                         break;
@@ -188,22 +188,22 @@ export function RequestValidationPipe(
                         }
                         if (newSchema[property].greater) {
                             newSchema[property] = newSchema[property].greater(
-                                newSchema[property].greater,
+                                newSchema[property].greater
                             );
                         }
                         if (newSchema[property].less) {
                             newSchema[property] = newSchema[property].less(
-                                newSchema[property].less,
+                                newSchema[property].less
                             );
                         }
                         if (newSchema[property].min) {
                             newSchema[property] = newSchema[property].min(
-                                newSchema[property].min,
+                                newSchema[property].min
                             );
                         }
                         if (newSchema[property].max) {
                             newSchema[property] = newSchema[property].max(
-                                newSchema[property].max,
+                                newSchema[property].max
                             );
                         }
                         break;
@@ -212,31 +212,31 @@ export function RequestValidationPipe(
 
                         if (newSchema[property].length) {
                             newSchema[property] = newSchema[property].length(
-                                newSchema[property].length,
+                                newSchema[property].length
                             );
                         }
 
                         if (newSchema[property].min) {
                             newSchema[property] = newSchema[property].min(
-                                newSchema[property].min,
+                                newSchema[property].min
                             );
                         }
 
                         if (newSchema[property].max) {
                             newSchema[property] = newSchema[property].max(
-                                newSchema[property].max,
+                                newSchema[property].max
                             );
                         }
 
                         if (newSchema[property].unique) {
                             newSchema[property] = newSchema[property].unique(
-                                newSchema[property].unique,
+                                newSchema[property].unique
                             );
                         }
 
                         if (newSchema[property].sort) {
                             newSchema[property] = newSchema[property].sort({
-                                order: newSchema[property].sort,
+                                order: newSchema[property].sort
                             });
                         }
 
