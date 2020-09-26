@@ -1,4 +1,4 @@
-export const CountryStoreSchema = {
+export const CountryStoreRequest = {
     mobileNumberCode: {
         type: 'string',
         required: true,

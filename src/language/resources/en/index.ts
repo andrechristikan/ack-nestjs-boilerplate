@@ -7,5 +7,5 @@ export default {
     country,
     user,
     system,
-    request
+    request,
 };

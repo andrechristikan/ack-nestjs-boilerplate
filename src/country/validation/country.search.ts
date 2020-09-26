@@ -1,4 +1,9 @@
-export class CountrySearchSchema {
-    mobileNumberCode: string;
-    countryCode: string;
-}
+export const CountrySearchRequest = {
+    mobileNumberCode: {
+        type: 'string',
+    },
+
+    countryCode: {
+        type: 'string',
+    },
+};

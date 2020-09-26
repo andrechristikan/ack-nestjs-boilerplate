@@ -1,23 +1,23 @@
 export default {
     destroy: {
-        success: 'Hapus User.',
+        success: 'Destroy User Success.',
     },
     getAll: {
-        success: 'Daftar User.',
+        success: 'GetAll User Success.',
     },
     getById: {
-        success: 'Ambil User',
+        success: 'Get User Success.',
     },
     update: {
-        success: 'Perbaharui User',
+        success: 'Update User Success.',
     },
     store: {
-        success: 'Tambah User',
+        success: 'Store User Success.',
     },
     error: {
-        notFound: 'User tidak ditemukan.',
-        mobileNumberExist: 'Nomor telepon sudah digunakan.',
-        emailExist: 'Email sudah digunakan.',
-        userExist: 'User sama dengan yang lain.',
-    }
+        notFound: 'User not found.',
+        mobileNumberExist: 'Mobile number used.',
+        emailExist: 'Email used.',
+        userExist: 'User exist.',
+    },
 };

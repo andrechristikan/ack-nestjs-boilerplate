@@ -30,7 +30,7 @@ export class LanguageService {
 
         for (const [i, v] of keys.entries()) {
             selectedLanguage = selectedLanguage[v];
-            if ((i + 1) >= keys.length) continue;
+            if (i + 1 >= keys.length) continue;
         }
 
         return selectedLanguage as Record<string, any>;

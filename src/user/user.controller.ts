@@ -18,26 +18,26 @@ import {
     UserSearch,
     UserSearchCollection,
 } from 'user/user.interface';
-import { ApiResponseService } from 'helper/api-response/api-response.service';
-import { IApiResponseSuccess } from 'helper/api-response/api-response.interface';
+import { ResponseService } from 'response/response.service';
+import { IApiResponseSuccess } from 'response/response.interface';
 import { IApiError } from 'error/error.interface';
 import { LanguageService } from 'language/language.service';
 import { Language } from 'language/language.decorator';
-import { ApiResponse } from 'helper/api-response/api-response.decorator';
+import { Response } from 'response/response.decorator';
 import { Error } from 'error/error.decorator';
 
 @Controller('api/user')
 export class UserController {
     constructor(
         @Error() private readonly errorService: ErrorService,
-        @ApiResponse() private readonly apiResponseService: ApiResponseService,
+        @Response() private readonly responseService: ResponseService,
         @Language() private readonly languageService: LanguageService,
         private readonly userService: UserService,
     ) {}
 
     @Get('/')
     async getAll(@Query() data: UserSearch): Promise<IApiResponseSuccess> {
-        const { skip, limit } = this.apiResponseService.pagination(
+        const { skip, limit } = this.responseService.pagination(
             data.page,
             data.limit,
         );
@@ -46,7 +46,7 @@ export class UserController {
             data,
         );
         const user: User[] = await this.userService.getAll(skip, limit, search);
-        return this.apiResponseService.response(
+        return this.responseService.success(
             200,
             this.languageService.get('user.getAll.success'),
             user,
@@ -57,11 +57,12 @@ export class UserController {
     async getOneById(@Param('id') id: string): Promise<IApiResponseSuccess> {
         const user: User = await this.userService.getOneById(id);
         if (!user) {
-            throw this.errorService.apiError(
+            const res: IApiError = this.errorService.setError(
                 SystemErrorStatusCode.USER_NOT_FOUND,
             );
+            return this.responseService.error(res);
         }
-        return this.apiResponseService.response(
+        return this.responseService.success(
             200,
             this.languageService.get('user.getById.success'),
             user,
@@ -95,14 +96,15 @@ export class UserController {
                 }
 
                 if (errors.length > 0) {
-                    throw this.errorService.apiError(
+                    const res: IApiError = this.errorService.setError(
                         SystemErrorStatusCode.USER_EXIST,
                         errors,
                     );
+                    return this.responseService.error(res);
                 }
                 const create: User = await this.userService.store(data);
                 const user: User = await this.userService.getOneById(create.id);
-                return this.apiResponseService.response(
+                return this.responseService.success(
                     201,
                     this.languageService.get('user.store.success'),
                     user,
@@ -117,13 +119,14 @@ export class UserController {
     async destroy(@Param('id') id: string): Promise<IApiResponseSuccess> {
         const user: User = await this.userService.getOneById(id);
         if (!user) {
-            throw this.errorService.apiError(
+            const res: IApiError = this.errorService.setError(
                 SystemErrorStatusCode.USER_NOT_FOUND,
             );
+            return this.responseService.error(res);
         }
 
         await this.userService.destroy(id);
-        return this.apiResponseService.response(
+        return this.responseService.success(
             200,
             this.languageService.get('user.destroy.success'),
         );
@@ -136,13 +139,14 @@ export class UserController {
     ): Promise<IApiResponseSuccess> {
         const user: User = await this.userService.getOneById(id);
         if (!user) {
-            throw this.errorService.apiError(
+            const res: IApiError = this.errorService.setError(
                 SystemErrorStatusCode.USER_NOT_FOUND,
             );
+            return this.responseService.error(res);
         }
 
         const update: User = await this.userService.update(id, data);
-        return this.apiResponseService.response(
+        return this.responseService.success(
             200,
             this.languageService.get('user.update.success'),
             update,

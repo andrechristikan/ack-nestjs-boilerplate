@@ -7,15 +7,15 @@ import { LoggerService } from 'logger/logger.service';
 import { LoggerModule } from 'logger/logger.module';
 
 import { LoggerMiddleware } from 'logger/logger.middleware';
-import { BodyParserUrlencodedMiddleware } from 'helper/body-parser/body-parser-urlencoded.middleware';
-import { BodyParserJsonMiddleware } from 'helper/body-parser/body-parser-json.middleware';
-import { ApiResponseBodyMiddleware } from 'helper/api-response/api-response.middleware';
+import { BodyParserUrlencodedMiddleware } from 'body-parser/body-parser-urlencoded.middleware';
+import { BodyParserJsonMiddleware } from 'body-parser/body-parser-json.middleware';
+import { ResponseBodyMiddleware } from 'response/response.middleware';
 
 import { MongooseModule } from '@nestjs/mongoose';
 import { DatabaseService } from 'database/database.service';
 import { DatabaseModule } from 'database/database.module';
 
-import { ApiResponseModule } from 'helper/api-response/api-response.module';
+import { ResponseModule } from 'response/response.module';
 import { LanguageModule } from 'language/language.module';
 import { ErrorModule } from 'error/error.module';
 import { ConfigModule } from 'config/config.module';
@@ -42,11 +42,11 @@ import { UserModule } from 'user/user.module';
         }),
         LanguageModule,
         LoggerModule,
-        ApiResponseModule,
+        ResponseModule,
         ErrorModule,
 
         CountryModule,
-        UserModule
+        UserModule,
     ],
 })
 export class AppModule implements NestModule {
@@ -59,7 +59,7 @@ export class AppModule implements NestModule {
                 LoggerMiddleware,
                 BodyParserUrlencodedMiddleware,
                 BodyParserJsonMiddleware,
-                ApiResponseBodyMiddleware,
+                ResponseBodyMiddleware,
             )
             .forRoutes('*');
     }

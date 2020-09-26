@@ -19,5 +19,5 @@ export default {
         mobileNumberCodeExist: 'Mobile number code used.',
         countryCode: 'Country code used.',
         countryExist: 'Country exist.',
-    }
+    },
 };

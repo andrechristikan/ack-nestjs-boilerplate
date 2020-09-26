@@ -19,5 +19,5 @@ export default {
         mobileNumberExist: 'Mobile number used.',
         emailExist: 'Email used.',
         userExist: 'User exist.',
-    }
+    },
 };

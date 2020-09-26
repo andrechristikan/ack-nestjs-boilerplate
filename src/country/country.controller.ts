@@ -6,53 +6,52 @@ import {
     Body,
     Delete,
     Query,
-    UsePipes,
     ParseIntPipe,
     DefaultValuePipe,
+    UsePipes,
 } from '@nestjs/common';
 import { CountryService } from 'country/country.service';
 import { Country } from 'country/country.schema';
-import { CountryStore, CountrySearch } from 'country/country.interface';
+import { ICountryStore, ICountrySearch } from 'country/country.interface';
+import { Error } from 'error/error.decorator';
 import { ErrorService } from 'error/error.service';
-import { ApiResponseService } from 'helper/api-response/api-response.service';
+import { ResponseService } from 'response/response.service';
 import { SystemErrorStatusCode } from 'error/error.constant';
-import { IApiResponseSuccess } from 'helper/api-response/api-response.interface';
+import { IApiResponseSuccess } from 'response/response.interface';
 import { IApiError } from 'error/error.interface';
 import { LanguageService } from 'language/language.service';
 import { Language } from 'language/language.decorator';
-import { ApiResponse } from 'helper/api-response/api-response.decorator';
-import { Error } from 'error/error.decorator';
+import { Response } from 'response/response.decorator';
 import { RequestValidationPipe } from 'pipe/request-validation.pipe';
-import { CountryStoreSchema } from 'country/validation/country.store';
+import { CountryStoreRequest } from 'country/validation/country.store';
+import { CountrySearchRequest } from 'country/validation/country.search';
 
 @Controller('api/country')
 export class CountryController {
     constructor(
         @Language() private readonly languageService: LanguageService,
-        @ApiResponse() private readonly apiResponseService: ApiResponseService,
+        @Response() private readonly responseService: ResponseService,
         @Error() private readonly errorService: ErrorService,
         private readonly countryService: CountryService,
     ) {}
 
     @Get('/')
+    @UsePipes(RequestValidationPipe(CountrySearchRequest))
     async getAll(
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(10), ParseIntPipe) perPage: number,
-        @Query() data: CountrySearch,
+        @Query() data: ICountrySearch,
     ): Promise<IApiResponseSuccess> {
-        const { skip, limit } = this.apiResponseService.pagination(
-            page,
-            perPage,
-        );
+        const { skip, limit } = this.responseService.pagination(page, perPage);
 
-        const search: CountrySearch = await this.countryService.search(data);
+        const search: ICountrySearch = await this.countryService.search(data);
         const country: Country[] = await this.countryService.getAll(
             skip,
             limit,
             search,
         );
 
-        return this.apiResponseService.response(
+        return this.responseService.success(
             200,
             this.languageService.get('user.getAll.success'),
             country,
@@ -60,9 +59,10 @@ export class CountryController {
     }
 
     @Post('/store')
+    @UsePipes(RequestValidationPipe(CountryStoreRequest))
     async store(
-        @Body(RequestValidationPipe(CountryStoreSchema))
-        data: CountryStore,
+        @Body()
+        data: ICountryStore,
     ): Promise<IApiResponseSuccess> {
         const existCountryCode: Promise<Country> = this.countryService.getOneByCountryCode(
             data.countryCode,
@@ -89,13 +89,14 @@ export class CountryController {
                 }
 
                 if (errors.length > 0) {
-                    throw this.errorService.apiError(
+                    const res: IApiError = this.errorService.setError(
                         SystemErrorStatusCode.USER_EXIST,
                         errors,
                     );
+                    return this.responseService.error(res);
                 }
                 const create: Country = await this.countryService.store(data);
-                return this.apiResponseService.response(
+                return this.responseService.success(
                     201,
                     this.languageService.get('user.store.success'),
                     create,
@@ -110,12 +111,13 @@ export class CountryController {
     async getOneById(@Param('id') id: string): Promise<IApiResponseSuccess> {
         const country: Country = await this.countryService.getOneById(id);
         if (!country) {
-            throw this.errorService.apiError(
+            const res: IApiError = this.errorService.setError(
                 SystemErrorStatusCode.COUNTRY_NOT_FOUND,
             );
+            return this.responseService.error(res);
         }
 
-        return this.apiResponseService.response(
+        return this.responseService.success(
             200,
             this.languageService.get('user.getById.success'),
             country,
@@ -126,13 +128,14 @@ export class CountryController {
     async destroy(@Param('id') id: string): Promise<IApiResponseSuccess> {
         const country: Country = await this.countryService.getOneById(id);
         if (!country) {
-            throw this.errorService.apiError(
+            const res: IApiError = this.errorService.setError(
                 SystemErrorStatusCode.COUNTRY_NOT_FOUND,
             );
+            return this.responseService.error(res);
         }
 
         await this.countryService.destroy(id);
-        return this.apiResponseService.response(
+        return this.responseService.success(
             200,
             this.languageService.get('user.destroy.success'),
         );

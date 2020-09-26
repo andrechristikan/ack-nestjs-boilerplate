@@ -1,9 +1,9 @@
 import { Inject } from '@nestjs/common';
 
-export function ApiResponse(): (
+export function Response(): (
     target: Record<string, any>,
     key: string | symbol,
     index?: number,
 ) => void {
-    return Inject(`ApiResponseService`);
+    return Inject(`ResponseService`);
 }

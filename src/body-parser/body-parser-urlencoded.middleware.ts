@@ -1,17 +1,13 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import * as bodyParser from 'body-parser';
-import {
-    BodyParserUrlencoded,
-} from 'helper/body-parser/body-parser.constant';
+import { BodyParserUrlencoded } from 'body-parser/body-parser.constant';
 
 @Injectable()
 export class BodyParserUrlencodedMiddleware implements NestMiddleware {
     private static urlencoded: Record<string, any>;
 
-    static configure(
-        urlencoded: Record<string, any>,
-    ): void {
+    static configure(urlencoded: Record<string, any>): void {
         BodyParserUrlencodedMiddleware.urlencoded = urlencoded;
     }
 

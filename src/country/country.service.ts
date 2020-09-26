@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
 import { Country } from 'country/country.schema';
-import { CountryStore, CountrySearch } from 'country/country.interface';
+import { ICountryStore, ICountrySearch } from 'country/country.interface';
 
 @Injectable()
 export class CountryService {
@@ -12,7 +12,7 @@ export class CountryService {
     async getAll(
         skip: number,
         limit: number,
-        search: CountrySearch,
+        search: ICountrySearch,
     ): Promise<Country[]> {
         return this.countryModel
             .find(search)
@@ -41,7 +41,7 @@ export class CountryService {
             .exec();
     }
 
-    async store(data: CountryStore): Promise<Country> {
+    async store(data: ICountryStore): Promise<Country> {
         const country: Country = new this.countryModel(data);
         return country.save();
     }
@@ -50,8 +50,8 @@ export class CountryService {
         return this.countryModel.findByIdAndDelete(id).exec();
     }
 
-    async search(data: CountrySearch): Promise<CountrySearch> {
-        const search: CountrySearch = {};
+    async search(data: ICountrySearch): Promise<ICountrySearch> {
+        const search: ICountrySearch = {};
         if (data.mobileNumberCode) {
             search.mobileNumberCode = data.mobileNumberCode;
         }

@@ -1,23 +1,23 @@
 export default {
     destroy: {
-        success: 'Hapus Country.',
+        success: 'Destroy Country Success.',
     },
     getAll: {
-        success: 'Daftar Country.',
+        success: 'GetAll Country Success.',
     },
     getById: {
-        success: 'Ambil Country',
+        success: 'Get Country Success.',
     },
     update: {
-        success: 'Perbaharui Country',
+        success: 'Update Country Success.',
     },
     store: {
-        success: 'Tambah Country',
+        success: 'Store Country Success.',
     },
     error: {
-        notFound: 'Country tidak ditemukan.',
-        mobileNumberCodeExist: 'Kode nomor telepon sudah digunakan',
-        countryCode: 'Kode Country sudah digunakan',
-        countryExist: 'Negara sama dengan yang lain.',
-    }
+        notFound: 'Country not found.',
+        mobileNumberCodeExist: 'Mobile number code used.',
+        countryCode: 'Country code used.',
+        countryExist: 'Country exist.',
+    },
 };

@@ -1,10 +1,4 @@
-import {
-    Injectable,
-    BadRequestException,
-    HttpException,
-    InternalServerErrorException,
-    Scope,
-} from '@nestjs/common';
+import { Injectable, Scope } from '@nestjs/common';
 import {
     HttpErrorStatusCode,
     SystemErrorStatusCode,
@@ -154,10 +148,10 @@ export class ErrorService {
         return newError;
     }
 
-    apiError(
+    setError(
         statusCode: SystemErrorStatusCode,
         errors?: IApiError[],
-    ): HttpException {
+    ): IApiError {
         const { httpCode, message }: IApiError = this.setErrorMessage(
             statusCode,
         );
@@ -167,23 +161,61 @@ export class ErrorService {
 
         switch (httpCode) {
             case 400:
-                return new BadRequestException({
+                return {
                     statusCode,
                     httpCode,
                     message,
                     errors,
-                });
+                };
             default:
                 this.logger.error({
                     statusCode,
                     httpCode,
                     message,
                 });
-                return new InternalServerErrorException({
+                return {
                     statusCode,
                     httpCode,
                     message,
-                });
+                };
         }
     }
+
+    requestApiError(errors: Record<string, any>): IApiError {
+        const responseApiError: Record<string, any>[] = [];
+        for (const i of errors.details) {
+            responseApiError.push({
+                property: i.path[0],
+                message: i.message,
+            });
+        }
+        return {
+            statusCode: SystemErrorStatusCode.REQUEST_ERROR,
+            httpCode: HttpErrorStatusCode.BAD_REQUEST,
+            message: this.languageService.get('request.default'),
+            errors: responseApiError,
+        };
+    }
+
+    // details: [
+    //     {
+    //       message: 'mobileNumberCode cannot be an empty field',
+    //       path: [Array],
+    //       type: 'string.empty',
+    //       context: [Object]
+    //     },
+    //     {
+    //       message: 'countryCode cannot be an empty field',
+    //       path: [Array],
+    //       type: 'string.empty',
+    //       context: [Object]
+    //     },
+    //     {
+    //       message: 'countryName should be a type of string',
+    //       path: [Array],
+    //       type: 'string.base',
+    //       context: [Object]
+    //     }
+    //   ]
+    // }
 }
