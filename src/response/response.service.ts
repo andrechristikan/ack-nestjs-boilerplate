@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { IApiError } from 'error/error.interface';
 import { HttpSuccessStatusCode, Pagination } from 'response/response.constant';
-import { SystemErrorStatusCode } from 'error/error.constant';
 import {
     IApiResponseSuccess,
     IPagination,
