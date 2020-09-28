@@ -8,7 +8,6 @@ import {
     Query,
     ParseIntPipe,
     DefaultValuePipe,
-    UsePipes
 } from '@nestjs/common';
 import { CountryService } from 'country/country.service';
 import { Country } from 'country/country.schema';
@@ -38,10 +37,10 @@ export class CountryController {
     @Get('/')
     async getAll(
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) perPage: number,
+        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
         @Query(RequestValidationPipe(CountrySearchRequest)) data: ICountrySearch
     ): Promise<IApiResponseSuccess> {
-        const { skip, limit } = this.responseService.pagination(page, perPage);
+        const { skip } = this.responseService.pagination(page, limit);
 
         const search: ICountrySearch = await this.countryService.search(data);
         const country: Country[] = await this.countryService.getAll(
@@ -58,9 +57,8 @@ export class CountryController {
     }
 
     @Post('/store')
-    @UsePipes(RequestValidationPipe(CountryStoreRequest))
     async store(
-        @Body()
+        @Body(RequestValidationPipe(CountryStoreRequest))
         data: ICountryStore
     ): Promise<IApiResponseSuccess> {
         const existCountryCode: Promise<Country> = this.countryService.getOneByCountryCode(

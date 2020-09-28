@@ -62,13 +62,15 @@ export class UserController {
 
     @Get('/:id')
     async getOneById(@Param('id') id: string): Promise<IApiResponseSuccess> {
-        const user: User = await this.userService.getOneById(id);
-        if (!user) {
+        const checkUser: User = await this.userService.getOneById(id);
+        if (!checkUser) {
             const res: IApiError = this.errorService.setError(
                 SystemErrorStatusCode.USER_NOT_FOUND
             );
             return this.responseService.error(res);
         }
+
+        const { password, ...user } = checkUser.toJSON();
         return this.responseService.success(
             200,
             this.languageService.get('user.getById.success'),
@@ -111,13 +113,24 @@ export class UserController {
                     );
                     return this.responseService.error(res);
                 }
-                const create: User = await this.userService.store(data);
-                const user: User = await this.userService.getOneById(create.id);
-                return this.responseService.success(
-                    201,
-                    this.languageService.get('user.store.success'),
-                    user
-                );
+
+                try {
+                    const { password, ...user }: User = (
+                        await this.userService.store(data)
+                    ).toJSON();
+
+                    return this.responseService.success(
+                        201,
+                        this.languageService.get('user.store.success'),
+                        user
+                    );
+                } catch (e) {
+                    return this.responseService.error(
+                        this.errorService.setError(
+                            SystemErrorStatusCode.GENERAL_ERROR
+                        )
+                    );
+                }
             })
             .catch(err => {
                 throw err;
@@ -146,19 +159,28 @@ export class UserController {
         @Param('id') id: string,
         @Body(RequestValidationPipe(UserUpdateRequest)) data: IUserUpdate
     ): Promise<IApiResponseSuccess> {
-        const user: User = await this.userService.getOneById(id);
-        if (!user) {
+        const checkUser: User = await this.userService.getOneById(id);
+        if (!checkUser) {
             const res: IApiError = this.errorService.setError(
                 SystemErrorStatusCode.USER_NOT_FOUND
             );
             return this.responseService.error(res);
         }
 
-        const update: User = await this.userService.update(id, data);
-        return this.responseService.success(
-            200,
-            this.languageService.get('user.update.success'),
-            update
-        );
+        try {
+            const { password, ...user }: User = (
+                await this.userService.update(id, data)
+            ).toJSON();
+
+            return this.responseService.success(
+                200,
+                this.languageService.get('user.update.success'),
+                user
+            );
+        } catch (e) {
+            return this.responseService.error(
+                this.errorService.setError(SystemErrorStatusCode.GENERAL_ERROR)
+            );
+        }
     }
 }

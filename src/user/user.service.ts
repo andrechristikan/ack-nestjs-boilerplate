@@ -34,14 +34,7 @@ export class UserService {
             .exec();
     }
 
-    async getOneById(id: string, full?: boolean): Promise<User> {
-        if (!full) {
-            return this.userModel
-                .findById(id)
-                .select('-password')
-                .populate('country', '-countryName -_id', this.countryModel)
-                .exec();
-        }
+    async getOneById(id: string): Promise<User> {
         return this.userModel
             .findById(id)
             .populate('country', '-countryName -_id', this.countryModel)
