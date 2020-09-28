@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { CountrySchema } from 'components/country/country.schema';
-import { CountryService } from 'components/country/country.service';
-import { CountryController } from 'components/country/country.controller';
+import { CountrySchema } from 'country/country.schema';
+import { CountryService } from 'country/country.service';
+import { CountryController } from 'country/country.controller';
 
 @Module({
     imports: [

@@ -20,8 +20,8 @@ import { LanguageModule } from 'language/language.module';
 import { ErrorModule } from 'error/error.module';
 import { ConfigModule } from 'config/config.module';
 
-import { CountryModule } from 'components/country/country.module';
-import { UserModule } from 'components/user/user.module';
+import { CountryModule } from 'country/country.module';
+import { UserModule } from 'user/user.module';
 
 @Module({
     controllers: [AppController],

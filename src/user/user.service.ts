@@ -2,14 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import { User } from 'components/user/user.model';
-import { Country } from 'components/country/country.schema';
+import { User } from 'user/user.model';
+import { Country } from 'country/country.schema';
 import {
-    UserStore,
-    UserUpdate,
-    UserSearch,
-    UserSearchCollection
-} from 'components/user/user.interface';
+    IUserStore,
+    IUserUpdate,
+    IUserSearch,
+    IUserSearchCollection
+} from 'user/user.interface';
 import { AuthService } from 'auth/auth.service';
 
 @Injectable()
@@ -23,7 +23,7 @@ export class UserService {
     async getAll(
         skip: number,
         limit: number,
-        search?: UserSearch
+        search?: IUserSearchCollection
     ): Promise<User[]> {
         return this.userModel
             .find(search)
@@ -64,7 +64,7 @@ export class UserService {
             .exec();
     }
 
-    async store(data: UserStore): Promise<User> {
+    async store(data: IUserStore): Promise<User> {
         data.password = await this.authService.hashPassword(data.password);
         data.email = data.email.toLowerCase();
         data.firstName = data.firstName.toLowerCase();
@@ -77,15 +77,15 @@ export class UserService {
         return this.userModel.findByIdAndDelete(id).exec();
     }
 
-    async update(id: string, data: UserUpdate): Promise<User> {
+    async update(id: string, data: IUserUpdate): Promise<User> {
         const user: User = await this.getOneById(id);
         user.firstName = data.firstName.toLowerCase();
         user.lastName = data.lastName.toLowerCase();
         return user.save();
     }
 
-    async search(data: UserSearch): Promise<UserSearchCollection> {
-        const search: UserSearchCollection = {};
+    async search(data: IUserSearch): Promise<IUserSearchCollection> {
+        const search: IUserSearchCollection = {};
         if (data.firstName) {
             search.firstName = {
                 $regex: `.*${data.firstName}.*`,
@@ -101,11 +101,8 @@ export class UserService {
         if (data.email) {
             search.email = { $regex: `.*${data.email}.*`, $options: 'i' };
         }
-        if (data.mobileNumberCode) {
-            search.country.mobileNumberCode = data.mobileNumberCode;
-        }
-        if (data.countryCode) {
-            search.country.countryCode = data.countryCode;
+        if (data.country) {
+            search.country = data.country;
         }
         return search;
     }

@@ -7,18 +7,20 @@ import {
     Delete,
     Put,
     Query,
-    UsePipes
+    UsePipes,
+    DefaultValuePipe,
+    ParseIntPipe
 } from '@nestjs/common';
-import { UserService } from 'components/user/user.service';
+import { UserService } from 'user/user.service';
 import { ErrorService } from 'error/error.service';
 import { SystemErrorStatusCode } from 'error/error.constant';
-import { User } from 'components/user/user.model';
+import { User } from 'user/user.model';
 import {
-    UserStore,
-    UserUpdate,
-    UserSearch,
-    UserSearchCollection
-} from 'components/user/user.interface';
+    IUserStore,
+    IUserUpdate,
+    IUserSearch,
+    IUserSearchCollection
+} from 'user/user.interface';
 import { ResponseService } from 'response/response.service';
 import { IApiResponseSuccess } from 'response/response.interface';
 import { IApiError } from 'error/error.interface';
@@ -27,9 +29,9 @@ import { Language } from 'language/language.decorator';
 import { Response } from 'response/response.decorator';
 import { Error } from 'error/error.decorator';
 import { RequestValidationPipe } from 'pipe/request-validation.pipe';
-import { UserSearchRequest } from 'components/user/validation/user.search';
-import { UserStoreRequest } from 'components/user/validation/user.store';
-import { UserUpdateRequest } from 'components/user/validation/user.update';
+import { UserSearchRequest } from 'user/validation/user.search';
+import { UserStoreRequest } from 'user/validation/user.store';
+import { UserUpdateRequest } from 'user/validation/user.update';
 
 @Controller('api/user')
 export class UserController {
@@ -41,14 +43,14 @@ export class UserController {
     ) {}
 
     @Get('/')
-    @UsePipes(RequestValidationPipe(UserSearchRequest))
-    async getAll(@Query() data: UserSearch): Promise<IApiResponseSuccess> {
-        const { skip, limit } = this.responseService.pagination(
-            data.page,
-            data.limit
-        );
+    async getAll(
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+        @Query(RequestValidationPipe(UserSearchRequest)) data: IUserSearch
+    ): Promise<IApiResponseSuccess> {
+        const { skip } = this.responseService.pagination(page, limit);
 
-        const search: UserSearchCollection = await this.userService.search(
+        const search: IUserSearchCollection = await this.userService.search(
             data
         );
         const user: User[] = await this.userService.getAll(skip, limit, search);
@@ -77,7 +79,7 @@ export class UserController {
 
     @Post('/store')
     @UsePipes(RequestValidationPipe(UserStoreRequest))
-    async store(@Body() data: UserStore): Promise<IApiResponseSuccess> {
+    async store(@Body() data: IUserStore): Promise<IApiResponseSuccess> {
         const existEmail: Promise<User> = this.userService.getOneByEmail(
             data.email
         );
@@ -143,7 +145,7 @@ export class UserController {
     @UsePipes(RequestValidationPipe(UserUpdateRequest))
     async update(
         @Param('id') id: string,
-        @Body() data: UserUpdate
+        @Body() data: IUserUpdate
     ): Promise<IApiResponseSuccess> {
         const user: User = await this.userService.getOneById(id);
         if (!user) {

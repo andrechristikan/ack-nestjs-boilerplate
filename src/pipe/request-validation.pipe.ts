@@ -47,6 +47,7 @@ export function RequestValidationPipe(
             });
 
             if (error) {
+                console.log('value', value);
                 const errors = this.errorService.requestApiError(error);
                 throw new BadRequestException(errors);
             }
@@ -150,6 +151,10 @@ export function RequestValidationPipe(
                                 value[property].min
                             );
                         }
+
+                        if (!value[property].required) {
+                            newSchema[property] = newSchema[property].allow('');
+                        }
                         break;
                     case 'date':
                         newSchema[property] = jfDate()
@@ -172,7 +177,6 @@ export function RequestValidationPipe(
                         break;
                     case 'number':
                         newSchema[property] = jfNumber();
-
                         if (newSchema[property].float) {
                             newSchema[property] = newSchema[property].integer();
                         }
@@ -242,7 +246,7 @@ export function RequestValidationPipe(
 
                         break;
                     default:
-                        newSchema[property] = jfString();
+                        newSchema[property] = jfString().allow('');
                         break;
                 }
 
@@ -250,7 +254,7 @@ export function RequestValidationPipe(
                     newSchema[property] = newSchema[property].required();
                 }
             }
-            return jfObject(newSchema);
+            return jfObject(newSchema).unknown(true);
         }
     }
 

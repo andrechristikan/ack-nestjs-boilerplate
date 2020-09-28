@@ -10,12 +10,9 @@ import {
     DefaultValuePipe,
     UsePipes
 } from '@nestjs/common';
-import { CountryService } from 'components/country/country.service';
-import { Country } from 'components/country/country.schema';
-import {
-    ICountryStore,
-    ICountrySearch
-} from 'components/country/country.interface';
+import { CountryService } from 'country/country.service';
+import { Country } from 'country/country.schema';
+import { ICountryStore, ICountrySearch } from 'country/country.interface';
 import { Error } from 'error/error.decorator';
 import { ErrorService } from 'error/error.service';
 import { ResponseService } from 'response/response.service';
@@ -26,8 +23,8 @@ import { LanguageService } from 'language/language.service';
 import { Language } from 'language/language.decorator';
 import { Response } from 'response/response.decorator';
 import { RequestValidationPipe } from 'pipe/request-validation.pipe';
-import { CountryStoreRequest } from 'components/country/validation/country.store';
-import { CountrySearchRequest } from 'components/country/validation/country.search';
+import { CountryStoreRequest } from 'country/validation/country.store';
+import { CountrySearchRequest } from 'country/validation/country.search';
 
 @Controller('api/country')
 export class CountryController {
@@ -39,11 +36,10 @@ export class CountryController {
     ) {}
 
     @Get('/')
-    @UsePipes(RequestValidationPipe(CountrySearchRequest))
     async getAll(
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(10), ParseIntPipe) perPage: number,
-        @Query() data: ICountrySearch
+        @Query(RequestValidationPipe(CountrySearchRequest)) data: ICountrySearch
     ): Promise<IApiResponseSuccess> {
         const { skip, limit } = this.responseService.pagination(page, perPage);
 
