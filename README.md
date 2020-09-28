@@ -117,6 +117,26 @@ This section should list any major package usage for this boilerplate
 This is an example of how you may give instructions on setting up your project locally.
 To get a local copy up and running follow these simple example steps.
 
+```
+	ac.k
+	├── README.md
+	├── package.json
+	├── .gitignore
+	├── public
+	│   ├── favicon.ico
+	│   ├── index.html
+	│   └── manifest.json
+	└── src
+		├── App.css
+		├── App.js
+		├── App.test.js
+		├── index.css
+		├── index.js
+		├── logo.svg
+		└── serviceWorker.js
+		└── setupTests.js
+```
+
 ### Prerequisites
 
 This is an example of how to list things you need to use the software and how to install them.
@@ -184,7 +204,7 @@ Andre Christi Kan
 
 
 <!-- ACKNOWLEDGEMENTS -->
-### Acknowledgements
+## Acknowledgements
 * [NestJs Documentation](https://docs.nestjs.com)
 * [Express Documentation](https://expressjs.com/en/5x/api.html)
 * [TypeScript Documentation](https://www.typescriptlang.org/docs)
