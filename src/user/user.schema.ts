@@ -13,21 +13,24 @@ export class User extends Document {
     @Prop({
         required: true,
         index: true,
-        lowercase: true
+        lowercase: true,
+        trim: true
     })
     firstName: string;
 
     @Prop({
         required: true,
         index: true,
-        lowercase: true
+        lowercase: true,
+        trim: true
     })
     lastName: string;
 
     @Prop({
         required: true,
         index: true,
-        unique: true
+        unique: true,
+        trim: true
     })
     mobileNumber: string;
 
@@ -35,7 +38,8 @@ export class User extends Document {
         required: true,
         index: true,
         unique: true,
-        lowercase: true
+        lowercase: true,
+        trim: true
     })
     email: string;
 

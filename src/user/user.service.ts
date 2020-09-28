@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Schema as SchemaMongoose } from 'mongoose';
 
-import { User } from 'user/user.model';
+import { User } from 'user/user.schema';
 import { Country } from 'country/country.schema';
 import {
     IUserStore,
@@ -102,7 +102,7 @@ export class UserService {
             search.email = { $regex: `.*${data.email}.*`, $options: 'i' };
         }
         if (data.country) {
-            search.country = data.country;
+            search.country = new SchemaMongoose.Types.ObjectId(data.country);
         }
         return search;
     }

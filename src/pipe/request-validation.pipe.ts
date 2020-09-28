@@ -41,13 +41,14 @@ export function RequestValidationPipe(
                 string,
                 string
             > = this.languageService.getAll('request');
+            console.log('value', value);
             const { error } = validator.validate(value, {
                 abortEarly: false,
                 messages: messages
             });
 
+            console.log('error', error);
             if (error) {
-                console.log('value', value);
                 const errors = this.errorService.requestApiError(error);
                 throw new BadRequestException(errors);
             }
@@ -109,6 +110,23 @@ export function RequestValidationPipe(
                             separator: ';',
                             tlds: { allow: true }
                         });
+
+                        if (value[property].lowercase) {
+                            newSchema[property] = newSchema[
+                                property
+                            ].lowercase();
+                        }
+
+                        if (value[property].uppercase) {
+                            newSchema[property] = newSchema[
+                                property
+                            ].uppercase();
+                        }
+
+                        if (!value[property].trim) {
+                            newSchema[property] = newSchema[property].trim();
+                        }
+
                         break;
                     case 'port':
                         newSchema[property] = jfNumber().port();
@@ -117,15 +135,15 @@ export function RequestValidationPipe(
                         newSchema[property] = jfString();
 
                         if (value[property].lowercase) {
-                            newSchema[property] = newSchema[property].case(
-                                'lower'
-                            );
+                            newSchema[property] = newSchema[
+                                property
+                            ].lowercase();
                         }
 
                         if (value[property].uppercase) {
-                            newSchema[property] = newSchema[property].case(
-                                'upper'
-                            );
+                            newSchema[property] = newSchema[
+                                property
+                            ].uppercase();
                         }
 
                         if (value[property].alphanumeric) {
@@ -152,9 +170,14 @@ export function RequestValidationPipe(
                             );
                         }
 
+                        if (!value[property].trim) {
+                            newSchema[property] = newSchema[property].trim();
+                        }
+
                         if (!value[property].required) {
                             newSchema[property] = newSchema[property].allow('');
                         }
+
                         break;
                     case 'date':
                         newSchema[property] = jfDate()

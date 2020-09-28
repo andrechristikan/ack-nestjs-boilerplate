@@ -9,7 +9,6 @@ export const CountryStoreRequest = {
     countryCode: {
         type: 'string',
         required: true,
-        lowercase: true,
         min: 1,
         max: 3
     },
@@ -17,6 +16,5 @@ export const CountryStoreRequest = {
     countryName: {
         type: 'string',
         required: true,
-        lowercase: true
     }
 };

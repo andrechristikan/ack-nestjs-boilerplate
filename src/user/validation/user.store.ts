@@ -6,19 +6,16 @@ export const UserStoreRequest = {
 
     email: {
         type: 'email',
-        lowercase: true,
         required: true
     },
 
     firstName: {
         type: 'string',
-        lowercase: true,
         required: true
     },
 
     lastName: {
         type: 'string',
-        lowercase: true,
         required: true
     },
 

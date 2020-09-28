@@ -1,3 +1,6 @@
+
+import { Schema as SchemaMongoose } from 'mongoose';
+
 export interface IUserStore {
     country: string;
     email: string;
@@ -17,7 +20,7 @@ export interface IUserSearch {
     firstName?: string;
     lastName?: string;
     mobileNumber?: string;
-    countryCode?: string;
+    country?: string;
     mobileNumberCode?: string;
     limit?: number;
     page?: number;
@@ -37,8 +40,5 @@ export interface IUserSearchCollection {
         $options: string;
     };
     mobileNumber?: string;
-    country?: {
-        countryCode?: string;
-        mobileNumberCode?: string;
-    };
+    country?: SchemaMongoose.Types.ObjectId;
 }

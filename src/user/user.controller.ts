@@ -7,14 +7,13 @@ import {
     Delete,
     Put,
     Query,
-    UsePipes,
     DefaultValuePipe,
     ParseIntPipe
 } from '@nestjs/common';
 import { UserService } from 'user/user.service';
 import { ErrorService } from 'error/error.service';
 import { SystemErrorStatusCode } from 'error/error.constant';
-import { User } from 'user/user.model';
+import { User } from 'user/user.schema';
 import {
     IUserStore,
     IUserUpdate,
@@ -78,8 +77,9 @@ export class UserController {
     }
 
     @Post('/store')
-    @UsePipes(RequestValidationPipe(UserStoreRequest))
-    async store(@Body() data: IUserStore): Promise<IApiResponseSuccess> {
+    async store(
+        @Body(RequestValidationPipe(UserStoreRequest)) data: IUserStore
+    ): Promise<IApiResponseSuccess> {
         const existEmail: Promise<User> = this.userService.getOneByEmail(
             data.email
         );
@@ -142,10 +142,9 @@ export class UserController {
     }
 
     @Put('/update/:id')
-    @UsePipes(RequestValidationPipe(UserUpdateRequest))
     async update(
         @Param('id') id: string,
-        @Body() data: IUserUpdate
+        @Body(RequestValidationPipe(UserUpdateRequest)) data: IUserUpdate
     ): Promise<IApiResponseSuccess> {
         const user: User = await this.userService.getOneById(id);
         if (!user) {

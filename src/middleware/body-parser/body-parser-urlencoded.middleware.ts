@@ -1,6 +1,6 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import * as bodyParser from 'middleware/body-parser';
+import * as bodyParser from 'body-parser';
 import { BodyParserUrlencoded } from 'middleware/body-parser/body-parser.constant';
 
 @Injectable()
