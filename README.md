@@ -119,22 +119,33 @@ To get a local copy up and running follow these simple example steps.
 
 ```
 	ac.k
-	├── README.md
-	├── package.json
+	├── .dockerignore
+	├── .env.example // Env File Example
+	├── .eslintignore
+	├── .eslintrc
 	├── .gitignore
-	├── public
-	│   ├── favicon.ico
-	│   ├── index.html
-	│   └── manifest.json
-	└── src
-		├── App.css
-		├── App.js
-		├── App.test.js
-		├── index.css
-		├── index.js
-		├── logo.svg
-		└── serviceWorker.js
-		└── setupTests.js
+	├── .prettierrc 
+	├── docker-compose.yml 
+	├── dockerfile 
+	├── LICENSE.md
+	├── nest-cli.json
+	├── package.json
+	├── README.md
+	├── tsconfig.build.json
+	├── tsconfig.build
+	└── src // Source App
+		├── app
+		├── auth
+		├── body-parser
+		├── config
+		├── database
+		├── error
+		├── language
+		├── logger
+		├── middleware
+		├── pipe
+		└── main.ts
+		 
 ```
 
 ### Prerequisites

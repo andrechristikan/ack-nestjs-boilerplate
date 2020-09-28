@@ -6,7 +6,7 @@ import {
 import { Config } from 'config/config.decorator';
 import { ConfigService } from 'config/config.service';
 import { Logger as LoggerService } from 'winston';
-import { Logger } from 'logger/logger.decorator';
+import { Logger } from 'middleware/logger/logger.decorator';
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class DatabaseService implements MongooseOptionsFactory {

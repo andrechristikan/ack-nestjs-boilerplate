@@ -6,7 +6,7 @@ import {
 import { IApiError } from 'error/error.interface';
 import { LanguageService } from 'language/language.service';
 import { Logger as LoggerService } from 'winston';
-import { Logger } from 'logger/logger.decorator';
+import { Logger } from 'middleware/logger/logger.decorator';
 import { Language } from 'language/language.decorator';
 
 export class ErrorMessage {}

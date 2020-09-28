@@ -5,12 +5,12 @@ import {
     Scope
 } from '@nestjs/common';
 import { IApiError } from 'error/error.interface';
-import { HttpSuccessStatusCode, Pagination } from 'response/response.constant';
+import { HttpSuccessStatusCode, Pagination } from 'middleware/response/response.constant';
 import {
     IApiResponseSuccess,
     IPagination,
     IApiResponseError
-} from 'response/response.interface';
+} from 'middleware/response/response.interface';
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class ResponseService {

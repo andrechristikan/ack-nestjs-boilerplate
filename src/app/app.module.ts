@@ -3,10 +3,10 @@ import { AppController } from 'app/app.controller';
 import { AppService } from 'app/app.service';
 
 import { WinstonModule } from 'nest-winston';
-import { LoggerService } from 'logger/logger.service';
-import { LoggerModule } from 'logger/logger.module';
+import { LoggerService } from 'middleware/logger/logger.service';
+import { LoggerModule } from 'middleware/logger/logger.module';
 
-import { LoggerMiddleware } from 'logger/logger.middleware';
+import { LoggerMiddleware } from 'middleware/logger/logger.middleware';
 import { BodyParserUrlencodedMiddleware } from 'body-parser/body-parser-urlencoded.middleware';
 import { BodyParserJsonMiddleware } from 'body-parser/body-parser-json.middleware';
 import { ResponseBodyMiddleware } from 'response/response.middleware';
