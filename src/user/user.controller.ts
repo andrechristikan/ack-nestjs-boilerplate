@@ -21,12 +21,12 @@ import {
     IUserSearch,
     IUserSearchCollection
 } from 'user/user.interface';
-import { ResponseService } from 'response/response.service';
-import { IApiResponseSuccess } from 'response/response.interface';
+import { ResponseService } from 'middleware/response/response.service';
+import { IApiResponseSuccess } from 'middleware/response/response.interface';
 import { IApiError } from 'error/error.interface';
 import { LanguageService } from 'language/language.service';
 import { Language } from 'language/language.decorator';
-import { Response } from 'response/response.decorator';
+import { Response } from 'middleware/response/response.decorator';
 import { Error } from 'error/error.decorator';
 import { RequestValidationPipe } from 'pipe/request-validation.pipe';
 import { UserSearchRequest } from 'user/validation/user.search';

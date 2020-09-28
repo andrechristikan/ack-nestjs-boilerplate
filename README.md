@@ -32,7 +32,6 @@
   * [Prerequisites](#prerequisites)
   * [Installation](#installation)
 * [Usage](#usage)
-* [Roadmap](#roadmap)
 * [Contributing](#contributing)
 * [License](#license)
 * [Contact](#contact)
@@ -48,8 +47,6 @@ There are many great Boilerplate NestJs for Restful API available on GitHub, how
 
 Here's why:
 
-    [ ] Best Practice for NestJs
-
     [x] Support for Multi language
 
     [x] MongoDB as The Database
@@ -60,27 +57,27 @@ Here's why:
 
     [x] Pagination on Server Side
 
-    [ ] JWT as Authorization
+    [ ] JWT as Authorization with JsonWebToken
 
-    [x] HmacSHA512 as Password Encryption
+    [x] HmacSHA512 as Password Encryption with Crypto
 
     [x] Logger in File (day by day) with Winston
 
-    [x] Logger Http Request in File (day by day) with morgan
+    [x] Logger Http Request in File (day by day) with Morgan
 
-    [x] Request Validation
+    [x] Request Validation with Joi
 
     [ ] Docker
 
-    [ ] CI/CD Jenkins
-
     [x] EsLint as Linter
+
+    [x] Prettier as Formatter
 
     [ ] Blacklist JWT Token
 
     [ ] User have They Settings on Database
 
-    [ ] Master Setting for Our Project on Database
+    [ ] Setting for Our Project on Database
 
     [ ] Database Migration for Init Project
 
@@ -94,18 +91,19 @@ A list of commonly used resources that I find helpful are listed in the acknowle
 This section should list any major package usage for this boilerplate
 * [NestJs](https://nestjs.com) - Common Framework.
 * [ExpressJs](https://expressjs.com) - Base Framework.
-* [TypeScript](https://www.typescriptlang.org) - Common Programming Language.
+* [TypeScript](https://www.typescriptlang.org) - Programming Language.
 * [Mongoose](https://github.com/nestjs/mongoose) - Package for integrating with the MongoDB database.
-* [Docker](https://www.docker.com) - ...
-* [Winston](https://github.com/gremo/nest-winston) - Logger Package.
+* [MongoDb](https://www.mongodb.com/) - Database
 * [Crypto](https://github.com/brix/crypto-js) - Password Hash Package.
+* [Joi](https://github.com/sideway/joi) - Request Validation Package
 * [JWT](https://github.com/nestjs/jwt) - Authentication Package.
+* [Winston](https://github.com/gremo/nest-winston) - Logger Package.
+* [Morgan](https://github.com/expressjs/morgan) - HTTP Logger Package
 * [Jest](https://github.com/facebook/jest) - Testing Package.
 * [Supertest](https://github.com/visionmedia/supertest) - Testing Package.
 * [EsLint](https://eslint.org) - Linter Package.
 * [Prettier](https://prettier.io) - Helper Package Package for Formatter Code.
-* [DotEnv](https://github.com/motdotla/dotenv) - Helper Package for Environment Variables.
-* [Middleware](https://github.com/wbhob/nest-middlewares) - References for Middleware
+* [Docker](https://www.docker.com) - ...
 
 
 
@@ -118,6 +116,37 @@ This section should list any major package usage for this boilerplate
 
 This is an example of how you may give instructions on setting up your project locally.
 To get a local copy up and running follow these simple example steps.
+
+```
+	ac.k
+	├── .dockerignore
+	├── .env.example // Env File Example
+	├── .eslintignore
+	├── .eslintrc
+	├── .gitignore
+	├── .prettierrc 
+	├── docker-compose.yml 
+	├── dockerfile 
+	├── LICENSE.md
+	├── nest-cli.json
+	├── package.json
+	├── README.md
+	├── tsconfig.build.json
+	├── tsconfig.build
+	└── src // Source App
+		├── app
+		├── auth
+		├── body-parser
+		├── config
+		├── database
+		├── error
+		├── language
+		├── logger
+		├── middleware
+		├── pipe
+		└── main.ts
+		 
+```
 
 ### Prerequisites
 
@@ -153,16 +182,8 @@ Use this space to show useful examples of how a project can be used. Additional 
 _For more examples, please refer to the [Documentation](project-docs)_
 
 
-<!-- ROADMAP -->
-## Roadmap
-
-See the [open issues](project-issues) for a list of proposed features (and known issues).
-
-
-
 
 ---
-
 
 
 
@@ -176,7 +197,6 @@ Contributions are what make the open source community such an amazing place to b
 3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
-
 
 
 <!-- LICENSE -->
@@ -194,22 +214,28 @@ Andre Christi Kan
 * [@___ac.k](author-instagram) - Instagram
 
 
-
-
-## Thanks For
-* [Best-README-Template](https://github.com/othneildrew/Best-README-Template) - ReadMe Template.
-
-
-
 <!-- ACKNOWLEDGEMENTS -->
 ## Acknowledgements
 * [NestJs Documentation](https://docs.nestjs.com)
-* [Express Documentation](https://expressjs.com)
+* [Express Documentation](https://expressjs.com/en/5x/api.html)
 * [TypeScript Documentation](https://www.typescriptlang.org/docs)
+* [Mongoose Documentation](https://mongoosejs.com/docs/guide.html)
+* [MongoDb Documentation](https://docs.mongodb.com/manual)
+* [Crypto Documentation](https://cryptojs.gitbook.io/docs/)
+* [JWT Documentation](https://github.com/nestjs/jwt)
+* [Joi Documentation](https://joi.dev/api/) 
+* [JestJs](https://jestjs.io/docs/en/getting-started)
+* [SuperTest](https://github.com/visionmedia/supertest)
+* [Winston Documentation](https://github.com/winstonjs/winston)
+* [Morgan Documentation](https://github.com/expressjs/morgan)
+* [Prettier Documentation](https://prettier.io/docs/en/index.html)
+* [EsLint Documentation](https://eslint.org/docs/user-guide/getting-started)
+* [Docker Documentation](https://docs.docker.com/)
+* [NodeJs Best Practice Reference](https://www.typescriptlang.org/docs)
+* [NestJs Middleware Reference](https://github.com/wbhob/nest-middlewares)
+* [ReadMe Template](https://github.com/othneildrew/Best-README-Template)
 * [Docker Documentation](https://docs.docker.com)
-* [Mongoose Documentataion](https://mongoosejs.com)
-* [Jenkins Documentation](https://www.jenkins.io/doc/)
-* [NodeJs Best Practice](https://www.typescriptlang.org/docs)
+
 
 
 [project-url]: https://github.com/andrechristikan/ac.k

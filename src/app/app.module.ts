@@ -3,19 +3,19 @@ import { AppController } from 'app/app.controller';
 import { AppService } from 'app/app.service';
 
 import { WinstonModule } from 'nest-winston';
-import { LoggerService } from 'logger/logger.service';
-import { LoggerModule } from 'logger/logger.module';
+import { LoggerService } from 'middleware/logger/logger.service';
+import { LoggerModule } from 'middleware/logger/logger.module';
 
-import { LoggerMiddleware } from 'logger/logger.middleware';
-import { BodyParserUrlencodedMiddleware } from 'body-parser/body-parser-urlencoded.middleware';
-import { BodyParserJsonMiddleware } from 'body-parser/body-parser-json.middleware';
-import { ResponseBodyMiddleware } from 'response/response.middleware';
+import { LoggerMiddleware } from 'middleware/logger/logger.middleware';
+import { BodyParserUrlencodedMiddleware } from 'middleware/body-parser/body-parser-urlencoded.middleware';
+import { BodyParserJsonMiddleware } from 'middleware/body-parser/body-parser-json.middleware';
+import { ResponseBodyMiddleware } from 'middleware/response/response.middleware';
 
 import { MongooseModule } from '@nestjs/mongoose';
 import { DatabaseService } from 'database/database.service';
 import { DatabaseModule } from 'database/database.module';
 
-import { ResponseModule } from 'response/response.module';
+import { ResponseModule } from 'middleware/response/response.module';
 import { LanguageModule } from 'language/language.module';
 import { ErrorModule } from 'error/error.module';
 import { ConfigModule } from 'config/config.module';

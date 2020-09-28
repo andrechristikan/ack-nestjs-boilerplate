@@ -10,7 +10,7 @@ import {
     HttpLoggerSize,
     HttpLoggerMaxSize,
     HttpLoggerName
-} from 'logger/logger.constant';
+} from 'middleware/logger/logger.constant';
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class LoggerService {
