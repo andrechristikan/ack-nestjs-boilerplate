@@ -29,7 +29,10 @@ export class DatabaseService implements MongooseOptionsFactory {
         uri = `${uri}${this.configService.getEnv(
             'DB_HOST'
         )}/${this.configService.getEnv('DB_NAME')}`;
-        this.logger.info(`Database running on ${uri}`);
+
+        if(this.configService.getEnv('APP_DEBUG')){
+            this.logger.info(`Database running on ${uri}`);
+        }
 
         return {
             uri,

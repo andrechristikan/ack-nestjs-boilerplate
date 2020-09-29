@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { WordArray, HmacSHA512, enc } from 'crypto-js';
+import { WordArray, HmacSHA512, enc, lib } from 'crypto-js';
 import { ConfigService } from 'config/config.service';
 import { Config } from 'config/config.decorator';
 
@@ -7,14 +7,12 @@ import { Config } from 'config/config.decorator';
 export class AuthService {
     constructor(@Config() private readonly configService: ConfigService) {}
 
-    async hashPassword(passwordString: string): Promise<string> {
+    async hashPassword(passwordString: string): Promise<Record<string, any>> {
         return new Promise(resolve => {
-            const passwordHashed: WordArray = HmacSHA512(
-                passwordString,
-                this.configService.getEnv('PASSWORD_SALT'),
-            );
-            const passwordDigest: string = passwordHashed.toString(enc.Base64);
-            resolve(passwordDigest);
+            const salt: string = lib.WordArray.random(this.configService.getEnv('PASSWORD_SALT_LENGTH')).toString();
+            const passwordHashed: WordArray = HmacSHA512(passwordString, salt);
+            const password: string = passwordHashed.toString(enc.Base64);
+            resolve({ password, salt });
         });
     }
 }

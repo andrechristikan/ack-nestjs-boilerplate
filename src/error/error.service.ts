@@ -8,6 +8,8 @@ import { LanguageService } from 'language/language.service';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'middleware/logger/logger.decorator';
 import { Language } from 'language/language.decorator';
+import { Config } from 'config/config.decorator';
+import { ConfigService } from 'config/config.service';
 
 export class ErrorMessage {}
 
@@ -15,7 +17,8 @@ export class ErrorMessage {}
 export class ErrorService {
     constructor(
         @Logger() private readonly logger: LoggerService,
-        @Language() private readonly languageService: LanguageService
+        @Language() private readonly languageService: LanguageService,
+        @Config() private readonly configService: ConfigService
     ) {}
 
     private setErrorMessage(statusCode: SystemErrorStatusCode): IApiError {
@@ -168,11 +171,14 @@ export class ErrorService {
                     errors
                 };
             default:
-                this.logger.error({
-                    statusCode,
-                    httpCode,
-                    message
-                });
+                if (this.configService.getEnv('APP_DEBUG')) {
+                    this.logger.error({
+                        statusCode,
+                        httpCode,
+                        message
+                    });
+                }
+
                 return {
                     statusCode,
                     httpCode,

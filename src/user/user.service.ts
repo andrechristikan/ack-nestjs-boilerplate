@@ -44,7 +44,10 @@ export class UserService {
     async getOneByEmail(email: string): Promise<User> {
         return this.userModel
             .findOne({
-                email: email.toLowerCase()
+                email: {
+                    $regex: `.*${email}.*`,
+                    $options: 'i'
+                }
             })
             .exec();
     }
@@ -58,11 +61,15 @@ export class UserService {
     }
 
     async store(data: IUserStore): Promise<User> {
-        data.password = await this.authService.hashPassword(data.password);
-        data.email = data.email.toLowerCase();
-        data.firstName = data.firstName.toLowerCase();
-        data.lastName = data.lastName.toLowerCase();
+        const { password, salt } = await this.authService.hashPassword(
+            data.password
+        );
         const user: User = new this.userModel(data);
+        user.firstName = data.firstName.toLowerCase();
+        user.lastName = data.lastName.toLowerCase();
+        user.email = data.email.toLowerCase();
+        user.password = password;
+        user.salt = salt;
         return user.save();
     }
 

@@ -41,13 +41,11 @@ export function RequestValidationPipe(
                 string,
                 string
             > = this.languageService.getAll('request');
-            console.log('value', value);
             const { error } = validator.validate(value, {
                 abortEarly: false,
                 messages: messages
             });
 
-            console.log('error', error);
             if (error) {
                 const errors = this.errorService.requestApiError(error);
                 throw new BadRequestException(errors);

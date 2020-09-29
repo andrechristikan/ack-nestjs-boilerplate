@@ -70,7 +70,7 @@ export class UserController {
             return this.responseService.error(res);
         }
 
-        const { password, ...user } = checkUser.toJSON();
+        const { password, salt, ...user } = checkUser.toJSON();
         return this.responseService.success(
             200,
             this.languageService.get('user.getById.success'),
@@ -115,7 +115,7 @@ export class UserController {
                 }
 
                 try {
-                    const { password, ...user }: User = (
+                    const { password, salt, ...user }: User = (
                         await this.userService.store(data)
                     ).toJSON();
 
@@ -168,7 +168,7 @@ export class UserController {
         }
 
         try {
-            const { password, ...user }: User = (
+            const { password, salt, ...user }: User = (
                 await this.userService.update(id, data)
             ).toJSON();
 
