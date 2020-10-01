@@ -1,33 +1,40 @@
-export const UserStoreRequest = {
-    country: {
-        type: 'string',
-        required: true
-    },
+import {
+    IsString,
+    IsLowercase,
+    IsNotEmpty,
+    IsEmail,
+    MaxLength,
+    MinLength
+} from 'class-validator';
 
-    email: {
-        type: 'email',
-        required: true
-    },
+export class UserStoreRequest {
+    @IsString()
+    @IsNotEmpty()
+    country: string;
 
-    firstName: {
-        type: 'string',
-        required: true
-    },
+    @IsString()
+    @IsNotEmpty()
+    @IsLowercase()
+    @IsEmail()
+    email: string;
 
-    lastName: {
-        type: 'string',
-        required: true
-    },
+    @IsString()
+    @IsNotEmpty()
+    @IsLowercase()
+    firstName: string;
 
-    mobileNumber: {
-        type: 'string',
-        min: 10,
-        max: 13,
-        required: true
-    },
+    @IsString()
+    @IsNotEmpty()
+    @IsLowercase()
+    lastName: string;
 
-    password: {
-        type: 'string',
-        required: true
-    }
-};
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(13)
+    @MinLength(10)
+    mobileNumber: string;
+
+    @IsString()
+    @IsNotEmpty()
+    password: string;
+}

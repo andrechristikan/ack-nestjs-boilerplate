@@ -203,25 +203,33 @@ export class ErrorService {
         };
     }
 
-    // details: [
-    //     {
-    //       message: 'mobileNumberCode cannot be an empty field',
-    //       path: [Array],
-    //       type: 'string.empty',
-    //       context: [Object]
+    // {
+    //     "target": {
+    //         "mobileNumberCode": "1231asd",
+    //         "countryCode": 123123,
+    //         "countryName": "indonesia"
     //     },
-    //     {
-    //       message: 'countryCode cannot be an empty field',
-    //       path: [Array],
-    //       type: 'string.empty',
-    //       context: [Object]
-    //     },
-    //     {
-    //       message: 'countryName should be a type of string',
-    //       path: [Array],
-    //       type: 'string.base',
-    //       context: [Object]
+    //     "value": "1231asd",
+    //     "property": "mobileNumberCode",
+    //     "children": [],
+    //     "constraints": {
+    //         "maxLength": "mobileNumberCode must be shorter than or equal to 6 characters"
     //     }
-    //   ]
+    // },
+    // {
+    //     "target": {
+    //         "mobileNumberCode": "1231asd",
+    //         "countryCode": 123123,
+    //         "countryName": "indonesia"
+    //     },
+    //     "value": 123123,
+    //     "property": "countryCode",
+    //     "children": [],
+    //     "constraints": {
+    //         "minLength": "countryCode must be longer than or equal to 1 characters",
+    //         "maxLength": "countryCode must be shorter than or equal to 3 characters",
+    //         "isString": "countryCode must be a string"
+    //     }
     // }
+
 }

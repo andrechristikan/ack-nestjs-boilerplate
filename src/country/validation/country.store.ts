@@ -1,20 +1,19 @@
-export const CountryStoreRequest = {
-    mobileNumberCode: {
-        type: 'string',
-        required: true,
-        min: 1,
-        max: 6
-    },
+import { IsString, MaxLength, MinLength, IsNotEmpty } from 'class-validator';
 
-    countryCode: {
-        type: 'string',
-        required: true,
-        min: 1,
-        max: 3
-    },
+export class CountryStoreRequest {
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(6)
+    @MinLength(1)
+    mobileNumberCode: string;
 
-    countryName: {
-        type: 'string',
-        required: true,
-    }
-};
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(3)
+    @MinLength(1)
+    countryCode: string;
+
+    @IsString()
+    @IsNotEmpty()
+    countryName: string;
+}

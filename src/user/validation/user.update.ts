@@ -1,11 +1,13 @@
-export const UserUpdateRequest = {
-    firstName: {
-        type: 'string',
-        required: true
-    },
+import { IsString, IsLowercase, IsNotEmpty } from 'class-validator';
 
-    lastName: {
-        type: 'string',
-        required: true
-    }
-};
+export class UserUpdateRequest {
+    @IsString()
+    @IsNotEmpty()
+    @IsLowercase()
+    firstName: string;
+
+    @IsString()
+    @IsNotEmpty()
+    @IsLowercase()
+    lastName: string;
+}

@@ -1,9 +1,9 @@
-export const CountrySearchRequest = {
-    mobileNumberCode: {
-        type: 'string'
-    },
+import { IsString } from 'class-validator';
 
-    countryCode: {
-        type: 'string'
-    }
-};
+export class CountrySearchRequest {
+    @IsString()
+    mobileNumberCode: string;
+
+    @IsString()
+    countryCode: string;
+}

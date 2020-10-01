@@ -1,31 +1,17 @@
-export const UserSearchRequest = {
-    email: {
-        type: 'string',
-        required: false,
-    },
+import {
+    IsString,
+} from 'class-validator';
 
-    firstName: {
-        type: 'string',
-        required: false,
-    },
+export class UserSearchRequest {
+    @IsString()
+    country: string;
 
-    lastName: {
-        type: 'string',
-        required: false,
-    },
+    @IsString()
+    email: string;
 
-    mobileNumber: {
-        type: 'string',
-        required: false,
-    },
+    @IsString()
+    firstName: string;
 
-    countryCode: {
-        type: 'string',
-        required: false,
-    },
-
-    mobileNumberCode: {
-        type: 'string',
-        required: false,
-    }
-};
+    @IsString()
+    mobileNumber: string;
+}
