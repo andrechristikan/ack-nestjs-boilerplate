@@ -26,8 +26,7 @@ export function RequestValidationPipe(schema: {
             }
 
             const object: Record<string, any> = plainToClass(schema, value);
-            const errors: Record<string, any> = await validate(object);
-            console.log('errors', errors);
+            const errors: Record<string, any>[] = await validate(object);
             if (errors) {
                 throw new BadRequestException(
                     this.errorService.requestApiError(errors)

@@ -162,6 +162,14 @@ export class ErrorService {
             errors = this.setErrorMessages(errors as IApiError[]);
         }
 
+        if (this.configService.getEnv('APP_DEBUG')) {
+            this.logger.error({
+                statusCode,
+                httpCode,
+                message,
+                errors
+            });
+        }
         switch (httpCode) {
             case 400:
                 return {
@@ -171,14 +179,6 @@ export class ErrorService {
                     errors
                 };
             default:
-                if (this.configService.getEnv('APP_DEBUG')) {
-                    this.logger.error({
-                        statusCode,
-                        httpCode,
-                        message
-                    });
-                }
-
                 return {
                     statusCode,
                     httpCode,
@@ -187,13 +187,21 @@ export class ErrorService {
         }
     }
 
-    requestApiError(errors: Record<string, any>): IApiError {
+    requestApiError(errors: Record<string, any>[]): IApiError {
         const responseApiError: Record<string, any>[] = [];
-        for (const i of errors.details) {
-            responseApiError.push({
-                property: i.path[0],
-                message: i.message
-            });
+        if (this.configService.getEnv('APP_DEBUG')) {
+            console.log('errors', errors);
+        }
+        for (const i of errors) {
+            for (const [j, k] of Object.entries(i.constraints)) {
+                responseApiError.push({
+                    property: i.property,
+                    message: this.languageService
+                        .get(`request.${j}`)
+                        .replace('$property', i.property)
+                        .replace('$value', i.value)
+                });
+            }
         }
         return {
             statusCode: SystemErrorStatusCode.REQUEST_ERROR,
@@ -202,34 +210,4 @@ export class ErrorService {
             errors: responseApiError
         };
     }
-
-    // {
-    //     "target": {
-    //         "mobileNumberCode": "1231asd",
-    //         "countryCode": 123123,
-    //         "countryName": "indonesia"
-    //     },
-    //     "value": "1231asd",
-    //     "property": "mobileNumberCode",
-    //     "children": [],
-    //     "constraints": {
-    //         "maxLength": "mobileNumberCode must be shorter than or equal to 6 characters"
-    //     }
-    // },
-    // {
-    //     "target": {
-    //         "mobileNumberCode": "1231asd",
-    //         "countryCode": 123123,
-    //         "countryName": "indonesia"
-    //     },
-    //     "value": 123123,
-    //     "property": "countryCode",
-    //     "children": [],
-    //     "constraints": {
-    //         "minLength": "countryCode must be longer than or equal to 1 characters",
-    //         "maxLength": "countryCode must be shorter than or equal to 3 characters",
-    //         "isString": "countryCode must be a string"
-    //     }
-    // }
-
 }
