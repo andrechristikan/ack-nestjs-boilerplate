@@ -42,16 +42,16 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-There are many great Boilerplate NestJs for Restful API available on GitHub, however, I didn't find one that really suit my needs so I created this enhanced one. I want to create a Boilerplate NestJs that it'll be the last one you ever need.
+Effortless. Lazy. Reuseable. That the motto for this boilerplate. There are many great Boilerplate NestJs for Restful API available on GitHub, however, I didn't find one that really suit my needs so I created this enhanced one. I want to create a Boilerplate NestJs that it'll be the last one you ever need.
 
 Here's why:
 
     [x] MongoDB as The Database
-    [x] Config in File *.env*
+    [x] Environment File
     [x] Support for Multi language
-    [x] Request Validation with Joi
+    [x] Request Validation with Class Validation Package
     [x] Pagination on Server Side
-    [x] HmacSHA512 as Password Encryption with Crypto
+    [x] HmacSHA512 as Password Encryption with Crypto Package
     [ ] JWT as Authorization with JsonWebToken
     [ ] Blacklist JWT Token
     [x] Handle Errors Centrally and Easily for Maintenance Our Error Code 
@@ -74,22 +74,16 @@ This section should list any major package usage for this boilerplate
 * [NestJs](https://nestjs.com) - Common Framework.
 * [Mongoose](https://github.com/nestjs/mongoose) - Package for integrating with the MongoDB database.
 * [Crypto](https://github.com/brix/crypto-js) - Password Hash Package.
-* [Joi](https://github.com/sideway/joi) - Request Validation Package
+* [Class Validator](https://github.com/typestack/class-validator#readme) - Request Validation Package
 * [JWT](https://github.com/nestjs/jwt) - Authentication Package.
 * [Winston](https://github.com/gremo/nest-winston) - Logger Package.
 * [Morgan](https://github.com/expressjs/morgan) - HTTP Logger Package
 
 
-
----
-
-
-
 <!-- GETTING STARTED -->
 ## Getting Started
 
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
+Folder structure will be like
 
 ```
 	ac.k
@@ -126,28 +120,32 @@ To get a local copy up and running follow these simple example steps.
 
 ### Prerequisites
 
-This is an example of how to list things you need to use the software and how to install them.
-* npm
-```sh
-npm install npm@latest -g
-```
+Before start, we need to closing knowledge gaps and install some application (like Database, Package Manager, etc) 
+* [MongoDB](#acknowledgements)
+* [Yarn](#acknowledgements)
+* [NodeJs](#acknowledgements)
+* [NestJs](#acknowledgements)
+* [Typescript](#acknowledgements)
 
 ### Installation
 
-1. Get a free API Key at [https://example.com](https://example.com)
-2. Clone the repo
+1. Clone the repo
 ```sh
-git clone https://github.com/your_username_/Project-Name.git
+git clone https://github.com/andrechristikan/ac.k.git ac.k
 ```
-3. Install NPM packages
+2. Install dependencies packages
 ```sh
-npm install
+yarn
 ```
-4. Enter your API in `config.js`
-```JS
-const API_KEY = 'ENTER YOUR API';
+3. Set our Environment . See example in file `.env.example`
+4. Run app
+```
+yarn start:dev
 ```
 
+
+
+---
 
 
 <!-- USAGE EXAMPLES -->
@@ -202,7 +200,7 @@ Andre Christi Kan
   * [Mongoose Documentation](https://mongoosejs.com/docs/guide.html)
   * [Crypto Documentation](https://cryptojs.gitbook.io/docs/)
   * [JWT Documentation](https://github.com/nestjs/jwt)
-  * [Joi Documentation](https://joi.dev/api/) 
+  * [Class Validation Documentation](https://github.com/typestack/class-validator#readme) 
 * Testing
   * [JestJs](https://jestjs.io/docs/en/getting-started)
   * [SuperTest](https://github.com/visionmedia/supertest)
@@ -213,7 +211,7 @@ Andre Christi Kan
   * [Prettier Documentation](https://prettier.io/docs/en/index.html)
   * [EsLint Documentation](https://eslint.org/docs/user-guide/getting-started)
 * References
-  * [NodeJs Best Practice Reference](https://www.typescriptlang.org/docs)
+  * [NodeJs Best Practice Reference](https://github.com/goldbergyoni/nodebestpractices)
   * [NestJs Middleware Reference](https://github.com/wbhob/nest-middlewares)
   * [ReadMe Template](https://github.com/othneildrew/Best-README-Template)
 * Other
