@@ -78,6 +78,7 @@ This section should list any major package usage for this boilerplate
 * [JWT](https://github.com/nestjs/jwt) - Authentication Package.
 * [Winston](https://github.com/gremo/nest-winston) - Logger Package.
 * [Morgan](https://github.com/expressjs/morgan) - HTTP Logger Package
+* [Passport](https://github.com/jaredhanson/passport) - Authentication Package.
 
 
 <!-- GETTING STARTED -->
@@ -199,7 +200,7 @@ Andre Christi Kan
 * Common Package
   * [Mongoose Documentation](https://mongoosejs.com/docs/guide.html)
   * [Crypto Documentation](https://cryptojs.gitbook.io/docs/)
-  * [JWT Documentation](https://github.com/nestjs/jwt)
+  * [Passport Documentation](https://github.com/jaredhanson/passport)
   * [Class Validation Documentation](https://github.com/typestack/class-validator#readme) 
 * Testing
   * [JestJs](https://jestjs.io/docs/en/getting-started)
