@@ -86,7 +86,7 @@ export class CountryController {
                 }
 
                 if (errors.length > 0) {
-                    const res: IApiError = this.errorService.setError(
+                    const res: IApiError = this.errorService.setErrorMessage(
                         SystemErrorStatusCode.USER_EXIST,
                         errors
                     );
@@ -108,7 +108,7 @@ export class CountryController {
     async getOneById(@Param('id') id: string): Promise<IApiResponseSuccess> {
         const country: Country = await this.countryService.getOneById(id);
         if (!country) {
-            const res: IApiError = this.errorService.setError(
+            const res: IApiError = this.errorService.setErrorMessage(
                 SystemErrorStatusCode.COUNTRY_NOT_FOUND
             );
             return this.responseService.error(res);
@@ -125,7 +125,7 @@ export class CountryController {
     async destroy(@Param('id') id: string): Promise<IApiResponseSuccess> {
         const country: Country = await this.countryService.getOneById(id);
         if (!country) {
-            const res: IApiError = this.errorService.setError(
+            const res: IApiError = this.errorService.setErrorMessage(
                 SystemErrorStatusCode.COUNTRY_NOT_FOUND
             );
             return this.responseService.error(res);

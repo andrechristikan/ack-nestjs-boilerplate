@@ -8,7 +8,8 @@ import {
     Put,
     Query,
     DefaultValuePipe,
-    ParseIntPipe
+    ParseIntPipe,
+    UseGuards 
 } from '@nestjs/common';
 import { UserService } from 'user/user.service';
 import { ErrorService } from 'error/error.service';
@@ -31,6 +32,7 @@ import { RequestValidationPipe } from 'pipe/request-validation.pipe';
 import { UserSearchRequest } from 'user/validation/user.search';
 import { UserStoreRequest } from 'user/validation/user.store';
 import { UserUpdateRequest } from 'user/validation/user.update';
+import { JwtGuard } from 'auth/guard/jwt.guard';
 
 @Controller('api/user')
 export class UserController {
@@ -64,7 +66,7 @@ export class UserController {
     async getOneById(@Param('id') id: string): Promise<IApiResponseSuccess> {
         const checkUser: User = await this.userService.getOneById(id);
         if (!checkUser) {
-            const res: IApiError = this.errorService.setError(
+            const res: IApiError = this.errorService.setErrorMessage(
                 SystemErrorStatusCode.USER_NOT_FOUND
             );
             return this.responseService.error(res);
@@ -78,6 +80,7 @@ export class UserController {
         );
     }
 
+    @UseGuards(JwtGuard)
     @Post('/store')
     async store(
         @Body(RequestValidationPipe(UserStoreRequest)) data: IUserStore
@@ -107,7 +110,7 @@ export class UserController {
                 }
 
                 if (errors.length > 0) {
-                    const res: IApiError = this.errorService.setError(
+                    const res: IApiError = this.errorService.setErrorMessage(
                         SystemErrorStatusCode.USER_EXIST,
                         errors
                     );
@@ -126,7 +129,7 @@ export class UserController {
                     );
                 } catch (e) {
                     return this.responseService.error(
-                        this.errorService.setError(
+                        this.errorService.setErrorMessage(
                             SystemErrorStatusCode.GENERAL_ERROR
                         )
                     );
@@ -141,7 +144,7 @@ export class UserController {
     async destroy(@Param('id') id: string): Promise<IApiResponseSuccess> {
         const user: User = await this.userService.getOneById(id);
         if (!user) {
-            const res: IApiError = this.errorService.setError(
+            const res: IApiError = this.errorService.setErrorMessage(
                 SystemErrorStatusCode.USER_NOT_FOUND
             );
             return this.responseService.error(res);
@@ -161,7 +164,7 @@ export class UserController {
     ): Promise<IApiResponseSuccess> {
         const checkUser: User = await this.userService.getOneById(id);
         if (!checkUser) {
-            const res: IApiError = this.errorService.setError(
+            const res: IApiError = this.errorService.setErrorMessage(
                 SystemErrorStatusCode.USER_NOT_FOUND
             );
             return this.responseService.error(res);
@@ -179,7 +182,7 @@ export class UserController {
             );
         } catch (e) {
             return this.responseService.error(
-                this.errorService.setError(SystemErrorStatusCode.GENERAL_ERROR)
+                this.errorService.setErrorMessage(SystemErrorStatusCode.GENERAL_ERROR)
             );
         }
     }

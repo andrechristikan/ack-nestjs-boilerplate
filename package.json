@@ -23,6 +23,7 @@
   "dependencies": {
     "@nestjs/common": "^7.4.4",
     "@nestjs/core": "^7.4.4",
+    "@nestjs/jwt": "^7.1.0",
     "@nestjs/mongoose": "^7.0.2",
     "@nestjs/passport": "^7.1.0",
     "@nestjs/platform-express": "^7.4.4",
@@ -36,6 +37,7 @@
     "morgan": "^1.10.0",
     "nest-winston": "^1.4.0",
     "passport": "^0.4.1",
+    "passport-jwt": "^4.0.0",
     "passport-local": "^1.0.0",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
@@ -53,6 +55,7 @@
     "@types/mongoose": "^5.7.36",
     "@types/morgan": "^1.9.1",
     "@types/node": "^13.9.1",
+    "@types/passport-jwt": "^3.0.3",
     "@types/passport-local": "^1.0.33",
     "@types/supertest": "^2.0.8",
     "@typescript-eslint/eslint-plugin": "3.0.2",

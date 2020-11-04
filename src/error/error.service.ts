@@ -21,7 +21,7 @@ export class ErrorService {
         @Config() private readonly configService: ConfigService
     ) {}
 
-    private setErrorMessage(statusCode: SystemErrorStatusCode): IApiError {
+    private errorMessage(statusCode: SystemErrorStatusCode): IApiError {
         switch (statusCode) {
             // ? FORM ERROR
 
@@ -139,10 +139,10 @@ export class ErrorService {
         }
     }
 
-    private setErrorMessages(errors: IApiError[]): IApiError[] {
+    private errorMessages(errors: IApiError[]): IApiError[] {
         const newError: IApiError[] = [];
         errors.forEach((value: IApiError) => {
-            const error: IApiError = this.setErrorMessage(value.statusCode);
+            const error: IApiError = this.errorMessage(value.statusCode);
             newError.push({
                 property: value.property,
                 message: error.message
@@ -151,15 +151,15 @@ export class ErrorService {
         return newError;
     }
 
-    setError(
+    setErrorMessage(
         statusCode: SystemErrorStatusCode,
         errors?: IApiError[]
     ): IApiError {
-        const { httpCode, message }: IApiError = this.setErrorMessage(
+        const { httpCode, message }: IApiError = this.errorMessage(
             statusCode
         );
         if (errors && Array.isArray(errors) && errors.length > 0) {
-            errors = this.setErrorMessages(errors as IApiError[]);
+            errors = this.errorMessages(errors as IApiError[]);
         }
 
         if (this.configService.getEnv('APP_DEBUG')) {
@@ -187,7 +187,7 @@ export class ErrorService {
         }
     }
 
-    requestApiError(errors: Record<string, any>[]): IApiError {
+    setRequestErrorMessage(errors: Record<string, any>[]): IApiError {
         const responseApiError: Record<string, any>[] = [];
         if (this.configService.getEnv('APP_DEBUG')) {
             console.log('errors', errors);

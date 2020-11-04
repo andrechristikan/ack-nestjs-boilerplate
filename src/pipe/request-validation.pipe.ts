@@ -30,7 +30,7 @@ export function RequestValidationPipe(schema: {
             const errors: Record<string, any>[] = await validate(object);
             if (errors.length > 0) {
                 throw new BadRequestException(
-                    this.errorService.requestApiError(errors)
+                    this.errorService.setRequestErrorMessage(errors)
                 );
             }
             return value;

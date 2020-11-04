@@ -1,4 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
+import { HttpExceptionFilter } from 'filter/http-exception.filter';
+
 import { AppController } from 'app/app.controller';
 import { AppService } from 'app/app.service';
 
@@ -25,7 +28,13 @@ import { UserModule } from 'user/user.module';
 
 @Module({
     controllers: [AppController],
-    providers: [AppService],
+    providers: [
+        AppService,
+        {
+            provide: APP_FILTER,
+            useClass: HttpExceptionFilter,
+        },
+    ],
     imports: [
         ConfigModule,
         WinstonModule.forRootAsync({
