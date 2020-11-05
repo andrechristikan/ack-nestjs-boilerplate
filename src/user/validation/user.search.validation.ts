@@ -2,7 +2,7 @@ import {
     IsString,
 } from 'class-validator';
 
-export class UserSearchRequest {
+export class UserSearchValidation{
     @IsString()
     country: string;
 

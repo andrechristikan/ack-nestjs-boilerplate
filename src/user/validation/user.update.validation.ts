@@ -1,6 +1,6 @@
 import { IsString, IsLowercase, IsNotEmpty } from 'class-validator';
 
-export class UserUpdateRequest {
+export class UserUpdateValidation {
     @IsString()
     @IsNotEmpty()
     @IsLowercase()

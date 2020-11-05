@@ -121,6 +121,13 @@ export class ErrorService {
                         'system.error.internalServerError'
                     )
                 };
+            case SystemErrorStatusCode.UNAUTHORIZED_ERROR:
+                return {
+                    httpCode: HttpErrorStatusCode.UNAUTHORIZED,
+                    message: this.languageService.get(
+                        'system.error.authorization'
+                    )
+                };
             case SystemErrorStatusCode.REQUEST_ERROR:
                 return {
                     httpCode: HttpErrorStatusCode.BAD_REQUEST,

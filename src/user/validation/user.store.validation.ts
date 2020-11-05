@@ -7,7 +7,7 @@ import {
     MinLength
 } from 'class-validator';
 
-export class UserStoreRequest {
+export class UserStoreValidation {
     @IsString()
     @IsNotEmpty()
     country: string;

@@ -1,6 +1,6 @@
 import { IsString } from 'class-validator';
 
-export class CountrySearchRequest {
+export class CountrySearchValidation {
     @IsString()
     mobileNumberCode: string;
 

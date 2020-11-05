@@ -29,9 +29,9 @@ import { Language } from 'language/language.decorator';
 import { Response } from 'middleware/response/response.decorator';
 import { Error } from 'error/error.decorator';
 import { RequestValidationPipe } from 'pipe/request-validation.pipe';
-import { UserSearchRequest } from 'user/validation/user.search';
-import { UserStoreRequest } from 'user/validation/user.store';
-import { UserUpdateRequest } from 'user/validation/user.update';
+import { UserSearchValidation } from 'user/validation/user.search.validation';
+import { UserStoreValidation } from 'user/validation/user.store.validation';
+import { UserUpdateValidation } from 'user/validation/user.update.validation';
 import { JwtGuard } from 'auth/guard/jwt.guard';
 
 @Controller('api/user')
@@ -47,7 +47,7 @@ export class UserController {
     async getAll(
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-        @Query(RequestValidationPipe(UserSearchRequest)) data: IUserSearch
+        @Query(RequestValidationPipe(UserSearchValidation)) data: IUserSearch
     ): Promise<IApiResponseSuccess> {
         const { skip } = this.responseService.pagination(page, limit);
 
@@ -83,7 +83,7 @@ export class UserController {
     @UseGuards(JwtGuard)
     @Post('/store')
     async store(
-        @Body(RequestValidationPipe(UserStoreRequest)) data: IUserStore
+        @Body(RequestValidationPipe(UserStoreValidation)) data: IUserStore
     ): Promise<IApiResponseSuccess> {
         const existEmail: Promise<User> = this.userService.getOneByEmail(
             data.email
@@ -140,6 +140,7 @@ export class UserController {
             });
     }
 
+    @UseGuards(JwtGuard)
     @Delete('/destroy/:id')
     async destroy(@Param('id') id: string): Promise<IApiResponseSuccess> {
         const user: User = await this.userService.getOneById(id);
@@ -157,10 +158,11 @@ export class UserController {
         );
     }
 
+    @UseGuards(JwtGuard)
     @Put('/update/:id')
     async update(
         @Param('id') id: string,
-        @Body(RequestValidationPipe(UserUpdateRequest)) data: IUserUpdate
+        @Body(RequestValidationPipe(UserUpdateValidation)) data: IUserUpdate
     ): Promise<IApiResponseSuccess> {
         const checkUser: User = await this.userService.getOneById(id);
         if (!checkUser) {

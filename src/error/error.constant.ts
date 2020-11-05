@@ -38,5 +38,6 @@ export enum SystemErrorStatusCode {
 
     // ? FATAL ERROR
     GENERAL_ERROR = 10000,
-    REQUEST_ERROR = 10001
+    REQUEST_ERROR = 10001,
+    UNAUTHORIZED_ERROR = 10002
 }

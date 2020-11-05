@@ -8,6 +8,7 @@ import {
     Query,
     ParseIntPipe,
     DefaultValuePipe,
+    UseGuards 
 } from '@nestjs/common';
 import { CountryService } from 'country/country.service';
 import { Country } from 'country/country.schema';
@@ -22,8 +23,10 @@ import { LanguageService } from 'language/language.service';
 import { Language } from 'language/language.decorator';
 import { Response } from 'middleware/response/response.decorator';
 import { RequestValidationPipe } from 'pipe/request-validation.pipe';
-import { CountryStoreRequest } from 'country/validation/country.store';
-import { CountrySearchRequest } from 'country/validation/country.search';
+import { CountryStoreValidation } from 'country/validation/country.store.validation';
+import { CountrySearchValidation } from 'country/validation/country.search.validation';
+import { JwtGuard } from 'auth/guard/jwt.guard';
+
 
 @Controller('api/country')
 export class CountryController {
@@ -38,7 +41,7 @@ export class CountryController {
     async getAll(
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-        @Query(RequestValidationPipe(CountrySearchRequest)) data: ICountrySearch
+        @Query(RequestValidationPipe(CountrySearchValidation)) data: ICountrySearch
     ): Promise<IApiResponseSuccess> {
         const { skip } = this.responseService.pagination(page, limit);
 
@@ -56,9 +59,10 @@ export class CountryController {
         );
     }
 
+    @UseGuards(JwtGuard)
     @Post('/store')
     async store(
-        @Body(RequestValidationPipe(CountryStoreRequest))
+        @Body(RequestValidationPipe(CountryStoreValidation))
         data: ICountryStore
     ): Promise<IApiResponseSuccess> {
         const existCountryCode: Promise<Country> = this.countryService.getOneByCountryCode(
@@ -121,6 +125,7 @@ export class CountryController {
         );
     }
 
+    @UseGuards(JwtGuard)
     @Delete('/destroy/:id')
     async destroy(@Param('id') id: string): Promise<IApiResponseSuccess> {
         const country: Country = await this.countryService.getOneById(id);

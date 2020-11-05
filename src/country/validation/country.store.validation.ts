@@ -1,6 +1,6 @@
-import { IsString, MaxLength, MinLength, IsNotEmpty } from 'class-validator';
+import { IsString, MaxLength, IsNotEmpty } from 'class-validator';
 
-export class CountryStoreRequest {
+export class CountryStoreValidation {
     @IsString()
     @IsNotEmpty()
     @MaxLength(6)
