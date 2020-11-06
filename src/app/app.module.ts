@@ -49,9 +49,9 @@ import { AuthModule } from 'auth/auth.module';
         ResponseModule,
         ErrorModule,
 
+        AuthModule,
         CountryModule,
         UserModule,
-        // AuthModule,
     ]
 })
 export class AppModule implements NestModule {

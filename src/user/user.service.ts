@@ -10,14 +10,14 @@ import {
     IUserSearch,
     IUserSearchCollection
 } from 'user/user.interface';
-import { AuthService } from 'auth/auth.service';
+import { WordArray, HmacSHA512, enc, lib } from 'crypto-js';
+import { PASSWORD_SALT_LENGTH } from 'auth/auth.constant'; 
 
 @Injectable()
 export class UserService {
     constructor(
         @InjectModel('user') private userModel: Model<User>,
         @InjectModel('country') private readonly countryModel: Model<Country>,
-        private readonly authService: AuthService
     ) {}
 
     async getAll(
@@ -61,7 +61,7 @@ export class UserService {
     }
 
     async store(data: IUserStore): Promise<User> {
-        const { password, salt } = await this.authService.hashPassword(
+        const { password, salt } = await this.hashPassword(
             data.password
         );
         const user: User = new this.userModel(data);
@@ -105,5 +105,14 @@ export class UserService {
             search.country = new SchemaMongoose.Types.ObjectId(data.country);
         }
         return search;
+    }
+
+    async hashPassword(passwordString: string): Promise<Record<string, any>> {
+        return new Promise(resolve => {
+            const salt: string = lib.WordArray.random(PASSWORD_SALT_LENGTH).toString();
+            const passwordHashed: WordArray = HmacSHA512(passwordString, salt);
+            const password: string = passwordHashed.toString(enc.Base64);
+            resolve({ password, salt });
+        });
     }
 }

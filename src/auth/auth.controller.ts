@@ -37,17 +37,21 @@ export class AuthController {
     ): Promise<IApiResponseSuccess> {
 
         const user: User = await this.userService.getOneByEmail(data.email);
-        const payload: IPayload = {
+        const resData: Record<string, any> = {
             id: user._id,
             firstName: user.firstName,
             lastName: user.lastName,
-            email: user.email
+            email: user.email,
+        };
+        const payload: IPayload = {
+            userId: user._id,
         };
         const accessToken = await this.authService.createAccessToken(payload);
         return this.responseService.success(
             200, 
             this.languageService.get('auth.login.success'),
             {
+                ...resData,
                 accessToken
             }
         );

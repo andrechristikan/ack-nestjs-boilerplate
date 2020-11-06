@@ -4,8 +4,5 @@ export interface ILogin {
 }
 
 export interface IPayload {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
+    userId: string;
 }
