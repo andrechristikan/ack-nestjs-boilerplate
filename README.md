@@ -52,7 +52,7 @@ Here's why:
     [x] Request Validation with Class Validation Package
     [x] Pagination on Server Side
     [x] HmacSHA512 as Password Encryption with Crypto Package
-    [ ] JWT as Authorization with JsonWebToken
+    [x] JWT as Authorization with JsonWebToken
     [ ] Blacklist JWT Token
     [x] Handle Errors Centrally and Easily for Maintenance Our Error Code 
     [x] Logger in File (day by day) with Winston

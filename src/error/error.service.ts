@@ -125,7 +125,7 @@ export class ErrorService {
                 return {
                     httpCode: HttpErrorStatusCode.UNAUTHORIZED,
                     message: this.languageService.get(
-                        'system.error.authorization'
+                        'system.error.unauthorized'
                     )
                 };
             case SystemErrorStatusCode.REQUEST_ERROR:
