@@ -3,6 +3,5 @@ export enum HttpSuccessStatusCode {
     CREATED = 201
 }
 
-export const Pagination: Record<string, any> = {
-    limit: 10
-};
+export const Pagination = 10;
+

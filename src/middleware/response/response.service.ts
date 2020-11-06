@@ -4,40 +4,48 @@ import {
     InternalServerErrorException,
     Scope
 } from '@nestjs/common';
-import { IApiError } from 'error/error.interface';
-import { HttpSuccessStatusCode, Pagination } from 'middleware/response/response.constant';
 import {
-    IApiResponseSuccess,
+    IApiResponse,
     IPagination,
-    IApiResponseError
+    ISetApiResponse,
 } from 'middleware/response/response.interface';
+import { Pagination } from 'middleware/response/response.constant'; 
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class ResponseService {
     pagination(setPage: number, setLimit?: number): IPagination {
-        const limit: number = Pagination.limit || setLimit;
+        const limit: number = Pagination || setLimit;
         const page = setPage || 1;
 
         const skip: number = (page - 1) * limit;
         return { skip, limit: Number(limit) };
     }
 
-    success(
-        httpCode: HttpSuccessStatusCode,
-        message: string,
-        data?: Record<string, any> | Record<string, any>[]
-    ): IApiResponseSuccess {
-        const response: IApiResponseSuccess = {
-            statusCode: httpCode,
-            httpCode,
-            message,
-            data
-        };
+    success(data: ISetApiResponse): IApiResponse {
+        const response: IApiResponse = {
+            statusCode: data.statusCode,
+            message: data.message,
+        }
+
+        if(data.options.data){
+            response.data = data.options.data;
+        }
+
         return response;
     }
 
-    error(response: IApiError): IApiResponseError {
-        switch (response.httpCode) {
+    error(data: ISetApiResponse): IApiResponse {
+        const httpCode = data.options.httpCode || 400;
+        const response: IApiResponse = {
+            statusCode: data.statusCode,
+            message: data.message
+        };
+
+        if(data.options.data){
+            response.data = data.options.data;
+        }
+
+        switch (httpCode) {
             case 400:
                 throw new BadRequestException(response);
             default:

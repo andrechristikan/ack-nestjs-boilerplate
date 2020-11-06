@@ -1,7 +1,9 @@
+import { HttpErrorStatusCode, SystemErrorStatusCode } from 'error/error.constant';
+
 export interface IApiError {
     property?: string;
-    statusCode?: number;
+    statusCode?: SystemErrorStatusCode;
     message?: string;
-    httpCode?: number;
+    httpCode?: HttpErrorStatusCode;
     errors?: Record<string, any>[];
 }

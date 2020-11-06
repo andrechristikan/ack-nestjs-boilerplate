@@ -80,7 +80,7 @@ export class UserController {
         );
     }
 
-    @UseGuards(JwtGuard)
+    // @UseGuards(JwtGuard)
     @Post('/store')
     async store(
         @Body(RequestValidationPipe(UserStoreValidation)) data: IUserStore
