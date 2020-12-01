@@ -1,8 +1,6 @@
-import {
-    IsString,
-} from 'class-validator';
+import { IsString } from 'class-validator';
 
-export class UserSearchValidation{
+export class UserSearchValidation {
     @IsString()
     country: string;
 

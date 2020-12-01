@@ -18,7 +18,6 @@ export enum SystemErrorStatusCode {
     UNAUTHORIZED_ERROR = 10002
 }
 
-
 export const ResponseMessage = [
     {
         statusCode: 'OK',
@@ -57,6 +56,5 @@ export const ResponseMessage = [
     {
         statusCode: 'USER_EMAIL_EXIST',
         message: 'user.error.emailExist'
-    },
-    
-]
+    }
+];

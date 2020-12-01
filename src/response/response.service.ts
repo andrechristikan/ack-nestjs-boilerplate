@@ -4,14 +4,14 @@ import {
     SystemErrorStatusCode,
     ResponseMessage
 } from 'response/response.constant';
-import { 
-    IApiMessage, 
-    IApiErrors, 
-    IApiErrorMessage, 
-    IApiErrorResponse, 
-    IApiSuccessResponse ,
+import {
+    IApiMessage,
+    IApiErrors,
+    IApiErrorMessage,
+    IApiErrorResponse,
+    IApiSuccessResponse,
     IApiRawMessage
-} from 'response/response.interface'; 
+} from 'response/response.interface';
 import { LanguageService } from 'language/language.service';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'middleware/logger/logger.decorator';
@@ -27,20 +27,19 @@ export class ResponseService {
         @Config() private readonly configService: ConfigService
     ) {}
 
-    private setMessage(statusCode: SystemErrorStatusCode | SystemSuccessStatusCode): IApiMessage {
-        
-        const message: IApiRawMessage[] = ResponseMessage.filter( (val) => {
+    private setMessage(
+        statusCode: SystemErrorStatusCode | SystemSuccessStatusCode
+    ): IApiMessage {
+        const message: IApiRawMessage[] = ResponseMessage.filter(val => {
             const statusCodeMerge: Record<string, any> = {
                 ...SystemErrorStatusCode,
                 ...SystemSuccessStatusCode
-            }
+            };
             return val.statusCode === statusCodeMerge[statusCode];
         });
         return {
             statusCode: statusCode,
-            message: this.languageService.get(
-                message[0].message
-            )
+            message: this.languageService.get(message[0].message)
         };
     }
 
@@ -57,7 +56,7 @@ export class ResponseService {
     }
 
     error(
-        statusCode: SystemErrorStatusCode, 
+        statusCode: SystemErrorStatusCode,
         errors?: IApiErrorMessage[]
     ): IApiErrorResponse {
         const message: IApiMessage = this.setMessage(statusCode);
@@ -67,16 +66,16 @@ export class ResponseService {
             errors
         };
 
-        if(this.configService.getEnv("APP_DEBUG")){
+        if (this.configService.getEnv('APP_DEBUG')) {
             this.logger.error('Error', response);
         }
         return response;
     }
 
     success(
-        statusCode: SystemSuccessStatusCode, 
+        statusCode: SystemSuccessStatusCode,
         data?: Record<string, any> | Record<string, any>[]
-    ): IApiSuccessResponse{
+    ): IApiSuccessResponse {
         const message: IApiMessage = this.setMessage(statusCode);
         const response: IApiSuccessResponse = {
             statusCode,
@@ -84,20 +83,19 @@ export class ResponseService {
             data
         };
 
-        if(this.configService.getEnv("APP_DEBUG")){
+        if (this.configService.getEnv('APP_DEBUG')) {
             this.logger.info('Success', response);
         }
         return response;
     }
 
-    raw(response: Record<string, any>): Record<string, any>{
-        if(this.configService.getEnv("APP_DEBUG")){
+    raw(response: Record<string, any>): Record<string, any> {
+        if (this.configService.getEnv('APP_DEBUG')) {
             this.logger.info('Raw', response);
         }
 
         return response;
     }
-    
 
     // setRequestErrorMessage(errors: Record<string, any>[]): IApiError {
     //     const responseApiError: Record<string, any>[] = [];

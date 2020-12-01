@@ -18,6 +18,6 @@ export default {
         notFound: 'User not found.',
         userExist: 'User exist.',
         mobileNumberExist: 'Mobile number used.',
-        emailExist: 'Email used.',
+        emailExist: 'Email used.'
     }
 };

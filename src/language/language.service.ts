@@ -1,4 +1,4 @@
-import { Injectable, Scope } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from 'config/config.service';
 import Languages from 'language/language.constant';
 import { Config } from 'config/config.decorator';

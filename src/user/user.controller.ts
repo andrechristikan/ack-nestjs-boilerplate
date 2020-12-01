@@ -1,4 +1,4 @@
- import {
+import {
     Controller,
     Param,
     Get,
@@ -9,7 +9,7 @@
     Query,
     DefaultValuePipe,
     ParseIntPipe,
-    UseGuards, 
+    UseGuards,
     BadRequestException
 } from '@nestjs/common';
 import { UserService } from 'user/user.service';
@@ -23,8 +23,16 @@ import {
 import { JwtGuard } from 'auth/guard/jwt.guard';
 import { Response } from 'response/response.decorator';
 import { ResponseService } from 'response/response.service';
-import { IApiSuccessResponse, IApiErrorResponse, IApiErrorMessage, IApiErrors } from 'response/response.interface';
-import { SystemSuccessStatusCode, SystemErrorStatusCode } from 'response/response.constant';
+import {
+    IApiSuccessResponse,
+    IApiErrorResponse,
+    IApiErrorMessage,
+    IApiErrors
+} from 'response/response.interface';
+import {
+    SystemSuccessStatusCode,
+    SystemErrorStatusCode
+} from 'response/response.constant';
 import { Helper } from 'helper/helper.decorator';
 import { HelperService } from 'helper/helper.service';
 import { Config } from 'config/config.decorator';
@@ -51,14 +59,9 @@ export class UserController {
     ): Promise<IApiSuccessResponse> {
         const { skip } = this.helperService.pagination(page, limit);
 
-        const search: IUserSearchFind = await this.userService.search(
-            data
-        );
+        const search: IUserSearchFind = await this.userService.search(data);
         const user: User[] = await this.userService.getAll(skip, limit, search);
-        return this.responseService.success(
-            SystemSuccessStatusCode.OK,
-            user
-        );
+        return this.responseService.success(SystemSuccessStatusCode.OK, user);
     }
 
     @Get('/:id')
@@ -72,10 +75,7 @@ export class UserController {
         }
 
         const { password, salt, ...user } = checkUser.toJSON();
-        return this.responseService.success(
-            SystemSuccessStatusCode.OK,
-            user
-        );
+        return this.responseService.success(SystemSuccessStatusCode.OK, user);
     }
 
     // @UseGuards(JwtGuard)
@@ -102,13 +102,16 @@ export class UserController {
                 }
                 if (userExistMobileNumber) {
                     errors.push({
-                        statusCode: SystemErrorStatusCode.USER_MOBILE_NUMBER_EXIST,
+                        statusCode:
+                            SystemErrorStatusCode.USER_MOBILE_NUMBER_EXIST,
                         property: 'mobileNumber'
                     });
                 }
 
                 if (errors.length > 0) {
-                    const message: IApiErrorMessage[] = this.responseService.setErrorMessage(errors);
+                    const message: IApiErrorMessage[] = this.responseService.setErrorMessage(
+                        errors
+                    );
                     const response: IApiErrorResponse = this.responseService.error(
                         SystemErrorStatusCode.REQUEST_ERROR,
                         message
@@ -126,15 +129,15 @@ export class UserController {
                         SystemSuccessStatusCode.OK,
                         user
                     );
-                } catch ( errCreate ) {
+                } catch (errCreate) {
                     const response: IApiErrorResponse = this.responseService.error(
                         SystemErrorStatusCode.GENERAL_ERROR
                     );
                     throw response;
                 }
             })
-            .catch( (err) => {
-                if(this.configService.getEnv('APP_DEBUG')){
+            .catch(err => {
+                if (this.configService.getEnv('APP_DEBUG')) {
                     this.logger.error('Error', err);
                 }
 
@@ -154,10 +157,7 @@ export class UserController {
         }
 
         await this.userService.destroy(id);
-        return this.responseService.success(
-            SystemSuccessStatusCode.OK,
-            user
-        );
+        return this.responseService.success(SystemSuccessStatusCode.OK, user);
     }
 
     @UseGuards(JwtGuard)
@@ -185,7 +185,7 @@ export class UserController {
                 user
             );
         } catch (err) {
-            if(this.configService.getEnv('APP_DEBUG')){
+            if (this.configService.getEnv('APP_DEBUG')) {
                 this.logger.error('Error', err);
             }
 

@@ -17,7 +17,7 @@ import { HelperService } from 'helper/helper.service';
 export class UserService {
     constructor(
         @Helper() private helperService: HelperService,
-        @InjectModel('user') private userModel: Model<User>,
+        @InjectModel('user') private userModel: Model<User>
     ) {}
 
     async getAll(
@@ -34,9 +34,7 @@ export class UserService {
     }
 
     async getOneById(id: string): Promise<User> {
-        return this.userModel
-            .findById(id)
-            .exec();
+        return this.userModel.findById(id).exec();
     }
 
     async getOneByEmail(email: string): Promise<User> {
@@ -98,6 +96,4 @@ export class UserService {
         }
         return search;
     }
-
-    
 }

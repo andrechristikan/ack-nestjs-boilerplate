@@ -1,4 +1,4 @@
-import { Injectable, Scope } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import * as DailyRotateFile from 'winston-daily-rotate-file';
 import { createStream } from 'rotating-file-stream';
 import * as winston from 'winston';

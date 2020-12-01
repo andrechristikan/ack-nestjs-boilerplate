@@ -3,9 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
-    constructor(
-        private jwtService: JwtService
-    ) {}
+    constructor(private jwtService: JwtService) {}
 
     async createAccessToken(payload: Record<string, any>): Promise<string> {
         return new Promise(resolve => {

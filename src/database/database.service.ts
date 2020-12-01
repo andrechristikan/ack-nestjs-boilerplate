@@ -30,7 +30,7 @@ export class DatabaseService implements MongooseOptionsFactory {
             'DB_HOST'
         )}/${this.configService.getEnv('DB_NAME')}`;
 
-        if(this.configService.getEnv('APP_DEBUG')){
+        if (this.configService.getEnv('APP_DEBUG')) {
             this.logger.info(`Database running on ${uri}`);
         }
 

@@ -20,7 +20,7 @@ export class LoggerMiddleware implements NestMiddleware {
         LoggerMiddleware.token('req-body', (req: Request) => {
             return JSON.stringify(req.body);
         });
-        
+
         LoggerMiddleware.token('res-body', (req: Request, res: any) => {
             return res.body;
         });

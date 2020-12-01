@@ -38,4 +38,3 @@ export class UserStoreValidation {
     @IsNotEmpty()
     password: string;
 }
-

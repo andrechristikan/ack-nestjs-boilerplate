@@ -26,9 +26,7 @@ import { AuthModule } from 'auth/auth.module';
 
 @Module({
     controllers: [AppController],
-    providers: [
-        AppService,
-    ],
+    providers: [AppService],
     imports: [
         ConfigModule,
         WinstonModule.forRootAsync({
@@ -49,7 +47,7 @@ import { AuthModule } from 'auth/auth.module';
         HelperModule,
 
         AuthModule,
-        UserModule,
+        UserModule
     ]
 })
 export class AppModule implements NestModule {

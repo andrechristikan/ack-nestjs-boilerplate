@@ -1,7 +1,9 @@
-import { SystemSuccessStatusCode, SystemErrorStatusCode } from 'response/response.constant';
+import {
+    SystemSuccessStatusCode,
+    SystemErrorStatusCode
+} from 'response/response.constant';
 
-
-// response 
+// response
 export interface IApiSuccessResponse {
     statusCode: SystemSuccessStatusCode;
     message: string;
@@ -16,23 +18,22 @@ export interface IApiErrorResponse {
 
 // errors
 export interface IApiErrors {
-    statusCode: SystemErrorStatusCode,
-    property: string,
+    statusCode: SystemErrorStatusCode;
+    property: string;
 }
 
 export interface IApiErrorMessage {
     message: string;
-    property: string,
+    property: string;
 }
-
 
 // set message
 export interface IApiMessage {
     message: string;
-    statusCode: SystemErrorStatusCode | SystemSuccessStatusCode,
+    statusCode: SystemErrorStatusCode | SystemSuccessStatusCode;
 }
 
 export interface IApiRawMessage {
     message: string;
-    statusCode: string,
+    statusCode: string;
 }

@@ -7,18 +7,15 @@ import { UserModule } from 'user/user.module';
 import { AuthController } from 'auth/auth.controller';
 
 @Module({
-    providers: [
-        AuthService, 
-        JwtStrategy
-    ],
+    providers: [AuthService, JwtStrategy],
     exports: [AuthService],
     controllers: [AuthController],
     imports: [
         JwtModule.register({
             secret: JWT_SECRET_KEY,
-            signOptions: { expiresIn: JWT_EXPIRATION_TIME },
+            signOptions: { expiresIn: JWT_EXPIRATION_TIME }
         }),
-        UserModule,
-    ],
+        UserModule
+    ]
 })
 export class AuthModule {}

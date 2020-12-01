@@ -1,4 +1,4 @@
 export interface IPagination {
-    limit: number,
-    skip: number
+    limit: number;
+    skip: number;
 }

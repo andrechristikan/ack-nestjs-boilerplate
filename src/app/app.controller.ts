@@ -15,6 +15,8 @@ export class AppController {
     @Get('/')
     getHello(): IApiSuccessResponse {
         const message: string = this.appService.getHello();
-        return this.responseService.success(SystemSuccessStatusCode.OK, { message });
+        return this.responseService.success(SystemSuccessStatusCode.OK, {
+            message
+        });
     }
 }

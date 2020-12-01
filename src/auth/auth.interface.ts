@@ -3,8 +3,8 @@ export interface ILogin {
     password: string;
 }
 export interface IPayload {
-    id: string,
-    firstName: string,
-    lastName: string,
-    email: string,
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
 }
