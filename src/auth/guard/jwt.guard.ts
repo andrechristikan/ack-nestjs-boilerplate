@@ -4,28 +4,28 @@ import {
     Injectable,
     UnauthorizedException,
 } from '@nestjs/common';
-import { IApiError } from 'error/error.interface';
-import { Error } from 'error/error.decorator';
-import { ErrorService } from 'error/error.service';
-import { SystemErrorStatusCode } from 'error/error.constant';
+import { ResponseService } from 'response/response.service';
+import { Response } from 'response/response.decorator';
+import { IApiErrorResponse } from 'response/response.interface';
+import { SystemErrorStatusCode } from 'response/response.constant';
 
 @Injectable()
 export class JwtGuard extends AuthGuard('jwt') {
 
     constructor(
-        @Error() private readonly errorService: ErrorService,
+        @Response() private readonly responseService: ResponseService,
     ){
         super();
     }
 
 
     handleRequest<TUser = any>(err: Record<string, any>, user: TUser, info: string): TUser {
-        const res: IApiError = this.errorService.setErrorMessage(
-            SystemErrorStatusCode.UNAUTHORIZED_ERROR
-        );
-
         if (err || !user) {
-            throw new UnauthorizedException(res);
+            const response: IApiErrorResponse = this.responseService.error(
+                SystemErrorStatusCode.UNAUTHORIZED_ERROR
+            );
+
+            throw new UnauthorizedException(response);
         }
         return user;
     }

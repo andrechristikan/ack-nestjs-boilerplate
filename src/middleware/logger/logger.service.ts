@@ -12,10 +12,10 @@ import {
     HttpLoggerName
 } from 'middleware/logger/logger.constant';
 
-@Injectable({ scope: Scope.TRANSIENT })
+@Injectable()
 export class LoggerService {
     createLogger(): Record<string, any> {
-        const configTransportDefault = new DailyRotateFile({
+        const configTransportDefault: DailyRotateFile = new DailyRotateFile({
             filename: `./logs/${LoggerName}/default/%DATE%.log`,
             datePattern: 'YYYY-MM-DD',
             zippedArchive: true,
@@ -23,7 +23,7 @@ export class LoggerService {
             maxFiles: LoggerMaxFiles
         });
 
-        const configTransportError = new DailyRotateFile({
+        const configTransportError: DailyRotateFile = new DailyRotateFile({
             filename: `./logs/${LoggerName}/error/%DATE%.log`,
             datePattern: 'YYYY-MM-DD',
             zippedArchive: true,

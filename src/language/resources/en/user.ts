@@ -16,8 +16,8 @@ export default {
     },
     error: {
         notFound: 'User not found.',
+        userExist: 'User exist.',
         mobileNumberExist: 'Mobile number used.',
         emailExist: 'Email used.',
-        userExist: 'User exist.'
     }
 };

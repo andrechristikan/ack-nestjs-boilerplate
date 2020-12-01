@@ -1,10 +1,11 @@
 import {
     IsString,
+    IsEmail,
     IsNotEmpty,
 } from 'class-validator';
 
 export class AuthLoginValidation {
-    @IsString()
+    @IsEmail()
     @IsNotEmpty()
     email: string;
 

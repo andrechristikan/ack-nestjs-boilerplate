@@ -1,9 +1,9 @@
 import { Injectable, Scope } from '@nestjs/common';
 import { ConfigService } from 'config/config.service';
-import { Languages } from 'language/language.constant';
+import Languages from 'language/language.constant';
 import { Config } from 'config/config.decorator';
 
-@Injectable({ scope: Scope.DEFAULT })
+@Injectable()
 export class LanguageService {
     private readonly languages: Record<string, any> = Languages;
 

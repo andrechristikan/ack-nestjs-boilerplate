@@ -1,8 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
 import { AppService } from 'app/app.service';
-import { ResponseService } from 'middleware/response/response.service';
-import { IApiResponseSuccess } from 'middleware/response/response.interface';
-import { Response } from 'middleware/response/response.decorator';
+import { ResponseService } from 'response/response.service';
+import { IApiSuccessResponse } from 'response/response.interface';
+import { Response } from 'response/response.decorator';
+import { SystemSuccessStatusCode } from 'response/response.constant';
 
 @Controller('/api/test')
 export class AppController {
@@ -12,8 +13,8 @@ export class AppController {
     ) {}
 
     @Get('/')
-    getHello(): IApiResponseSuccess {
+    getHello(): IApiSuccessResponse {
         const message: string = this.appService.getHello();
-        return this.responseService.success(200, message);
+        return this.responseService.success(SystemSuccessStatusCode.OK, { message });
     }
 }

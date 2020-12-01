@@ -20,9 +20,13 @@ export class LoggerMiddleware implements NestMiddleware {
         LoggerMiddleware.token('req-body', (req: Request) => {
             return JSON.stringify(req.body);
         });
-
+        
         LoggerMiddleware.token('res-body', (req: Request, res: any) => {
             return res.body;
+        });
+
+        morgan.token('req-headers', (req: Request) => {
+            return JSON.stringify(req.headers);
         });
 
         LoggerMiddleware.format = format;

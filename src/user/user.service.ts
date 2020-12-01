@@ -1,34 +1,33 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Schema as SchemaMongoose } from 'mongoose';
+import { Model } from 'mongoose';
 
 import { User } from 'user/user.schema';
-import { Country } from 'country/country.schema';
 import {
     IUserStore,
     IUserUpdate,
     IUserSearch,
-    IUserSearchCollection
+    IUserSearchFind
 } from 'user/user.interface';
-import { WordArray, HmacSHA512, enc, lib } from 'crypto-js';
-import { PASSWORD_SALT_LENGTH } from 'auth/auth.constant'; 
+
+import { Helper } from 'helper/helper.decorator';
+import { HelperService } from 'helper/helper.service';
 
 @Injectable()
 export class UserService {
     constructor(
+        @Helper() private helperService: HelperService,
         @InjectModel('user') private userModel: Model<User>,
-        @InjectModel('country') private readonly countryModel: Model<Country>,
     ) {}
 
     async getAll(
         skip: number,
         limit: number,
-        search?: IUserSearchCollection
+        find?: Record<string, any>
     ): Promise<User[]> {
         return this.userModel
-            .find(search)
+            .find(find)
             .select('-password')
-            .populate('country', '-countryName -_id', this.countryModel)
             .skip(skip)
             .limit(limit)
             .exec();
@@ -37,17 +36,13 @@ export class UserService {
     async getOneById(id: string): Promise<User> {
         return this.userModel
             .findById(id)
-            .populate('country', '-countryName -_id', this.countryModel)
             .exec();
     }
 
     async getOneByEmail(email: string): Promise<User> {
         return this.userModel
             .findOne({
-                email: {
-                    $regex: `.*${email}.*`,
-                    $options: 'i'
-                }
+                email: email
             })
             .exec();
     }
@@ -61,7 +56,7 @@ export class UserService {
     }
 
     async store(data: IUserStore): Promise<User> {
-        const { password, salt } = await this.hashPassword(
+        const { password, salt } = await this.helperService.hashPassword(
             data.password
         );
         const user: User = new this.userModel(data);
@@ -84,8 +79,8 @@ export class UserService {
         return user.save();
     }
 
-    async search(data: IUserSearch): Promise<IUserSearchCollection> {
-        const search: IUserSearchCollection = {};
+    async search(data: IUserSearch): Promise<IUserSearchFind> {
+        const search: IUserSearchFind = {};
         if (data.firstName) {
             search.firstName = {
                 $regex: `.*${data.firstName}.*`,
@@ -101,18 +96,8 @@ export class UserService {
         if (data.email) {
             search.email = { $regex: `.*${data.email}.*`, $options: 'i' };
         }
-        if (data.country) {
-            search.country = new SchemaMongoose.Types.ObjectId(data.country);
-        }
         return search;
     }
 
-    async hashPassword(passwordString: string): Promise<Record<string, any>> {
-        return new Promise(resolve => {
-            const salt: string = lib.WordArray.random(PASSWORD_SALT_LENGTH).toString();
-            const passwordHashed: WordArray = HmacSHA512(passwordString, salt);
-            const password: string = passwordHashed.toString(enc.Base64);
-            resolve({ password, salt });
-        });
-    }
+    
 }

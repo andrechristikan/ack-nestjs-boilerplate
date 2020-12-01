@@ -16,7 +16,7 @@ export class DatabaseService implements MongooseOptionsFactory {
     ) {}
 
     createMongooseOptions(): MongooseModuleOptions {
-        let uri = `mongodb://`;
+        let uri: string = `mongodb://`;
         if (
             this.configService.getEnv('DB_USER') &&
             this.configService.getEnv('DB_PASSWORD')

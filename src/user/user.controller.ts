@@ -1,4 +1,4 @@
-import {
+ import {
     Controller,
     Param,
     Get,
@@ -9,37 +9,36 @@ import {
     Query,
     DefaultValuePipe,
     ParseIntPipe,
-    UseGuards 
+    UseGuards, 
+    BadRequestException
 } from '@nestjs/common';
 import { UserService } from 'user/user.service';
-import { ErrorService } from 'error/error.service';
-import { SystemErrorStatusCode } from 'error/error.constant';
 import { User } from 'user/user.schema';
 import {
     IUserStore,
     IUserUpdate,
     IUserSearch,
-    IUserSearchCollection
+    IUserSearchFind
 } from 'user/user.interface';
-import { ResponseService } from 'middleware/response/response.service';
-import { IApiResponseSuccess } from 'middleware/response/response.interface';
-import { IApiError } from 'error/error.interface';
-import { LanguageService } from 'language/language.service';
-import { Language } from 'language/language.decorator';
-import { Response } from 'middleware/response/response.decorator';
-import { Error } from 'error/error.decorator';
-import { RequestValidationPipe } from 'pipe/request-validation.pipe';
-import { UserSearchValidation } from 'user/validation/user.search.validation';
-import { UserStoreValidation } from 'user/validation/user.store.validation';
-import { UserUpdateValidation } from 'user/validation/user.update.validation';
 import { JwtGuard } from 'auth/guard/jwt.guard';
+import { Response } from 'response/response.decorator';
+import { ResponseService } from 'response/response.service';
+import { IApiSuccessResponse, IApiErrorResponse, IApiErrorMessage, IApiErrors } from 'response/response.interface';
+import { SystemSuccessStatusCode, SystemErrorStatusCode } from 'response/response.constant';
+import { Helper } from 'helper/helper.decorator';
+import { HelperService } from 'helper/helper.service';
+import { Config } from 'config/config.decorator';
+import { ConfigService } from 'config/config.service';
+import { Logger as LoggerService } from 'winston';
+import { Logger } from 'middleware/logger/logger.decorator';
 
 @Controller('api/user')
 export class UserController {
     constructor(
-        @Error() private readonly errorService: ErrorService,
         @Response() private readonly responseService: ResponseService,
-        @Language() private readonly languageService: LanguageService,
+        @Helper() private readonly helperService: HelperService,
+        @Config() private readonly configService: ConfigService,
+        @Logger() private readonly logger: LoggerService,
         private readonly userService: UserService
     ) {}
 
@@ -47,35 +46,34 @@ export class UserController {
     async getAll(
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-        @Query(RequestValidationPipe(UserSearchValidation)) data: IUserSearch
-    ): Promise<IApiResponseSuccess> {
-        const { skip } = this.responseService.pagination(page, limit);
+        // @Query(RequestValidationPipe(UserSearchValidation)) data: IUserSearch
+        @Query() data: IUserSearch
+    ): Promise<IApiSuccessResponse> {
+        const { skip } = this.helperService.pagination(page, limit);
 
-        const search: IUserSearchCollection = await this.userService.search(
+        const search: IUserSearchFind = await this.userService.search(
             data
         );
         const user: User[] = await this.userService.getAll(skip, limit, search);
         return this.responseService.success(
-            200,
-            this.languageService.get('user.getAll.success'),
+            SystemSuccessStatusCode.OK,
             user
         );
     }
 
     @Get('/:id')
-    async getOneById(@Param('id') id: string): Promise<IApiResponseSuccess> {
+    async getOneById(@Param('id') id: string): Promise<IApiSuccessResponse> {
         const checkUser: User = await this.userService.getOneById(id);
         if (!checkUser) {
-            const res: IApiError = this.errorService.setErrorMessage(
+            const response: IApiErrorResponse = this.responseService.error(
                 SystemErrorStatusCode.USER_NOT_FOUND
             );
-            return this.responseService.error(res);
+            throw new BadRequestException(response);
         }
 
         const { password, salt, ...user } = checkUser.toJSON();
         return this.responseService.success(
-            200,
-            this.languageService.get('user.getById.success'),
+            SystemSuccessStatusCode.OK,
             user
         );
     }
@@ -83,8 +81,9 @@ export class UserController {
     // @UseGuards(JwtGuard)
     @Post('/store')
     async store(
-        @Body(RequestValidationPipe(UserStoreValidation)) data: IUserStore
-    ): Promise<IApiResponseSuccess> {
+        // @Body(RequestValidationPipe(UserStoreValidation)) data: IUserStore
+        @Body() data: IUserStore
+    ): Promise<IApiSuccessResponse> {
         const existEmail: Promise<User> = this.userService.getOneByEmail(
             data.email
         );
@@ -94,7 +93,7 @@ export class UserController {
 
         return Promise.all([existEmail, existMobileNumber])
             .then(async ([userExistEmail, userExistMobileNumber]) => {
-                const errors: IApiError[] = [];
+                const errors: IApiErrors[] = [];
                 if (userExistEmail) {
                     errors.push({
                         statusCode: SystemErrorStatusCode.USER_EMAIL_EXIST,
@@ -103,18 +102,19 @@ export class UserController {
                 }
                 if (userExistMobileNumber) {
                     errors.push({
-                        statusCode:
-                            SystemErrorStatusCode.USER_MOBILE_NUMBER_EXIST,
+                        statusCode: SystemErrorStatusCode.USER_MOBILE_NUMBER_EXIST,
                         property: 'mobileNumber'
                     });
                 }
 
                 if (errors.length > 0) {
-                    const res: IApiError = this.errorService.setErrorMessage(
-                        SystemErrorStatusCode.USER_EXIST,
-                        errors
+                    const message: IApiErrorMessage[] = this.responseService.setErrorMessage(errors);
+                    const response: IApiErrorResponse = this.responseService.error(
+                        SystemErrorStatusCode.REQUEST_ERROR,
+                        message
                     );
-                    return this.responseService.error(res);
+
+                    throw response;
                 }
 
                 try {
@@ -123,38 +123,40 @@ export class UserController {
                     ).toJSON();
 
                     return this.responseService.success(
-                        201,
-                        this.languageService.get('user.store.success'),
+                        SystemSuccessStatusCode.OK,
                         user
                     );
-                } catch (e) {
-                    return this.responseService.error(
-                        this.errorService.setErrorMessage(
-                            SystemErrorStatusCode.GENERAL_ERROR
-                        )
+                } catch ( errCreate ) {
+                    const response: IApiErrorResponse = this.responseService.error(
+                        SystemErrorStatusCode.GENERAL_ERROR
                     );
+                    throw response;
                 }
             })
-            .catch(err => {
-                throw err;
+            .catch( (err) => {
+                if(this.configService.getEnv('APP_DEBUG')){
+                    this.logger.error('Error', err);
+                }
+
+                throw new BadRequestException(err);
             });
     }
 
     @UseGuards(JwtGuard)
     @Delete('/destroy/:id')
-    async destroy(@Param('id') id: string): Promise<IApiResponseSuccess> {
+    async destroy(@Param('id') id: string): Promise<IApiSuccessResponse> {
         const user: User = await this.userService.getOneById(id);
         if (!user) {
-            const res: IApiError = this.errorService.setErrorMessage(
+            const response: IApiErrorResponse = this.responseService.error(
                 SystemErrorStatusCode.USER_NOT_FOUND
             );
-            return this.responseService.error(res);
+            throw new BadRequestException(response);
         }
 
         await this.userService.destroy(id);
         return this.responseService.success(
-            200,
-            this.languageService.get('user.destroy.success')
+            SystemSuccessStatusCode.OK,
+            user
         );
     }
 
@@ -162,14 +164,15 @@ export class UserController {
     @Put('/update/:id')
     async update(
         @Param('id') id: string,
-        @Body(RequestValidationPipe(UserUpdateValidation)) data: IUserUpdate
-    ): Promise<IApiResponseSuccess> {
+        // @Body(RequestValidationPipe(UserUpdateValidation)) data: IUserUpdate
+        @Body() data: IUserUpdate
+    ): Promise<IApiSuccessResponse> {
         const checkUser: User = await this.userService.getOneById(id);
         if (!checkUser) {
-            const res: IApiError = this.errorService.setErrorMessage(
+            const response: IApiErrorResponse = this.responseService.error(
                 SystemErrorStatusCode.USER_NOT_FOUND
             );
-            return this.responseService.error(res);
+            throw new BadRequestException(response);
         }
 
         try {
@@ -178,14 +181,18 @@ export class UserController {
             ).toJSON();
 
             return this.responseService.success(
-                200,
-                this.languageService.get('user.update.success'),
+                SystemSuccessStatusCode.OK,
                 user
             );
-        } catch (e) {
-            return this.responseService.error(
-                this.errorService.setErrorMessage(SystemErrorStatusCode.GENERAL_ERROR)
+        } catch (err) {
+            if(this.configService.getEnv('APP_DEBUG')){
+                this.logger.error('Error', err);
+            }
+
+            const response: IApiErrorResponse = this.responseService.error(
+                SystemErrorStatusCode.GENERAL_ERROR
             );
+            throw new BadRequestException(response);
         }
     }
 }

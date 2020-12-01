@@ -1,9 +1,9 @@
 import { Inject } from '@nestjs/common';
 
-export function Error(): (
+export function Helper(): (
     target: Record<string, any>,
     key: string | symbol,
     index?: number
 ) => void {
-    return Inject(`ErrorService`);
+    return Inject(`HelperService`);
 }

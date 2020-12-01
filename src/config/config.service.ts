@@ -1,7 +1,7 @@
 import { Injectable, Scope } from '@nestjs/common';
 import * as dotenv from 'dotenv';
 
-@Injectable({ scope: Scope.DEFAULT })
+@Injectable()
 export class ConfigService {
     private readonly env: Record<string, any>;
 

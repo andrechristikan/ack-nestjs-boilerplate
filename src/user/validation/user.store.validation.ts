@@ -4,7 +4,8 @@ import {
     IsNotEmpty,
     IsEmail,
     MaxLength,
-    MinLength
+    MinLength,
+    IsMobilePhone
 } from 'class-validator';
 
 export class UserStoreValidation {
@@ -12,10 +13,9 @@ export class UserStoreValidation {
     @IsNotEmpty()
     country: string;
 
-    @IsString()
+    @IsEmail()
     @IsNotEmpty()
     @IsLowercase()
-    @IsEmail()
     email: string;
 
     @IsString()
@@ -28,7 +28,7 @@ export class UserStoreValidation {
     @IsLowercase()
     lastName: string;
 
-    @IsString()
+    @IsMobilePhone('id-ID')
     @IsNotEmpty()
     @MaxLength(13)
     @MinLength(10)
@@ -38,3 +38,4 @@ export class UserStoreValidation {
     @IsNotEmpty()
     password: string;
 }
+
