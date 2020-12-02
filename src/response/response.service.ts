@@ -55,6 +55,23 @@ export class ResponseService {
         return newError;
     }
 
+    setRequestErrorMessage(
+        rawErrors: Record<string, any>[]
+    ): IApiErrorMessage[] {
+        const errors: IApiErrorMessage[] = rawErrors.map(value => {
+            for (const [i, k] of Object.entries(value.constraints)) {
+                return {
+                    property: value.property,
+                    message: this.languageService
+                        .get(`request.${i}`)
+                        .replace('$property', value.property)
+                        .replace('$value', value.value)
+                };
+            }
+        });
+        return errors;
+    }
+
     error(
         statusCode: SystemErrorStatusCode,
         errors?: IApiErrorMessage[]
@@ -69,6 +86,7 @@ export class ResponseService {
         if (this.configService.getEnv('APP_DEBUG')) {
             this.logger.error('Error', response);
         }
+
         return response;
     }
 
@@ -96,28 +114,4 @@ export class ResponseService {
 
         return response;
     }
-
-    // setRequestErrorMessage(errors: Record<string, any>[]): IApiError {
-    //     const responseApiError: Record<string, any>[] = [];
-    //     if (this.configService.getEnv('APP_DEBUG')) {
-    //         console.log('errors', errors);
-    //     }
-    //     for (const i of errors) {
-    //         for (const [j, k] of Object.entries(i.constraints)) {
-    //             responseApiError.push({
-    //                 property: i.property,
-    //                 message: this.languageService
-    //                     .get(`request.${j}`)
-    //                     .replace('$property', i.property)
-    //                     .replace('$value', i.value)
-    //             });
-    //         }
-    //     }
-    //     return {
-    //         statusCode: SystemErrorStatusCode.REQUEST_ERROR,
-    //         httpCode: HttpErrorStatusCode.BAD_REQUEST,
-    //         message: this.languageService.get('request.default'),
-    //         errors: responseApiError
-    //     };
-    // }
 }

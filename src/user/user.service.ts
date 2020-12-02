@@ -4,7 +4,7 @@ import { Model } from 'mongoose';
 
 import { User } from 'user/user.schema';
 import {
-    IUserStore,
+    IUserCreate,
     IUserUpdate,
     IUserSearch,
     IUserSearchFind
@@ -53,7 +53,7 @@ export class UserService {
             .exec();
     }
 
-    async store(data: IUserStore): Promise<User> {
+    async create(data: IUserCreate): Promise<User> {
         const { password, salt } = await this.helperService.hashPassword(
             data.password
         );
@@ -66,7 +66,7 @@ export class UserService {
         return user.save();
     }
 
-    async destroy(id: string): Promise<User> {
+    async delete(id: string): Promise<User> {
         return this.userModel.findByIdAndDelete(id).exec();
     }
 

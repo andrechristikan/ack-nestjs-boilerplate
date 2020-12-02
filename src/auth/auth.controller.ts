@@ -23,7 +23,7 @@ export class AuthController {
     ) {}
 
     @Post('/login')
-    async store(
+    async login(
         // @Body(RequestValidationPipe(AuthLoginValidation)) data: ILogin
         @Body() data: ILogin
     ): Promise<IApiSuccessResponse> {
@@ -45,9 +45,12 @@ export class AuthController {
         };
 
         const accessToken = await this.authService.createAccessToken(payload);
-        return this.responseService.success(SystemSuccessStatusCode.OK, {
-            ...payload,
-            accessToken
-        });
+        return this.responseService.success(
+            SystemSuccessStatusCode.LOGIN, 
+            {
+                ...payload,
+                accessToken
+            }
+        );
     }
 }

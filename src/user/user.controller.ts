@@ -15,7 +15,7 @@ import {
 import { UserService } from 'user/user.service';
 import { User } from 'user/user.schema';
 import {
-    IUserStore,
+    IUserCreate,
     IUserUpdate,
     IUserSearch,
     IUserSearchFind
@@ -39,6 +39,8 @@ import { Config } from 'config/config.decorator';
 import { ConfigService } from 'config/config.service';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'middleware/logger/logger.decorator';
+import { RequestValidationPipe } from 'pipe/request-validation.pipe';
+import { UserCreateValidation } from 'user/validation/user.store.validation';
 
 @Controller('api/user')
 export class UserController {
@@ -61,7 +63,10 @@ export class UserController {
 
         const search: IUserSearchFind = await this.userService.search(data);
         const user: User[] = await this.userService.getAll(skip, limit, search);
-        return this.responseService.success(SystemSuccessStatusCode.OK, user);
+        return this.responseService.success(
+            SystemSuccessStatusCode.USER_GET,
+            user
+        );
     }
 
     @Get('/:id')
@@ -75,14 +80,17 @@ export class UserController {
         }
 
         const { password, salt, ...user } = checkUser.toJSON();
-        return this.responseService.success(SystemSuccessStatusCode.OK, user);
+        return this.responseService.success(
+            SystemSuccessStatusCode.USER_GET,
+            user
+        );
     }
 
     // @UseGuards(JwtGuard)
-    @Post('/store')
-    async store(
-        // @Body(RequestValidationPipe(UserStoreValidation)) data: IUserStore
-        @Body() data: IUserStore
+    @Post('/create')
+    async create(
+        @Body(RequestValidationPipe(UserCreateValidation)) data: IUserCreate
+        // @Body() data: IUserCreate
     ): Promise<IApiSuccessResponse> {
         const existEmail: Promise<User> = this.userService.getOneByEmail(
             data.email
@@ -122,11 +130,11 @@ export class UserController {
 
                 try {
                     const { password, salt, ...user }: User = (
-                        await this.userService.store(data)
+                        await this.userService.create(data)
                     ).toJSON();
 
                     return this.responseService.success(
-                        SystemSuccessStatusCode.OK,
+                        SystemSuccessStatusCode.USER_CREATE,
                         user
                     );
                 } catch (errCreate) {
@@ -146,8 +154,8 @@ export class UserController {
     }
 
     @UseGuards(JwtGuard)
-    @Delete('/destroy/:id')
-    async destroy(@Param('id') id: string): Promise<IApiSuccessResponse> {
+    @Delete('/delete/:id')
+    async delete(@Param('id') id: string): Promise<IApiSuccessResponse> {
         const user: User = await this.userService.getOneById(id);
         if (!user) {
             const response: IApiErrorResponse = this.responseService.error(
@@ -156,8 +164,11 @@ export class UserController {
             throw new BadRequestException(response);
         }
 
-        await this.userService.destroy(id);
-        return this.responseService.success(SystemSuccessStatusCode.OK, user);
+        await this.userService.delete(id);
+        return this.responseService.success(
+            SystemSuccessStatusCode.USER_DELETE,
+            user
+        );
     }
 
     @UseGuards(JwtGuard)
@@ -181,7 +192,7 @@ export class UserController {
             ).toJSON();
 
             return this.responseService.success(
-                SystemSuccessStatusCode.OK,
+                SystemSuccessStatusCode.USER_UPDATE,
                 user
             );
         } catch (err) {

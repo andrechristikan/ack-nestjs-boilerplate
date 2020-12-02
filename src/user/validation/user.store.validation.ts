@@ -8,11 +8,7 @@ import {
     IsMobilePhone
 } from 'class-validator';
 
-export class UserStoreValidation {
-    @IsString()
-    @IsNotEmpty()
-    country: string;
-
+export class UserCreateValidation {
     @IsEmail()
     @IsNotEmpty()
     @IsLowercase()
@@ -28,7 +24,7 @@ export class UserStoreValidation {
     @IsLowercase()
     lastName: string;
 
-    @IsMobilePhone('id-ID')
+    @IsString()
     @IsNotEmpty()
     @MaxLength(13)
     @MinLength(10)

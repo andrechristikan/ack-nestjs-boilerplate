@@ -1,24 +1,36 @@
 export enum SystemSuccessStatusCode {
-    OK = 2000,
-    CREATED = 2001
+    // ? FORM SUCCESS
+    // ! AUTH SUCCESS
+    LOGIN = 1001,
+
+    // ! USER SUCCESS
+    USER_GET = 1101,
+    USER_CREATE = 1102,
+    USER_UPDATE = 1103,
+    USER_DELETE = 1104,
+
+    // ? GENERAL SUCCESS
+    OK = 10000,
+    CREATED = 10001,
+
 }
 
 export enum SystemErrorStatusCode {
     // ? FORM ERROR
+    // ! USER ERROR
+    USER_NOT_FOUND = 5100,
+    USER_EXIST = 5101,
+    USER_MOBILE_NUMBER_EXIST = 5102,
+    USER_EMAIL_EXIST = 5103,
 
-    // ! USER
-    USER_NOT_FOUND = 3100,
-    USER_EXIST = 3101,
-    USER_MOBILE_NUMBER_EXIST = 3102,
-    USER_EMAIL_EXIST = 3103,
-
-    // ? FATAL ERROR
-    GENERAL_ERROR = 10000,
-    REQUEST_ERROR = 10001,
-    UNAUTHORIZED_ERROR = 10002
+    // ? GENERAL ERROR
+    GENERAL_ERROR = 50000,
+    REQUEST_ERROR = 50001,
+    UNAUTHORIZED_ERROR = 50002
 }
 
 export const ResponseMessage = [
+    // ? GENERAL SUCCESS
     {
         statusCode: 'OK',
         message: 'system.default'
@@ -27,6 +39,8 @@ export const ResponseMessage = [
         statusCode: 'CREATED',
         message: 'system.create'
     },
+
+    // ? GENERAL ERROR
     {
         statusCode: 'GENERAL_ERROR',
         message: 'system.error.internalServerError'
@@ -40,7 +54,32 @@ export const ResponseMessage = [
         message: 'system.error.unauthorized'
     },
 
-    // User
+    // ? FORM ERROR
+    // ! AUTH SUCCESS
+    {
+        statusCode: 'LOGIN',
+        message: 'auth.login.success'
+    },
+
+
+    // ! USER SUCCESS
+    {
+        statusCode: 'USER_GET',
+        message: 'user.get.success'
+    },
+    {
+        statusCode: 'USER_CREATE',
+        message: 'user.create.success'
+    },
+    {
+        statusCode: 'USER_UPDATE',
+        message: 'user.update.success'
+    },
+    {
+        statusCode: 'USER_DELETE',
+        message: 'user.delete.success'
+    },
+    // ! USER ERROR
     {
         statusCode: 'USER_NOT_FOUND',
         message: 'user.error.notFound'

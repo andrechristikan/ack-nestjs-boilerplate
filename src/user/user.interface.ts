@@ -1,4 +1,4 @@
-export interface IUserStore {
+export interface IUserCreate {
     country: string;
     email: string;
     firstName: string;

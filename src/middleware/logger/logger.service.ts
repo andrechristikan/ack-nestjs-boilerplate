@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import * as DailyRotateFile from 'winston-daily-rotate-file';
 import { createStream } from 'rotating-file-stream';
 import * as winston from 'winston';
+import * as moment from 'moment';
 import {
     LoggerMaxSize,
     LoggerMaxFiles,
@@ -35,7 +36,7 @@ export class LoggerService {
         const loggerOptions: Record<string, any> = {
             format: winston.format.combine(
                 winston.format.timestamp(),
-                winston.format.prettyPrint()
+                winston.format.prettyPrint(),
             ),
             transports: [
                 configTransportError,
@@ -47,8 +48,9 @@ export class LoggerService {
     }
 
     static httpLogger(): Record<string, any> {
+        const date: string = moment().format('YYYY-MM-DD');
         const HttpLoggerOptions: Record<string, any> = {
-            stream: createStream(`access.log`, {
+            stream: createStream(`${date}.log`, {
                 path: `./logs/${HttpLoggerName}/`,
                 size: HttpLoggerSize,
                 maxSize: HttpLoggerMaxSize,

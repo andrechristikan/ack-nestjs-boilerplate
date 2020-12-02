@@ -1,18 +1,15 @@
 export default {
-    destroy: {
-        success: 'Destroy User Success.'
+    delete: {
+        success: 'Delete User Success.'
     },
-    getAll: {
+    get: {
         success: 'GetAll User Success.'
     },
-    getById: {
-        success: 'Get User Success.'
+    create: {
+        success: 'Create User Success.'
     },
     update: {
         success: 'Update User Success.'
-    },
-    store: {
-        success: 'Store User Success.'
     },
     error: {
         notFound: 'User not found.',
