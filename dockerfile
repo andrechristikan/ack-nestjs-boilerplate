@@ -3,11 +3,10 @@ LABEL maintainer "andrechristikan@gmail.com"
 
 WORKDIR /app
 
-COPY package.json ./app/
+COPY package.json .
 RUN set -x && yarn
-
-COPY . ./app/
+COPY . .
 
 EXPOSE 3000
 
-CMD [ "yarn", "start:dev" ]
+CMD [ "yarn", "run", "start:dev" ]

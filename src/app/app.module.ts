@@ -36,10 +36,11 @@ import { AuthModule } from 'auth/auth.module';
                 loggerService.createLogger()
         }),
         MongooseModule.forRootAsync({
-            imports: [DatabaseModule],
             inject: [DatabaseService],
-            useFactory: (databaseService: DatabaseService) =>
-                databaseService.createMongooseOptions()
+            imports: [DatabaseModule],
+            useFactory: (databaseService: DatabaseService) => {
+                return databaseService.createMongooseOptions();
+            }
         }),
         LanguageModule,
         LoggerModule,

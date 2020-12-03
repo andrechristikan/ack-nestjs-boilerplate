@@ -7,6 +7,7 @@ import { Config } from 'config/config.decorator';
 import { ConfigService } from 'config/config.service';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'middleware/logger/logger.decorator';
+import * as mongoose from 'mongoose';
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class DatabaseService implements MongooseOptionsFactory {
@@ -30,10 +31,12 @@ export class DatabaseService implements MongooseOptionsFactory {
             'DB_HOST'
         )}/${this.configService.getEnv('DB_NAME')}`;
 
-        if (this.configService.getEnv('APP_DEBUG')) {
-            this.logger.info(`Database running on ${uri}`);
-        }
-
+        mongoose.set(
+            'debug',
+            this.configService.getEnv('APP_DEBUG').toLowerCase() === 'true'
+                ? true
+                : false
+        );
         return {
             uri,
             useNewUrlParser: true,

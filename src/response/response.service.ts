@@ -83,10 +83,7 @@ export class ResponseService {
             errors
         };
 
-        if (this.configService.getEnv('APP_DEBUG')) {
-            this.logger.error('Error', response);
-        }
-
+        this.logger.error('Error', response);
         return response;
     }
 
@@ -101,17 +98,12 @@ export class ResponseService {
             data
         };
 
-        if (this.configService.getEnv('APP_DEBUG')) {
-            this.logger.info('Success', response);
-        }
+        this.logger.info('Success', response);
         return response;
     }
 
     raw(response: Record<string, any>): Record<string, any> {
-        if (this.configService.getEnv('APP_DEBUG')) {
-            this.logger.info('Raw', response);
-        }
-
+        this.logger.info('Raw', response);
         return response;
     }
 }

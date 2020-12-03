@@ -12,7 +12,7 @@ export class LanguageService {
     get(key: string): string {
         const keys: string[] = key.split('.');
         let selectedLanguage: Record<string, any> | string = this.languages[
-            this.configService.getEnv('APP_LANGUAGE')
+            this.configService.getEnv('APP_LANGUAGE') || 'en'
         ];
 
         for (const i of keys) {
@@ -25,7 +25,7 @@ export class LanguageService {
     getAll(key: string): Record<string, any> {
         const keys: string[] = key.split('.');
         let selectedLanguage: Record<string, any> | string = this.languages[
-            this.configService.getEnv('APP_LANGUAGE')
+            this.configService.getEnv('APP_LANGUAGE') || 'en'
         ];
 
         for (const [i, v] of keys.entries()) {

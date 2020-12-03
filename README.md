@@ -42,43 +42,14 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-Effortless. Lazy. Reuseable. That the motto for this boilerplate. There are many great Boilerplate NestJs for Restful API available on GitHub, however, I didn't find one that really suit my needs so I created this enhanced one. I want to create a Boilerplate NestJs that it'll be the last one you ever need.
+Effortless. Lazy. Reuseable. That the motto for this boilerplate. <br>
+I want to create a Boilerplate NestJs that base on components.
 
-Here's why:
-
-    [x] MongoDB as The Database
-    [x] Environment File
-    [x] Support for Multi language
-    [x] Request Validation with Class Validation Package
-    [x] Pagination on Server Side
-    [x] HmacSHA512 as Password Encryption with Crypto Package
-    [x] JWT as Authorization with JsonWebToken
-    [ ] Blacklist JWT Token
-    [x] Handle Errors Centrally and Easily for Maintenance Our Error Code 
-    [x] Logger in File (day by day) with Winston
-    [x] Logger Http Request in File (day by day) with Morgan
-    [x] EsLint as Linter
-    [x] Prettier as Formatter
-    [ ] User Settings on Database
-    [ ] Master Setting on Database
-    [ ] Database Migration
-    [ ] Docker
-    [x] CRUD Example
-
-Of course, no one boilerplate will serve all projects since your needs may be different. So I'll be adding more in the near future. You may also suggest changes by forking this repo and creating a pull request or opening an issue.
-
-A list of commonly used resources that I find helpful are listed in the acknowledgements.
-
-### Built With
+### Stack Spec
 This section should list any major package usage for this boilerplate
 * [NestJs](https://nestjs.com) - Common Framework.
 * [Mongoose](https://github.com/nestjs/mongoose) - Package for integrating with the MongoDB database.
-* [Crypto](https://github.com/brix/crypto-js) - Password Hash Package.
-* [Class Validator](https://github.com/typestack/class-validator#readme) - Request Validation Package
-* [JWT](https://github.com/nestjs/jwt) - Authentication Package.
-* [Winston](https://github.com/gremo/nest-winston) - Logger Package.
-* [Morgan](https://github.com/expressjs/morgan) - HTTP Logger Package
-* [Passport](https://github.com/jaredhanson/passport) - Authentication Package.
+* [JsonWebToken](https://github.com/nestjs/jwt) - Authentication Package.
 
 
 <!-- GETTING STARTED -->
@@ -89,11 +60,12 @@ Folder structure will be like
 ```
 	ac.k
 	├── .dockerignore
-	├── .env.example // Env File Example
+	├── .env.example
 	├── .eslintignore
 	├── .eslintrc
 	├── .gitignore
 	├── .prettierrc 
+	├── cspell.json
 	├── docker-compose.yml 
 	├── dockerfile 
 	├── LICENSE.md
@@ -102,18 +74,16 @@ Folder structure will be like
 	├── README.md
 	├── tsconfig.build.json
 	├── tsconfig.build
-	└── src // Source App
+	└── src
 		├── app
 		├── auth
-		├── body-parser
 		├── config
-		├── country
 		├── database
-		├── error
+		├── helper
 		├── language
-		├── logger
 		├── middleware
 		├── pipe
+		├── response
 		├── user
 		└── main.ts
 		 
@@ -123,10 +93,12 @@ Folder structure will be like
 
 Before start, we need to closing knowledge gaps and install some application (like Database, Package Manager, etc) 
 * [MongoDB](#acknowledgements)
-* [Yarn](#acknowledgements)
-* [NodeJs](#acknowledgements)
+* [Mongoose](#acknowledgements)
 * [NestJs](#acknowledgements)
 * [Typescript](#acknowledgements)
+* [JsonWebToken](#acknowledgements)
+* [Passport](#acknowledgements)
+* [ClassValidation](#acknowledgements)
 
 ### Installation
 
@@ -138,7 +110,7 @@ git clone https://github.com/andrechristikan/ac.k.git ac.k
 ```sh
 yarn
 ```
-3. Set our Environment . See example in file `.env.example`
+3. Set our Environment. See example in file `.env.example`
 4. Run app
 ```
 yarn start:dev
@@ -152,7 +124,39 @@ yarn start:dev
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+#### Env File
+This env will be help you to setting this project.
+```
+# APP
+APP_ENV=development
+APP_URL=localhost
+APP_PORT=3000
+APP_LANGUAGE=en
+APP_DEBUG=true
+
+# DATABASE
+DB_HOST=localhost:27017
+DB_NAME=ack
+DB_USER=
+DB_PASSWORD=
+```
+Explain: 
+- `APP_ENV` It's will help to maintenance for development and production environment. Default `development`.
+- `APP_URL` Project Url. Default `localhost`.
+- `APP_PORT` Project Port. Default `3000`.
+- `APP_LANGUAGE` This project also support for multiple languages, so this is setting for project language . Default `en`.
+- `APP_DEBUG` For debug purpose. Default `false`.
+- `DB_HOST` Database Url.
+- `DB_NAME` Database Name.
+- `DB_USER` Database User, let it blank if you don't set the user.
+- `DB_PASSWORD` Database Password, let it blank if you don't set the password.
+
+
+#### Languages
+Project support for multiple language. Default `en`. <br>
+If we want to add a language.
+
+
 
 _For more examples, please refer to the [Documentation](project-docs)_
 
@@ -193,12 +197,11 @@ Andre Christi Kan
 ## Acknowledgements
 * Framework and languages
   * [NestJs Documentation](https://docs.nestjs.com)
-  * [Express Documentation](https://expressjs.com/en/5x/api.html)
   * [TypeScript Documentation](https://www.typescriptlang.org/docs)
 * Database
   * [MongoDb Documentation](https://docs.mongodb.com/manual)
-* Common Package
   * [Mongoose Documentation](https://mongoosejs.com/docs/guide.html)
+* Authorization Package
   * [Crypto Documentation](https://cryptojs.gitbook.io/docs/)
   * [Passport Documentation](https://github.com/jaredhanson/passport)
   * [Class Validation Documentation](https://github.com/typestack/class-validator#readme) 
@@ -216,6 +219,7 @@ Andre Christi Kan
   * [NestJs Middleware Reference](https://github.com/wbhob/nest-middlewares)
   * [ReadMe Template](https://github.com/othneildrew/Best-README-Template)
 * Other
+  * [Class Validation Documentation](https://github.com/typestack/class-validator#readme) 
   * [Docker Documentation](https://docs.docker.com/)
 
 

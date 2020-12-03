@@ -2,3 +2,4 @@
 # build artefacts
 dist/*
 coverage/*
+node_modules/*

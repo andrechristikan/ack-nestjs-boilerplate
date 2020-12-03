@@ -10,7 +10,8 @@ import {
     DefaultValuePipe,
     ParseIntPipe,
     UseGuards,
-    BadRequestException
+    BadRequestException,
+    InternalServerErrorException
 } from '@nestjs/common';
 import { UserService } from 'user/user.service';
 import { User } from 'user/user.schema';
@@ -41,6 +42,8 @@ import { Logger as LoggerService } from 'winston';
 import { Logger } from 'middleware/logger/logger.decorator';
 import { RequestValidationPipe } from 'pipe/request-validation.pipe';
 import { UserCreateValidation } from 'user/validation/user.store.validation';
+import { UserSearchValidation } from 'user/validation/user.search.validation';
+import { UserUpdateValidation } from 'user/validation/user.update.validation';
 
 @Controller('api/user')
 export class UserController {
@@ -56,8 +59,7 @@ export class UserController {
     async getAll(
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-        // @Query(RequestValidationPipe(UserSearchValidation)) data: IUserSearch
-        @Query() data: IUserSearch
+        @Query(RequestValidationPipe(UserSearchValidation)) data: IUserSearch
     ): Promise<IApiSuccessResponse> {
         const { skip } = this.helperService.pagination(page, limit);
 
@@ -90,7 +92,6 @@ export class UserController {
     @Post('/create')
     async create(
         @Body(RequestValidationPipe(UserCreateValidation)) data: IUserCreate
-        // @Body() data: IUserCreate
     ): Promise<IApiSuccessResponse> {
         const existEmail: Promise<User> = this.userService.getOneByEmail(
             data.email
@@ -145,10 +146,6 @@ export class UserController {
                 }
             })
             .catch(err => {
-                if (this.configService.getEnv('APP_DEBUG')) {
-                    this.logger.error('Error', err);
-                }
-
                 throw new BadRequestException(err);
             });
     }
@@ -175,8 +172,7 @@ export class UserController {
     @Put('/update/:id')
     async update(
         @Param('id') id: string,
-        // @Body(RequestValidationPipe(UserUpdateValidation)) data: IUserUpdate
-        @Body() data: IUserUpdate
+        @Body(RequestValidationPipe(UserUpdateValidation)) data: IUserUpdate
     ): Promise<IApiSuccessResponse> {
         const checkUser: User = await this.userService.getOneById(id);
         if (!checkUser) {
@@ -196,14 +192,10 @@ export class UserController {
                 user
             );
         } catch (err) {
-            if (this.configService.getEnv('APP_DEBUG')) {
-                this.logger.error('Error', err);
-            }
-
             const response: IApiErrorResponse = this.responseService.error(
                 SystemErrorStatusCode.GENERAL_ERROR
             );
-            throw new BadRequestException(response);
+            throw new InternalServerErrorException(response);
         }
     }
 }

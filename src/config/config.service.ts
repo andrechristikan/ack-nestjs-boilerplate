@@ -3,18 +3,19 @@ import * as dotenv from 'dotenv';
 
 @Injectable()
 export class ConfigService {
-    private readonly env: Record<string, any>;
+    private readonly envs: Record<string, any>;
 
     constructor() {
         dotenv.config();
-        this.env = process.env as Record<string, any>;
+        this.envs = process.env as Record<string, any>;
     }
 
-    getEnv(key: string): string {
-        return this.env[key];
+    getEnv(key: string): string{
+        return this.envs[key];
     }
 
-    isEnv(env: string): boolean {
-        return this.env.APP_ENV === env;
+    isEnv(key: string): boolean {
+        const env = this.envs.APP_ENV || 'development';
+        return env === key;
     }
 }
