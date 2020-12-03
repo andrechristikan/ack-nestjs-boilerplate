@@ -7,12 +7,14 @@ import { ResponseService } from 'response/response.service';
 import { Response } from 'response/response.decorator';
 import {
     IApiSuccessResponse,
-    IApiErrorResponse,
+    IApiErrorResponse
 } from 'response/response.interface';
 import {
     SystemSuccessStatusCode,
     SystemErrorStatusCode
 } from 'response/response.constant';
+import { AuthLoginValidation } from 'auth/validation/auth.login.validation';
+import { RequestValidationPipe } from 'pipe/request-validation.pipe';
 
 @Controller('api/auth')
 export class AuthController {
@@ -24,8 +26,7 @@ export class AuthController {
 
     @Post('/login')
     async login(
-        // @Body(RequestValidationPipe(AuthLoginValidation)) data: ILogin
-        @Body() data: ILogin
+        @Body(RequestValidationPipe(AuthLoginValidation)) data: ILogin
     ): Promise<IApiSuccessResponse> {
         const checkUser: User = await this.userService.getOneByEmail(
             data.email
@@ -45,12 +46,9 @@ export class AuthController {
         };
 
         const accessToken = await this.authService.createAccessToken(payload);
-        return this.responseService.success(
-            SystemSuccessStatusCode.LOGIN, 
-            {
-                ...payload,
-                accessToken
-            }
-        );
+        return this.responseService.success(SystemSuccessStatusCode.LOGIN, {
+            ...payload,
+            accessToken
+        });
     }
 }

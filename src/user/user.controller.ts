@@ -36,10 +36,6 @@ import {
 } from 'response/response.constant';
 import { Helper } from 'helper/helper.decorator';
 import { HelperService } from 'helper/helper.service';
-import { Config } from 'config/config.decorator';
-import { ConfigService } from 'config/config.service';
-import { Logger as LoggerService } from 'winston';
-import { Logger } from 'middleware/logger/logger.decorator';
 import { RequestValidationPipe } from 'pipe/request-validation.pipe';
 import { UserCreateValidation } from 'user/validation/user.store.validation';
 import { UserSearchValidation } from 'user/validation/user.search.validation';
@@ -50,8 +46,6 @@ export class UserController {
     constructor(
         @Response() private readonly responseService: ResponseService,
         @Helper() private readonly helperService: HelperService,
-        @Config() private readonly configService: ConfigService,
-        @Logger() private readonly logger: LoggerService,
         private readonly userService: UserService
     ) {}
 
@@ -88,7 +82,7 @@ export class UserController {
         );
     }
 
-    // @UseGuards(JwtGuard)
+    @UseGuards(JwtGuard)
     @Post('/create')
     async create(
         @Body(RequestValidationPipe(UserCreateValidation)) data: IUserCreate

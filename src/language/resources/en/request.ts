@@ -1,3 +1,5 @@
+// $value
+// $property
 export default {
     default: 'Validation errors',
     maxLength: '$property has more elements than the maximum allowed.',

@@ -154,11 +154,204 @@ Explain:
 
 #### Languages
 Project support for multiple language. Default `en`. <br>
-If we want to add a language.
+If we want to add a language. Just add new folder, in `src/language/resources`.
 
-<img src="https://github.com/andrechristikan/ac.k/images/1.png" width="50%" height="50%">
-<img src="https://github.com/andrechristikan/ac.k/images/2.png" width="50%" height="50%">
+<img src="images/language/1.png?raw=true" width="20%" height="20%">
+<br>
+<br>
 
+And don't forget to add the language to the language object `src/language/language.constant.ts`.
+```ts
+import en from 'language/resources/en';
+import id from 'language/resources/id';
+
+export default {
+    en,
+    id
+};
+```
+
+#### Request Validation with ClassValidator
+Here login rules validation for request.
+```ts
+import { IsString, IsEmail, IsNotEmpty } from 'class-validator';
+
+export class AuthLoginValidation {
+    @IsEmail()
+    @IsNotEmpty()
+    email: string;
+
+    @IsString()
+    @IsNotEmpty()
+    password: string;
+}
+```
+
+And then, add 1 line in controller to implement that rules.
+```ts
+import { AuthLoginValidation } from 'auth/validation/auth.login.validation';
+import { RequestValidationPipe } from 'pipe/request-validation.pipe';
+
+...
+
+@Post('/login')
+async login(
+    @Body(RequestValidationPipe(AuthLoginValidation)) data: ILogin
+): Promise<IApiSuccessResponse> {}
+
+...
+```
+
+The error message will set in `language/resource/${language}/request.ts`.
+```ts
+// $value
+// $property
+export default {
+    default: 'Validation errors',
+    maxLength: '$property has more elements than the maximum allowed.',
+    minLength: '$property has less elements than the minimum allowed.',
+    isString: '$property should be a type of string.',
+    isNotEmpty: '$property cannot be empty.',
+    isLowercase: '$property should be lowercase.'
+};
+
+```
+
+
+#### Response in one gate
+Response for the request will be set on one way. The response will set with `ResponseService`. This is default structure
+```json
+# Success Response
+{
+    "statusCode": 1000,
+    "message": "blablalbalba",
+    "data": {
+        ...
+    }
+}
+or
+{
+    "statusCode": 1000,
+    "message": "blablalbalba"
+}
+
+
+
+# Error Response
+{
+    "statusCode": 1000,
+    "message": "blablalbalba",
+    "errors": {
+        ...
+    }
+}
+or
+{
+    "statusCode": 1000,
+    "message": "blablalbalba"
+}
+```
+
+This is how if we want to call it.
+```ts
+import { Response } from 'response/response.decorator';
+import { ResponseService } from 'response/response.service';
+
+export class UserController {
+    constructor(
+        @Response() private readonly responseService: ResponseService
+    ) {}
+}
+```
+
+This is how we use it.
+```ts
+import { Controller, Get } from '@nestjs/common';
+import { AppService } from 'app/app.service';
+import { ResponseService } from 'response/response.service';
+import { IApiSuccessResponse } from 'response/response.interface';
+import { Response } from 'response/response.decorator';
+import { SystemSuccessStatusCode } from 'response/response.constant';
+
+@Controller('/api/test')
+export class AppController {
+    constructor(
+        @Response() private readonly responseService: ResponseService,
+        private readonly appService: AppService
+    ) {}
+
+    @Get('/')
+    getHello(): IApiSuccessResponse {
+        const message: string = this.appService.getHello();
+        return this.responseService.success(SystemSuccessStatusCode.OK, {
+            message
+        });
+    }
+}
+```
+
+
+#### Authorization
+The authorization are simple, just add 1 line `@UseGuards(xxx)`. Here an example
+```ts
+import {
+    UseGuards,
+} from '@nestjs/common';
+import { JwtGuard } from 'auth/guard/jwt.guard';
+
+...
+
+@UseGuards(JwtGuard)
+@Post('/create')
+async create(
+    @Body(RequestValidationPipe(UserCreateValidation)) data: IUserCreate
+): Promise<IApiSuccessResponse> {
+
+...
+```
+
+Here we get if we wont give `Bearer Token` in request header
+```json
+{
+    "statusCode": 50002,
+    "message": "Unauthorized Error."
+}
+```
+
+
+#### Logger
+We use morgan and winston for logger. <br>
+All Request will write on log file in `/logs/http/YYYY-MM-DD.log` with format `':remote-addr' - ':remote-user' - '[:date[iso]]' - 'HTTP/:http-version' - '[:status]' - ':method' - ':url' - 'Request Header :: :req-headers' - 'Request Params :: :req-params' - 'Request Body :: :req-body' - 'Response Header :: :res[header]' - 'Response Body :: :res-body' - ':response-time ms' - ':referrer' - ':user-agent'`
+
+Other logs will write in `/logs/system/default/YYYY-MM-DD.log`. This logger purpose for replace console log. Here how to call it.
+```ts
+import { Logger as LoggerService } from 'winston';
+import { Logger } from 'middleware/logger/logger.decorator';
+
+@Injectable()
+export class ResponseService {
+    constructor(
+        @Logger() private readonly logger: LoggerService,
+    ) {}
+}
+
+```
+
+Here how to use that
+```ts
+this.logger.info('Success', response);
+this.logger.error('Error', response);
+this.logger.debug('Debug', response);
+```
+
+
+#### Error Handler
+
+
+#### CRUD
+
+
+#### Docker
 
 _For more examples, please refer to the [Documentation](project-docs)_
 

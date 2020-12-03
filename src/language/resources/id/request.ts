@@ -1,3 +1,5 @@
+// $value
+// $property
 export default {
     default: 'Validasi gagal.',
     maxLength: '$property lebih dari ketentuan.',
