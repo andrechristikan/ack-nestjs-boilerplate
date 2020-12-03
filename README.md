@@ -117,10 +117,6 @@ yarn start:dev
 ```
 
 
-
----
-
-
 <!-- USAGE EXAMPLES -->
 ## Usage
 
@@ -352,13 +348,6 @@ this.logger.debug('Debug', response);
 
 
 #### Docker
-
-_For more examples, please refer to the [Documentation](project-docs)_
-
-
-
----
-
 
 
 <!-- CONTRIBUTING -->
