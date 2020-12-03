@@ -3,7 +3,7 @@ export default {
         success: 'Delete User Success.'
     },
     get: {
-        success: 'GetAll User Success.'
+        success: 'Get User Success.'
     },
     create: {
         success: 'Create User Success.'
