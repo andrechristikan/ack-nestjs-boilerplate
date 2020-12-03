@@ -156,6 +156,8 @@ Explain:
 Project support for multiple language. Default `en`. <br>
 If we want to add a language.
 
+<img src="https://github.com/andrechristikan/ac.k/images/1.png" width="50%" height="50%">
+<img src="https://github.com/andrechristikan/ac.k/images/2.png" width="50%" height="50%">
 
 
 _For more examples, please refer to the [Documentation](project-docs)_
