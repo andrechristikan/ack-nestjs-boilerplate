@@ -49,6 +49,7 @@ I want to create a Boilerplate NestJs that base on components.
 This section should list any major package usage for this boilerplate
 * [NestJs](https://nestjs.com) - Common Framework.
 * [Mongoose](https://github.com/nestjs/mongoose) - Package for integrating with the MongoDB database.
+* [Request Validator](https://github.com/typestack/class-validator) - Request Validation Package
 * [JsonWebToken](https://github.com/nestjs/jwt) - Authentication Package.
 
 
