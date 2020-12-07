@@ -9,8 +9,6 @@ import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';
 import { Response } from 'response/response.decorator';
 import { ResponseService } from 'response/response.service';
-import { Config } from 'config/config.decorator';
-import { ConfigService } from 'config/config.service';
 import { Logger } from 'middleware/logger/logger.decorator';
 import { Logger as LoggerService } from 'winston';
 import {
@@ -25,7 +23,6 @@ export function RequestValidationPipe(schema: {
     class MixinRequestValidationPipe implements PipeTransform {
         constructor(
             @Response() private readonly responseService: ResponseService,
-            @Config() private readonly configService: ConfigService,
             @Logger() private readonly logger: LoggerService
         ) {}
 
@@ -37,8 +34,9 @@ export function RequestValidationPipe(schema: {
                 return value;
             }
 
-            const object: Record<string, any> = plainToClass(schema, value);
-            const rawErrors: Record<string, any>[] = await validate(object);
+            const request: Record<string, any> = plainToClass(schema, value);
+            this.logger.info('request', request);
+            const rawErrors: Record<string, any>[] = await validate(request);
             if (rawErrors.length > 0) {
                 const errors: IApiErrorMessage[] = this.responseService.setRequestErrorMessage(
                     rawErrors

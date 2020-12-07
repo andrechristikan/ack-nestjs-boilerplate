@@ -4,8 +4,7 @@ import {
     IsNotEmpty,
     IsEmail,
     MaxLength,
-    MinLength,
-    IsMobilePhone
+    MinLength
 } from 'class-validator';
 
 export class UserCreateValidation {

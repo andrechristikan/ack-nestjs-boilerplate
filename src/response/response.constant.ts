@@ -11,8 +11,7 @@ export enum SystemSuccessStatusCode {
 
     // ? GENERAL SUCCESS
     OK = 10000,
-    CREATED = 10001,
-
+    CREATED = 10001
 }
 
 export enum SystemErrorStatusCode {
@@ -60,7 +59,6 @@ export const ResponseMessage = [
         statusCode: 'LOGIN',
         message: 'auth.login.success'
     },
-
 
     // ! USER SUCCESS
     {

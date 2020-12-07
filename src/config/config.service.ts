@@ -10,7 +10,7 @@ export class ConfigService {
         this.envs = process.env as Record<string, any>;
     }
 
-    getEnv(key: string): string{
+    getEnv(key: string): string {
         return this.envs[key];
     }
 

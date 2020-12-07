@@ -36,7 +36,7 @@ export class LoggerService {
         const loggerOptions: Record<string, any> = {
             format: winston.format.combine(
                 winston.format.timestamp(),
-                winston.format.prettyPrint(),
+                winston.format.prettyPrint()
             ),
             transports: [
                 configTransportError,

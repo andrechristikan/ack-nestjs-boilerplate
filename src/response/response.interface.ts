@@ -10,6 +10,8 @@ export interface IApiSuccessResponse {
     data?: Record<string, any> | Record<string, any>[];
 }
 
+export type IApiRawResponse = Record<string, any>;
+
 export interface IApiErrorResponse {
     statusCode: SystemErrorStatusCode;
     message: string;
