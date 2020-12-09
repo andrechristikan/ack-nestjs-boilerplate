@@ -16,15 +16,12 @@ import { LanguageService } from 'language/language.service';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'middleware/logger/logger.decorator';
 import { Language } from 'language/language.decorator';
-import { Config } from 'config/config.decorator';
-import { ConfigService } from 'config/config.service';
 
 @Injectable()
 export class ResponseService {
     constructor(
         @Logger() private readonly logger: LoggerService,
         @Language() private readonly languageService: LanguageService,
-        @Config() private readonly configService: ConfigService
     ) {}
 
     private setMessage(

@@ -5,7 +5,7 @@ import { JWT_SECRET_KEY } from 'auth/auth.constant';
 import { IPayload } from 'auth/auth.interface';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
+export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     constructor() {
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),

@@ -164,7 +164,8 @@ import id from 'language/resources/id';
 
 export default {
     en,
-    id
+    id,
+    // add your language
 };
 ```
 
@@ -193,13 +194,14 @@ import { RequestValidationPipe } from 'pipe/request-validation.pipe';
 
 @Post('/login')
 async login(
+    // @Body(RequestValidationPipe(#validation)) data: ILogin
     @Body(RequestValidationPipe(AuthLoginValidation)) data: ILogin
 ): Promise<IApiSuccessResponse> {}
 
 ...
 ```
 
-The error message will set in `language/resource/${language}/request.ts`.
+The error message will set in `language/resource/${language}/request.ts`. (minimal)
 ```ts
 // $value
 // $property
@@ -247,6 +249,12 @@ or
     "statusCode": 1000,
     "message": "blablalbalba"
 }
+
+# Raw Response
+{
+  // object structure, whatever you want
+  ...
+}
 ```
 
 This is how if we want to call it.
@@ -280,6 +288,10 @@ export class AppController {
     @Get('/')
     getHello(): IApiSuccessResponse {
         const message: string = this.appService.getHello();
+        // return this.responseService.success(
+        //   #StatusCode, 
+        //   #data
+        // );
         return this.responseService.success(SystemSuccessStatusCode.OK, {
             message
         });
@@ -298,6 +310,7 @@ import { JwtGuard } from 'auth/guard/jwt.guard';
 
 ...
 
+// @UseGuards(#authorizationGuard)
 @UseGuards(JwtGuard)
 @Post('/create')
 async create(
@@ -317,10 +330,14 @@ Here we get if we wont give `Bearer Token` in request header
 
 
 #### Logger
-We use morgan and winston for logger. <br>
-All Request will write on log file in `/logs/http/YYYY-MM-DD.log` with format `':remote-addr' - ':remote-user' - '[:date[iso]]' - 'HTTP/:http-version' - '[:status]' - ':method' - ':url' - 'Request Header :: :req-headers' - 'Request Params :: :req-params' - 'Request Body :: :req-body' - 'Response Header :: :res[header]' - 'Response Body :: :res-body' - ':response-time ms' - ':referrer' - ':user-agent'`
+We use morgan and winston for logger.
 
-Other logs will write in `/logs/system/default/YYYY-MM-DD.log`. This logger purpose for replace console log. Here how to call it.
+##### Morgan Logger
+All Request will write on log file in without do nothing xD `/logs/http/YYYY-MM-DD.log` with format `':remote-addr' - ':remote-user' - '[:date[iso]]' - 'HTTP/:http-version' - '[:status]' - ':method' - ':url' - 'Request Header :: :req-headers' - 'Request Params :: :req-params' - 'Request Body :: :req-body' - 'Response Header :: :res[header]' - 'Response Body :: :res-body' - ':response-time ms' - ':referrer' - ':user-agent'`
+
+
+##### Winston Logger
+Other logs will write in `/logs/system/default/YYYY-MM-DD.log`. This logger purpose for replace console log, if we want to save all log into file. Here how to call it.
 ```ts
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'middleware/logger/logger.decorator';
@@ -336,9 +353,21 @@ export class ResponseService {
 
 Here how to use that
 ```ts
-this.logger.info('Success', response);
-this.logger.error('Error', response);
-this.logger.debug('Debug', response);
+this.logger.info('Success', { data });
+this.logger.error('Error', { data });
+this.logger.debug('Debug', { data });
+
+/*
+Log Structure
+{
+  statusCode: 10000,
+  message: 'Success Success.',
+  data: { message: 'Hello World!' },
+  level: 'info',
+  timestamp: '2020-12-07T10:26:49.348Z'
+}
+*/
+
 ```
 
 
@@ -346,9 +375,84 @@ this.logger.debug('Debug', response);
 
 
 #### CRUD
+See [user component](/src/user/) example, and don't forget to add `NewModule` to `AppModule`. Path `/src/app/app.module.ts`
+```ts
+...
 
+@Module({
+    controllers: [AppController],
+    providers: [AppService],
+    imports: [
+        ConfigModule,
+        WinstonModule.forRootAsync({
+            inject: [LoggerService],
+            imports: [LoggerModule],
+            useFactory: (loggerService: LoggerService) =>
+                loggerService.createLogger()
+        }),
+        MongooseModule.forRootAsync({
+            inject: [DatabaseService],
+            imports: [DatabaseModule],
+            useFactory: (databaseService: DatabaseService) => {
+                return databaseService.createMongooseOptions();
+            }
+        }),
+        LanguageModule,
+        LoggerModule,
+        ResponseModule,
+        HelperModule,
+
+        AuthModule,
+        UserModule
+    ]
+})
+
+...
+
+
+```
 
 #### Docker
+If we want run project within docker
+
+Prerequisites
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/get-docker/)
+
+
+After install all prerequisites, we need to run docker cli for run this project
+```
+docker-compose up
+```
+If we want run this project in the background
+```
+docker-compose up -d
+```
+##### Other commands
+Command for list of services
+```
+docker-compose ps -a
+```
+
+docker-compose down
+```
+Command for turn off container
+```
+
+Command for list of containers
+```
+docker ps -a
+```
+
+Command for turn of service
+```
+docker stop #constainerId
+```
+
+Command for remove container
+```
+docker rm #constainerId
+```
 
 
 <!-- CONTRIBUTING -->
@@ -406,6 +510,7 @@ Andre Christi Kan
 * Other
   * [Class Validation Documentation](https://github.com/typestack/class-validator#readme) 
   * [Docker Documentation](https://docs.docker.com/)
+  * [Docker Compose Documentation](https://docs.docker.com/compose/)
 
 
 
