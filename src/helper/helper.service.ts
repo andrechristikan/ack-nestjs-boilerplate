@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { IPagination } from 'helper/helper.interface';
 import { PAGINATION } from 'helper/helper.constant';
 import { WordArray, HmacSHA512, enc, lib } from 'crypto-js';
-import { PASSWORD_SALT_LENGTH } from 'auth/auth.constant';
+import { PASSWORD_SALT_LENGTH } from 'helper/helper.constant';
 
 @Injectable()
 export class HelperService {
