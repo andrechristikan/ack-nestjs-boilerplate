@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from 'config/config.service';
-import Languages from 'language/language.constant';
+import Languages, { APP_LANGUAGE } from 'language/language.constant';
 import { Config } from 'config/config.decorator';
 
 @Injectable()
@@ -11,8 +11,10 @@ export class LanguageService {
 
     get(key: string): string {
         const keys: string[] = key.split('.');
+        const defaultLanguage =
+            this.configService.getEnv('APP_LANGUAGE') || APP_LANGUAGE;
         let selectedLanguage: Record<string, any> | string = this.languages[
-            this.configService.getEnv('APP_LANGUAGE') || 'en'
+            defaultLanguage
         ];
 
         for (const i of keys) {
@@ -24,8 +26,11 @@ export class LanguageService {
 
     getAll(key: string): Record<string, any> {
         const keys: string[] = key.split('.');
+        const defaultLanguage =
+            this.configService.getEnv('APP_LANGUAGE') || APP_LANGUAGE;
+
         let selectedLanguage: Record<string, any> | string = this.languages[
-            this.configService.getEnv('APP_LANGUAGE') || 'en'
+            defaultLanguage
         ];
 
         for (const [i, v] of keys.entries()) {

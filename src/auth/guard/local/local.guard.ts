@@ -8,7 +8,7 @@ import { Logger as LoggerService } from 'winston';
 import { Logger } from 'middleware/logger/logger.decorator';
 
 @Injectable()
-export class JwtGuard extends AuthGuard('jwt') {
+export class LocalGuard extends AuthGuard('local') {
     constructor(
         @Response() private readonly responseService: ResponseService,
         @Logger() private readonly logger: LoggerService
@@ -22,7 +22,10 @@ export class JwtGuard extends AuthGuard('jwt') {
         info: string
     ): TUser {
         if (err || !user) {
-            this.logger.error('JwtError', info);
+            this.logger.error('AuthLocalGuardError', {
+                description: info,
+                ...err
+            });
             const response: IApiErrorResponse = this.responseService.error(
                 SystemErrorStatusCode.UNAUTHORIZED_ERROR
             );

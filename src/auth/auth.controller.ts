@@ -1,4 +1,9 @@
-import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
+import {
+    Controller,
+    Post,
+    Body,
+    UseGuards
+} from '@nestjs/common';
 import { AuthService } from 'auth/auth.service';
 import { ILogin, IPayload } from 'auth/auth.interface';
 import { UserService } from 'user/user.service';
@@ -6,15 +11,14 @@ import { User } from 'user/user.schema';
 import { ResponseService } from 'response/response.service';
 import { Response } from 'response/response.decorator';
 import {
-    IApiSuccessResponse,
-    IApiErrorResponse
+    IApiSuccessResponse
 } from 'response/response.interface';
 import {
     SystemSuccessStatusCode,
-    SystemErrorStatusCode
 } from 'response/response.constant';
 import { AuthLoginValidation } from 'auth/validation/auth.login.validation';
 import { RequestValidationPipe } from 'pipe/request-validation.pipe';
+import { LocalGuard } from 'auth/guard/local/local.guard';
 
 @Controller('api/auth')
 export class AuthController {
@@ -24,6 +28,7 @@ export class AuthController {
         private readonly userService: UserService
     ) {}
 
+    @UseGuards(LocalGuard)
     @Post('/login')
     async login(
         @Body(RequestValidationPipe(AuthLoginValidation)) data: ILogin
@@ -31,12 +36,6 @@ export class AuthController {
         const checkUser: User = await this.userService.getOneByEmail(
             data.email
         );
-        if (!checkUser) {
-            const response: IApiErrorResponse = this.responseService.error(
-                SystemErrorStatusCode.USER_NOT_FOUND
-            );
-            throw new BadRequestException(response);
-        }
 
         const payload: IPayload = {
             id: checkUser._id,

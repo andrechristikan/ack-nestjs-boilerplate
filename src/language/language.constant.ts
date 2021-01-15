@@ -5,3 +5,5 @@ export default {
     en,
     id
 };
+
+export const APP_LANGUAGE = 'en';

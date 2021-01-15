@@ -21,7 +21,7 @@ import {
     IUserSearch,
     IUserSearchFind
 } from 'user/user.interface';
-import { JwtGuard } from 'auth/guard/jwt.guard';
+import { JwtGuard } from 'auth/guard/jwt/jwt.guard';
 import { Response } from 'response/response.decorator';
 import { ResponseService } from 'response/response.service';
 import {
@@ -49,13 +49,14 @@ export class UserController {
         private readonly userService: UserService
     ) {}
 
+    @UseGuards(JwtGuard)
     @Get('/')
     async getAll(
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
         @Query(RequestValidationPipe(UserSearchValidation)) data: IUserSearch
     ): Promise<IApiSuccessResponse> {
-        const { skip } = this.helperService.pagination(page, limit);
+        const { skip } = await this.helperService.pagination(page, limit);
 
         const search: IUserSearchFind = await this.userService.search(data);
         const user: User[] = await this.userService.getAll(skip, limit, search);
@@ -65,6 +66,7 @@ export class UserController {
         );
     }
 
+    @UseGuards(JwtGuard)
     @Get('/:id')
     async getOneById(@Param('id') id: string): Promise<IApiSuccessResponse> {
         const checkUser: User = await this.userService.getOneById(id);

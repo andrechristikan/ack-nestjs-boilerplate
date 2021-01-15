@@ -54,14 +54,16 @@ export class UserService {
     }
 
     async create(data: IUserCreate): Promise<User> {
-        const { password, salt } = await this.helperService.hashPassword(
-            data.password
+        const salt: string = await this.helperService.randomSalt();
+        const passwordHash = await this.helperService.hashPassword(
+            data.password,
+            salt
         );
         const user: User = new this.userModel(data);
         user.firstName = data.firstName.toLowerCase();
         user.lastName = data.lastName.toLowerCase();
         user.email = data.email.toLowerCase();
-        user.password = password;
+        user.password = passwordHash;
         user.salt = salt;
         return user.save();
     }
