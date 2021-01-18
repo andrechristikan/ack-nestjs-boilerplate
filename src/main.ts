@@ -1,29 +1,30 @@
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from 'app/app.module';
-import { ConfigService } from 'config/config.service';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
-    const configService = new ConfigService();
     const app = await NestFactory.create(AppModule);
+    const configService = app.get(ConfigService);
     const logger = new Logger();
 
+    // Middleware
     app.enableCors();
 
     await app.listen(
-        configService.getEnv('APP_PORT') || 'localhost',
-        configService.getEnv('APP_URL') || '3000',
+        configService.get('http.port') || 3000,
+        configService.get('http.host') || 'localhost',
         () => {
             logger.log(
-                `Database running on ${configService.getEnv(
-                    'DB_HOST'
-                )}/${configService.getEnv('DB_NAME')}`,
+                `Database running on ${configService.get(
+                    'database.url'
+                )}/${configService.get('database.name')}`,
                 'NestApplication'
             );
             logger.log(
-                `Server running on http://${configService.getEnv(
-                    'APP_URL'
-                )}:${configService.getEnv('APP_PORT')}`,
+                `Server running on http://${configService.get(
+                    'http.host'
+                )}:${configService.get('http.port')}`,
                 'NestApplication'
             );
         }

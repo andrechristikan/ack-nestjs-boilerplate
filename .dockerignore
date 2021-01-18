@@ -2,3 +2,5 @@ node_modules/
 logs/
 yarn.lock
 package-lock.json
+.env
+.config.yml

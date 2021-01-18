@@ -2,7 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
 @Schema()
-export class User extends Document {
+export class UserEntity extends Document {
     @Prop({
         required: true,
         index: true,
@@ -49,4 +49,4 @@ export class User extends Document {
     salt: string;
 }
 
-export const UserSchema = SchemaFactory.createForClass(User);
+export const UserSchema = SchemaFactory.createForClass(UserEntity);

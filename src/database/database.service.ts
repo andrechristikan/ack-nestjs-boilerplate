@@ -3,40 +3,34 @@ import {
     MongooseOptionsFactory,
     MongooseModuleOptions
 } from '@nestjs/mongoose';
-import { Config } from 'config/config.decorator';
-import { ConfigService } from 'config/config.service';
-import { Logger as LoggerService } from 'winston';
-import { Logger } from 'middleware/logger/logger.decorator';
 import * as mongoose from 'mongoose';
+import { ConfigService } from '@nestjs/config';
+import { DATABASE_URL, DATABASE_NAME } from 'database/database.constant';
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class DatabaseService implements MongooseOptionsFactory {
-    constructor(
-        @Logger() private readonly logger: LoggerService,
-        @Config() private readonly configService: ConfigService
-    ) {}
+    constructor(private readonly configService: ConfigService) {}
 
     createMongooseOptions(): MongooseModuleOptions {
+        // Env Variable
+        const baseUrl = `${this.configService.get('database.url') ||
+            DATABASE_URL}`;
+        const databaseName =
+            this.configService.get('database.name') || DATABASE_NAME;
+
         let uri: string = `mongodb://`;
         if (
-            this.configService.getEnv('DB_USER') &&
-            this.configService.getEnv('DB_PASSWORD')
+            this.configService.get('database.user') &&
+            this.configService.get('database.password')
         ) {
-            uri = `${uri}${this.configService.getEnv(
-                'DB_USER'
-            )}:${this.configService.getEnv('DB_PASSWORD')}@`;
+            uri = `${uri}${this.configService.get(
+                'database.user'
+            )}:${this.configService.get('database.password')}@`;
         }
 
-        uri = `${uri}${this.configService.getEnv(
-            'DB_HOST'
-        )}/${this.configService.getEnv('DB_NAME')}`;
+        uri = `${uri}${baseUrl}/${databaseName}`;
 
-        mongoose.set(
-            'debug',
-            this.configService.getEnv('APP_DEBUG').toLowerCase() === 'true'
-                ? true
-                : false
-        );
+        mongoose.set('debug', this.configService.get('app.debug') || false);
         return {
             uri,
             useNewUrlParser: true,

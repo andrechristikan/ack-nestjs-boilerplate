@@ -3,16 +3,15 @@ import { IPagination } from 'helper/helper.interface';
 import { PAGINATION } from 'helper/helper.constant';
 import { WordArray, HmacSHA512, enc, lib } from 'crypto-js';
 import { PASSWORD_SALT_LENGTH } from 'helper/helper.constant';
-import { Config } from 'config/config.decorator';
-import { ConfigService } from 'config/config.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class HelperService {
-    constructor(@Config() private readonly configService: ConfigService) {}
+    constructor(private readonly configService: ConfigService) {}
 
     async pagination(setPage: number, setLimit?: number): Promise<IPagination> {
         const defaultLimit: number =
-            parseInt(this.configService.getEnv('PAGINATION')) || PAGINATION;
+            this.configService.get('app.helper.pagination') || PAGINATION;
 
         const limit: number = defaultLimit || setLimit;
         const page: number = setPage || 1;
@@ -34,11 +33,33 @@ export class HelperService {
 
     async randomSalt(): Promise<string> {
         const defaultPasswordSaltLength: number =
-            parseInt(this.configService.getEnv('PASSWORD_SALT_LENGTH')) ||
+            this.configService.get('app.helper.passwordLatLength') ||
             PASSWORD_SALT_LENGTH;
         const salt: string = lib.WordArray.random(
             defaultPasswordSaltLength
         ).toString();
         return salt;
+    }
+
+    // Basic Token
+    async createBasicToken(
+        clientId: string,
+        clientSecret: string
+    ): Promise<string> {
+        const token: string = `${clientId}:${clientSecret}`;
+        const basicToken: string = Buffer.from(token).toString('base64');
+        return basicToken;
+    }
+
+    async validateBasicToken(
+        clientBasicToken: string,
+        ourBasicToken: string
+    ): Promise<boolean> {
+        return new Promise(resolve => {
+            if (ourBasicToken === clientBasicToken) {
+                resolve(true);
+            }
+            resolve(false);
+        });
     }
 }

@@ -1,0 +1,23 @@
+http:
+  host: 'localhost'
+  port: 8080
+
+database:
+  url: 'localhost:27017'
+  name: 'ack'
+  user: ''
+  password: ''
+
+app:
+  env: 'development'
+  language: 'en'
+  debug: true
+
+  helper: 
+    pagination: 10
+    passwordLatLength: 16
+
+  auth:
+    usernameField: 'email'
+    jwtSecretKey: '9UbQX7iQvgaW4Bm7HwzU'
+    jwtExpiration: 3600000

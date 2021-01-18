@@ -14,13 +14,8 @@ import {
     InternalServerErrorException
 } from '@nestjs/common';
 import { UserService } from 'user/user.service';
-import { User } from 'user/user.schema';
-import {
-    IUserCreate,
-    IUserUpdate,
-    IUserSearch,
-    IUserSearchFind
-} from 'user/user.interface';
+import { UserEntity } from 'user/user.schema';
+import { IUserCreate, IUserUpdate } from 'user/user.interface';
 import { JwtGuard } from 'auth/guard/jwt/jwt.guard';
 import { Response } from 'response/response.decorator';
 import { ResponseService } from 'response/response.service';
@@ -38,8 +33,9 @@ import { Helper } from 'helper/helper.decorator';
 import { HelperService } from 'helper/helper.service';
 import { RequestValidationPipe } from 'pipe/request-validation.pipe';
 import { UserCreateValidation } from 'user/validation/user.store.validation';
-import { UserSearchValidation } from 'user/validation/user.search.validation';
 import { UserUpdateValidation } from 'user/validation/user.update.validation';
+import { User } from 'user/user.decorator';
+import { BasicGuard } from 'auth/guard/basic/basic.guard';
 
 @Controller('api/user')
 export class UserController {
@@ -49,27 +45,24 @@ export class UserController {
         private readonly userService: UserService
     ) {}
 
-    @UseGuards(JwtGuard)
+    @UseGuards(BasicGuard)
     @Get('/')
     async getAll(
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-        @Query(RequestValidationPipe(UserSearchValidation)) data: IUserSearch
+        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number
     ): Promise<IApiSuccessResponse> {
         const { skip } = await this.helperService.pagination(page, limit);
-
-        const search: IUserSearchFind = await this.userService.search(data);
-        const user: User[] = await this.userService.getAll(skip, limit, search);
+        const user: UserEntity[] = await this.userService.getAll(skip, limit);
         return this.responseService.success(
             SystemSuccessStatusCode.USER_GET,
             user
         );
     }
-
-    @UseGuards(JwtGuard)
-    @Get('/:id')
+    
+    @UseGuards(BasicGuard)
+    @Get('/get/:id')
     async getOneById(@Param('id') id: string): Promise<IApiSuccessResponse> {
-        const checkUser: User = await this.userService.getOneById(id);
+        const checkUser: UserEntity = await this.userService.getOneById(id);
         if (!checkUser) {
             const response: IApiErrorResponse = this.responseService.error(
                 SystemErrorStatusCode.USER_NOT_FOUND
@@ -89,10 +82,10 @@ export class UserController {
     async create(
         @Body(RequestValidationPipe(UserCreateValidation)) data: IUserCreate
     ): Promise<IApiSuccessResponse> {
-        const existEmail: Promise<User> = this.userService.getOneByEmail(
+        const existEmail: Promise<UserEntity> = this.userService.getOneByEmail(
             data.email
         );
-        const existMobileNumber: Promise<User> = this.userService.getOneByMobileNumber(
+        const existMobileNumber: Promise<UserEntity> = this.userService.getOneByMobileNumber(
             data.mobileNumber
         );
 
@@ -126,7 +119,7 @@ export class UserController {
                 }
 
                 try {
-                    const { password, salt, ...user }: User = (
+                    const { password, salt, ...user }: UserEntity = (
                         await this.userService.create(data)
                     ).toJSON();
 
@@ -149,7 +142,7 @@ export class UserController {
     @UseGuards(JwtGuard)
     @Delete('/delete/:id')
     async delete(@Param('id') id: string): Promise<IApiSuccessResponse> {
-        const user: User = await this.userService.getOneById(id);
+        const user: UserEntity = await this.userService.getOneById(id);
         if (!user) {
             const response: IApiErrorResponse = this.responseService.error(
                 SystemErrorStatusCode.USER_NOT_FOUND
@@ -170,7 +163,7 @@ export class UserController {
         @Param('id') id: string,
         @Body(RequestValidationPipe(UserUpdateValidation)) data: IUserUpdate
     ): Promise<IApiSuccessResponse> {
-        const checkUser: User = await this.userService.getOneById(id);
+        const checkUser: UserEntity = await this.userService.getOneById(id);
         if (!checkUser) {
             const response: IApiErrorResponse = this.responseService.error(
                 SystemErrorStatusCode.USER_NOT_FOUND
@@ -179,7 +172,7 @@ export class UserController {
         }
 
         try {
-            const { password, salt, ...user }: User = (
+            const { password, salt, ...user }: UserEntity = (
                 await this.userService.update(id, data)
             ).toJSON();
 
@@ -193,5 +186,23 @@ export class UserController {
             );
             throw new InternalServerErrorException(response);
         }
+    }
+
+    @UseGuards(JwtGuard)
+    @Get('/profile')
+    async profile(@User('id') userId: string): Promise<IApiSuccessResponse> {
+        const checkUser: UserEntity = await this.userService.getOneById(userId);
+        if (!checkUser) {
+            const response: IApiErrorResponse = this.responseService.error(
+                SystemErrorStatusCode.USER_NOT_FOUND
+            );
+            throw new BadRequestException(response);
+        }
+
+        const { password, salt, ...user } = checkUser.toJSON();
+        return this.responseService.success(
+            SystemSuccessStatusCode.USER_GET,
+            user
+        );
     }
 }

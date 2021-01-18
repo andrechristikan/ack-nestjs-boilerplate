@@ -1,5 +1,4 @@
 import { Global, Module } from '@nestjs/common';
-import { ConfigModule } from 'config/config.module';
 import { HelperService } from 'helper/helper.service';
 
 @Global()
@@ -11,6 +10,6 @@ import { HelperService } from 'helper/helper.service';
         }
     ],
     exports: ['HelperService'],
-    imports: [ConfigModule]
+    imports: []
 })
 export class HelperModule {}
