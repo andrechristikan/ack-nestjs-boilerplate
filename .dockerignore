@@ -3,4 +3,4 @@ logs/
 yarn.lock
 package-lock.json
 .env
-.config.yml
+config.yml

@@ -1,2 +1,2 @@
-export const DATABASE_URL = '';
-export const DATABASE_NAME = '';
+export const DATABASE_URL = 'localhost:27017';
+export const DATABASE_NAME = 'ack';

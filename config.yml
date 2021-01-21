@@ -1,6 +1,6 @@
 http:
   host: 'localhost'
-  port: 8080
+  port: 3000
 
 database:
   url: 'localhost:27017'
@@ -12,6 +12,7 @@ app:
   env: 'development'
   language: 'en'
   debug: true
+  sessionSecret: 'UgWV9PSH0tVzn8BNvsyMOksW0bNgqC'
 
   helper: 
     pagination: 10
@@ -21,3 +22,5 @@ app:
     usernameField: 'email'
     jwtSecretKey: '9UbQX7iQvgaW4Bm7HwzU'
     jwtExpiration: 3600000
+    basicTokenClientId: 'rw0sOzrpMP2CpQqXozZsjk5AI5cL00uyDIUiN0gn'
+    basicTokenClientSecret: '275tqa6S4sWCyBHBvFezJJm0QRvxK39VOgLOTXVo'

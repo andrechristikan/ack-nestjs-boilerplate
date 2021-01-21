@@ -28,6 +28,8 @@ import { UserModule } from 'user/user.module';
 import { AuthModule } from 'auth/auth.module';
 
 import Configuration from 'config/configuration';
+import { CookieParserMiddleware } from 'middleware/cookie-parser/cookie-parser.middleware';
+import { SessionMiddleware } from 'middleware/session/session.middleware';
 
 @Module({
     controllers: [AppController],
@@ -67,10 +69,12 @@ export class AppModule implements NestModule {
         //! middleware
         consumer
             .apply(
+                ResponseBodyMiddleware,
                 LoggerMiddleware,
                 BodyParserUrlencodedMiddleware,
                 BodyParserJsonMiddleware,
-                ResponseBodyMiddleware,
+                CookieParserMiddleware,
+                SessionMiddleware,
                 CsurfMiddleware,
                 HelmetMiddleware,
                 RateLimitMiddleware

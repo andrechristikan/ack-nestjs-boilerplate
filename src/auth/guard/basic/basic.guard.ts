@@ -17,16 +17,26 @@ import { IApiErrorResponse } from 'response/response.interface';
 import { ResponseService } from 'response/response.service';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'middleware/logger/logger.decorator';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class BasicGuard implements CanActivate {
     constructor(
         @Response() private readonly responseService: ResponseService,
         @Helper() private readonly helperService: HelperService,
-        @Logger() private readonly logger: LoggerService
+        @Logger() private readonly logger: LoggerService,
+        private readonly configService: ConfigService
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
+        // Env Variable
+        const authBasicTokenClientId: string =
+            this.configService.get('app.auth.basicTokenClientId') ||
+            AUTH_BASIC_TOKEN_CLIENT_ID;
+        const authBasicTokenClientSecret: string =
+            this.configService.get('app.auth.basicTokenClientSecret') ||
+            AUTH_BASIC_TOKEN_CLIENT_SECRET;
+
         const request: Request = context.switchToHttp().getRequest();
 
         const authorization: string = request.headers.authorization;
@@ -41,8 +51,8 @@ export class BasicGuard implements CanActivate {
 
         const clientBasicToken: string = authorization.replace('Basic ', '');
         const ourBasicToken: string = await this.helperService.createBasicToken(
-            AUTH_BASIC_TOKEN_CLIENT_ID,
-            AUTH_BASIC_TOKEN_CLIENT_SECRET
+            authBasicTokenClientId,
+            authBasicTokenClientSecret
         );
 
         return this.helperService.validateBasicToken(

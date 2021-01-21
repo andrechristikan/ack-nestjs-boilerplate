@@ -3,6 +3,8 @@ import {
     SystemErrorStatusCode
 } from 'response/response.constant';
 
+import { Response } from 'express';
+
 // response
 export interface IApiSuccessResponse {
     statusCode: SystemSuccessStatusCode;
@@ -38,4 +40,10 @@ export interface IApiMessage {
 export interface IApiRawMessage {
     message: string;
     statusCode: string;
+}
+
+
+// Ongoing
+export interface IResponse extends Response{
+    body: Record<string, any>
 }
