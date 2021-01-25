@@ -7,7 +7,7 @@ import * as mongoose from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { DATABASE_URL, DATABASE_NAME } from 'database/database.constant';
 
-@Injectable({ scope: Scope.TRANSIENT })
+@Injectable()
 export class DatabaseService implements MongooseOptionsFactory {
     constructor(private readonly configService: ConfigService) {}
 

@@ -9,7 +9,7 @@ import { LanguageService } from 'language/language.service';
             useClass: LanguageService
         }
     ],
-    exports: ['LanguageService'],
+    exports: [LanguageService],
     imports: []
 })
 export class LanguageModule {}

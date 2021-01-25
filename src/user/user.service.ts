@@ -4,16 +4,14 @@ import { Model } from 'mongoose';
 
 import { UserEntity, UserDatabaseName } from 'user/user.schema';
 import { IUserCreate, IUserUpdate } from 'user/user.interface';
-
-import { Helper } from 'helper/helper.decorator';
-import { HelperService } from 'helper/helper.service';
+import { HashService } from 'hash/hash.service';
 
 @Injectable()
 export class UserService {
     constructor(
-        @Helper() private readonly helperService: HelperService,
         @InjectModel(UserDatabaseName)
-        private readonly userModel: Model<UserEntity>
+        private readonly userModel: Model<UserEntity>,
+        private readonly hashService: HashService
     ) {}
 
     async findAll(
@@ -50,8 +48,8 @@ export class UserService {
     }
 
     async create(data: IUserCreate): Promise<UserEntity> {
-        const salt: string = await this.helperService.randomSalt();
-        const passwordHash = await this.helperService.hashPassword(
+        const salt: string = await this.hashService.randomSalt();
+        const passwordHash = await this.hashService.hashPassword(
             data.password,
             salt
         );

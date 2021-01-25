@@ -1,15 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Helper } from 'helper/helper.decorator';
-import { HelperService } from 'helper/helper.service';
 import { UserEntity } from 'user/user.schema';
 import { UserService } from 'user/user.service';
 import { IPayload } from 'auth/auth.interface';
+import { HashService } from 'hash/hash.service';
 
 @Injectable()
 export class AuthService {
     constructor(
-        @Helper() private readonly helperService: HelperService,
+        private readonly hashService: HashService,
         private readonly userService: UserService,
         private readonly jwtService: JwtService
     ) {}
@@ -26,7 +25,7 @@ export class AuthService {
         passwordString: string
     ): Promise<boolean> {
         const user: UserEntity = await this.userService.findOneByEmail(email);
-        const hashPassword: string = await this.helperService.hashPassword(
+        const hashPassword: string = await this.hashService.hashPassword(
             passwordString,
             user.salt
         );

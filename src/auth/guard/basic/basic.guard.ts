@@ -9,8 +9,7 @@ import {
     AUTH_BASIC_TOKEN_CLIENT_SECRET
 } from 'auth/auth.constant';
 import { Request } from 'express';
-import { Helper } from 'helper/helper.decorator';
-import { HelperService } from 'helper/helper.service';
+import { HashService } from 'hash/hash.service';
 import { Response } from 'response/response.decorator';
 import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
 import { IResponseError } from 'response/response.interface';
@@ -23,7 +22,7 @@ import { ConfigService } from '@nestjs/config';
 export class BasicGuard implements CanActivate {
     constructor(
         @Response() private readonly responseService: ResponseService,
-        @Helper() private readonly helperService: HelperService,
+        private readonly hashService: HashService,
         @Logger() private readonly logger: LoggerService,
         private readonly configService: ConfigService
     ) {}
@@ -50,12 +49,12 @@ export class BasicGuard implements CanActivate {
         }
 
         const clientBasicToken: string = authorization.replace('Basic ', '');
-        const ourBasicToken: string = await this.helperService.createBasicToken(
+        const ourBasicToken: string = await this.hashService.createBasicToken(
             authBasicTokenClientId,
             authBasicTokenClientSecret
         );
 
-        return this.helperService.validateBasicToken(
+        return this.hashService.validateBasicToken(
             clientBasicToken,
             ourBasicToken
         );

@@ -1,6 +1,5 @@
 import {
     IsString,
-    IsLowercase,
     IsNotEmpty,
     IsEmail,
     MaxLength,

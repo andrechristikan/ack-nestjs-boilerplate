@@ -19,7 +19,6 @@ import { DatabaseService } from 'database/database.service';
 import { DatabaseModule } from 'database/database.module';
 
 import { ResponseModule } from 'response/response.module';
-import { HelperModule } from 'helper/helper.module';
 import { LanguageModule } from 'language/language.module';
 import { ConfigModule } from '@nestjs/config';
 
@@ -27,6 +26,7 @@ import { UserModule } from 'user/user.module';
 import { AuthModule } from 'auth/auth.module';
 
 import Configuration from 'config/configuration';
+import { PaginationModule } from 'pagination/pagination.module';
 
 @Module({
     controllers: [AppController],
@@ -55,7 +55,7 @@ import Configuration from 'config/configuration';
         LanguageModule,
         LoggerModule,
         ResponseModule,
-        HelperModule,
+        PaginationModule,
 
         AuthModule,
         UserModule

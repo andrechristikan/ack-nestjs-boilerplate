@@ -25,8 +25,6 @@ import { ResponseService } from 'response/response.service';
 import { IResponseError, IResponseSuccess } from 'response/response.interface';
 import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
 import { AppSuccessStatusCode } from 'status-code/status-code.success.constant';
-import { Helper } from 'helper/helper.decorator';
-import { HelperService } from 'helper/helper.service';
 import { RequestValidationPipe } from 'pipe/request-validation.pipe';
 import { UserCreateValidation } from 'user/validation/user.create.validation';
 import { UserUpdateValidation } from 'user/validation/user.update.validation';
@@ -35,13 +33,15 @@ import { AuthBasic, AuthJwt } from 'auth/auth.decorator';
 import { IErrors, IMessageErrors } from 'message/message.interface';
 import { MessageService } from 'message/message.service';
 import { Message } from 'message/message.decorator';
+import { PaginationService } from 'pagination/pagination.service';
+import { Pagination } from 'pagination/pagination.decorator';
 
 @Controller('api/user')
 export class UserController {
     constructor(
         @Response() private readonly responseService: ResponseService,
-        @Helper() private readonly helperService: HelperService,
         @Message() private readonly messageService: MessageService,
+        @Pagination() private readonly paginationService: PaginationService,
         private readonly userService: UserService
     ) {}
 
@@ -51,7 +51,7 @@ export class UserController {
         @Query(RequestValidationPipe(UserCreateValidation)) data: IUserFind
     ): Promise<IResponseSuccess> {
         const { limit, page } = data;
-        const { skip } = await this.helperService.pagination(page, limit);
+        const { skip } = await this.paginationService.pagination(page, limit);
         const user: UserEntity[] = await this.userService.findAll(skip, limit);
         return this.responseService.success(
             AppSuccessStatusCode.USER_GET,

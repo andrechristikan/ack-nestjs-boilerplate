@@ -1,9 +1,9 @@
 import { Inject } from '@nestjs/common';
 
-export function Helper(): (
+export function Pagination(): (
     target: Record<string, any>,
     key: string | symbol,
     index?: number
 ) => void {
-    return Inject(`HelperService`);
+    return Inject(`PaginationService`);
 }

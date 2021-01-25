@@ -11,6 +11,7 @@ import { AuthController } from 'auth/auth.controller';
 import { PassportModule } from '@nestjs/passport';
 import { LocalStrategy } from 'auth/guard/local/local.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { HashModule } from 'hash/hash.module';
 
 @Module({
     providers: [AuthService, JwtStrategy, LocalStrategy],
@@ -18,6 +19,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     controllers: [AuthController],
     imports: [
         UserModule,
+        HashModule,
         PassportModule.register({
             defaultStrategy: 'local'
         }),
