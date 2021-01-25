@@ -12,7 +12,8 @@ import { HelperService } from 'helper/helper.service';
 export class UserService {
     constructor(
         @Helper() private readonly helperService: HelperService,
-        @InjectModel(UserDatabaseName) private readonly userModel: Model<UserEntity>
+        @InjectModel(UserDatabaseName)
+        private readonly userModel: Model<UserEntity>
     ) {}
 
     async findAll(
@@ -67,7 +68,10 @@ export class UserService {
         return this.userModel.findByIdAndDelete(userId).exec();
     }
 
-    async updateOneById(userId: string, data: IUserUpdate): Promise<UserEntity> {
+    async updateOneById(
+        userId: string,
+        data: IUserUpdate
+    ): Promise<UserEntity> {
         const user: UserEntity = await this.findOneById(userId);
         user.firstName = data.firstName.toLowerCase();
         user.lastName = data.lastName.toLowerCase();

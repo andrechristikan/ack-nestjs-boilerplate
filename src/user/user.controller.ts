@@ -22,16 +22,9 @@ import {
 import { JwtGuard } from 'auth/guard/jwt/jwt.guard';
 import { Response } from 'response/response.decorator';
 import { ResponseService } from 'response/response.service';
-import {
-    IApiSuccessResponse,
-    IApiErrorResponse,
-    IApiErrorMessage,
-    IApiErrors
-} from 'response/response.interface';
-import {
-    SystemSuccessStatusCode,
-    SystemErrorStatusCode
-} from 'response/response.constant';
+import { IResponseError, IResponseSuccess } from 'response/response.interface';
+import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
+import { AppSuccessStatusCode } from 'status-code/status-code.success.constant';
 import { Helper } from 'helper/helper.decorator';
 import { HelperService } from 'helper/helper.service';
 import { RequestValidationPipe } from 'pipe/request-validation.pipe';
@@ -39,12 +32,16 @@ import { UserCreateValidation } from 'user/validation/user.create.validation';
 import { UserUpdateValidation } from 'user/validation/user.update.validation';
 import { User } from 'user/user.decorator';
 import { AuthBasic, AuthJwt } from 'auth/auth.decorator';
+import { IErrors, IMessageErrors } from 'message/message.interface';
+import { MessageService } from 'message/message.service';
+import { Message } from 'message/message.decorator';
 
 @Controller('api/user')
 export class UserController {
     constructor(
         @Response() private readonly responseService: ResponseService,
         @Helper() private readonly helperService: HelperService,
+        @Message() private readonly messageService: MessageService,
         private readonly userService: UserService
     ) {}
 
@@ -52,34 +49,32 @@ export class UserController {
     @Get('/')
     async getAll(
         @Query(RequestValidationPipe(UserCreateValidation)) data: IUserFind
-    ): Promise<IApiSuccessResponse> {
+    ): Promise<IResponseSuccess> {
         const { limit, page } = data;
         const { skip } = await this.helperService.pagination(page, limit);
         const user: UserEntity[] = await this.userService.findAll(skip, limit);
         return this.responseService.success(
-            SystemSuccessStatusCode.USER_GET,
+            AppSuccessStatusCode.USER_GET,
             user
         );
     }
 
     @AuthBasic()
     @Get('/get/:userId')
-    async getOneById(
-        @Param('id') userId: string
-    ): Promise<IApiSuccessResponse> {
+    async getOneById(@Param('id') userId: string): Promise<IResponseSuccess> {
         const checkUser: UserEntity = await this.userService.findOneById(
             userId
         );
         if (!checkUser) {
-            const response: IApiErrorResponse = this.responseService.error(
-                SystemErrorStatusCode.USER_NOT_FOUND
+            const response: IResponseError = this.responseService.error(
+                AppErrorStatusCode.USER_NOT_FOUND
             );
             throw new BadRequestException(response);
         }
 
         const { password, salt, ...user } = checkUser.toJSON();
         return this.responseService.success(
-            SystemSuccessStatusCode.USER_GET,
+            AppSuccessStatusCode.USER_GET,
             user
         );
     }
@@ -88,7 +83,7 @@ export class UserController {
     @Post('/create')
     async create(
         @Body(RequestValidationPipe(UserCreateValidation)) data: IUserCreate
-    ): Promise<IApiSuccessResponse> {
+    ): Promise<IResponseSuccess> {
         const existEmail: Promise<UserEntity> = this.userService.findOneByEmail(
             data.email
         );
@@ -98,27 +93,26 @@ export class UserController {
 
         return Promise.all([existEmail, existMobileNumber])
             .then(async ([userExistEmail, userExistMobileNumber]) => {
-                const errors: IApiErrors[] = [];
+                const errors: IErrors[] = [];
                 if (userExistEmail) {
                     errors.push({
-                        statusCode: SystemErrorStatusCode.USER_EMAIL_EXIST,
+                        statusCode: AppErrorStatusCode.USER_EMAIL_EXIST,
                         property: 'email'
                     });
                 }
                 if (userExistMobileNumber) {
                     errors.push({
-                        statusCode:
-                            SystemErrorStatusCode.USER_MOBILE_NUMBER_EXIST,
+                        statusCode: AppErrorStatusCode.USER_MOBILE_NUMBER_EXIST,
                         property: 'mobileNumber'
                     });
                 }
 
                 if (errors.length > 0) {
-                    const message: IApiErrorMessage[] = this.responseService.setErrorMessage(
+                    const message: IMessageErrors[] = this.messageService.setErrors(
                         errors
                     );
-                    const response: IApiErrorResponse = this.responseService.error(
-                        SystemErrorStatusCode.REQUEST_ERROR,
+                    const response: IResponseError = this.responseService.error(
+                        AppErrorStatusCode.REQUEST_ERROR,
                         message
                     );
 
@@ -131,12 +125,12 @@ export class UserController {
                     ).toJSON();
 
                     return this.responseService.success(
-                        SystemSuccessStatusCode.USER_CREATE,
+                        AppSuccessStatusCode.USER_CREATE,
                         user
                     );
                 } catch (errCreate) {
-                    const response: IApiErrorResponse = this.responseService.error(
-                        SystemErrorStatusCode.GENERAL_ERROR
+                    const response: IResponseError = this.responseService.error(
+                        AppErrorStatusCode.GENERAL_ERROR
                     );
                     throw response;
                 }
@@ -148,20 +142,18 @@ export class UserController {
 
     @AuthJwt()
     @Delete('/delete/:userId')
-    async delete(
-        @Param('userId') userId: string
-    ): Promise<IApiSuccessResponse> {
+    async delete(@Param('userId') userId: string): Promise<IResponseSuccess> {
         const user: UserEntity = await this.userService.findOneById(userId);
         if (!user) {
-            const response: IApiErrorResponse = this.responseService.error(
-                SystemErrorStatusCode.USER_NOT_FOUND
+            const response: IResponseError = this.responseService.error(
+                AppErrorStatusCode.USER_NOT_FOUND
             );
             throw new BadRequestException(response);
         }
 
         await this.userService.deleteOneById(userId);
         return this.responseService.success(
-            SystemSuccessStatusCode.USER_DELETE,
+            AppSuccessStatusCode.USER_DELETE,
             user
         );
     }
@@ -171,13 +163,13 @@ export class UserController {
     async update(
         @Param('userId') userId: string,
         @Body(RequestValidationPipe(UserUpdateValidation)) data: IUserUpdate
-    ): Promise<IApiSuccessResponse> {
+    ): Promise<IResponseSuccess> {
         const checkUser: UserEntity = await this.userService.findOneById(
             userId
         );
         if (!checkUser) {
-            const response: IApiErrorResponse = this.responseService.error(
-                SystemErrorStatusCode.USER_NOT_FOUND
+            const response: IResponseError = this.responseService.error(
+                AppErrorStatusCode.USER_NOT_FOUND
             );
             throw new BadRequestException(response);
         }
@@ -188,12 +180,12 @@ export class UserController {
             ).toJSON();
 
             return this.responseService.success(
-                SystemSuccessStatusCode.USER_UPDATE,
+                AppSuccessStatusCode.USER_UPDATE,
                 user
             );
         } catch (err) {
-            const response: IApiErrorResponse = this.responseService.error(
-                SystemErrorStatusCode.GENERAL_ERROR
+            const response: IResponseError = this.responseService.error(
+                AppErrorStatusCode.GENERAL_ERROR
             );
             throw new InternalServerErrorException(response);
         }
@@ -201,20 +193,20 @@ export class UserController {
 
     @UseGuards(JwtGuard)
     @Get('/profile')
-    async profile(@User('id') userId: string): Promise<IApiSuccessResponse> {
+    async profile(@User('id') userId: string): Promise<IResponseSuccess> {
         const checkUser: UserEntity = await this.userService.findOneById(
             userId
         );
         if (!checkUser) {
-            const response: IApiErrorResponse = this.responseService.error(
-                SystemErrorStatusCode.USER_NOT_FOUND
+            const response: IResponseError = this.responseService.error(
+                AppErrorStatusCode.USER_NOT_FOUND
             );
             throw new BadRequestException(response);
         }
 
         const { password, salt, ...user } = checkUser.toJSON();
         return this.responseService.success(
-            SystemSuccessStatusCode.USER_GET,
+            AppSuccessStatusCode.USER_GET,
             user
         );
     }

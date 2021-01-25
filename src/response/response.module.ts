@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { MessageModule } from 'message/message.module';
 import { ResponseService } from 'response/response.service';
 
 @Global()
@@ -9,7 +10,7 @@ import { ResponseService } from 'response/response.service';
             useClass: ResponseService
         }
     ],
-    exports: ['ResponseService'],
-    imports: []
+    exports: [ResponseService],
+    imports: [MessageModule]
 })
 export class ResponseModule {}

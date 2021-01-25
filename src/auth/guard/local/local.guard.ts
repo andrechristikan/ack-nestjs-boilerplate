@@ -2,8 +2,8 @@ import { AuthGuard } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ResponseService } from 'response/response.service';
 import { Response } from 'response/response.decorator';
-import { IApiErrorResponse } from 'response/response.interface';
-import { SystemErrorStatusCode } from 'response/response.constant';
+import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
+import { IResponseError } from 'response/response.interface';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'middleware/logger/logger.decorator';
 
@@ -26,8 +26,8 @@ export class LocalGuard extends AuthGuard('local') {
                 description: info,
                 ...err
             });
-            const response: IApiErrorResponse = this.responseService.error(
-                SystemErrorStatusCode.UNAUTHORIZED_ERROR
+            const response: IResponseError = this.responseService.error(
+                AppErrorStatusCode.UNAUTHORIZED_ERROR
             );
 
             throw new UnauthorizedException(response);

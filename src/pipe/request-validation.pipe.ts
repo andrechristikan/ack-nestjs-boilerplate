@@ -11,11 +11,11 @@ import { Response } from 'response/response.decorator';
 import { ResponseService } from 'response/response.service';
 import { Logger } from 'middleware/logger/logger.decorator';
 import { Logger as LoggerService } from 'winston';
-import {
-    IApiErrorResponse,
-    IApiErrorMessage
-} from 'response/response.interface';
-import { SystemErrorStatusCode } from 'response/response.constant';
+import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
+import { Message } from 'message/message.decorator';
+import { MessageService } from 'message/message.service';
+import { IMessageErrors } from 'message/message.interface';
+import { IResponseError } from 'response/response.interface';
 
 export function RequestValidationPipe(schema: {
     new (...args: any[]): any;
@@ -23,6 +23,7 @@ export function RequestValidationPipe(schema: {
     class MixinRequestValidationPipe implements PipeTransform {
         constructor(
             @Response() private readonly responseService: ResponseService,
+            @Message() private readonly messageService: MessageService,
             @Logger() private readonly logger: LoggerService
         ) {}
 
@@ -38,11 +39,12 @@ export function RequestValidationPipe(schema: {
             this.logger.info('request', request);
             const rawErrors: Record<string, any>[] = await validate(request);
             if (rawErrors.length > 0) {
-                const errors: IApiErrorMessage[] = this.responseService.setRequestErrorMessage(
+                const errors: IMessageErrors[] = this.messageService.setRequestErrorMessage(
                     rawErrors
                 );
-                const response: IApiErrorResponse = this.responseService.error(
-                    SystemErrorStatusCode.REQUEST_ERROR,
+
+                const response: IResponseError = this.responseService.error(
+                    AppErrorStatusCode.REQUEST_ERROR,
                     errors
                 );
                 throw new BadRequestException(response);

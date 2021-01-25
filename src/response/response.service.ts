@@ -1,80 +1,26 @@
 import { Injectable } from '@nestjs/common';
-import {
-    SystemSuccessStatusCode,
-    SystemErrorStatusCode,
-    ResponseMessage
-} from 'response/response.constant';
-import {
-    IApiMessage,
-    IApiErrors,
-    IApiErrorMessage,
-    IApiErrorResponse,
-    IApiSuccessResponse,
-    IApiRawMessage
-} from 'response/response.interface';
-import { LanguageService } from 'language/language.service';
+import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
+import { AppSuccessStatusCode } from 'status-code/status-code.success.constant';
+
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'middleware/logger/logger.decorator';
-import { Language } from 'language/language.decorator';
+import { MessageService } from 'message/message.service';
+import { IErrors, IMessageErrors, IMessage } from 'message/message.interface';
+import { IResponseError, IResponseSuccess } from './response.interface';
 
 @Injectable()
 export class ResponseService {
     constructor(
         @Logger() private readonly logger: LoggerService,
-        @Language() private readonly languageService: LanguageService,
+        private readonly messageService: MessageService
     ) {}
 
-    private setMessage(
-        statusCode: SystemErrorStatusCode | SystemSuccessStatusCode
-    ): IApiMessage {
-        const message: IApiRawMessage[] = ResponseMessage.filter(val => {
-            const statusCodeMerge: Record<string, any> = {
-                ...SystemErrorStatusCode,
-                ...SystemSuccessStatusCode
-            };
-            return val.statusCode === statusCodeMerge[statusCode];
-        });
-        return {
-            statusCode: statusCode,
-            message: this.languageService.get(message[0].message)
-        };
-    }
-
-    setErrorMessage(errors: IApiErrors[]): IApiErrorMessage[] {
-        const newError: IApiErrorMessage[] = [];
-        errors.forEach((value: IApiErrors) => {
-            const error: IApiMessage = this.setMessage(value.statusCode);
-            newError.push({
-                property: value.property,
-                message: error.message
-            });
-        });
-        return newError;
-    }
-
-    setRequestErrorMessage(
-        rawErrors: Record<string, any>[]
-    ): IApiErrorMessage[] {
-        const errors: IApiErrorMessage[] = rawErrors.map(value => {
-            for (const [i, k] of Object.entries(value.constraints)) {
-                return {
-                    property: value.property,
-                    message: this.languageService
-                        .get(`request.${i}`)
-                        .replace('$property', value.property)
-                        .replace('$value', value.value)
-                };
-            }
-        });
-        return errors;
-    }
-
     error(
-        statusCode: SystemErrorStatusCode,
-        errors?: IApiErrorMessage[]
-    ): IApiErrorResponse {
-        const message: IApiMessage = this.setMessage(statusCode);
-        const response: IApiErrorResponse = {
+        statusCode: AppErrorStatusCode,
+        errors?: IMessageErrors[]
+    ): IResponseError {
+        const message: IMessage = this.messageService.set(statusCode);
+        const response: IResponseError = {
             statusCode,
             message: message.message,
             errors
@@ -85,11 +31,11 @@ export class ResponseService {
     }
 
     success(
-        statusCode: SystemSuccessStatusCode,
+        statusCode: AppSuccessStatusCode,
         data?: Record<string, any> | Record<string, any>[]
-    ): IApiSuccessResponse {
-        const message: IApiMessage = this.setMessage(statusCode);
-        const response: IApiSuccessResponse = {
+    ): IResponseSuccess {
+        const message: IMessage = this.messageService.set(statusCode);
+        const response: IResponseSuccess = {
             statusCode,
             message: message.message,
             data

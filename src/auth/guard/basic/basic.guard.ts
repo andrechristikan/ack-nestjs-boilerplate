@@ -11,9 +11,9 @@ import {
 import { Request } from 'express';
 import { Helper } from 'helper/helper.decorator';
 import { HelperService } from 'helper/helper.service';
-import { SystemErrorStatusCode } from 'response/response.constant';
 import { Response } from 'response/response.decorator';
-import { IApiErrorResponse } from 'response/response.interface';
+import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
+import { IResponseError } from 'response/response.interface';
 import { ResponseService } from 'response/response.service';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'middleware/logger/logger.decorator';
@@ -43,8 +43,8 @@ export class BasicGuard implements CanActivate {
 
         if (!authorization) {
             this.logger.error('AuthBasicGuardError');
-            const response: IApiErrorResponse = this.responseService.error(
-                SystemErrorStatusCode.UNAUTHORIZED_ERROR
+            const response: IResponseError = this.responseService.error(
+                AppErrorStatusCode.UNAUTHORIZED_ERROR
             );
             throw new UnauthorizedException(response);
         }

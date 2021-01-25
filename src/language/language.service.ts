@@ -22,21 +22,4 @@ export class LanguageService {
 
         return selectedLanguage as string;
     }
-
-    getAll(key: string): Record<string, any> {
-        const keys: string[] = key.split('.');
-        const defaultLanguage =
-            this.configService.get('app.language') || APP_LANGUAGE;
-
-        let selectedLanguage: Record<string, any> | string = this.languages[
-            defaultLanguage
-        ];
-
-        for (const [i, v] of keys.entries()) {
-            selectedLanguage = selectedLanguage[v];
-            if (i + 1 >= keys.length) continue;
-        }
-
-        return selectedLanguage as Record<string, any>;
-    }
 }
