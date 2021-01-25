@@ -6,6 +6,11 @@ export interface IMessage {
     statusCode: AppErrorStatusCode | AppSuccessStatusCode;
 }
 
+export interface IRawMessage {
+    message: string;
+    statusCode: string;
+}
+
 export interface IErrors {
     property: string;
     statusCode: AppErrorStatusCode;

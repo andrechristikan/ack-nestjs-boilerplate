@@ -6,5 +6,10 @@ export default {
     minLength: '$property has less elements than the minimum allowed.',
     isString: '$property should be a type of string.',
     isNotEmpty: '$property cannot be empty.',
-    isLowercase: '$property should be lowercase.'
+    isLowercase: '$property should be lowercase.',
+    isOptional: '$property is optional.',
+    isPositive: '$property should be a positive number.',
+    isEmail: '$property should be a type of email.',
+    isInt: '$property should be a number.',
+    isNumberString: '$property should be a number.'
 };

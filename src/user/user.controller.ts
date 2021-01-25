@@ -9,7 +9,9 @@ import {
     Query,
     UseGuards,
     BadRequestException,
-    InternalServerErrorException
+    InternalServerErrorException,
+    DefaultValuePipe,
+    ParseIntPipe
 } from '@nestjs/common';
 import { UserService } from 'user/user.service';
 import { UserEntity } from 'user/user.schema';
@@ -35,6 +37,7 @@ import { MessageService } from 'message/message.service';
 import { Message } from 'message/message.decorator';
 import { PaginationService } from 'pagination/pagination.service';
 import { Pagination } from 'pagination/pagination.decorator';
+import { PAGE, LIMIT } from 'pagination/pagination.constant';
 
 @Controller('api/user')
 export class UserController {
@@ -48,9 +51,9 @@ export class UserController {
     @AuthBasic()
     @Get('/')
     async getAll(
-        @Query(RequestValidationPipe(UserCreateValidation)) data: IUserFind
+        @Query('page', new DefaultValuePipe(PAGE), ParseIntPipe) page: number,
+        @Query('limit', new DefaultValuePipe(LIMIT), ParseIntPipe) limit: number
     ): Promise<IResponseSuccess> {
-        const { limit, page } = data;
         const { skip } = await this.paginationService.pagination(page, limit);
         const user: UserEntity[] = await this.userService.findAll(skip, limit);
         return this.responseService.success(

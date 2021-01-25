@@ -5,7 +5,7 @@ import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
 import { AppSuccessStatusCode } from 'status-code/status-code.success.constant';
 import { AppSuccessMessage } from 'message/resources/message.success.constant';
 import { AppErrorMessage } from 'message/resources/message.error.constant';
-import { IMessage } from 'message/message.interface';
+import { IMessage, IRawMessage } from 'message/message.interface';
 import { IErrors, IMessageErrors } from './message.interface';
 
 @Injectable()
@@ -20,12 +20,12 @@ export class MessageService {
             ...AppErrorStatusCode
         };
 
-        const AppMessageMerge: Record<string, any> = {
+        const AppMessageMerge: IRawMessage[] = [
             ...AppSuccessMessage,
             ...AppErrorMessage
-        };
+        ];
 
-        const message: IMessage[] = AppMessageMerge.filter((val) => {
+        const message: IRawMessage[] = AppMessageMerge.filter((val) => {
             return val.statusCode === AppStatusCodeMerge[statusCode];
         });
         return {
