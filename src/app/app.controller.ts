@@ -1,8 +1,9 @@
-import { Controller, ForbiddenException, Get } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { AppService } from 'app/app.service';
 import { ResponseService } from 'response/response.service';
 import { IApiSuccessResponse } from 'response/response.interface';
 import { Response } from 'response/response.decorator';
+import { SystemSuccessStatusCode } from 'response/response.constant';
 
 @Controller('/api/test')
 export class AppController {
@@ -13,8 +14,9 @@ export class AppController {
 
     @Get('/')
     async getHello(): Promise<IApiSuccessResponse> {
-        throw new ForbiddenException({
-            httpCode: 400
+        const message: string = await this.appService.getHello();
+        return this.responseService.success(SystemSuccessStatusCode.OK, {
+            message
         });
     }
 }

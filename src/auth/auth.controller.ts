@@ -2,7 +2,6 @@ import { Controller, Post, Body } from '@nestjs/common';
 import { AuthService } from 'auth/auth.service';
 import { ILogin, IPayload } from 'auth/auth.interface';
 import { UserService } from 'user/user.service';
-import { UserEntity } from 'user/user.schema';
 import { ResponseService } from 'response/response.service';
 import { Response } from 'response/response.decorator';
 import { IApiSuccessResponse } from 'response/response.interface';
