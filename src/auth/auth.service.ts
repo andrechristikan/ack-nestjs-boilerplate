@@ -15,7 +15,7 @@ export class AuthService {
     ) {}
 
     async createAccessToken(payload: IPayload): Promise<string> {
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
             const accessToken = this.jwtService.sign(payload);
             resolve(accessToken);
         });
@@ -25,7 +25,7 @@ export class AuthService {
         email: string,
         passwordString: string
     ): Promise<boolean> {
-        const user: UserEntity = await this.userService.getOneByEmail(email);
+        const user: UserEntity = await this.userService.findOneByEmail(email);
         const hashPassword: string = await this.helperService.hashPassword(
             passwordString,
             user.salt

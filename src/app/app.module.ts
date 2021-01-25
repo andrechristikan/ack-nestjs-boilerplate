@@ -11,7 +11,6 @@ import { LoggerMiddleware } from 'middleware/logger/logger.middleware';
 import { BodyParserUrlencodedMiddleware } from 'middleware/body-parser/body-parser-urlencoded.middleware';
 import { BodyParserJsonMiddleware } from 'middleware/body-parser/body-parser-json.middleware';
 import { ResponseBodyMiddleware } from 'response/response.middleware';
-import { CsurfMiddleware } from 'middleware/csurf/csurf.middleware';
 import { HelmetMiddleware } from 'middleware/helmet/helmet.middleware';
 import { RateLimitMiddleware } from 'middleware/rate-limit/rate-limit.middleware';
 
@@ -28,8 +27,6 @@ import { UserModule } from 'user/user.module';
 import { AuthModule } from 'auth/auth.module';
 
 import Configuration from 'config/configuration';
-import { CookieParserMiddleware } from 'middleware/cookie-parser/cookie-parser.middleware';
-import { SessionMiddleware } from 'middleware/session/session.middleware';
 
 @Module({
     controllers: [AppController],
@@ -73,9 +70,6 @@ export class AppModule implements NestModule {
                 LoggerMiddleware,
                 BodyParserUrlencodedMiddleware,
                 BodyParserJsonMiddleware,
-                CookieParserMiddleware,
-                SessionMiddleware,
-                CsurfMiddleware,
                 HelmetMiddleware,
                 RateLimitMiddleware
             )

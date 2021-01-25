@@ -10,26 +10,30 @@ import {
 export class UserCreateValidation {
     @IsEmail()
     @IsNotEmpty()
-    @IsLowercase()
-    email: string;
+    @MaxLength(100)
+    readonly email: string;
 
     @IsString()
     @IsNotEmpty()
-    @IsLowercase()
-    firstName: string;
+    @MinLength(3)
+    @MaxLength(30)
+    readonly firstName: string;
 
     @IsString()
     @IsNotEmpty()
-    @IsLowercase()
-    lastName: string;
+    @MinLength(3)
+    @MaxLength(30)
+    readonly lastName: string;
 
     @IsString()
     @IsNotEmpty()
-    @MaxLength(13)
     @MinLength(10)
-    mobileNumber: string;
+    @MaxLength(13)
+    readonly mobileNumber: string;
 
     @IsString()
     @IsNotEmpty()
-    password: string;
+    @MinLength(6)
+    @MaxLength(30)
+    readonly password: string;
 }

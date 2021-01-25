@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { AuthService } from 'auth/auth.service';
 import { ILogin, IPayload } from 'auth/auth.interface';
 import { UserService } from 'user/user.service';
@@ -7,9 +7,7 @@ import { ResponseService } from 'response/response.service';
 import { Response } from 'response/response.decorator';
 import { IApiSuccessResponse } from 'response/response.interface';
 import { SystemSuccessStatusCode } from 'response/response.constant';
-import { AuthLoginValidation } from 'auth/validation/auth.login.validation';
-import { RequestValidationPipe } from 'pipe/request-validation.pipe';
-import { LocalGuard } from 'auth/guard/local/local.guard';
+import { AuthLocal } from 'auth/auth.decorator';
 
 @Controller('api/auth')
 export class AuthController {
@@ -19,20 +17,19 @@ export class AuthController {
         private readonly userService: UserService
     ) {}
 
-    @UseGuards(LocalGuard)
+    @AuthLocal()
     @Post('/login')
-    async login(
-        @Body(RequestValidationPipe(AuthLoginValidation)) data: ILogin
-    ): Promise<IApiSuccessResponse> {
-        const checkUser: UserEntity = await this.userService.getOneByEmail(
-            data.email
-        );
+    async login(@Body() data: ILogin): Promise<IApiSuccessResponse> {
+        console.log('data login', data);
+        const { id, firstName, lastName, email, ...user } = (
+            await this.userService.findOneByEmail(data.email)
+        ).toJSON();
 
         const payload: IPayload = {
-            id: checkUser._id,
-            firstName: checkUser.firstName,
-            lastName: checkUser.lastName,
-            email: checkUser.email
+            id,
+            firstName,
+            lastName,
+            email
         };
 
         const accessToken: string = await this.authService.createAccessToken(

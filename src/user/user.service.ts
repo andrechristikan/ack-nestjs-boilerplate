@@ -2,11 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import { UserEntity } from 'user/user.schema';
-import {
-    IUserCreate,
-    IUserUpdate,
-} from 'user/user.interface';
+import { UserEntity, UserDatabaseName } from 'user/user.schema';
+import { IUserCreate, IUserUpdate } from 'user/user.interface';
 
 import { Helper } from 'helper/helper.decorator';
 import { HelperService } from 'helper/helper.service';
@@ -14,28 +11,28 @@ import { HelperService } from 'helper/helper.service';
 @Injectable()
 export class UserService {
     constructor(
-        @Helper() private helperService: HelperService,
-        @InjectModel('user') private userModel: Model<UserEntity>
+        @Helper() private readonly helperService: HelperService,
+        @InjectModel(UserDatabaseName) private readonly userModel: Model<UserEntity>
     ) {}
 
-    async getAll(
+    async findAll(
         skip: number,
         limit: number,
         find?: Record<string, any>
     ): Promise<UserEntity[]> {
         return this.userModel
             .find(find)
-            .select('-password')
+            .select('-password,-salt')
             .skip(skip)
             .limit(limit)
             .exec();
     }
 
-    async getOneById(id: string): Promise<UserEntity> {
-        return this.userModel.findById(id).exec();
+    async findOneById(userId: string): Promise<UserEntity> {
+        return this.userModel.findById(userId).exec();
     }
 
-    async getOneByEmail(email: string): Promise<UserEntity> {
+    async findOneByEmail(email: string): Promise<UserEntity> {
         return this.userModel
             .findOne({
                 email: email
@@ -43,7 +40,7 @@ export class UserService {
             .exec();
     }
 
-    async getOneByMobileNumber(mobileNumber: string): Promise<UserEntity> {
+    async findOneByMobileNumber(mobileNumber: string): Promise<UserEntity> {
         return this.userModel
             .findOne({
                 mobileNumber: mobileNumber
@@ -66,15 +63,14 @@ export class UserService {
         return user.save();
     }
 
-    async delete(id: string): Promise<UserEntity> {
-        return this.userModel.findByIdAndDelete(id).exec();
+    async deleteOneById(userId: string): Promise<UserEntity> {
+        return this.userModel.findByIdAndDelete(userId).exec();
     }
 
-    async update(id: string, data: IUserUpdate): Promise<UserEntity> {
-        const user: UserEntity = await this.getOneById(id);
+    async updateOneById(userId: string, data: IUserUpdate): Promise<UserEntity> {
+        const user: UserEntity = await this.findOneById(userId);
         user.firstName = data.firstName.toLowerCase();
         user.lastName = data.lastName.toLowerCase();
         return user.save();
     }
-
 }

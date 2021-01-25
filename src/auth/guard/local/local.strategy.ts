@@ -2,7 +2,6 @@ import { Strategy } from 'passport-local';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from 'auth/auth.service';
-import { UserEntity } from 'user/user.schema';
 import { UserService } from 'user/user.service';
 import { IPayload } from 'auth/auth.interface';
 import { AUTH_DEFAULT_USERNAME_FIELD } from 'auth/auth.constant';
@@ -33,13 +32,15 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
             throw new UnauthorizedException();
         }
 
-        const user: UserEntity = await this.userService.getOneByEmail(username);
+        const { id, firstName, lastName, email, ...user } = (
+            await this.userService.findOneByEmail(username)
+        ).toJSON();
 
         return {
-            id: user.id,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email
+            id,
+            firstName,
+            lastName,
+            email
         };
     }
 }

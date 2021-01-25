@@ -8,7 +8,7 @@
     "allowSyntheticDefaultImports": true,
     "noLib": false,
     "noImplicitAny": false,
-    "target": "es2017",
+    "target": "ES2020",
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./src",
