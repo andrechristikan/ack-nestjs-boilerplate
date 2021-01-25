@@ -3,7 +3,7 @@ import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
 import { AppSuccessStatusCode } from 'status-code/status-code.success.constant';
 
 import { Logger as LoggerService } from 'winston';
-import { Logger } from 'middleware/logger/logger.decorator';
+import { Logger } from 'logger/logger.decorator';
 import { MessageService } from 'message/message.service';
 import { IMessageErrors, IMessage } from 'message/message.interface';
 import { IResponseError, IResponseSuccess } from './response.interface';

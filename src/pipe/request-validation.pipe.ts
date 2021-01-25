@@ -9,7 +9,7 @@ import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';
 import { Response } from 'response/response.decorator';
 import { ResponseService } from 'response/response.service';
-import { Logger } from 'middleware/logger/logger.decorator';
+import { Logger } from 'logger/logger.decorator';
 import { Logger as LoggerService } from 'winston';
 import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
 import { Message } from 'message/message.decorator';

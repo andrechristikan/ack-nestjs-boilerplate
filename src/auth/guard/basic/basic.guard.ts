@@ -15,7 +15,7 @@ import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
 import { IResponseError } from 'response/response.interface';
 import { ResponseService } from 'response/response.service';
 import { Logger as LoggerService } from 'winston';
-import { Logger } from 'middleware/logger/logger.decorator';
+import { Logger } from 'logger/logger.decorator';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()

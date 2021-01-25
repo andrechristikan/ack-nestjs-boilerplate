@@ -5,7 +5,7 @@ import { Response } from 'response/response.decorator';
 import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
 import { IResponseError } from 'response/response.interface';
 import { Logger as LoggerService } from 'winston';
-import { Logger } from 'middleware/logger/logger.decorator';
+import { Logger } from 'logger/logger.decorator';
 
 @Injectable()
 export class JwtGuard extends AuthGuard('jwt') {

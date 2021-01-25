@@ -3,10 +3,6 @@ import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { AppController } from 'app/app.controller';
 import { AppService } from 'app/app.service';
 
-import { WinstonModule } from 'nest-winston';
-import { LoggerService } from 'middleware/logger/logger.service';
-import { LoggerModule } from 'middleware/logger/logger.module';
-
 import { LoggerMiddleware } from 'middleware/logger/logger.middleware';
 import { BodyParserUrlencodedMiddleware } from 'middleware/body-parser/body-parser-urlencoded.middleware';
 import { BodyParserJsonMiddleware } from 'middleware/body-parser/body-parser-json.middleware';
@@ -22,6 +18,10 @@ import { ResponseModule } from 'response/response.module';
 import { LanguageModule } from 'language/language.module';
 import { ConfigModule } from '@nestjs/config';
 
+import { WinstonModule } from 'nest-winston';
+import { LoggerService } from 'logger/logger.service';
+import { LoggerModule } from 'logger/logger.module';
+
 import { UserModule } from 'user/user.module';
 import { AuthModule } from 'auth/auth.module';
 
@@ -33,7 +33,6 @@ import { PaginationModule } from 'pagination/pagination.module';
     providers: [AppService],
     imports: [
         ConfigModule.forRoot({
-            // envFilePath: '.env',
             load: [Configuration],
             ignoreEnvFile: true,
             isGlobal: true,

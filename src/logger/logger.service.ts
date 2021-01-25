@@ -11,7 +11,7 @@ import {
     HttpLoggerSize,
     HttpLoggerMaxSize,
     HttpLoggerName
-} from 'middleware/logger/logger.constant';
+} from 'logger/logger.constant';
 
 @Injectable()
 export class LoggerService {
