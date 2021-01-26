@@ -23,7 +23,7 @@ import { Hash } from 'hash/hash.decorator';
 export class BasicGuard implements CanActivate {
     constructor(
         @Response() private readonly responseService: ResponseService,
-        @Hash()private readonly hashService: HashService,
+        @Hash() private readonly hashService: HashService,
         @Logger() private readonly logger: LoggerService,
         private readonly configService: ConfigService
     ) {}
