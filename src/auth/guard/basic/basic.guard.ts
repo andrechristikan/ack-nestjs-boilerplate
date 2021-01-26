@@ -54,9 +54,19 @@ export class BasicGuard implements CanActivate {
             authBasicTokenClientSecret
         );
 
-        return this.hashService.validateBasicToken(
+        const validateBasicToken: boolean = await this.hashService.validateBasicToken(
             clientBasicToken,
             ourBasicToken
         );
+
+        if(!validateBasicToken){
+            this.logger.error('AuthBasicGuardError');
+            const response: IResponseError = this.responseService.error(
+                AppErrorStatusCode.UNAUTHORIZED_ERROR
+            );
+            throw new UnauthorizedException(response);
+        }
+
+        return true;
     }
 }
