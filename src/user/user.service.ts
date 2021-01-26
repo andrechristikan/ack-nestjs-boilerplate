@@ -2,14 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import { UserEntity, UserDatabaseName } from 'user/user.schema';
+import { UserEntity } from 'user/user.schema';
 import { IUserCreate, IUserUpdate } from 'user/user.interface';
 import { HashService } from 'hash/hash.service';
 
 @Injectable()
 export class UserService {
     constructor(
-        @InjectModel(UserDatabaseName)
+        @InjectModel(UserEntity.name)
         private readonly userModel: Model<UserEntity>,
         private readonly hashService: HashService
     ) {}

@@ -18,7 +18,6 @@ import { UserEntity } from 'user/user.schema';
 import {
     IUser,
     IUserCreate,
-    IUserFind,
     IUserUpdate
 } from 'user/user.interface';
 import { JwtGuard } from 'auth/guard/jwt/jwt.guard';
