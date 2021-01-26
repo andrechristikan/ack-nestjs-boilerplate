@@ -12,10 +12,12 @@ app:
   env: 'development'
   language: 'en'
   debug: true
-  sessionSecret: 'UgWV9PSH0tVzn8BNvsyMOksW0bNgqC'
 
-  helper: 
-    pagination: 10
+  pagination: 
+    page: 1
+    limit: 10
+
+  hash: 
     passwordLatLength: 16
 
   auth:

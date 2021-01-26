@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { UserDatabaseName, UserSchema } from 'user/user.schema';
+import { UserEntity, UserDatabaseName, UserSchema } from 'user/user.schema';
 import { UserService } from 'user/user.service';
 import { UserController } from 'user/user.controller';
 import { HashModule } from 'hash/hash.module';
@@ -9,7 +9,11 @@ import { HashModule } from 'hash/hash.module';
 @Module({
     imports: [
         MongooseModule.forFeature([
-            { name: UserDatabaseName, schema: UserSchema }
+            {
+                name: UserEntity.name,
+                schema: UserSchema,
+                collection: UserDatabaseName
+            }
         ]),
         HashModule
     ],

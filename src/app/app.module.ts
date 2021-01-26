@@ -6,7 +6,7 @@ import { AppService } from 'app/app.service';
 import { LoggerMiddleware } from 'middleware/logger/logger.middleware';
 import { BodyParserUrlencodedMiddleware } from 'middleware/body-parser/body-parser-urlencoded.middleware';
 import { BodyParserJsonMiddleware } from 'middleware/body-parser/body-parser-json.middleware';
-import { ResponseBodyMiddleware } from 'response/response.middleware';
+import { ResponseBodyMiddleware } from 'middleware/response/response.middleware';
 import { HelmetMiddleware } from 'middleware/helmet/helmet.middleware';
 import { RateLimitMiddleware } from 'middleware/rate-limit/rate-limit.middleware';
 
