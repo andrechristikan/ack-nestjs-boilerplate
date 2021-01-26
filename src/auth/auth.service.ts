@@ -4,11 +4,12 @@ import { UserEntity } from 'user/user.schema';
 import { UserService } from 'user/user.service';
 import { IPayload } from 'auth/auth.interface';
 import { HashService } from 'hash/hash.service';
+import { Hash } from 'hash/hash.decorator';
 
 @Injectable()
 export class AuthService {
     constructor(
-        private readonly hashService: HashService,
+        @Hash() private readonly hashService: HashService,
         private readonly userService: UserService,
         private readonly jwtService: JwtService
     ) {}

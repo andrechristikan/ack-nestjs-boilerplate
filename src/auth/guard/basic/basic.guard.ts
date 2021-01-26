@@ -17,12 +17,13 @@ import { ResponseService } from 'response/response.service';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'logger/logger.decorator';
 import { ConfigService } from '@nestjs/config';
+import { Hash } from 'hash/hash.decorator';
 
 @Injectable()
 export class BasicGuard implements CanActivate {
     constructor(
         @Response() private readonly responseService: ResponseService,
-        private readonly hashService: HashService,
+        @Hash()private readonly hashService: HashService,
         @Logger() private readonly logger: LoggerService,
         private readonly configService: ConfigService
     ) {}

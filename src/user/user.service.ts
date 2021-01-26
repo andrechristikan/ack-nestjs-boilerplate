@@ -5,13 +5,14 @@ import { Model } from 'mongoose';
 import { UserEntity } from 'user/user.schema';
 import { IUserCreate, IUserUpdate } from 'user/user.interface';
 import { HashService } from 'hash/hash.service';
+import { Hash } from 'hash/hash.decorator';
 
 @Injectable()
 export class UserService {
     constructor(
         @InjectModel(UserEntity.name)
         private readonly userModel: Model<UserEntity>,
-        private readonly hashService: HashService
+        @Hash() private readonly hashService: HashService
     ) {}
 
     async findAll(

@@ -26,6 +26,7 @@ import { UserModule } from 'user/user.module';
 import { AuthModule } from 'auth/auth.module';
 
 import Configuration from 'config/configuration';
+import { HashModule } from 'hash/hash.module';
 import { PaginationModule } from 'pagination/pagination.module';
 
 @Module({
@@ -55,6 +56,7 @@ import { PaginationModule } from 'pagination/pagination.module';
         LoggerModule,
         ResponseModule,
         PaginationModule,
+        HashModule,
 
         AuthModule,
         UserModule
