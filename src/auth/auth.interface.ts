@@ -8,6 +8,9 @@ export interface IPayload {
     lastName: string;
     email: string;
 }
+export interface IPayloadBasicToken {
+    clientBasicToken: string;
+}
 
 export type IApplyDecorator = <TFunction extends Function, Y>(
     target: Record<string, any> | TFunction,
