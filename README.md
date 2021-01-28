@@ -93,9 +93,6 @@ Andre Christi Kan
   * [Crypto Documentation](https://cryptojs.gitbook.io/docs/)
   * [Passport Documentation](https://github.com/jaredhanson/passport)
   * [Class Validation Documentation](https://github.com/typestack/class-validator#readme) 
-* Testing
-  * [JestJs](https://jestjs.io/docs/en/getting-started)
-  * [SuperTest](https://github.com/visionmedia/supertest)
 * Logger
   * [Winston Documentation](https://github.com/winstonjs/winston)
   * [Morgan Documentation](https://github.com/expressjs/morgan)
@@ -117,5 +114,5 @@ Andre Christi Kan
 [project-docs]: https://github.com/andrechristikan/ac.k
 [project-issues]: https://github.com/andrechristikan/ac.k/issues/
 [author-email]: mailto:andrechristikan@gmail.com
-[author-linkedin]: https://id.linkedin.com/in/andre-christi-kan-6b5913143
+[author-linkedin]: https://id.linkedin.com/in/andrechristikan
 [author-instagram]: https://www.instagram.com/___ac.k/
