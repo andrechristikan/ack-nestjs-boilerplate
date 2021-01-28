@@ -68,7 +68,6 @@ export class AuthController {
             payload
         );
         return this.responseService.success(AppSuccessStatusCode.LOGIN, {
-            ...payload,
             accessToken,
             expiredIn
         });
