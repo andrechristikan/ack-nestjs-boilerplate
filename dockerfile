@@ -5,8 +5,12 @@ WORKDIR /app
 
 COPY package.json .
 RUN set -x && yarn
+
 COPY . .
+
+RUN yarn run prebuild && yarn run build
+RUN ls .
 
 EXPOSE 3000
 
-CMD [ "yarn", "run", "start:dev" ]
+CMD [ "yarn", "run", "start:prod" ]
