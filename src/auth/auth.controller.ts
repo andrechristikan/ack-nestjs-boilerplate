@@ -6,7 +6,6 @@ import { ResponseService } from 'response/response.service';
 import { Response } from 'response/response.decorator';
 import { IResponseSuccess } from 'response/response.interface';
 import { AppSuccessStatusCode } from 'status-code/status-code.success.constant';
-
 import { AuthBasic, AuthLocal } from 'auth/auth.decorator';
 import { ConfigService } from '@nestjs/config';
 import { AUTH_JWT_EXPIRATION_TIME } from 'auth/auth.constant';

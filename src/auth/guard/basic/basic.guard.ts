@@ -30,10 +30,10 @@ export class BasicGuard implements CanActivate {
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         // Env Variable
-        const authBasicTokenClientId: string =
+        const basicTokenClientId: string =
             this.configService.get('app.auth.basicTokenClientId') ||
             AUTH_BASIC_TOKEN_CLIENT_ID;
-        const authBasicTokenClientSecret: string =
+        const basicTokenClientSecret: string =
             this.configService.get('app.auth.basicTokenClientSecret') ||
             AUTH_BASIC_TOKEN_CLIENT_SECRET;
 
@@ -51,8 +51,8 @@ export class BasicGuard implements CanActivate {
 
         const clientBasicToken: string = authorization.replace('Basic ', '');
         const ourBasicToken: string = await this.hashService.createBasicToken(
-            authBasicTokenClientId,
-            authBasicTokenClientSecret
+            basicTokenClientId,
+            basicTokenClientSecret
         );
 
         const validateBasicToken: boolean = await this.hashService.validateBasicToken(
@@ -60,7 +60,7 @@ export class BasicGuard implements CanActivate {
             ourBasicToken
         );
 
-        if(!validateBasicToken){
+        if (!validateBasicToken) {
             this.logger.error('AuthBasicGuardError');
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.UNAUTHORIZED_ERROR

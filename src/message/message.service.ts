@@ -6,7 +6,7 @@ import { AppSuccessStatusCode } from 'status-code/status-code.success.constant';
 import { AppSuccessMessage } from 'message/resources/message.success.constant';
 import { AppErrorMessage } from 'message/resources/message.error.constant';
 import { IMessage, IRawMessage } from 'message/message.interface';
-import { IErrors, IMessageErrors } from './message.interface';
+import { IErrors, IMessageErrors } from 'message/message.interface';
 
 @Injectable()
 export class MessageService {

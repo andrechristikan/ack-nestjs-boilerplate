@@ -1,6 +1,6 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import * as compression  from 'compression';
+import compression  from 'compression';
 
 @Injectable()
 export class CompressionMiddleware implements NestMiddleware {

@@ -2,7 +2,6 @@ import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
 import { AppSuccessStatusCode } from 'status-code/status-code.success.constant';
 import { IMessageErrors } from 'message/message.interface';
 
-// response
 export interface IResponseSuccess {
     statusCode: AppSuccessStatusCode;
     message: string;
@@ -15,3 +14,4 @@ export interface IResponseError {
     message: string;
     errors?: IMessageErrors[];
 }
+
