@@ -4,6 +4,7 @@
     "project": "tsconfig.json",
     "sourceType": "module"
   },
+  "plugins": ["@typescript-eslint/eslint-plugin"],
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
@@ -13,7 +14,8 @@
   ],
   "root": true,
   "env": {
-    "node": true
+    "node": true,
+    "jest": true
   },
   "rules": {
     "no-unused-vars": "off",
