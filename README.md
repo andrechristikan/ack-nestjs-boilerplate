@@ -25,11 +25,11 @@ Folder structure will be like
 ```
 	ac.k
 	├── .dockerignore
-	├── .env.example
 	├── .eslintignore
 	├── .eslintrc
 	├── .gitignore
 	├── .prettierrc 
+	├── config-example.yml
 	├── cspell.json
 	├── docker-compose.yml 
 	├── dockerfile 
@@ -38,17 +38,21 @@ Folder structure will be like
 	├── package.json
 	├── README.md
 	├── tsconfig.build.json
-	├── tsconfig.build
+	├── tsconfig.json
 	└── src
 		├── app
 		├── auth
 		├── config
 		├── database
-		├── helper
+		├── hash
 		├── language
+		├── logger
+		├── message
 		├── middleware
+		├── pagination
 		├── pipe
 		├── response
+		├── status-code
 		├── user
 		└── main.ts
 		 
@@ -57,13 +61,13 @@ Folder structure will be like
 ### Prerequisites
 
 Before start, we need to closing knowledge gaps and install some application (like Database, Package Manager, etc) 
-* [MongoDB](#acknowledgements)
-* [Mongoose](#acknowledgements)
-* [NestJs](#acknowledgements)
-* [Typescript](#acknowledgements)
-* [JsonWebToken](#acknowledgements)
-* [Passport](#acknowledgements)
-* [ClassValidation](#acknowledgements)
+* Core
+	1. [NestJs](#acknowledgements)
+	2. [NodeJs](#acknowledgements)
+	3. [Typescript](#acknowledgements)
+* Database: [MongoDB](#acknowledgements)
+* Package Manager: [Yarn](#acknowledgements)
+* Other,.. see [acknowledgements](#acknowledgements)
 
 
 <!-- LICENSE -->
@@ -85,6 +89,7 @@ Andre Christi Kan
 ## Acknowledgements
 * Framework and languages
   * [NestJs Documentation](https://docs.nestjs.com)
+  * [NodeJs Documentation](https://nodejs.org/en/docs)
   * [TypeScript Documentation](https://www.typescriptlang.org/docs)
 * Database
   * [MongoDb Documentation](https://docs.mongodb.com/manual)
@@ -99,10 +104,11 @@ Andre Christi Kan
 * Linter
   * [Prettier Documentation](https://prettier.io/docs/en/index.html)
   * [EsLint Documentation](https://eslint.org/docs/user-guide/getting-started)
+* Package Manager
+  * [Yarn Documentation](https://yarnpkg.com/getting-started)
 * References
   * [NodeJs Best Practice Reference](https://github.com/goldbergyoni/nodebestpractices)
   * [NestJs Middleware Reference](https://github.com/wbhob/nest-middlewares)
-  * [ReadMe Template](https://github.com/othneildrew/Best-README-Template)
 * Other
   * [Class Validation Documentation](https://github.com/typestack/class-validator#readme) 
   * [Docker Documentation](https://docs.docker.com/)
