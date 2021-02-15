@@ -23,9 +23,12 @@ export class LocalGuard extends AuthGuard('local') {
     ): TUser {
         if (err || !user) {
             this.logger.error('AuthLocalGuardError', {
+                class: 'LocalGuard',
+                function: 'handleRequest',
                 description: info,
-                ...err
+                error: { ...err }
             });
+
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.UNAUTHORIZED_ERROR
             );

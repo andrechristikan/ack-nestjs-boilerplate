@@ -6,6 +6,7 @@ import { UserService } from 'user/user.service';
 import { IPayload } from 'auth/auth.interface';
 import { AUTH_DEFAULT_USERNAME_FIELD } from 'auth/auth.constant';
 import { ConfigService } from '@nestjs/config';
+import { IUser } from 'user/user.interface';
 
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
@@ -32,15 +33,19 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
             throw new UnauthorizedException();
         }
 
-        const { id, firstName, lastName, email, ...user } = (
-            await this.userService.findOneByEmail(username)
-        ).toJSON();
-
-        return {
+        const user: IUser = await this.userService.findOneByEmail(username);
+        const {
             id,
+            email,
             firstName,
             lastName,
-            email
+            ...others
+        } = await this.userService.transformer(user);
+        return {
+            id,
+            email,
+            firstName,
+            lastName,
         };
     }
 }

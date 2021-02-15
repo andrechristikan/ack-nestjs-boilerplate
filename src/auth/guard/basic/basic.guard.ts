@@ -5,8 +5,8 @@ import {
     UnauthorizedException
 } from '@nestjs/common';
 import {
-    AUTH_BASIC_TOKEN_CLIENT_ID,
-    AUTH_BASIC_TOKEN_CLIENT_SECRET
+    AUTH_BASIC_CLIENT_ID,
+    AUTH_BASIC_CLIENT_SECRET
 } from 'auth/auth.constant';
 import { Request } from 'express';
 import { HashService } from 'hash/hash.service';
@@ -30,19 +30,22 @@ export class BasicGuard implements CanActivate {
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         // Env Variable
-        const basicTokenClientId: string =
-            this.configService.get('app.auth.basicTokenClientId') ||
-            AUTH_BASIC_TOKEN_CLIENT_ID;
-        const basicTokenClientSecret: string =
-            this.configService.get('app.auth.basicTokenClientSecret') ||
-            AUTH_BASIC_TOKEN_CLIENT_SECRET;
+        const basicClientId: string =
+            this.configService.get('app.auth.basicClientId') ||
+            AUTH_BASIC_CLIENT_ID;
+        const basicClientSecret: string =
+            this.configService.get('app.auth.basicClientSecret') ||
+            AUTH_BASIC_CLIENT_SECRET;
 
         const request: Request = context.switchToHttp().getRequest();
 
         const authorization: string = request.headers.authorization;
 
         if (!authorization) {
-            this.logger.error('AuthBasicGuardError');
+            this.logger.error('AuthBasicGuardError', {
+                class: 'BasicGuard',
+                function: 'canActivate'
+            });
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.UNAUTHORIZED_ERROR
             );
@@ -51,8 +54,8 @@ export class BasicGuard implements CanActivate {
 
         const clientBasicToken: string = authorization.replace('Basic ', '');
         const ourBasicToken: string = await this.hashService.createBasicToken(
-            basicTokenClientId,
-            basicTokenClientSecret
+            basicClientId,
+            basicClientSecret
         );
 
         const validateBasicToken: boolean = await this.hashService.validateBasicToken(
@@ -61,7 +64,10 @@ export class BasicGuard implements CanActivate {
         );
 
         if (!validateBasicToken) {
-            this.logger.error('AuthBasicGuardError');
+            this.logger.error('AuthBasicGuardError Validate Basic Token', {
+                class: 'BasicGuard',
+                function: 'canActivate'
+            });
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.UNAUTHORIZED_ERROR
             );

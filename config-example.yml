@@ -11,7 +11,7 @@ database:
 app:
   env: 'development'
   language: 'en'
-  debug: true
+  debug: false
 
   pagination: 
     page: 1
@@ -24,5 +24,5 @@ app:
     usernameField: 'email'
     jwtSecretKey: '9UbQX7iQvgaW4Bm7HwzU'
     jwtExpiration: '1h'
-    basicTokenClientId: 'rw0sOzrpMP2CpQqXozZsjk5AI5cL00uyDIUiN0gn'
-    basicTokenClientSecret: '275tqa6S4sWCyBHBvFezJJm0QRvxK39VOgLOTXVo'
+    basicClientId: 'rw0sOzrpMP2CpQqXozZsjk5AI5cL00uyDIUiN0gn'
+    basicClientSecret: '275tqa6S4sWCyBHBvFezJJm0QRvxK39VOgLOTXVo'

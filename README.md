@@ -37,7 +37,7 @@ Folder structure will be like
 	├── nest-cli.json
 	├── package.json
 	├── README.md
-	├── tsconfig.build.json
+
 	├── tsconfig.json
 	└── src
 		├── app

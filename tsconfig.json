@@ -16,10 +16,14 @@
     "skipLibCheck": true
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "e2e"
   ],
   "exclude": [
-    "node_modules",
-    "**/*.spec.ts"
+    "node_modules", 
+    "**/*.spec.ts", 
+    "test",
+    "dist", 
+    "logs", 
   ]
 }

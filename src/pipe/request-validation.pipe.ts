@@ -36,13 +36,23 @@ export function RequestValidationPipe(schema: {
             }
 
             const request: Record<string, any> = plainToClass(schema, value);
-            this.logger.info('request', request);
+
+            this.logger.info('Request Data', {
+                class: 'RequestValidationPipe',
+                function: 'transform',
+                request: request
+            });
             const rawErrors: Record<string, any>[] = await validate(request);
             if (rawErrors.length > 0) {
                 const errors: IMessageErrors[] = this.messageService.setRequestErrorMessage(
                     rawErrors
                 );
 
+                this.logger.error('Request Errors', {
+                    class: 'RequestValidationPipe',
+                    function: 'transform',
+                    errors
+                });
                 const response: IResponseError = this.responseService.error(
                     AppErrorStatusCode.REQUEST_ERROR,
                     errors

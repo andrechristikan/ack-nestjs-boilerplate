@@ -5,6 +5,7 @@ import { UserService } from 'user/user.service';
 import { IPayload, IPayloadBasicToken } from 'auth/auth.interface';
 import { HashService } from 'hash/hash.service';
 import { Hash } from 'hash/hash.decorator';
+import { IUser } from 'user/user.interface';
 
 @Injectable()
 export class AuthService {
@@ -25,7 +26,7 @@ export class AuthService {
         email: string,
         passwordString: string
     ): Promise<boolean> {
-        const user: UserEntity = await this.userService.findOneByEmail(email);
+        const user: IUser = await this.userService.findOneByEmail(email);
         const hashPassword: string = await this.hashService.hashPassword(
             passwordString,
             user.salt

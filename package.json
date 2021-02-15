@@ -8,17 +8,17 @@
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "nest build",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"e2e/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "lint": "eslint \"{src,apps,libs,test,e2e}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./e2e/jest-e2e.json"
   },
   "dependencies": {
     "@nestjs/common": "7.6.11",
@@ -53,7 +53,7 @@
   "devDependencies": {
     "@nestjs/cli": "7.5.4",
     "@nestjs/schematics": "7.2.7",
-    "@nestjs/testing": "7.6.11",
+    "@nestjs/testing": "^7.6.12",
     "@types/compression": "^1.7.0",
     "@types/crypto-js": "^4.0.1",
     "@types/express": "4.17.11",

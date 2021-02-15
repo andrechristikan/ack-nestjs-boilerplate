@@ -25,7 +25,11 @@ export class ResponseService {
             errors
         };
 
-        this.logger.error('Error', response);
+        this.logger.error('Response Error', {
+            class: 'ResponseService',
+            function: 'error',
+            response: response
+        });
         return response;
     }
 
@@ -40,12 +44,21 @@ export class ResponseService {
             data
         };
 
-        this.logger.info('Success', response);
+        this.logger.info('Response Success', {
+            class: 'ResponseService',
+            function: 'success',
+            response: response
+        });
         return response;
     }
 
     raw(response: Record<string, any>): Record<string, any> {
-        this.logger.info('Raw', response);
+
+        this.logger.info('Response Raw', {
+            class: 'ResponseService',
+            function: 'raw',
+            response: response
+        });
         return response;
     }
 }

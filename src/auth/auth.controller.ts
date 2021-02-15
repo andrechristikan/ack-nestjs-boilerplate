@@ -9,6 +9,7 @@ import { AppSuccessStatusCode } from 'status-code/status-code.success.constant';
 import { AuthBasic, AuthLocal } from 'auth/auth.decorator';
 import { ConfigService } from '@nestjs/config';
 import { AUTH_JWT_EXPIRATION_TIME } from 'auth/auth.constant';
+import { IUser } from 'user/user.interface';
 
 @Controller('api/auth')
 export class AuthController {
@@ -27,15 +28,19 @@ export class AuthController {
             this.configService.get('auth.jwtExpirationTime') ||
             AUTH_JWT_EXPIRATION_TIME;
 
-        const { id, firstName, lastName, email, ...user } = (
-            await this.userService.findOneByEmail(data.email)
-        ).toJSON();
-
-        const payload: IPayload = {
+        const user: IUser = await this.userService.findOneByEmail(data.email);
+        const {
             id,
+            email,
             firstName,
             lastName,
-            email
+            ...others
+        } = await this.userService.transformer(user);
+        const payload: IPayload = {
+            id,
+            email,
+            firstName,
+            lastName
         };
 
         const accessToken: string = await this.authService.createAccessToken(
@@ -49,7 +54,7 @@ export class AuthController {
     }
 
     @AuthBasic()
-    @Post('/login-basic-token')
+    @Post('/login-basic')
     async loginBasicToken(
         @Headers('Authorization') authorization: string
     ): Promise<IResponseSuccess> {

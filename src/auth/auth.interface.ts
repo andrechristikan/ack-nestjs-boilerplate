@@ -1,13 +1,10 @@
+import { IUserSafe } from 'user/user.interface';
+
 export interface ILogin {
     email: string;
     password: string;
 }
-export interface IPayload {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-}
+export type IPayload = Omit<IUserSafe, 'mobileNumber'>;
 export interface IPayloadBasicToken {
     clientBasicToken: string;
 }
