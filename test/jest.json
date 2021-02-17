@@ -3,19 +3,19 @@
     "verbose": true,
     "rootDir": "./",
     "modulePaths": [
-        "./"
+        "../"
     ],
     "testEnvironment": "node",
-    "testRegex": "/test/.*\\.(test|spec).(ts|tsx|js)$",
+    "testRegex": "../test/.*\\.(test|spec).(ts|tsx|js)$",
     "collectCoverage": true,
-    "collectCoverageFrom" : ["test/**/*.{js,jsx,tsx,ts}", "!src/**/*.{js,jsx,tsx,ts}", "!**/node_modules/**", "!**/vendor/**"],
+    "collectCoverageFrom" : ["../test/**/*.{js,jsx,tsx,ts}", "!**/src/**/*.{js,jsx,tsx,ts}", "!**/node_modules/**", "!**/vendor/**"],
     "coveragePathIgnorePatterns": [
-        "/node_modules", 
-        "/vendor"
-        "/src"
+        "../node_modules", 
+        "../vendor",
+        "../src"
     ],
     "coverageReporters": ["json", "lcov"],
-    "coverageDirectory": "coverage",
+    "coverageDirectory": "../coverage",
     "moduleFileExtensions": [
         "ts",
         "tsx",

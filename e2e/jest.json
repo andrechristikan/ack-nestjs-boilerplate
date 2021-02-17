@@ -3,19 +3,19 @@
     "verbose": true,
     "rootDir": "./",
     "modulePaths": [
-        "./"
+        "../"
     ],
     "testEnvironment": "node",
-    "testRegex": "/e2e/.*\\.(e2e-test|e2e-spec).(ts|tsx|js)$",
+    "testRegex": "../e2e/.*\\.(e2e-test|e2e-spec).(ts|tsx|js)$",
     "collectCoverage": true,
-    "collectCoverageFrom" : ["e2e/**/*.{js,jsx,tsx,ts}", "!src/**/*.{js,jsx,tsx,ts}", "!**/node_modules/**", "!**/vendor/**"],
+    "collectCoverageFrom" : ["../e2e/**/*.{js,jsx,tsx,ts}", "!**/src/**/*.{js,jsx,tsx,ts}", "!**/node_modules/**", "!**/vendor/**"],
     "coveragePathIgnorePatterns": [
-        "/node_modules", 
-        "/vendor",
-        "/src"
+        "../node_modules", 
+        "../vendor",
+        "../src"
     ],
     "coverageReporters": ["json", "lcov"],
-    "coverageDirectory": "e2e-coverage",
+    "coverageDirectory": "../e2e-coverage",
     "moduleFileExtensions": [
         "ts",
         "tsx",
