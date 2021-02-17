@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { Language } from 'language/language.decorator';
-import { LanguageService } from 'language/language.service';
-import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
-import { AppSuccessStatusCode } from 'status-code/status-code.success.constant';
-import { AppSuccessMessage } from 'message/resources/message.success.constant';
-import { AppErrorMessage } from 'message/resources/message.error.constant';
-import { IMessage, IRawMessage } from 'message/message.interface';
-import { IErrors, IMessageErrors } from 'message/message.interface';
+import { Language } from 'src/language/language.decorator';
+import { LanguageService } from 'src/language/language.service';
+import { AppErrorStatusCode } from 'src/status-code/status-code.error.constant';
+import { AppSuccessStatusCode } from 'src/status-code/status-code.success.constant';
+import { AppSuccessMessage } from 'src/message/resources/message.success.constant';
+import { AppErrorMessage } from 'src/message/resources/message.error.constant';
+import { IMessage, IRawMessage } from 'src/message/message.interface';
+import { IErrors, IMessageErrors } from 'src/message/message.interface';
 
 @Injectable()
 export class MessageService {

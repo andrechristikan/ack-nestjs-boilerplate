@@ -1,1 +1,0 @@
-export const E2E_USER_FIND_ONE_BY_ID_URL = '/api/auth/login';

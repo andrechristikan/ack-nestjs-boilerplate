@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { MessageService } from 'message/message.service';
+import { MessageService } from 'src/message/message.service';
 
 @Global()
 @Module({

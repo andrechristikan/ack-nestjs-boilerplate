@@ -7,17 +7,17 @@ import {
 import {
     AUTH_BASIC_CLIENT_ID,
     AUTH_BASIC_CLIENT_SECRET
-} from 'auth/auth.constant';
+} from 'src/auth/auth.constant';
 import { Request } from 'express';
-import { HashService } from 'hash/hash.service';
-import { Response } from 'response/response.decorator';
-import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
-import { IResponseError } from 'response/response.interface';
-import { ResponseService } from 'response/response.service';
+import { HashService } from 'src/hash/hash.service';
+import { Response } from 'src/response/response.decorator';
+import { AppErrorStatusCode } from 'src/status-code/status-code.error.constant';
+import { IResponseError } from 'src/response/response.interface';
+import { ResponseService } from 'src/response/response.service';
 import { Logger as LoggerService } from 'winston';
-import { Logger } from 'logger/logger.decorator';
+import { Logger } from 'src/logger/logger.decorator';
 import { ConfigService } from '@nestjs/config';
-import { Hash } from 'hash/hash.decorator';
+import { Hash } from 'src/hash/hash.decorator';
 
 @Injectable()
 export class BasicGuard implements CanActivate {
@@ -42,10 +42,12 @@ export class BasicGuard implements CanActivate {
         const authorization: string = request.headers.authorization;
 
         if (!authorization) {
-            this.logger.error('AuthBasicGuardError', {
-                class: 'BasicGuard',
-                function: 'canActivate'
-            });
+            if (this.configService.get('app.debug')) {
+                this.logger.error('AuthBasicGuardError', {
+                    class: 'BasicGuard',
+                    function: 'canActivate'
+                });
+            }
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.UNAUTHORIZED_ERROR
             );
@@ -64,10 +66,12 @@ export class BasicGuard implements CanActivate {
         );
 
         if (!validateBasicToken) {
-            this.logger.error('AuthBasicGuardError Validate Basic Token', {
-                class: 'BasicGuard',
-                function: 'canActivate'
-            });
+            if (this.configService.get('app.debug')) {
+                this.logger.error('AuthBasicGuardError Validate Basic Token', {
+                    class: 'BasicGuard',
+                    function: 'canActivate'
+                });
+            }
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.UNAUTHORIZED_ERROR
             );

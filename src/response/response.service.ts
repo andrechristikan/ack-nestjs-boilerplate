@@ -1,17 +1,23 @@
 import { Injectable } from '@nestjs/common';
-import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
-import { AppSuccessStatusCode } from 'status-code/status-code.success.constant';
+import { AppErrorStatusCode } from 'src/status-code/status-code.error.constant';
+import { AppSuccessStatusCode } from 'src/status-code/status-code.success.constant';
 import { Logger as LoggerService } from 'winston';
-import { Logger } from 'logger/logger.decorator';
-import { MessageService } from 'message/message.service';
-import { IMessageErrors, IMessage } from 'message/message.interface';
-import { IResponseError, IResponseSuccess } from 'response/response.interface';
+import { Logger } from 'src/logger/logger.decorator';
+import { MessageService } from 'src/message/message.service';
+import { IMessageErrors, IMessage } from 'src/message/message.interface';
+import {
+    IResponseError,
+    IResponseRaw,
+    IResponseSuccess
+} from 'src/response/response.interface';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ResponseService {
     constructor(
         @Logger() private readonly logger: LoggerService,
-        private readonly messageService: MessageService
+        private readonly messageService: MessageService,
+        private readonly configService: ConfigService
     ) {}
 
     error(
@@ -21,15 +27,20 @@ export class ResponseService {
         const message: IMessage = this.messageService.set(statusCode);
         const response: IResponseError = {
             statusCode,
-            message: message.message,
-            errors
+            message: message.message
         };
 
-        this.logger.error('Response Error', {
-            class: 'ResponseService',
-            function: 'error',
-            response: response
-        });
+        if (errors) {
+            response.errors = errors;
+        }
+
+        if (this.configService.get('app.debug')) {
+            this.logger.error('Response Error', {
+                class: 'ResponseService',
+                function: 'error',
+                response: response
+            });
+        }
         return response;
     }
 
@@ -40,25 +51,30 @@ export class ResponseService {
         const message: IMessage = this.messageService.set(statusCode);
         const response: IResponseSuccess = {
             statusCode,
-            message: message.message,
-            data
+            message: message.message
         };
 
-        this.logger.info('Response Success', {
-            class: 'ResponseService',
-            function: 'success',
-            response: response
-        });
+        if (data) {
+            response.data = data;
+        }
+        if (this.configService.get('app.debug')) {
+            this.logger.info('Response Success', {
+                class: 'ResponseService',
+                function: 'success',
+                response: response
+            });
+        }
         return response;
     }
 
-    raw(response: Record<string, any>): Record<string, any> {
-
-        this.logger.info('Response Raw', {
-            class: 'ResponseService',
-            function: 'raw',
-            response: response
-        });
+    raw(response: Record<string, any>): IResponseRaw {
+        if (this.configService.get('app.debug')) {
+            this.logger.info('Response Raw', {
+                class: 'ResponseService',
+                function: 'raw',
+                response: response
+            });
+        }
         return response;
     }
 }

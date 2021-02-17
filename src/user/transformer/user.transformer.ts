@@ -23,5 +23,4 @@ export class UserTransformer {
     get id(): string {
         return `${this._id}`;
     }
-
 }

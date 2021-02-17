@@ -4,7 +4,7 @@ import * as rateLimit from 'express-rate-limit';
 import {
     MAX_REQUEST_PER_IP,
     RESET_TIME
-} from 'middleware/rate-limit/rate-limit.constant';
+} from 'src/middleware/rate-limit/rate-limit.constant';
 
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {

@@ -1,5 +1,5 @@
 import { Module, Global } from '@nestjs/common';
-import { LanguageService } from 'language/language.service';
+import { LanguageService } from 'src/language/language.service';
 
 @Global()
 @Module({

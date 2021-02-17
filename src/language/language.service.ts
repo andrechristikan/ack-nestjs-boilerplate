@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Languages, { APP_LANGUAGE } from 'language/language.constant';
+import Languages, { APP_LANGUAGE } from 'src/language/language.constant';
 
 @Injectable()
 export class LanguageService {

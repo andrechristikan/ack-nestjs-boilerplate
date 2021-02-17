@@ -1,16 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { UserEntity } from 'user/user.schema';
+import { UserEntity } from 'src/user/user.schema';
 import {
     IUser,
     IUserCreate,
     IUserSafe,
     IUserUpdate
-} from 'user/user.interface';
-import { HashService } from 'hash/hash.service';
-import { Hash } from 'hash/hash.decorator';
-import { UserTransformer } from 'user/transformer/user.transformer';
+} from 'src/user/user.interface';
+import { HashService } from 'src/hash/hash.service';
+import { Hash } from 'src/hash/hash.decorator';
+import { UserTransformer } from 'src/user/transformer/user.transformer';
 import { classToPlain, plainToClass } from 'class-transformer';
 
 @Injectable()
@@ -65,17 +65,22 @@ export class UserService {
             data.password,
             salt
         );
-        const user: UserEntity = new this.userModel(data);
-        user.firstName = data.firstName.toLowerCase();
-        user.lastName = data.lastName.toLowerCase();
-        user.email = data.email.toLowerCase();
-        user.password = passwordHash;
-        user.salt = salt;
-        return user.save();
+        return this.userModel.create({
+            firstName: data.firstName.toLowerCase(),
+            lastName: data.lastName.toLowerCase(),
+            email: data.email.toLowerCase(),
+            mobileNumber: data.mobileNumber,
+            password: passwordHash,
+            salt: salt
+        });
     }
 
     async deleteOneById(userId: string): Promise<UserEntity> {
-        return this.userModel.findByIdAndDelete(userId).exec();
+        return this.userModel
+            .deleteOne({
+                _id: userId
+            })
+            .exec();
     }
 
     async updateOneById(
@@ -83,12 +88,17 @@ export class UserService {
         data: IUserUpdate
     ): Promise<UserEntity> {
         return this.userModel
-            .findByIdAndUpdate(userId, {
-                $set: {
-                    firstName: data.firstName.toLowerCase(),
-                    lastName: data.lastName.toLowerCase()
+            .updateOne(
+                {
+                    _id: userId
+                },
+                {
+                    $set: {
+                        firstName: data.firstName.toLowerCase(),
+                        lastName: data.lastName.toLowerCase()
+                    }
                 }
-            })
+            )
             .exec();
     }
 }

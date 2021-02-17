@@ -8,7 +8,6 @@ services:
     environment:
       - NODE_ENV=development
     volumes:
-      - ./src:/app/src
-      - .env:/app/.env
+      - config.yml:/app/config.yml
     ports:
       - 3000:3000

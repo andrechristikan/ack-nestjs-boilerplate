@@ -1,15 +1,15 @@
 import { Module } from '@nestjs/common';
-import { AuthService } from 'auth/auth.service';
+import { AuthService } from 'src/auth/auth.service';
 import { JwtModule } from '@nestjs/jwt';
 import {
     AUTH_JWT_SECRET_KEY,
     AUTH_JWT_EXPIRATION_TIME
-} from 'auth/auth.constant';
-import { JwtStrategy } from 'auth/guard/jwt/jwt.strategy';
-import { UserModule } from 'user/user.module';
-import { AuthController } from 'auth/auth.controller';
+} from 'src/auth/auth.constant';
+import { JwtStrategy } from 'src/auth/guard/jwt/jwt.strategy';
+import { UserModule } from 'src/user/user.module';
+import { AuthController } from 'src/auth/auth.controller';
 import { PassportModule } from '@nestjs/passport';
-import { LocalStrategy } from 'auth/guard/local/local.strategy';
+import { LocalStrategy } from 'src/auth/guard/local/local.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({

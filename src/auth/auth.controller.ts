@@ -1,15 +1,15 @@
 import { Controller, Post, Body, Headers } from '@nestjs/common';
-import { AuthService } from 'auth/auth.service';
-import { ILogin, IPayload, IPayloadBasicToken } from 'auth/auth.interface';
-import { UserService } from 'user/user.service';
-import { ResponseService } from 'response/response.service';
-import { Response } from 'response/response.decorator';
-import { IResponseSuccess } from 'response/response.interface';
-import { AppSuccessStatusCode } from 'status-code/status-code.success.constant';
-import { AuthBasic, AuthLocal } from 'auth/auth.decorator';
+import { AuthService } from 'src/auth/auth.service';
+import { ILogin, IPayload, IPayloadBasicToken } from 'src/auth/auth.interface';
+import { UserService } from 'src/user/user.service';
+import { ResponseService } from 'src/response/response.service';
+import { Response } from 'src/response/response.decorator';
+import { IResponseSuccess } from 'src/response/response.interface';
+import { AppSuccessStatusCode } from 'src/status-code/status-code.success.constant';
+import { AuthBasic, AuthLocal } from 'src/auth/auth.decorator';
 import { ConfigService } from '@nestjs/config';
-import { AUTH_JWT_EXPIRATION_TIME } from 'auth/auth.constant';
-import { IUser } from 'user/user.interface';
+import { AUTH_JWT_EXPIRATION_TIME } from 'src/auth/auth.constant';
+import { IUser } from 'src/user/user.interface';
 
 @Controller('api/auth')
 export class AuthController {

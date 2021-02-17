@@ -12,32 +12,36 @@ import {
     DefaultValuePipe,
     ParseIntPipe
 } from '@nestjs/common';
-import { UserService } from 'user/user.service';
-import { UserEntity } from 'user/user.schema';
+import { UserService } from 'src/user/user.service';
+import { UserEntity } from 'src/user/user.schema';
 import {
     IUser,
     IUserCreate,
     IUserSafe,
     IUserUpdate
-} from 'user/user.interface';
-import { Response } from 'response/response.decorator';
-import { ResponseService } from 'response/response.service';
-import { IResponseError, IResponseSuccess } from 'response/response.interface';
-import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
-import { AppSuccessStatusCode } from 'status-code/status-code.success.constant';
-import { RequestValidationPipe } from 'pipe/request-validation.pipe';
-import { UserCreateValidation } from 'user/validation/user.create.validation';
-import { UserUpdateValidation } from 'user/validation/user.update.validation';
-import { User } from 'user/user.decorator';
-import { AuthBasic, AuthJwt } from 'auth/auth.decorator';
-import { IErrors, IMessageErrors } from 'message/message.interface';
-import { MessageService } from 'message/message.service';
-import { Message } from 'message/message.decorator';
-import { PaginationService } from 'pagination/pagination.service';
-import { Pagination } from 'pagination/pagination.decorator';
-import { PAGE, LIMIT } from 'pagination/pagination.constant';
+} from 'src/user/user.interface';
+import { Response } from 'src/response/response.decorator';
+import { ResponseService } from 'src/response/response.service';
+import {
+    IResponseError,
+    IResponseSuccess
+} from 'src/response/response.interface';
+import { AppErrorStatusCode } from 'src/status-code/status-code.error.constant';
+import { AppSuccessStatusCode } from 'src/status-code/status-code.success.constant';
+import { RequestValidationPipe } from 'src/pipe/request-validation.pipe';
+import { UserCreateValidation } from 'src/user/validation/user.create.validation';
+import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
+import { User } from 'src/user/user.decorator';
+import { AuthBasic, AuthJwt } from 'src/auth/auth.decorator';
+import { IErrors, IMessageErrors } from 'src/message/message.interface';
+import { MessageService } from 'src/message/message.service';
+import { Message } from 'src/message/message.decorator';
+import { PaginationService } from 'src/pagination/pagination.service';
+import { Pagination } from 'src/pagination/pagination.decorator';
+import { PAGE, LIMIT } from 'src/pagination/pagination.constant';
 import { Logger as LoggerService } from 'winston';
-import { Logger } from 'logger/logger.decorator';
+import { Logger } from 'src/logger/logger.decorator';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('api/user')
 export class UserController {
@@ -46,7 +50,8 @@ export class UserController {
         @Message() private readonly messageService: MessageService,
         @Pagination() private readonly paginationService: PaginationService,
         @Logger() private readonly logger: LoggerService,
-        private readonly userService: UserService
+        private readonly userService: UserService,
+        private readonly configService: ConfigService
     ) {}
 
     @AuthBasic()
@@ -72,11 +77,12 @@ export class UserController {
     async profile(@User('id') userId: string): Promise<IResponseSuccess> {
         const user: IUser = await this.userService.findOneById(userId);
         if (!user) {
-            this.logger.error('user Error', {
-                class: 'UserController',
-                function: 'profile'
-            });
-
+            if (this.configService.get('app.debug')) {
+                this.logger.error('user Error', {
+                    class: 'UserController',
+                    function: 'profile'
+                });
+            }
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.USER_NOT_FOUND
             );
@@ -91,17 +97,18 @@ export class UserController {
     }
 
     @AuthBasic()
-    @Get('/in/:userId')
+    @Get('/:userId')
     async findOneById(
         @Param('userId') userId: string
     ): Promise<IResponseSuccess> {
         const user: IUser = await this.userService.findOneById(userId);
         if (!user) {
-            this.logger.error('user Errors', {
-                class: 'UserController',
-                function: 'findOneById'
-            });
-
+            if (this.configService.get('app.debug')) {
+                this.logger.error('user Errors', {
+                    class: 'UserController',
+                    function: 'findOneById'
+                });
+            }
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.USER_NOT_FOUND
             );
@@ -115,7 +122,7 @@ export class UserController {
         );
     }
 
-    @AuthJwt()
+    @AuthBasic()
     @Post('/create')
     async create(
         @Body(RequestValidationPipe(UserCreateValidation)) data: IUserCreate
@@ -148,11 +155,13 @@ export class UserController {
                         errors
                     );
 
-                    this.logger.error('create errors', {
-                        class: 'UserController',
-                        function: 'create',
-                        errors
-                    });
+                    if (this.configService.get('app.debug')) {
+                        this.logger.error('create errors', {
+                            class: 'UserController',
+                            function: 'create',
+                            errors
+                        });
+                    }
                     const response: IResponseError = this.responseService.error(
                         AppErrorStatusCode.REQUEST_ERROR,
                         message
@@ -174,14 +183,15 @@ export class UserController {
                         userSafe
                     );
                 } catch (errCreate) {
-                    this.logger.error('create try catch', {
-                        class: 'UserController',
-                        function: 'create',
-                        error: {
-                            ...errCreate
-                        }
-                    });
-
+                    if (this.configService.get('app.debug')) {
+                        this.logger.error('create try catch', {
+                            class: 'UserController',
+                            function: 'create',
+                            error: {
+                                ...errCreate
+                            }
+                        });
+                    }
                     const response: IResponseError = this.responseService.error(
                         AppErrorStatusCode.GENERAL_ERROR
                     );
@@ -193,16 +203,17 @@ export class UserController {
             });
     }
 
-    @AuthJwt()
+    @AuthBasic()
     @Delete('/delete/:userId')
     async delete(@Param('userId') userId: string): Promise<IResponseSuccess> {
         const user: IUser = await this.userService.findOneById(userId);
         if (!user) {
-            this.logger.error('user Error', {
-                class: 'UserController',
-                function: 'delete'
-            });
-
+            if (this.configService.get('app.debug')) {
+                this.logger.error('user Error', {
+                    class: 'UserController',
+                    function: 'delete'
+                });
+            }
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.USER_NOT_FOUND
             );
@@ -210,14 +221,10 @@ export class UserController {
         }
 
         await this.userService.deleteOneById(userId);
-        const userSafe: IUserSafe = await this.userService.transformer(user);
-        return this.responseService.success(
-            AppSuccessStatusCode.USER_DELETE,
-            userSafe
-        );
+        return this.responseService.success(AppSuccessStatusCode.USER_DELETE);
     }
 
-    @AuthJwt()
+    @AuthBasic()
     @Put('/update/:userId')
     async update(
         @Param('userId') userId: string,
@@ -225,10 +232,12 @@ export class UserController {
     ): Promise<IResponseSuccess> {
         const checkUser: IUser = await this.userService.findOneById(userId);
         if (!checkUser) {
-            this.logger.error('checkUser Error', {
-                class: 'UserController',
-                function: 'update'
-            });
+            if (this.configService.get('app.debug')) {
+                this.logger.error('checkUser Error', {
+                    class: 'UserController',
+                    function: 'update'
+                });
+            }
 
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.USER_NOT_FOUND
@@ -237,25 +246,25 @@ export class UserController {
         }
 
         try {
-            const user: UserEntity = await this.userService.updateOneById(
-                userId,
-                data
-            );
+            await this.userService.updateOneById(userId, data);
+            const user: IUser = await this.userService.findOneById(userId);
             const userSafe: IUserSafe = await this.userService.transformer(
-                user.toObject() as IUser
+                user
             );
             return this.responseService.success(
                 AppSuccessStatusCode.USER_UPDATE,
                 userSafe
             );
         } catch (err) {
-            this.logger.error('update try catch', {
-                class: 'UserController',
-                function: 'update',
-                error: {
-                    ...err
-                }
-            });
+            if (this.configService.get('app.debug')) {
+                this.logger.error('update try catch', {
+                    class: 'UserController',
+                    function: 'update',
+                    error: {
+                        ...err
+                    }
+                });
+            }
 
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.GENERAL_ERROR

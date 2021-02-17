@@ -1,26 +1,26 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
-import { AppController } from 'app/app.controller';
-import { AppService } from 'app/app.service';
-import { LoggerMiddleware } from 'middleware/logger/logger.middleware';
-import { BodyParserUrlencodedMiddleware } from 'middleware/body-parser/body-parser-urlencoded.middleware';
-import { BodyParserJsonMiddleware } from 'middleware/body-parser/body-parser-json.middleware';
-import { ResponseBodyMiddleware } from 'middleware/response/response.middleware';
-import { HelmetMiddleware } from 'middleware/helmet/helmet.middleware';
-import { RateLimitMiddleware } from 'middleware/rate-limit/rate-limit.middleware';
+import { AppController } from 'src/app/app.controller';
+import { AppService } from 'src/app/app.service';
+import { LoggerMiddleware } from 'src/middleware/logger/logger.middleware';
+import { BodyParserUrlencodedMiddleware } from 'src/middleware/body-parser/body-parser-urlencoded.middleware';
+import { BodyParserJsonMiddleware } from 'src/middleware/body-parser/body-parser-json.middleware';
+import { ResponseBodyMiddleware } from 'src/middleware/response/response.middleware';
+import { HelmetMiddleware } from 'src/middleware/helmet/helmet.middleware';
+import { RateLimitMiddleware } from 'src/middleware/rate-limit/rate-limit.middleware';
 import { MongooseModule } from '@nestjs/mongoose';
-import { DatabaseService } from 'database/database.service';
-import { DatabaseModule } from 'database/database.module';
-import { ResponseModule } from 'response/response.module';
-import { LanguageModule } from 'language/language.module';
+import { DatabaseService } from 'src/database/database.service';
+import { DatabaseModule } from 'src/database/database.module';
+import { ResponseModule } from 'src/response/response.module';
+import { LanguageModule } from 'src/language/language.module';
 import { ConfigModule } from '@nestjs/config';
 import { WinstonModule } from 'nest-winston';
-import { LoggerService } from 'logger/logger.service';
-import { LoggerModule } from 'logger/logger.module';
-import { UserModule } from 'user/user.module';
-import { AuthModule } from 'auth/auth.module';
-import Configuration from 'config/configuration';
-import { HashModule } from 'hash/hash.module';
-import { PaginationModule } from 'pagination/pagination.module';
+import { LoggerService } from 'src/logger/logger.service';
+import { LoggerModule } from 'src/logger/logger.module';
+import { UserModule } from 'src/user/user.module';
+import { AuthModule } from 'src/auth/auth.module';
+import Configuration from 'src/config/configuration';
+import { HashModule } from 'src/hash/hash.module';
+import { PaginationModule } from 'src/pagination/pagination.module';
 
 @Module({
     controllers: [AppController],

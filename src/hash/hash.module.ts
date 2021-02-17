@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { HashService } from 'hash/hash.service';
+import { HashService } from 'src/hash/hash.service';
 
 @Global()
 @Module({

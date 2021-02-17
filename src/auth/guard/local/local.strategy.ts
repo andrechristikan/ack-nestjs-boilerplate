@@ -1,12 +1,12 @@
 import { Strategy } from 'passport-local';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { AuthService } from 'auth/auth.service';
-import { UserService } from 'user/user.service';
-import { IPayload } from 'auth/auth.interface';
-import { AUTH_DEFAULT_USERNAME_FIELD } from 'auth/auth.constant';
+import { AuthService } from 'src/auth/auth.service';
+import { UserService } from 'src/user/user.service';
+import { IPayload } from 'src/auth/auth.interface';
+import { AUTH_DEFAULT_USERNAME_FIELD } from 'src/auth/auth.constant';
 import { ConfigService } from '@nestjs/config';
-import { IUser } from 'user/user.interface';
+import { IUser } from 'src/user/user.interface';
 
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
@@ -45,7 +45,7 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
             id,
             email,
             firstName,
-            lastName,
+            lastName
         };
     }
 }

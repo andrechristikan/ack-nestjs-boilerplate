@@ -1,17 +1,16 @@
-import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
-import { AppSuccessStatusCode } from 'status-code/status-code.success.constant';
-import { IMessageErrors } from 'message/message.interface';
+import { AppErrorStatusCode } from 'src/status-code/status-code.error.constant';
+import { AppSuccessStatusCode } from 'src/status-code/status-code.success.constant';
+import { IMessageErrors } from 'src/message/message.interface';
 
-export interface IResponseSuccess {
+export interface IResponseRaw {
+    statusCode?: number;
+    message?: string;
+}
+export interface IResponseSuccess extends IResponseRaw {
     statusCode: AppSuccessStatusCode;
-    message: string;
     data?: Record<string, any> | Record<string, any>[];
 }
-
-export type IResponseRaw = Record<string, any>;
-export interface IResponseError {
+export interface IResponseError extends IResponseRaw {
     statusCode: AppErrorStatusCode;
-    message: string;
     errors?: IMessageErrors[];
 }
-

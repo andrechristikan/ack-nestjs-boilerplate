@@ -1,7 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import * as bodyParser from 'body-parser';
-import { BodyParserJson } from 'middleware/body-parser/body-parser.constant';
+import { BodyParserJson } from 'src/middleware/body-parser/body-parser.constant';
 
 @Injectable()
 export class BodyParserJsonMiddleware implements NestMiddleware {

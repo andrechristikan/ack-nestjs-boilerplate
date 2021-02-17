@@ -1,9 +1,9 @@
 import { UseGuards } from '@nestjs/common';
-import { JwtGuard } from 'auth/guard/jwt/jwt.guard';
-import { LocalGuard } from 'auth/guard/local/local.guard';
-import { BasicGuard } from 'auth/guard/basic/basic.guard';
+import { JwtGuard } from 'src/auth/guard/jwt/jwt.guard';
+import { LocalGuard } from 'src/auth/guard/local/local.guard';
+import { BasicGuard } from 'src/auth/guard/basic/basic.guard';
 import { applyDecorators } from '@nestjs/common';
-import { IApplyDecorator } from 'auth/auth.interface';
+import { IApplyDecorator } from 'src/auth/auth.interface';
 
 export function AuthJwt(): IApplyDecorator {
     return applyDecorators(UseGuards(JwtGuard));

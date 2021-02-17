@@ -1,9 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
-import { AppService } from 'app/app.service';
-import { ResponseService } from 'response/response.service';
-import { AppSuccessStatusCode } from 'status-code/status-code.success.constant';
-import { Response } from 'response/response.decorator';
-import { IResponseSuccess } from 'response/response.interface';
+import { AppService } from 'src/app/app.service';
+import { ResponseService } from 'src/response/response.service';
+import { AppSuccessStatusCode } from 'src/status-code/status-code.success.constant';
+import { Response } from 'src/response/response.decorator';
+import { IResponseSuccess } from 'src/response/response.interface';
 
 @Controller('/api/test')
 export class AppController {

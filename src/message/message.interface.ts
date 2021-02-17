@@ -1,5 +1,5 @@
-import { AppErrorStatusCode } from 'status-code/status-code.error.constant';
-import { AppSuccessStatusCode } from 'status-code/status-code.success.constant';
+import { AppErrorStatusCode } from 'src/status-code/status-code.error.constant';
+import { AppSuccessStatusCode } from 'src/status-code/status-code.success.constant';
 
 export interface IMessage {
     message: string;

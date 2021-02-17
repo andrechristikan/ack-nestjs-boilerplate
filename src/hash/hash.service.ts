@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { HmacSHA512, enc, lib } from 'crypto-js';
-import { PASSWORD_SALT_LENGTH } from 'hash/hash.constant';
+import { PASSWORD_SALT_LENGTH } from 'src/hash/hash.constant';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()

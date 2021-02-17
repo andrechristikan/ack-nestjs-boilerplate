@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { IPagination } from 'pagination/pagination.interface';
-import { LIMIT, PAGE } from 'pagination/pagination.constant';
+import { IPagination } from 'src/pagination/pagination.interface';
+import { LIMIT, PAGE } from 'src/pagination/pagination.constant';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -13,7 +13,7 @@ export class PaginationService {
         const defaultPage: number =
             this.configService.get('app.pagination.page') || PAGE;
 
-        const limit: number =  setLimit|| defaultLimit;
+        const limit: number = setLimit || defaultLimit;
         const page: number = setPage || defaultPage;
 
         const skip: number = (page - 1) * limit;

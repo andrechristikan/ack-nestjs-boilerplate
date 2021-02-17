@@ -1,4 +1,4 @@
-import { IUserSafe } from 'user/user.interface';
+import { IUserSafe } from 'src/user/user.interface';
 
 export interface ILogin {
     email: string;

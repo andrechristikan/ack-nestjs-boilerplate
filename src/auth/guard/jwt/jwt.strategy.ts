@@ -1,8 +1,8 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
-import { AUTH_JWT_SECRET_KEY } from 'auth/auth.constant';
-import { IPayload } from 'auth/auth.interface';
+import { AUTH_JWT_SECRET_KEY } from 'src/auth/auth.constant';
+import { IPayload } from 'src/auth/auth.interface';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()

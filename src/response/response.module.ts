@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common';
-import { MessageModule } from 'message/message.module';
-import { ResponseService } from 'response/response.service';
+import { MessageModule } from 'src/message/message.module';
+import { ResponseService } from 'src/response/response.service';
 
 @Global()
 @Module({
