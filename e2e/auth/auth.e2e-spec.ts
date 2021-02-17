@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import * as request from 'supertest';
+import request from 'supertest';
 import {
     E2E_AUTH_LOGIN_BASIC_URL,
     E2E_AUTH_LOGIN_BASIC_CLIENT_ID,
@@ -15,7 +15,7 @@ import {
     E2E_USER_FIND_ONE_BY_ID_URL
 } from 'e2e/user/user.e2e-constant';
 import { IUserCreate } from 'src/user/user.interface';
-import * as faker from 'faker';
+import faker from 'faker';
 
 describe('E2E Auth', () => {
     let app: INestApplication;

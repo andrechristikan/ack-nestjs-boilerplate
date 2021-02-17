@@ -1,27 +1,24 @@
 import { AppErrorStatusCode } from 'src/status-code/status-code.error.constant';
 import { AppSuccessStatusCode } from 'src/status-code/status-code.success.constant';
 
-export interface IMessage {
-    message: string;
+export interface IMessage extends Omit<IMessageRaw, 'statusCode'> {
     statusCode: AppErrorStatusCode | AppSuccessStatusCode;
 }
 
-export interface IRawMessage {
+export interface IMessageRaw {
     message: string;
     statusCode: string;
 }
 
-export interface IErrors {
+export interface IErrorsRaw {
     property: string;
     statusCode: AppErrorStatusCode;
 }
 
-export interface IMessageErrors {
-    property: string;
+export type IErrors = IErrorsRaw;
+
+export interface IMessageErrors extends Omit<IErrorsRaw, 'statusCode'> {
     message: string;
 }
 
-export interface IRequestErrors {
-    property: string;
-    message: string;
-}
+export type IRequestErrors = IMessageErrors;

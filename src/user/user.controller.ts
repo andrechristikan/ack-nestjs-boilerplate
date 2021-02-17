@@ -43,7 +43,7 @@ import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
 import { ConfigService } from '@nestjs/config';
 
-@Controller('api/user')
+@Controller('/user')
 export class UserController {
     constructor(
         @Response() private readonly responseService: ResponseService,

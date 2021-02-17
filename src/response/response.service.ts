@@ -33,14 +33,6 @@ export class ResponseService {
         if (errors) {
             response.errors = errors;
         }
-
-        if (this.configService.get('app.debug')) {
-            this.logger.error('Response Error', {
-                class: 'ResponseService',
-                function: 'error',
-                response: response
-            });
-        }
         return response;
     }
 
@@ -57,24 +49,10 @@ export class ResponseService {
         if (data) {
             response.data = data;
         }
-        if (this.configService.get('app.debug')) {
-            this.logger.info('Response Success', {
-                class: 'ResponseService',
-                function: 'success',
-                response: response
-            });
-        }
         return response;
     }
 
     raw(response: Record<string, any>): IResponseRaw {
-        if (this.configService.get('app.debug')) {
-            this.logger.info('Response Raw', {
-                class: 'ResponseService',
-                function: 'raw',
-                response: response
-            });
-        }
         return response;
     }
 }

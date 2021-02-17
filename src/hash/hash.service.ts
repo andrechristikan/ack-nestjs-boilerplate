@@ -8,14 +8,8 @@ export class HashService {
     constructor(private readonly configService: ConfigService) {}
 
     async hashPassword(passwordString: string, salt: string): Promise<string> {
-        return new Promise((resolve) => {
-            const passwordHashed: lib.WordArray = HmacSHA512(
-                passwordString,
-                salt
-            );
-            const password: string = passwordHashed.toString(enc.Base64);
-            resolve(password);
-        });
+        const passwordHashed: lib.WordArray = HmacSHA512(passwordString, salt);
+        return passwordHashed.toString(enc.Base64);
     }
 
     async randomSalt(): Promise<string> {
@@ -34,19 +28,16 @@ export class HashService {
         clientSecret: string
     ): Promise<string> {
         const token: string = `${clientId}:${clientSecret}`;
-        const basicToken: string = Buffer.from(token).toString('base64');
-        return basicToken;
+        return Buffer.from(token).toString('base64');
     }
 
     async validateBasicToken(
         clientBasicToken: string,
         ourBasicToken: string
     ): Promise<boolean> {
-        return new Promise((resolve) => {
-            if (ourBasicToken === clientBasicToken) {
-                resolve(true);
-            }
-            resolve(false);
-        });
+        if (ourBasicToken !== clientBasicToken) {
+            return false;
+        }
+        return true;
     }
 }

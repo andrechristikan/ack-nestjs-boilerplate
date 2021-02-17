@@ -1,6 +1,6 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import * as rateLimit from 'express-rate-limit';
+import rateLimit from 'express-rate-limit';
 import {
     MAX_REQUEST_PER_IP,
     RESET_TIME

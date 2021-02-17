@@ -1,21 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import * as DailyRotateFile from 'winston-daily-rotate-file';
-import { createStream } from 'rotating-file-stream';
-import * as winston from 'winston';
-import * as moment from 'moment';
+import DailyRotateFile from 'winston-daily-rotate-file';
+import winston from 'winston';
 import {
     LoggerMaxSize,
     LoggerMaxFiles,
-    LoggerName,
-    HttpLoggerFormat,
-    HttpLoggerSize,
-    HttpLoggerMaxSize,
-    HttpLoggerName
+    LoggerName
 } from 'src/logger/logger.constant';
+import { ILoggerOptions } from './logger.interface';
 
 @Injectable()
 export class LoggerService {
-    createLogger(): Record<string, any> {
+    createLogger(): ILoggerOptions {
         const configTransportDefault: DailyRotateFile = new DailyRotateFile({
             filename: `./logs/${LoggerName}/default/%DATE%.log`,
             datePattern: 'YYYY-MM-DD',
@@ -33,35 +28,17 @@ export class LoggerService {
             level: 'error'
         });
 
-        const loggerOptions: Record<string, any> = {
+        const loggerOptions: ILoggerOptions = {
             format: winston.format.combine(
                 winston.format.timestamp(),
                 winston.format.prettyPrint()
             ),
             transports: [
                 configTransportError,
-                new winston.transports.Console(),
-                configTransportDefault
+                configTransportDefault,
+                new winston.transports.Console()
             ]
         };
         return loggerOptions;
-    }
-
-    static httpLogger(): Record<string, any> {
-        const date: string = moment().format('YYYY-MM-DD');
-        const HttpLoggerOptions: Record<string, any> = {
-            stream: createStream(`${date}.log`, {
-                path: `./logs/${HttpLoggerName}/`,
-                size: HttpLoggerSize,
-                maxSize: HttpLoggerMaxSize,
-                compress: true,
-                interval: '1d'
-            })
-        };
-
-        return {
-            HttpLoggerFormat,
-            HttpLoggerOptions
-        };
     }
 }

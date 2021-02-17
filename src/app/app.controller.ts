@@ -5,7 +5,7 @@ import { AppSuccessStatusCode } from 'src/status-code/status-code.success.consta
 import { Response } from 'src/response/response.decorator';
 import { IResponseSuccess } from 'src/response/response.interface';
 
-@Controller('/api/test')
+@Controller('/test')
 export class AppController {
     constructor(
         @Response() private readonly responseService: ResponseService,

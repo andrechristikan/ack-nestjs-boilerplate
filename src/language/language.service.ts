@@ -9,9 +9,11 @@ export class LanguageService {
     constructor(private readonly configService: ConfigService) {}
 
     get(key: string): string {
-        const keys: string[] = key.split('.');
+        // Env Variable
         const defaultLanguage =
             this.configService.get('app.language') || APP_LANGUAGE;
+
+        const keys: string[] = key.split('.');
         let selectedLanguage: Record<string, any> | string = this.languages[
             defaultLanguage
         ];

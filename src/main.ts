@@ -11,6 +11,9 @@ async function bootstrap() {
     // Middleware
     app.enableCors();
 
+    // global prefix
+    app.setGlobalPrefix('api');
+
     await app.listen(
         configService.get('http.port') || 3000,
         configService.get('http.host') || 'localhost',

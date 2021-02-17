@@ -1,7 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { AppController } from 'src/app/app.controller';
 import { AppService } from 'src/app/app.service';
-import { LoggerMiddleware } from 'src/middleware/logger/logger.middleware';
+import { HttpLoggerMiddleware } from 'src/middleware/http-logger/http-logger.middleware';
 import { BodyParserUrlencodedMiddleware } from 'src/middleware/body-parser/body-parser-urlencoded.middleware';
 import { BodyParserJsonMiddleware } from 'src/middleware/body-parser/body-parser-json.middleware';
 import { ResponseBodyMiddleware } from 'src/middleware/response/response.middleware';
@@ -61,7 +61,7 @@ export class AppModule implements NestModule {
         consumer
             .apply(
                 ResponseBodyMiddleware,
-                LoggerMiddleware,
+                HttpLoggerMiddleware,
                 BodyParserUrlencodedMiddleware,
                 BodyParserJsonMiddleware,
                 HelmetMiddleware,

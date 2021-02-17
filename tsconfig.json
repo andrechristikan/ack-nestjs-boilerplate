@@ -12,10 +12,13 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "incremental": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "moduleResolution": "node",
   },
   "include": [
     "src/**/*",
-    "e2e"
+    "e2e",
+    "test"
   ]
 }

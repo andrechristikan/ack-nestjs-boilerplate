@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import * as request from 'supertest';
+import request from 'supertest';
 import {
     E2E_AUTH_LOGIN_BASIC_CLIENT_ID,
     E2E_AUTH_LOGIN_BASIC_CLIENT_SECRET,
@@ -19,7 +19,7 @@ import { HashService } from 'src/hash/hash.service';
 import { ResponseService } from 'src/response/response.service';
 import { AppSuccessStatusCode } from 'src/status-code/status-code.success.constant';
 import { IUserSafe, IUserCreate } from 'src/user/user.interface';
-import * as faker from 'faker';
+import faker from 'faker';
 
 describe('E2E User', () => {
     let app: INestApplication;

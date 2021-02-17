@@ -3,7 +3,7 @@ import {
     MongooseOptionsFactory,
     MongooseModuleOptions
 } from '@nestjs/mongoose';
-import * as mongoose from 'mongoose';
+import mongoose from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { DATABASE_URL, DATABASE_NAME } from 'src/database/database.constant';
 

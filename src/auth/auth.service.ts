@@ -17,10 +17,7 @@ export class AuthService {
     async createAccessToken(
         payload: IPayload | IPayloadBasicToken
     ): Promise<string> {
-        return new Promise((resolve) => {
-            const accessToken = this.jwtService.sign(payload);
-            resolve(accessToken);
-        });
+        return this.jwtService.sign(payload);
     }
 
     async validateUser(
@@ -33,12 +30,10 @@ export class AuthService {
             user.salt
         );
 
-        return new Promise((resolve, reject) => {
-            if (user.password !== hashPassword) {
-                reject(false);
-            }
+        if (user.password !== hashPassword) {
+            return false;
+        }
 
-            resolve(true);
-        });
+        return true;
     }
 }

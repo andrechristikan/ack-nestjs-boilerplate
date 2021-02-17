@@ -11,7 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { AUTH_JWT_EXPIRATION_TIME } from 'src/auth/auth.constant';
 import { IUser } from 'src/user/user.interface';
 
-@Controller('api/auth')
+@Controller('/auth')
 export class AuthController {
     constructor(
         @Response() private readonly responseService: ResponseService,
@@ -33,8 +33,7 @@ export class AuthController {
             id,
             email,
             firstName,
-            lastName,
-            ...others
+            lastName
         } = await this.userService.transformer(user);
         const payload: IPayload = {
             id,
