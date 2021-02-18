@@ -14,9 +14,6 @@ export class UserTransformer {
     password: string;
 
     @Exclude()
-    salt: string;
-
-    @Exclude()
     __v: string;
 
     @Expose()

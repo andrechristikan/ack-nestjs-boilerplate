@@ -7,7 +7,7 @@
     ],
     "testEnvironment": "node",
     "testRegex": "../test/.*\\.(test|spec).(ts|tsx|js)$",
-    "collectCoverage": true,
+    "collectCoverage": false,
     "collectCoverageFrom" : ["../test/**/*.{js,jsx,tsx,ts}", "!**/src/**/*.{js,jsx,tsx,ts}", "!**/node_modules/**", "!**/vendor/**"],
     "coveragePathIgnorePatterns": [
         "../node_modules", 

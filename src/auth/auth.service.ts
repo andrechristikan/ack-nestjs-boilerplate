@@ -25,15 +25,6 @@ export class AuthService {
         passwordString: string
     ): Promise<boolean> {
         const user: IUser = await this.userService.findOneByEmail(email);
-        const hashPassword: string = await this.hashService.hashPassword(
-            passwordString,
-            user.salt
-        );
-
-        if (user.password !== hashPassword) {
-            return false;
-        }
-
-        return true;
+        return this.hashService.validatePassword(passwordString, user.password);
     }
 }

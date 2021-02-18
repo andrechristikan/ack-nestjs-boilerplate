@@ -9,10 +9,8 @@ async function bootstrap() {
     const logger = new Logger();
 
     // Middleware
+    app.setGlobalPrefix('/api');
     app.enableCors();
-
-    // global prefix
-    app.setGlobalPrefix('api');
 
     await app.listen(
         configService.get('http.port') || 3000,

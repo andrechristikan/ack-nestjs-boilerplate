@@ -42,12 +42,6 @@ export class UserEntity extends Document {
     })
     password: string;
 
-    @Prop({
-        required: true,
-        unique: true,
-        trim: true
-    })
-    salt: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserEntity);

@@ -1,8 +1,8 @@
-export type IUserCreate = Omit<IUser, 'salt' | '_id'>;
+export type IUserCreate = Omit<IUser, '_id'>;
 
 export type IUserUpdate = Pick<IUser, 'firstName' | 'lastName'>;
 
-export interface IUserSafe extends Omit<IUser, 'password' | 'salt' | '_id'> {
+export interface IUserSafe extends Omit<IUser, 'password' | '_id'> {
     readonly id: string;
 }
 
@@ -13,7 +13,6 @@ export interface IUser {
     firstName: string;
     lastName: string;
     readonly password: string;
-    readonly salt: string;
 }
 
 export interface IUserFind {

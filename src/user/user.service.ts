@@ -70,8 +70,7 @@ export class UserService {
             lastName: data.lastName.toLowerCase(),
             email: data.email.toLowerCase(),
             mobileNumber: data.mobileNumber,
-            password: passwordHash,
-            salt: salt
+            password: passwordHash
         });
     }
 
