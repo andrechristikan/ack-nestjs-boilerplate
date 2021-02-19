@@ -1,10 +1,10 @@
 import { RotatingFileStream } from 'rotating-file-stream';
 
 export interface IHttpLoggerConfigOptions {
-    stream: RotatingFileStream;
+    readonly stream: RotatingFileStream;
 }
 
 export interface IHttpLoggerConfig {
-    HttpLoggerFormat: string;
-    HttpLoggerOptions: IHttpLoggerConfigOptions;
+    readonly HttpLoggerFormat: string;
+    readonly HttpLoggerOptions: IHttpLoggerConfigOptions;
 }

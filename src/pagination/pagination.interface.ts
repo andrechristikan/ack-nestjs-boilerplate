@@ -1,4 +1,4 @@
 export interface IPagination {
-    limit: number;
-    skip: number;
+    readonly limit: number;
+    readonly skip: number;
 }

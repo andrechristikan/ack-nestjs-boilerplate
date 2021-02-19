@@ -4,12 +4,12 @@ import { IMessageErrors } from 'src/message/message.interface';
 
 export type IResponseRaw = Record<string, any>;
 export interface IResponseSuccess {
-    statusCode: AppSuccessStatusCode;
-    message: string;
-    data?: Record<string, any> | Record<string, any>[];
+    readonly statusCode: AppSuccessStatusCode;
+    readonly message: string;
+    readonly data?: Record<string, any> | Record<string, any>[];
 }
 export interface IResponseError {
-    statusCode: AppErrorStatusCode;
-    message: string;
-    errors?: IMessageErrors[];
+    readonly statusCode: AppErrorStatusCode;
+    readonly message: string;
+    readonly errors?: IMessageErrors[];
 }

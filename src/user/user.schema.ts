@@ -41,7 +41,6 @@ export class UserEntity extends Document {
         required: true
     })
     password: string;
-
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserEntity);

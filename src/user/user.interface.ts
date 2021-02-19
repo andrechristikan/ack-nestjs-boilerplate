@@ -10,8 +10,8 @@ export interface IUser {
     readonly _id: string;
     readonly email: string;
     readonly mobileNumber: string;
-    firstName: string;
-    lastName: string;
+    readonly firstName: string;
+    readonly lastName: string;
     readonly password: string;
 }
 

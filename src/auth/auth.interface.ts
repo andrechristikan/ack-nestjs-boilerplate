@@ -1,12 +1,15 @@
 import { IUserSafe } from 'src/user/user.interface';
 
 export interface ILogin {
-    email: string;
-    password: string;
+    readonly email: string;
+    readonly password: string;
 }
-export type IPayload = Omit<IUserSafe, 'mobileNumber'>;
+export type IPayload = Pick<
+    IUserSafe,
+    'id' | 'email' | 'firstName' | 'lastName'
+>;
 export interface IPayloadBasicToken {
-    clientBasicToken: string;
+    readonly clientBasicToken: string;
 }
 
 export type IApplyDecorator = <TFunction extends Function, Y>(

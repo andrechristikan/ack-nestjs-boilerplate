@@ -6,7 +6,7 @@ import {
     LoggerMaxFiles,
     LoggerName
 } from 'src/logger/logger.constant';
-import { ILoggerOptions } from './logger.interface';
+import { ILoggerOptions } from 'src/logger/logger.interface';
 
 @Injectable()
 export class LoggerService {

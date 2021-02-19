@@ -13,7 +13,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs,test,e2e}/**/*.ts\" --fix",
+    "lint": "eslint \"{src,test,e2e}/**/*.ts\" --fix",
     "test": "jest --config test/jest.json",
     "test:watch": "jest --config test/jest.json --watch",
     "test:cov": "jest --config test/jest.json --coverage",
