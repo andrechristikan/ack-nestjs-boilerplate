@@ -74,10 +74,7 @@ describe('E2E User', () => {
         return request(app.getHttpServer())
             .get(E2E_USER_FIND_ALL_URL)
             .set('Authorization', `Basic ${basicToken}`)
-            .expect(200)
-            .expect(
-                responseService.success(AppSuccessStatusCode.USER_GET, [user])
-            );
+            .expect(200);
     });
 
     it(`/GET FIND BY ID}`, async () => {

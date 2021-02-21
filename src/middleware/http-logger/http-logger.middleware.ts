@@ -14,9 +14,12 @@ import {
     IHttpLoggerConfig,
     IHttpLoggerConfigOptions
 } from 'src/middleware/http-logger/http-logger.interface';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class HttpLoggerMiddleware implements NestMiddleware {
+    constructor(private readonly configService: ConfigService) {}
+
     private customToken(): void {
         morgan.token('req-params', (req: Request) => {
             return JSON.stringify(req.params);
@@ -54,13 +57,16 @@ export class HttpLoggerMiddleware implements NestMiddleware {
     }
 
     use(req: Request, res: Response, next: NextFunction): void {
-        const config: IHttpLoggerConfig = this.httpLogger();
-        this.customToken();
-
-        morgan(config.HttpLoggerFormat, config.HttpLoggerOptions)(
-            req,
-            res,
-            next
-        );
+        if (this.configService.get('app.logger.http')) {
+            const config: IHttpLoggerConfig = this.httpLogger();
+            this.customToken();
+            morgan(config.HttpLoggerFormat, config.HttpLoggerOptions)(
+                req,
+                res,
+                next
+            );
+        } else {
+            next();
+        }
     }
 }

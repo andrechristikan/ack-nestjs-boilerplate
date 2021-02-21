@@ -44,6 +44,17 @@ export class LoggerService {
             level: 'error'
         });
 
+        const transports = [];
+        if (this.configService.get('app.logger.system')) {
+            transports.push(configTransportError);
+            transports.push(configTransportDefault);
+        }
+
+        transports.push(
+            new winston.transports.Console({
+                silent: !this.configService.get('app.logger.system') || false,
+            })
+        );
         const loggerOptions: ILoggerOptions = {
             defaultMeta: {
                 requestId: `${timestamp}${randomString}`
@@ -52,13 +63,7 @@ export class LoggerService {
                 winston.format.timestamp(),
                 winston.format.prettyPrint()
             ),
-            transports: [
-                configTransportError,
-                configTransportDefault,
-                new winston.transports.Console({
-                    silent: !this.configService.get('app.logger') || false
-                })
-            ]
+            transports
         };
         return loggerOptions;
     }
