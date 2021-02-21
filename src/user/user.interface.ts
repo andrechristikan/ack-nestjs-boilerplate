@@ -1,20 +1,12 @@
-export type IUserCreate = Omit<IUser, '_id'>;
+import { UserEntity } from 'src/user/user.schema';
 
-export type IUserUpdate = Pick<IUser, 'firstName' | 'lastName'>;
+export type IUserCreate = Omit<UserEntity, '_id'>;
 
-export interface IUserSafe extends Omit<IUser, 'password' | '_id'> {
+export type IUserUpdate = Pick<UserEntity, 'firstName' | 'lastName'>;
+
+export interface IUserSafe extends Omit<UserEntity, 'password' | '_id'> {
     readonly id: string;
 }
-
-export interface IUser {
-    readonly _id: string;
-    readonly email: string;
-    readonly mobileNumber: string;
-    readonly firstName: string;
-    readonly lastName: string;
-    readonly password: string;
-}
-
 export interface IUserFind {
     readonly limit: number;
     readonly page: number;

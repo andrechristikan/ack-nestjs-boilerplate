@@ -13,13 +13,7 @@ import {
     ParseIntPipe
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
-import { UserEntity } from 'src/user/user.schema';
-import {
-    IUser,
-    IUserCreate,
-    IUserSafe,
-    IUserUpdate
-} from 'src/user/user.interface';
+import { IUserCreate, IUserSafe, IUserUpdate } from 'src/user/user.interface';
 import { Response } from 'src/response/response.decorator';
 import { ResponseService } from 'src/response/response.service';
 import {
@@ -42,6 +36,7 @@ import { PAGE, LIMIT } from 'src/pagination/pagination.constant';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
 import { ConfigService } from '@nestjs/config';
+import { UserEntity } from './user.schema';
 
 @Controller('/user')
 export class UserController {
@@ -61,10 +56,11 @@ export class UserController {
         @Query('limit', new DefaultValuePipe(LIMIT), ParseIntPipe) limit: number
     ): Promise<IResponseSuccess> {
         const { skip } = await this.paginationService.pagination(page, limit);
-        const user: IUser[] = await this.userService.findAll(skip, limit);
-        const userSafe: IUserSafe[] = await this.userService.transformerMany(
-            user
-        );
+        const user: UserEntity[] = await this.userService.findAll(skip, limit);
+        const userSafe: IUserSafe[] = await this.userService.transformer<
+            IUserSafe[],
+            UserEntity[]
+        >(user);
 
         return this.responseService.success(
             AppSuccessStatusCode.USER_GET,
@@ -75,7 +71,7 @@ export class UserController {
     @AuthJwt()
     @Get('/profile')
     async profile(@User('id') userId: string): Promise<IResponseSuccess> {
-        const user: IUser = await this.userService.findOneById(userId);
+        const user: UserEntity = await this.userService.findOneById(userId);
         if (!user) {
             if (this.configService.get('app.debug')) {
                 this.logger.error('user Error', {
@@ -89,7 +85,10 @@ export class UserController {
             throw new BadRequestException(response);
         }
 
-        const userSafe: IUserSafe = await this.userService.transformer(user);
+        const userSafe: IUserSafe = await this.userService.transformer<
+            IUserSafe,
+            UserEntity
+        >(user);
         return this.responseService.success(
             AppSuccessStatusCode.USER_GET,
             userSafe
@@ -101,7 +100,7 @@ export class UserController {
     async findOneById(
         @Param('userId') userId: string
     ): Promise<IResponseSuccess> {
-        const user: IUser = await this.userService.findOneById(userId);
+        const user: UserEntity = await this.userService.findOneById(userId);
         if (!user) {
             if (this.configService.get('app.debug')) {
                 this.logger.error('user Errors', {
@@ -115,7 +114,10 @@ export class UserController {
             throw new BadRequestException(response);
         }
 
-        const userSafe: IUserSafe = await this.userService.transformer(user);
+        const userSafe: IUserSafe = await this.userService.transformer<
+            IUserSafe,
+            UserEntity
+        >(user);
         return this.responseService.success(
             AppSuccessStatusCode.USER_GET,
             userSafe
@@ -127,10 +129,10 @@ export class UserController {
     async create(
         @Body(RequestValidationPipe(UserCreateValidation)) data: IUserCreate
     ): Promise<IResponseSuccess> {
-        const existEmail: Promise<IUser> = this.userService.findOneByEmail(
+        const existEmail: Promise<UserEntity> = this.userService.findOneByEmail(
             data.email
         );
-        const existMobileNumber: Promise<IUser> = this.userService.findOneByMobileNumber(
+        const existMobileNumber: Promise<UserEntity> = this.userService.findOneByMobileNumber(
             data.mobileNumber
         );
 
@@ -174,10 +176,10 @@ export class UserController {
                     const user: UserEntity = await this.userService.create(
                         data
                     );
-
-                    const userSafe: IUserSafe = await this.userService.transformer(
-                        user.toObject() as IUser
-                    );
+                    const userSafe: IUserSafe = await this.userService.transformer<
+                        IUserSafe,
+                        UserEntity
+                    >(user);
                     return this.responseService.success(
                         AppSuccessStatusCode.USER_CREATE,
                         userSafe
@@ -206,7 +208,7 @@ export class UserController {
     @AuthBasic()
     @Delete('/delete/:userId')
     async delete(@Param('userId') userId: string): Promise<IResponseSuccess> {
-        const user: IUser = await this.userService.findOneById(userId);
+        const user: UserEntity = await this.userService.findOneById(userId);
         if (!user) {
             if (this.configService.get('app.debug')) {
                 this.logger.error('user Error', {
@@ -230,7 +232,9 @@ export class UserController {
         @Param('userId') userId: string,
         @Body(RequestValidationPipe(UserUpdateValidation)) data: IUserUpdate
     ): Promise<IResponseSuccess> {
-        const checkUser: IUser = await this.userService.findOneById(userId);
+        const checkUser: UserEntity = await this.userService.findOneById(
+            userId
+        );
         if (!checkUser) {
             if (this.configService.get('app.debug')) {
                 this.logger.error('checkUser Error', {
@@ -247,15 +251,17 @@ export class UserController {
 
         try {
             await this.userService.updateOneById(userId, data);
-            const user: IUser = await this.userService.findOneById(userId);
-            const userSafe: IUserSafe = await this.userService.transformer(
-                user
-            );
+            const user: UserEntity = await this.userService.findOneById(userId);
+            const userSafe: IUserSafe = await this.userService.transformer<
+                IUserSafe,
+                UserEntity
+            >(user);
+
             return this.responseService.success(
                 AppSuccessStatusCode.USER_UPDATE,
                 userSafe
             );
-        } catch (err) {
+        } catch (err: any) {
             if (this.configService.get('app.debug')) {
                 this.logger.error('update try catch', {
                     class: 'UserController',

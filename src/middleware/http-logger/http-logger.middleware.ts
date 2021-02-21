@@ -10,6 +10,7 @@ import {
     HttpLoggerName
 } from 'src/middleware/http-logger/http-logger.constant';
 import {
+    ICustomResponse,
     IHttpLoggerConfig,
     IHttpLoggerConfigOptions
 } from 'src/middleware/http-logger/http-logger.interface';
@@ -25,7 +26,7 @@ export class HttpLoggerMiddleware implements NestMiddleware {
             return JSON.stringify(req.body);
         });
 
-        morgan.token('res-body', (req: Request, res: any) => {
+        morgan.token('res-body', (req: Request, res: ICustomResponse) => {
             return res.body;
         });
 

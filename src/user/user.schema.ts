@@ -2,8 +2,11 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
 export const UserDatabaseName = 'users';
+
+export type UserDocument = UserEntity & Document;
+
 @Schema()
-export class UserEntity extends Document {
+export class UserEntity {
     @Prop({
         required: true,
         index: true,

@@ -6,16 +6,14 @@ import { UserService } from 'src/user/user.service';
 import { IPayload } from 'src/auth/auth.interface';
 import { AUTH_DEFAULT_USERNAME_FIELD } from 'src/auth/auth.constant';
 import { ConfigService } from '@nestjs/config';
-import { IUser } from 'src/user/user.interface';
-import { Response } from 'src/response/response.decorator';
-import { ResponseService } from 'src/response/response.service';
+import { IUserSafe } from 'src/user/user.interface';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
+import { UserEntity } from 'src/user/user.schema';
 
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
     constructor(
-        @Response() private readonly responseService: ResponseService,
         @Logger() private readonly logger: LoggerService,
         private readonly configService: ConfigService,
         private readonly authService: AuthService,
@@ -31,7 +29,9 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
     }
 
     async validate(username: string, password: string): Promise<IPayload> {
-        const user: IUser = await this.userService.findOneByEmail(username);
+        const user: UserEntity = await this.userService.findOneByEmail(
+            username
+        );
         if (!user) {
             if (this.configService.get('app.debug')) {
                 this.logger.error('Authorized error user not found', {
@@ -60,7 +60,7 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
             email,
             firstName,
             lastName
-        } = await this.userService.transformer(user);
+        } = await this.userService.transformer<IUserSafe, UserEntity>(user);
 
         return {
             id,

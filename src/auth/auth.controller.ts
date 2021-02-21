@@ -9,7 +9,8 @@ import { AppSuccessStatusCode } from 'src/status-code/status-code.success.consta
 import { AuthBasic, AuthLocal } from 'src/auth/auth.decorator';
 import { ConfigService } from '@nestjs/config';
 import { AUTH_JWT_EXPIRATION_TIME } from 'src/auth/auth.constant';
-import { IUser } from 'src/user/user.interface';
+import { IUserSafe } from 'src/user/user.interface';
+import { UserEntity } from 'src/user/user.schema';
 
 @Controller('/auth')
 export class AuthController {
@@ -28,13 +29,15 @@ export class AuthController {
             this.configService.get('auth.jwtExpirationTime') ||
             AUTH_JWT_EXPIRATION_TIME;
 
-        const user: IUser = await this.userService.findOneByEmail(data.email);
+        const user: UserEntity = await this.userService.findOneByEmail(
+            data.email
+        );
         const {
             id,
             email,
             firstName,
             lastName
-        } = await this.userService.transformer(user);
+        } = await this.userService.transformer<IUserSafe, UserEntity>(user);
         const payload: IPayload = {
             id,
             email,

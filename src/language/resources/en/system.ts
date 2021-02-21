@@ -1,5 +1,5 @@
 export default {
-    default: 'Success.',
+    default: 'Default Message.',
     create: 'Created.',
     error: {
         internalServerError: 'Internal Server Error.',

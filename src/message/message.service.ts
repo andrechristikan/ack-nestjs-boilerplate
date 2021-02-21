@@ -15,6 +15,9 @@ export class MessageService {
     ) {}
 
     set(statusCode: AppSuccessStatusCode | AppErrorStatusCode): IMessage {
+        const defaultMessage: string = this.languageService.get(
+            'system.default'
+        );
         const AppStatusCodeMerge: Record<string, any> = {
             ...AppSuccessStatusCode,
             ...AppErrorStatusCode
@@ -30,25 +33,26 @@ export class MessageService {
         });
         return {
             statusCode: statusCode,
-            message: this.languageService.get(message[0].message)
+            message:
+                this.languageService.get(message[0].message) || defaultMessage
         };
     }
 
     setErrors(errors: IErrors[]): IMessageErrors[] {
-        const newError: IMessageErrors[] = [];
+        const messageErrors: IMessageErrors[] = [];
 
         for (const error of errors) {
             const newMessage: IMessage = this.set(error.statusCode);
-            newError.push({
+            messageErrors.push({
                 property: error.property,
                 message: newMessage.message
             });
         }
-        return newError;
+        return messageErrors;
     }
 
-    setRequestErrorMessage(rawErrors: Record<string, any>[]): IMessageErrors[] {
-        const errors: IMessageErrors[] = rawErrors.map((value) => {
+    setRequestErrorMessage(errors: Record<string, any>[]): IMessageErrors[] {
+        const messageErrors: IMessageErrors[] = errors.map((value) => {
             for (const i in value.constraints) {
                 return {
                     property: value.property,
@@ -59,6 +63,6 @@ export class MessageService {
                 };
             }
         });
-        return errors;
+        return messageErrors;
     }
 }
