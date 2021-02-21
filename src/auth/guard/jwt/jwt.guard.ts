@@ -24,14 +24,13 @@ export class JwtGuard extends AuthGuard('jwt') {
         info: string
     ): TUser {
         if (err || !user) {
-            if (this.configService.get('app.debug')) {
-                this.logger.error('AuthJwtGuardError', {
-                    class: 'JwtGuard',
-                    function: 'handleRequest',
-                    description: info,
-                    error: { ...err }
-                });
-            }
+            this.logger.error('AuthJwtGuardError', {
+                class: 'JwtGuard',
+                function: 'handleRequest',
+                description: info,
+                error: { ...err }
+            });
+
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.UNAUTHORIZED_ERROR
             );

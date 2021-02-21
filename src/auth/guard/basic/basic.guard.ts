@@ -42,12 +42,10 @@ export class BasicGuard implements CanActivate {
         const authorization: string = request.headers.authorization;
 
         if (!authorization) {
-            if (this.configService.get('app.debug')) {
-                this.logger.error('AuthBasicGuardError', {
-                    class: 'BasicGuard',
-                    function: 'canActivate'
-                });
-            }
+            this.logger.error('AuthBasicGuardError', {
+                class: 'BasicGuard',
+                function: 'canActivate'
+            });
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.UNAUTHORIZED_ERROR
             );
@@ -66,12 +64,10 @@ export class BasicGuard implements CanActivate {
         );
 
         if (!validateBasicToken) {
-            if (this.configService.get('app.debug')) {
-                this.logger.error('AuthBasicGuardError Validate Basic Token', {
-                    class: 'BasicGuard',
-                    function: 'canActivate'
-                });
-            }
+            this.logger.error('AuthBasicGuardError Validate Basic Token', {
+                class: 'BasicGuard',
+                function: 'canActivate'
+            });
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.UNAUTHORIZED_ERROR
             );

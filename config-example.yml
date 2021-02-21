@@ -12,6 +12,7 @@ app:
   env: 'development'
   language: 'en'
   debug: false
+  logger: false
 
   pagination: 
     page: 1

@@ -33,12 +33,10 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
             username
         );
         if (!user) {
-            if (this.configService.get('app.debug')) {
-                this.logger.error('Authorized error user not found', {
-                    class: 'LocalStrategy',
-                    function: 'validate'
-                });
-            }
+            this.logger.error('Authorized error user not found', {
+                class: 'LocalStrategy',
+                function: 'validate'
+            });
             throw new UnauthorizedException();
         }
 
@@ -47,12 +45,11 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
             password
         );
         if (!validate) {
-            if (this.configService.get('app.debug')) {
-                this.logger.error('Authorized error', {
-                    class: 'LocalStrategy',
-                    function: 'validate'
-                });
-            }
+            this.logger.error('Authorized error', {
+                class: 'LocalStrategy',
+                function: 'validate'
+            });
+
             throw new UnauthorizedException();
         }
         const {

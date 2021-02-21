@@ -73,12 +73,10 @@ export class UserController {
     async profile(@User('id') userId: string): Promise<IResponseSuccess> {
         const user: UserEntity = await this.userService.findOneById(userId);
         if (!user) {
-            if (this.configService.get('app.debug')) {
-                this.logger.error('user Error', {
-                    class: 'UserController',
-                    function: 'profile'
-                });
-            }
+            this.logger.error('user Error', {
+                class: 'UserController',
+                function: 'profile'
+            });
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.USER_NOT_FOUND
             );
@@ -102,12 +100,11 @@ export class UserController {
     ): Promise<IResponseSuccess> {
         const user: UserEntity = await this.userService.findOneById(userId);
         if (!user) {
-            if (this.configService.get('app.debug')) {
-                this.logger.error('user Errors', {
-                    class: 'UserController',
-                    function: 'findOneById'
-                });
-            }
+            this.logger.error('user Errors', {
+                class: 'UserController',
+                function: 'findOneById'
+            });
+
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.USER_NOT_FOUND
             );
@@ -157,13 +154,11 @@ export class UserController {
                         errors
                     );
 
-                    if (this.configService.get('app.debug')) {
-                        this.logger.error('create errors', {
-                            class: 'UserController',
-                            function: 'create',
-                            errors
-                        });
-                    }
+                    this.logger.error('create errors', {
+                        class: 'UserController',
+                        function: 'create',
+                        errors
+                    });
                     const response: IResponseError = this.responseService.error(
                         AppErrorStatusCode.REQUEST_ERROR,
                         message
@@ -185,15 +180,13 @@ export class UserController {
                         userSafe
                     );
                 } catch (errCreate) {
-                    if (this.configService.get('app.debug')) {
-                        this.logger.error('create try catch', {
-                            class: 'UserController',
-                            function: 'create',
-                            error: {
-                                ...errCreate
-                            }
-                        });
-                    }
+                    this.logger.error('create try catch', {
+                        class: 'UserController',
+                        function: 'create',
+                        error: {
+                            ...errCreate
+                        }
+                    });
                     const response: IResponseError = this.responseService.error(
                         AppErrorStatusCode.GENERAL_ERROR
                     );
@@ -210,12 +203,10 @@ export class UserController {
     async delete(@Param('userId') userId: string): Promise<IResponseSuccess> {
         const user: UserEntity = await this.userService.findOneById(userId);
         if (!user) {
-            if (this.configService.get('app.debug')) {
-                this.logger.error('user Error', {
-                    class: 'UserController',
-                    function: 'delete'
-                });
-            }
+            this.logger.error('user Error', {
+                class: 'UserController',
+                function: 'delete'
+            });
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.USER_NOT_FOUND
             );
@@ -236,12 +227,10 @@ export class UserController {
             userId
         );
         if (!checkUser) {
-            if (this.configService.get('app.debug')) {
-                this.logger.error('checkUser Error', {
-                    class: 'UserController',
-                    function: 'update'
-                });
-            }
+            this.logger.error('checkUser Error', {
+                class: 'UserController',
+                function: 'update'
+            });
 
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.USER_NOT_FOUND
@@ -262,15 +251,13 @@ export class UserController {
                 userSafe
             );
         } catch (err: any) {
-            if (this.configService.get('app.debug')) {
-                this.logger.error('update try catch', {
-                    class: 'UserController',
-                    function: 'update',
-                    error: {
-                        ...err
-                    }
-                });
-            }
+            this.logger.error('update try catch', {
+                class: 'UserController',
+                function: 'update',
+                error: {
+                    ...err
+                }
+            });
 
             const response: IResponseError = this.responseService.error(
                 AppErrorStatusCode.GENERAL_ERROR
