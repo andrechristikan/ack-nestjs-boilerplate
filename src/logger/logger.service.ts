@@ -1,14 +1,11 @@
-import {
-    Injectable,
-    OnApplicationBootstrap,
-    OnModuleInit
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import winston from 'winston';
 import {
-    LoggerMaxSize,
-    LoggerMaxFiles,
-    LoggerName
+    LOGGER_MAX_SIZE,
+    LOGGER_MAX_FILES,
+    LOGGER_NAME,
+    LOGGER_ENV
 } from 'src/logger/logger.constant';
 import { ILoggerOptions } from 'src/logger/logger.interface';
 import { ConfigService } from '@nestjs/config';
@@ -19,6 +16,10 @@ export class LoggerService {
     constructor(private configService: ConfigService) {}
 
     createLogger(): ILoggerOptions {
+        // Env Variable
+        const loggerEnv: boolean =
+            this.configService.get('app.logger.system') || LOGGER_ENV;
+
         const randomString: string =
             Math.random().toString(36).substring(2, 15) +
             Math.random().toString(36).substring(2, 15);
@@ -26,33 +27,33 @@ export class LoggerService {
 
         const configTransportDefault: DailyRotateFile = new DailyRotateFile({
             filename: `%DATE%.log`,
-            dirname: `logs/${LoggerName}/default`,
+            dirname: `logs/${LOGGER_NAME}/default`,
             datePattern: 'YYYY-MM-DD',
             zippedArchive: true,
-            maxSize: LoggerMaxSize,
-            maxFiles: LoggerMaxFiles,
+            maxSize: LOGGER_MAX_SIZE,
+            maxFiles: LOGGER_MAX_FILES,
             level: 'info'
         });
 
         const configTransportError: DailyRotateFile = new DailyRotateFile({
             filename: `%DATE%.log`,
-            dirname: `logs/${LoggerName}/error`,
+            dirname: `logs/${LOGGER_NAME}/error`,
             datePattern: 'YYYY-MM-DD',
             zippedArchive: true,
-            maxSize: LoggerMaxSize,
-            maxFiles: LoggerMaxFiles,
+            maxSize: LOGGER_MAX_SIZE,
+            maxFiles: LOGGER_MAX_FILES,
             level: 'error'
         });
 
         const transports = [];
-        if (this.configService.get('app.logger.system')) {
+        if (loggerEnv) {
             transports.push(configTransportError);
             transports.push(configTransportDefault);
         }
 
         transports.push(
             new winston.transports.Console({
-                silent: !this.configService.get('app.logger.system') || false,
+                silent: !loggerEnv || false
             })
         );
         const loggerOptions: ILoggerOptions = {

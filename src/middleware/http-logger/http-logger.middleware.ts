@@ -4,10 +4,11 @@ import { Request, Response, NextFunction } from 'express';
 import { createStream } from 'rotating-file-stream';
 import moment from 'moment';
 import {
-    HttpLoggerFormat,
-    HttpLoggerSize,
-    HttpLoggerMaxSize,
-    HttpLoggerName
+    LOGGER_HTTP_FORMAT,
+    LOGGER_HTTP_SIZE,
+    LOGGER_HTTP_MAX_SIZE,
+    LOGGER_HTTP_NAME,
+    LOGGER_HTTP_ENV
 } from 'src/middleware/http-logger/http-logger.constant';
 import {
     ICustomResponse,
@@ -42,25 +43,29 @@ export class HttpLoggerMiddleware implements NestMiddleware {
         const date: string = moment().format('YYYY-MM-DD');
         const HttpLoggerOptions: IHttpLoggerConfigOptions = {
             stream: createStream(`${date}.log`, {
-                path: `./logs/${HttpLoggerName}/`,
-                size: HttpLoggerSize,
-                maxSize: HttpLoggerMaxSize,
+                path: `./logs/${LOGGER_HTTP_NAME}/`,
+                size: LOGGER_HTTP_SIZE,
+                maxSize: LOGGER_HTTP_MAX_SIZE,
                 compress: true,
                 interval: '1d'
             })
         };
 
         return {
-            HttpLoggerFormat,
+            LOGGER_HTTP_FORMAT,
             HttpLoggerOptions
         };
     }
 
     use(req: Request, res: Response, next: NextFunction): void {
-        if (this.configService.get('app.logger.http')) {
+        // Env Variable
+        const loggerHttpEnv: boolean =
+            this.configService.get('app.logger.http') || LOGGER_HTTP_ENV;
+
+        if (loggerHttpEnv) {
             const config: IHttpLoggerConfig = this.httpLogger();
             this.customToken();
-            morgan(config.HttpLoggerFormat, config.HttpLoggerOptions)(
+            morgan(config.LOGGER_HTTP_FORMAT, config.HttpLoggerOptions)(
                 req,
                 res,
                 next

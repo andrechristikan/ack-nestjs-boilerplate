@@ -2,14 +2,20 @@ import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
+import { EncryptionInterceptor } from 'src/encryption/encryption.interceptor';
+import { HashService } from 'src/hash/hash.service';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
+    const hashService = app.get(HashService);
     const logger = new Logger();
 
     // Middleware
     app.setGlobalPrefix('/api');
+    app.useGlobalInterceptors(
+        new EncryptionInterceptor(hashService, configService)
+    );
     app.enableCors();
 
     await app.listen(

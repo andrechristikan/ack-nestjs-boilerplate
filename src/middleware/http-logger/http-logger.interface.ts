@@ -6,7 +6,7 @@ export interface IHttpLoggerConfigOptions {
 }
 
 export interface IHttpLoggerConfig {
-    readonly HttpLoggerFormat: string;
+    readonly LOGGER_HTTP_FORMAT: string;
     readonly HttpLoggerOptions: IHttpLoggerConfigOptions;
 }
 
