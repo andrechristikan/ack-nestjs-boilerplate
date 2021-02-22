@@ -13,15 +13,11 @@ import {
     ENCRYPTION_IV,
     ENCRYPTION_KEY
 } from 'src/encryption/encryption.constant';
-import { IResponse, IResponseSuccess } from 'src/response/response.interface';
-import {
-    IResponseErrorEncryption,
-    IResponseSuccessEncryption
-} from './encryption.interface';
+import { IResponseSuccess } from 'src/response/response.interface';
 
 @Injectable()
 export class EncryptionInterceptor
-    implements NestInterceptor<Promise<any> | Observable<never>> {
+    implements NestInterceptor<Promise<any> | string> {
     constructor(
         private readonly hashService: HashService,
         private readonly configService: ConfigService
@@ -30,7 +26,7 @@ export class EncryptionInterceptor
     async intercept(
         context: ExecutionContext,
         next: CallHandler
-    ): Promise<Observable<Promise<any> | Observable<never>>> {
+    ): Promise<Observable<Promise<any> | string>> {
         // Env Variable
         const iv: string =
             this.configService.get('app.encryption.iv') || ENCRYPTION_IV;
@@ -42,39 +38,25 @@ export class EncryptionInterceptor
 
         return next.handle().pipe(
             map(async (response: IResponseSuccess) => {
-                const { statusCode, message, data } = response;
-                if (encrypt && data) {
+                if (encrypt) {
                     const en: string = await this.hashService.encryptAES256Bit(
-                        data,
+                        response,
                         key,
                         iv
                     );
-
-                    const responseEn: IResponseSuccessEncryption = {
-                        statusCode,
-                        message,
-                        data: en
-                    };
-                    return responseEn;
+                    return en;
                 }
-                return data;
+                return response;
             }),
             catchError(async (err: any) => {
-                const { response } = err;
-                const { statusCode, message, errors } = response;
-                if (encrypt && errors) {
+                if (encrypt) {
+                    const { response } = err;
                     const en: string = await this.hashService.encryptAES256Bit(
-                        response.errors,
+                        response,
                         key,
                         iv
                     );
-                    const responseEn: IResponseErrorEncryption = {
-                        statusCode,
-                        message,
-                        errors: en
-                    };
-                    err.response = responseEn;
-                    return throwError(err).toPromise();
+                    return en;
                 } else {
                     return throwError(err).toPromise();
                 }
