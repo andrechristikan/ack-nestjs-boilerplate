@@ -16,7 +16,6 @@ import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { IMessageErrors } from 'src/message/message.interface';
 import { IResponseError } from 'src/response/response.interface';
-import { ConfigService } from '@nestjs/config';
 
 export function RequestValidationPipe(schema: {
     new (...args: any[]): any;
@@ -25,8 +24,7 @@ export function RequestValidationPipe(schema: {
         constructor(
             @Response() private readonly responseService: ResponseService,
             @Message() private readonly messageService: MessageService,
-            @Logger() private readonly logger: LoggerService,
-            private readonly configService: ConfigService
+            @Logger() private readonly logger: LoggerService
         ) {}
 
         async transform(

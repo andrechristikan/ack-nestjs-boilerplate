@@ -6,14 +6,12 @@ import { AppErrorStatusCode } from 'src/status-code/status-code.error.constant';
 import { IResponseError } from 'src/response/response.interface';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class LocalGuard extends AuthGuard('local') {
     constructor(
         @Response() private readonly responseService: ResponseService,
-        @Logger() private readonly logger: LoggerService,
-        private readonly configService: ConfigService
+        @Logger() private readonly logger: LoggerService
     ) {
         super();
     }

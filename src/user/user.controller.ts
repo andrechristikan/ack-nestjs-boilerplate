@@ -35,7 +35,6 @@ import { Pagination } from 'src/pagination/pagination.decorator';
 import { PAGE, LIMIT } from 'src/pagination/pagination.constant';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
-import { ConfigService } from '@nestjs/config';
 import { UserEntity } from './user.schema';
 
 @Controller('/user')
@@ -45,8 +44,7 @@ export class UserController {
         @Message() private readonly messageService: MessageService,
         @Pagination() private readonly paginationService: PaginationService,
         @Logger() private readonly logger: LoggerService,
-        private readonly userService: UserService,
-        private readonly configService: ConfigService
+        private readonly userService: UserService
     ) {}
 
     @AuthBasic()
