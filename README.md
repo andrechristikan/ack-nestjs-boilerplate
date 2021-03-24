@@ -10,20 +10,41 @@
 * [Acknowledgements](#acknowledgements)
 
 
-
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
 Effortless. Lazy. Reuseable. <br>
 I want to create a Boilerplate NestJs that base on components.
+This package build in NestJs, Mongoose, and MongoDB. 
 
 <!-- GETTING STARTED -->
 ## Getting Started
 
-Folder structure will be like
+Futures :
+```
+[x] Mongoose integration
+[x] JWT Auth Implementation
+[x] Basic Token Auth Implementation
+[x] Login Auth Implementation
+[x] Config in YML File
+[x] Request Validation With Pipe and Class Validation Package
+[x] Support Class Transformer Package
+[x] Centralize Response
+[x] Hash Password With Bcrypt
+[x] Support Multi-Language
+[ ] Support Encryption Request and Response
+[x] Middleware Added
+[x] Server Side Pagination
+[x] Example For User and Login Component
+[ ] Migration
+[x] E2E Testing
+[ ] Unit Testing
+```
+
+#### Folder Structure
 
 ```
-	ac.k
+	ac.k-boilerplate-nestjs-api
 	├── .dockerignore
 	├── .eslintignore
 	├── .eslintrc
@@ -35,15 +56,23 @@ Folder structure will be like
 	├── dockerfile 
 	├── LICENSE.md
 	├── nest-cli.json
+	├── nodemon.json
 	├── package.json
 	├── README.md
-
+	├── tsconfig.build.json
 	├── tsconfig.json
+	├── test
+		├── jest.json
+	├── e2e
+		├── jest.json
+		├── auth
+		├── user
 	└── src
 		├── app
 		├── auth
 		├── config
 		├── database
+		├── encryption
 		├── hash
 		├── language
 		├── logger
@@ -61,12 +90,10 @@ Folder structure will be like
 ### Prerequisites
 
 Before start, we need to closing knowledge gaps and install some application (like Database, Package Manager, etc) 
-* Core
-	1. [NestJs](#acknowledgements)
-	2. [NodeJs](#acknowledgements)
-	3. [Typescript](#acknowledgements)
+* Framework: [NestJs](#acknowledgements)
 * Database: [MongoDB](#acknowledgements)
 * Package Manager: [Yarn](#acknowledgements)
+* Common Package: [Mongoose](#acknowledgements)
 * Other,.. see [acknowledgements](#acknowledgements)
 
 
