@@ -3,7 +3,6 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
 import { UserService } from 'src/user/user.service';
-import { IPayload } from 'src/auth/auth.interface';
 import { AUTH_DEFAULT_USERNAME_FIELD } from 'src/auth/auth.constant';
 import { ConfigService } from '@nestjs/config';
 import { IUserSafe } from 'src/user/user.interface';
@@ -28,7 +27,10 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
         });
     }
 
-    async validate(username: string, password: string): Promise<IPayload> {
+    async validate(
+        username: string,
+        password: string
+    ): Promise<Record<string, any>> {
         const user: UserEntity = await this.userService.findOneByEmail(
             username
         );

@@ -35,7 +35,7 @@ import { Pagination } from 'src/pagination/pagination.decorator';
 import { PAGE, LIMIT } from 'src/pagination/pagination.constant';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
-import { UserEntity } from './user.schema';
+import { UserEntity } from 'src/user/user.schema';
 
 @Controller('/user')
 export class UserController {

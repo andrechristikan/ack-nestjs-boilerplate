@@ -1,6 +1,6 @@
 import { Controller, Post, Body, Headers } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
-import { ILogin, IPayload, IPayloadBasicToken } from 'src/auth/auth.interface';
+import { ILogin } from 'src/auth/auth.interface';
 import { UserService } from 'src/user/user.service';
 import { ResponseService } from 'src/response/response.service';
 import { Response } from 'src/response/response.decorator';
@@ -38,7 +38,7 @@ export class AuthController {
             firstName,
             lastName
         } = await this.userService.transformer<IUserSafe, UserEntity>(user);
-        const payload: IPayload = {
+        const payload: Record<string, any> = {
             id,
             email,
             firstName,
@@ -66,7 +66,7 @@ export class AuthController {
             AUTH_JWT_EXPIRATION_TIME;
 
         const clientBasicToken: string = authorization.replace('Basic ', '');
-        const payload: IPayloadBasicToken = {
+        const payload: Record<string, any> = {
             clientBasicToken
         };
 

@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from 'src/user/user.service';
-import { IPayload, IPayloadBasicToken } from 'src/auth/auth.interface';
 import { HashService } from 'src/hash/hash.service';
 import { Hash } from 'src/hash/hash.decorator';
 import { UserEntity } from 'src/user/user.schema';
@@ -15,7 +14,7 @@ export class AuthService {
     ) {}
 
     async createAccessToken(
-        payload: IPayload | IPayloadBasicToken
+        payload: Record<string, any>
     ): Promise<string> {
         return this.jwtService.sign(payload);
     }
