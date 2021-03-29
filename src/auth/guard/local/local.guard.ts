@@ -22,6 +22,7 @@ export class LocalGuard extends AuthGuard('local') {
         info: string
     ): TUser {
         if (err || !user) {
+
             this.logger.error('AuthLocalGuardError', {
                 class: 'LocalGuard',
                 function: 'handleRequest',

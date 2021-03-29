@@ -36,8 +36,10 @@ export class EncryptionInterceptor
             this.configService.get('app.encryption.encrypt') ||
             ENCRYPTION_ENCRYPT;
 
+
         return next.handle().pipe(
-            map(async (response: IResponseSuccess) => {
+            map(async (response: Record<string, any> | string) => {
+                console.log('response success');
                 if (encrypt) {
                     const en: string = await this.hashService.encryptAES256Bit(
                         response,
@@ -49,6 +51,7 @@ export class EncryptionInterceptor
                 return response;
             }),
             catchError(async (err: any) => {
+                console.log('response error');
                 if (encrypt) {
                     const { response } = err;
                     const en: string = await this.hashService.encryptAES256Bit(

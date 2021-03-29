@@ -5,7 +5,6 @@ import { MessageService } from 'src/message/message.service';
 import { IMessageErrors, IMessage } from 'src/message/message.interface';
 import {
     IResponseError,
-    IResponseRaw,
     IResponseSuccess
 } from 'src/response/response.interface';
 
@@ -53,7 +52,7 @@ export class ResponseService {
         };
     }
 
-    raw(response: Record<string, any>): IResponseRaw {
+    raw(response: Record<string, any>): Record<string, any> {
         return response;
     }
 }
