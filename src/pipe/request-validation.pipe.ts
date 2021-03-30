@@ -11,11 +11,10 @@ import { Response } from 'src/response/response.decorator';
 import { ResponseService } from 'src/response/response.service';
 import { Logger } from 'src/logger/logger.decorator';
 import { Logger as LoggerService } from 'winston';
-import { AppErrorStatusCode } from 'src/status-code/status-code.error.constant';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
-import { IMessageErrors } from 'src/message/message.interface';
-import { IResponseError } from 'src/response/response.interface';
+import { IErrors } from 'src/message/message.interface';
+import { IResponse } from 'src/response/response.interface';
 
 export function RequestValidationPipe(schema: {
     new (...args: any[]): any;
@@ -44,7 +43,7 @@ export function RequestValidationPipe(schema: {
             });
             const rawErrors: Record<string, any>[] = await validate(request);
             if (rawErrors.length > 0) {
-                const errors: IMessageErrors[] = this.messageService.setRequestErrorMessage(
+                const errors: IErrors[] = this.messageService.getRequestErrorsMessage(
                     rawErrors
                 );
 
@@ -53,8 +52,8 @@ export function RequestValidationPipe(schema: {
                     function: 'transform',
                     errors
                 });
-                const response: IResponseError = this.responseService.error(
-                    AppErrorStatusCode.REQUEST_ERROR,
+                const response: IResponse = this.responseService.error(
+                    this.messageService.get('http.clientError.badRequest'),
                     errors
                 );
                 throw new BadRequestException(response);

@@ -21,12 +21,8 @@ app:
     http: false
     system: false
 
-  pagination: 
-    page: 1
-    limit: 10
-
   hash: 
-    passwordLatLength: 16
+    passwordSaltLength: 16
 
   auth:
     usernameField: 'email'

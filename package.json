@@ -29,7 +29,6 @@
     "@nestjs/passport": "^7.1.5",
     "@nestjs/platform-express": "7.6.11",
     "bcrypt": "^5.0.0",
-    "body-parser": "^1.19.0",
     "class-transformer": "^0.3.2",
     "class-validator": "^0.13.1",
     "compression": "^1.7.4",

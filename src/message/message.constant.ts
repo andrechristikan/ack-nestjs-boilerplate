@@ -1,4 +1,4 @@
-import en from 'src/language/resources/en';
+import en from 'src/message/languages/en';
 
 export default {
     en

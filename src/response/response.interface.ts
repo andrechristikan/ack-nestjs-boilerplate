@@ -1,15 +1,11 @@
-import { AppErrorStatusCode } from 'src/status-code/status-code.error.constant';
-import { AppSuccessStatusCode } from 'src/status-code/status-code.success.constant';
-import { IMessageErrors } from 'src/message/message.interface';
-export interface IResponseSuccess extends Pick<IResponse, 'data' | 'message'> {
-    readonly statusCode: AppSuccessStatusCode;
-}
-export interface IResponseError extends Pick<IResponse, 'errors' | 'message'> {
-    readonly statusCode: AppErrorStatusCode;
-}
+import { IErrors } from 'src/message/message.interface';
+
 export interface IResponse {
-    readonly statusCode: AppSuccessStatusCode | AppErrorStatusCode;
     readonly message: string;
-    readonly errors?: IMessageErrors[];
+    readonly totalData?: number;
+    readonly totalPage?:number;
+    readonly currentPage?:number;
+    readonly perPage?:number;
+    readonly errors?: IErrors[];
     readonly data?: Record<string, any> | Record<string, any>[];
 }

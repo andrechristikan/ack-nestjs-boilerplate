@@ -1,11 +1,13 @@
 import user from './user';
-import system from './system';
+import http from './http';
 import request from './request';
 import auth from './auth';
+import app from './app';
 
 export default {
     user,
-    system,
+    http,
     request,
-    auth
+    auth,
+    app
 };

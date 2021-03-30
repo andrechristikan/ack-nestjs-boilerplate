@@ -27,19 +27,24 @@ export class EncryptionMiddleware implements NestMiddleware {
             ENCRYPTION_ENCRYPT;
 
         if (encrypt) {
-            const requestBody: string = req.body;
-            this.hashService.decryptAES256Bit(
-                requestBody,
-                key,
-                iv
-            ).then( (result: string) => {
-                // console.log('requestBody', req.);
-                console.log('requestBody', requestBody);
-                console.log('result', result);
-                req.body = result;
-                next();
-            });
-        }else{
+            const param = req.params;
+            const query = req.query;
+            const body: string = req.body;
+            const cookies: string = req.cookies;
+            
+
+            console.log('param', param);
+            console.log('query', query);
+            console.log('body', body);
+            console.log('cookies', cookies);
+            this.hashService
+                .decryptAES256Bit(body, key, iv)
+                .then((result: string) => {
+                    
+                    req.body = result;
+                    next();
+                });
+        } else {
             next();
         }
     }

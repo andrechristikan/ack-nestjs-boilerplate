@@ -17,7 +17,7 @@ export class HashService {
     async randomSalt(): Promise<string> {
         // Env Variable
         const defaultPasswordSaltLength: number =
-            this.configService.get('app.hash.passwordLatLength') ||
+            this.configService.get('app.hash.passwordSaltLength') ||
             PASSWORD_SALT_LENGTH;
 
         return genSaltSync(defaultPasswordSaltLength);

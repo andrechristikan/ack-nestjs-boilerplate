@@ -5,7 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { DatabaseService } from 'src/database/database.service';
 import { DatabaseModule } from 'src/database/database.module';
 import { ResponseModule } from 'src/response/response.module';
-import { LanguageModule } from 'src/language/language.module';
+import { MessageModule } from 'src/message/message.module';
 import { ConfigModule } from '@nestjs/config';
 import { WinstonModule } from 'nest-winston';
 import { LoggerService } from 'src/logger/logger.service';
@@ -15,17 +15,33 @@ import { AuthModule } from 'src/auth/auth.module';
 import Configuration from 'src/config/configuration';
 import { HashModule } from 'src/hash/hash.module';
 import { PaginationModule } from 'src/pagination/pagination.module';
-import {
-    MiddlewareBeforeModule,
-    MiddlewareAfterModule
-} from 'src/middleware/middleware.module';
+import { MiddlewareModule } from 'src/middleware/middleware.module';
+import { EncryptionModule } from 'src/encryption/encryption.module';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { ExceptionsFilter } from 'src/exception/exception.filter';
+import { EncryptionInterceptor } from 'src/encryption/encryption.interceptor';
+import { ResponseInterceptor } from 'src/response/response.interceptor';
 
 @Module({
     controllers: [AppController],
-    providers: [AppService],
+    providers: [
+        AppService,
+        {
+            provide: APP_FILTER,
+            useClass: ExceptionsFilter
+        },
+        {
+            provide: APP_INTERCEPTOR,
+            useClass: ResponseInterceptor
+        },
+        {
+            provide: APP_INTERCEPTOR,
+            useClass: EncryptionInterceptor
+        }
+    ],
     imports: [
-        MiddlewareBeforeModule,
-        MiddlewareAfterModule,
+        MiddlewareModule,
+        EncryptionModule,
         ConfigModule.forRoot({
             load: [Configuration],
             ignoreEnvFile: true,
@@ -45,7 +61,7 @@ import {
                 return databaseService.createMongooseOptions();
             }
         }),
-        LanguageModule,
+        MessageModule,
         LoggerModule,
         ResponseModule,
         PaginationModule,

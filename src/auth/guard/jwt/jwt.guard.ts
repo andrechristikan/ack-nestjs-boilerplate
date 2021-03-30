@@ -2,16 +2,18 @@ import { AuthGuard } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ResponseService } from 'src/response/response.service';
 import { Response } from 'src/response/response.decorator';
-import { AppErrorStatusCode } from 'src/status-code/status-code.error.constant';
-import { IResponseError } from 'src/response/response.interface';
+import { IResponse } from 'src/response/response.interface';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
+import { Message } from 'src/message/message.decorator';
+import { MessageService } from 'src/message/message.service';
 
 @Injectable()
 export class JwtGuard extends AuthGuard('jwt') {
     constructor(
         @Response() private readonly responseService: ResponseService,
-        @Logger() private readonly logger: LoggerService
+        @Logger() private readonly logger: LoggerService,
+        @Message() private readonly messageService: MessageService
     ) {
         super();
     }
@@ -29,8 +31,8 @@ export class JwtGuard extends AuthGuard('jwt') {
                 error: { ...err }
             });
 
-            const response: IResponseError = this.responseService.error(
-                AppErrorStatusCode.UNAUTHORIZED_ERROR
+            const response: IResponse = this.responseService.error(
+                this.messageService.get('http.clientError.unauthorized')
             );
 
             throw new UnauthorizedException(response);

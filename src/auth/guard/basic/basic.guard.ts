@@ -11,13 +11,14 @@ import {
 import { Request } from 'express';
 import { HashService } from 'src/hash/hash.service';
 import { Response } from 'src/response/response.decorator';
-import { AppErrorStatusCode } from 'src/status-code/status-code.error.constant';
-import { IResponseError } from 'src/response/response.interface';
+import { IResponse } from 'src/response/response.interface';
 import { ResponseService } from 'src/response/response.service';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
 import { ConfigService } from '@nestjs/config';
 import { Hash } from 'src/hash/hash.decorator';
+import { Message } from 'src/message/message.decorator';
+import { MessageService } from 'src/message/message.service';
 
 @Injectable()
 export class BasicGuard implements CanActivate {
@@ -25,6 +26,7 @@ export class BasicGuard implements CanActivate {
         @Response() private readonly responseService: ResponseService,
         @Hash() private readonly hashService: HashService,
         @Logger() private readonly logger: LoggerService,
+        @Message() private readonly messageService: MessageService,
         private readonly configService: ConfigService
     ) {}
 
@@ -46,8 +48,8 @@ export class BasicGuard implements CanActivate {
                 class: 'BasicGuard',
                 function: 'canActivate'
             });
-            const response: IResponseError = this.responseService.error(
-                AppErrorStatusCode.UNAUTHORIZED_ERROR
+            const response: IResponse = this.responseService.error(
+                this.messageService.get('http.clientError.unauthorized')
             );
             throw new UnauthorizedException(response);
         }
@@ -68,8 +70,8 @@ export class BasicGuard implements CanActivate {
                 class: 'BasicGuard',
                 function: 'canActivate'
             });
-            const response: IResponseError = this.responseService.error(
-                AppErrorStatusCode.UNAUTHORIZED_ERROR
+            const response: IResponse = this.responseService.error(
+                this.messageService.get('http.clientError.unauthorized')
             );
             throw new UnauthorizedException(response);
         }

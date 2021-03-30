@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UserService } from 'src/user/user.service';
 import { HashService } from 'src/hash/hash.service';
 import { Hash } from 'src/hash/hash.decorator';
-import { UserEntity } from 'src/user/user.schema';
+import { IUser } from 'src/user/user.interface';
 
 @Injectable()
 export class AuthService {
@@ -23,7 +23,7 @@ export class AuthService {
         email: string,
         passwordString: string
     ): Promise<boolean> {
-        const user: UserEntity = await this.userService.findOneByEmail(email);
+        const user: IUser = await this.userService.findOneByEmail(email);
         return this.hashService.validatePassword(passwordString, user.password);
     }
 }

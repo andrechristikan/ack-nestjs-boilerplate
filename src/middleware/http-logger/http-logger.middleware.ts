@@ -75,3 +75,21 @@ export class HttpLoggerMiddleware implements NestMiddleware {
         }
     }
 }
+
+@Injectable()
+export class HttpLoggerResponseMiddleware implements NestMiddleware {
+    use(req: Request, res: Response, next: NextFunction): void {
+        const send: any = res.send;
+        const resOld: any = res;
+
+        // Add response data to response
+        resOld.send = (body: any) => {
+            resOld.body = body;
+            resOld.send = send;
+            resOld.send(body);
+            res = resOld as Response;
+        };
+
+        next();
+    }
+}

@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { UserDocument, UserEntity } from 'src/user/user.schema';
-import { IUserCreate, IUserUpdate } from 'src/user/user.interface';
+import { UserEntity } from 'src/user/user.schema';
+import { IUser } from 'src/user/user.interface';
 import { HashService } from 'src/hash/hash.service';
 import { Hash } from 'src/hash/hash.decorator';
 import { UserTransformer } from 'src/user/transformer/user.transformer';
@@ -12,36 +12,42 @@ import { classToPlain, plainToClass } from 'class-transformer';
 export class UserService {
     constructor(
         @InjectModel(UserEntity.name)
-        private readonly userModel: Model<UserDocument>,
+        private readonly userModel: Model<IUser>,
         @Hash() private readonly hashService: HashService
     ) {}
 
     async findAll(
-        skip: number,
+        offset: number,
         limit: number,
         find?: Record<string, any>
     ): Promise<UserEntity[]> {
-        return this.userModel.find(find).skip(skip).limit(limit).lean();
+        return this.userModel.find(find).skip(offset).limit(limit).lean();
     }
 
-    async findOneById(userId: string): Promise<UserEntity> {
-        return this.userModel.findById(userId).lean();
+    async totalData(
+        find?: Record<string, any>
+    ): Promise<number> {
+        return this.userModel.countDocuments(find);
     }
 
-    async findOneByEmail(email: string): Promise<UserEntity> {
+    async findOneById(userId: string): Promise<IUser> {
+        return this.userModel.findById(userId).exec();
+    }
+
+    async findOneByEmail(email: string): Promise<IUser> {
         return this.userModel
             .findOne({
                 email: email
             })
-            .lean();
+            .exec();
     }
 
-    async findOneByMobileNumber(mobileNumber: string): Promise<UserEntity> {
+    async findOneByMobileNumber(mobileNumber: string): Promise<IUser> {
         return this.userModel
             .findOne({
                 mobileNumber: mobileNumber
             })
-            .lean();
+            .exec();
     }
 
     async transformer<T, U>(rawData: U): Promise<T> {
@@ -49,41 +55,47 @@ export class UserService {
         return classToPlain(user) as T;
     }
 
-    async create(data: IUserCreate): Promise<UserEntity> {
+    async create(data: Record<string, any>): Promise<IUser> {
         const salt: string = await this.hashService.randomSalt();
         const passwordHash = await this.hashService.hashPassword(
             data.password,
             salt
         );
-        const create: UserDocument = await this.userModel.create({
+        console.log({
             firstName: data.firstName.toLowerCase(),
             lastName: data.lastName.toLowerCase(),
             email: data.email.toLowerCase(),
             mobileNumber: data.mobileNumber,
             password: passwordHash
         });
-        return create.toObject() as UserEntity;
+        const create: IUser = new this.userModel({
+            firstName: data.firstName.toLowerCase(),
+            lastName: data.lastName.toLowerCase(),
+            email: data.email.toLowerCase(),
+            mobileNumber: data.mobileNumber,
+            password: passwordHash
+        });
+        return create.save();
     }
 
-    async deleteOneById(userId: string): Promise<UserEntity> {
-        return this.userModel.findByIdAndDelete(userId);
+    async deleteOneById(userId: string): Promise<IUser> {
+        return this.userModel.deleteOne({
+            _id: userId
+        });
     }
 
     async updateOneById(
         userId: string,
-        data: IUserUpdate
-    ): Promise<UserEntity> {
-        const update: UserDocument = await this.userModel.findByIdAndUpdate(
-            userId,
+        data: Record<string, any>
+    ): Promise<IUser> {
+        return this.userModel.updateOne(
             {
-                $set: {
-                    firstName: data.firstName.toLowerCase(),
-                    lastName: data.lastName.toLowerCase()
-                }
+                _id: userId
             },
-            { new: true }
+            {
+                firstName: data.firstName.toLowerCase(),
+                lastName: data.lastName.toLowerCase()
+            }
         );
-
-        return update.toObject() as UserEntity;
     }
 }
