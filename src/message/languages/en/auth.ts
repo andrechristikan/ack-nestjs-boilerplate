@@ -6,6 +6,7 @@ export default {
         
     },
     basicToken: {
-        success: 'Login Success'
+        success: 'Login Basci Token Success',
+        test: 'Test Basic Token Success'
     }
 };

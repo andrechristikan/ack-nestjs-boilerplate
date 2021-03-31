@@ -11,12 +11,8 @@ export class AppController {
     ) {}
 
     @Get('/')
-    async getHello(): Promise<string> {
+    async getHello(): Promise<IResponse> {
         const message: string = await this.appService.getHello();
-        return 'asdasd';
-        // return {
-        //     email: 'andreck@gradana.com',
-        //     password: '123123'
-        // };
+        return this.responseService.success(message);
     }
 }

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { IErrors } from 'src/message/message.interface';
-import { IResponse } from 'src/response/response.interface';
+import { IResponse, IResponsePaging } from 'src/response/response.interface';
 
 @Injectable()
 export class ResponseService {
@@ -40,7 +40,7 @@ export class ResponseService {
         currentPage: number,
         perPage: number,
         data: Record<string, any>[]
-    ): IResponse {
+    ): IResponsePaging {
         return {
             message,
             totalData,

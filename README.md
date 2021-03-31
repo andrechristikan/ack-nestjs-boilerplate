@@ -22,23 +22,25 @@ This package build in NestJs, Mongoose, and MongoDB.
 
 Futures :
 ```
-[x] Mongoose integration
+[x] Mongoose
 [x] JWT Auth Implementation
 [x] Basic Token Auth Implementation
-[x] Login Auth Implementation
+[x] Local Auth With Email Implementation
 [x] Config in YML File
 [x] Request Validation With Pipe and Class Validation Package
 [x] Support Class Transformer Package
-[x] Centralize Response
+[x] Centralize Response To Be JSON Object (Standard Open API 3.x)
 [x] Hash Password With Bcrypt
-[x] Support Multi-Language
-[ ] Support Encryption Request and Response
-[x] Middleware Added
+[x] Support Multi-Language For Response Message
+[~] Support Encryption Request and Response
+[x] Middleware Rate Limit, Compression, Helmet, Cors, BodyParser, dst
 [x] Server Side Pagination
+[x] Support File Logging With Winston And Morgan Package
 [x] Example For User and Login Component
 [ ] Migration
 [x] E2E Testing
 [ ] Unit Testing
+[~] Documentation
 ```
 
 #### Folder Structure

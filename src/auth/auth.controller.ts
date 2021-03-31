@@ -4,7 +4,8 @@ import {
     Body,
     Headers,
     HttpCode,
-    HttpStatus
+    HttpStatus,
+    Get
 } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
 import { ILogin } from 'src/auth/auth.interface';
@@ -68,7 +69,7 @@ export class AuthController {
 
     @AuthBasic()
     @HttpCode(HttpStatus.OK)
-    @Post('/basic-token')
+    @Post('/basic-token/login')
     async loginBasicToken(
         @Headers('Authorization') authorization: string
     ): Promise<IResponse> {
@@ -91,6 +92,13 @@ export class AuthController {
                 accessToken,
                 expiredIn
             }
+        );
+    }
+
+    @Get('/basic-token/test')
+    async testBasicToken(): Promise<IResponse> {
+        return this.responseService.success(
+            this.messageService.get('auth.basicToken.test')
         );
     }
 }

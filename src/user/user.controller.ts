@@ -16,12 +16,12 @@ import { UserService } from 'src/user/user.service';
 import { IUser, IUserSafe } from 'src/user/user.interface';
 import { Response } from 'src/response/response.decorator';
 import { ResponseService } from 'src/response/response.service';
-import { IResponse } from 'src/response/response.interface';
+import { IResponse, IResponsePaging } from 'src/response/response.interface';
 import { RequestValidationPipe } from 'src/pipe/request-validation.pipe';
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
 import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
 import { User } from 'src/user/user.decorator';
-import { AuthBasic, AuthJwt } from 'src/auth/auth.decorator';
+import { AuthJwt } from 'src/auth/auth.decorator';
 import { IErrors } from 'src/message/message.interface';
 import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
@@ -31,7 +31,6 @@ import { PAGE, PER_PAGE } from 'src/pagination/pagination.constant';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
 import { UserEntity } from 'src/user/user.schema';
-import { response } from 'express';
 
 @Controller('/user')
 export class UserController {
@@ -49,7 +48,7 @@ export class UserController {
         @Query('page', new DefaultValuePipe(PAGE), ParseIntPipe) page: number,
         @Query('perPage', new DefaultValuePipe(PER_PAGE), ParseIntPipe)
         perPage: number
-    ): Promise<IResponse> {
+    ): Promise<IResponsePaging> {
         const skip = await this.paginationService.skip(page, perPage);
         const user: UserEntity[] = await this.userService.findAll(
             skip,
