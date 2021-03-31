@@ -1,10 +1,11 @@
-import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
-import { EncryptionMiddleware } from 'src/encryption/encryption.middleware';
+import { Global, Module } from '@nestjs/common';
+import { EncryptionController } from './encryption.controller';
 
-@Module({})
-export class EncryptionModule implements NestModule {
-    configure(consumer: MiddlewareConsumer): void {
-        //! middleware
-        consumer.apply(EncryptionMiddleware).forRoutes('*');
-    }
-}
+@Global()
+@Module({
+    providers: [],
+    controllers: [EncryptionController],
+    exports: [],
+    imports: []
+})
+export class EncryptionModule {}

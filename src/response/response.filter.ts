@@ -7,9 +7,9 @@ import {
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Message } from 'src/message/message.decorator';
-import { IErrors } from 'src/message/message.interface';
 import { MessageService } from 'src/message/message.service';
 
+// Restructure Response Object For Guard Exception
 @Catch()
 export class ResponseFilter implements ExceptionFilter {
     constructor(@Message() private readonly messageService: MessageService) {}
@@ -22,13 +22,10 @@ export class ResponseFilter implements ExceptionFilter {
             const status: number = exception.getStatus();
             const exceptionHttp: Record<string, any> = exception;
             const exceptionData: Record<string, any> = exceptionHttp.response;
-            const errors: IErrors[] = exceptionData.errors;
-            const message: string = exceptionData.message;
 
             response.status(status).json({
                 statusCode: status,
-                message,
-                errors
+                message: exceptionData.message
             });
         } else {
             const status: number = HttpStatus.INTERNAL_SERVER_ERROR;

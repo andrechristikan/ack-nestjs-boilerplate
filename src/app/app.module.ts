@@ -17,31 +17,14 @@ import { HashModule } from 'src/hash/hash.module';
 import { PaginationModule } from 'src/pagination/pagination.module';
 import { MiddlewareModule } from 'src/middleware/middleware.module';
 import { EncryptionModule } from 'src/encryption/encryption.module';
-import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
-import { ResponseFilter } from 'src/response/response.filter';
-import { EncryptionInterceptor } from 'src/encryption/encryption.interceptor';
-import { ResponseInterceptor } from 'src/response/response.interceptor';
 
 @Module({
     controllers: [AppController],
     providers: [
         AppService,
-        {
-            provide: APP_FILTER,
-            useClass: ResponseFilter
-        },
-        {
-            provide: APP_INTERCEPTOR,
-            useClass: ResponseInterceptor
-        },
-        {
-            provide: APP_INTERCEPTOR,
-            useClass: EncryptionInterceptor
-        }
     ],
     imports: [
         MiddlewareModule,
-        EncryptionModule,
         ConfigModule.forRoot({
             load: [Configuration],
             ignoreEnvFile: true,
@@ -67,6 +50,7 @@ import { ResponseInterceptor } from 'src/response/response.interceptor';
         PaginationModule,
         HashModule,
 
+        EncryptionModule,
         AuthModule,
         UserModule
     ]

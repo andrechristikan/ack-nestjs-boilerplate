@@ -42,7 +42,6 @@
     "nest-winston": "^1.4.0",
     "passport": "^0.4.1",
     "passport-jwt": "^4.0.0",
-    "passport-local": "^1.0.0",
     "reflect-metadata": "0.1.13",
     "rimraf": "3.0.2",
     "rotating-file-stream": "^2.1.3",

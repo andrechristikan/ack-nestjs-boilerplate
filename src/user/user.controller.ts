@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
 import { IUser, IUserSafe } from 'src/user/user.interface';
-import { Response } from 'src/response/response.decorator';
+import { Response, ResponseStatusCode } from 'src/response/response.decorator';
 import { ResponseService } from 'src/response/response.service';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
 import { RequestValidationPipe } from 'src/pipe/request-validation.pipe';
@@ -43,6 +43,7 @@ export class UserController {
     ) {}
 
     @AuthJwt()
+    @ResponseStatusCode()
     @Get('/')
     async findAll(
         @Query('page', new DefaultValuePipe(PAGE), ParseIntPipe) page: number,
@@ -75,6 +76,7 @@ export class UserController {
     }
 
     @AuthJwt()
+    @ResponseStatusCode()
     @Get('/profile')
     async profile(@User('id') userId: string): Promise<IResponse> {
         const user: IUser = await this.userService.findOneById(userId);
@@ -100,6 +102,7 @@ export class UserController {
     }
 
     @AuthJwt()
+    @ResponseStatusCode()
     @Get('/:userId')
     async findOneById(@Param('userId') userId: string): Promise<IResponse> {
         const user: IUser = await this.userService.findOneById(userId);
@@ -125,6 +128,7 @@ export class UserController {
     }
 
     @AuthJwt()
+    @ResponseStatusCode()
     @Post('/create')
     async create(
         @Body(RequestValidationPipe(UserCreateValidation))
@@ -174,6 +178,7 @@ export class UserController {
     }
 
     @AuthJwt()
+    @ResponseStatusCode()
     @Delete('/delete/:userId')
     async delete(@Param('userId') userId: string): Promise<IResponse> {
         const user: IUser = await this.userService.findOneById(userId);
@@ -195,6 +200,7 @@ export class UserController {
     }
 
     @AuthJwt()
+    @ResponseStatusCode()
     @Put('/update/:userId')
     async update(
         @Param('userId') userId: string,

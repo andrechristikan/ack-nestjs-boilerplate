@@ -9,10 +9,12 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HashService } from 'src/hash/hash.service';
 import {
-    ENCRYPTION_ENCRYPT,
     ENCRYPTION_IV,
     ENCRYPTION_KEY
 } from 'src/encryption/encryption.constant';
+import { HttpArgumentsHost } from '@nestjs/common/interfaces';
+import { Request } from 'express';
+import rawBody from 'raw-body';
 
 @Injectable()
 export class EncryptionInterceptor
@@ -31,21 +33,30 @@ export class EncryptionInterceptor
             this.configService.get('app.encryption.iv') || ENCRYPTION_IV;
         const key: string =
             this.configService.get('app.encryption.key') || ENCRYPTION_KEY;
-        const encrypt: boolean =
-            this.configService.get('app.encryption.encrypt') ||
-            ENCRYPTION_ENCRYPT;
+
+        const ctx: HttpArgumentsHost = context.switchToHttp();
+        const request: Request = ctx.getRequest<Request>();
+
+        if (request.readable) {
+            const raw = (await rawBody(request)).toString().trim();
+            const decryption: string = await this.hashService.decryptAES256Bit(
+                raw,
+                key,
+                iv
+            );
+
+            try {
+                const jsonBody: Record<string, any> = JSON.parse(decryption);
+                request.body = jsonBody;
+            } catch (err: any) {
+                request.body = raw;
+            }
+        }
 
         return next.handle().pipe(
-            map(async (response: Record<string, any> | string) => {
-                if (encrypt) {
-                    const en: string = await this.hashService.encryptAES256Bit(
-                        response,
-                        key,
-                        iv
-                    );
-                    return en;
-                }
-                return response;
+            map(async (response: Promise<Record<string, any> | string>) => {
+                const data: Record<string, any> | string = await response;
+                return this.hashService.encryptAES256Bit(data, key, iv);
             })
         );
     }

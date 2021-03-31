@@ -16,27 +16,22 @@ export class ResponseInterceptor
         next: CallHandler
     ): Promise<Observable<Promise<any> | string>> {
         const ctx: HttpArgumentsHost = context.switchToHttp();
-        const response: any = ctx.getResponse();
+        const responseExpress: any = ctx.getResponse();
 
         return next.handle().pipe(
-            map(async (rawData: any) => {
-                const status: number = response.statusCode;
-                const oldData: Record<string, any> | string = await rawData;
+            map(async (response: Promise<Record<string, any> | string>) => {
+                const status: number = responseExpress.statusCode;
+                const data: Record<string, any> | string = await response;
+                console.log('response inter', data);
+                if (typeof data === 'object') {
+                    const { statusCode, ...others } = data;
+                    return {
+                        statusCode: statusCode || status,
+                        ...others
+                    };
+                }
 
-                return new Promise((resolve) => {
-                    if (typeof oldData === 'object') {
-                        const data = oldData as Record<
-                            string,
-                            any
-                        >;
-                        resolve({
-                            statusCode: status,
-                            ...data
-                        });
-                    } else {
-                        resolve(rawData);
-                    }
-                });
+                return data;
             })
         );
     }

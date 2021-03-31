@@ -8,17 +8,14 @@ import {
 import { JwtStrategy } from 'src/auth/guard/jwt/jwt.strategy';
 import { UserModule } from 'src/user/user.module';
 import { AuthController } from 'src/auth/auth.controller';
-import { PassportModule } from '@nestjs/passport';
-import { LocalStrategy } from 'src/auth/guard/local/local.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
-    providers: [AuthService, JwtStrategy, LocalStrategy],
+    providers: [AuthService, JwtStrategy],
     exports: [AuthService],
     controllers: [AuthController],
     imports: [
         UserModule,
-        PassportModule,
         JwtModule.registerAsync({
             inject: [ConfigService],
             imports: [ConfigModule],
