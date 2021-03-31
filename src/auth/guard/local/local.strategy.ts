@@ -19,7 +19,7 @@ import { MessageService } from 'src/message/message.service';
 import { IResponse } from 'src/response/response.interface';
 
 @Injectable()
-export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
+export class LocalStrategy extends PassportStrategy(Strategy) {
     constructor(
         @Logger() private readonly logger: LoggerService,
         @Response() private readonly responseService: ResponseService,
@@ -42,6 +42,7 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
         password: string
     ): Promise<Record<string, any>> {
         const user: IUser = await this.userService.findOneByEmail(username);
+        
         if (!user) {
             this.logger.error('Authorized error user not found', {
                 class: 'LocalStrategy',
@@ -70,6 +71,7 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'local') {
             );
             throw new BadRequestException(response);
         }
+        
         const {
             id,
             email,

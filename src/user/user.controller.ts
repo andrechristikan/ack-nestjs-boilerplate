@@ -131,37 +131,10 @@ export class UserController {
         @Body(RequestValidationPipe(UserCreateValidation))
         data: UserCreateValidation
     ): Promise<IResponse> {
-        const existEmail: Promise<IUser> = this.userService.findOneByEmail(
-            data.email
-        );
-        const existMobileNumber: Promise<IUser> = this.userService.findOneByMobileNumber(
+        const errors: IErrors[] = await this.userService.checkExist(
+            data.email,
             data.mobileNumber
         );
-
-        const validate: Promise<IErrors[]> = Promise.all([
-            existEmail,
-            existMobileNumber
-        ]).then(async ([userExistEmail, userExistMobileNumber]) => {
-            const errors: IErrors[] = [];
-            if (userExistEmail) {
-                errors.push({
-                    message: this.messageService.get('user.create.emailExist'),
-                    property: 'email'
-                });
-            }
-            if (userExistMobileNumber) {
-                errors.push({
-                    message: this.messageService.get(
-                        'user.create.mobileNumberExist'
-                    ),
-                    property: 'mobileNumber'
-                });
-            }
-
-            return errors;
-        });
-
-        const errors: IErrors[] = await validate;
 
         if (errors.length > 0) {
             this.logger.error('create errors', {
@@ -178,9 +151,15 @@ export class UserController {
         }
 
         try {
-            await this.userService.create(data);
+            const user: IUser = await this.userService.create(data);
+            const userSafe: IUserSafe = await this.userService.transformer<
+                IUserSafe,
+                UserEntity
+            >(user.toObject());
+
             return this.responseService.success(
-                this.messageService.get('user.create.success')
+                this.messageService.get('user.create.success'),
+                userSafe
             );
         } catch (err: any) {
             this.logger.error('create try catch', {
@@ -216,52 +195,50 @@ export class UserController {
         );
     }
 
-    // @AuthBasic()
-    // @Put('/update/:userId')
-    // async update(
-    //     @Param('userId') userId: string,
-    //     @Body(RequestValidationPipe(UserUpdateValidation)) data: IUserUpdate
-    // ): Promise<IResponseSuccess> {
-    //     const checkUser: UserEntity = await this.userService.findOneById(
-    //         userId
-    //     );
-    //     if (!checkUser) {
-    //         this.logger.error('checkUser Error', {
-    //             class: 'UserController',
-    //             function: 'update'
-    //         });
+    @AuthJwt()
+    @Put('/update/:userId')
+    async update(
+        @Param('userId') userId: string,
+        @Body(RequestValidationPipe(UserUpdateValidation))
+        data: UserUpdateValidation
+    ): Promise<IResponse> {
+        const user: IUser = await this.userService.findOneById(userId);
+        if (!user) {
+            this.logger.error('user Error', {
+                class: 'UserController',
+                function: 'delete'
+            });
+            const response: IResponse = this.responseService.error(
+                this.messageService.get('http.clientError.notFound')
+            );
+            throw new BadRequestException(response);
+        }
 
-    //         const response: IResponseError = this.responseService.error(
-    //             AppErrorStatusCode.USER_NOT_FOUND
-    //         );
-    //         throw new BadRequestException(response);
-    //     }
+        try {
+            await this.userService.updateOneById(userId, data);
+            const user: IUser = await this.userService.findOneById(userId);
+            const userSafe: IUserSafe = await this.userService.transformer<
+                IUserSafe,
+                UserEntity
+            >(user.toObject());
 
-    //     try {
-    //         await this.userService.updateOneById(userId, data);
-    //         const user: UserEntity = await this.userService.findOneById(userId);
-    //         const userSafe: IUserSafe = await this.userService.transformer<
-    //             IUserSafe,
-    //             UserEntity
-    //         >(user);
+            return this.responseService.success(
+                this.messageService.get('user.update.success'),
+                userSafe
+            );
+        } catch (err: any) {
+            this.logger.error('update try catch', {
+                class: 'UserController',
+                function: 'update',
+                error: {
+                    ...err
+                }
+            });
 
-    //         return this.responseService.success(
-    //             AppSuccessStatusCode.USER_UPDATE,
-    //             userSafe
-    //         );
-    //     } catch (err: any) {
-    //         this.logger.error('update try catch', {
-    //             class: 'UserController',
-    //             function: 'update',
-    //             error: {
-    //                 ...err
-    //             }
-    //         });
-
-    //         const response: IResponseError = this.responseService.error(
-    //             AppErrorStatusCode.GENERAL_ERROR
-    //         );
-    //         throw new InternalServerErrorException(response);
-    //     }
-    // }
+            const response: IResponse = this.responseService.error(
+                this.messageService.get('http.serverError.internalServerError')
+            );
+            throw new InternalServerErrorException(response);
+        }
+    }
 }

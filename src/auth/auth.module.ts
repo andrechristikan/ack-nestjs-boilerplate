@@ -18,9 +18,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     controllers: [AuthController],
     imports: [
         UserModule,
-        PassportModule.register({
-            defaultStrategy: 'local'
-        }),
+        PassportModule,
         JwtModule.registerAsync({
             inject: [ConfigService],
             imports: [ConfigModule],

@@ -1,4 +1,11 @@
-import { Controller, Post, Body, Headers, HttpCode } from '@nestjs/common';
+import {
+    Controller,
+    Post,
+    Body,
+    Headers,
+    HttpCode,
+    HttpStatus
+} from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
 import { ILogin } from 'src/auth/auth.interface';
 import { UserService } from 'src/user/user.service';
@@ -24,6 +31,7 @@ export class AuthController {
     ) {}
 
     @AuthLocal()
+    @HttpCode(HttpStatus.OK)
     @Post('/login')
     async login(@Body() data: ILogin): Promise<IResponse> {
         // Env Variable
@@ -59,7 +67,7 @@ export class AuthController {
     }
 
     @AuthBasic()
-    @HttpCode(200)
+    @HttpCode(HttpStatus.OK)
     @Post('/basic-token')
     async loginBasicToken(
         @Headers('Authorization') authorization: string

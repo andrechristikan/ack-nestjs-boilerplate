@@ -19,23 +19,20 @@ export class ResponseInterceptor
         const response: any = ctx.getResponse();
 
         return next.handle().pipe(
-            map(async (oldData: Promise<Record<string, any> | string>) => {
+            map(async (oldData) => {
+                console.log(typeof oldData);
+                console.log(typeof oldData);
                 const status: number = response.statusCode;
-                const data = await oldData;
+                const { statusCode, ...data } = (await oldData) as Record<
+                    string,
+                    any
+                >;
+
                 return new Promise((resolve) => {
-                    resolve(
-                        typeof data === 'object'
-                            ? {
-                                  statusCode: status,
-                                  message: data.message,
-                                  currentPage: data.currentPage,
-                                  perPage: data.perPage,
-                                  totalPage: data.totalPage,
-                                  totalData: data.totalData,
-                                  data: data.data
-                              }
-                            : data
-                    );
+                    resolve({
+                        statusCode: statusCode || status,
+                        ...data
+                    });
                 });
             })
         );

@@ -51,7 +51,4 @@ export class ResponseService {
         };
     }
 
-    raw(response: Record<string, any>): Record<string, any> {
-        return response;
-    }
 }

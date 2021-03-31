@@ -7,13 +7,17 @@ import { HashService } from 'src/hash/hash.service';
 import { Hash } from 'src/hash/hash.decorator';
 import { UserTransformer } from 'src/user/transformer/user.transformer';
 import { classToPlain, plainToClass } from 'class-transformer';
+import { IErrors } from 'src/message/message.interface';
+import { MessageService } from 'src/message/message.service';
+import { Message } from 'src/message/message.decorator';
 
 @Injectable()
 export class UserService {
     constructor(
         @InjectModel(UserEntity.name)
         private readonly userModel: Model<IUser>,
-        @Hash() private readonly hashService: HashService
+        @Hash() private readonly hashService: HashService,
+        @Message() private readonly messageService: MessageService
     ) {}
 
     async findAll(
@@ -24,9 +28,7 @@ export class UserService {
         return this.userModel.find(find).skip(offset).limit(limit).lean();
     }
 
-    async totalData(
-        find?: Record<string, any>
-    ): Promise<number> {
+    async totalData(find?: Record<string, any>): Promise<number> {
         return this.userModel.countDocuments(find);
     }
 
@@ -61,13 +63,7 @@ export class UserService {
             data.password,
             salt
         );
-        console.log({
-            firstName: data.firstName.toLowerCase(),
-            lastName: data.lastName.toLowerCase(),
-            email: data.email.toLowerCase(),
-            mobileNumber: data.mobileNumber,
-            password: passwordHash
-        });
+
         const create: IUser = new this.userModel({
             firstName: data.firstName.toLowerCase(),
             lastName: data.lastName.toLowerCase(),
@@ -97,5 +93,45 @@ export class UserService {
                 lastName: data.lastName.toLowerCase()
             }
         );
+    }
+
+    async checkExist(
+        email: string,
+        mobileNumber: string,
+        userId?: string
+    ): Promise<IErrors[]> {
+        const existEmail: IUser = await this.userModel
+            .findOne({
+                email: email
+            })
+            .where('_id')
+            .ne(userId)
+            .lean();
+
+        const existMobileNumber: IUser = await this.userModel
+            .findOne({
+                mobileNumber: mobileNumber
+            })
+            .where('_id')
+            .ne(userId)
+            .lean();
+
+        const errors: IErrors[] = [];
+        if (existEmail) {
+            errors.push({
+                message: this.messageService.get('user.create.emailExist'),
+                property: 'email'
+            });
+        }
+        if (existMobileNumber) {
+            errors.push({
+                message: this.messageService.get(
+                    'user.create.mobileNumberExist'
+                ),
+                property: 'mobileNumber'
+            });
+        }
+
+        return errors;
     }
 }

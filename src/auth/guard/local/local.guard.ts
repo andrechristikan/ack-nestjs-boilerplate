@@ -1,5 +1,5 @@
 import { AuthGuard } from '@nestjs/passport';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ResponseService } from 'src/response/response.service';
 import { Response } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
@@ -23,6 +23,7 @@ export class LocalGuard extends AuthGuard('local') {
         user: TUser,
         info: string
     ): TUser {
+        
         if (err || !user) {
             this.logger.error('AuthLocalGuardError', {
                 class: 'LocalGuard',
@@ -31,12 +32,17 @@ export class LocalGuard extends AuthGuard('local') {
                 error: { ...err }
             });
 
+            if(err){
+                const { response } = err;
+                throw new BadRequestException(response);
+            }
+            
             const response: IResponse = this.responseService.error(
                 this.messageService.get('http.clientError.unauthorized')
             );
-
             throw new UnauthorizedException(response);
         }
+
         return user;
     }
 }

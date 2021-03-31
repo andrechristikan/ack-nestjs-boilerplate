@@ -11,18 +11,15 @@ import { IErrors } from 'src/message/message.interface';
 import { MessageService } from 'src/message/message.service';
 
 @Catch()
-export class ExceptionsFilter implements ExceptionFilter {
+export class ResponseFilter implements ExceptionFilter {
     constructor(@Message() private readonly messageService: MessageService) {}
 
     catch(exception: unknown, host: ArgumentsHost): void {
         const ctx: HttpArgumentsHost = host.switchToHttp();
         const response: any = ctx.getResponse();
-        const status: number =
-            exception instanceof HttpException
-                ? exception.getStatus()
-                : HttpStatus.INTERNAL_SERVER_ERROR;
 
         if (exception instanceof HttpException) {
+            const status: number = exception.getStatus();
             const exceptionHttp: Record<string, any> = exception;
             const exceptionData: Record<string, any> = exceptionHttp.response;
             const errors: IErrors[] = exceptionData.errors;
@@ -34,6 +31,7 @@ export class ExceptionsFilter implements ExceptionFilter {
                 errors
             });
         } else {
+            const status: number = HttpStatus.INTERNAL_SERVER_ERROR;
             const message: string = this.messageService.get(
                 'http.serverError.internalServerError'
             );
