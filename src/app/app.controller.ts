@@ -2,6 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { AppService } from 'src/app/app.service';
 import { ResponseService } from 'src/response/response.service';
 import { Response, ResponseStatusCode } from 'src/response/response.decorator';
+import { IResponse } from 'src/response/response.interface';
 @Controller('/hello')
 export class AppController {
     constructor(
@@ -11,7 +12,7 @@ export class AppController {
 
     @Get('/')
     @ResponseStatusCode()
-    async getHello(): Promise<any> {
+    async getHello(): Promise<IResponse> {
         const message: string = await this.appService.getHello();
         return this.responseService.success(message);
     }

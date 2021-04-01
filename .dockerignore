@@ -1,4 +1,3 @@
-node_modules/
 logs/
 yarn.lock
 package-lock.json
@@ -6,4 +5,4 @@ package-lock.json
 config.yml
 e2e/
 test/
-arc/
+src/

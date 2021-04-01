@@ -4,7 +4,7 @@ LABEL maintainer "andrechristikan@gmail.com"
 WORKDIR /app
 
 COPY package.json .
-RUN set -x && yarn
+RUN set -x && yarn --prod
 
 COPY . .
 

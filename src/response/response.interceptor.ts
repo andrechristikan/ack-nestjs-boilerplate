@@ -2,15 +2,20 @@ import {
     Injectable,
     NestInterceptor,
     ExecutionContext,
-    CallHandler
+    CallHandler,
+    InternalServerErrorException
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
+import { Message } from 'src/message/message.decorator';
+import { MessageService } from 'src/message/message.service';
 
 @Injectable()
 export class ResponseInterceptor
     implements NestInterceptor<Promise<any> | string> {
+    constructor(@Message() private readonly messageService: MessageService) {}
+
     async intercept(
         context: ExecutionContext,
         next: CallHandler
@@ -22,16 +27,19 @@ export class ResponseInterceptor
             map(async (response: Promise<Record<string, any> | string>) => {
                 const status: number = responseExpress.statusCode;
                 const data: Record<string, any> | string = await response;
-                console.log('response inter', data);
-                if (typeof data === 'object') {
-                    const { statusCode, ...others } = data;
-                    return {
-                        statusCode: statusCode || status,
-                        ...others
-                    };
+                if (typeof data !== 'object') {
+                    throw new InternalServerErrorException(
+                        this.messageService.get(
+                            'response.statusCode.mustInObject'
+                        )
+                    );
                 }
 
-                return data;
+                const { statusCode, ...others } = data;
+                return {
+                    statusCode: statusCode || status,
+                    ...others
+                };
             })
         );
     }

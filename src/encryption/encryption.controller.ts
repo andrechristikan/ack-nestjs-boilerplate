@@ -31,6 +31,7 @@ export class EncryptionController {
 
     @Post('/')
     @HttpCode(HttpStatus.OK)
+    @ResponseStatusCode()
     @Encryption()
     async post(@Body() body: Record<string, any>): Promise<IResponse> {
         console.log('body', body);

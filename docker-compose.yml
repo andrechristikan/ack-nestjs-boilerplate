@@ -6,7 +6,7 @@ services:
       dockerfile: dockerfile
     container_name: ack
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
     volumes:
       - config.yml:/app/config.yml
     ports:
