@@ -3,8 +3,11 @@ import {
     IsNotEmpty,
     IsEmail,
     MaxLength,
-    MinLength
+    MinLength,
+    IsBoolean,
+    IsMongoId
 } from 'class-validator';
+import { Types } from 'mongoose';
 
 export class UserCreateValidation {
     @IsEmail()
@@ -29,6 +32,14 @@ export class UserCreateValidation {
     @MinLength(10)
     @MaxLength(13)
     readonly mobileNumber: string;
+
+    @IsBoolean()
+    @IsNotEmpty()
+    readonly isAdmin: boolean;
+
+    @IsMongoId()
+    @IsNotEmpty()
+    readonly roleId: Types.ObjectId;
 
     @IsString()
     @IsNotEmpty()

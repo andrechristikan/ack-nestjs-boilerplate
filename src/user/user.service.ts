@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserEntity } from 'src/user/user.schema';
-import { IUser } from 'src/user/user.interface';
+import { IUser, IUserWithRole } from 'src/user/user.interface';
 import { HashService } from 'src/hash/hash.service';
 import { Hash } from 'src/hash/hash.decorator';
 import { UserTransformer } from 'src/user/transformer/user.transformer';
@@ -10,12 +10,20 @@ import { classToPlain, plainToClass } from 'class-transformer';
 import { IErrors } from 'src/message/message.interface';
 import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
+import { RoleEntity } from 'src/role/role.schema';
+import { IRole } from 'src/role/role.interface';
+import { IAbility } from 'src/ability/ability.interface';
+import { AbilityEntity } from 'src/ability/ability.schema';
 
 @Injectable()
 export class UserService {
     constructor(
         @InjectModel(UserEntity.name)
         private readonly userModel: Model<IUser>,
+        @InjectModel(RoleEntity.name)
+        private readonly roleModel: Model<IRole>,
+        @InjectModel(AbilityEntity.name)
+        private readonly abilityModel: Model<IAbility>,
         @Hash() private readonly hashService: HashService,
         @Message() private readonly messageService: MessageService
     ) {}
@@ -33,7 +41,29 @@ export class UserService {
     }
 
     async findOneById(userId: string): Promise<IUser> {
-        return this.userModel.findById(userId).exec();
+        return this.userModel.findById(userId).lean();
+    }
+
+    async findOneByIdWithRole(userId: string): Promise<IUserWithRole> {
+        return new Promise((resolve, reject) => {
+            this.userModel
+                .findById(userId)
+                .populate('roleId', null, this.roleModel)
+                // .populate('roleId.permission', null, this.abilityModel)
+                .exec(async (err: any, user: IUser) => {
+                    if (err) {
+                        reject(err);
+                    }
+
+                    const data: IUserWithRole = (await this.abilityModel.populate(
+                        user,
+                        {
+                            path: 'roleId.abilities'
+                        }
+                    )) as IUserWithRole ;
+                    resolve(data);
+                });
+        });
     }
 
     async findOneByEmail(email: string): Promise<IUser> {
@@ -41,7 +71,7 @@ export class UserService {
             .findOne({
                 email: email
             })
-            .exec();
+            .lean();
     }
 
     async findOneByMobileNumber(mobileNumber: string): Promise<IUser> {
@@ -49,7 +79,7 @@ export class UserService {
             .findOne({
                 mobileNumber: mobileNumber
             })
-            .exec();
+            .lean();
     }
 
     async transformer<T, U>(rawData: U): Promise<T> {

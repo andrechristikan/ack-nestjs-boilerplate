@@ -21,6 +21,7 @@
     "test:e2e": "jest --config e2e/jest.json --detectOpenHandles"
   },
   "dependencies": {
+    "@casl/ability": "^5.2.2",
     "@nestjs/common": "7.6.11",
     "@nestjs/config": "^0.6.1",
     "@nestjs/core": "7.6.11",

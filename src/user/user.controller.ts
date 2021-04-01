@@ -31,6 +31,11 @@ import { PAGE, PER_PAGE } from 'src/pagination/pagination.constant';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
 import { UserEntity } from 'src/user/user.schema';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { CaslService } from 'src/casl/casl.service';
+import { Action } from 'src/casl/casl.constant';
+import { UserAbility } from 'src/casl/casl.interface';
 
 @Controller('/user')
 export class UserController {
@@ -39,8 +44,23 @@ export class UserController {
         @Message() private readonly messageService: MessageService,
         @Pagination() private readonly paginationService: PaginationService,
         @Logger() private readonly logger: LoggerService,
-        private readonly userService: UserService
+        private readonly userService: UserService,
+        @InjectModel(UserEntity.name)
+        private readonly userModel: Model<IUser>,
+        private readonly caslService: CaslService
     ) {}
+
+    @Get('/test')
+    async test(): Promise<any> {
+        const user = new this.userModel();
+        user.isAdmin = false;
+        const ability = this.caslService.createForUser(user);
+        if (ability.can(Action.Delete, UserAbility)) {
+            return 'casl test read';
+        }
+
+        return 'casl test read error';
+    }
 
     @AuthJwt()
     @ResponseStatusCode()
@@ -117,13 +137,15 @@ export class UserController {
             throw new BadRequestException(response);
         }
 
-        const userSafe: IUserSafe = await this.userService.transformer<
-            IUserSafe,
-            UserEntity
-        >(user.toObject());
+        console.log('user',user);
+        console.log('user',user.roleId);
+        // const userSafe: IUserSafe = await this.userService.transformer<
+        //     IUserSafe,
+        //     UserEntity
+        // >(user.toObject());
         return this.responseService.success(
             this.messageService.get('user.findOneById.success'),
-            userSafe
+            user
         );
     }
 
