@@ -1,8 +1,8 @@
-import { Prop, raw, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { IAbilities } from './ability.interface';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
 @Schema()
 export class AbilityEntity {
+
     @Prop({
         required: true,
         index: true,
@@ -12,15 +12,11 @@ export class AbilityEntity {
     })
     name: string;
 
-    @Prop(
-        raw({
-            read: Boolean,
-            create: Boolean,
-            update: Boolean,
-            delete: Boolean
-        })
-    )
-    abilities: IAbilities;
+    @Prop({
+        required: true,
+        index: true
+    })
+    isActive: boolean;
 }
 
 export const AbilityDatabaseName = 'abilities';

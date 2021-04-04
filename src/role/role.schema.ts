@@ -1,9 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
-import { AbilityDatabaseName, AbilityEntity } from 'src/ability/ability.schema';
+import { AbilityDatabaseName } from 'src/ability/ability.schema';
 
 @Schema()
 export class RoleEntity {
+
     @Prop({
         required: true,
         index: true,
@@ -13,8 +14,13 @@ export class RoleEntity {
     })
     name: string;
 
-    @Prop({ type: [Types.ObjectId], default: [], ref: AbilityDatabaseName })
-    abilities: AbilityEntity[];
+    @Prop({
+        required: true,
+        type: [Types.ObjectId],
+        default: [],
+        ref: AbilityDatabaseName
+    })
+    abilities: Types.ObjectId[];
 }
 
 export const RoleDatabaseName = 'roles';

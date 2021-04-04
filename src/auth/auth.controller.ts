@@ -49,7 +49,7 @@ export class AuthController {
             this.configService.get('auth.defaultUsernameField') ||
             AUTH_DEFAULT_USERNAME_FIELD;
 
-        const user: IUser = await this.userService.findOneByEmail(
+        const user: UserEntity = await this.userService.findOneByEmail(
             data[defaultUsernameField]
         );
 
@@ -70,6 +70,7 @@ export class AuthController {
             data[defaultUsernameField],
             data.password
         );
+        
         if (!validate) {
             this.logger.error('Authorized error', {
                 class: 'AuthController',
@@ -87,9 +88,8 @@ export class AuthController {
             email,
             firstName,
             lastName
-        } = await this.userService.transformer<IUserSafe, UserEntity>(
-            user.toObject()
-        );
+        } = await this.userService.transformer<IUserSafe, UserEntity>(user);
+
 
         const accessToken: string = await this.authService.createAccessToken({
             id,

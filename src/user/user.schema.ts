@@ -1,9 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
-import { RoleDatabaseName, RoleEntity } from 'src/role/role.schema';
+import { RoleDatabaseName } from 'src/role/role.schema';
 
 @Schema()
 export class UserEntity {
+
     @Prop({
         required: true,
         index: true,
@@ -45,10 +46,11 @@ export class UserEntity {
     isAdmin: boolean;
 
     @Prop({
+        required: false,
         type: Types.ObjectId,
         ref: RoleDatabaseName
     })
-    roleId: RoleEntity;
+    roleId: Types.ObjectId;
 
     @Prop({
         required: true

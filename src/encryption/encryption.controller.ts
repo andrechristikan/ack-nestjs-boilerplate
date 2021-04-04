@@ -34,7 +34,6 @@ export class EncryptionController {
     @ResponseStatusCode()
     @Encryption()
     async post(@Body() body: Record<string, any>): Promise<IResponse> {
-        console.log('body', body);
         return this.responseService.success(
             this.messageService.get('encryption.get.success'),
             body

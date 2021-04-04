@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserEntity } from 'src/user/user.schema';
-import { IUser, IUserWithRole } from 'src/user/user.interface';
+import { IUser, UserEntityWithRole } from 'src/user/user.interface';
 import { HashService } from 'src/hash/hash.service';
 import { Hash } from 'src/hash/hash.decorator';
 import { UserTransformer } from 'src/user/transformer/user.transformer';
@@ -40,33 +40,25 @@ export class UserService {
         return this.userModel.countDocuments(find);
     }
 
-    async findOneById(userId: string): Promise<IUser> {
+    async findOneById(userId: string): Promise<UserEntity> {
         return this.userModel.findById(userId).lean();
     }
 
-    async findOneByIdWithRole(userId: string): Promise<IUserWithRole> {
-        return new Promise((resolve, reject) => {
-            this.userModel
-                .findById(userId)
-                .populate('roleId', null, this.roleModel)
-                // .populate('roleId.permission', null, this.abilityModel)
-                .exec(async (err: any, user: IUser) => {
-                    if (err) {
-                        reject(err);
-                    }
-
-                    const data: IUserWithRole = (await this.abilityModel.populate(
-                        user,
-                        {
-                            path: 'roleId.abilities'
-                        }
-                    )) as IUserWithRole ;
-                    resolve(data);
-                });
-        });
+    async findOneByIdWithRole(userId: string): Promise<UserEntityWithRole> {
+        return this.userModel
+            .findById(userId)
+            .populate({
+                path: 'roleId',
+                model: this.roleModel,
+                populate: {
+                    path: 'abilities',
+                    model: this.abilityModel
+                }
+            })
+            .lean();
     }
 
-    async findOneByEmail(email: string): Promise<IUser> {
+    async findOneByEmail(email: string): Promise<UserEntity> {
         return this.userModel
             .findOne({
                 email: email
@@ -74,7 +66,7 @@ export class UserService {
             .lean();
     }
 
-    async findOneByMobileNumber(mobileNumber: string): Promise<IUser> {
+    async findOneByMobileNumber(mobileNumber: string): Promise<UserEntity> {
         return this.userModel
             .findOne({
                 mobileNumber: mobileNumber

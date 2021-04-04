@@ -13,7 +13,7 @@ import {
     ParseIntPipe
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
-import { IUser, IUserSafe } from 'src/user/user.interface';
+import { IUser, IUserSafe, UserEntityWithRole } from 'src/user/user.interface';
 import { Response, ResponseStatusCode } from 'src/response/response.decorator';
 import { ResponseService } from 'src/response/response.service';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
@@ -99,7 +99,7 @@ export class UserController {
     @ResponseStatusCode()
     @Get('/profile')
     async profile(@User('id') userId: string): Promise<IResponse> {
-        const user: IUser = await this.userService.findOneById(userId);
+        const user: UserEntity = await this.userService.findOneById(userId);
         if (!user) {
             this.logger.error('user Error', {
                 class: 'UserController',
@@ -114,7 +114,7 @@ export class UserController {
         const userSafe: IUserSafe = await this.userService.transformer<
             IUserSafe,
             UserEntity
-        >(user.toObject());
+        >(user);
         return this.responseService.success(
             this.messageService.get('user.profile.success'),
             userSafe
@@ -125,7 +125,7 @@ export class UserController {
     @ResponseStatusCode()
     @Get('/:userId')
     async findOneById(@Param('userId') userId: string): Promise<IResponse> {
-        const user: IUser = await this.userService.findOneById(userId);
+        const user: UserEntityWithRole = await this.userService.findOneByIdWithRole(userId);
         if (!user) {
             this.logger.error('user Error', {
                 class: 'UserController',
@@ -137,8 +137,7 @@ export class UserController {
             throw new BadRequestException(response);
         }
 
-        console.log('user',user);
-        console.log('user',user.roleId);
+        console.log('user', user.roleId);
         // const userSafe: IUserSafe = await this.userService.transformer<
         //     IUserSafe,
         //     UserEntity
@@ -203,7 +202,7 @@ export class UserController {
     @ResponseStatusCode()
     @Delete('/delete/:userId')
     async delete(@Param('userId') userId: string): Promise<IResponse> {
-        const user: IUser = await this.userService.findOneById(userId);
+        const user: UserEntity = await this.userService.findOneById(userId);
         if (!user) {
             this.logger.error('user Error', {
                 class: 'UserController',
@@ -229,7 +228,7 @@ export class UserController {
         @Body(RequestValidationPipe(UserUpdateValidation))
         data: UserUpdateValidation
     ): Promise<IResponse> {
-        const user: IUser = await this.userService.findOneById(userId);
+        const user: UserEntity = await this.userService.findOneById(userId);
         if (!user) {
             this.logger.error('user Error', {
                 class: 'UserController',
@@ -243,11 +242,11 @@ export class UserController {
 
         try {
             await this.userService.updateOneById(userId, data);
-            const user: IUser = await this.userService.findOneById(userId);
+            const user: UserEntity = await this.userService.findOneById(userId);
             const userSafe: IUserSafe = await this.userService.transformer<
                 IUserSafe,
                 UserEntity
-            >(user.toObject());
+            >(user);
 
             return this.responseService.success(
                 this.messageService.get('user.update.success'),
