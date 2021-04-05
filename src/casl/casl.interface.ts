@@ -1,15 +1,12 @@
 import { Ability, InferSubjects } from '@casl/ability';
 import { Action } from './casl.constant';
+import { AbilityDetail } from 'src/ability/ability.interface';
 
-export class Permission {
-    read: true;
-    create: true;
-    update: true;
-    delete: true;
-}
+export class UserAbility extends AbilityDetail {}
+export class RoleAbility extends AbilityDetail {}
 
-export class UserAbility extends Permission {}
-
-export type Subjects = InferSubjects<typeof UserAbility> | 'all';
+export type Subjects =
+    | InferSubjects<typeof UserAbility | typeof UserAbility>
+    | 'all';
 
 export type AppAbility = Ability<[Action, Subjects]>;

@@ -17,7 +17,6 @@ import { HashModule } from 'src/hash/hash.module';
 import { PaginationModule } from 'src/pagination/pagination.module';
 import { MiddlewareModule } from 'src/middleware/middleware.module';
 import { EncryptionModule } from 'src/encryption/encryption.module';
-import { CaslModule } from 'src/casl/casl.module';
 
 @Module({
     controllers: [AppController],

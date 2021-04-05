@@ -1,12 +1,14 @@
-import { Exclude, Expose } from 'class-transformer';
+import { Exclude, Expose, Transform } from 'class-transformer';
 import { ObjectId } from 'mongoose';
 
 export class UserTransformer {
     @Exclude({ toPlainOnly: true })
     _id: ObjectId;
 
-    @Exclude({ toPlainOnly: true })
-    roleId: ObjectId;
+    @Transform(({ value }) => {
+        return `${value}`;
+    })
+    role: string;
 
     firstName: string;
     lastName: string;
@@ -24,9 +26,6 @@ export class UserTransformer {
     get id(): string {
         return `${this._id}`;
     }
-
-    @Expose()
-    get role(): string {
-        return `${this.roleId}`;
-    }
+    
 }
+

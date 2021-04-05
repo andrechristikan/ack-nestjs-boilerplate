@@ -1,10 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
+import { AbilityDocument } from 'src/ability/ability.interface';
 import { AbilityDatabaseName } from 'src/ability/ability.schema';
 
 @Schema()
 export class RoleEntity {
-
     @Prop({
         required: true,
         index: true,
@@ -20,7 +20,13 @@ export class RoleEntity {
         default: [],
         ref: AbilityDatabaseName
     })
-    abilities: Types.ObjectId[];
+    abilities: AbilityDocument[];
+
+    @Prop({
+        required: true,
+        index: true
+    })
+    isActive: boolean;
 }
 
 export const RoleDatabaseName = 'roles';

@@ -19,8 +19,7 @@ import {
     AUTH_DEFAULT_USERNAME_FIELD,
     AUTH_JWT_EXPIRATION_TIME
 } from 'src/auth/auth.constant';
-import { IUser, IUserSafe } from 'src/user/user.interface';
-import { UserEntity } from 'src/user/user.schema';
+import { UserDocument } from 'src/user/user.interface';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { Logger as LoggerService } from 'winston';
@@ -49,7 +48,7 @@ export class AuthController {
             this.configService.get('auth.defaultUsernameField') ||
             AUTH_DEFAULT_USERNAME_FIELD;
 
-        const user: UserEntity = await this.userService.findOneByEmail(
+        const user: UserDocument = await this.userService.findOneByEmail(
             data[defaultUsernameField]
         );
 
@@ -83,19 +82,11 @@ export class AuthController {
             throw new BadRequestException(response);
         }
 
-        const {
-            id,
-            email,
-            firstName,
-            lastName
-        } = await this.userService.transformer<IUserSafe, UserEntity>(user);
-
-
         const accessToken: string = await this.authService.createAccessToken({
-            id,
-            email,
-            firstName,
-            lastName
+            id: user._id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
         });
 
         return this.responseService.success(

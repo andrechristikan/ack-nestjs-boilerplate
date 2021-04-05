@@ -1,13 +1,19 @@
 import { UserEntity } from 'src/user/user.schema';
 import { Document } from 'mongoose';
-import { IRole } from 'src/role/role.interface';
+import { RoleDocument } from 'src/role/role.interface';
 
-export type IUserDocument = UserEntity & Document;
+export type UserDocument = UserEntity & Document;
 
-export interface IUserSafe extends Omit<UserEntity, 'password'> {
-    readonly id: string;
+export interface UserDocumentFull extends Omit<UserDocument, 'role'> {
+    role: RoleDocument;
 }
 
-export interface IUser extends Omit<IUserDocument, 'roleId'> {
-    roleId: IRole;
+export interface UserSafe
+    extends Omit<UserDocument, 'password' | '__v' | '_id'> {
+    id: string;
+}
+
+export interface UserFullSafe
+    extends Omit<UserDocumentFull, 'role' | 'password' | '__v' | '_id'> {
+    id: string;
 }

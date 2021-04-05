@@ -4,7 +4,6 @@ import { RoleDatabaseName } from 'src/role/role.schema';
 
 @Schema()
 export class UserEntity {
-
     @Prop({
         required: true,
         index: true,
@@ -50,7 +49,7 @@ export class UserEntity {
         type: Types.ObjectId,
         ref: RoleDatabaseName
     })
-    roleId: Types.ObjectId;
+    role: Types.ObjectId;
 
     @Prop({
         required: true
