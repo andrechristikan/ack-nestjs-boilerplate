@@ -19,7 +19,7 @@ import { IResponse, IResponsePaging } from 'src/response/response.interface';
 import { RequestValidationPipe } from 'src/pipe/request-validation.pipe';
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
 import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
-import { User } from 'src/user/user.decorator';
+import { User } from 'src/auth/auth.decorator';
 import { AuthJwt } from 'src/auth/auth.decorator';
 import { IErrors } from 'src/message/message.interface';
 import { MessageService } from 'src/message/message.service';
@@ -29,15 +29,7 @@ import { Pagination } from 'src/pagination/pagination.decorator';
 import { PAGE, PER_PAGE } from 'src/pagination/pagination.constant';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
-import {
-    UserDocument,
-    UserDocumentFull,
-    UserFullSafe,
-    UserSafe
-} from './user.interface';
-import { CaslService } from 'src/casl/casl.service';
-import { Action } from 'src/casl/casl.constant';
-import { UserAbility } from 'src/casl/casl.interface';
+import { UserDocument, UserDocumentFull } from './user.interface';
 
 @Controller('/user')
 export class UserController {
@@ -46,47 +38,8 @@ export class UserController {
         @Message() private readonly messageService: MessageService,
         @Pagination() private readonly paginationService: PaginationService,
         @Logger() private readonly logger: LoggerService,
-        private readonly userService: UserService,
-        private readonly caslService: CaslService
+        private readonly userService: UserService
     ) {}
-
-    @Get('/test')
-    async test(): Promise<IResponse> {
-        const user: UserDocumentFull = await this.userService.findOneWithRoleById(
-            '6063080750bb351c0cd2d1bd',
-            // '606308de645ca42390d496b6'
-        );
-
-        const ability = this.caslService.createForUser(user);
-        console.log('user ability', ability);
-        if (ability.can(Action.Read, UserAbility)) {
-            console.log('user can Read', ability.can(Action.Read, UserAbility));
-        }
-
-        if (ability.can(Action.Create, UserAbility)) {
-            console.log(
-                'user can Create',
-                ability.can(Action.Create, UserAbility)
-            );
-        }
-        if (ability.can(Action.Update, UserAbility)) {
-            console.log(
-                'user can Update',
-                ability.can(Action.Update, UserAbility)
-            );
-        }
-        if (ability.can(Action.Delete, UserAbility)) {
-            console.log(
-                'user can Delete',
-                ability.can(Action.Delete, UserAbility)
-            );
-        }
-
-        return this.responseService.success(
-            this.messageService.get('user.profile.success'),
-            user
-        );
-    }
 
     @AuthJwt()
     @ResponseStatusCode()
@@ -106,10 +59,6 @@ export class UserController {
             totalData,
             perPage
         );
-        const userSafe: UserSafe[] = await this.userService.transformer<
-            UserSafe[],
-            UserDocument[]
-        >(user);
 
         return this.responseService.paging(
             this.messageService.get('user.findAll.success'),
@@ -125,7 +74,7 @@ export class UserController {
     @ResponseStatusCode()
     @Get('/profile')
     async profile(@User('id') userId: string): Promise<IResponse> {
-        const user: UserDocumentFull = await this.userService.findOneWithRoleById(
+        const user: UserDocumentFull = await this.userService.findOneById(
             userId
         );
         if (!user) {
@@ -139,13 +88,9 @@ export class UserController {
             throw new BadRequestException(response);
         }
 
-        const userSafe: UserFullSafe = await this.userService.transformerFull<
-            UserFullSafe,
-            UserDocumentFull
-        >(user);
         return this.responseService.success(
             this.messageService.get('user.profile.success'),
-            userSafe
+            user
         );
     }
 
@@ -153,7 +98,7 @@ export class UserController {
     @ResponseStatusCode()
     @Get('/:userId')
     async findOneById(@Param('userId') userId: string): Promise<IResponse> {
-        const user: UserDocumentFull = await this.userService.findOneWithRoleById(
+        const user: UserDocumentFull = await this.userService.findOneById(
             userId
         );
         if (!user) {
@@ -167,13 +112,9 @@ export class UserController {
             throw new BadRequestException(response);
         }
 
-        const userSafe: UserFullSafe = await this.userService.transformerFull<
-            UserFullSafe,
-            UserDocumentFull
-        >(user);
         return this.responseService.success(
             this.messageService.get('user.findOneById.success'),
-            userSafe
+            user
         );
     }
 
@@ -205,11 +146,6 @@ export class UserController {
 
         try {
             const user: UserDocument = await this.userService.create(data);
-            // const userSafe: IUserSafe = await this.userService.transformer<
-            //     IUserSafe,
-            //     UserDocument
-            // >(user);
-
             return this.responseService.success(
                 this.messageService.get('user.create.success'),
                 user
@@ -231,7 +167,9 @@ export class UserController {
     @ResponseStatusCode()
     @Delete('/delete/:userId')
     async delete(@Param('userId') userId: string): Promise<IResponse> {
-        const user: UserDocument = await this.userService.findOneById(userId);
+        const user: UserDocumentFull = await this.userService.findOneById(
+            userId
+        );
         if (!user) {
             this.logger.error('user Error', {
                 class: 'UserController',
@@ -257,7 +195,9 @@ export class UserController {
         @Body(RequestValidationPipe(UserUpdateValidation))
         data: UserUpdateValidation
     ): Promise<IResponse> {
-        const user: UserDocument = await this.userService.findOneById(userId);
+        const user: UserDocumentFull = await this.userService.findOneById(
+            userId
+        );
         if (!user) {
             this.logger.error('user Error', {
                 class: 'UserController',
@@ -271,13 +211,9 @@ export class UserController {
 
         try {
             await this.userService.updateOneById(userId, data);
-            const user: UserDocument = await this.userService.findOneById(
+            const user: UserDocumentFull = await this.userService.findOneById(
                 userId
             );
-            // const userSafe: IUserSafe = await this.userService.transformer<
-            //     IUserSafe,
-            //     UserDocument
-            // >(user);
 
             return this.responseService.success(
                 this.messageService.get('user.update.success'),

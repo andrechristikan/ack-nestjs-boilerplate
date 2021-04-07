@@ -19,7 +19,7 @@ import {
     AUTH_DEFAULT_USERNAME_FIELD,
     AUTH_JWT_EXPIRATION_TIME
 } from 'src/auth/auth.constant';
-import { UserDocument } from 'src/user/user.interface';
+import { UserDocumentFull } from 'src/user/user.interface';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { Logger as LoggerService } from 'winston';
@@ -48,7 +48,7 @@ export class AuthController {
             this.configService.get('auth.defaultUsernameField') ||
             AUTH_DEFAULT_USERNAME_FIELD;
 
-        const user: UserDocument = await this.userService.findOneByEmail(
+        const user: UserDocumentFull = await this.userService.findOneByEmail(
             data[defaultUsernameField]
         );
 
@@ -66,10 +66,10 @@ export class AuthController {
         }
 
         const validate: boolean = await this.authService.validateUser(
-            data[defaultUsernameField],
-            data.password
+            data.password,
+            user.password
         );
-        
+
         if (!validate) {
             this.logger.error('Authorized error', {
                 class: 'AuthController',
@@ -82,11 +82,21 @@ export class AuthController {
             throw new BadRequestException(response);
         }
 
+        const {
+            _id,
+            email,
+            firstName,
+            lastName,
+            isAdmin,
+            role
+        } = user;
         const accessToken: string = await this.authService.createAccessToken({
-            id: user._id,
-            email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
+            _id,
+            email,
+            firstName,
+            lastName,
+            isAdmin,
+            role
         });
 
         return this.responseService.success(

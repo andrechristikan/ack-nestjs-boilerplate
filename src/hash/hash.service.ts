@@ -9,7 +9,7 @@ import { isString } from 'class-validator';
 export class HashService {
     constructor(private readonly configService: ConfigService) {}
 
-    // Password
+    // bcrypt
     async hashPassword(passwordString: string, salt: string): Promise<string> {
         return hashSync(passwordString, salt);
     }
@@ -23,30 +23,11 @@ export class HashService {
         return genSaltSync(defaultPasswordSaltLength);
     }
 
-    async validatePassword(
+    async bcryptComparePassword(
         passwordString: string,
         passwordHashed: string
     ): Promise<boolean> {
         return compareSync(passwordString, passwordHashed);
-    }
-
-    // Basic Token
-    async createBasicToken(
-        clientId: string,
-        clientSecret: string
-    ): Promise<string> {
-        const token: string = `${clientId}:${clientSecret}`;
-        return this.encryptBase64(token);
-    }
-
-    async validateBasicToken(
-        clientBasicToken: string,
-        ourBasicToken: string
-    ): Promise<boolean> {
-        if (ourBasicToken !== clientBasicToken) {
-            return false;
-        }
-        return true;
     }
 
     // Base64

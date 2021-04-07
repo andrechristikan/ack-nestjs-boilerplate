@@ -10,11 +10,8 @@ import { classToPlain, plainToClass } from 'class-transformer';
 import { IErrors } from 'src/message/message.interface';
 import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
-import { RoleEntity } from 'src/role/role.schema';
-import { AbilityEntity } from 'src/ability/ability.schema';
-import { RoleDocument } from 'src/role/role.interface';
-import { AbilityDocument } from 'src/ability/ability.interface';
-import { UserFullTransformer } from './transformer/user-full.transformer';
+import { RoleEntity, PermissionEntity } from 'src/role/role.schema';
+import { RoleDocument, PermissionDocument } from 'src/role/role.interface';
 
 @Injectable()
 export class UserService {
@@ -23,8 +20,8 @@ export class UserService {
         private readonly userModel: Model<UserDocument>,
         @InjectModel(RoleEntity.name)
         private readonly roleModel: Model<RoleDocument>,
-        @InjectModel(AbilityEntity.name)
-        private readonly abilityModel: Model<AbilityDocument>,
+        @InjectModel(PermissionEntity.name)
+        private readonly permissionModel: Model<PermissionDocument>,
         @Hash() private readonly hashService: HashService,
         @Message() private readonly messageService: MessageService
     ) {}
@@ -34,59 +31,83 @@ export class UserService {
         limit: number,
         find?: Record<string, any>
     ): Promise<UserDocument[]> {
-        return this.userModel.find(find).skip(offset).limit(limit).lean();
+        return this.userModel
+            .find(find)
+            .select('-__v')
+            .skip(offset)
+            .limit(limit)
+            .lean();
     }
 
     async totalData(find?: Record<string, any>): Promise<number> {
         return this.userModel.countDocuments(find);
     }
 
-    async findOneById(userId: string): Promise<UserDocument> {
-        return this.userModel.findById(userId).lean();
-    }
-
-    async findOneWithRoleById(userId: string): Promise<UserDocumentFull> {
+    async findOneById(userId: string): Promise<UserDocumentFull> {
         return this.userModel
             .findById(userId)
+            .select('-__v')
             .populate({
                 path: 'role',
                 model: this.roleModel,
                 match: { isActive: true },
+                select: '-__v',
                 populate: {
-                    path: 'abilities',
-                    model: this.abilityModel,
-                    match: { isActive: true }
+                    path: 'permissions',
+                    model: this.permissionModel,
+                    match: { isActive: true },
+                    select: '-__v'
                 }
             })
             .lean();
     }
 
-    async findOneByEmail(email: string): Promise<UserDocument> {
+    async findOneByEmail(email: string): Promise<UserDocumentFull> {
         return this.userModel
             .findOne({
                 email: email
             })
+            .select('-__v')
+            .populate({
+                path: 'role',
+                model: this.roleModel,
+                match: { isActive: true },
+                select: '-__v',
+                populate: {
+                    path: 'permissions',
+                    model: this.permissionModel,
+                    match: { isActive: true },
+                    select: '-__v'
+                }
+            })
             .lean();
     }
 
-    async findOneByMobileNumber(mobileNumber: string): Promise<UserDocument> {
+    async findOneByMobileNumber(
+        mobileNumber: string
+    ): Promise<UserDocumentFull> {
         return this.userModel
             .findOne({
                 mobileNumber: mobileNumber
+            })
+            .select('-__v')
+            .populate({
+                path: 'role',
+                model: this.roleModel,
+                match: { isActive: true },
+                select: '-__v',
+                populate: {
+                    path: 'permissions',
+                    model: this.permissionModel,
+                    match: { isActive: true },
+                    select: '-__v'
+                }
             })
             .lean();
     }
 
     async transformer<T, U>(rawData: U): Promise<T> {
         const user: UserTransformer = plainToClass(UserTransformer, rawData);
-        return classToPlain(user) as T;
-    }
-
-    async transformerFull<T, U>(rawData: U): Promise<T> {
-        const user: UserFullTransformer = plainToClass(
-            UserFullTransformer,
-            rawData
-        );
         return classToPlain(user) as T;
     }
 

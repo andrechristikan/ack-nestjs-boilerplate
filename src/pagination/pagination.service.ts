@@ -8,6 +8,6 @@ export class PaginationService {
     }
 
     async totalPage(totalData: number, limit: number): Promise<number> {
-        return Math.floor(totalData / limit) + 1;
+        return Math.ceil(totalData / limit);
     }
 }

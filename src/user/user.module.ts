@@ -3,13 +3,14 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UserEntity, UserDatabaseName, UserSchema } from 'src/user/user.schema';
 import { UserService } from 'src/user/user.service';
 import { UserController } from 'src/user/user.controller';
-import { RoleDatabaseName, RoleEntity, RoleSchema } from 'src/role/role.schema';
 import {
-    AbilityDatabaseName,
-    AbilityEntity,
-    AbilitySchema
-} from 'src/ability/ability.schema';
-import { CaslModule } from 'src/casl/casl.module';
+    RoleDatabaseName,
+    RoleEntity,
+    RoleSchema,
+    PermissionDatabaseName,
+    PermissionEntity,
+    PermissionSchema
+} from 'src/role/role.schema';
 
 @Module({
     imports: [
@@ -29,12 +30,11 @@ import { CaslModule } from 'src/casl/casl.module';
         ]),
         MongooseModule.forFeature([
             {
-                name: AbilityEntity.name,
-                schema: AbilitySchema,
-                collection: AbilityDatabaseName
+                name: PermissionEntity.name,
+                schema: PermissionSchema,
+                collection: PermissionDatabaseName
             }
-        ]),
-        CaslModule
+        ])
     ],
     exports: [UserService],
     providers: [UserService],

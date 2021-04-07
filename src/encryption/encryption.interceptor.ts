@@ -8,10 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HashService } from 'src/hash/hash.service';
-import {
-    ENCRYPTION_IV,
-    ENCRYPTION_KEY
-} from 'src/encryption/encryption.constant';
+import { ENCRYPTION_IV, ENCRYPTION_KEY } from 'src/hash/hash.constant';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Request } from 'express';
 import rawBody from 'raw-body';
