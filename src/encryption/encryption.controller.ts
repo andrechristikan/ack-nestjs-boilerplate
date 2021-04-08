@@ -20,16 +20,16 @@ export class EncryptionController {
         @Message() private readonly messageService: MessageService
     ) {}
 
-    @Get('/')
+    @Get('/encrypt')
     @ResponseStatusCode()
     @Encryption()
-    async get(): Promise<IResponse> {
+    async en(): Promise<IResponse> {
         return this.responseService.success(
             this.messageService.get('encryption.get.success')
         );
     }
 
-    @Post('/')
+    @Post('/decrypt')
     @HttpCode(HttpStatus.OK)
     @ResponseStatusCode()
     @Encryption()

@@ -2,10 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { PASSWORD_SALT_LENGTH } from 'src/hash/hash.constant';
 import { ConfigService } from '@nestjs/config';
 import { hashSync, genSaltSync, compareSync } from 'bcrypt';
-import { AES, enc, lib, mode } from 'crypto-js';
 import { isString } from 'class-validator';
 import { JwtService } from '@nestjs/jwt';
 import { AUTH_JWT_SECRET_KEY } from 'src/auth/auth.constant';
+import { createCipheriv, createDecipheriv, scrypt } from 'crypto';
+import { promisify } from 'util';
 
 @Injectable()
 export class HashService {
@@ -37,8 +38,12 @@ export class HashService {
 
     // Base64
     async encryptBase64(data: string): Promise<string> {
-        const basicToken: lib.WordArray = enc.Utf8.parse(data);
-        return basicToken.toString(enc.Base64);
+        const buff: Buffer = Buffer.from(data);
+        return buff.toString('base64');
+    }
+    async decryptBase64(data: string): Promise<string> {
+        const buff: Buffer = Buffer.from(data, 'base64');
+        return buff.toString('utf8');
     }
 
     // jwt
@@ -77,50 +82,37 @@ export class HashService {
     async encryptAES256Bit(
         data: string | Record<string, any> | Record<string, any>[],
         key: string,
-        iv?: string
+        iv: string
     ): Promise<string> {
         let dataParse: string = data as string;
-        const keyParse: lib.WordArray = enc.Utf8.parse(key);
         if (!isString(data)) {
             dataParse = JSON.stringify(data);
         }
 
-        if (iv) {
-            const ivParse: lib.WordArray = enc.Utf8.parse(iv);
-            const encrypted: lib.CipherParams = AES.encrypt(
-                dataParse,
-                keyParse,
-                {
-                    mode: mode.CBC,
-                    iv: ivParse
-                }
-            );
-            return encrypted.toString();
-        }
-        const encrypted: lib.CipherParams = AES.encrypt(dataParse, keyParse, {
-            mode: mode.CBC
-        });
-        return encrypted.toString();
+        const crp = (await promisify(scrypt)(key, 'salt', 32)) as Buffer;
+        const cipher = createCipheriv('aes-256-ctr', crp, iv);
+
+        const encryptedText = Buffer.concat([
+            cipher.update(dataParse),
+            cipher.final()
+        ]);
+
+        return encryptedText.toString('base64');
     }
 
     async decryptAES256Bit(
         encrypted: string,
         key: string,
-        iv?: string
+        iv: string
     ): Promise<string> {
-        const keyParse: lib.WordArray = enc.Utf8.parse(key);
-        if (iv) {
-            const ivParse: lib.WordArray = enc.Utf8.parse(iv);
-            const en: lib.WordArray = AES.decrypt(encrypted, keyParse, {
-                mode: mode.CBC,
-                iv: ivParse
-            });
-            return en.toString(enc.Utf8);
-        }
+        const data: Buffer = Buffer.from(encrypted, 'base64');
+        const crp = (await promisify(scrypt)(key, 'salt', 32)) as Buffer;
+        const decipher = createDecipheriv('aes-256-ctr', crp, iv);
+        const decryptedText = Buffer.concat([
+            decipher.update(data),
+            decipher.final()
+        ]);
 
-        const en: lib.WordArray = AES.decrypt(encrypted, keyParse, {
-            mode: mode.CBC
-        });
-        return en.toString(enc.Utf8);
+        return decryptedText.toString('utf8');
     }
 }
