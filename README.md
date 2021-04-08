@@ -37,10 +37,10 @@ Futures :
 [x] Server Side Pagination
 [x] Support File Logging With Winston And Morgan Package
 [x] Example For User and Login Component
-[~] Role Management
+[x] Role Management
 [ ] Migration
-[x] E2E Testing
-[ ] Unit Testing
+[~] E2E Testing
+[~] Unit Testing
 [~] Documentation
 ```
 
