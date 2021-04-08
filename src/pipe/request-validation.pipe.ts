@@ -52,11 +52,13 @@ export function RequestValidationPipe(schema: {
                     function: 'transform',
                     errors
                 });
-                const response: IResponse = this.responseService.error(
-                    this.messageService.get('http.clientError.badRequest'),
-                    errors
+
+                throw new BadRequestException(
+                    this.responseService.error(
+                        this.messageService.get('http.clientError.badRequest'),
+                        errors
+                    )
                 );
-                throw new BadRequestException(response);
             }
             return value;
         }

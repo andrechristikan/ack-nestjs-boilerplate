@@ -5,7 +5,5 @@ import { EncryptionInterceptor } from './encryption.interceptor';
 // ongoing
 // buat filter untuk encryption catch
 export function Encryption(): IApplyDecorator {
-    return applyDecorators(
-        UseInterceptors(EncryptionInterceptor)
-    );
+    return applyDecorators(UseInterceptors(EncryptionInterceptor));
 }

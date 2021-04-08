@@ -2,7 +2,6 @@ import {
     Controller,
     Post,
     Body,
-    Headers,
     HttpCode,
     HttpStatus,
     BadRequestException
@@ -13,13 +12,12 @@ import { UserService } from 'src/user/user.service';
 import { ResponseService } from 'src/response/response.service';
 import { Response, ResponseStatusCode } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
-import { AuthBasic } from 'src/auth/auth.decorator';
 import { ConfigService } from '@nestjs/config';
 import {
     AUTH_DEFAULT_USERNAME_FIELD,
     AUTH_JWT_EXPIRATION_TIME
 } from 'src/auth/auth.constant';
-import { UserDocumentFull } from 'src/user/user.interface';
+import { UserDocumentFull, UserSafe } from 'src/user/user.interface';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { Logger as LoggerService } from 'winston';
@@ -58,11 +56,11 @@ export class AuthController {
                 function: 'login'
             });
 
-            const response: IResponse = this.responseService.error(
-                this.messageService.get('auth.login.emailNotFound')
+            throw new BadRequestException(
+                this.responseService.error(
+                    this.messageService.get('auth.login.emailNotFound')
+                )
             );
-
-            throw new BadRequestException(response);
         }
 
         const validate: boolean = await this.authService.validateUser(
@@ -76,20 +74,15 @@ export class AuthController {
                 function: 'login'
             });
 
-            const response: IResponse = this.responseService.error(
-                this.messageService.get('auth.login.passwordNotMatch')
+            throw new BadRequestException(
+                this.responseService.error(
+                    this.messageService.get('auth.login.passwordNotMatch')
+                )
             );
-            throw new BadRequestException(response);
         }
 
-        const {
-            _id,
-            email,
-            firstName,
-            lastName,
-            isAdmin,
-            role
-        } = user;
+        const userSafe: UserSafe = await this.userService.transformer(user);
+        const { _id, email, firstName, lastName, isAdmin, role } = userSafe;
         const accessToken: string = await this.authService.createAccessToken({
             _id,
             email,
@@ -101,35 +94,6 @@ export class AuthController {
 
         return this.responseService.success(
             this.messageService.get('auth.login.success'),
-            {
-                accessToken,
-                expiredIn
-            }
-        );
-    }
-
-    @AuthBasic()
-    @HttpCode(HttpStatus.OK)
-    @ResponseStatusCode()
-    @Post('/basic-token')
-    async loginBasicToken(
-        @Headers('Authorization') authorization: string
-    ): Promise<IResponse> {
-        // Env Variable
-        const expiredIn: number | string =
-            this.configService.get('auth.jwtExpirationTime') ||
-            AUTH_JWT_EXPIRATION_TIME;
-
-        const clientBasicToken: string = authorization.replace('Basic ', '');
-        const payload: Record<string, any> = {
-            clientBasicToken
-        };
-
-        const accessToken: string = await this.authService.createAccessToken(
-            payload
-        );
-        return this.responseService.success(
-            this.messageService.get('auth.basicToken.success'),
             {
                 accessToken,
                 expiredIn

@@ -20,9 +20,7 @@ import { EncryptionModule } from 'src/encryption/encryption.module';
 
 @Module({
     controllers: [AppController],
-    providers: [
-        AppService,
-    ],
+    providers: [AppService],
     imports: [
         MiddlewareModule,
         ConfigModule.forRoot({
@@ -40,9 +38,8 @@ import { EncryptionModule } from 'src/encryption/encryption.module';
         MongooseModule.forRootAsync({
             inject: [DatabaseService],
             imports: [DatabaseModule],
-            useFactory: (databaseService: DatabaseService) => {
-                return databaseService.createMongooseOptions();
-            }
+            useFactory: (databaseService: DatabaseService) =>
+                databaseService.createMongooseOptions()
         }),
         MessageModule,
         LoggerModule,

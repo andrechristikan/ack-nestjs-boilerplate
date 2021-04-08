@@ -31,12 +31,13 @@ export class JwtGuard extends AuthGuard('jwt') {
                 error: { ...err }
             });
 
-            const response: IResponse = this.responseService.error(
-                this.messageService.get('http.clientError.unauthorized')
+            throw new UnauthorizedException(
+                this.responseService.error(
+                    this.messageService.get('http.clientError.unauthorized')
+                )
             );
-
-            throw new UnauthorizedException(response);
         }
+
         return user;
     }
 }

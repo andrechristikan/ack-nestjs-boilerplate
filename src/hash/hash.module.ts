@@ -1,5 +1,11 @@
 import { Global, Module } from '@nestjs/common';
 import { HashService } from 'src/hash/hash.service';
+import { JwtModule } from '@nestjs/jwt';
+import {
+    AUTH_JWT_SECRET_KEY,
+    AUTH_JWT_EXPIRATION_TIME
+} from 'src/auth/auth.constant';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Global()
 @Module({
@@ -10,6 +16,23 @@ import { HashService } from 'src/hash/hash.service';
         }
     ],
     exports: [HashService],
-    imports: []
+    imports: [
+        JwtModule.registerAsync({
+            inject: [ConfigService],
+            imports: [ConfigModule],
+            useFactory: (configService: ConfigService) => {
+                return {
+                    secret:
+                        configService.get('app.auth.jwtSecretKey') ||
+                        AUTH_JWT_SECRET_KEY,
+                    signOptions: {
+                        expiresIn:
+                            configService.get('app.auth.jwtExpiration') ||
+                            AUTH_JWT_EXPIRATION_TIME
+                    }
+                };
+            }
+        })
+    ]
 })
 export class HashModule {}

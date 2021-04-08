@@ -6,6 +6,6 @@ import { MessageService } from 'src/message/message.service';
 export class AppService {
     constructor(@Message() private readonly messageService: MessageService) {}
     async getHello(): Promise<string> {
-        return  this.messageService.get('app.hello');
+        return this.messageService.get('app.hello');
     }
 }

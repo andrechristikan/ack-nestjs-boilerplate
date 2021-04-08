@@ -22,21 +22,20 @@ export class HttpLoggerMiddleware implements NestMiddleware {
     constructor(private readonly configService: ConfigService) {}
 
     private customToken(): void {
-        morgan.token('req-params', (req: Request) => {
-            return JSON.stringify(req.params);
-        });
+        morgan.token('req-params', (req: Request) =>
+            JSON.stringify(req.params)
+        );
 
-        morgan.token('req-body', (req: Request) => {
-            return JSON.stringify(req.body);
-        });
+        morgan.token('req-body', (req: Request) => JSON.stringify(req.body));
 
-        morgan.token('res-body', (req: Request, res: ICustomResponse) => {
-            return res.body;
-        });
+        morgan.token(
+            'res-body',
+            (req: Request, res: ICustomResponse) => res.body
+        );
 
-        morgan.token('req-headers', (req: Request) => {
-            return JSON.stringify(req.headers);
-        });
+        morgan.token('req-headers', (req: Request) =>
+            JSON.stringify(req.headers)
+        );
     }
 
     private httpLogger(): IHttpLoggerConfig {

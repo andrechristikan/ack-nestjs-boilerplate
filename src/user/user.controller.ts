@@ -19,8 +19,7 @@ import { IResponse, IResponsePaging } from 'src/response/response.interface';
 import { RequestValidationPipe } from 'src/pipe/request-validation.pipe';
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
 import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
-import { User } from 'src/auth/auth.decorator';
-import { AuthJwt } from 'src/auth/auth.decorator';
+import { AuthJwtGuard, User } from 'src/auth/auth.decorator';
 import { IErrors } from 'src/message/message.interface';
 import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
@@ -30,6 +29,8 @@ import { PAGE, PER_PAGE } from 'src/pagination/pagination.constant';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
 import { UserDocument, UserDocumentFull } from './user.interface';
+import { PermissionList } from 'src/role/role.constant';
+import { Permissions } from 'src/role/role.decorator';
 
 @Controller('/user')
 export class UserController {
@@ -41,7 +42,7 @@ export class UserController {
         private readonly userService: UserService
     ) {}
 
-    @AuthJwt()
+    @Permissions(PermissionList.UserRead)
     @ResponseStatusCode()
     @Get('/')
     async findAll(
@@ -70,7 +71,6 @@ export class UserController {
         );
     }
 
-    @AuthJwt()
     @ResponseStatusCode()
     @Get('/profile')
     async profile(@User('id') userId: string): Promise<IResponse> {
@@ -82,10 +82,12 @@ export class UserController {
                 class: 'UserController',
                 function: 'profile'
             });
-            const response: IResponse = this.responseService.error(
-                this.messageService.get('http.clientError.notFound')
+
+            throw new BadRequestException(
+                this.responseService.error(
+                    this.messageService.get('http.clientError.notFound')
+                )
             );
-            throw new BadRequestException(response);
         }
 
         return this.responseService.success(
@@ -94,7 +96,8 @@ export class UserController {
         );
     }
 
-    @AuthJwt()
+    @AuthJwtGuard()
+    @Permissions(PermissionList.UserRead, PermissionList.UserCreate)
     @ResponseStatusCode()
     @Get('/:userId')
     async findOneById(@Param('userId') userId: string): Promise<IResponse> {
@@ -106,10 +109,12 @@ export class UserController {
                 class: 'UserController',
                 function: 'findOneById'
             });
-            const response: IResponse = this.responseService.error(
-                this.messageService.get('http.clientError.notFound')
+
+            throw new BadRequestException(
+                this.responseService.error(
+                    this.messageService.get('http.clientError.notFound')
+                )
             );
-            throw new BadRequestException(response);
         }
 
         return this.responseService.success(
@@ -118,7 +123,7 @@ export class UserController {
         );
     }
 
-    @AuthJwt()
+    @Permissions(PermissionList.UserRead, PermissionList.UserCreate)
     @ResponseStatusCode()
     @Post('/create')
     async create(
@@ -137,11 +142,12 @@ export class UserController {
                 errors
             });
 
-            const response: IResponse = this.responseService.error(
-                this.messageService.get('user.create.error'),
-                errors
+            throw new BadRequestException(
+                this.responseService.error(
+                    this.messageService.get('user.create.error'),
+                    errors
+                )
             );
-            throw new BadRequestException(response);
         }
 
         try {
@@ -156,14 +162,17 @@ export class UserController {
                 function: 'create',
                 error: err
             });
-            const response: IResponse = this.responseService.error(
-                this.messageService.get('http.serverError.internalServerError')
+            throw new InternalServerErrorException(
+                this.responseService.error(
+                    this.messageService.get(
+                        'http.serverError.internalServerError'
+                    )
+                )
             );
-            throw new InternalServerErrorException(response);
         }
     }
 
-    @AuthJwt()
+    @Permissions(PermissionList.UserRead, PermissionList.UserDelete)
     @ResponseStatusCode()
     @Delete('/delete/:userId')
     async delete(@Param('userId') userId: string): Promise<IResponse> {
@@ -175,10 +184,12 @@ export class UserController {
                 class: 'UserController',
                 function: 'delete'
             });
-            const response: IResponse = this.responseService.error(
-                this.messageService.get('http.clientError.notFound')
+
+            throw new BadRequestException(
+                this.responseService.error(
+                    this.messageService.get('http.clientError.notFound')
+                )
             );
-            throw new BadRequestException(response);
         }
 
         await this.userService.deleteOneById(userId);
@@ -187,7 +198,7 @@ export class UserController {
         );
     }
 
-    @AuthJwt()
+    @Permissions(PermissionList.UserRead, PermissionList.UserUpdate)
     @ResponseStatusCode()
     @Put('/update/:userId')
     async update(
@@ -203,10 +214,11 @@ export class UserController {
                 class: 'UserController',
                 function: 'delete'
             });
-            const response: IResponse = this.responseService.error(
-                this.messageService.get('http.clientError.notFound')
+            throw new BadRequestException(
+                this.responseService.error(
+                    this.messageService.get('http.clientError.notFound')
+                )
             );
-            throw new BadRequestException(response);
         }
 
         try {
@@ -228,10 +240,13 @@ export class UserController {
                 }
             });
 
-            const response: IResponse = this.responseService.error(
-                this.messageService.get('http.serverError.internalServerError')
+            throw new InternalServerErrorException(
+                this.responseService.error(
+                    this.messageService.get(
+                        'http.serverError.internalServerError'
+                    )
+                )
             );
-            throw new InternalServerErrorException(response);
         }
     }
 }

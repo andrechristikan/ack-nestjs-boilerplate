@@ -17,7 +17,7 @@ import { IResponse } from 'src/response/response.interface';
 export class EncryptionController {
     constructor(
         @Response() private readonly responseService: ResponseService,
-        @Message() private readonly messageService: MessageService,
+        @Message() private readonly messageService: MessageService
     ) {}
 
     @Get('/')

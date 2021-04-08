@@ -1,14 +1,26 @@
-import { Exclude, Expose, Transform } from 'class-transformer';
-import { ObjectId } from 'mongoose';
+import { Exclude, Transform } from 'class-transformer';
+import { RoleSafe } from 'src/role/role.interface';
+import { PermissionEntity } from 'src/role/role.schema';
 
 export class UserTransformer {
-    @Exclude({ toPlainOnly: true })
-    _id: ObjectId;
-
     @Transform(({ value }) => {
         return `${value}`;
     })
-    role: string;
+    _id: string;
+
+    @Transform(({ value }) => {
+        const permissions: string[] = value.permissions.map(
+            (val: PermissionEntity) => {
+                return val.name;
+            }
+        );
+
+        return {
+            name: value.name,
+            permissions
+        };
+    })
+    role: RoleSafe;
 
     firstName: string;
     lastName: string;
@@ -21,11 +33,4 @@ export class UserTransformer {
 
     @Exclude()
     __v: string;
-
-    @Expose()
-    get id(): string {
-        return `${this._id}`;
-    }
-    
 }
-

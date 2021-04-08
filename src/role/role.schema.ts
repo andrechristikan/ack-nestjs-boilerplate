@@ -1,6 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
-import { PermissionDetail } from './role.interface';
 
 @Schema()
 export class PermissionEntity {
@@ -12,17 +11,6 @@ export class PermissionEntity {
         trim: true
     })
     name: string;
-
-    @Prop({
-        type: {
-            read: Boolean,
-            create: Boolean,
-            update: Boolean,
-            delete: Boolean
-        },
-        required: true
-    })
-    details: PermissionDetail;
 
     @Prop({
         required: true,

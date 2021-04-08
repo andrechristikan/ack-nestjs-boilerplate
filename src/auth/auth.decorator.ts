@@ -1,21 +1,25 @@
-import { UseGuards } from '@nestjs/common';
+import {
+    UseGuards,
+    createParamDecorator,
+    ExecutionContext,
+    applyDecorators
+} from '@nestjs/common';
 import { JwtGuard } from 'src/auth/guard/jwt/jwt.guard';
 import { BasicGuard } from 'src/auth/guard/basic/basic.guard';
-import { applyDecorators } from '@nestjs/common';
 import { IApplyDecorator } from 'src/auth/auth.interface';
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import { PermissionGuard } from 'src/role/guard/permission.guard';
 
-export function AuthJwt(): IApplyDecorator {
-    return applyDecorators(UseGuards(JwtGuard));
+export function AuthJwtGuard(): IApplyDecorator {
+    return applyDecorators(UseGuards(JwtGuard, PermissionGuard));
 }
 
-export function AuthBasic(): IApplyDecorator {
+export function AuthBasicGuard(): IApplyDecorator {
     return applyDecorators(UseGuards(BasicGuard));
 }
 
 export const User = createParamDecorator(
     (data: string, ctx: ExecutionContext): Record<string, any> => {
-        const { user} = ctx.switchToHttp().getRequest();
+        const { user } = ctx.switchToHttp().getRequest();
         return data ? user[data] : user;
     }
 );

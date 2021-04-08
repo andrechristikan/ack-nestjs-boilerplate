@@ -4,10 +4,15 @@ import { ConfigService } from '@nestjs/config';
 import { hashSync, genSaltSync, compareSync } from 'bcrypt';
 import { AES, enc, lib, mode } from 'crypto-js';
 import { isString } from 'class-validator';
+import { JwtService } from '@nestjs/jwt';
+import { AUTH_JWT_SECRET_KEY } from 'src/auth/auth.constant';
 
 @Injectable()
 export class HashService {
-    constructor(private readonly configService: ConfigService) {}
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly jwtService: JwtService
+    ) {}
 
     // bcrypt
     async hashPassword(passwordString: string, salt: string): Promise<string> {
@@ -34,6 +39,38 @@ export class HashService {
     async encryptBase64(data: string): Promise<string> {
         const basicToken: lib.WordArray = enc.Utf8.parse(data);
         return basicToken.toString(enc.Base64);
+    }
+
+    // jwt
+    async jwtSign(payload: Record<string, any>): Promise<string> {
+        return this.jwtService.sign(payload);
+    }
+
+    async jwtVerify(token: string): Promise<boolean> {
+        // Env
+        const authJwtTokenSecret =
+            this.configService.get('app.auth.jwtSecretKey') ||
+            AUTH_JWT_SECRET_KEY;
+
+        const payload: Record<string, any> = this.jwtService.verify(token, {
+            secret: authJwtTokenSecret
+        });
+
+        return payload ? true : false;
+    }
+
+    async jwtPayload(
+        token: string,
+        ignoreExpiration?: boolean
+    ): Promise<Record<string, any>> {
+        // Env
+        const authJwtTokenSecret =
+            this.configService.get('app.auth.jwtSecretKey') ||
+            AUTH_JWT_SECRET_KEY;
+        return this.jwtService.verify(token, {
+            secret: authJwtTokenSecret,
+            ignoreExpiration
+        });
     }
 
     // AES 256bit

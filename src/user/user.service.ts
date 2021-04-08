@@ -2,11 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserEntity } from 'src/user/user.schema';
-import { UserDocument, UserDocumentFull } from 'src/user/user.interface';
+import {
+    UserDocument,
+    UserDocumentFull,
+    UserSafe
+} from 'src/user/user.interface';
 import { HashService } from 'src/hash/hash.service';
 import { Hash } from 'src/hash/hash.decorator';
 import { UserTransformer } from 'src/user/transformer/user.transformer';
-import { classToPlain, plainToClass } from 'class-transformer';
+import { classToPlain } from 'class-transformer';
 import { IErrors } from 'src/message/message.interface';
 import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
@@ -33,7 +37,7 @@ export class UserService {
     ): Promise<UserDocument[]> {
         return this.userModel
             .find(find)
-            .select('-__v')
+            .select('-__v -password')
             .skip(offset)
             .limit(limit)
             .lean();
@@ -106,9 +110,13 @@ export class UserService {
             .lean();
     }
 
-    async transformer<T, U>(rawData: U): Promise<T> {
-        const user: UserTransformer = plainToClass(UserTransformer, rawData);
-        return classToPlain(user) as T;
+    async transformer(rawData: Record<string, any>): Promise<UserSafe> {
+        const data: UserTransformer = new UserTransformer();
+
+        for (const raw in rawData) {
+            data[raw] = rawData[raw];
+        }
+        return classToPlain(data) as UserSafe;
     }
 
     async create(data: Record<string, any>): Promise<UserDocument> {

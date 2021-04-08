@@ -5,9 +5,7 @@ export type RoleDocument = RoleEntity & Document;
 
 export type PermissionDocument = PermissionEntity & Document;
 
-export class PermissionDetail {
-    read: boolean;
-    create: boolean;
-    update: boolean;
-    delete: boolean;
+export interface RoleSafe {
+    name: string;
+    permissions: string[];
 }

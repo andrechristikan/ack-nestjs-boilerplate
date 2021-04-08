@@ -1,4 +1,7 @@
-import { HttpLoggerMiddleware, HttpLoggerResponseMiddleware } from 'src/middleware/http-logger/http-logger.middleware';
+import {
+    HttpLoggerMiddleware,
+    HttpLoggerResponseMiddleware
+} from 'src/middleware/http-logger/http-logger.middleware';
 import { HelmetMiddleware } from 'src/middleware/helmet/helmet.middleware';
 import { RateLimitMiddleware } from 'src/middleware/rate-limit/rate-limit.middleware';
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';

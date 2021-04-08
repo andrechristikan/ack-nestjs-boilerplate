@@ -47,10 +47,12 @@ export class BasicGuard implements CanActivate {
                 class: 'BasicGuard',
                 function: 'canActivate'
             });
-            const response: IResponse = this.responseService.error(
-                this.messageService.get('http.clientError.unauthorized')
+
+            throw new UnauthorizedException(
+                this.responseService.error(
+                    this.messageService.get('http.clientError.unauthorized')
+                )
             );
-            throw new UnauthorizedException(response);
         }
 
         const clientBasicToken: string = authorization.replace('Basic ', '');
@@ -69,10 +71,12 @@ export class BasicGuard implements CanActivate {
                 class: 'BasicGuard',
                 function: 'canActivate'
             });
-            const response: IResponse = this.responseService.error(
-                this.messageService.get('http.clientError.unauthorized')
+
+            throw new UnauthorizedException(
+                this.responseService.error(
+                    this.messageService.get('http.clientError.unauthorized')
+                )
             );
-            throw new UnauthorizedException(response);
         }
 
         return true;
