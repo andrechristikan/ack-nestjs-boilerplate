@@ -1,7 +1,3 @@
 export const E2E_AUTH_LOGIN_URL = '/auth/login';
-export const E2E_AUTH_LOGIN_BASIC_URL = '/auth/login-basic';
 
-export const E2E_AUTH_LOGIN_BASIC_CLIENT_ID =
-    'rw0sOzrpMP2CpQqXozZsjk5AI5cL00uyDIUiN0gn';
-export const E2E_AUTH_LOGIN_BASIC_CLIENT_SECRET =
-    '275tqa6S4sWCyBHBvFezJJm0QRvxK39VOgLOTXVo';
+export const E2E_AUTH_LOGIN_TIMEOUT = 10000;

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PASSWORD_SALT_LENGTH } from 'src/hash/hash.constant';
 import { ConfigService } from '@nestjs/config';
-import { hashSync, genSaltSync, compareSync } from 'bcrypt';
+import { hash, compare, genSalt } from 'bcrypt';
 import { isString } from 'class-validator';
 import { JwtService } from '@nestjs/jwt';
 import { AUTH_JWT_SECRET_KEY } from 'src/auth/auth.constant';
@@ -17,7 +17,7 @@ export class HashService {
 
     // bcrypt
     async hashPassword(passwordString: string, salt: string): Promise<string> {
-        return hashSync(passwordString, salt);
+        return hash(passwordString, salt);
     }
 
     async randomSalt(): Promise<string> {
@@ -26,14 +26,14 @@ export class HashService {
             this.configService.get('app.hash.passwordSaltLength') ||
             PASSWORD_SALT_LENGTH;
 
-        return genSaltSync(defaultPasswordSaltLength);
+        return genSalt(defaultPasswordSaltLength);
     }
 
     async bcryptComparePassword(
         passwordString: string,
         passwordHashed: string
     ): Promise<boolean> {
-        return compareSync(passwordString, passwordHashed);
+        return compare(passwordString, passwordHashed);
     }
 
     // Base64

@@ -38,7 +38,6 @@ export class UserCreateValidation {
     readonly isAdmin: boolean;
 
     @IsMongoId()
-    @IsNotEmpty()
     readonly roleId: Types.ObjectId;
 
     @IsString()

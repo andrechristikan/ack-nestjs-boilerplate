@@ -21,7 +21,6 @@ export class EncryptionController {
     ) {}
 
     @Get('/encrypt')
-    @ResponseStatusCode()
     @Encryption()
     async en(): Promise<IResponse> {
         return this.responseService.success(
@@ -29,11 +28,10 @@ export class EncryptionController {
         );
     }
 
-    @Post('/decrypt')
+    @Post('/encrypt-data')
     @HttpCode(HttpStatus.OK)
-    @ResponseStatusCode()
     @Encryption()
-    async post(@Body() body: Record<string, any>): Promise<IResponse> {
+    async edData(@Body() body: Record<string, any>): Promise<IResponse> {
         return this.responseService.success(
             this.messageService.get('encryption.get.success'),
             body

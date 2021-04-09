@@ -19,9 +19,9 @@ export class AppController {
     }
 
     @AuthBasicGuard()
-    @Get('/basic-token')
+    @Get('/hello-basic-token')
     @ResponseStatusCode()
-    async testBasicToken(): Promise<IResponse> {
+    async testHelloBasicToken(): Promise<IResponse> {
         const message: string = await this.appService.getHello();
         return this.responseService.success(message);
     }

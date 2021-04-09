@@ -42,6 +42,7 @@ export class UserController {
         private readonly userService: UserService
     ) {}
 
+    @AuthJwtGuard()
     @Permissions(PermissionList.UserRead)
     @ResponseStatusCode()
     @Get('/')
@@ -97,7 +98,7 @@ export class UserController {
     }
 
     @AuthJwtGuard()
-    @Permissions(PermissionList.UserRead, PermissionList.UserCreate)
+    @Permissions(PermissionList.UserRead)
     @ResponseStatusCode()
     @Get('/:userId')
     async findOneById(@Param('userId') userId: string): Promise<IResponse> {
@@ -123,6 +124,7 @@ export class UserController {
         );
     }
 
+    @AuthJwtGuard()
     @Permissions(PermissionList.UserRead, PermissionList.UserCreate)
     @ResponseStatusCode()
     @Post('/create')
@@ -172,6 +174,7 @@ export class UserController {
         }
     }
 
+    @AuthJwtGuard()
     @Permissions(PermissionList.UserRead, PermissionList.UserDelete)
     @ResponseStatusCode()
     @Delete('/delete/:userId')
@@ -198,6 +201,7 @@ export class UserController {
         );
     }
 
+    @AuthJwtGuard()
     @Permissions(PermissionList.UserRead, PermissionList.UserUpdate)
     @ResponseStatusCode()
     @Put('/update/:userId')

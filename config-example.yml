@@ -12,6 +12,7 @@ app:
   env: 'development'
   language: 'en'
   debug: false
+  
   encryption:
     key: 'NRsycc8LAYc0gShCIzU4hZiFDH4Xc1dO'
     iv: 'JAPgKqVkC7aUsE4x'

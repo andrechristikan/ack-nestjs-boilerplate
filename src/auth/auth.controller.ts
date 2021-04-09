@@ -22,6 +22,7 @@ import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
+import { compare } from 'bcrypt';
 
 @Controller('/auth')
 export class AuthController {
@@ -63,11 +64,7 @@ export class AuthController {
             );
         }
 
-        const validate: boolean = await this.authService.validateUser(
-            data.password,
-            user.password
-        );
-
+        const validate: boolean = await compare(data.password, user.password);
         if (!validate) {
             this.logger.error('Authorized error', {
                 class: 'AuthController',
@@ -80,7 +77,7 @@ export class AuthController {
                 )
             );
         }
-
+        
         const userSafe: UserSafe = await this.userService.transformer(user);
         const { _id, email, firstName, lastName, isAdmin, role } = userSafe;
         const accessToken: string = await this.authService.createAccessToken({
