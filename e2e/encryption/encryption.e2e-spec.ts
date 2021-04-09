@@ -41,7 +41,7 @@ describe('E2E Encryption', () => {
         );
         en = await hashService.encryptAES256Bit(dataEn1, enKey, enIv);
 
-        const dataEn2:  Record<string, any> = responseService.success(
+        const dataEn2: Record<string, any> = responseService.success(
             messageService.get('encryption.get.success'),
             dataEn1
         );

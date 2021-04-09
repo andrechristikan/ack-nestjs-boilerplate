@@ -72,9 +72,10 @@ export class UserController {
         );
     }
 
+    @AuthJwtGuard()
     @ResponseStatusCode()
     @Get('/profile')
-    async profile(@User('id') userId: string): Promise<IResponse> {
+    async profile(@User('_id') userId: string): Promise<IResponse> {
         const user: UserDocumentFull = await this.userService.findOneById(
             userId
         );

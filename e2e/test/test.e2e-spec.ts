@@ -3,7 +3,10 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
-import { E2E_TEST_HELLO_BASIC_TOKEN_URL, E2E_TEST_HELLO_URL } from './test.e2e-constant';
+import {
+    E2E_TEST_HELLO_BASIC_TOKEN_URL,
+    E2E_TEST_HELLO_URL
+} from './test.e2e-constant';
 import {
     AUTH_BASIC_CLIENT_ID,
     AUTH_BASIC_CLIENT_SECRET

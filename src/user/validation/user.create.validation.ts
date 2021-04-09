@@ -5,7 +5,8 @@ import {
     MaxLength,
     MinLength,
     IsBoolean,
-    IsMongoId
+    IsMongoId,
+    IsOptional
 } from 'class-validator';
 import { Types } from 'mongoose';
 
@@ -38,6 +39,7 @@ export class UserCreateValidation {
     readonly isAdmin: boolean;
 
     @IsMongoId()
+    @IsOptional()
     readonly roleId: Types.ObjectId;
 
     @IsString()
