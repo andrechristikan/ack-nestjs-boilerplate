@@ -39,7 +39,7 @@ Futures :
 [x] Example For User and Login Component
 [x] Role Management
 [ ] Migration
-[~] E2E Testing
+[x] E2E Testing
 [~] Unit Testing
 [~] Documentation
 ```
