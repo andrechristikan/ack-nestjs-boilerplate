@@ -31,14 +31,14 @@ Futures :
 [x] Support Class Transformer Package
 [x] Centralize Response To Be JSON Object (Standard Open API 3.x)
 [x] Hash Password With Bcrypt
-[x] Support Multi-Language For Response Message
+[~] Support Multi-Language For Response Message
 [x] Support Encryption Request and Response With Interceptor
 [x] Middleware Rate Limit, Compression, Helmet, Cors, BodyParser, dst
 [x] Server Side Pagination
 [x] Support File Logging With Winston And Morgan Package
 [x] Example For User and Login Component
 [x] Role Management
-[ ] Migration
+[x] Migration with nestjs-command
 [x] E2E Testing
 [~] Unit Testing
 [~] Documentation

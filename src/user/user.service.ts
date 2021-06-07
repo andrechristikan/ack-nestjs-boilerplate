@@ -2,22 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserEntity } from 'src/user/user.schema';
-import {
-    UserDocument,
-    UserDocumentFull,
-    UserSafe
-} from 'src/user/user.interface';
+import { UserDocument, UserDocumentFull } from 'src/user/user.interface';
 import { HashService } from 'src/hash/hash.service';
 import { Hash } from 'src/hash/hash.decorator';
-import { UserTransformer } from 'src/user/transformer/user.transformer';
-import { classToPlain } from 'class-transformer';
 import { IErrors } from 'src/message/message.interface';
 import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
 import { RoleEntity } from 'src/role/role.schema';
 import { RoleDocument } from 'src/role/role.interface';
-import { PermissionEntity } from 'src/permission/permission.schema';
-import { PermissionDocument } from 'src/permission/permission.interface';
+import { PermissionService } from 'src/permission/permission.service';
 
 @Injectable()
 export class UserService {
@@ -26,8 +19,7 @@ export class UserService {
         private readonly userModel: Model<UserDocument>,
         @InjectModel(RoleEntity.name)
         private readonly roleModel: Model<RoleDocument>,
-        @InjectModel(PermissionEntity.name)
-        private readonly permissionModel: Model<PermissionDocument>,
+        private readonly permissionService: PermissionService,
         @Hash() private readonly hashService: HashService,
         @Message() private readonly messageService: MessageService
     ) {}
@@ -60,7 +52,7 @@ export class UserService {
                 select: '-__v',
                 populate: {
                     path: 'permissions',
-                    model: this.permissionModel,
+                    model: this.permissionService,
                     match: { isActive: true },
                     select: '-__v'
                 }
@@ -81,7 +73,7 @@ export class UserService {
                 select: '-__v',
                 populate: {
                     path: 'permissions',
-                    model: this.permissionModel,
+                    model: this.permissionService,
                     match: { isActive: true },
                     select: '-__v'
                 }
@@ -104,21 +96,12 @@ export class UserService {
                 select: '-__v',
                 populate: {
                     path: 'permissions',
-                    model: this.permissionModel,
+                    model: this.permissionService,
                     match: { isActive: true },
                     select: '-__v'
                 }
             })
             .lean();
-    }
-
-    async transformer(rawData: Record<string, any>): Promise<UserSafe> {
-        const data: UserTransformer = new UserTransformer();
-
-        for (const raw in rawData) {
-            data[raw] = rawData[raw];
-        }
-        return classToPlain(data) as UserSafe;
     }
 
     async create(data: Record<string, any>): Promise<UserDocument> {

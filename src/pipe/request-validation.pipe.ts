@@ -6,7 +6,6 @@ import {
     mixin
 } from '@nestjs/common';
 import { validate } from 'class-validator';
-import { plainToClass } from 'class-transformer';
 import { Response } from 'src/response/response.decorator';
 import { ResponseService } from 'src/response/response.service';
 import { Logger } from 'src/logger/logger.decorator';
@@ -34,8 +33,7 @@ export function RequestValidationPipe(schema: {
                 return value;
             }
 
-            const request: Record<string, any> = plainToClass(schema, value);
-
+            const request: Record<string, any> = new schema(value);
             this.logger.info('Request Data', {
                 class: 'RequestValidationPipe',
                 function: 'transform',

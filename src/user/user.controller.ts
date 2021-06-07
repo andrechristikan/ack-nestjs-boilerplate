@@ -74,6 +74,7 @@ export class UserController {
 
     @AuthJwtGuard()
     @ResponseStatusCode()
+    @Permissions(PermissionList.ProfileRead)
     @Get('/profile')
     async profile(@User('_id') userId: string): Promise<IResponse> {
         const user: UserDocumentFull = await this.userService.findOneById(

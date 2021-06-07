@@ -4,11 +4,7 @@ import { UserEntity, UserDatabaseName, UserSchema } from 'src/user/user.schema';
 import { UserService } from 'src/user/user.service';
 import { UserController } from 'src/user/user.controller';
 import { RoleDatabaseName, RoleEntity, RoleSchema } from 'src/role/role.schema';
-import {
-    PermissionDatabaseName,
-    PermissionEntity,
-    PermissionSchema
-} from 'src/permission/permission.schema';
+import { PermissionModule } from 'src/permission/permission.module';
 
 @Module({
     imports: [
@@ -26,13 +22,7 @@ import {
                 collection: RoleDatabaseName
             }
         ]),
-        MongooseModule.forFeature([
-            {
-                name: PermissionEntity.name,
-                schema: PermissionSchema,
-                collection: PermissionDatabaseName
-            }
-        ])
+        PermissionModule
     ],
     exports: [UserService],
     providers: [UserService],

@@ -17,7 +17,7 @@ import {
     AUTH_DEFAULT_USERNAME_FIELD,
     AUTH_JWT_EXPIRATION_TIME
 } from 'src/auth/auth.constant';
-import { UserDocumentFull, UserSafe } from 'src/user/user.interface';
+import { UserDocumentFull } from 'src/user/user.interface';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { Logger as LoggerService } from 'winston';
@@ -77,9 +77,8 @@ export class AuthController {
                 )
             );
         }
-        
-        const userSafe: UserSafe = await this.userService.transformer(user);
-        const { _id, email, firstName, lastName, isAdmin, role } = userSafe;
+
+        const { _id, email, firstName, lastName, isAdmin, role } = user;
         const accessToken: string = await this.authService.createAccessToken({
             _id,
             email,
