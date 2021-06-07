@@ -14,12 +14,12 @@ export class UserEntity {
     firstName: string;
 
     @Prop({
-        required: true,
+        required: false,
         index: true,
         lowercase: true,
         trim: true
     })
-    lastName: string;
+    lastName?: string;
 
     @Prop({
         required: true,
@@ -55,7 +55,7 @@ export class UserEntity {
     @Prop({
         required: false
     })
-    savePlaces: UserSavePlaces[];
+    savePlaces?: UserSavePlaces[];
 
     @Prop({
         required: true

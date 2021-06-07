@@ -42,7 +42,7 @@ export class RoleSeed {
         });
 
         if (!permissions || permissions.length === 0) {
-            this.logger.error('Go Insert Permissions Before Insert Roles', {
+            this.logger.error('Go Insert Role Before Insert Roles', {
                 class: 'RoleSeed',
                 function: 'create'
             });
@@ -50,7 +50,9 @@ export class RoleSeed {
             return;
         }
 
-        const check = await this.roleService.findAll(0, 1);
+        const check = await this.roleService.findAll(0, 1, {
+            name: 'admin'
+        });
         if (check && check.length !== 0) {
             this.logger.error('Only for initial purpose', {
                 class: 'RoleSeed',
@@ -60,25 +62,12 @@ export class RoleSeed {
             return;
         }
 
-        const userPermTemp = ['ProfileUpdate', 'ProfileRead'];
-        const userPermission = permissions.filter(
-            (val) => userPermTemp.indexOf(val.name) !== -1
-        );
         permissions = permissions.map((val) => val._id);
-        const adminPermission = permissions;
-
         try {
             await this.roleService.createMany([
                 {
                     name: 'admin',
-                    permissions: adminPermission
-                }
-            ]);
-
-            await this.roleService.createMany([
-                {
-                    name: 'user',
-                    permissions: userPermission
+                    permissions: permissions
                 }
             ]);
 
@@ -101,9 +90,11 @@ export class RoleSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.roleService.delete();
+            await this.roleService.delete({
+                name: 'admin'
+            });
 
-            this.logger.info('Insert Role Succeed', {
+            this.logger.info('Remove Role Succeed', {
                 class: 'RoleSeed',
                 function: 'remove'
             });

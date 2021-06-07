@@ -94,9 +94,28 @@ export class PermissionSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.permissionService.delete();
+            await this.permissionService.delete({
+                name: {
+                    $in: [
+                        'UserCreate',
+                        'UserUpdate',
+                        'UserRead',
+                        'UserDelete',
+                        'ProfileUpdate',
+                        'ProfileRead',
+                        'RoleCreate',
+                        'RoleUpdate',
+                        'RoleRead',
+                        'RoleDelete',
+                        'PermissionCreate',
+                        'PermissionUpdate',
+                        'PermissionRead',
+                        'PermissionDelete'
+                    ]
+                }
+            });
 
-            this.logger.info('Insert Permission Succeed', {
+            this.logger.info('Remove Permission Succeed', {
                 class: 'PermissionSeed',
                 function: 'remove'
             });

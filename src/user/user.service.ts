@@ -111,19 +111,43 @@ export class UserService {
             salt
         );
 
-        const create: UserDocument = new this.userModel({
+        const user: UserEntity = {
             firstName: data.firstName.toLowerCase(),
-            lastName: data.lastName.toLowerCase(),
             email: data.email.toLowerCase(),
             mobileNumber: data.mobileNumber,
-            password: passwordHash
-        });
+            password: passwordHash,
+            role: data.role,
+            isAdmin: data.isAdmin
+        };
+
+        if (data.lastName) {
+            user.lastName = data.lastName.toLowerCase();
+        }
+
+        if (data.savePlaces) {
+            user.savePlaces = data.savePlaces;
+        }
+
+        const create: UserDocument = new this.userModel();
         return create.save();
     }
 
     async deleteOneById(userId: string): Promise<UserDocument> {
         return this.userModel.deleteOne({
             _id: userId
+        });
+    }
+
+    async delete(find?: Record<string, any>): Promise<boolean> {
+        return new Promise((resolve, reject) => {
+            this.userModel
+                .deleteMany(find)
+                .then(() => {
+                    resolve(true);
+                })
+                .catch((err: any) => {
+                    reject(err);
+                });
         });
     }
 
