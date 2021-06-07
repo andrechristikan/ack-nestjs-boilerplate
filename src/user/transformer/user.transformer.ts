@@ -1,6 +1,6 @@
 import { Exclude, Transform } from 'class-transformer';
 import { RoleSafe } from 'src/role/role.interface';
-import { PermissionEntity } from 'src/role/role.schema';
+import { PermissionEntity } from 'src/permission/permission.schema';
 
 export class UserTransformer {
     @Transform(({ value }) => {

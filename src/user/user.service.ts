@@ -14,8 +14,10 @@ import { classToPlain } from 'class-transformer';
 import { IErrors } from 'src/message/message.interface';
 import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
-import { RoleEntity, PermissionEntity } from 'src/role/role.schema';
-import { RoleDocument, PermissionDocument } from 'src/role/role.interface';
+import { RoleEntity } from 'src/role/role.schema';
+import { RoleDocument } from 'src/role/role.interface';
+import { PermissionEntity } from 'src/permission/permission.schema';
+import { PermissionDocument } from 'src/permission/permission.interface';
 
 @Injectable()
 export class UserService {

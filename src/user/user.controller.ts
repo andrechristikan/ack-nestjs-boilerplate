@@ -29,8 +29,8 @@ import { PAGE, PER_PAGE } from 'src/pagination/pagination.constant';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
 import { UserDocument, UserDocumentFull } from './user.interface';
-import { PermissionList } from 'src/role/role.constant';
-import { Permissions } from 'src/role/role.decorator';
+import { PermissionList } from 'src/permission/permission.constant';
+import { Permissions } from 'src/permission/permission.decorator';
 
 @Controller('/user')
 export class UserController {

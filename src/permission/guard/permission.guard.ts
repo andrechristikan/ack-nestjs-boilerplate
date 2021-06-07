@@ -9,7 +9,7 @@ import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { Response } from 'src/response/response.decorator';
 import { ResponseService } from 'src/response/response.service';
-import { PermissionList, PERMISSION_KEY } from '../role.constant';
+import { PermissionList, PERMISSION_KEY } from '../permission.constant';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {

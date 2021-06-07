@@ -7,7 +7,7 @@ import {
 import { JwtGuard } from 'src/auth/guard/jwt/jwt.guard';
 import { BasicGuard } from 'src/auth/guard/basic/basic.guard';
 import { IApplyDecorator } from 'src/auth/auth.interface';
-import { PermissionGuard } from 'src/role/guard/permission.guard';
+import { PermissionGuard } from 'src/permission/guard/permission.guard';
 
 export function AuthJwtGuard(): IApplyDecorator {
     return applyDecorators(UseGuards(JwtGuard, PermissionGuard));

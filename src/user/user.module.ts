@@ -3,14 +3,12 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UserEntity, UserDatabaseName, UserSchema } from 'src/user/user.schema';
 import { UserService } from 'src/user/user.service';
 import { UserController } from 'src/user/user.controller';
+import { RoleDatabaseName, RoleEntity, RoleSchema } from 'src/role/role.schema';
 import {
-    RoleDatabaseName,
-    RoleEntity,
-    RoleSchema,
     PermissionDatabaseName,
     PermissionEntity,
     PermissionSchema
-} from 'src/role/role.schema';
+} from 'src/permission/permission.schema';
 
 @Module({
     imports: [
