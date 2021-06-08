@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
-import { RoleDatabaseName, RoleEntity } from 'src/role/role.schema';
+import { RoleEntity } from 'src/role/role.schema';
 import { UserSavedPlaces } from 'src/user/user.interface';
 
 @Schema()
