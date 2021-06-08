@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { PermissionEntity } from 'src/permission/permission.schema';
 import { RoleDocument } from './role.interface';
 import { RoleEntity } from './role.schema';
 
@@ -17,6 +18,40 @@ export class RoleService {
         find?: Record<string, any>
     ): Promise<RoleDocument[]> {
         return this.roleModel.find(find).skip(offset).limit(limit).limit(1);
+    }
+
+    async findOneById(
+        roleId: string,
+        populate?: boolean
+    ): Promise<RoleDocument> {
+        const role = this.roleModel.findById(roleId);
+
+        if (populate) {
+            role.populate({
+                path: 'permissions',
+                model: PermissionEntity.name,
+                match: { isActive: true }
+            });
+        }
+
+        return role.lean();
+    }
+
+    async findOne(
+        find?: Record<string, any>,
+        populate?: boolean
+    ): Promise<RoleDocument> {
+        const role = this.roleModel.findOne(find);
+
+        if (populate) {
+            role.populate({
+                path: 'permissions',
+                model: PermissionEntity.name,
+                match: { isActive: true }
+            });
+        }
+
+        return role.lean();
     }
 
     async create(data: Record<string, any>): Promise<RoleDocument> {

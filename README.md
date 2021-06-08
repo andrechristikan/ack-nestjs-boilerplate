@@ -28,10 +28,8 @@ Futures :
 [x] Local Auth With Email Implementation
 [x] Config in YML File
 [x] Request Validation With Pipe and Class Validation Package
-[x] Support Class Transformer Package
 [x] Centralize Response To Be JSON Object (Standard Open API 3.x)
 [x] Hash Password With Bcrypt
-[~] Support Multi-Language For Response Message
 [x] Support Encryption Request and Response With Interceptor
 [x] Middleware Rate Limit, Compression, Helmet, Cors, BodyParser, dst
 [x] Server Side Pagination
@@ -40,7 +38,9 @@ Futures :
 [x] Role Management
 [x] Migration with nestjs-command
 [x] E2E Testing
-[~] Unit Testing
+[ ] Unit Testing
+[ ] Support Multi-Language For Response Message
+[ ] Support Class Transformer Package With Decorator
 [~] Documentation
 ```
 

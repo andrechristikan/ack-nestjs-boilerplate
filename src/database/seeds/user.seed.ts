@@ -47,18 +47,12 @@ export class UserSeed {
         }
 
         try {
-            const salt: string = await this.hashService.randomSalt();
-            const passwordHash = await this.hashService.hashPassword(
-                '123456',
-                salt
-            );
-
             await this.userService.create({
                 firstName: 'admin',
                 email: 'admin@mail.com',
-                password: passwordHash,
+                password: '123456',
                 mobileNumber: '08111111111',
-                isAdmin: true
+                role: role[0]._id
             });
 
             this.logger.info('Insert User Succeed', {

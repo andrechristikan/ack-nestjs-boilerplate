@@ -6,8 +6,8 @@ export enum PermissionList {
     UserDelete = 'UserDelete',
 
     // Profile
-    ProfileUpdate = 'UserProfileUpdate',
-    ProfileRead = 'UserProfileRead',
+    ProfileUpdate = 'ProfileUpdate',
+    ProfileRead = 'ProfileRead',
 
     // Role
     RoleCreate = 'RoleCreate',

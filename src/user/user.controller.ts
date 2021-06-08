@@ -77,8 +77,9 @@ export class UserController {
     @Permissions(PermissionList.ProfileRead)
     @Get('/profile')
     async profile(@User('_id') userId: string): Promise<IResponse> {
-        const user: UserDocumentFull = await this.userService.findOneById(
-            userId
+        const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
+            userId,
+            true
         );
         if (!user) {
             this.logger.error('user Error', {
@@ -104,8 +105,9 @@ export class UserController {
     @ResponseStatusCode()
     @Get('/:userId')
     async findOneById(@Param('userId') userId: string): Promise<IResponse> {
-        const user: UserDocumentFull = await this.userService.findOneById(
-            userId
+        const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
+            userId,
+            true
         );
         if (!user) {
             this.logger.error('user Error', {
@@ -132,7 +134,7 @@ export class UserController {
     @Post('/create')
     async create(
         @Body(RequestValidationPipe(UserCreateValidation))
-        data: UserCreateValidation
+        data: Record<string, any>
     ): Promise<IResponse> {
         const errors: IErrors[] = await this.userService.checkExist(
             data.email,
@@ -181,8 +183,9 @@ export class UserController {
     @ResponseStatusCode()
     @Delete('/delete/:userId')
     async delete(@Param('userId') userId: string): Promise<IResponse> {
-        const user: UserDocumentFull = await this.userService.findOneById(
-            userId
+        const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
+            userId,
+            true
         );
         if (!user) {
             this.logger.error('user Error', {
@@ -212,8 +215,9 @@ export class UserController {
         @Body(RequestValidationPipe(UserUpdateValidation))
         data: UserUpdateValidation
     ): Promise<IResponse> {
-        const user: UserDocumentFull = await this.userService.findOneById(
-            userId
+        const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
+            userId,
+            true
         );
         if (!user) {
             this.logger.error('user Error', {
@@ -229,8 +233,9 @@ export class UserController {
 
         try {
             await this.userService.updateOneById(userId, data);
-            const user: UserDocumentFull = await this.userService.findOneById(
-                userId
+            const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
+                userId,
+                true
             );
 
             return this.responseService.success(

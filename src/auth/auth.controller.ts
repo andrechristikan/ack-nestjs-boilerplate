@@ -22,8 +22,6 @@ import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
-import { compare } from 'bcrypt';
-
 @Controller('/auth')
 export class AuthController {
     constructor(
@@ -47,8 +45,11 @@ export class AuthController {
             this.configService.get('auth.defaultUsernameField') ||
             AUTH_DEFAULT_USERNAME_FIELD;
 
-        const user: UserDocumentFull = await this.userService.findOneByEmail(
-            data[defaultUsernameField]
+        const user: UserDocumentFull = await this.userService.findOne<UserDocumentFull>(
+            {
+                email: data[defaultUsernameField]
+            },
+            true
         );
 
         if (!user) {
@@ -64,7 +65,11 @@ export class AuthController {
             );
         }
 
-        const validate: boolean = await compare(data.password, user.password);
+        const validate: boolean = await this.authService.validateUser(
+            data.password,
+            user.password
+        );
+
         if (!validate) {
             this.logger.error('Authorized error', {
                 class: 'AuthController',
@@ -78,14 +83,15 @@ export class AuthController {
             );
         }
 
-        const { _id, email, firstName, lastName, isAdmin, role } = user;
+        const { _id, email, firstName, lastName, role } = user;
+        const permissions = role.permissions.map((val) => val.name);
         const accessToken: string = await this.authService.createAccessToken({
             _id,
             email,
             firstName,
             lastName,
-            isAdmin,
-            role
+            role: user.role.name,
+            permissions
         });
 
         return this.responseService.success(

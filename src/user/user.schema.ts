@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
-import { RoleDatabaseName } from 'src/role/role.schema';
-import { UserSavePlaces } from 'src/user/user.interface';
+import { RoleDatabaseName, RoleEntity } from 'src/role/role.schema';
+import { UserSavedPlaces } from 'src/user/user.interface';
 
 @Schema()
 export class UserEntity {
@@ -40,22 +40,15 @@ export class UserEntity {
 
     @Prop({
         required: true,
-        default: false,
-        index: true
-    })
-    isAdmin: boolean;
-
-    @Prop({
-        required: false,
         type: Types.ObjectId,
-        ref: RoleDatabaseName
+        ref: RoleEntity.name
     })
     role: Types.ObjectId;
 
     @Prop({
         required: false
     })
-    savePlaces?: UserSavePlaces[];
+    savedPlaces?: UserSavedPlaces[];
 
     @Prop({
         required: true

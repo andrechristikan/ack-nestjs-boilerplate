@@ -18,9 +18,9 @@ export class RoleEntity {
 
     @Prop({
         required: true,
-        type: [Types.ObjectId],
+        type: Array,
         default: [],
-        ref: PermissionDatabaseName
+        ref: PermissionEntity.name
     })
     permissions: PermissionEntity[];
 

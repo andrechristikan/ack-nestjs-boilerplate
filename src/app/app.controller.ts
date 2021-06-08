@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
 import { AppService } from 'src/app/app.service';
 import { ResponseService } from 'src/response/response.service';
 import { Response, ResponseStatusCode } from 'src/response/response.decorator';
@@ -11,16 +11,18 @@ export class AppController {
         private readonly appService: AppService
     ) {}
 
-    @Get('/hello')
     @ResponseStatusCode()
+    @Get('/hello')
     async testHello(): Promise<IResponse> {
         const message: string = await this.appService.getHello();
         return this.responseService.success(message);
     }
 
+    // HTTP STATUS MANIPULATE TO 201
+    @HttpCode(HttpStatus.CREATED)
     @AuthBasicGuard()
-    @Get('/hello-basic-token')
     @ResponseStatusCode()
+    @Get('/hello-basic')
     async testHelloBasicToken(): Promise<IResponse> {
         const message: string = await this.appService.getHello();
         return this.responseService.success(message);

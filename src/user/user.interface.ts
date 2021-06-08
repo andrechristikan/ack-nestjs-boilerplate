@@ -7,8 +7,7 @@ export type UserDocument = UserEntity & Document;
 export interface UserDocumentFull extends Omit<UserDocument, 'role'> {
     role: RoleEntity;
 }
-
-export interface UserSavePlaces {
+export interface UserSavedPlaces {
     address: string;
     name: string;
     default: boolean;

@@ -4,11 +4,11 @@ import {
     IsEmail,
     MaxLength,
     MinLength,
-    IsBoolean,
     IsMongoId,
-    IsOptional
+    IsArray
 } from 'class-validator';
 import { Types } from 'mongoose';
+import { UserSavedPlaces } from 'src/user/user.interface';
 
 export class UserCreateValidation {
     @IsEmail()
@@ -34,13 +34,11 @@ export class UserCreateValidation {
     @MaxLength(13)
     readonly mobileNumber: string;
 
-    @IsBoolean()
-    @IsNotEmpty()
-    readonly isAdmin: boolean;
-
     @IsMongoId()
-    @IsOptional()
     readonly roleId: Types.ObjectId;
+
+    @IsArray()
+    readonly savedPlaces: UserSavedPlaces[];
 
     @IsString()
     @IsNotEmpty()

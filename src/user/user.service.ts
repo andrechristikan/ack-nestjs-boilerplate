@@ -8,9 +8,10 @@ import { Hash } from 'src/hash/hash.decorator';
 import { IErrors } from 'src/message/message.interface';
 import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
-import { RoleEntity } from 'src/role/role.schema';
+import { RoleDatabaseName, RoleEntity } from 'src/role/role.schema';
 import { RoleDocument } from 'src/role/role.interface';
 import { PermissionService } from 'src/permission/permission.service';
+import { PermissionEntity } from 'src/permission/permission.schema';
 
 @Injectable()
 export class UserService {
@@ -19,7 +20,7 @@ export class UserService {
         private readonly userModel: Model<UserDocument>,
         @InjectModel(RoleEntity.name)
         private readonly roleModel: Model<RoleDocument>,
-        private readonly permissionService: PermissionService,
+        private readonly permissionModel: PermissionService,
         @Hash() private readonly hashService: HashService,
         @Message() private readonly messageService: MessageService
     ) {}
@@ -29,79 +30,52 @@ export class UserService {
         limit: number,
         find?: Record<string, any>
     ): Promise<UserDocument[]> {
-        return this.userModel
-            .find(find)
-            .select('-__v -password')
-            .skip(offset)
-            .limit(limit)
-            .lean();
+        return this.userModel.find(find).skip(offset).limit(limit).lean();
     }
 
     async totalData(find?: Record<string, any>): Promise<number> {
         return this.userModel.countDocuments(find);
     }
 
-    async findOneById(userId: string): Promise<UserDocumentFull> {
-        return this.userModel
-            .findById(userId)
-            .select('-__v')
-            .populate({
+    async findOneById<T>(userId: string, populate?: boolean): Promise<T> {
+        const user = this.userModel.findById(userId);
+
+        if (populate) {
+            user.populate({
                 path: 'role',
-                model: this.roleModel,
+                model: RoleEntity.name,
                 match: { isActive: true },
-                select: '-__v',
                 populate: {
                     path: 'permissions',
-                    model: this.permissionService,
-                    match: { isActive: true },
-                    select: '-__v'
+                    model: PermissionEntity.name,
+                    match: { isActive: true }
                 }
-            })
-            .lean();
+            });
+        }
+
+        return user.lean();
     }
 
-    async findOneByEmail(email: string): Promise<UserDocumentFull> {
-        return this.userModel
-            .findOne({
-                email: email
-            })
-            .select('-__v')
-            .populate({
-                path: 'role',
-                model: this.roleModel,
-                match: { isActive: true },
-                select: '-__v',
-                populate: {
-                    path: 'permissions',
-                    model: this.permissionService,
-                    match: { isActive: true },
-                    select: '-__v'
-                }
-            })
-            .lean();
-    }
+    async findOne<T>(
+        find?: Record<string, any>,
+        populate?: boolean
+    ): Promise<T> {
+        const user = this.userModel.findOne(find);
 
-    async findOneByMobileNumber(
-        mobileNumber: string
-    ): Promise<UserDocumentFull> {
-        return this.userModel
-            .findOne({
-                mobileNumber: mobileNumber
-            })
-            .select('-__v')
-            .populate({
+        if (populate) {
+            user.populate({
                 path: 'role',
-                model: this.roleModel,
                 match: { isActive: true },
-                select: '-__v',
+                model: RoleEntity.name,
                 populate: {
                     path: 'permissions',
-                    model: this.permissionService,
                     match: { isActive: true },
-                    select: '-__v'
+                    model: PermissionEntity.name
                 }
-            })
-            .lean();
+            });
+        }
+
+        return user.lean();
     }
 
     async create(data: Record<string, any>): Promise<UserDocument> {
@@ -116,19 +90,18 @@ export class UserService {
             email: data.email.toLowerCase(),
             mobileNumber: data.mobileNumber,
             password: passwordHash,
-            role: data.role,
-            isAdmin: data.isAdmin
+            role: data.role
         };
 
         if (data.lastName) {
             user.lastName = data.lastName.toLowerCase();
         }
 
-        if (data.savePlaces) {
-            user.savePlaces = data.savePlaces;
+        if (data.savedPlaces) {
+            user.savedPlaces = data.savedPlaces;
         }
 
-        const create: UserDocument = new this.userModel();
+        const create: UserDocument = new this.userModel(user);
         return create.save();
     }
 

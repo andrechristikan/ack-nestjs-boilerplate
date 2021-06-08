@@ -1,8 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { RoleService } from 'src/role/role.service';
 import { RoleDatabaseName, RoleEntity, RoleSchema } from './role.schema';
 
+@Global()
 @Module({
     providers: [RoleService],
     exports: [RoleService],
