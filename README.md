@@ -36,7 +36,7 @@ Futures :
 [x] Support File Logging With Winston And Morgan Package
 [x] Example For User and Login Component
 [x] Role Management
-[x] Migration with nestjs-command
+[x] Database Migration with nestjs-command
 [x] E2E Testing
 [ ] Unit Testing
 [ ] Support Multi-Language For Response Message
