@@ -36,7 +36,11 @@ export class RoleSeed {
                     'PermissionCreate',
                     'PermissionUpdate',
                     'PermissionRead',
-                    'PermissionDelete'
+                    'PermissionDelete',
+                    'ProductCreate',
+                    'ProductUpdate',
+                    'ProductRead',
+                    'ProductDelete'
                 ]
             }
         });
@@ -90,7 +94,7 @@ export class RoleSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.roleService.delete({
+            await this.roleService.deleteMany({
                 name: 'admin'
             });
 

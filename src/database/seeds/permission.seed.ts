@@ -72,6 +72,18 @@ export class PermissionSeed {
                 },
                 {
                     name: 'PermissionDelete'
+                },
+                {
+                    name: 'ProductCreate'
+                },
+                {
+                    name: 'ProductUpdate'
+                },
+                {
+                    name: 'ProductRead'
+                },
+                {
+                    name: 'ProductDelete'
                 }
             ]);
 
@@ -94,7 +106,7 @@ export class PermissionSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.permissionService.delete({
+            await this.permissionService.deleteMany({
                 name: {
                     $in: [
                         'UserCreate',
@@ -110,7 +122,11 @@ export class PermissionSeed {
                         'PermissionCreate',
                         'PermissionUpdate',
                         'PermissionRead',
-                        'PermissionDelete'
+                        'PermissionDelete',
+                        'ProductCreate',
+                        'ProductUpdate',
+                        'ProductRead',
+                        'ProductDelete'
                     ]
                 }
             });

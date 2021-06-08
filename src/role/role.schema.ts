@@ -21,8 +21,7 @@ export class RoleEntity {
     permissions: PermissionEntity[];
 
     @Prop({
-        required: true,
-        index: true
+        required: true
     })
     isActive: boolean;
 }

@@ -36,7 +36,9 @@ export class UserSeed {
             return;
         }
 
-        const check = await this.userService.findAll(0, 1);
+        const check = await this.userService.findAll(0, 1, {
+            email: 'admin@mail.com'
+        });
         if (check && check.length !== 0) {
             this.logger.error('Only for initial purpose', {
                 class: 'UserSeed',
@@ -49,6 +51,7 @@ export class UserSeed {
         try {
             await this.userService.create({
                 firstName: 'admin',
+                lastName: 'test',
                 email: 'admin@mail.com',
                 password: '123456',
                 mobileNumber: '08111111111',
@@ -74,7 +77,7 @@ export class UserSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.userService.delete({
+            await this.userService.deleteMany({
                 email: 'admin@mail.com'
             });
 

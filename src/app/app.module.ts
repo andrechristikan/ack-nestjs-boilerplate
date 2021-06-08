@@ -18,6 +18,7 @@ import { PaginationModule } from 'src/pagination/pagination.module';
 import { MiddlewareModule } from 'src/middleware/middleware.module';
 import { EncryptionModule } from 'src/encryption/encryption.module';
 import { SeedsModule } from 'src/database/seeds/seeds.module';
+import { ProductModule } from 'src/product/product.module';
 
 @Module({
     controllers: [AppController],
@@ -55,7 +56,8 @@ import { SeedsModule } from 'src/database/seeds/seeds.module';
         // other module
         EncryptionModule,
         AuthModule,
-        UserModule
+        UserModule,
+        ProductModule
     ]
 })
 export class AppModule {}

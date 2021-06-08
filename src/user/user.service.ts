@@ -10,6 +10,7 @@ import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
 import { RoleEntity } from 'src/role/role.schema';
 import { PermissionEntity } from 'src/permission/permission.schema';
+import { Types } from 'mongoose';
 
 @Injectable()
 export class UserService {
@@ -85,7 +86,7 @@ export class UserService {
             email: data.email.toLowerCase(),
             mobileNumber: data.mobileNumber,
             password: passwordHash,
-            role: data.role
+            role: Types.ObjectId(data.role)
         };
 
         if (data.lastName) {
@@ -106,7 +107,7 @@ export class UserService {
         });
     }
 
-    async delete(find?: Record<string, any>): Promise<boolean> {
+    async deleteMany(find?: Record<string, any>): Promise<boolean> {
         return new Promise((resolve, reject) => {
             this.userModel
                 .deleteMany(find)

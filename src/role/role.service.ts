@@ -64,7 +64,7 @@ export class RoleService {
         return create.save();
     }
 
-    async delete(find?: Record<string, any>): Promise<boolean> {
+    async deleteMany(find?: Record<string, any>): Promise<boolean> {
         return new Promise((resolve, reject) => {
             this.roleModel
                 .deleteMany(find)

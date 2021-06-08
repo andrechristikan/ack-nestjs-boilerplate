@@ -19,7 +19,13 @@ export enum PermissionList {
     PermissionCreate = 'PermissionCreate',
     PermissionUpdate = 'PermissionCreate',
     PermissionRead = 'PermissionCreate',
-    PermissionDelete = 'PermissionCreate'
+    PermissionDelete = 'PermissionCreate',
+
+    // Product
+    ProductCreate = 'ProductCreate',
+    ProductUpdate = 'ProductCreate',
+    ProductRead = 'ProductCreate',
+    ProductDelete = 'ProductCreate'
 }
 
 export const PERMISSION_KEY = 'permissions';
