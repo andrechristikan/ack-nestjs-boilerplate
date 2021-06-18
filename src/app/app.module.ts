@@ -17,11 +17,13 @@ import { HashModule } from 'src/hash/hash.module';
 import { PaginationModule } from 'src/pagination/pagination.module';
 import { MiddlewareModule } from 'src/middleware/middleware.module';
 import { EncryptionModule } from 'src/encryption/encryption.module';
+import { SeedsModule } from 'src/database/seeds/seeds.module';
 
 @Module({
     controllers: [AppController],
     providers: [AppService],
     imports: [
+        // main module
         MiddlewareModule,
         ConfigModule.forRoot({
             load: [Configuration],
@@ -47,6 +49,10 @@ import { EncryptionModule } from 'src/encryption/encryption.module';
         PaginationModule,
         HashModule,
 
+        // seeder module
+        SeedsModule,
+
+        // other module
         EncryptionModule,
         AuthModule,
         UserModule

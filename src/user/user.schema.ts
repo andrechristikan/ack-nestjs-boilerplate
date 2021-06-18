@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
-import { RoleDatabaseName } from 'src/role/role.schema';
+import { RoleEntity } from 'src/role/role.schema';
 
 @Schema()
 export class UserEntity {
@@ -13,12 +13,12 @@ export class UserEntity {
     firstName: string;
 
     @Prop({
-        required: true,
+        required: false,
         index: true,
         lowercase: true,
         trim: true
     })
-    lastName: string;
+    lastName?: string;
 
     @Prop({
         required: true,
@@ -39,15 +39,8 @@ export class UserEntity {
 
     @Prop({
         required: true,
-        default: false,
-        index: true
-    })
-    isAdmin: boolean;
-
-    @Prop({
-        required: false,
         type: Types.ObjectId,
-        ref: RoleDatabaseName
+        ref: RoleEntity.name
     })
     role: Types.ObjectId;
 

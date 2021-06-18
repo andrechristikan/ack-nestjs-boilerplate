@@ -25,9 +25,11 @@ export class ResponseFilter implements ExceptionFilter {
 
             response.status(status).json({
                 statusCode: status,
-                message: exceptionData.message
+                message: exceptionData.message,
+                errors: exceptionData.errors
             });
         } else {
+            // if error is not http cause
             const status: number = HttpStatus.INTERNAL_SERVER_ERROR;
             const message: string = this.messageService.get(
                 'http.serverError.internalServerError'
@@ -35,7 +37,7 @@ export class ResponseFilter implements ExceptionFilter {
 
             response.status(status).json({
                 statusCode: status,
-                message
+                message: exception || message
             });
         }
     }

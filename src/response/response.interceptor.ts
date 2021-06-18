@@ -11,6 +11,7 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 
+// This interceptor for restructure response success
 @Injectable()
 export class ResponseInterceptor
     implements NestInterceptor<Promise<any> | string> {
@@ -27,6 +28,8 @@ export class ResponseInterceptor
             map(async (response: Promise<Record<string, any> | string>) => {
                 const status: number = responseExpress.statusCode;
                 const data: Record<string, any> | string = await response;
+
+                // response error must in object
                 if (typeof data !== 'object') {
                     throw new InternalServerErrorException(
                         this.messageService.get(

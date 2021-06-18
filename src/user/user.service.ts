@@ -2,32 +2,21 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserEntity } from 'src/user/user.schema';
-import {
-    UserDocument,
-    UserDocumentFull,
-    UserSafe
-} from 'src/user/user.interface';
+import { UserDocument } from 'src/user/user.interface';
 import { HashService } from 'src/hash/hash.service';
 import { Hash } from 'src/hash/hash.decorator';
-import { UserTransformer } from 'src/user/transformer/user.transformer';
-import { classToPlain } from 'class-transformer';
 import { IErrors } from 'src/message/message.interface';
 import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
 import { RoleEntity } from 'src/role/role.schema';
-import { RoleDocument } from 'src/role/role.interface';
 import { PermissionEntity } from 'src/permission/permission.schema';
-import { PermissionDocument } from 'src/permission/permission.interface';
+import { Types } from 'mongoose';
 
 @Injectable()
 export class UserService {
     constructor(
         @InjectModel(UserEntity.name)
         private readonly userModel: Model<UserDocument>,
-        @InjectModel(RoleEntity.name)
-        private readonly roleModel: Model<RoleDocument>,
-        @InjectModel(PermissionEntity.name)
-        private readonly permissionModel: Model<PermissionDocument>,
         @Hash() private readonly hashService: HashService,
         @Message() private readonly messageService: MessageService
     ) {}
@@ -37,88 +26,52 @@ export class UserService {
         limit: number,
         find?: Record<string, any>
     ): Promise<UserDocument[]> {
-        return this.userModel
-            .find(find)
-            .select('-__v -password')
-            .skip(offset)
-            .limit(limit)
-            .lean();
+        return this.userModel.find(find).skip(offset).limit(limit).lean();
     }
 
     async totalData(find?: Record<string, any>): Promise<number> {
         return this.userModel.countDocuments(find);
     }
 
-    async findOneById(userId: string): Promise<UserDocumentFull> {
-        return this.userModel
-            .findById(userId)
-            .select('-__v')
-            .populate({
+    async findOneById<T>(userId: string, populate?: boolean): Promise<T> {
+        const user = this.userModel.findById(userId);
+
+        if (populate) {
+            user.populate({
                 path: 'role',
-                model: this.roleModel,
+                model: RoleEntity.name,
                 match: { isActive: true },
-                select: '-__v',
                 populate: {
                     path: 'permissions',
-                    model: this.permissionModel,
-                    match: { isActive: true },
-                    select: '-__v'
+                    model: PermissionEntity.name,
+                    match: { isActive: true }
                 }
-            })
-            .lean();
-    }
-
-    async findOneByEmail(email: string): Promise<UserDocumentFull> {
-        return this.userModel
-            .findOne({
-                email: email
-            })
-            .select('-__v')
-            .populate({
-                path: 'role',
-                model: this.roleModel,
-                match: { isActive: true },
-                select: '-__v',
-                populate: {
-                    path: 'permissions',
-                    model: this.permissionModel,
-                    match: { isActive: true },
-                    select: '-__v'
-                }
-            })
-            .lean();
-    }
-
-    async findOneByMobileNumber(
-        mobileNumber: string
-    ): Promise<UserDocumentFull> {
-        return this.userModel
-            .findOne({
-                mobileNumber: mobileNumber
-            })
-            .select('-__v')
-            .populate({
-                path: 'role',
-                model: this.roleModel,
-                match: { isActive: true },
-                select: '-__v',
-                populate: {
-                    path: 'permissions',
-                    model: this.permissionModel,
-                    match: { isActive: true },
-                    select: '-__v'
-                }
-            })
-            .lean();
-    }
-
-    async transformer(rawData: Record<string, any>): Promise<UserSafe> {
-        const data: UserTransformer = new UserTransformer();
-
-        for (const raw in rawData) {
-            data[raw] = rawData[raw];
+            });
         }
-        return classToPlain(data) as UserSafe;
+
+        return user.lean();
+    }
+
+    async findOne<T>(
+        find?: Record<string, any>,
+        populate?: boolean
+    ): Promise<T> {
+        const user = this.userModel.findOne(find);
+
+        if (populate) {
+            user.populate({
+                path: 'role',
+                match: { isActive: true },
+                model: RoleEntity.name,
+                populate: {
+                    path: 'permissions',
+                    match: { isActive: true },
+                    model: PermissionEntity.name
+                }
+            });
+        }
+
+        return user.lean();
     }
 
     async create(data: Record<string, any>): Promise<UserDocument> {
@@ -128,13 +81,19 @@ export class UserService {
             salt
         );
 
-        const create: UserDocument = new this.userModel({
+        const user: UserEntity = {
             firstName: data.firstName.toLowerCase(),
-            lastName: data.lastName.toLowerCase(),
             email: data.email.toLowerCase(),
             mobileNumber: data.mobileNumber,
-            password: passwordHash
-        });
+            password: passwordHash,
+            role: Types.ObjectId(data.role)
+        };
+
+        if (data.lastName) {
+            user.lastName = data.lastName.toLowerCase();
+        }
+
+        const create: UserDocument = new this.userModel(user);
         return create.save();
     }
 
@@ -197,5 +156,19 @@ export class UserService {
         }
 
         return errors;
+    }
+
+    // For migration
+    async deleteMany(find?: Record<string, any>): Promise<boolean> {
+        return new Promise((resolve, reject) => {
+            this.userModel
+                .deleteMany(find)
+                .then(() => {
+                    resolve(true);
+                })
+                .catch((err: any) => {
+                    reject(err);
+                });
+        });
     }
 }

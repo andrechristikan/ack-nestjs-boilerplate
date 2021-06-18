@@ -1,9 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import {
-    E2E_AUTH_LOGIN_URL
-} from 'e2e/auth/auth.e2e-constant';
+import { E2E_AUTH_LOGIN_URL } from 'e2e/auth/auth.e2e-constant';
 import { AppModule } from 'src/app/app.module';
 import faker from 'faker';
 import { UserService } from 'src/user/user.service';
