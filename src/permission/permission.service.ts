@@ -19,6 +19,10 @@ export class PermissionService {
         return this.permissionModel.find(find).skip(offset).limit(limit).lean();
     }
 
+    async findOne(find?: Record<string, any>): Promise<PermissionDocument> {
+        return this.permissionModel.findOne(find).lean();
+    }
+
     async create(data: Record<string, any>): Promise<PermissionDocument> {
         const create: PermissionDocument = new this.permissionModel({
             name: data.name,
@@ -28,6 +32,7 @@ export class PermissionService {
         return create.save();
     }
 
+    // For migration
     async deleteMany(find?: Record<string, any>): Promise<boolean> {
         return new Promise((resolve, reject) => {
             this.permissionModel

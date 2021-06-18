@@ -1,10 +1,12 @@
 import { Global, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { RoleService } from 'src/role/role.service';
+import { RoleController } from './role.controller';
 import { RoleDatabaseName, RoleEntity, RoleSchema } from './role.schema';
 
 @Global()
 @Module({
+    controllers: [RoleController],
     providers: [RoleService],
     exports: [RoleService],
     imports: [

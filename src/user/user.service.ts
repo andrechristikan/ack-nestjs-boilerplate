@@ -93,10 +93,6 @@ export class UserService {
             user.lastName = data.lastName.toLowerCase();
         }
 
-        if (data.savedPlaces) {
-            user.savedPlaces = data.savedPlaces;
-        }
-
         const create: UserDocument = new this.userModel(user);
         return create.save();
     }
@@ -104,19 +100,6 @@ export class UserService {
     async deleteOneById(userId: string): Promise<UserDocument> {
         return this.userModel.deleteOne({
             _id: userId
-        });
-    }
-
-    async deleteMany(find?: Record<string, any>): Promise<boolean> {
-        return new Promise((resolve, reject) => {
-            this.userModel
-                .deleteMany(find)
-                .then(() => {
-                    resolve(true);
-                })
-                .catch((err: any) => {
-                    reject(err);
-                });
         });
     }
 
@@ -173,5 +156,19 @@ export class UserService {
         }
 
         return errors;
+    }
+
+    // For migration
+    async deleteMany(find?: Record<string, any>): Promise<boolean> {
+        return new Promise((resolve, reject) => {
+            this.userModel
+                .deleteMany(find)
+                .then(() => {
+                    resolve(true);
+                })
+                .catch((err: any) => {
+                    reject(err);
+                });
+        });
     }
 }

@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Types } from 'mongoose';
 import { PermissionEntity } from 'src/permission/permission.schema';
 
 @Schema()
@@ -18,7 +19,7 @@ export class RoleEntity {
         default: [],
         ref: PermissionEntity.name
     })
-    permissions: PermissionEntity[];
+    permissions: Types.ObjectId[];
 
     @Prop({
         required: true

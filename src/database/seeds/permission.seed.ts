@@ -4,6 +4,8 @@ import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
 
 import { PermissionService } from 'src/permission/permission.service';
+import { PermissionList } from 'src/permission/permission.constant';
+import { PermissionDocument } from 'src/permission/permission.interface';
 
 @Injectable()
 export class PermissionSeed {
@@ -18,74 +20,20 @@ export class PermissionSeed {
         autoExit: true
     })
     async create(): Promise<void> {
-        const check = await this.permissionService.findAll(0, 1);
-
-        if (check && check.length !== 0) {
+        const check: PermissionDocument = await this.permissionService.findOne();
+        if (check) {
             this.logger.error('Only for initial purpose', {
                 class: 'PermissionSeed',
                 function: 'create'
             });
-
             return;
         }
 
         try {
-            await this.permissionService.createMany([
-                {
-                    name: 'UserCreate'
-                },
-                {
-                    name: 'UserUpdate'
-                },
-                {
-                    name: 'UserRead'
-                },
-                {
-                    name: 'UserDelete'
-                },
-                {
-                    name: 'ProfileUpdate'
-                },
-                {
-                    name: 'ProfileRead'
-                },
-                {
-                    name: 'RoleCreate'
-                },
-                {
-                    name: 'RoleUpdate'
-                },
-                {
-                    name: 'RoleRead'
-                },
-                {
-                    name: 'RoleDelete'
-                },
-                {
-                    name: 'PermissionCreate'
-                },
-                {
-                    name: 'PermissionUpdate'
-                },
-                {
-                    name: 'PermissionRead'
-                },
-                {
-                    name: 'PermissionDelete'
-                },
-                {
-                    name: 'ProductCreate'
-                },
-                {
-                    name: 'ProductUpdate'
-                },
-                {
-                    name: 'ProductRead'
-                },
-                {
-                    name: 'ProductDelete'
-                }
-            ]);
+            const permissions = Object.keys(PermissionList).map((val) => ({
+                name: val
+            }));
+            await this.permissionService.createMany(permissions);
 
             this.logger.info('Insert Permission Succeed', {
                 class: 'PermissionSeed',
@@ -106,30 +54,7 @@ export class PermissionSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.permissionService.deleteMany({
-                name: {
-                    $in: [
-                        'UserCreate',
-                        'UserUpdate',
-                        'UserRead',
-                        'UserDelete',
-                        'ProfileUpdate',
-                        'ProfileRead',
-                        'RoleCreate',
-                        'RoleUpdate',
-                        'RoleRead',
-                        'RoleDelete',
-                        'PermissionCreate',
-                        'PermissionUpdate',
-                        'PermissionRead',
-                        'PermissionDelete',
-                        'ProductCreate',
-                        'ProductUpdate',
-                        'ProductRead',
-                        'ProductDelete'
-                    ]
-                }
-            });
+            await this.permissionService.deleteMany();
 
             this.logger.info('Remove Permission Succeed', {
                 class: 'PermissionSeed',

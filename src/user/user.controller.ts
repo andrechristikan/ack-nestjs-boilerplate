@@ -10,8 +10,7 @@ import {
     BadRequestException,
     InternalServerErrorException,
     DefaultValuePipe,
-    ParseIntPipe,
-    ParseBoolPipe
+    ParseIntPipe
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
 import { Response, ResponseStatusCode } from 'src/response/response.decorator';

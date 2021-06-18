@@ -20,6 +20,10 @@ export class RoleService {
         return this.roleModel.find(find).skip(offset).limit(limit).limit(1);
     }
 
+    async totalData(find?: Record<string, any>): Promise<number> {
+        return this.roleModel.countDocuments(find);
+    }
+
     async findOneById(
         roleId: string,
         populate?: boolean
@@ -64,6 +68,7 @@ export class RoleService {
         return create.save();
     }
 
+    // For migration
     async deleteMany(find?: Record<string, any>): Promise<boolean> {
         return new Promise((resolve, reject) => {
             this.roleModel

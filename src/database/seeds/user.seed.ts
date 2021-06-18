@@ -7,6 +7,8 @@ import { RoleService } from 'src/role/role.service';
 import { UserService } from 'src/user/user.service';
 import { Hash } from 'src/hash/hash.decorator';
 import { HashService } from 'src/hash/hash.service';
+import { RoleDocument } from 'src/role/role.interface';
+import { UserDocument } from 'src/user/user.interface';
 
 @Injectable()
 export class UserSeed {
@@ -23,28 +25,22 @@ export class UserSeed {
         autoExit: true
     })
     async create(): Promise<void> {
-        const role = await this.roleService.findAll(0, 1, {
-            name: 'admin'
-        });
+        const role: RoleDocument = await this.roleService.findOne();
 
-        if (!role || role.length === 0) {
-            this.logger.error('Go Insert User Before Insert Roles', {
+        if (!role) {
+            this.logger.error('Go Insert Roles Before Insert User', {
                 class: 'UserSeed',
                 function: 'create'
             });
-
             return;
         }
 
-        const check = await this.userService.findAll(0, 1, {
-            email: 'admin@mail.com'
-        });
-        if (check && check.length !== 0) {
+        const check: UserDocument = await this.userService.findOne();
+        if (check) {
             this.logger.error('Only for initial purpose', {
                 class: 'UserSeed',
                 function: 'create'
             });
-
             return;
         }
 
@@ -55,7 +51,7 @@ export class UserSeed {
                 email: 'admin@mail.com',
                 password: '123456',
                 mobileNumber: '08111111111',
-                role: role[0]._id
+                role: role._id
             });
 
             this.logger.info('Insert User Succeed', {
@@ -77,9 +73,7 @@ export class UserSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.userService.deleteMany({
-                email: 'admin@mail.com'
-            });
+            await this.userService.deleteMany();
 
             this.logger.info('Remove User Succeed', {
                 class: 'UserSeed',

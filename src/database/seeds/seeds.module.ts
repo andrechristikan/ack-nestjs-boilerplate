@@ -7,18 +7,10 @@ import { RoleSeed } from './role.seed';
 import { RoleModule } from 'src/role/role.module';
 import { UserSeed } from './user.seed';
 import { UserModule } from 'src/user/user.module';
-import { ProductSeed } from './product.seed';
-import { ProductModule } from 'src/product/product.module';
 
 @Module({
-    imports: [
-        CommandModule,
-        PermissionModule,
-        RoleModule,
-        UserModule,
-        ProductModule
-    ],
-    providers: [PermissionSeed, RoleSeed, UserSeed, ProductSeed],
+    imports: [CommandModule, PermissionModule, RoleModule, UserModule],
+    providers: [PermissionSeed, RoleSeed, UserSeed],
     exports: []
 })
 export class SeedsModule {}

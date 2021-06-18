@@ -22,6 +22,7 @@ import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
+import { PermissionEntity } from 'src/permission/permission.schema';
 @Controller('/auth')
 export class AuthController {
     constructor(
@@ -84,7 +85,9 @@ export class AuthController {
         }
 
         const { _id, email, firstName, lastName, role } = user;
-        const permissions = role.permissions.map((val) => val.name);
+        const permissions = role.permissions.map(
+            (val: Record<string, any>) => val.name
+        );
         const accessToken: string = await this.authService.createAccessToken({
             _id,
             email,

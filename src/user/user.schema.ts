@@ -1,7 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
 import { RoleEntity } from 'src/role/role.schema';
-import { UserSavedPlaces } from 'src/user/user.interface';
 
 @Schema()
 export class UserEntity {
@@ -44,11 +43,6 @@ export class UserEntity {
         ref: RoleEntity.name
     })
     role: Types.ObjectId;
-
-    @Prop({
-        required: false
-    })
-    savedPlaces?: UserSavedPlaces[];
 
     @Prop({
         required: true

@@ -8,7 +8,6 @@ import {
     IsArray
 } from 'class-validator';
 import { Types } from 'mongoose';
-import { UserSavedPlaces } from 'src/user/user.interface';
 
 export class UserCreateValidation {
     @IsEmail()
@@ -35,10 +34,7 @@ export class UserCreateValidation {
     readonly mobileNumber: string;
 
     @IsMongoId()
-    readonly roleId: Types.ObjectId;
-
-    @IsArray()
-    readonly savedPlaces: UserSavedPlaces[];
+    readonly role: Types.ObjectId;
 
     @IsString()
     @IsNotEmpty()
