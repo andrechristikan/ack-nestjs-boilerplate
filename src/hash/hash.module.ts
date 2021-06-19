@@ -1,10 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { HashService } from 'src/hash/hash.service';
 import { JwtModule } from '@nestjs/jwt';
-import {
-    AUTH_JWT_SECRET_KEY,
-    AUTH_JWT_EXPIRATION_TIME
-} from 'src/auth/auth.constant';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Global()
@@ -22,14 +18,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
             imports: [ConfigModule],
             useFactory: (configService: ConfigService) => {
                 return {
-                    secret:
-                        configService.get<string>('AUTH_JWT_SECRET_KEY') ||
-                        AUTH_JWT_SECRET_KEY,
+                    secret: configService.get<string>('auth.jwtSecretKey'),
                     signOptions: {
-                        expiresIn:
-                            configService.get<string>(
-                                'AUTH_JWT_EXPIRATION_TIME'
-                            ) || AUTH_JWT_EXPIRATION_TIME
+                        expiresIn: configService.get<string>(
+                            'auth.jwtExpirationTime'
+                        )
                     }
                 };
             }

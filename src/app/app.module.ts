@@ -18,6 +18,8 @@ import { MiddlewareModule } from 'src/middleware/middleware.module';
 import { EncryptionModule } from 'src/encryption/encryption.module';
 import { SeedsModule } from 'src/database/seeds/seeds.module';
 
+import Configs from 'src/config';
+
 @Module({
     controllers: [AppController],
     providers: [AppService],
@@ -25,8 +27,8 @@ import { SeedsModule } from 'src/database/seeds/seeds.module';
         // main module
         MiddlewareModule,
         ConfigModule.forRoot({
-            envFilePath: ['.env'],
-            ignoreEnvFile: false,
+            load: [Configs],
+            ignoreEnvFile: true,
             isGlobal: true,
             cache: true
         }),

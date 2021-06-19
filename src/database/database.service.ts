@@ -5,38 +5,28 @@ import {
 } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
 import { ConfigService } from '@nestjs/config';
-import { DATABASE_HOST, DATABASE_NAME } from 'src/database/database.constant';
-
 @Injectable()
 export class DatabaseService implements MongooseOptionsFactory {
     constructor(private readonly configService: ConfigService) {}
 
     createMongooseOptions(): MongooseModuleOptions {
         // Env Variable
-        const baseUrl = `${
-            this.configService.get<string>('DATABASE_HOST') || DATABASE_HOST
-        }`;
-        const databaseName =
-            this.configService.get<string>('DATABASE_NAME') || DATABASE_NAME;
+        const baseUrl = `${this.configService.get<string>('database.host')}`;
+        const databaseName = this.configService.get<string>('database.name');
 
         let uri: string = `mongodb://`;
         if (
-            this.configService.get<string>('DATABASE_USER') &&
-            this.configService.get<string>('DATABASE_PASSWORD')
+            this.configService.get<string>('database.user') &&
+            this.configService.get<string>('database.password')
         ) {
             uri = `${uri}${this.configService.get<string>(
-                'DATABASE_USER'
-            )}:${this.configService.get<string>('DATABASE_PASSWORD')}@`;
+                'database.user'
+            )}:${this.configService.get<string>('database.password')}@`;
         }
 
         uri = `${uri}${baseUrl}/${databaseName}`;
 
-        mongoose.set(
-            'debug',
-            this.configService.get<string>('APP_DEBUG') === 'true'
-                ? true
-                : false
-        );
+        mongoose.set('debug', this.configService.get<string>('app.debug'));
         return {
             uri,
             useNewUrlParser: true,

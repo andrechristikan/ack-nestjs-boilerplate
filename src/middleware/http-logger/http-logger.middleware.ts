@@ -5,10 +5,7 @@ import { createStream } from 'rotating-file-stream';
 import moment from 'moment';
 import {
     LOGGER_HTTP_FORMAT,
-    LOGGER_HTTP_SIZE,
-    LOGGER_HTTP_MAX_SIZE,
-    LOGGER_HTTP_NAME,
-    LOGGER_HTTP
+    LOGGER_HTTP_NAME
 } from 'src/middleware/http-logger/http-logger.constant';
 import {
     ICustomResponse,
@@ -43,8 +40,12 @@ export class HttpLoggerMiddleware implements NestMiddleware {
         const HttpLoggerOptions: IHttpLoggerConfigOptions = {
             stream: createStream(`${date}.log`, {
                 path: `./logs/${LOGGER_HTTP_NAME}/`,
-                size: LOGGER_HTTP_SIZE,
-                maxSize: LOGGER_HTTP_MAX_SIZE,
+                maxSize: this.configService.get<string>(
+                    'app.logger.http.maxSize'
+                ),
+                maxFiles: this.configService.get<number>(
+                    'app.logger.http.maxFiles'
+                ),
                 compress: true,
                 interval: '1d'
             })
@@ -57,13 +58,7 @@ export class HttpLoggerMiddleware implements NestMiddleware {
     }
 
     use(req: Request, res: Response, next: NextFunction): void {
-        // Env Variable
-        const loggerHttpEnv: boolean =
-            this.configService.get<string>('LOGGER_HTTP') === 'true'
-                ? true
-                : false;
-
-        if (loggerHttpEnv) {
+        if (!this.configService.get<boolean>('app.logger.http.silent')) {
             const config: IHttpLoggerConfig = this.httpLogger();
             this.customToken();
             morgan(config.LOGGER_HTTP_FORMAT, config.HttpLoggerOptions)(

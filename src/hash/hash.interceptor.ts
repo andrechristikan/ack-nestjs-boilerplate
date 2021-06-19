@@ -8,10 +8,6 @@ import { ConfigService } from '@nestjs/config';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HashService } from 'src/hash/hash.service';
-import {
-    HASH_ENCRYPTION_IV,
-    HASH_ENCRYPTION_KEY
-} from 'src/hash/hash.constant';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Request } from 'express';
 import rawBody from 'raw-body';
@@ -29,12 +25,8 @@ export class HashEncryptionInterceptor
         next: CallHandler
     ): Promise<Observable<Promise<any> | string>> {
         // Env Variable
-        const iv: string =
-            this.configService.get<string>('HASH_ENCRYPTION_IV') ||
-            HASH_ENCRYPTION_IV;
-        const key: string =
-            this.configService.get<string>('HASH_ENCRYPTION_KEY') ||
-            HASH_ENCRYPTION_KEY;
+        const iv: string = this.configService.get<string>('hash.encryptionKey');
+        const key: string = this.configService.get<string>('hash.encryptionIv');
 
         const ctx: HttpArgumentsHost = context.switchToHttp();
         const request: Request = ctx.getRequest<Request>();

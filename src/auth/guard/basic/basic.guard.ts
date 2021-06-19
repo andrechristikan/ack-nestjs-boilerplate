@@ -4,10 +4,6 @@ import {
     ExecutionContext,
     UnauthorizedException
 } from '@nestjs/common';
-import {
-    AUTH_BASIC_TOKEN_CLIENT_ID,
-    AUTH_BASIC_TOKEN_CLIENT_SECRET
-} from 'src/auth/auth.constant';
 import { Request } from 'express';
 import { Response } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
@@ -30,14 +26,6 @@ export class BasicGuard implements CanActivate {
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        // Env Variable
-        const basicClientId: string =
-            this.configService.get<string>('AUTH_BASIC_TOKEN_CLIENT_ID') ||
-            AUTH_BASIC_TOKEN_CLIENT_ID;
-        const basicClientSecret: string =
-            this.configService.get<string>('AUTH_BASIC_TOKEN_CLIENT_SECRET') ||
-            AUTH_BASIC_TOKEN_CLIENT_SECRET;
-
         const request: Request = context.switchToHttp().getRequest();
 
         const authorization: string = request.headers.authorization;
@@ -57,8 +45,8 @@ export class BasicGuard implements CanActivate {
 
         const clientBasicToken: string = authorization.replace('Basic ', '');
         const ourBasicToken: string = await this.authService.createBasicToken(
-            basicClientId,
-            basicClientSecret
+            this.configService.get<string>('auth.basicTokenClientId'),
+            this.configService.get<string>('auth.basicTokenClientSecret')
         );
 
         const validateBasicToken: boolean = await this.authService.validateBasicToken(

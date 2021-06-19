@@ -1,11 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import winston from 'winston';
-import {
-    LOGGER_MAX_SIZE,
-    LOGGER_MAX_FILES,
-    LOGGER_NAME
-} from 'src/logger/logger.constant';
+import { LOGGER_NAME } from 'src/logger/logger.constant';
 import { ILoggerOptions } from 'src/logger/logger.interface';
 import { ConfigService } from '@nestjs/config';
 import moment from 'moment';
@@ -15,11 +11,15 @@ export class LoggerService {
     constructor(private configService: ConfigService) {}
 
     createLogger(): ILoggerOptions {
-        // Env Variable
-        const loggerEnv: boolean =
-            this.configService.get<string>('LOGGER_SYSTEM') === 'true'
-                ? true
-                : false;
+        const loggerEnv: boolean = !this.configService.get<boolean>(
+            'app.logger.system.silent'
+        );
+        const maxSize = this.configService.get<string>(
+            'app.logger.system.maxSize'
+        );
+        const maxFiles = this.configService.get<string>(
+            'app.logger.system.maxFiles'
+        );
 
         const randomString: string =
             Math.random().toString(36).substring(2, 15) +
@@ -31,8 +31,8 @@ export class LoggerService {
             dirname: `logs/${LOGGER_NAME}/default`,
             datePattern: 'YYYY-MM-DD',
             zippedArchive: true,
-            maxSize: LOGGER_MAX_SIZE,
-            maxFiles: LOGGER_MAX_FILES,
+            maxSize: maxSize,
+            maxFiles: maxFiles,
             level: 'info'
         });
 
@@ -41,8 +41,8 @@ export class LoggerService {
             dirname: `logs/${LOGGER_NAME}/error`,
             datePattern: 'YYYY-MM-DD',
             zippedArchive: true,
-            maxSize: LOGGER_MAX_SIZE,
-            maxFiles: LOGGER_MAX_FILES,
+            maxSize: maxSize,
+            maxFiles: maxFiles,
             level: 'error'
         });
 
@@ -57,6 +57,7 @@ export class LoggerService {
                 silent: !loggerEnv || false
             })
         );
+
         const loggerOptions: ILoggerOptions = {
             defaultMeta: {
                 requestId: `${timestamp}${randomString}`

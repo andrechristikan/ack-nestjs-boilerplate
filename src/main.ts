@@ -2,7 +2,6 @@ import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
-import { DATABASE_HOST, DATABASE_NAME } from './database/database.constant';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
@@ -10,12 +9,8 @@ async function bootstrap() {
         bodyParser: true
     });
     const configService = app.get(ConfigService);
-    const host: string = configService.get<string>('APP_HOST') || 'localhost';
-    const port: number = configService.get<number>('APP_PORT') || 3000;
-    const databaseHost: string =
-        configService.get<string>('DATABASE_HOST') || DATABASE_HOST;
-    const databaseName: string =
-        configService.get<string>('DATABASE_NAME') || DATABASE_NAME;
+    const host: string = configService.get<string>('app.http.host');
+    const port: number = configService.get<number>('app.http.port');
 
     const logger = new Logger();
 
@@ -24,7 +19,9 @@ async function bootstrap() {
 
     await app.listen(port, host, () => {
         logger.log(
-            `Database running on ${databaseHost}/${databaseName}`,
+            `Database running on ${configService.get<string>(
+                'database.host'
+            )}/${configService.get<string>('database.name')}`,
             'NestApplication'
         );
         logger.log(

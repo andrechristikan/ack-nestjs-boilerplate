@@ -29,7 +29,10 @@ import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
 import { PaginationService } from 'src/pagination/pagination.service';
 import { Pagination } from 'src/pagination/pagination.decorator';
-import { PAGE, PER_PAGE } from 'src/pagination/pagination.constant';
+import {
+    DEFAULT_PAGE,
+    DEFAULT_PER_PAGE
+} from 'src/pagination/pagination.constant';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
 import { UserDocument, UserDocumentFull } from './user.interface';
@@ -52,8 +55,9 @@ export class UserController {
     @ResponseJson()
     @Get('/')
     async findAll(
-        @Query('page', new DefaultValuePipe(PAGE), ParseIntPipe) page: number,
-        @Query('perPage', new DefaultValuePipe(PER_PAGE), ParseIntPipe)
+        @Query('page', new DefaultValuePipe(DEFAULT_PAGE), ParseIntPipe)
+        page: number,
+        @Query('perPage', new DefaultValuePipe(DEFAULT_PER_PAGE), ParseIntPipe)
         perPage: number
     ): Promise<IResponsePaging> {
         const skip = await this.paginationService.skip(page, perPage);

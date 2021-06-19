@@ -1,10 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { HASH_PASSWORD_SALT_LENGTH } from 'src/hash/hash.constant';
 import { ConfigService } from '@nestjs/config';
 import { hash, compare, genSalt } from 'bcrypt';
 import { isString } from 'class-validator';
 import { JwtService } from '@nestjs/jwt';
-import { AUTH_JWT_SECRET_KEY } from 'src/auth/auth.constant';
 import { createCipheriv, createDecipheriv, scrypt } from 'crypto';
 import { promisify } from 'util';
 
@@ -21,12 +19,9 @@ export class HashService {
     }
 
     async randomSalt(): Promise<string> {
-        // Env Variable
-        const defaultPasswordSaltLength: number =
-            this.configService.get<number>('HASH_PASSWORD_SALT_LENGTH') ||
-            HASH_PASSWORD_SALT_LENGTH;
-
-        return genSalt(defaultPasswordSaltLength);
+        return genSalt(
+            this.configService.get<number>('hash.passwordSaltLength')
+        );
     }
 
     async bcryptComparePassword(
@@ -52,13 +47,8 @@ export class HashService {
     }
 
     async jwtVerify(token: string): Promise<boolean> {
-        // Env
-        const authJwtSecretKey =
-            this.configService.get<string>('AUTH_JWT_SECRET_KEY') ||
-            AUTH_JWT_SECRET_KEY;
-
         const payload: Record<string, any> = this.jwtService.verify(token, {
-            secret: authJwtSecretKey
+            secret: this.configService.get<string>('auth.jwtSecretKey')
         });
 
         return payload ? true : false;
@@ -68,12 +58,8 @@ export class HashService {
         token: string,
         ignoreExpiration?: boolean
     ): Promise<Record<string, any>> {
-        // Env
-        const authJwtSecretKey =
-            this.configService.get<string>('AUTH_JWT_SECRET_KEY') ||
-            AUTH_JWT_SECRET_KEY;
         return this.jwtService.verify(token, {
-            secret: authJwtSecretKey,
+            secret: this.configService.get<string>('auth.jwtSecretKey'),
             ignoreExpiration
         });
     }

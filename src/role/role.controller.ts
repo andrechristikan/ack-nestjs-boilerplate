@@ -17,7 +17,10 @@ import { RoleService } from './role.service';
 import { PaginationService } from 'src/pagination/pagination.service';
 import { Pagination } from 'src/pagination/pagination.decorator';
 import { RoleDocument } from './role.interface';
-import { PAGE, PER_PAGE } from 'src/pagination/pagination.constant';
+import {
+    DEFAULT_PAGE,
+    DEFAULT_PER_PAGE
+} from 'src/pagination/pagination.constant';
 
 @Controller('/role')
 export class RoleController {
@@ -33,8 +36,9 @@ export class RoleController {
     @ResponseJson()
     @Get('/')
     async findAll(
-        @Query('page', new DefaultValuePipe(PAGE), ParseIntPipe) page: number,
-        @Query('perPage', new DefaultValuePipe(PER_PAGE), ParseIntPipe)
+        @Query('page', new DefaultValuePipe(DEFAULT_PAGE), ParseIntPipe)
+        page: number,
+        @Query('perPage', new DefaultValuePipe(DEFAULT_PER_PAGE), ParseIntPipe)
         perPage: number
     ): Promise<IResponse> {
         const skip = await this.paginationService.skip(page, perPage);

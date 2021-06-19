@@ -14,10 +14,9 @@
 ## About The Project
 
 NestJs Boilerplate with Mongoose and MongoDB as Database. <br>
-This project will follow [nodejs-best-practice](nodejs-best-practice) as benchmark and NestJs Habit.
-Folder structure will consume components structure. 
-All setting will in *.env* and *[.env.example](.env-example)* will in Root DIR.
-
+This project will follow [nodejs-best-practice](nodejs-best-practice) as benchmark and NestJs Habit. <br>
+Boilerplate provide example about JWT implementation, basic CRUD with mongoose (populate indeed), Role/Permission implementation, etc.<br>
+*Database migration for initial purpose.*
 <!-- GETTING STARTED -->
 ## Getting Started
 

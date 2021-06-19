@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import languages, { APP_LANGUAGE } from 'src/message/message.constant';
+import languages from 'src/message/message.constant';
 import { IErrors } from 'src/message/message.interface';
 
 @Injectable()
@@ -10,13 +10,9 @@ export class MessageService {
     constructor(private readonly configService: ConfigService) {}
 
     get(key: string): string {
-        // Env Variable
-        const defaultMessage: string =
-            this.configService.get<string>('APP_LANGUAGE') || APP_LANGUAGE;
-
         const keys: string[] = key.split('.');
         let selectedMessage: Record<string, any> | string = this.languages[
-            defaultMessage
+            this.configService.get<string>('app.language')
         ];
 
         for (const i of keys) {
