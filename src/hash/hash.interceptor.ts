@@ -9,15 +9,15 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HashService } from 'src/hash/hash.service';
 import {
-    ENCRYPTION_IV,
-    ENCRYPTION_KEY
-} from 'src/encryption/encryption.constant';
+    HASH_ENCRYPTION_IV,
+    HASH_ENCRYPTION_KEY
+} from 'src/hash/hash.constant';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Request } from 'express';
 import rawBody from 'raw-body';
 
 @Injectable()
-export class EncryptionInterceptor
+export class HashEncryptionInterceptor
     implements NestInterceptor<Promise<any> | string> {
     constructor(
         private readonly hashService: HashService,
@@ -30,9 +30,11 @@ export class EncryptionInterceptor
     ): Promise<Observable<Promise<any> | string>> {
         // Env Variable
         const iv: string =
-            this.configService.get('app.encryption.iv') || ENCRYPTION_IV;
+            this.configService.get<string>('HASH_ENCRYPTION_IV') ||
+            HASH_ENCRYPTION_IV;
         const key: string =
-            this.configService.get('app.encryption.key') || ENCRYPTION_KEY;
+            this.configService.get<string>('HASH_ENCRYPTION_KEY') ||
+            HASH_ENCRYPTION_KEY;
 
         const ctx: HttpArgumentsHost = context.switchToHttp();
         const request: Request = ctx.getRequest<Request>();

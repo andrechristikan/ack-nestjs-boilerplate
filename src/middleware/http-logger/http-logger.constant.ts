@@ -3,4 +3,4 @@ export const LOGGER_HTTP_FORMAT =
 export const LOGGER_HTTP_SIZE = '10M';
 export const LOGGER_HTTP_MAX_SIZE = '20M';
 export const LOGGER_HTTP_NAME = 'http';
-export const LOGGER_HTTP_ENV = false;
+export const LOGGER_HTTP = false;

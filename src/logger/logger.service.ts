@@ -4,8 +4,7 @@ import winston from 'winston';
 import {
     LOGGER_MAX_SIZE,
     LOGGER_MAX_FILES,
-    LOGGER_NAME,
-    LOGGER_ENV
+    LOGGER_NAME
 } from 'src/logger/logger.constant';
 import { ILoggerOptions } from 'src/logger/logger.interface';
 import { ConfigService } from '@nestjs/config';
@@ -18,7 +17,9 @@ export class LoggerService {
     createLogger(): ILoggerOptions {
         // Env Variable
         const loggerEnv: boolean =
-            this.configService.get('app.logger.system') || LOGGER_ENV;
+            this.configService.get<string>('LOGGER_SYSTEM') === 'true'
+                ? true
+                : false;
 
         const randomString: string =
             Math.random().toString(36).substring(2, 15) +

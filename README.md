@@ -13,9 +13,10 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-Effortless. Lazy. Reuseable. <br>
-I want to create a Boilerplate NestJs that base on components.
-This package build in NestJs, Mongoose, and MongoDB. 
+NestJs Boilerplate with Mongoose and MongoDB as Database. <br>
+This project will follow [nodejs-best-practice](nodejs-best-practice) as benchmark and NestJs Habit.
+Folder structure will consume components structure. 
+All setting will in *.env* and *[.env.example](.env-example)* will in Root DIR.
 
 <!-- GETTING STARTED -->
 ## Getting Started
@@ -37,9 +38,9 @@ Futures :
 [x] Example For User and Login Component
 [x] Role Management
 [x] Database Migration with nestjs-command
-[x] E2E Testing
-[ ] Unit Testing
-[ ] Support Multi-Language For Response Message
+[~] E2E Testing
+[~] Unit Testing
+[x] Support Different Language For Response Message
 [x] Support Class Transformer Package With Decorator
 [~] Documentation
 ```
@@ -137,7 +138,7 @@ Andre Christi Kan
 * Package Manager
   * [Yarn Documentation](https://yarnpkg.com/getting-started)
 * References
-  * [NodeJs Best Practice Reference](https://github.com/goldbergyoni/nodebestpractices)
+  * [NodeJs Best Practice Reference](nodejs-best-practice)
   * [NestJs Middleware Reference](https://github.com/wbhob/nest-middlewares)
 * Other
   * [Class Validation Documentation](https://github.com/typestack/class-validator#readme) 
@@ -152,3 +153,4 @@ Andre Christi Kan
 [author-email]: mailto:andrechristikan@gmail.com
 [author-linkedin]: https://id.linkedin.com/in/andrechristikan
 [author-instagram]: https://www.instagram.com/___ac.k/
+[nodejs-best-practice]: https://github.com/goldbergyoni/nodebestpractices

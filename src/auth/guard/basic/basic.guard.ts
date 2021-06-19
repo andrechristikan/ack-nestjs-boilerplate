@@ -5,8 +5,8 @@ import {
     UnauthorizedException
 } from '@nestjs/common';
 import {
-    AUTH_BASIC_CLIENT_ID,
-    AUTH_BASIC_CLIENT_SECRET
+    AUTH_BASIC_TOKEN_CLIENT_ID,
+    AUTH_BASIC_TOKEN_CLIENT_SECRET
 } from 'src/auth/auth.constant';
 import { Request } from 'express';
 import { Response } from 'src/response/response.decorator';
@@ -32,11 +32,11 @@ export class BasicGuard implements CanActivate {
     async canActivate(context: ExecutionContext): Promise<boolean> {
         // Env Variable
         const basicClientId: string =
-            this.configService.get('app.auth.basicClientId') ||
-            AUTH_BASIC_CLIENT_ID;
+            this.configService.get<string>('AUTH_BASIC_TOKEN_CLIENT_ID') ||
+            AUTH_BASIC_TOKEN_CLIENT_ID;
         const basicClientSecret: string =
-            this.configService.get('app.auth.basicClientSecret') ||
-            AUTH_BASIC_CLIENT_SECRET;
+            this.configService.get<string>('AUTH_BASIC_TOKEN_CLIENT_SECRET') ||
+            AUTH_BASIC_TOKEN_CLIENT_SECRET;
 
         const request: Request = context.switchToHttp().getRequest();
 

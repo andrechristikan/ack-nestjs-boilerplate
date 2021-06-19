@@ -14,7 +14,7 @@ import { Response, ResponseJson } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
 import { ConfigService } from '@nestjs/config';
 import {
-    AUTH_DEFAULT_USERNAME_FIELD,
+    AUTH_DEFAULT_USERNAME,
     AUTH_JWT_EXPIRATION_TIME
 } from 'src/auth/auth.constant';
 import { UserDocumentFull } from 'src/user/user.interface';
@@ -40,11 +40,11 @@ export class AuthController {
     async login(@Body() data: ILogin): Promise<IResponse> {
         // Env Variable
         const expiredIn: number | string =
-            this.configService.get('auth.jwtExpirationTime') ||
+            this.configService.get<string>('AUTH_JWT_SECRET_TIME') ||
             AUTH_JWT_EXPIRATION_TIME;
         const defaultUsernameField: string | string =
-            this.configService.get('auth.defaultUsernameField') ||
-            AUTH_DEFAULT_USERNAME_FIELD;
+            this.configService.get<string>('AUTH_DEFAULT_USERNAME') ||
+            AUTH_DEFAULT_USERNAME;
 
         const user: UserDocumentFull = await this.userService.findOne<UserDocumentFull>(
             {

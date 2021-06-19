@@ -11,8 +11,8 @@ export class MessageService {
 
     get(key: string): string {
         // Env Variable
-        const defaultMessage =
-            this.configService.get('app.language') || APP_LANGUAGE;
+        const defaultMessage: string =
+            this.configService.get<string>('APP_LANGUAGE') || APP_LANGUAGE;
 
         const keys: string[] = key.split('.');
         let selectedMessage: Record<string, any> | string = this.languages[

@@ -8,7 +8,7 @@ import {
     LOGGER_HTTP_SIZE,
     LOGGER_HTTP_MAX_SIZE,
     LOGGER_HTTP_NAME,
-    LOGGER_HTTP_ENV
+    LOGGER_HTTP
 } from 'src/middleware/http-logger/http-logger.constant';
 import {
     ICustomResponse,
@@ -59,7 +59,9 @@ export class HttpLoggerMiddleware implements NestMiddleware {
     use(req: Request, res: Response, next: NextFunction): void {
         // Env Variable
         const loggerHttpEnv: boolean =
-            this.configService.get('app.logger.http') || LOGGER_HTTP_ENV;
+            this.configService.get<string>('LOGGER_HTTP') === 'true'
+                ? true
+                : false;
 
         if (loggerHttpEnv) {
             const config: IHttpLoggerConfig = this.httpLogger();

@@ -12,7 +12,6 @@ import { LoggerService } from 'src/logger/logger.service';
 import { LoggerModule } from 'src/logger/logger.module';
 import { UserModule } from 'src/user/user.module';
 import { AuthModule } from 'src/auth/auth.module';
-import Configuration from 'src/config/configuration';
 import { HashModule } from 'src/hash/hash.module';
 import { PaginationModule } from 'src/pagination/pagination.module';
 import { MiddlewareModule } from 'src/middleware/middleware.module';
@@ -26,8 +25,8 @@ import { SeedsModule } from 'src/database/seeds/seeds.module';
         // main module
         MiddlewareModule,
         ConfigModule.forRoot({
-            load: [Configuration],
-            ignoreEnvFile: true,
+            envFilePath: ['.env'],
+            ignoreEnvFile: false,
             isGlobal: true,
             cache: true
         }),

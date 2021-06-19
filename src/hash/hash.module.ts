@@ -23,12 +23,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
             useFactory: (configService: ConfigService) => {
                 return {
                     secret:
-                        configService.get('app.auth.jwtSecretKey') ||
+                        configService.get<string>('AUTH_JWT_SECRET_KEY') ||
                         AUTH_JWT_SECRET_KEY,
                     signOptions: {
                         expiresIn:
-                            configService.get('app.auth.jwtExpiration') ||
-                            AUTH_JWT_EXPIRATION_TIME
+                            configService.get<string>(
+                                'AUTH_JWT_EXPIRATION_TIME'
+                            ) || AUTH_JWT_EXPIRATION_TIME
                     }
                 };
             }

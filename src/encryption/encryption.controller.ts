@@ -10,7 +10,7 @@ import { ResponseService } from 'src/response/response.service';
 import { Response } from 'src/response/response.decorator';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
-import { Encryption } from './encryption.decorator';
+import { Encryption } from '../hash/hash.decorator';
 import { IResponse } from 'src/response/response.interface';
 
 @Controller('/encryption')
