@@ -22,4 +22,4 @@ export enum PermissionList {
     PermissionDelete = 'PermissionCreate'
 }
 
-export const PERMISSION_KEY = 'permissions';
+export const PERMISSION_META_KEY = 'permissionsMetaKey';

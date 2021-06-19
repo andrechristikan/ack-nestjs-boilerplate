@@ -10,7 +10,7 @@ import { AuthService } from 'src/auth/auth.service';
 import { ILogin } from 'src/auth/auth.interface';
 import { UserService } from 'src/user/user.service';
 import { ResponseService } from 'src/response/response.service';
-import { Response, ResponseStatusCode } from 'src/response/response.decorator';
+import { Response, ResponseJson } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -35,7 +35,7 @@ export class AuthController {
     ) {}
 
     @HttpCode(HttpStatus.OK)
-    @ResponseStatusCode()
+    @ResponseJson()
     @Post('/login')
     async login(@Body() data: ILogin): Promise<IResponse> {
         // Env Variable

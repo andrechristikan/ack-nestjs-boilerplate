@@ -7,6 +7,7 @@ import {
 import { IApplyDecorator } from 'src/auth/auth.interface';
 import { ResponseFilter } from './response.filter';
 import { ResponseInterceptor } from './response.interceptor';
+import { ResponseDataTransformerInterceptor } from './response.transformer';
 
 export function Response(): (
     target: Record<string, any>,
@@ -16,9 +17,15 @@ export function Response(): (
     return Inject(`ResponseService`);
 }
 
-export function ResponseStatusCode(): IApplyDecorator {
+export function ResponseJson(): IApplyDecorator {
     return applyDecorators(
         UseInterceptors(ResponseInterceptor),
         UseFilters(ResponseFilter)
+    );
+}
+
+export function ResponseDataTransformer(transformer: any): IApplyDecorator {
+    return applyDecorators(
+        UseInterceptors(ResponseDataTransformerInterceptor(transformer))
     );
 }

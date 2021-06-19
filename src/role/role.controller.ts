@@ -8,7 +8,7 @@ import {
 import { ResponseService } from 'src/response/response.service';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
-import { Response, ResponseStatusCode } from 'src/response/response.decorator';
+import { Response, ResponseJson } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
 import { AuthJwtGuard } from 'src/auth/auth.decorator';
 import { PermissionList } from 'src/permission/permission.constant';
@@ -30,7 +30,7 @@ export class RoleController {
 
     @AuthJwtGuard()
     @Permissions(PermissionList.RoleRead)
-    @ResponseStatusCode()
+    @ResponseJson()
     @Get('/')
     async findAll(
         @Query('page', new DefaultValuePipe(PAGE), ParseIntPipe) page: number,
