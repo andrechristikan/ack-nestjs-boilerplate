@@ -13,7 +13,11 @@ import {
     ParseIntPipe
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
-import { Response, ResponseStatusCode } from 'src/response/response.decorator';
+import {
+    Response,
+    ResponseDataTransformer,
+    ResponseJson
+} from 'src/response/response.decorator';
 import { ResponseService } from 'src/response/response.service';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
 import { RequestValidationPipe } from 'src/pipe/request-validation.pipe';
@@ -31,6 +35,7 @@ import { Logger } from 'src/logger/logger.decorator';
 import { UserDocument, UserDocumentFull } from './user.interface';
 import { PermissionList } from 'src/permission/permission.constant';
 import { Permissions } from 'src/permission/permission.decorator';
+import { UserTransformer } from './transformer/user.transformer';
 
 @Controller('/user')
 export class UserController {
@@ -44,7 +49,7 @@ export class UserController {
 
     @AuthJwtGuard()
     @Permissions(PermissionList.UserRead)
-    @ResponseStatusCode()
+    @ResponseJson()
     @Get('/')
     async findAll(
         @Query('page', new DefaultValuePipe(PAGE), ParseIntPipe) page: number,
@@ -73,8 +78,9 @@ export class UserController {
     }
 
     @AuthJwtGuard()
-    @ResponseStatusCode()
+    @ResponseJson()
     @Permissions(PermissionList.ProfileRead)
+    @ResponseDataTransformer(UserTransformer)
     @Get('/profile')
     async profile(@User('_id') userId: string): Promise<IResponse> {
         const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
@@ -102,7 +108,7 @@ export class UserController {
 
     @AuthJwtGuard()
     @Permissions(PermissionList.UserRead)
-    @ResponseStatusCode()
+    @ResponseJson()
     @Get('/:userId')
     async findOneById(@Param('userId') userId: string): Promise<IResponse> {
         const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
@@ -130,7 +136,7 @@ export class UserController {
 
     @AuthJwtGuard()
     @Permissions(PermissionList.UserRead, PermissionList.UserCreate)
-    @ResponseStatusCode()
+    @ResponseJson()
     @Post('/create')
     async create(
         @Body(RequestValidationPipe(UserCreateValidation))
@@ -180,7 +186,7 @@ export class UserController {
 
     @AuthJwtGuard()
     @Permissions(PermissionList.UserRead, PermissionList.UserDelete)
-    @ResponseStatusCode()
+    @ResponseJson()
     @Delete('/delete/:userId')
     async delete(@Param('userId') userId: string): Promise<IResponse> {
         const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
@@ -208,7 +214,7 @@ export class UserController {
 
     @AuthJwtGuard()
     @Permissions(PermissionList.UserRead, PermissionList.UserUpdate)
-    @ResponseStatusCode()
+    @ResponseJson()
     @Put('/update/:userId')
     async update(
         @Param('userId') userId: string,

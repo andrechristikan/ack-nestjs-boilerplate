@@ -9,7 +9,7 @@ import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { Response } from 'src/response/response.decorator';
 import { ResponseService } from 'src/response/response.service';
-import { PermissionList, PERMISSION_KEY } from '../permission.constant';
+import { PermissionList, PERMISSION_META_KEY } from '../permission.constant';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -20,10 +20,9 @@ export class PermissionGuard implements CanActivate {
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const requiredPermission: PermissionList[] = this.reflector.getAllAndOverride<
+        const requiredPermission: PermissionList[] = this.reflector.get<
             PermissionList[]
-        >(PERMISSION_KEY, [context.getHandler(), context.getClass()]);
-
+        >(PERMISSION_META_KEY, context.getClass());
         if (!requiredPermission) {
             return true;
         }

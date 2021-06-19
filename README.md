@@ -40,7 +40,7 @@ Futures :
 [x] E2E Testing
 [ ] Unit Testing
 [ ] Support Multi-Language For Response Message
-[ ] Support Class Transformer Package With Decorator
+[x] Support Class Transformer Package With Decorator
 [~] Documentation
 ```
 
