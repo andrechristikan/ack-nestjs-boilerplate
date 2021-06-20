@@ -1,13 +1,44 @@
-version: "3.6"
+version: "3.9"
 services:
-  nest:
+  ack:
     build:
       context: .
       dockerfile: dockerfile
     container_name: ack
+    depends_on:
+      - mongodb
     environment:
-      - NODE_ENV=production
+      NODE_ENV: production
     volumes:
-      - config.yml:/app/config.yml
+      - ./.env:/app/.env
+      - ./src/:/app/src/
+      - ./test/:/app/test/
+      - ./e2e/:/app/e2e/
     ports:
       - 3000:3000
+    networks:
+      - app-network
+
+  mongodb:
+    image: mongo:latest
+    restart: unless-stopped
+    container_name: mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: 123456
+      MONGO_INITDB_DATABASE: ack
+    ports:
+      - 27017:27017
+    volumes:
+      - database-data:/data/db
+      - ./initdb/:/docker-entrypoint-initdb.d/
+    networks:
+      - app-network
+      
+networks:
+  app-network:
+      driver: bridge
+
+volumes:
+    database-data:
+        driver: local

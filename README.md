@@ -77,45 +77,50 @@ Documentation
 #### Run Project
 Assume we have already install all prerequisites.
 1. We need to install all dependencies.
-```
-yarn
-```
-or with npm
-```
-npm i
-```
+
+	```
+	yarn
+	```
+	or with npm
+	```
+	npm i
+	```
 
 2. Create `.env` file base on `.env.example`. Simply, *rename .env.example to .env*. And don't forget to change setting with your.
 
-3. Run database migration for initial purpose
-```
-yarn migrate
-``` 
-or with npm
-```
-npm run migrate
-```
-if we need to rollback, just run `yarn migrate:rollback` or `npm run migrate:rollback`. <br>
-*becareful with rollback function, this will remove all data from collection, no matter what*
+3. To run this project, you can choose what you want. 
+	- Run project with yarn
 
-4. Run project with yarn
-```
-yarn start
-```
-or with npm
-```
-npm run start
-```
-If you want to watch all changes, just run `yarn start:dev` or `npm run start:dev`.
+		```
+		yarn start
+		```
+		or with npm
+		```
+		npm run start
+		```
+		If you want to watch all changes, just run `yarn start:dev` or `npm run start:dev`.
+
+	- Run with Docker.
+
+		Why we should to use docker container? Because Docker containers encapsulate everything an application needs to run (and only those things), they allow applications to be shuttled easily between environments. Its will help us to solve application dependency between environments. <br>
+		To Run `docker-compose up`, and to shutdown run `docker-compose down`.
+
+
+4. Run database migration for initial purpose
+
+	```
+	yarn migrate
+	``` 
+	or with npm
+	```
+	npm run migrate
+	```
+	if we need to rollback, just run `yarn migrate:rollback` or `npm run migrate:rollback`. <br>
+	*becareful with rollback function, this will remove all data from collection, no matter what*
 
 5. After running, we need to test and make sure that project is run as well or not. This project will provide 2 test *unit testing* and *e2e testing*. <br>
 For unit testing we need to run `yarn test` or `npm run test` <br>
 For e2e testing we need to run `yarn test:e2e` or `npm run test:e2e`
-
-6. __*--OPTIONAL--*__<br> 
-Run with Docker. <br>
-Why we should to use docker container? Because Docker containers encapsulate everything an application needs to run (and only those things), they allow applications to be shuttled easily between environments. Its will help us to solve application dependency between environments. <br>
-To Run `docker-compose up`, and to shutdown run `docker-compose down`.
 
 #### Endpoints
 All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [Follow this step for import into Postman](https://learning.postman.com/docs/getting-started/importing-and-exporting-data/)
@@ -123,45 +128,45 @@ All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [F
 #### Folder Structure
 
 ```
-	nestjs-boilerplat-mongoose
-	├── .env.example
-	├── .eslintignore
-	├── .eslintrc
-	├── .gitignore
-	├── .prettierrc
-	├── .cspell.json
-	├── docker-compose.yml 
-	├── dockerfile 
-	├── endpoints.json 
-	├── LICENSE.md
-	├── nest-cli.json
-	├── nodemon.json
-	├── package.json
-	├── README.md
-	├── tsconfig.build.json
-	├── tsconfig.json
-	├── yarn.lock
-	├── test/
-	├── e2e/
-	└── src
-		├── app/
-		├── auth/
-		├── config/
-		├── database/
-		├── encryption/
-		├── hash/
-		├── logger/
-		├── message/
-		├── message/
-		├── middleware/
-		├── pagination/
-		├── permission/
-		├── pipe/
-		├── response/
-		├── role/
-		├── user/
-		└── cli.ts
-		└── main.ts
+nestjs-boilerplat-mongoose
+├── .env.example
+├── .eslintignore
+├── .eslintrc
+├── .gitignore
+├── .prettierrc
+├── .cspell.json
+├── docker-compose.yml 
+├── dockerfile 
+├── endpoints.json 
+├── LICENSE.md
+├── nest-cli.json
+├── nodemon.json
+├── package.json
+├── README.md
+├── tsconfig.build.json
+├── tsconfig.json
+├── yarn.lock
+├── test/
+├── e2e/
+└── src
+	├── app/
+	├── auth/
+	├── config/
+	├── database/
+	├── encryption/
+	├── hash/
+	├── logger/
+	├── message/
+	├── message/
+	├── middleware/
+	├── pagination/
+	├── permission/
+	├── pipe/
+	├── response/
+	├── role/
+	├── user/
+	└── cli.ts
+	└── main.ts
 		 
 ```
 

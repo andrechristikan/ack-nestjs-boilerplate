@@ -5,3 +5,4 @@ coverage/*
 e2e-coverage/*
 node_modules/*
 logs/*
+initdb/

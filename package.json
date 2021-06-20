@@ -1,7 +1,7 @@
 {
-  "name": "ac.k",
+  "name": "ack-nestjs-boilerplate",
   "version": "1.0.0",
-  "description": "NestJs BoilerPlate",
+  "description": "NestJs BoilerPlate With Mongoose",
   "author": "Andre Christi Kan",
   "private": true,
   "license": "MIT",

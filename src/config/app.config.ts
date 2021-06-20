@@ -8,12 +8,12 @@ export default {
     },
     logger: {
         http: {
-            silent: false,
+            silent: true,
             maxFiles: 5,
             maxSize: '10M'
         },
         system: {
-            silent: false,
+            silent: true,
             maxFiles: '7d',
             maxSize: '10m'
         }

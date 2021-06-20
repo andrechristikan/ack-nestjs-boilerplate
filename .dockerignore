@@ -1,8 +1,6 @@
 logs/
-yarn.lock
-package-lock.json
+dist/
+initdb/
 .env
-config.yml
-e2e/
-test/
-src/
+node_modules
+yarn.lock

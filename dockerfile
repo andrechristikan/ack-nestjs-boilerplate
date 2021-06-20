@@ -4,13 +4,14 @@ LABEL maintainer "andrechristikan@gmail.com"
 WORKDIR /app
 
 COPY package.json .
-RUN set -x && yarn --prod
+RUN set -x && yarn 
 
 COPY . .
 
-RUN yarn run prebuild && yarn run build
-RUN ls .
-
+RUN mv .env.docker .env
+RUN yarn prebuild && yarn build
+RUN yarn migrate
 EXPOSE 3000
 
-CMD [ "yarn", "run", "start:prod" ]
+CMD yarn start:prod
+
