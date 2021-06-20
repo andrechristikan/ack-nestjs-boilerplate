@@ -1,0 +1,376 @@
+{
+	"info": {
+		"_postman_id": "57d63008-b9ba-4d0b-8213-d7defe1b3563",
+		"name": "ac.k",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "encryption",
+			"item": [
+				{
+					"name": "encrypt",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/encryption/encrypt",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"encryption",
+								"encrypt"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "encrypt-data",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"test\":\"test\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/encryption/encrypt-data",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"encryption",
+								"encrypt-data"
+							],
+							"query": [
+								{
+									"key": "en",
+									"value": "",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "auth",
+			"item": [
+				{
+					"name": "user",
+					"item": [
+						{
+							"name": "create",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"firstName\": \"andre\",\n    \"lastName\": \"ck\",\n    \"mobileNumber\": \"6281219968822\",\n    \"password\": \"123456\",\n    \"role\": \"60be58b6dcd8b110f2a21426\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/user/create",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"user",
+										"create"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "get by id",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/user/:userId",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"user",
+										":userId"
+									],
+									"variable": [
+										{
+											"key": "userId",
+											"value": "60be4633c18f640ac824ba29",
+											"type": "string"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "delete",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/user/delete/:userId",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"user",
+										"delete",
+										":userId"
+									],
+									"variable": [
+										{
+											"key": "userId",
+											"value": "60befe5b8f7d4a0c6e4422d8"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "update",
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"firstName\": \"andre\",\n    \"lastName\": \"kan\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/user/update/:userId",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"user",
+										"update",
+										":userId"
+									],
+									"variable": [
+										{
+											"key": "userId",
+											"value": "60bf00633f7e2c0d0be9ec0c"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "get all",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/user?page=1&perPage=10",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"user"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "perPage",
+											"value": "10"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "profile",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/user/profile",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"user",
+										"profile"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Role",
+					"item": []
+				}
+			],
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MGNjOGRiNmVkMmQ4NDIxYjU0NzAwYjciLCJlbWFpbCI6ImFkbWluQG1haWwuY29tIiwiZmlyc3ROYW1lIjoiYWRtaW4iLCJsYXN0TmFtZSI6InRlc3QiLCJyb2xlIjoiYWRtaW4iLCJwZXJtaXNzaW9ucyI6WyJQZXJtaXNzaW9uQ3JlYXRlIiwiUGVybWlzc2lvbkRlbGV0ZSIsIlBlcm1pc3Npb25SZWFkIiwiUGVybWlzc2lvblVwZGF0ZSIsIlByb2ZpbGVSZWFkIiwiUHJvZmlsZVVwZGF0ZSIsIlJvbGVDcmVhdGUiLCJSb2xlRGVsZXRlIiwiUm9sZVJlYWQiLCJSb2xlVXBkYXRlIiwiVXNlckNyZWF0ZSIsIlVzZXJEZWxldGUiLCJVc2VyUmVhZCIsIlVzZXJVcGRhdGUiXSwiaWF0IjoxNjI0MDE4MzkyLCJleHAiOjE2MjQwMjE5OTJ9.eA0sI-UoZewOp-NIJnG-rNICpW1CeIqBLejcyn3azcY",
+						"type": "string"
+					}
+				]
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "login",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"email\":\"admin@mail.com\",\r\n    \"password\":\"123456\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/auth/login",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"auth",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "hello",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\":\"12345\",\n    \"age\":\"dasd\",\n    \"breed\":\"asd\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/test/hello",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"test",
+						"hello"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "hello basic",
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "username",
+							"value": "rw0sOzrpMP2CpQqXozZsjk5AI5cL00uyDIUiN0gn",
+							"type": "string"
+						},
+						{
+							"key": "password",
+							"value": "275tqa6S4sWCyBHBvFezJJm0QRvxK39VOgLOTXVo",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/test/hello-basic",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"test",
+						"hello-basic"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

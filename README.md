@@ -14,51 +14,125 @@
 ## About The Project
 
 NestJs Boilerplate with Mongoose and MongoDB as Database. <br>
-This project will follow [nodejs-best-practice](nodejs-best-practice) as benchmark and NestJs Habit. <br>
 Boilerplate provide example about JWT implementation, basic CRUD with mongoose (populate indeed), Role/Permission implementation, etc.<br>
 
-NestJs Boilerplate can run with Docker, or without Docker.
+This project will follow [nodejs-best-practice](nodejs-best-practice) as benchmark and NestJs Habit, can run with Docker, or without Docker.<br>
 *Database migration for initial purpose.*
+
 <!-- GETTING STARTED -->
 ## Getting Started
+Before start, we need to closing knowledge gaps and install some application (like Framework, Write Style, Database, Package Manager, etc).
 
-Futures :
+#### Prerequisites
+* [NestJs](#acknowledgements) NodeJs Framework with support fully TypeScript.
+* [Yarn](#acknowledgements) Package Manager.
+* [MongoDB](#acknowledgements) NoSQL Database
+* [Mongoose](#acknowledgements) Database Package for MongoDB and NodeJs
+
+#### Features
 ```
-[x] Mongoose
-[x] JWT Auth Implementation
-[x] Basic Token Auth Implementation
-[x] Local Auth With Email Implementation
-[x] Config in YML File
-[x] Request Validation With Pipe and Class Validation Package
-[x] Centralize Response To Be JSON Object (Standard Open API 3.x)
-[x] Hash Password With Bcrypt
-[x] Support Encryption Request and Response With Interceptor
-[x] Middleware Rate Limit, Compression, Helmet, Cors, BodyParser, dst
-[x] Server Side Pagination
-[x] Support File Logging With Winston And Morgan Package
-[x] Example For User and Login Component
-[x] Role Management
+Features
+[x] Used Mongoose to connect with MongoDB
+[x] JsonWebToken (JWT)
+[x] Basic Token Auth
+[x] Role Management with Permission
+[x] Password Hah with Bcrypt
 [x] Database Migration with nestjs-command
-[~] E2E Testing
-[~] Unit Testing
-[x] Support Different Language For Response Message
-[x] Support Class Transformer Package With Decorator
-[~] Documentation
+[x] Encryption Response with Encryption Decorator
+[x] Logger Service will write in files.
+[x] Request Validation with Class Validation
+[x] Support Different Language
+[x] Centralize Configs, Response, and Error Handler
+[x] Response Transformer Restructure with Class Transformer
+[~] Support Docker for Run or Installation Project
+
+Middleware
+[x] Rate Limit
+[x] Compression
+[x] Helmet
+[x] Cors
+[x] BodyParser
+[x] Cors
+
+Testing
+[ ] E2E Testing
+[ ] Unit Testing
+
+Services
+[x] Login Service
+[x] Hash Service
+[x] User Service
+[x] Role Service
+[x] Permission Service
+
+Example
+[x] Give example for Server Side Pagination
+[x] Give example for Simple CRUD
+
+Documentation
+[~] Readme Documentation
+
 ```
+
+#### Run Project
+Assume we have already install all prerequisites.
+1. We need to install all dependencies.
+```
+yarn
+```
+or with npm
+```
+npm i
+```
+
+2. Create `.env` file base on `.env.example`. Simply, *rename .env.example to .env*. And don't forget to change setting with your.
+
+3. Run database migration for initial purpose
+```
+yarn migrate
+``` 
+or with npm
+```
+npm run migrate
+```
+if we need to rollback, just run `yarn migrate:rollback` or `npm run migrate:rollback`. <br>
+*becareful with rollback function, this will remove all data from collection, no matter what*
+
+4. Run project with yarn
+```
+yarn start
+```
+or with npm
+```
+npm run start
+```
+If you want to watch all changes, just run `yarn start:dev` or `npm run start:dev`.
+
+5. After running, we need to test and make sure that project is run as well or not. This project will provide 2 test *unit testing* and *e2e testing*. <br>
+For unit testing we need to run `yarn test` or `npm run test` <br>
+For e2e testing we need to run `yarn test:e2e` or `npm run test:e2e`
+
+6. __*--OPTIONAL--*__<br> 
+Run with Docker. <br>
+Why we should to use docker container? Because Docker containers encapsulate everything an application needs to run (and only those things), they allow applications to be shuttled easily between environments. Its will help us to solve application dependency between environments. <br>
+To Run `docker-compose up`, and to shutdown run `docker-compose down`.
+
+#### Endpoints
+All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [Follow this step for import into Postman](https://learning.postman.com/docs/getting-started/importing-and-exporting-data/)
 
 #### Folder Structure
 
 ```
-	ac.k-boilerplate-nestjs-api
-	├── .dockerignore
+	nestjs-boilerplat-mongoose
+	├── .env.example
 	├── .eslintignore
 	├── .eslintrc
 	├── .gitignore
-	├── .prettierrc 
-	├── config-example.yml
-	├── cspell.json
+	├── .prettierrc
+	├── .cspell.json
 	├── docker-compose.yml 
 	├── dockerfile 
+	├── endpoints.json 
 	├── LICENSE.md
 	├── nest-cli.json
 	├── nodemon.json
@@ -66,40 +140,31 @@ Futures :
 	├── README.md
 	├── tsconfig.build.json
 	├── tsconfig.json
-	├── test
-		├── jest.json
-	├── e2e
-		├── jest.json
-		├── auth
-		├── user
+	├── yarn.lock
+	├── test/
+	├── e2e/
 	└── src
-		├── app
-		├── auth
-		├── config
-		├── database
-		├── encryption
-		├── hash
-		├── language
-		├── logger
-		├── message
-		├── middleware
-		├── pagination
-		├── pipe
-		├── response
-		├── status-code
-		├── user
+		├── app/
+		├── auth/
+		├── config/
+		├── database/
+		├── encryption/
+		├── hash/
+		├── logger/
+		├── message/
+		├── message/
+		├── middleware/
+		├── pagination/
+		├── permission/
+		├── pipe/
+		├── response/
+		├── role/
+		├── user/
+		└── cli.ts
 		└── main.ts
 		 
 ```
 
-### Prerequisites
-
-Before start, we need to closing knowledge gaps and install some application (like Database, Package Manager, etc) 
-* Framework: [NestJs](#acknowledgements)
-* Database: [MongoDB](#acknowledgements)
-* Package Manager: [Yarn](#acknowledgements)
-* Common Package: [Mongoose](#acknowledgements)
-* Other,.. see [acknowledgements](#acknowledgements)
 
 
 <!-- LICENSE -->
@@ -129,7 +194,7 @@ Andre Christi Kan
 * Authorization Package
   * [Crypto Documentation](https://cryptojs.gitbook.io/docs/)
   * [Passport Documentation](https://github.com/jaredhanson/passport)
-  * [Class Validation Documentation](https://github.com/typestack/class-validator#readme) 
+  * [Bcrypt Documentation](https://www.npmjs.com/package/bcrypt#readme) 
 * Logger
   * [Winston Documentation](https://github.com/winstonjs/winston)
   * [Morgan Documentation](https://github.com/expressjs/morgan)
@@ -138,19 +203,18 @@ Andre Christi Kan
   * [EsLint Documentation](https://eslint.org/docs/user-guide/getting-started)
 * Package Manager
   * [Yarn Documentation](https://yarnpkg.com/getting-started)
-* References
-  * [NodeJs Best Practice Reference](nodejs-best-practice)
-  * [NestJs Middleware Reference](https://github.com/wbhob/nest-middlewares)
-* Other
+* Other Package
   * [Class Validation Documentation](https://github.com/typestack/class-validator#readme) 
+  * [Class Transformer Documentation](https://github.com/typestack/class-transformer#readme) 
   * [Docker Documentation](https://docs.docker.com/)
   * [Docker Compose Documentation](https://docs.docker.com/compose/)
+* Other References
+  * [NodeJs Best Practice Reference](nodejs-best-practice)
+  * [NestJs Middleware Reference](https://github.com/wbhob/nest-middlewares)
 
 
 
-[project-url]: https://github.com/andrechristikan/ac.k
-[project-docs]: https://github.com/andrechristikan/ac.k
-[project-issues]: https://github.com/andrechristikan/ac.k/issues/
+[project-url]: https://github.com/andrechristikan/nestjs-boilerplate-mongoose
 [author-email]: mailto:andrechristikan@gmail.com
 [author-linkedin]: https://id.linkedin.com/in/andrechristikan
 [author-instagram]: https://www.instagram.com/___ac.k/
