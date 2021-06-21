@@ -17,8 +17,7 @@ import { PaginationModule } from 'src/pagination/pagination.module';
 import { MiddlewareModule } from 'src/middleware/middleware.module';
 import { EncryptionModule } from 'src/encryption/encryption.module';
 import { SeedsModule } from 'src/database/seeds/seeds.module';
-
-import Configs from 'src/config';
+import Configs from 'src/config/index';
 
 @Module({
     controllers: [AppController],
@@ -27,8 +26,8 @@ import Configs from 'src/config';
         // main module
         MiddlewareModule,
         ConfigModule.forRoot({
-            load: [Configs],
-            ignoreEnvFile: true,
+            load: Configs,
+            ignoreEnvFile: false,
             isGlobal: true,
             cache: true
         }),

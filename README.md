@@ -44,7 +44,7 @@ Features
 - [x] Support Different Language
 - [x] Centralize Configs, Response, and Error Handler
 - [x] Response Transformer Restructure with Class Transformer
-- [~] Support Docker for Run or Installation Project
+- [x] Support Docker for Run or Installation Project
 
 Middleware
 - [x] Rate Limit
@@ -70,7 +70,7 @@ Example
 - [x] Give example for Simple CRUD
 
 Documentation
-- [~] Readme Documentation
+- [ ] Readme Documentation
 
 
 #### Run Project

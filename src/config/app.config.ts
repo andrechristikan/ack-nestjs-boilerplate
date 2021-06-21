@@ -1,21 +1,23 @@
-export default {
-    env: process.env.APP_ENV || 'development',
-    language: process.env.APP_LANGUAGE || 'en',
-    debug: process.env.APP_DEBUG === 'true' ? true : false,
-    http: {
-        host: process.env.APP_HOST || 'localhost',
-        port: parseInt(process.env.APP_PORT) || 3000
-    },
-    logger: {
+export default (): Record<string, any> => ({
+    app: {
+        env: process.env.APP_ENV || 'development',
+        language: process.env.APP_LANGUAGE || 'en',
+        debug: process.env.APP_DEBUG === 'true' ? true : false,
         http: {
-            silent: true,
-            maxFiles: 5,
-            maxSize: '10M'
+            host: process.env.APP_HOST || 'localhost',
+            port: parseInt(process.env.APP_PORT) || 3000
         },
-        system: {
-            silent: true,
-            maxFiles: '7d',
-            maxSize: '10m'
+        logger: {
+            http: {
+                silent: true,
+                maxFiles: 5,
+                maxSize: '10M'
+            },
+            system: {
+                silent: true,
+                maxFiles: '7d',
+                maxSize: '10m'
+            }
         }
     }
-};
+});
