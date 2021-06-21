@@ -30,97 +30,137 @@ Before start, we need to closing knowledge gaps and install some application (li
 * [Mongoose](#acknowledgements) Database Package for MongoDB and NodeJs
 
 #### Features
-```
+
 Features
-[x] Used Mongoose to connect with MongoDB
-[x] JsonWebToken (JWT)
-[x] Basic Token Auth
-[x] Role Management with Permission
-[x] Password Hah with Bcrypt
-[x] Database Migration with nestjs-command
-[x] Encryption Response with Encryption Decorator
-[x] Logger Service will write in files.
-[x] Request Validation with Class Validation
-[x] Support Different Language
-[x] Centralize Configs, Response, and Error Handler
-[x] Response Transformer Restructure with Class Transformer
-[~] Support Docker for Run or Installation Project
+- [x] Used Mongoose to connect with MongoDB
+- [x] JsonWebToken (JWT)
+- [x] Basic Token Auth
+- [x] Role Management with Permission
+- [x] Password Hah with Bcrypt
+- [x] Database Migration with nestjs-command
+- [x] Encryption Response with Encryption Decorator
+- [x] Logger Service will write in files.
+- [x] Request Validation with Class Validation
+- [x] Support Different Language
+- [x] Centralize Configs, Response, and Error Handler
+- [x] Response Transformer Restructure with Class Transformer
+- [~] Support Docker for Run or Installation Project
 
 Middleware
-[x] Rate Limit
-[x] Compression
-[x] Helmet
-[x] Cors
-[x] BodyParser
-[x] Cors
+- [x] Rate Limit
+- [x] Compression
+- [x] Helmet
+- [x] Cors
+- [x] BodyParser
+- [x] Cors
 
 Testing
-[ ] E2E Testing
-[ ] Unit Testing
+- [ ] E2E Testing
+- [ ] Unit Testing
 
 Services
-[x] Login Service
-[x] Hash Service
-[x] User Service
-[x] Role Service
-[x] Permission Service
+- [x] Login Service
+- [x] Hash Service
+- [x] User Service
+- [x] Role Service
+- [x] Permission Service
 
 Example
-[x] Give example for Server Side Pagination
-[x] Give example for Simple CRUD
+- [x] Give example for Server Side Pagination
+- [x] Give example for Simple CRUD
 
 Documentation
-[~] Readme Documentation
+- [~] Readme Documentation
 
-```
 
 #### Run Project
 Assume we have already install all prerequisites.
+##### With your environment
+	
 1. We need to install all dependencies.
 
 	```
 	yarn
-	```
-	or with npm
-	```
+
+	-OR-
+
 	npm i
 	```
 
 2. Create `.env` file base on `.env.example`. Simply, *rename .env.example to .env*. And don't forget to change setting with your.
 
 3. To run this project, you can choose what you want. 
-	- Run project with yarn
 
-		```
-		yarn start
-		```
-		or with npm
-		```
-		npm run start
-		```
-		If you want to watch all changes, just run `yarn start:dev` or `npm run start:dev`.
+	```
+	yarn start
 
-	- Run with Docker.
+	-OR-
 
-		Why we should to use docker container? Because Docker containers encapsulate everything an application needs to run (and only those things), they allow applications to be shuttled easily between environments. Its will help us to solve application dependency between environments. <br>
-		To Run `docker-compose up`, and to shutdown run `docker-compose down`.
+	npm run start
+	```
+	If you want to watch all changes, just run `yarn start:dev` or `npm run start:dev`.
 
 
 4. Run database migration for initial purpose
 
 	```
 	yarn migrate
-	``` 
-	or with npm
-	```
+	
+	-OR-
+
 	npm run migrate
 	```
-	if we need to rollback, just run `yarn migrate:rollback` or `npm run migrate:rollback`. <br>
+	
+	if we need to rollback, just run
+	
+	```
+	yarn migrate:rollback
+	
+	-OR-
+	
+	npm run migrate:rollback
+	```
+
 	*becareful with rollback function, this will remove all data from collection, no matter what*
 
-5. After running, we need to test and make sure that project is run as well or not. This project will provide 2 test *unit testing* and *e2e testing*. <br>
-For unit testing we need to run `yarn test` or `npm run test` <br>
-For e2e testing we need to run `yarn test:e2e` or `npm run test:e2e`
+5. After running, we need to test and make sure that project is run as well or not. This project will provide 2 test *unit testing* and *e2e testing*.
+
+	For unit testing we need to run 
+	```
+	yarn test
+	
+	-OR-
+	
+	npm run test
+	```
+
+	For e2e testing we need to run 
+	
+	```
+	yarn test:e2e
+	
+	-OR-
+	
+	npm run test:e2e
+	```
+
+##### OPTIONAL -- Run with docker
+Why we should to use docker container? Because Docker containers encapsulate everything an application needs to run (and only those things), they allow applications to be shuttled easily between environments. Its will help us to solve application dependency between environments. *Ref Docker Docs*
+
+1. Change Setting and Environment in file `docker-compose.yml` and `initdb/init-mongo.js`.
+2. Don't to rename `.env.example` to `.env` and change the environment.
+3. Run `docker-compose up`, and to shutdown run `docker-compose down`. Docker compose will build 2 containers. App Container named `ack`, and Mongodb Container named `mongodb`.
+4. Run database migration `docker exec -i ack sh -c 'yarn migrate'` to rollback run `docker exec -i ack sh -c 'yarn migrate:rollback'`
+5. Test. For unit testing we need to run `docker exec -i ack sh -c 'yarn test'` and
+for e2e testing we need to run `docker exec -i ack sh -c 'yarn test:e2e'`.
+
+
+#### Usage
+In this section i'll explain details base on `features` section.
+
+1. a
+2. b
+3. c
 
 #### Endpoints
 All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [Follow this step for import into Postman](https://learning.postman.com/docs/getting-started/importing-and-exporting-data/)
@@ -169,7 +209,6 @@ nestjs-boilerplat-mongoose
 	└── main.ts
 		 
 ```
-
 
 
 <!-- LICENSE -->

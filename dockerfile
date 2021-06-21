@@ -10,7 +10,6 @@ COPY . .
 
 RUN mv .env.docker .env
 RUN yarn prebuild && yarn build
-RUN yarn migrate
 EXPOSE 3000
 
 CMD yarn start:prod

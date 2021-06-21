@@ -1,7 +1,7 @@
 //@ts-ignore
 db.createUser({
-    user: 'ack',
-    pwd: 'ack123',
+    user: 'youruser',
+    pwd: 'yourpassword',
     roles: [
         {
             role: 'readWrite',
