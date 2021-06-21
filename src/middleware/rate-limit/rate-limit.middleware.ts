@@ -9,8 +9,12 @@ export class RateLimitMiddleware implements NestMiddleware {
 
     use(req: Request, res: Response, next: NextFunction): void {
         rateLimit({
-            windowMs: this.configService.get<number>('app.rateLimit.resetTime'),
-            max: this.configService.get<number>('app.rateLimit.maxRequestPerIp')
+            windowMs: this.configService.get<number>(
+                'middleware.rateLimit.resetTime'
+            ),
+            max: this.configService.get<number>(
+                'middleware.rateLimit.maxRequestPerIp'
+            )
         })(req, res, next);
     }
 }

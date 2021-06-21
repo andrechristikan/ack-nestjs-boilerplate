@@ -42,9 +42,12 @@ export class RoleController {
         perPage: number
     ): Promise<IResponse> {
         const skip = await this.paginationService.skip(page, perPage);
-        const roles: RoleDocument[] = await this.roleService.findAll(
-            skip,
-            perPage
+        const roles: RoleDocument[] = await this.roleService.findAll<RoleDocument>(
+            {},
+            {
+                skip: skip,
+                offset: perPage
+            }
         );
         const totalData: number = await this.roleService.totalData();
         const totalPage = await this.paginationService.totalPage(

@@ -9,12 +9,12 @@ export default (): Record<string, any> => ({
         },
         logger: {
             http: {
-                silent: true,
+                silent: false,
                 maxFiles: 5,
                 maxSize: '10M'
             },
             system: {
-                silent: true,
+                silent: false,
                 maxFiles: '7d',
                 maxSize: '10m'
             }

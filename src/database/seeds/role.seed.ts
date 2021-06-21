@@ -24,10 +24,12 @@ export class RoleSeed {
     })
     async create(): Promise<void> {
         let permissions: PermissionDocument[] = await this.permissionService.findAll(
-            0,
-            20,
             {
                 name: { $in: Object.keys(PermissionList) }
+            },
+            {
+                limit: 20,
+                offset: 0
             }
         );
 
@@ -39,7 +41,7 @@ export class RoleSeed {
             return;
         }
 
-        const check: RoleDocument = await this.roleService.findOne();
+        const check: RoleDocument = await this.roleService.findOne<RoleDocument>();
         if (check) {
             this.logger.error('Only for initial purpose', {
                 class: 'RoleSeed',

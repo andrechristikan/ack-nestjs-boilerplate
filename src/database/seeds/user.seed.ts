@@ -25,7 +25,7 @@ export class UserSeed {
         autoExit: true
     })
     async create(): Promise<void> {
-        const role: RoleDocument = await this.roleService.findOne();
+        const role: RoleDocument = await this.roleService.findOne<RoleDocument>();
 
         if (!role) {
             this.logger.error('Go Insert Roles Before Insert User', {
@@ -35,7 +35,7 @@ export class UserSeed {
             return;
         }
 
-        const check: UserDocument = await this.userService.findOne();
+        const check: UserDocument = await this.userService.findOne<UserDocument>();
         if (check) {
             this.logger.error('Only for initial purpose', {
                 class: 'UserSeed',

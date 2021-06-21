@@ -21,12 +21,32 @@ export class UserService {
         @Message() private readonly messageService: MessageService
     ) {}
 
-    async findAll(
-        offset: number,
-        limit: number,
-        find?: Record<string, any>
-    ): Promise<UserDocument[]> {
-        return this.userModel.find(find).skip(offset).limit(limit).lean();
+    async findAll<T>(
+        find?: Record<string, any>,
+        options?: Record<string, any>
+    ): Promise<T[]> {
+        const findAll = this.userModel
+            .find(find)
+            .skip(options && options.offset ? options.offset : 0);
+
+        if (options && options.limit) {
+            findAll.limit(options.limit);
+        }
+
+        if (options && options.populate) {
+            findAll.populate({
+                path: 'role',
+                model: RoleEntity.name,
+                match: { isActive: true },
+                populate: {
+                    path: 'permissions',
+                    model: PermissionEntity.name,
+                    match: { isActive: true }
+                }
+            });
+        }
+
+        return findAll.lean();
     }
 
     async totalData(find?: Record<string, any>): Promise<number> {

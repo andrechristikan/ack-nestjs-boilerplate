@@ -14,10 +14,10 @@
 ## About The Project
 
 NestJs Boilerplate with Mongoose and MongoDB as Database. <br>
-Boilerplate provide example about JWT implementation, basic CRUD with mongoose (include populate and deep populate), Role/Permission implementation, Interceptor, Catch Filter, Custom Pipe, etc.<br>
+Boilerplate provide example about JWT implementation, basic CRUD with mongoose (include populate and deep populate), Role/Permission implementation, Interceptor, Exception Filter, Custom Pipe, etc.<br>
 
 This project will follow [nodejs-best-practice](nodejs-best-practice) as benchmark and NestJs Habit. <br>
-You can run with Docker, or without Docker.<br>
+We can run with Docker, or without Docker.<br>
 *Database migration for initial purpose.*
 
 <!-- GETTING STARTED -->
@@ -25,10 +25,10 @@ You can run with Docker, or without Docker.<br>
 Before start, we need to closing knowledge gaps and install some application (like Framework, Write Style, Database, Package Manager, etc).
 
 #### Prerequisites
-* [NestJs](#acknowledgements) NodeJs Framework with support fully TypeScript.
-* [Yarn](#acknowledgements) Package Manager.
-* [MongoDB](#acknowledgements) NoSQL Database
-* [Mongoose](#acknowledgements) Database Package for MongoDB and NodeJs
+* [NestJs Fundamental](#acknowledgements) NodeJs Framework with support fully TypeScript.
+* [NodeJs Fundamental](#acknowledgements) Package Manager.
+* [MongoDB Fundamental](#acknowledgements) NoSQL Database
+* [Typescript Fundamental](#acknowledgements).
 
 #### Features
 
@@ -75,7 +75,14 @@ Documentation
 
 
 #### Run Project
-Assume we have already install all prerequisites.
+Please install [NodeJs (>= 10.13.0, except for v13)](https://nodejs.org/en/) and [Yarn](https://yarnpkg.com/getting-started/install) before we start.
+
+Then install `Nestjs CLI`
+```sh
+npm i -g @nestjs/cli
+```
+
+Clone this project and let start it
 ##### With your environment
 	
 1. We need to install all dependencies.
@@ -90,7 +97,7 @@ Assume we have already install all prerequisites.
 
 2. Create `.env` file base on `.env.example`. Simply, *rename .env.example to .env*. And don't forget to change setting with your.
 
-3. To run this project, you can choose what you want. 
+3. To run this project. 
 
 	```
 	yarn start
@@ -99,7 +106,7 @@ Assume we have already install all prerequisites.
 
 	npm run start
 	```
-	If you want to watch all changes, just run `yarn start:dev` or `npm run start:dev`.
+	If we want to watch all changes, just run `yarn start:dev` or `npm run start:dev`.
 
 
 4. Run database migration for initial purpose
@@ -161,10 +168,10 @@ In this section i'll explain details base on `features` section.
 
 1. Centralize Configuration. 
 	
-	I used `@nestjs/config` Module or we can called `ConfigModule` to manage all configuration. All Configuration set in `src/config/*` and stored in *Global Variable*. <br>
-	If you have some dynamic configuration i suggest you to put the configuration in `.env` for easy maintenance. For example i will create `AppConfig`.
+	This project used `@nestjs/config` Module or we can called `ConfigModule` to manage all configuration. All Configuration set in `src/config/*` and stored in *Global Variable*. <br>
+	If we have some dynamic configuration i suggest to put the configuration in `.env` for easy maintenance. For example create `AppConfig`.
 
-	Env file - i have some dynamic configuration for `AppConfig`.
+	Env file - we have some dynamic configuration for `AppConfig`.
 
 	```env
 	APP_ENV=development
@@ -178,6 +185,7 @@ In this section i'll explain details base on `features` section.
 
 	```ts
 	// src/config/app.config.ts
+	// process.env is env variable from .env file
 
 	export default (): Record<string, any> => ({
 		app: {
@@ -208,11 +216,12 @@ In this section i'll explain details base on `features` section.
 
 	```ts
 	// src/config/index.ts
+	// Add new config into index.ts
 
 	import AppConfig from 'src/config/app.config';
 
 	export default [
-		AppConfig,
+		AppConfig, // <<<<
 	];
 
 	```
@@ -230,8 +239,8 @@ In this section i'll explain details base on `features` section.
 
     	createMongooseOptions(): MongooseModuleOptions {
 
-			const baseUrl = `${this.configService.get<string>('database.host')}`;
-			const databaseName = this.configService.get<string>('database.name');
+			const baseUrl = `${this.configService.get<string>('database.host')}`; // <<<<
+			const databaseName = this.configService.get<string>('database.name'); // <<<<
 
 			...
 			...
@@ -241,9 +250,12 @@ In this section i'll explain details base on `features` section.
 	}
 	```
 
-	Note you don't need to import `ConfigModule` into other module.
+	Note we don't need to import `ConfigModule` into other module. For example here is `DatabaseModule`
 
 	```ts
+	// src/database/database.module.ts
+	// We don't need import ConfigModule
+
 	import { Module } from '@nestjs/common';
 	import { DatabaseService } from 'src/database/database.service';
 
@@ -258,11 +270,14 @@ In this section i'll explain details base on `features` section.
 
 	```
 
-2. Mongoose Package as connector to MongoDB
+2. Mongoose Package to integrate with MongoDB
 
-	`MongoDB` is one of most popular no sql database, and popular package to integrate mongodb and nodejs is `mongoose`. I use `@nestjs/mongoose` from `nestjs`. Database configuration will set in `databse.config.ts`
+	`MongoDB` is one of most popular no sql database, and popular package to integrate mongodb and nodejs is `mongoose`. This project use `@nestjs/mongoose` from `nestjs`. Database configuration will set in `databse.config.ts`
 
 	```ts
+	// src/config/database.config.ts
+	// process.env is env variable from .env file
+
 	export default (): Record<string, any> => ({
 		database: {
 			host: process.env.DATABASE_HOST || 'localhost:27017',
@@ -273,7 +288,7 @@ In this section i'll explain details base on `features` section.
 	});
 	```
 
-	I also put env value into `DatabaseConfig` too
+	This project also put env value into `DatabaseConfig` too
 	
 	```env
 	DATABASE_HOST=localhost:27017
@@ -282,9 +297,156 @@ In this section i'll explain details base on `features` section.
 	DATABASE_PASSWORD=
 	```
 
-3. JsonWebToken (JWT)
-4. Role Management with Permission
+3. JsonWebToken (JWT) as Guard, and JWT Decorator for Easy to Use JWT
+
+	Nest have `@nestjs/jwt` to use JWT. As mention in official documents `@nestjs/jwt` can combine with `@nestjs/passport` to use as Guard.
+	
+	This project provide JWT Decorator for Easy to Use JWT.
+	Here example for use JWT Decorator in controller.
+
+	```ts
+	// src/user/user.controller.ts
+	// Use the JWT Decorator
+
+	@AuthJwtGuard() // <<<< 
+    @Get('/')
+    async findAll(): Promise<IResponsePaging> {
+        
+		...
+		...
+		...
+
+    }
+
+	```
+
+	And here example response if we don't provide `Bearer $token` in header.
+
+	```json
+	{
+		"statusCode": 401,
+		"message": "Unauthorized"
+	}
+	```
+
+
+4. Role, and Permission Management use with Decorator.
+
+	Usage in controller. You must add `@Permissions(PERMISSION_LIST)` upper of function.
+	```ts
+	// src/user/user.controller.ts
+	// PermissionList is Enum of permissions
+	// Jwt is must because this project will extract payload to get the Role and will compare with Permission Collection
+
+	@AuthJwtGuard() 
+    @Permissions(PermissionList.UserRead) // <<<<
+    @Get('/')
+    async findAll(): Promise<IResponsePaging> {
+        
+		...
+		...
+		...
+
+    }
+	```
+	
+	Here payload data
+	
+	```json
+	{
+		"_id": "60cc8db6ed2d8421b54700b7",
+        "firstName": "admin",
+        "email": "admin@mail.com",
+        "mobileNumber": "08111111111",
+        "role": "admin",
+        "lastName": "test"
+	}
+	```
+
+	And here structure data about role and permission collection.
+
+	* Role Collection
+	
+	```json 
+	{
+		"_id" : ObjectId("60cc8dad2f1eba21ad146043"),
+		"name" : "admin",
+		"permissions" : [ 
+			ObjectId("60cc8da9c7ecfc21ac66b1ba"), 
+			ObjectId("60cc8da9c7ecfc21ac66b1bd"), 
+			ObjectId("60cc8da9c7ecfc21ac66b1bc"), 
+			ObjectId("60cc8da9c7ecfc21ac66b1bb"), 
+
+			...
+			...
+			...
+
+		],
+		"isActive" : true
+	}
+	```
+
+	* Permission Collection
+	```json
+	{
+		"_id" : ObjectId("60cc8da9c7ecfc21ac66b1b0"),
+		"name" : "UserCreate",
+		"isActive" : true
+	}
+
+	{
+		"_id" : ObjectId("60cc8da9c7ecfc21ac66b1b1"),
+		"name" : "UserUpdate",
+		"isActive" : true
+	}
+
+	{
+		"_id" : ObjectId("60cc8da9c7ecfc21ac66b1b2"),
+		"name" : "UserRead",
+		"isActive" : true
+	}
+
+	...
+	...
+	...
+
+	```
+
+	As we can see, role has permissions field that filled by permission object id.
+
+
 5. Password Hah with Bcrypt
+	For hash password string this project used Bcrypt. We can use with `HashModule`. `HashModule` will in Global Variable so we don't need to import that to each module. For example we want to `HashModule into AuthModule`
+
+	```ts
+	// src/auth/auth.module.ts
+	// We don't need to import HashModule
+
+	@Module({
+		providers: [AuthService, JwtStrategy],
+		exports: [AuthService],
+		controllers: [AuthController],
+		imports: [UserModule] // <<<<
+	})
+	export class AuthModule {}
+
+	```
+
+
+	```ts
+	// src/auth/auth.service.ts
+	// Use @Hash Decorator to inject into module
+
+	@Injectable()
+	export class AuthService {
+		constructor(
+			@Hash() private readonly hashService: HashService // <<<<
+		) {}
+
+	}
+
+	```
+
 6. Database Migration with nestjs-command
 7. Request Validation with Class Validation
 8. Logger Service will write in files.

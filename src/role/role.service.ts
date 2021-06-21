@@ -12,22 +12,34 @@ export class RoleService {
         private readonly roleModel: Model<RoleDocument>
     ) {}
 
-    async findAll(
-        offset: number,
-        limit: number,
-        find?: Record<string, any>
-    ): Promise<RoleDocument[]> {
-        return this.roleModel.find(find).skip(offset).limit(limit).limit(1);
+    async findAll<T>(
+        find?: Record<string, any>,
+        options?: Record<string, any>
+    ): Promise<T[]> {
+        const findAll = this.roleModel
+            .find(find)
+            .skip(options && options.offset ? options.offset : 0);
+
+        if (options && options.limit) {
+            findAll.limit(options.limit);
+        }
+
+        if (options && options.populate) {
+            findAll.populate({
+                path: 'permissions',
+                model: PermissionEntity.name,
+                match: { isActive: true }
+            });
+        }
+
+        return findAll.lean();
     }
 
     async totalData(find?: Record<string, any>): Promise<number> {
         return this.roleModel.countDocuments(find);
     }
 
-    async findOneById(
-        roleId: string,
-        populate?: boolean
-    ): Promise<RoleDocument> {
+    async findOneById<T>(roleId: string, populate?: boolean): Promise<T> {
         const role = this.roleModel.findById(roleId);
 
         if (populate) {
@@ -41,10 +53,10 @@ export class RoleService {
         return role.lean();
     }
 
-    async findOne(
+    async findOne<T>(
         find?: Record<string, any>,
         populate?: boolean
-    ): Promise<RoleDocument> {
+    ): Promise<T> {
         const role = this.roleModel.findOne(find);
 
         if (populate) {

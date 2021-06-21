@@ -74,16 +74,13 @@ export class AuthController {
         }
 
         const { _id, email, firstName, lastName, role } = user;
-        const permissions = role.permissions.map(
-            (val: Record<string, any>) => val.name
-        );
+
         const accessToken: string = await this.authService.createAccessToken({
             _id,
             email,
             firstName,
             lastName,
-            role: user.role.name,
-            permissions
+            role: user.role.name
         });
 
         return this.responseService.success(

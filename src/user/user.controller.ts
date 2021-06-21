@@ -61,9 +61,12 @@ export class UserController {
         perPage: number
     ): Promise<IResponsePaging> {
         const skip = await this.paginationService.skip(page, perPage);
-        const user: UserDocument[] = await this.userService.findAll(
-            skip,
-            perPage
+        const user: UserDocument[] = await this.userService.findAll<UserDocument>(
+            {},
+            {
+                limit: perPage,
+                offset: skip
+            }
         );
         const totalData: number = await this.userService.totalData();
         const totalPage = await this.paginationService.totalPage(
@@ -81,9 +84,9 @@ export class UserController {
         );
     }
 
+    @Permissions(PermissionList.ProfileRead)
     @AuthJwtGuard()
     @ResponseJson()
-    @Permissions(PermissionList.ProfileRead)
     @ResponseDataTransformer(UserTransformer)
     @Get('/profile')
     async profile(@User('_id') userId: string): Promise<IResponse> {

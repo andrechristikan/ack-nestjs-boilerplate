@@ -12,11 +12,18 @@ export class PermissionService {
     ) {}
 
     async findAll(
-        offset: number,
-        limit: number,
-        find?: Record<string, any>
+        find?: Record<string, any>,
+        options?: Record<string, any>
     ): Promise<PermissionDocument[]> {
-        return this.permissionModel.find(find).skip(offset).limit(limit).lean();
+        const findAll = this.permissionModel
+            .find(find)
+            .skip(options && options.offset ? options.offset : 0);
+
+        if (options && options.limit) {
+            findAll.limit(options.limit);
+        }
+
+        return findAll.lean();
     }
 
     async findOne(find?: Record<string, any>): Promise<PermissionDocument> {

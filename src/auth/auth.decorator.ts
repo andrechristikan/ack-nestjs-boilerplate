@@ -14,7 +14,7 @@ export function AuthJwtGuard(): IApplyDecorator {
 }
 
 export function AuthBasicGuard(): IApplyDecorator {
-    return applyDecorators(UseGuards(BasicGuard, PermissionGuard));
+    return applyDecorators(UseGuards(BasicGuard));
 }
 
 export const User = createParamDecorator(
