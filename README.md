@@ -14,9 +14,10 @@
 ## About The Project
 
 NestJs Boilerplate with Mongoose and MongoDB as Database. <br>
-Boilerplate provide example about JWT implementation, basic CRUD with mongoose (populate indeed), Role/Permission implementation, etc.<br>
+Boilerplate provide example about JWT implementation, basic CRUD with mongoose (include populate and deep populate), Role/Permission implementation, Interceptor, Catch Filter, Custom Pipe, etc.<br>
 
-This project will follow [nodejs-best-practice](nodejs-best-practice) as benchmark and NestJs Habit, can run with Docker, or without Docker.<br>
+This project will follow [nodejs-best-practice](nodejs-best-practice) as benchmark and NestJs Habit. <br>
+You can run with Docker, or without Docker.<br>
 *Database migration for initial purpose.*
 
 <!-- GETTING STARTED -->
