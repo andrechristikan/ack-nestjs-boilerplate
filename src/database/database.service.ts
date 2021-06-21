@@ -10,7 +10,6 @@ export class DatabaseService implements MongooseOptionsFactory {
     constructor(private readonly configService: ConfigService) {}
 
     createMongooseOptions(): MongooseModuleOptions {
-        // Env Variable
         const baseUrl = `${this.configService.get<string>('database.host')}`;
         const databaseName = this.configService.get<string>('database.name');
 

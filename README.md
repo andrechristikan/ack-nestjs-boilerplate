@@ -32,18 +32,18 @@ Before start, we need to closing knowledge gaps and install some application (li
 #### Features
 
 Features
-- [x] Used Mongoose to connect with MongoDB
+- [x] Centralize Configuration
+- [x] Mongoose Package as connector to MongoDB
 - [x] JsonWebToken (JWT)
-- [x] Basic Token Auth
 - [x] Role Management with Permission
 - [x] Password Hah with Bcrypt
 - [x] Database Migration with nestjs-command
-- [x] Encryption Response with Encryption Decorator
-- [x] Logger Service will write in files.
 - [x] Request Validation with Class Validation
-- [x] Support Different Language
-- [x] Centralize Configs, Response, and Error Handler
+- [x] Logger Service will write in files.
 - [x] Response Transformer Restructure with Class Transformer
+- [x] Basic Token Auth
+- [x] Encryption Response with Encryption Decorator
+- [x] Support Different Language
 - [x] Support Docker for Run or Installation Project
 
 Middleware
@@ -158,9 +158,140 @@ for e2e testing we need to run `docker exec -i ack sh -c 'yarn test:e2e'`.
 #### Usage
 In this section i'll explain details base on `features` section.
 
-1. a
-2. b
-3. c
+1. Centralize Configuration. 
+	
+	I used `@nestjs/config` Module or we can called `ConfigModule` to manage all configuration. All Configuration set in `src/config/*` and stored in *Global Variable*. <br>
+	If you have some dynamic configuration i suggest you to put the configuration in `.env` for easy maintenance. For example i will create `AppConfig`.
+
+	Env file - i have some dynamic configuration for `AppConfig`.
+
+	```env
+	APP_ENV=development
+	APP_HOST=localhost
+	APP_PORT= 3000
+	APP_LANGUAGE=en
+	APP_DEBUG=false
+	```
+	
+	Config example - Configs in `src/config/` and use `process.env.YOUR_ENV_KEY` to get your env value.
+
+	```ts
+	// src/config/app.config.ts
+
+	export default (): Record<string, any> => ({
+		app: {
+			env: process.env.APP_ENV || 'development',
+			language: process.env.APP_LANGUAGE || 'en',
+			debug: process.env.APP_DEBUG === 'true' ? true : false,
+			http: {
+				host: process.env.APP_HOST || 'localhost',
+				port: parseInt(process.env.APP_PORT) || 3000
+			},
+			logger: {
+				http: {
+					silent: true,
+					maxFiles: 5,
+					maxSize: '10M'
+				},
+				system: {
+					silent: true,
+					maxFiles: '7d',
+					maxSize: '10m'
+				}
+			}
+		}
+	});
+	```
+	
+	Add new config to `index.ts`.
+
+	```ts
+	// src/config/index.ts
+
+	import AppConfig from 'src/config/app.config';
+
+	export default [
+		AppConfig,
+	];
+
+	```
+
+	If we want to use `ConfigModule`. We must to import `ConfigService` to other service like Nestjs Habit.
+
+	```ts
+	// src/database/database.service.ts
+
+	import { ConfigService } from '@nestjs/config';
+
+	@Injectable()
+	export class DatabaseService implements MongooseOptionsFactory {
+    	constructor(private readonly configService: ConfigService) {}
+
+    	createMongooseOptions(): MongooseModuleOptions {
+
+			const baseUrl = `${this.configService.get<string>('database.host')}`;
+			const databaseName = this.configService.get<string>('database.name');
+
+			...
+			...
+			...
+
+		}
+	}
+	```
+
+	Note you don't need to import `ConfigModule` into other module.
+
+	```ts
+	import { Module } from '@nestjs/common';
+	import { DatabaseService } from 'src/database/database.service';
+
+	@Module({
+		providers: [DatabaseService],
+		exports: [DatabaseService],
+		imports: [
+			// don't import ConfigModule
+		]
+	})
+	export class DatabaseModule {}
+
+	```
+
+2. Mongoose Package as connector to MongoDB
+
+	`MongoDB` is one of most popular no sql database, and popular package to integrate mongodb and nodejs is `mongoose`. I use `@nestjs/mongoose` from `nestjs`. Database configuration will set in `databse.config.ts`
+
+	```ts
+	export default (): Record<string, any> => ({
+		database: {
+			host: process.env.DATABASE_HOST || 'localhost:27017',
+			name: process.env.DATABASE_NAME || 'ack',
+			user: process.env.DATABASE_USER || null,
+			password: process.env.DATABASE_PASSWORD || null
+		}
+	});
+	```
+
+	I also put env value into `DatabaseConfig` too
+	
+	```env
+	DATABASE_HOST=localhost:27017
+	DATABASE_NAME=ack
+	DATABASE_USER=
+	DATABASE_PASSWORD=
+	```
+
+3. JsonWebToken (JWT)
+4. Role Management with Permission
+5. Password Hah with Bcrypt
+6. Database Migration with nestjs-command
+7. Request Validation with Class Validation
+8. Logger Service will write in files.
+9. Centralize Response and Response Transformer Restructure with Class Transformer
+10. Basic Token Auth
+11. Encryption Response with Encryption Decorator
+12. Support Different Language
+13. Support Docker for Run or Installation Project
 
 #### Endpoints
 All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [Follow this step for import into Postman](https://learning.postman.com/docs/getting-started/importing-and-exporting-data/)
