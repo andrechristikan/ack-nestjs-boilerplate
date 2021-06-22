@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { AppController } from 'src/app/app.controller';
-import { AppService } from 'src/app/app.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DatabaseService } from 'src/database/database.service';
 import { DatabaseModule } from 'src/database/database.module';
@@ -21,7 +20,7 @@ import Configs from 'src/config/index';
 
 @Module({
     controllers: [AppController],
-    providers: [AppService],
+    providers: [],
     imports: [
         // main module
         MiddlewareModule,

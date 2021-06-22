@@ -196,18 +196,11 @@ In this section i'll explain details base on `features` section.
 				host: process.env.APP_HOST || 'localhost',
 				port: parseInt(process.env.APP_PORT) || 3000
 			},
-			logger: {
-				http: {
-					silent: true,
-					maxFiles: 5,
-					maxSize: '10M'
-				},
-				system: {
-					silent: true,
-					maxFiles: '7d',
-					maxSize: '10m'
-				}
-			}
+
+			...
+			...
+			...
+
 		}
 	});
 	```
@@ -317,7 +310,6 @@ In this section i'll explain details base on `features` section.
 		...
 
     }
-
 	```
 
 	And here example response if we don't provide `Bearer $token` in header.
@@ -333,6 +325,7 @@ In this section i'll explain details base on `features` section.
 4. Role, and Permission Management with Decorator.
 
 	Usage in controller. You must add `@Permissions(PERMISSION_LIST)` upper of function.
+
 	```ts
 	// src/user/user.controller.ts
 	// PermissionList is Enum of permissions
@@ -348,6 +341,29 @@ In this section i'll explain details base on `features` section.
 		...
 
     }
+	```
+
+	Permission List File
+	
+	```ts
+	// src/permission/permission.constant.ts
+
+	export enum PermissionList {
+		// User
+		UserCreate = 'UserCreate',
+		UserUpdate = 'UserUpdate',
+		UserRead = 'UserRead',
+		UserDelete = 'UserDelete',
+
+		// Profile
+		ProfileUpdate = 'ProfileUpdate',
+		ProfileRead = 'ProfileRead',
+	
+		...
+		...
+		...
+
+	}
 	```
 	
 	Here payload data
@@ -426,7 +442,7 @@ In this section i'll explain details base on `features` section.
 		providers: [AuthService, JwtStrategy],
 		exports: [AuthService],
 		controllers: [AuthController],
-		imports: [UserModule] // <<<<
+		imports: [UserModule]
 	})
 	export class AuthModule {}
 
@@ -473,12 +489,233 @@ In this section i'll explain details base on `features` section.
 
 	Details about database migration should in `src/database/seeds/*`
 
-7. Request Validation with Class Validation
+	Example
+	
+	```ts
+	import { Command } from 'nestjs-command';
+	import { Injectable } from '@nestjs/common';
+	import { PermissionService } from 'src/permission/permission.service';
+	import { PermissionList } from 'src/permission/permission.constant';
+
+	@Injectable()
+	export class PermissionSeed {
+		constructor(
+			private readonly permissionService: PermissionService
+		) {}
+
+		@Command({
+			command: 'create:permission',
+			describe: 'insert permissions',
+			autoExit: true
+		})
+		async create(): Promise<void> {
+			const permissions = Object.keys(PermissionList).map((val) => ({
+				name: val
+			}));
+			await this.permissionService.createMany(permissions);
+		}
+
+	}
+	```
+
+7. Request Validation Pipe
+
+	Combine `class-validator` with `Nestjs Pipe` for create Request Validation
+
+	 
+	```ts
+	// src/user/user.controller.ts
+
+	import {
+		...
+		...
+		...
+
+		Body,
+	} from '@nestjs/common';
+	import { UserCreateValidation } from 'src/user/validation/user.create.validation';
+	import { RequestValidationPipe } from 'src/pipe/request-validation.pipe';
+
+    @Post('/create')
+    async create(
+        @Body(RequestValidationPipe(UserCreateValidation))
+        data: Record<string, any>
+    ): Promise<IResponse> {
+	
+		...
+		...
+		...
+	
+	}
+	```
+
+	Class Validation for `User Create`
+
+	```ts
+	// src/user/validation/user.create.validation.ts
+
+	import {
+		IsString,
+		IsNotEmpty,
+		IsEmail,
+		MaxLength,
+		MinLength,
+		IsArray
+	} from 'class-validator';
+
+	export class UserCreateValidation {
+		@IsEmail()
+		@IsNotEmpty()
+		@MaxLength(100)
+		readonly email: string;
+
+		@IsString()
+		@IsNotEmpty()
+		@MinLength(3)
+		@MaxLength(30)
+		readonly firstName: string;
+
+		...
+		...
+		...
+
+	}
+	```
+
+	For custom message, we can change in `src/message/languages/en/request.ts`. Here example:
+
+	```ts
+	// src/message/languages/en/request.ts
+
+	// $value: string replace for value
+	// $property: string replace for property name
+
+	export default {
+		default: 'Validation errors',
+		maxLength: '$property has more elements than the maximum allowed.',
+		minLength: '$property has less elements than the minimum allowed.',
+		isString: '$property should be a type of string.',
+		
+		...
+		...
+		...
+
+	};
+	```
+
+
+8. Language Management, and Support Different Language
+
+	For Response message we will use `MessageModule` to handle that. we can use `MessageModule` with Decorator
+
+	```ts
+	// src/app/app.controller.ts
+
+	import { MessageService } from 'src/message/message.service';
+	import { Message } from 'src/message/message.decorator';
+
+	export class AppController {
+		constructor(
+			@Message() private readonly messageService: MessageService,
+		) {}
+
+		@Get('/hello')
+		async testHello(): Promise<IResponse> {
+			const message: string = this.messageService.get('app.hello'); // <<<<
+
+			...
+			...
+			...
+
+		}
+	}
+	```
+
+	For default language we will use `en`. Every you set param in `this.messageService.get`, it will trigger to load value from  `src/message/languages/*`
+
+
+	Folder structure about languages
+	```
+	languages
+	├── en
+		├── app.ts
+		└── index.ts
+	```	
+
+	Example app language
+
+	```ts
+	// src/message/languages/en/app.ts
+
+	export default {
+		hello: 'This is test endpoint.'
+	};
+	```
+
+	If we want to add new message, please make sure that message include in file `index.ts`
+
+	```ts
+	// src/message/languages/en/index.ts
+
+	import app from './app';
+
+	export default {
+		app,
+	};
+
+	```
+
+	If we want to change different language, for example i will add languages with ID is `id`.
+
+	New folder structure,
+	```
+	languages
+	├── en
+		├── app.ts
+		└── index.ts
+	└──  id
+		├── app.ts
+		└── index.ts
+	```	
+
+ 	Make sure the key is exist for both. 
+	```ts
+	// src/message/languages/id/app.ts
+
+	export default {
+		hello: 'Ini endpoint test.'
+	};
+	```
+
+	And last one we need to change the app setting in `.env` file or in `src/config/app.config.ts` to `id`.
+
+	```ts
+	// src/config/app.config.ts
+
+	export default (): Record<string, any> => ({
+		app: {
+			env: process.env.APP_ENV || 'development',
+			language: 'id', // <<<<
+			debug: process.env.APP_DEBUG === 'true' ? true : false,
+			http: {
+				host: process.env.APP_HOST || 'localhost',
+				port: parseInt(process.env.APP_PORT) || 3000
+			},
+
+			...
+			...
+			...
+
+		}
+	});
+	```
+
+
 8. Logger Service will write in files.
-9. Centralize Response and Response Transformer Restructure with Class Transformer
+9. Centralize Response, 
+10. Data Response Transformer for Data Safety
 10. Basic Token Auth
 11. Encryption Response with Encryption Decorator
-12. Support Different Language
 13. Support Docker for Run or Installation Project
 
 #### Endpoints
