@@ -448,6 +448,31 @@ In this section i'll explain details base on `features` section.
 	```
 
 6. Database Migration with nestjs-command
+
+	I know there have a lot of method for database migration, but i would to choose `Nestjs-command` for this. Why ? Because i want to create migration keep simple and this migration just for initial purpose.
+
+	We can run migration with command
+	```sh
+	yarn migrate
+
+	-OR-
+
+	npm run migrate
+	```
+
+	Or we if want to rollback, we can run
+	```sh
+	yarn migrate:rollback
+
+	-OR
+
+	npm run migrate:rollback
+	```
+
+	`Migrate` script will execute `nestjs-command create:permission && nestjs-command create:role && nestjs-command create:user` and `Migrate:rollback` will execute `nestjs-command remove:user && nestjs-command remove:role && nestjs-command remove:permission`. Those script in `package.json`, we can change that if necessary.
+
+	Details about database migration should in `src/database/seeds/*`
+
 7. Request Validation with Class Validation
 8. Logger Service will write in files.
 9. Centralize Response and Response Transformer Restructure with Class Transformer
