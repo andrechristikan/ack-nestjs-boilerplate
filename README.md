@@ -270,7 +270,7 @@ In this section i'll explain details base on `features` section.
 
 	```
 
-2. Mongoose Package to integrate with MongoDB
+2. Mongoose to integrate with MongoDB
 
 	`MongoDB` is one of most popular no sql database, and popular package to integrate mongodb and nodejs is `mongoose`. This project use `@nestjs/mongoose` from `nestjs`. Database configuration will set in `databse.config.ts`
 
@@ -297,7 +297,7 @@ In this section i'll explain details base on `features` section.
 	DATABASE_PASSWORD=
 	```
 
-3. JsonWebToken (JWT) as Guard, and JWT Decorator for Easy to Use JWT
+3. JsonWebToken (JWT) as Guard, and JWT Decorator for Easy to Use.
 
 	Nest have `@nestjs/jwt` to use JWT. As mention in official documents `@nestjs/jwt` can combine with `@nestjs/passport` to use as Guard.
 	
@@ -330,7 +330,7 @@ In this section i'll explain details base on `features` section.
 	```
 
 
-4. Role, and Permission Management use with Decorator.
+4. Role, and Permission Management with Decorator.
 
 	Usage in controller. You must add `@Permissions(PERMISSION_LIST)` upper of function.
 	```ts
@@ -447,7 +447,7 @@ In this section i'll explain details base on `features` section.
 
 	```
 
-6. Database Migration with nestjs-command
+6. Database Migration with command
 
 	I know there have a lot of method for database migration, but i would to choose `Nestjs-command` for this. Why ? Because i want to create migration keep simple and this migration just for initial purpose.
 
