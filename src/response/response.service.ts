@@ -1,35 +1,43 @@
 import { Injectable } from '@nestjs/common';
 import { IErrors } from 'src/message/message.interface';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
+import { MessageService } from 'src/message/message.service';
+import { Message } from 'src/message/message.decorator';
 
 @Injectable()
 export class ResponseService {
-    error(message: string, errors?: IErrors[]): IResponse {
+    constructor(@Message() private readonly messageService: MessageService) {}
+
+    error(messagePath: string, errors?: IErrors[]): IResponse {
+        const message: string = this.messageService.get(messagePath);
+
         if (errors) {
             return {
-                message: message,
-                errors: errors
+                message,
+                errors
             };
         }
 
         return {
-            message: message
+            message
         };
     }
 
     success(
-        message: string,
+        messagePath: string,
         data?: Record<string, any> | Record<string, any>[]
     ): IResponse {
+        const message: string = this.messageService.get(messagePath);
+
         if (data) {
             return {
-                message: message,
-                data: data
+                message,
+                data
             };
         }
 
         return {
-            message: message
+            message
         };
     }
 

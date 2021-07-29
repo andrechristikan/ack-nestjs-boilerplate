@@ -16,32 +16,28 @@ export class ResponseFilter implements ExceptionFilter {
 
     catch(exception: unknown, host: ArgumentsHost): void {
         const ctx: HttpArgumentsHost = host.switchToHttp();
-        const response: any = ctx.getResponse();
+        const responseHttp: any = ctx.getResponse();
 
         if (exception instanceof HttpException) {
-            const status: number = exception.getStatus();
-            const exceptionHttp: Record<string, any> = exception;
-            const exceptionData: Record<string, any> =
-                typeof exceptionHttp.response === 'string'
-                    ? { message: exceptionHttp.response }
-                    : exceptionHttp.response;
+            const statusHttp: number = exception.getStatus();
+            const response: any = exception.getResponse();
+            const { errors, message } = response;
 
-            const { message, errors } = exceptionData;
-            response.status(status).json({
-                statusCode: status,
+            response.status(statusHttp).json({
+                statusCode: statusHttp,
                 message,
                 errors
             });
         } else {
             // if error is not http cause
-            const status: number = HttpStatus.INTERNAL_SERVER_ERROR;
+            const statusHttp: number = HttpStatus.INTERNAL_SERVER_ERROR;
             const message: string = this.messageService.get(
                 'http.serverError.internalServerError'
             );
 
-            response.status(status).json({
-                statusCode: status,
-                message: exception || message
+            responseHttp.status(statusHttp).json({
+                statusCode: statusHttp,
+                message: message
             });
         }
     }

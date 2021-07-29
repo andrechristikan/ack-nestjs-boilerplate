@@ -162,14 +162,14 @@ export class UserService {
         const errors: IErrors[] = [];
         if (existEmail) {
             errors.push({
-                message: this.messageService.get('user.create.emailExist'),
+                message: this.messageService.get('user.error.emailExist'),
                 property: 'email'
             });
         }
         if (existMobileNumber) {
             errors.push({
                 message: this.messageService.get(
-                    'user.create.mobileNumberExist'
+                    'user.error.mobileNumberExist'
                 ),
                 property: 'mobileNumber'
             });

@@ -5,8 +5,6 @@ import {
     ForbiddenException
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Message } from 'src/message/message.decorator';
-import { MessageService } from 'src/message/message.service';
 import { Response } from 'src/response/response.decorator';
 import { ResponseService } from 'src/response/response.service';
 import { Role } from 'src/role/role.decorator';
@@ -18,7 +16,6 @@ import { PermissionList, PERMISSION_META_KEY } from '../permission.constant';
 export class PermissionGuard implements CanActivate {
     constructor(
         @Response() private readonly responseService: ResponseService,
-        @Message() private readonly messageService: MessageService,
         @Role() private readonly roleService: RoleService,
         private reflector: Reflector
     ) {}
@@ -49,7 +46,7 @@ export class PermissionGuard implements CanActivate {
 
         if (!permission) {
             throw new ForbiddenException(
-                this.messageService.get('http.clientError.forbidden')
+                this.responseService.error('http.clientError.forbidden')
             );
         }
         return permission;

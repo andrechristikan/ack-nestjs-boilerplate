@@ -14,8 +14,6 @@ import { Response, ResponseJson } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
 import { ConfigService } from '@nestjs/config';
 import { UserDocumentFull } from 'src/user/user.interface';
-import { Message } from 'src/message/message.decorator';
-import { MessageService } from 'src/message/message.service';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
 
@@ -23,7 +21,6 @@ import { Logger } from 'src/logger/logger.decorator';
 export class AuthController {
     constructor(
         @Response() private readonly responseService: ResponseService,
-        @Message() private readonly messageService: MessageService,
         @Logger() private readonly logger: LoggerService,
         private readonly authService: AuthService,
         private readonly userService: UserService,
@@ -49,7 +46,7 @@ export class AuthController {
             });
 
             throw new BadRequestException(
-                this.messageService.get('auth.login.emailNotFound')
+                this.responseService.error('auth.error.emailNotFound')
             );
         }
 
@@ -65,7 +62,7 @@ export class AuthController {
             });
 
             throw new BadRequestException(
-                this.messageService.get('auth.login.passwordNotMatch')
+                this.responseService.error('auth.error.passwordNotMatch')
             );
         }
 
@@ -79,14 +76,9 @@ export class AuthController {
             role: user.role.name
         });
 
-        return this.responseService.success(
-            this.messageService.get('auth.login.success'),
-            {
-                accessToken,
-                expiredIn: this.configService.get<string>(
-                    'auth.jwtExpirationTime'
-                )
-            }
-        );
+        return this.responseService.success('auth.login', {
+            accessToken,
+            expiredIn: this.configService.get<string>('auth.jwtExpirationTime')
+        });
     }
 }

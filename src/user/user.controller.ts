@@ -75,7 +75,7 @@ export class UserController {
         );
 
         return this.responseService.paging(
-            this.messageService.get('user.findAll.success'),
+            this.messageService.get('user.findAll'),
             totalData,
             totalPage,
             page,
@@ -101,12 +101,12 @@ export class UserController {
             });
 
             throw new BadRequestException(
-                this.messageService.get('http.clientError.notFound')
+                this.responseService.error('http.clientError.notFound')
             );
         }
 
         return this.responseService.success(
-            this.messageService.get('user.profile.success'),
+            this.messageService.get('user.profile'),
             user
         );
     }
@@ -127,12 +127,12 @@ export class UserController {
             });
 
             throw new BadRequestException(
-                this.messageService.get('http.clientError.notFound')
+                this.responseService.error('http.clientError.notFound')
             );
         }
 
         return this.responseService.success(
-            this.messageService.get('user.findOneById.success'),
+            this.messageService.get('user.findOneById'),
             user
         );
     }
@@ -158,17 +158,14 @@ export class UserController {
             });
 
             throw new BadRequestException(
-                this.responseService.error(
-                    this.messageService.get('user.create.error'),
-                    errors
-                )
+                this.responseService.error('user.error.createError', errors)
             );
         }
 
         try {
             const user: UserDocument = await this.userService.create(data);
             return this.responseService.success(
-                this.messageService.get('user.create.success'),
+                this.messageService.get('user.create'),
                 user
             );
         } catch (err: any) {
@@ -178,7 +175,9 @@ export class UserController {
                 error: err
             });
             throw new InternalServerErrorException(
-                this.messageService.get('http.serverError.internalServerError')
+                this.responseService.error(
+                    'http.serverError.internalServerError'
+                )
             );
         }
     }
@@ -199,13 +198,13 @@ export class UserController {
             });
 
             throw new BadRequestException(
-                this.messageService.get('http.clientError.notFound')
+                this.responseService.error('http.clientError.notFound')
             );
         }
 
         await this.userService.deleteOneById(userId);
         return this.responseService.success(
-            this.messageService.get('user.delete.success')
+            this.messageService.get('user.delete')
         );
     }
 
@@ -228,7 +227,7 @@ export class UserController {
                 function: 'delete'
             });
             throw new BadRequestException(
-                this.messageService.get('http.clientError.notFound')
+                this.responseService.error('http.clientError.notFound')
             );
         }
 
@@ -240,7 +239,7 @@ export class UserController {
             );
 
             return this.responseService.success(
-                this.messageService.get('user.update.success'),
+                this.messageService.get('user.update'),
                 user
             );
         } catch (err: any) {
@@ -253,7 +252,9 @@ export class UserController {
             });
 
             throw new InternalServerErrorException(
-                this.messageService.get('http.serverError.internalServerError')
+                this.responseService.error(
+                    'http.serverError.internalServerError'
+                )
             );
         }
     }

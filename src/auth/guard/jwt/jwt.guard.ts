@@ -5,15 +5,12 @@ import { Response } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
-import { Message } from 'src/message/message.decorator';
-import { MessageService } from 'src/message/message.service';
 
 @Injectable()
 export class JwtGuard extends AuthGuard('jwt') {
     constructor(
         @Response() private readonly responseService: ResponseService,
-        @Logger() private readonly logger: LoggerService,
-        @Message() private readonly messageService: MessageService
+        @Logger() private readonly logger: LoggerService
     ) {
         super();
     }
@@ -32,7 +29,7 @@ export class JwtGuard extends AuthGuard('jwt') {
             });
 
             throw new UnauthorizedException(
-                this.messageService.get('http.clientError.unauthorized')
+                this.responseService.error('http.clientError.unauthorized')
             );
         }
 

@@ -56,7 +56,7 @@ export function RequestValidationPipe(schema: {
 
                 throw new BadRequestException(
                     this.responseService.error(
-                        this.messageService.get('http.clientError.badRequest'),
+                        'http.clientError.badRequest',
                         errors
                     )
                 );

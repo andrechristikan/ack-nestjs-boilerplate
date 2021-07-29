@@ -24,16 +24,16 @@ export class EncryptionController {
     @Encryption()
     async en(): Promise<IResponse> {
         return this.responseService.success(
-            this.messageService.get('encryption.get.success')
+            this.messageService.get('encryption.en')
         );
     }
 
     @Post('/encrypt-data')
     @HttpCode(HttpStatus.OK)
     @Encryption()
-    async edData(@Body() body: Record<string, any>): Promise<IResponse> {
+    async enData(@Body() body: Record<string, any>): Promise<IResponse> {
         return this.responseService.success(
-            this.messageService.get('encryption.get.success'),
+            this.messageService.get('encryption.enData'),
             body
         );
     }

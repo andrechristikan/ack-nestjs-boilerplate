@@ -56,7 +56,7 @@ export class RoleController {
         );
 
         return this.responseService.paging(
-            this.messageService.get('role.findAll.success'),
+            this.messageService.get('role.findAll'),
             totalData,
             totalPage,
             page,

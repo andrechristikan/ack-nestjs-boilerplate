@@ -11,8 +11,6 @@ import { ResponseService } from 'src/response/response.service';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
 import { ConfigService } from '@nestjs/config';
-import { Message } from 'src/message/message.decorator';
-import { MessageService } from 'src/message/message.service';
 import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
@@ -20,7 +18,6 @@ export class BasicGuard implements CanActivate {
     constructor(
         @Response() private readonly responseService: ResponseService,
         @Logger() private readonly logger: LoggerService,
-        @Message() private readonly messageService: MessageService,
         private readonly configService: ConfigService,
         private readonly authService: AuthService
     ) {}
@@ -37,7 +34,7 @@ export class BasicGuard implements CanActivate {
             });
 
             throw new UnauthorizedException(
-                this.messageService.get('http.clientError.unauthorized')
+                this.responseService.error('http.clientError.unauthorized')
             );
         }
 
@@ -59,7 +56,7 @@ export class BasicGuard implements CanActivate {
             });
 
             throw new UnauthorizedException(
-                this.messageService.get('http.clientError.unauthorized')
+                this.responseService.error('http.clientError.unauthorized')
             );
         }
 
