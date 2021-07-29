@@ -101,9 +101,7 @@ export class UserController {
             });
 
             throw new BadRequestException(
-                this.responseService.error(
-                    this.messageService.get('http.clientError.notFound')
-                )
+                this.messageService.get('http.clientError.notFound')
             );
         }
 
@@ -129,9 +127,7 @@ export class UserController {
             });
 
             throw new BadRequestException(
-                this.responseService.error(
-                    this.messageService.get('http.clientError.notFound')
-                )
+                this.messageService.get('http.clientError.notFound')
             );
         }
 
@@ -182,11 +178,7 @@ export class UserController {
                 error: err
             });
             throw new InternalServerErrorException(
-                this.responseService.error(
-                    this.messageService.get(
-                        'http.serverError.internalServerError'
-                    )
-                )
+                this.messageService.get('http.serverError.internalServerError')
             );
         }
     }
@@ -207,9 +199,7 @@ export class UserController {
             });
 
             throw new BadRequestException(
-                this.responseService.error(
-                    this.messageService.get('http.clientError.notFound')
-                )
+                this.messageService.get('http.clientError.notFound')
             );
         }
 
@@ -238,9 +228,7 @@ export class UserController {
                 function: 'delete'
             });
             throw new BadRequestException(
-                this.responseService.error(
-                    this.messageService.get('http.clientError.notFound')
-                )
+                this.messageService.get('http.clientError.notFound')
             );
         }
 
@@ -265,11 +253,7 @@ export class UserController {
             });
 
             throw new InternalServerErrorException(
-                this.responseService.error(
-                    this.messageService.get(
-                        'http.serverError.internalServerError'
-                    )
-                )
+                this.messageService.get('http.serverError.internalServerError')
             );
         }
     }

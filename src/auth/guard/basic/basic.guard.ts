@@ -37,9 +37,7 @@ export class BasicGuard implements CanActivate {
             });
 
             throw new UnauthorizedException(
-                this.responseService.error(
-                    this.messageService.get('http.clientError.unauthorized')
-                )
+                this.messageService.get('http.clientError.unauthorized')
             );
         }
 
@@ -61,9 +59,7 @@ export class BasicGuard implements CanActivate {
             });
 
             throw new UnauthorizedException(
-                this.responseService.error(
-                    this.messageService.get('http.clientError.unauthorized')
-                )
+                this.messageService.get('http.clientError.unauthorized')
             );
         }
 

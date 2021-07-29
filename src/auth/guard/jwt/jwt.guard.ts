@@ -32,9 +32,7 @@ export class JwtGuard extends AuthGuard('jwt') {
             });
 
             throw new UnauthorizedException(
-                this.responseService.error(
-                    this.messageService.get('http.clientError.unauthorized')
-                )
+                this.messageService.get('http.clientError.unauthorized')
             );
         }
 

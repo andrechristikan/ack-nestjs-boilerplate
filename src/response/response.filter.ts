@@ -21,12 +21,16 @@ export class ResponseFilter implements ExceptionFilter {
         if (exception instanceof HttpException) {
             const status: number = exception.getStatus();
             const exceptionHttp: Record<string, any> = exception;
-            const exceptionData: Record<string, any> = exceptionHttp.response;
+            const exceptionData: Record<string, any> =
+                typeof exceptionHttp.response === 'string'
+                    ? { message: exceptionHttp.response }
+                    : exceptionHttp.response;
 
+            const { message, errors } = exceptionData;
             response.status(status).json({
                 statusCode: status,
-                message: exceptionData.message,
-                errors: exceptionData.errors
+                message,
+                errors
             });
         } else {
             // if error is not http cause

@@ -49,9 +49,7 @@ export class PermissionGuard implements CanActivate {
 
         if (!permission) {
             throw new ForbiddenException(
-                this.responseService.error(
-                    this.messageService.get('http.clientError.forbidden')
-                )
+                this.messageService.get('http.clientError.forbidden')
             );
         }
         return permission;

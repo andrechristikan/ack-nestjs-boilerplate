@@ -18,7 +18,7 @@ import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
-import { PermissionEntity } from 'src/permission/permission.schema';
+
 @Controller('/auth')
 export class AuthController {
     constructor(
@@ -49,9 +49,7 @@ export class AuthController {
             });
 
             throw new BadRequestException(
-                this.responseService.error(
-                    this.messageService.get('auth.login.emailNotFound')
-                )
+                this.messageService.get('auth.login.emailNotFound')
             );
         }
 
@@ -67,9 +65,7 @@ export class AuthController {
             });
 
             throw new BadRequestException(
-                this.responseService.error(
-                    this.messageService.get('auth.login.passwordNotMatch')
-                )
+                this.messageService.get('auth.login.passwordNotMatch')
             );
         }
 
