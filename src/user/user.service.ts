@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserEntity } from 'src/user/user.schema';
-import { UserDocument } from 'src/user/user.interface';
+import { UserDocument, UserDocumentFull } from 'src/user/user.interface';
 import { HashService } from 'src/hash/hash.service';
 import { Hash } from 'src/hash/hash.decorator';
 import { IErrors } from 'src/message/message.interface';
@@ -11,6 +11,8 @@ import { Message } from 'src/message/message.decorator';
 import { RoleEntity } from 'src/role/role.schema';
 import { PermissionEntity } from 'src/permission/permission.schema';
 import { Types } from 'mongoose';
+import { UserTransformer } from './transformer/user.transformer';
+import { classToPlain, plainToClass } from 'class-transformer';
 
 @Injectable()
 export class UserService {
@@ -54,6 +56,10 @@ export class UserService {
 
     async totalData(find?: Record<string, any>): Promise<number> {
         return this.userModel.countDocuments(find);
+    }
+
+    async safe(data: UserDocumentFull): Promise<Record<string, any>> {
+        return plainToClass(UserTransformer, data);
     }
 
     async findOneById<T>(userId: string, populate?: boolean): Promise<T> {

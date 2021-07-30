@@ -7,19 +7,16 @@ export class UserTransformer {
     })
     _id: string;
 
-    @Transform(
-        ({ value }) => {
-            const permissions: string[] = value.permissions.map(
-                (val: Record<string, any>) => val.name
-            );
+    @Transform(({ value }) => {
+        const permissions: string[] = value.permissions.map(
+            (val: Record<string, any>) => val.name
+        );
 
-            return {
-                name: value.name,
-                permissions: permissions
-            };
-        },
-        { toPlainOnly: true }
-    )
+        return {
+            name: value.name,
+            permissions: permissions
+        };
+    })
     role: RoleDocumentFull;
 
     firstName: string;

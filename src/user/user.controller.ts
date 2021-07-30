@@ -13,11 +13,7 @@ import {
     ParseIntPipe
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
-import {
-    ResponseTransformer,
-    Response,
-    ResponsePaging
-} from 'src/response/response.decorator';
+import { Response, ResponsePaging } from 'src/response/response.decorator';
 import { RequestValidationPipe } from 'src/pipe/request-validation.pipe';
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
 import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
@@ -84,7 +80,6 @@ export class UserController {
     @Get('/profile')
     @AuthJwtGuard()
     @Response('user.profile')
-    @ResponseTransformer(UserTransformer)
     @Permissions(PermissionList.ProfileRead)
     async profile(@User('_id') userId: string): Promise<IResponse> {
         const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
@@ -102,7 +97,7 @@ export class UserController {
             );
         }
 
-        return user;
+        return this.userService.safe(user);
     }
 
     @Get('/:userId')
