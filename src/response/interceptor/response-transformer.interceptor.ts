@@ -9,7 +9,7 @@ import { classToPlain, plainToClass } from 'class-transformer';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-export function ResponseDataTransformerInterceptor(schema: {
+export function ResponseTransformerInterceptor(schema: {
     new (...args: any[]): any;
 }): Type<NestInterceptor> {
     class MixinResponseDataTransformerInterceptor

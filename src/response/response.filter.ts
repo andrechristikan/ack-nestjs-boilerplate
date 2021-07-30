@@ -21,24 +21,43 @@ export class ResponseFilter implements ExceptionFilter {
         if (exception instanceof HttpException) {
             const statusHttp: number = exception.getStatus();
             const response: any = exception.getResponse();
-            const { errors, message } = response;
+            const { error, message } = response;
 
-            response.status(statusHttp).json({
-                statusCode: statusHttp,
-                message,
-                errors
-            });
-        } else {
-            // if error is not http cause
-            const statusHttp: number = HttpStatus.INTERNAL_SERVER_ERROR;
-            const message: string = this.messageService.get(
-                'http.serverError.internalServerError'
-            );
+            if (!Array.isArray(message) && typeof message !== 'string') {
+                const statusHttp: number = HttpStatus.INTERNAL_SERVER_ERROR;
+                const message: string = this.messageService.get(
+                    'response.error.errorsMustInArray'
+                );
 
-            responseHttp.status(statusHttp).json({
-                statusCode: statusHttp,
-                message: message
-            });
+                responseHttp.status(statusHttp).json({
+                    statusCode: statusHttp,
+                    message
+                });
+            } else if (Array.isArray(message)) {
+                responseHttp.status(statusHttp).json({
+                    statusCode: statusHttp,
+                    message: error,
+                    errors: message
+                });
+            } else {
+                responseHttp.status(statusHttp).json({
+                    statusCode: statusHttp,
+                    message
+                });
+            }
+
+            return;
         }
+
+        // if error is not http cause
+        const statusHttp: number = HttpStatus.INTERNAL_SERVER_ERROR;
+        const message: string = this.messageService.get(
+            'http.serverError.internalServerError'
+        );
+
+        responseHttp.status(statusHttp).json({
+            statusCode: statusHttp,
+            message: message
+        });
     }
 }

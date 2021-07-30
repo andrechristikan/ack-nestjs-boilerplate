@@ -6,8 +6,6 @@ import {
     mixin
 } from '@nestjs/common';
 import { validate } from 'class-validator';
-import { Response } from 'src/response/response.decorator';
-import { ResponseService } from 'src/response/response.service';
 import { Logger } from 'src/logger/logger.decorator';
 import { Logger as LoggerService } from 'winston';
 import { Message } from 'src/message/message.decorator';
@@ -22,7 +20,6 @@ export function RequestValidationPipe(schema: {
 }): Type<PipeTransform> {
     class MixinRequestValidationPipe implements PipeTransform {
         constructor(
-            @Response() private readonly responseService: ResponseService,
             @Message() private readonly messageService: MessageService,
             @Logger() private readonly logger: LoggerService
         ) {}
@@ -55,10 +52,8 @@ export function RequestValidationPipe(schema: {
                 });
 
                 throw new BadRequestException(
-                    this.responseService.error(
-                        'http.clientError.badRequest',
-                        errors
-                    )
+                    errors,
+                    this.messageService.get('http.clientError.badRequest')
                 );
             }
             return value;

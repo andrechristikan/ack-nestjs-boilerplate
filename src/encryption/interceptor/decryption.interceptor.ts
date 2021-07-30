@@ -4,16 +4,16 @@ import {
     ExecutionContext,
     CallHandler
 } from '@nestjs/common';
+import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HashService } from 'src/hash/hash.service';
-import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Request } from 'express';
 import rawBody from 'raw-body';
 
 @Injectable()
-export class HashEncryptionInterceptor
+export class DecryptionInterceptor
     implements NestInterceptor<Promise<any> | string> {
     constructor(
         private readonly hashService: HashService,
@@ -24,15 +24,18 @@ export class HashEncryptionInterceptor
         context: ExecutionContext,
         next: CallHandler
     ): Promise<Observable<Promise<any> | string>> {
-        // Env Variable
-        const iv: string = this.configService.get<string>('hash.encryptionKey');
-        const key: string = this.configService.get<string>('hash.encryptionIv');
-
         const ctx: HttpArgumentsHost = context.switchToHttp();
         const request: Request = ctx.getRequest<Request>();
 
         if (request.readable) {
             const raw = (await rawBody(request)).toString().trim();
+            const iv: string = this.configService.get<string>(
+                'hash.encryptionIv'
+            );
+            const key: string = this.configService.get<string>(
+                'hash.encryptionKey'
+            );
+
             const decryption: string = await this.hashService.decryptAES256Bit(
                 raw,
                 key,
@@ -47,11 +50,6 @@ export class HashEncryptionInterceptor
             }
         }
 
-        return next.handle().pipe(
-            map(async (response: Promise<Record<string, any> | string>) => {
-                const data: Record<string, any> | string = await response;
-                return this.hashService.encryptAES256Bit(data, key, iv);
-            })
-        );
+        return next.handle();
     }
 }
