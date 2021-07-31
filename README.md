@@ -25,27 +25,29 @@ We can run with Docker, or without Docker.<br>
 Before start, we need to closing knowledge gaps and install some application (like Framework, Write Style, Database, Package Manager, etc).
 
 #### Prerequisites
-* [NestJs Fundamental](#acknowledgements) NodeJs Framework with support fully TypeScript.
-* [NodeJs Fundamental](#acknowledgements) Package Manager.
-* [MongoDB Fundamental](#acknowledgements) NoSQL Database
+* [NestJs Fundamental](#acknowledgements), NodeJs Framework with support fully TypeScript.
+* [NodeJs Fundamental](#acknowledgements), Package Manager.
+* [MongoDB Fundamental](#acknowledgements), NoSQL Database
 * [Typescript Fundamental](#acknowledgements).
 
 #### Features
 
 Features
 - [x] Centralize Configuration
-- [x] Mongoose Package as connector to MongoDB
-- [x] JsonWebToken (JWT)
-- [x] Role Management with Permission
-- [x] Password Hah with Bcrypt
+- [x] Centralize Exception
+- [x] Centralize Response
+- [x] Mongoose to integrate with MongoDB
+- [x] JsonWebToken (JWT) as Guard, and JWT Decorator for Easy to Use.
+- [x] Role and Permission Management with Decorator.
+- [x] Hash Password with Bcrypt
 - [x] Database Migration with nestjs-command
+- [x] Language Management, and Support Different Language
 - [x] Request Validation with Class Validation
-- [x] Logger Service will write in files.
-- [x] Response Transformer Restructure with Class Transformer
-- [x] Basic Token Auth
-- [x] Encryption Response with Encryption Decorator
-- [x] Support Different Language
-- [x] Support Docker for Run or Installation Project
+- [x] Logger Service will write in files and can switch to on/off
+- [x] Data Transformer with Class Transformer
+- [x] Basic Token Auth with Decorator
+- [x] Encryption Response and Decryption Request with Encryption Decorator
+- [x] Support Docker
 
 Middleware
 - [x] Rate Limit
@@ -155,7 +157,7 @@ Clone this project and let start it
 ##### OPTIONAL -- Run with docker
 Why we should to use docker container? Because Docker containers encapsulate everything an application needs to run (and only those things), they allow applications to be shuttled easily between environments. Its will help us to solve application dependency between environments. *Ref Docker Docs*
 
-1. Change Setting and Environment in file `docker-compose.yml` and `initdb/init-mongo.js`.
+1. Change Setting and Environment in file `docker-compose.yml` and `initdb/init-mongo.js`. Make sure the setting is correct.
 2. Don't to rename `.env.example` to `.env` and change the environment.
 3. Run `docker-compose up`, and to shutdown run `docker-compose down`. Docker compose will build 2 containers. App Container named `ack`, and Mongodb Container named `mongodb`.
 4. Run database migration `docker exec -i ack sh -c 'yarn migrate'` to rollback run `docker exec -i ack sh -c 'yarn migrate:rollback'`
@@ -164,108 +166,146 @@ for e2e testing we need to run `docker exec -i ack sh -c 'yarn test:e2e'`.
 
 
 #### Usage
-In this section i'll explain details base on `features` section.
+In this section will explain details base on `features` sections.
 
 1. Centralize Configuration. 
 	
-	This project used `@nestjs/config` Module or we can called `ConfigModule` to manage all configuration. All Configuration set in `src/config/*` and stored in *Global Variable*. <br>
-	If we have some dynamic configuration i suggest to put the configuration in `.env` for easy maintenance. For example create `AppConfig`.
-
-	Env file - we have some dynamic configuration for `AppConfig`.
-
-	```env
-	APP_ENV=development
-	APP_HOST=localhost
-	APP_PORT= 3000
-	APP_LANGUAGE=en
-	APP_DEBUG=false
-	```
+	This project used `@nestjs/config` module to manage all configuration. All Configuration set in `src/config/*` and stored in `global configs` because `@nestjs/config` imported into `AppModule`. So if we want to change the settings, just simply change the value from `some config file` in `src/config/*` and then the config will change. <br>
+	If we need `dynamic configuration` i suggest to put the config in `.env` for easy maintenance.
 	
-	Config example - Configs in `src/config/` and use `process.env.YOUR_ENV_KEY` to get your env value.
+	For example we will create `AppConfig`. 
 
-	```ts
-	// src/config/app.config.ts
-	// process.env is env variable from .env file
+	 - Add variable and value into `.env` file in root dir. 
 
-	export default (): Record<string, any> => ({
-		app: {
-			env: process.env.APP_ENV || 'development',
-			language: process.env.APP_LANGUAGE || 'en',
-			debug: process.env.APP_DEBUG === 'true' ? true : false,
-			http: {
-				host: process.env.APP_HOST || 'localhost',
-				port: parseInt(process.env.APP_PORT) || 3000
-			},
-
-			...
-			...
-			...
-
-		}
-	});
-	```
+		```env
+		APP_ENV=development
+		APP_HOST=localhost
+		APP_PORT= 3000
+		APP_LANGUAGE=en
+		APP_DEBUG=false
+		```
 	
-	Add new config to `index.ts`.
+	- Create `AppConfig` into `src/config/` and use `process.env.YOUR_ENV_KEY` to get env value if necessary.
 
-	```ts
-	// src/config/index.ts
-	// Add new config into index.ts
+		```ts
+		// src/config/app.config.ts
+		// process.env is env variable from .env file
 
-	import AppConfig from 'src/config/app.config';
+		export default (): Record<string, any> => ({
+			app: {
+				env: process.env.APP_ENV || 'development',
+				language: process.env.APP_LANGUAGE || 'en',
+				debug: process.env.APP_DEBUG === 'true' ? true : false,
+				http: {
+					host: process.env.APP_HOST || 'localhost',
+					port: parseInt(process.env.APP_PORT) || 3000
+				},
+			}
+		});
+		```
+	
+	- Then, add `AppConfig` into `src/config/index.ts`
 
-	export default [
-		AppConfig, // <<<<
-	];
+		```ts
+		// src/config/index.ts
+		// Add new config into index.ts
 
-	```
+		import AppConfig from 'src/config/app.config';
 
-	If we want to use `ConfigModule`. We must to import `ConfigService` to other service like Nestjs Habit.
+		export default [
+			AppConfig, // <<<< add here
+		];
 
-	```ts
-	// src/database/database.service.ts
+		```
 
-	import { ConfigService } from '@nestjs/config';
+	- Just information, after add `AppConfig` into `index.ts`, app configs will store into `global config` because `@nestjs/config` imported into `AppModule`
+	
+		```ts
+		// src/app/app.module.ts
 
-	@Injectable()
-	export class DatabaseService implements MongooseOptionsFactory {
-    	constructor(private readonly configService: ConfigService) {}
+		@Module({
+			controllers: [AppController],
+			providers: [],
+			imports: [
+				MiddlewareModule,
+				ConfigModule.forRoot({ // <<<< config module imported into AppModule 
+					load: Configs,
+					ignoreEnvFile: false,
+					isGlobal: true,
+					cache: true
+				}),
+			]
+		})
+		export class AppModule {}
 
-    	createMongooseOptions(): MongooseModuleOptions {
+		```
+	
+	- If we want to use `AppConfig`. Just use `ConfigService` as service and don't need to import `ConfigModule` into `OtherModule` because all configs already stored into `global configs`. For example we will get `http host` from `ConfigService`
+	
+		```ts
+		// path base on setting object path
 
-			const baseUrl = `${this.configService.get<string>('database.host')}`; // <<<<
-			const databaseName = this.configService.get<string>('database.name'); // <<<<
+		// file src/config/app.config.ts
+		// app: {
+		//		http: {
+		//			host: process.env.APP_HOST || 'localhost',
+		//		},
+		// }
 
-			...
-			...
-			...
+		const host: string = this.configService.get<string>('app.http.host'); // will return `localhost`
+		
+		```
 
-		}
+
+2. Centralize Exception
+
+	This project consume `Exception Filter` from `NestJs`. The Exception Filter will named as `ResponseFilter`. ResponseFilter will restructured the error response.
+
+	Response interface will like
+	```json
+	// <<<< errors is for error request from RequestValidationPipe, and optional (not always shown)
+
+	{
+		"statusCode": 200,
+		"message": "error message",
+		"errors" : [ 
+			{
+				"message": "property request message",
+				"property": "property request field"
+			}
+		]
 	}
 	```
 
-	Note we don't need to import `ConfigModule` into other module. For example here is `DatabaseModule`
-
+	Usage
 	```ts
-	// src/database/database.module.ts
-	// We don't need import ConfigModule
+	// use any http exception from nestjs for error exception
 
-	import { Module } from '@nestjs/common';
-	import { DatabaseService } from 'src/database/database.service';
+	throw new BadRequestException( 
+		this.messageService.get('auth.error.passwordNotMatch') 
+	);
 
-	@Module({
-		providers: [DatabaseService],
-		exports: [DatabaseService],
-		imports: [
-			// don't import ConfigModule
-		]
-	})
-	export class DatabaseModule {}
+	// or
 
+	// errors must in array of object
+	const errors: Record<string,any>[] = [
+		{
+			message: "property request message",
+			property: "property request field"
+		}
+	];
+	
+	throw new BadRequestException( 
+		errors,
+		this.messageService.get('auth.error.passwordNotMatch') 
+	);
 	```
 
-2. Mongoose to integrate with MongoDB
+3. Centralize Response
 
-	`MongoDB` is one of most popular no sql database, and popular package to integrate mongodb and nodejs is `mongoose`. This project use `@nestjs/mongoose` from `nestjs`. Database configuration will set in `databse.config.ts`
+4. Mongoose to integrate with MongoDB
+
+	`MongoDB` is one of popular no sql database. `Mongoose` is popular package to integrate between mongodb and nodejs. This project use `@nestjs/mongoose` from `nestjs`. Database configuration will set in `database.config.ts`
 
 	```ts
 	// src/config/database.config.ts
@@ -281,7 +321,7 @@ In this section i'll explain details base on `features` section.
 	});
 	```
 
-	This project also put env value into `DatabaseConfig` too
+	Database configuration also put into `.env` for `dynamic configuration`
 	
 	```env
 	DATABASE_HOST=localhost:27017
@@ -290,26 +330,20 @@ In this section i'll explain details base on `features` section.
 	DATABASE_PASSWORD=
 	```
 
-3. JsonWebToken (JWT) as Guard, and JWT Decorator for Easy to Use.
+5. JsonWebToken (JWT) as Guard, and JWT Decorator for Easy to Use.
 
-	Nest have `@nestjs/jwt` to use JWT. As mention in official documents `@nestjs/jwt` can combine with `@nestjs/passport` to use as Guard.
+	NestJs have `@nestjs/jwt` to use JWT. As mention in official documents `@nestjs/jwt` can combine with `@nestjs/passport` to use as Guard. For usage we will use JWT Decorator.
 	
-	This project provide JWT Decorator for Easy to Use JWT.
 	Here example for use JWT Decorator in controller.
 
 	```ts
 	// src/user/user.controller.ts
 	// Use the JWT Decorator
 
-	@AuthJwtGuard() // <<<< 
+	@AuthJwtGuard() // <<<< use like this, and this endpoint will implement JWT
     @Get('/')
-    async findAll(): Promise<IResponsePaging> {
-        
-		...
-		...
-		...
+    async findAll(): Promise<IResponsePaging> {}
 
-    }
 	```
 
 	And here example response if we don't provide `Bearer $token` in header.
@@ -322,150 +356,84 @@ In this section i'll explain details base on `features` section.
 	```
 
 
-4. Role, and Permission Management with Decorator.
+6. Role and Permission Management.
 
-	Usage in controller. You must add `@Permissions(PERMISSION_LIST)` upper of function.
+	For simplest usage this project designed `PermissionGuard` or `Permission Decorator` as guard for endpoints.
+	Usage, we must tu use with `JWT` because `PermissionGuard` will consume `JWT Payload` to get Role and Permission and then with `PermissionGuard`
+
+
+	Imagine we have endpoint that has `PermissionGuard` with `UserRead Permission` and then user that has `Admin Role`. `AdminRole` has `UserRead`, `UserAdd`, `UserUpdate`, and `UserDelete` permissions. 
 
 	```ts
 	// src/user/user.controller.ts
 	// PermissionList is Enum of permissions
-	// Jwt is must because this project will extract payload to get the Role and will compare with Permission Collection
+	// This endpoint used PermissionGuard and only user that have UserRead Permission can access
 
-	@AuthJwtGuard() 
-    @Permissions(PermissionList.UserRead) // <<<<
     @Get('/')
-    async findAll(): Promise<IResponsePaging> {
-        
-		...
-		...
-		...
-
-    }
+	@AuthJwtGuard() 
+    @Permissions(PermissionList.UserRead) // <<<< use like this
+    async findAll(): Promise<IResponsePaging> {}
 	```
 
-	Permission List File
+	- Permission List
 	
-	```ts
-	// src/permission/permission.constant.ts
+		```ts
+		// src/permission/permission.constant.ts
 
-	export enum PermissionList {
-		// User
-		UserCreate = 'UserCreate',
-		UserUpdate = 'UserUpdate',
-		UserRead = 'UserRead',
-		UserDelete = 'UserDelete',
-
-		// Profile
-		ProfileUpdate = 'ProfileUpdate',
-		ProfileRead = 'ProfileRead',
+		export enum PermissionList {
+			UserCreate = 'UserCreate',
+			UserUpdate = 'UserUpdate',
+			UserRead = 'UserRead',
+			UserDelete = 'UserDelete',
+		}
+		```
 	
-		...
-		...
-		...
-
-	}
-	```
+	- JWT Payload
 	
-	Here payload data
+		```json
+		{
+			"_id": "60cc8db6ed2d8421b54700b7",
+			"firstName": "admin",
+			"email": "admin@mail.com",
+			"mobileNumber": "08111111111",
+			"role": "admin",
+			"lastName": "test",
+			"permissions": [
+				"UserCreate",
+				"UserDelete",
+				"UserRead",         
+				"UserUpdate"
+			]
+		}
+		```
+
+7.  Hash Password with Bcrypt
 	
-	```json
-	{
-		"_id": "60cc8db6ed2d8421b54700b7",
-        "firstName": "admin",
-        "email": "admin@mail.com",
-        "mobileNumber": "08111111111",
-        "role": "admin",
-        "lastName": "test"
-	}
-	```
-
-	And here structure data about role and permission collection.
-
-	* Role Collection
-	
-	```json 
-	{
-		"_id" : ObjectId("60cc8dad2f1eba21ad146043"),
-		"name" : "admin",
-		"permissions" : [ 
-			ObjectId("60cc8da9c7ecfc21ac66b1ba"), 
-			ObjectId("60cc8da9c7ecfc21ac66b1bd"), 
-			ObjectId("60cc8da9c7ecfc21ac66b1bc"), 
-			ObjectId("60cc8da9c7ecfc21ac66b1bb"), 
-
-			...
-			...
-			...
-
-		],
-		"isActive" : true
-	}
-	```
-
-	* Permission Collection
-	```json
-	{
-		"_id" : ObjectId("60cc8da9c7ecfc21ac66b1b0"),
-		"name" : "UserCreate",
-		"isActive" : true
-	}
-
-	{
-		"_id" : ObjectId("60cc8da9c7ecfc21ac66b1b1"),
-		"name" : "UserUpdate",
-		"isActive" : true
-	}
-
-	{
-		"_id" : ObjectId("60cc8da9c7ecfc21ac66b1b2"),
-		"name" : "UserRead",
-		"isActive" : true
-	}
-
-	...
-	...
-	...
-
-	```
-
-	As we can see, role has permissions field that filled by permission object id.
-
-
-5. Password Hah with Bcrypt
-	For hash password string this project used Bcrypt. We can use with `HashModule`. `HashModule` will in Global Variable so we don't need to import that to each module. For example we want to `HashModule into AuthModule`
-
-	```ts
-	// src/auth/auth.module.ts
-	// We don't need to import HashModule
-
-	@Module({
-		providers: [AuthService, JwtStrategy],
-		exports: [AuthService],
-		controllers: [AuthController],
-		imports: [UserModule]
-	})
-	export class AuthModule {}
-
-	```
-
+	Bcrypt will included in `HashModule` and `HashModule` will set as `Global`. Because of that we don't need to import to other module. 
 
 	```ts
 	// src/auth/auth.service.ts
-	// Use @Hash Decorator to inject into module
 
 	@Injectable()
 	export class AuthService {
-		constructor(
-			@Hash() private readonly hashService: HashService // <<<<
-		) {}
+		constructor(@Hash() private readonly hashService: HashService) {} // <<<< call like this
 
+		async validateUser(
+			passwordString: string,
+			passwordHash: string
+		): Promise<boolean> {
+			return this.hashService.bcryptComparePassword( // <<<< use like this
+				passwordString,
+				passwordHash
+			);
+		}
 	}
 
 	```
 
-6. Database Migration with command
+8. Database Migration with nestjs-command
 
-	I know there have a lot of method for database migration, but i would to choose `Nestjs-command` for this. Why ? Because i want to create migration keep simple and this migration just for initial purpose.
+	For database migration this project used `Nestjs-command`. The target just for initial purpose.
 
 	We can run migration with command
 	```sh
@@ -485,9 +453,11 @@ In this section i'll explain details base on `features` section.
 	npm run migrate:rollback
 	```
 
-	`Migrate` script will execute `nestjs-command create:permission && nestjs-command create:role && nestjs-command create:user` and `Migrate:rollback` will execute `nestjs-command remove:user && nestjs-command remove:role && nestjs-command remove:permission`. Those script in `package.json`, we can change that if necessary.
-
-	Details about database migration should in `src/database/seeds/*`
+	`Migrate` script will execute `nestjs-command create:permission && nestjs-command create:role && nestjs-command create:user`
+	
+	`Migrate:rollback` will execute `nestjs-command remove:user && nestjs-command remove:role && nestjs-command remove:permission`. 
+	
+	Those script in `package.json` we can change that if necessary and details about database migration should in `src/database/seeds/*`
 
 	Example
 	
@@ -518,205 +488,153 @@ In this section i'll explain details base on `features` section.
 	}
 	```
 
-7. Request Validation Pipe
+9. Language Management, and Support Different Language
 
-	Combine `class-validator` with `Nestjs Pipe` for create Request Validation
+	The default of language is `En`. All languages will manage with `MessageModule` and store in `Global`.
 
-	 
-	```ts
-	// src/user/user.controller.ts
+	- Usage the language with `MessageModule`
 
-	import {
-		...
-		...
-		...
+		```ts
+		// src/app/app.controller.ts
 
-		Body,
-	} from '@nestjs/common';
-	import { UserCreateValidation } from 'src/user/validation/user.create.validation';
-	import { RequestValidationPipe } from 'src/pipe/request-validation.pipe';
+		import { MessageService } from 'src/message/message.service';
+		import { Message } from 'src/message/message.decorator';
 
-    @Post('/create')
-    async create(
-        @Body(RequestValidationPipe(UserCreateValidation))
-        data: Record<string, any>
-    ): Promise<IResponse> {
+		export class AppController {
+			constructor(
+				@Message() private readonly messageService: MessageService, // <<<< call the service
+			) {}
+
+			@Get('/hello')
+			async testHello(): Promise<IResponse> {
+				const message: string = this.messageService.get('app.testHello'); // <<<< then use like this
+			}
+		}
+		```
+
+		```ts
+		// src/message/languages/en/app.ts
+
+		export default {
+			testHello: 'This is test endpoint.', // <<<< we call this
+		};
+		```
+
+		If we need to change the message, just simply change the value.
+
 	
-		...
-		...
-		...
-	
-	}
-	```
+	- Example if we want to change the app language, we must to change config in `src/config/app.config.ts`
 
-	Class Validation for `User Create`
+		```ts
+		// src/config/app.config.ts
+		// if we need to change the language
 
-	```ts
-	// src/user/validation/user.create.validation.ts
+		export default (): Record<string, any> => ({
+			app: {
+				language: process.env.APP_LANGUAGE || 'en', // <<<< change this 
+			}
+		});
+		```
 
-	import {
-		IsString,
-		IsNotEmpty,
-		IsEmail,
-		MaxLength,
-		MinLength,
-		IsArray
-	} from 'class-validator';
+		and then after change the config, we need to add resource of Language in `src/message/languages/*`. 
 
-	export class UserCreateValidation {
-		@IsEmail()
-		@IsNotEmpty()
-		@MaxLength(100)
-		readonly email: string;
+		```
+		languages
+		└── en
+			├── app.ts
+			└── index.ts
+		```	
 
-		@IsString()
-		@IsNotEmpty()
-		@MinLength(3)
-		@MaxLength(30)
-		readonly firstName: string;
+		```ts
+		// src/message/languages/en/app.ts
 
-		...
-		...
-		...
+		export default {
+			testHello: 'This is test endpoint.',
+			testHelloBasicToken:
+				'This is test endpoint with basic token and manipulate HTTP Code to 201.'
+		};
+		```
 
-	}
-	```
-
-	For custom message, we can change in `src/message/languages/en/request.ts`. Here example:
-
-	```ts
-	// src/message/languages/en/request.ts
-
-	// $value: string replace for value
-	// $property: string replace for property name
-
-	export default {
-		default: 'Validation errors',
-		maxLength: '$property has more elements than the maximum allowed.',
-		minLength: '$property has less elements than the minimum allowed.',
-		isString: '$property should be a type of string.',
+		```ts
+		// src/message/languages/en/index.ts
 		
-		...
-		...
-		...
+		import app from './app';
 
-	};
-	```
+		export default {
+			app,
+		};
+		```
 
+		then, add the new language into `message.constant.ts`
+		
+		```ts
+		// src/message/message.constant.ts
 
-8. Language Management, and Support Different Language
+		import en from 'src/message/languages/en';
 
-	For Response message we will use `MessageModule` to handle that. we can use `MessageModule` with Decorator
+		export default {
+			en
+		};
+		```
 
-	```ts
-	// src/app/app.controller.ts
+10. Request Validation with Class Validation
 
-	import { MessageService } from 'src/message/message.service';
-	import { Message } from 'src/message/message.decorator';
+	This project Combine `class-validator` with `Nestjs Pipe` for create `Request Validation Pipe`. `Request Validation Pipe` use for validate request incoming before get into endpoint. `Request Validation Pipe` need a `Validation Schema` to run.
 
-	export class AppController {
-		constructor(
-			@Message() private readonly messageService: MessageService,
-		) {}
+	- User Create Endpoint
 
-		@Get('/hello')
-		async testHello(): Promise<IResponse> {
-			const message: string = this.messageService.get('app.hello'); // <<<<
+		```ts
+		// src/user/user.controller.ts
+		// UserCreateValidation is Validation Schema
 
-			...
-			...
-			...
+		@Post('/create')
+		async create(
+			@Body(RequestValidationPipe(UserCreateValidation)) // <<<< use like this
+			data: Record<string, any>
+		): Promise<IResponse> {}
+		```
 
-		}
-	}
-	```
+	- User Create Validation Schema
 
-	For default language we will use `en`. Every you set param in `this.messageService.get`, it will trigger to load value from  `src/message/languages/*`
+		```ts
+		// src/user/validation/user.create.validation.ts
 
+		export class UserCreateValidation {
+			@IsEmail()
+			@IsNotEmpty()
+			@MaxLength(100)
+			readonly email: string;
 
-	Folder structure about languages
-	```
-	languages
-	├── en
-		├── app.ts
-		└── index.ts
-	```	
-
-	Example app language
-
-	```ts
-	// src/message/languages/en/app.ts
-
-	export default {
-		hello: 'This is test endpoint.'
-	};
-	```
-
-	If we want to add new message, please make sure that message include in file `index.ts`
-
-	```ts
-	// src/message/languages/en/index.ts
-
-	import app from './app';
-
-	export default {
-		app,
-	};
-
-	```
-
-	If we want to change different language, for example i will add languages with ID is `id`.
-
-	New folder structure,
-	```
-	languages
-	├── en
-		├── app.ts
-		└── index.ts
-	└──  id
-		├── app.ts
-		└── index.ts
-	```	
-
- 	Make sure the key is exist for both. 
-	```ts
-	// src/message/languages/id/app.ts
-
-	export default {
-		hello: 'Ini endpoint test.'
-	};
-	```
-
-	And last one we need to change the app setting in `.env` file or in `src/config/app.config.ts` to `id`.
-
-	```ts
-	// src/config/app.config.ts
-
-	export default (): Record<string, any> => ({
-		app: {
-			env: process.env.APP_ENV || 'development',
-			language: 'id', // <<<<
-			debug: process.env.APP_DEBUG === 'true' ? true : false,
-			http: {
-				host: process.env.APP_HOST || 'localhost',
-				port: parseInt(process.env.APP_PORT) || 3000
-			},
-
-			...
-			...
-			...
+			@IsString()
+			@IsNotEmpty()
+			@MinLength(3)
+			@MaxLength(30)
+			readonly firstName: string;
 
 		}
-	});
-	```
+		```
 
+	- We also can change return message while error. File in `src/message/languages/en/request.ts`. 
 
-8. Logger Service will write in files.
-9. Centralize Response, 
-10. Data Response Transformer for Data Safety
-10. Basic Token Auth
-11. Encryption Response with Encryption Decorator
-13. Support Docker for Run or Installation Project
+		```ts
+		// src/message/languages/en/request.ts
+
+		// $value: string replace for value
+		// $property: string replace for property name
+
+		export default {
+			default: 'Validation errors',
+			maxLength: '$property has more elements than the maximum allowed.',
+			minLength: '$property has less elements than the minimum allowed.',
+			isString: '$property should be a type of string.',
+		};
+		```
+
+11. Logger Service will write in files and can switch to on/off
+12. Data Transformer with Class Transformer
+13. Basic Token Auth with Decorator
+14. Encryption Response and Decryption Request with Encryption Decorator
+15. Support Docker
 
 #### Endpoints
 All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [Follow this step for import into Postman](https://learning.postman.com/docs/getting-started/importing-and-exporting-data/)

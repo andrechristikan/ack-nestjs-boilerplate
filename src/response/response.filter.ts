@@ -45,19 +45,17 @@ export class ResponseFilter implements ExceptionFilter {
                     message
                 });
             }
+        } else {
+            // if error is not http cause
+            const statusHttp: number = HttpStatus.INTERNAL_SERVER_ERROR;
+            const message: string = this.messageService.get(
+                'http.serverError.internalServerError'
+            );
 
-            return;
+            responseHttp.status(statusHttp).json({
+                statusCode: statusHttp,
+                message: message
+            });
         }
-
-        // if error is not http cause
-        const statusHttp: number = HttpStatus.INTERNAL_SERVER_ERROR;
-        const message: string = this.messageService.get(
-            'http.serverError.internalServerError'
-        );
-
-        responseHttp.status(statusHttp).json({
-            statusCode: statusHttp,
-            message: message
-        });
     }
 }

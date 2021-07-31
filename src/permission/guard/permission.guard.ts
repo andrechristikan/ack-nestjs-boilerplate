@@ -29,19 +29,10 @@ export class PermissionGuard implements CanActivate {
         }
 
         const { user } = context.switchToHttp().getRequest();
-        const { role } = user;
-        const permissionsList: string[] = (
-            await this.roleService.findOne<RoleDocumentFull>(
-                {
-                    name: role,
-                    isActive: true
-                },
-                true
-            )
-        ).permissions.map((val) => val.name);
+        const { permissions } = user;
 
         const permission: boolean = requiredPermission.every((role) =>
-            permissionsList.includes(role)
+            permissions.includes(role)
         );
 
         if (!permission) {

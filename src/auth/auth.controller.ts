@@ -16,6 +16,7 @@ import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
 import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
+import { IResponse } from 'src/response/response.interface';
 
 @Controller('/auth')
 export class AuthController {
@@ -30,7 +31,7 @@ export class AuthController {
     @Post('/login')
     @Response('auth.login')
     @HttpCode(HttpStatus.OK)
-    async login(@Body() data: ILogin): Promise<Record<string, any>> {
+    async login(@Body() data: ILogin): Promise<IResponse> {
         const user: UserDocumentFull = await this.userService.findOne<UserDocumentFull>(
             {
                 email:
@@ -67,13 +68,15 @@ export class AuthController {
         }
 
         const { _id, email, firstName, lastName, role } = user;
+        const permissions: string[] = role.permissions.map((val) => val.name);
 
         const accessToken: string = await this.authService.createAccessToken({
             _id,
             email,
             firstName,
             lastName,
-            role: user.role.name
+            role: user.role.name,
+            permissions
         });
 
         return {
