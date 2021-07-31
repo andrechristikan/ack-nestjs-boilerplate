@@ -1,5 +1,7 @@
 export default {
-    statusCode: {
-        mustInObject: 'Data response must in object'
+    default: 'Response message default',
+    error: {
+        responseMustInObject: 'Data response must in object',
+        errorsMustInArray: 'Errors fields must in array'
     }
 };

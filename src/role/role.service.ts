@@ -18,7 +18,8 @@ export class RoleService {
     ): Promise<T[]> {
         const findAll = this.roleModel
             .find(find)
-            .skip(options && options.offset ? options.offset : 0);
+            .select('-__v')
+            .skip(options && options.skip ? options.skip : 0);
 
         if (options && options.limit) {
             findAll.limit(options.limit);
@@ -28,7 +29,8 @@ export class RoleService {
             findAll.populate({
                 path: 'permissions',
                 model: PermissionEntity.name,
-                match: { isActive: true }
+                match: { isActive: true },
+                select: '-__v'
             });
         }
 
@@ -40,7 +42,7 @@ export class RoleService {
     }
 
     async findOneById<T>(roleId: string, populate?: boolean): Promise<T> {
-        const role = this.roleModel.findById(roleId);
+        const role = this.roleModel.findById(roleId).select('-__v');
 
         if (populate) {
             role.populate({
@@ -57,13 +59,14 @@ export class RoleService {
         find?: Record<string, any>,
         populate?: boolean
     ): Promise<T> {
-        const role = this.roleModel.findOne(find);
+        const role = this.roleModel.findOne(find).select('-__v');
 
         if (populate) {
             role.populate({
                 path: 'permissions',
                 model: PermissionEntity.name,
-                match: { isActive: true }
+                match: { isActive: true },
+                select: '-__v'
             });
         }
 
@@ -74,7 +77,8 @@ export class RoleService {
         const create: RoleDocument = new this.roleModel({
             name: data.name,
             permissions: data.permissions,
-            isActive: true
+            isActive: true,
+            select: '-__v'
         });
 
         return create.save();

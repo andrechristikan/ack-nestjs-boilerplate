@@ -29,7 +29,7 @@ export class RoleSeed {
             },
             {
                 limit: 20,
-                offset: 0
+                skip: 0
             }
         );
 

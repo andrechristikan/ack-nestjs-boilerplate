@@ -13,13 +13,7 @@ import {
     ParseIntPipe
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
-import {
-    Response,
-    ResponseDataTransformer,
-    ResponseJson
-} from 'src/response/response.decorator';
-import { ResponseService } from 'src/response/response.service';
-import { IResponse, IResponsePaging } from 'src/response/response.interface';
+import { Response, ResponsePaging } from 'src/response/response.decorator';
 import { RequestValidationPipe } from 'src/pipe/request-validation.pipe';
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
 import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
@@ -39,21 +33,21 @@ import { UserDocument, UserDocumentFull } from './user.interface';
 import { PermissionList } from 'src/permission/permission.constant';
 import { Permissions } from 'src/permission/permission.decorator';
 import { UserTransformer } from './transformer/user.transformer';
+import { IResponse, IResponsePaging } from 'src/response/response.interface';
 
 @Controller('/user')
 export class UserController {
     constructor(
-        @Response() private readonly responseService: ResponseService,
         @Message() private readonly messageService: MessageService,
         @Pagination() private readonly paginationService: PaginationService,
         @Logger() private readonly logger: LoggerService,
         private readonly userService: UserService
     ) {}
 
-    @AuthJwtGuard()
-    @Permissions(PermissionList.UserRead)
-    @ResponseJson()
     @Get('/')
+    @AuthJwtGuard()
+    @ResponsePaging('user.findAll')
+    @Permissions(PermissionList.UserRead)
     async findAll(
         @Query('page', new DefaultValuePipe(DEFAULT_PAGE), ParseIntPipe)
         page: number,
@@ -61,11 +55,11 @@ export class UserController {
         perPage: number
     ): Promise<IResponsePaging> {
         const skip = await this.paginationService.skip(page, perPage);
-        const user: UserDocument[] = await this.userService.findAll<UserDocument>(
+        const users: UserDocument[] = await this.userService.findAll<UserDocument>(
             {},
             {
                 limit: perPage,
-                offset: skip
+                skip: skip
             }
         );
         const totalData: number = await this.userService.totalData();
@@ -74,21 +68,19 @@ export class UserController {
             perPage
         );
 
-        return this.responseService.paging(
-            this.messageService.get('user.findAll.success'),
+        return {
             totalData,
             totalPage,
-            page,
+            currentPage: page,
             perPage,
-            user
-        );
+            data: users
+        };
     }
 
-    @Permissions(PermissionList.ProfileRead)
-    @AuthJwtGuard()
-    @ResponseJson()
-    @ResponseDataTransformer(UserTransformer)
     @Get('/profile')
+    @AuthJwtGuard()
+    @Response('user.profile')
+    @Permissions(PermissionList.ProfileRead)
     async profile(@User('_id') userId: string): Promise<IResponse> {
         const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
             userId,
@@ -101,22 +93,17 @@ export class UserController {
             });
 
             throw new BadRequestException(
-                this.responseService.error(
-                    this.messageService.get('http.clientError.notFound')
-                )
+                this.messageService.get('http.clientError.notFound')
             );
         }
 
-        return this.responseService.success(
-            this.messageService.get('user.profile.success'),
-            user
-        );
+        return this.userService.safe(user);
     }
 
-    @AuthJwtGuard()
-    @Permissions(PermissionList.UserRead)
-    @ResponseJson()
     @Get('/:userId')
+    @AuthJwtGuard()
+    @Response('user.findOneById')
+    @Permissions(PermissionList.UserRead)
     async findOneById(@Param('userId') userId: string): Promise<IResponse> {
         const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
             userId,
@@ -129,22 +116,17 @@ export class UserController {
             });
 
             throw new BadRequestException(
-                this.responseService.error(
-                    this.messageService.get('http.clientError.notFound')
-                )
+                this.messageService.get('http.clientError.notFound')
             );
         }
 
-        return this.responseService.success(
-            this.messageService.get('user.findOneById.success'),
-            user
-        );
+        return user;
     }
 
-    @AuthJwtGuard()
-    @Permissions(PermissionList.UserRead, PermissionList.UserCreate)
-    @ResponseJson()
     @Post('/create')
+    @AuthJwtGuard()
+    @Response('user.create')
+    @Permissions(PermissionList.UserRead, PermissionList.UserCreate)
     async create(
         @Body(RequestValidationPipe(UserCreateValidation))
         data: Record<string, any>
@@ -162,19 +144,19 @@ export class UserController {
             });
 
             throw new BadRequestException(
-                this.responseService.error(
-                    this.messageService.get('user.create.error'),
-                    errors
-                )
+                errors,
+                this.messageService.get('user.error.createError')
             );
         }
 
         try {
-            const user: UserDocument = await this.userService.create(data);
-            return this.responseService.success(
-                this.messageService.get('user.create.success'),
-                user
+            const create = await this.userService.create(data);
+            const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
+                create._id,
+                true
             );
+
+            return user;
         } catch (err: any) {
             this.logger.error('create try catch', {
                 class: 'UserController',
@@ -182,20 +164,16 @@ export class UserController {
                 error: err
             });
             throw new InternalServerErrorException(
-                this.responseService.error(
-                    this.messageService.get(
-                        'http.serverError.internalServerError'
-                    )
-                )
+                this.messageService.get('http.serverError.internalServerError')
             );
         }
     }
 
-    @AuthJwtGuard()
-    @Permissions(PermissionList.UserRead, PermissionList.UserDelete)
-    @ResponseJson()
     @Delete('/delete/:userId')
-    async delete(@Param('userId') userId: string): Promise<IResponse> {
+    @AuthJwtGuard()
+    @Response('user.delete')
+    @Permissions(PermissionList.UserRead, PermissionList.UserDelete)
+    async delete(@Param('userId') userId: string): Promise<void> {
         const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
             userId,
             true
@@ -207,22 +185,25 @@ export class UserController {
             });
 
             throw new BadRequestException(
-                this.responseService.error(
-                    this.messageService.get('http.clientError.notFound')
-                )
+                this.messageService.get('http.clientError.notFound')
             );
         }
 
-        await this.userService.deleteOneById(userId);
-        return this.responseService.success(
-            this.messageService.get('user.delete.success')
-        );
+        const del: boolean = await this.userService.deleteOneById(userId);
+
+        if (!del) {
+            throw new InternalServerErrorException(
+                this.messageService.get('http.serverError.internalServerError')
+            );
+        }
+
+        return;
     }
 
-    @AuthJwtGuard()
-    @Permissions(PermissionList.UserRead, PermissionList.UserUpdate)
-    @ResponseJson()
     @Put('/update/:userId')
+    @AuthJwtGuard()
+    @Response('user.update')
+    @Permissions(PermissionList.UserRead, PermissionList.UserUpdate)
     async update(
         @Param('userId') userId: string,
         @Body(RequestValidationPipe(UserUpdateValidation))
@@ -238,9 +219,7 @@ export class UserController {
                 function: 'delete'
             });
             throw new BadRequestException(
-                this.responseService.error(
-                    this.messageService.get('http.clientError.notFound')
-                )
+                this.messageService.get('http.clientError.notFound')
             );
         }
 
@@ -251,10 +230,7 @@ export class UserController {
                 true
             );
 
-            return this.responseService.success(
-                this.messageService.get('user.update.success'),
-                user
-            );
+            return user;
         } catch (err: any) {
             this.logger.error('update try catch', {
                 class: 'UserController',
@@ -265,11 +241,7 @@ export class UserController {
             });
 
             throw new InternalServerErrorException(
-                this.responseService.error(
-                    this.messageService.get(
-                        'http.serverError.internalServerError'
-                    )
-                )
+                this.messageService.get('http.serverError.internalServerError')
             );
         }
     }

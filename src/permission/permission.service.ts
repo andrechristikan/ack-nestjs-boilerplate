@@ -17,7 +17,7 @@ export class PermissionService {
     ): Promise<PermissionDocument[]> {
         const findAll = this.permissionModel
             .find(find)
-            .skip(options && options.offset ? options.offset : 0);
+            .skip(options && options.skip ? options.skip : 0);
 
         if (options && options.limit) {
             findAll.limit(options.limit);

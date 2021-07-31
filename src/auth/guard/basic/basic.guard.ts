@@ -5,22 +5,18 @@ import {
     UnauthorizedException
 } from '@nestjs/common';
 import { Request } from 'express';
-import { Response } from 'src/response/response.decorator';
-import { IResponse } from 'src/response/response.interface';
-import { ResponseService } from 'src/response/response.service';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
 import { ConfigService } from '@nestjs/config';
+import { AuthService } from 'src/auth/auth.service';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
-import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
 export class BasicGuard implements CanActivate {
     constructor(
-        @Response() private readonly responseService: ResponseService,
-        @Logger() private readonly logger: LoggerService,
         @Message() private readonly messageService: MessageService,
+        @Logger() private readonly logger: LoggerService,
         private readonly configService: ConfigService,
         private readonly authService: AuthService
     ) {}
@@ -37,9 +33,7 @@ export class BasicGuard implements CanActivate {
             });
 
             throw new UnauthorizedException(
-                this.responseService.error(
-                    this.messageService.get('http.clientError.unauthorized')
-                )
+                this.messageService.get('http.clientError.unauthorized')
             );
         }
 
@@ -61,9 +55,7 @@ export class BasicGuard implements CanActivate {
             });
 
             throw new UnauthorizedException(
-                this.responseService.error(
-                    this.messageService.get('http.clientError.unauthorized')
-                )
+                this.messageService.get('http.clientError.unauthorized')
             );
         }
 

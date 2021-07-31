@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserEntity } from 'src/user/user.schema';
-import { UserDocument } from 'src/user/user.interface';
+import { UserDocument, UserDocumentFull } from 'src/user/user.interface';
 import { HashService } from 'src/hash/hash.service';
 import { Hash } from 'src/hash/hash.decorator';
 import { IErrors } from 'src/message/message.interface';
@@ -11,6 +11,8 @@ import { Message } from 'src/message/message.decorator';
 import { RoleEntity } from 'src/role/role.schema';
 import { PermissionEntity } from 'src/permission/permission.schema';
 import { Types } from 'mongoose';
+import { UserTransformer } from './transformer/user.transformer';
+import { classToPlain, plainToClass } from 'class-transformer';
 
 @Injectable()
 export class UserService {
@@ -27,7 +29,8 @@ export class UserService {
     ): Promise<T[]> {
         const findAll = this.userModel
             .find(find)
-            .skip(options && options.offset ? options.offset : 0);
+            .select('-__v')
+            .skip(options && options.skip ? options.skip : 0);
 
         if (options && options.limit) {
             findAll.limit(options.limit);
@@ -38,10 +41,12 @@ export class UserService {
                 path: 'role',
                 model: RoleEntity.name,
                 match: { isActive: true },
+                select: '-__v',
                 populate: {
                     path: 'permissions',
                     model: PermissionEntity.name,
-                    match: { isActive: true }
+                    match: { isActive: true },
+                    select: '-__v'
                 }
             });
         }
@@ -53,18 +58,24 @@ export class UserService {
         return this.userModel.countDocuments(find);
     }
 
+    async safe(data: UserDocumentFull): Promise<Record<string, any>> {
+        return plainToClass(UserTransformer, data);
+    }
+
     async findOneById<T>(userId: string, populate?: boolean): Promise<T> {
-        const user = this.userModel.findById(userId);
+        const user = this.userModel.findById(userId).select('-__v');
 
         if (populate) {
             user.populate({
                 path: 'role',
                 model: RoleEntity.name,
                 match: { isActive: true },
+                select: '-__v',
                 populate: {
                     path: 'permissions',
                     model: PermissionEntity.name,
-                    match: { isActive: true }
+                    match: { isActive: true },
+                    select: '-__v'
                 }
             });
         }
@@ -76,17 +87,19 @@ export class UserService {
         find?: Record<string, any>,
         populate?: boolean
     ): Promise<T> {
-        const user = this.userModel.findOne(find);
+        const user = this.userModel.findOne(find).select('-__v');
 
         if (populate) {
             user.populate({
                 path: 'role',
                 match: { isActive: true },
                 model: RoleEntity.name,
+                select: '-__v',
                 populate: {
                     path: 'permissions',
                     match: { isActive: true },
-                    model: PermissionEntity.name
+                    model: PermissionEntity.name,
+                    select: '-__v'
                 }
             });
         }
@@ -101,7 +114,7 @@ export class UserService {
             salt
         );
 
-        const user: UserEntity = {
+        const newUser: UserEntity = {
             firstName: data.firstName.toLowerCase(),
             email: data.email.toLowerCase(),
             mobileNumber: data.mobileNumber,
@@ -110,17 +123,22 @@ export class UserService {
         };
 
         if (data.lastName) {
-            user.lastName = data.lastName.toLowerCase();
+            newUser.lastName = data.lastName.toLowerCase();
         }
 
-        const create: UserDocument = new this.userModel(user);
+        const create: UserDocument = new this.userModel(newUser);
         return create.save();
     }
 
-    async deleteOneById(userId: string): Promise<UserDocument> {
-        return this.userModel.deleteOne({
-            _id: userId
-        });
+    async deleteOneById(userId: string): Promise<boolean> {
+        try {
+            this.userModel.deleteOne({
+                _id: userId
+            });
+            return true;
+        } catch (e: unknown) {
+            return false;
+        }
     }
 
     async updateOneById(
@@ -162,14 +180,14 @@ export class UserService {
         const errors: IErrors[] = [];
         if (existEmail) {
             errors.push({
-                message: this.messageService.get('user.create.emailExist'),
+                message: this.messageService.get('user.error.emailExist'),
                 property: 'email'
             });
         }
         if (existMobileNumber) {
             errors.push({
                 message: this.messageService.get(
-                    'user.create.mobileNumberExist'
+                    'user.error.mobileNumberExist'
                 ),
                 property: 'mobileNumber'
             });
@@ -180,15 +198,11 @@ export class UserService {
 
     // For migration
     async deleteMany(find?: Record<string, any>): Promise<boolean> {
-        return new Promise((resolve, reject) => {
-            this.userModel
-                .deleteMany(find)
-                .then(() => {
-                    resolve(true);
-                })
-                .catch((err: any) => {
-                    reject(err);
-                });
-        });
+        try {
+            await this.userModel.deleteMany(find);
+            return true;
+        } catch (e: unknown) {
+            return false;
+        }
     }
 }

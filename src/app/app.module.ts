@@ -3,7 +3,6 @@ import { AppController } from 'src/app/app.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DatabaseService } from 'src/database/database.service';
 import { DatabaseModule } from 'src/database/database.module';
-import { ResponseModule } from 'src/response/response.module';
 import { MessageModule } from 'src/message/message.module';
 import { ConfigModule } from '@nestjs/config';
 import { WinstonModule } from 'nest-winston';
@@ -44,7 +43,6 @@ import Configs from 'src/config/index';
         }),
         MessageModule,
         LoggerModule,
-        ResponseModule,
         PaginationModule,
         HashModule,
 

@@ -16,29 +16,48 @@ export class ResponseFilter implements ExceptionFilter {
 
     catch(exception: unknown, host: ArgumentsHost): void {
         const ctx: HttpArgumentsHost = host.switchToHttp();
-        const response: any = ctx.getResponse();
+        const responseHttp: any = ctx.getResponse();
 
         if (exception instanceof HttpException) {
-            const status: number = exception.getStatus();
-            const exceptionHttp: Record<string, any> = exception;
-            const exceptionData: Record<string, any> = exceptionHttp.response;
+            const statusHttp: number = exception.getStatus();
+            const response: any = exception.getResponse();
+            const { error, message } = response;
 
-            response.status(status).json({
-                statusCode: status,
-                message: exceptionData.message,
-                errors: exceptionData.errors
-            });
-        } else {
-            // if error is not http cause
-            const status: number = HttpStatus.INTERNAL_SERVER_ERROR;
-            const message: string = this.messageService.get(
-                'http.serverError.internalServerError'
-            );
+            if (!Array.isArray(message) && typeof message !== 'string') {
+                const statusHttp: number = HttpStatus.INTERNAL_SERVER_ERROR;
+                const message: string = this.messageService.get(
+                    'response.error.errorsMustInArray'
+                );
 
-            response.status(status).json({
-                statusCode: status,
-                message: exception || message
-            });
+                responseHttp.status(statusHttp).json({
+                    statusCode: statusHttp,
+                    message
+                });
+            } else if (Array.isArray(message)) {
+                responseHttp.status(statusHttp).json({
+                    statusCode: statusHttp,
+                    message: error,
+                    errors: message
+                });
+            } else {
+                responseHttp.status(statusHttp).json({
+                    statusCode: statusHttp,
+                    message
+                });
+            }
+
+            return;
         }
+
+        // if error is not http cause
+        const statusHttp: number = HttpStatus.INTERNAL_SERVER_ERROR;
+        const message: string = this.messageService.get(
+            'http.serverError.internalServerError'
+        );
+
+        responseHttp.status(statusHttp).json({
+            statusCode: statusHttp,
+            message: message
+        });
     }
 }

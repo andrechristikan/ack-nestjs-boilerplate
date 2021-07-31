@@ -6,26 +6,19 @@ import {
 } from '@nestjs/common';
 import { IApplyDecorator } from 'src/auth/auth.interface';
 import { ResponseFilter } from './response.filter';
-import { ResponseInterceptor } from './response.interceptor';
-import { ResponseDataTransformerInterceptor } from './response.transformer';
+import { ResponseInterceptor } from './interceptor/response.interceptor';
+import { ResponsePagingInterceptor } from './interceptor/response-paging.interceptor';
 
-export function Response(): (
-    target: Record<string, any>,
-    key: string | symbol,
-    index?: number
-) => void {
-    return Inject(`ResponseService`);
-}
-
-export function ResponseJson(): IApplyDecorator {
+export function Response(messagePath: string): IApplyDecorator {
     return applyDecorators(
-        UseInterceptors(ResponseInterceptor),
+        UseInterceptors(ResponseInterceptor(messagePath)),
         UseFilters(ResponseFilter)
     );
 }
 
-export function ResponseDataTransformer(transformer: any): IApplyDecorator {
+export function ResponsePaging(messagePath: string): IApplyDecorator {
     return applyDecorators(
-        UseInterceptors(ResponseDataTransformerInterceptor(transformer))
+        UseInterceptors(ResponsePagingInterceptor(messagePath)),
+        UseFilters(ResponseFilter)
     );
 }
