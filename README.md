@@ -303,9 +303,150 @@ In this section will explain details base on `features` sections.
 
 3. Centralize Response
 
+	Normally response can be filled with any data type, but in this project we will centralize response to `json object`. So we will consume `interceptor` from nestjs to centralize response. Response Interceptor will be 2 concepts.
+
+	- Response Interceptor
+		Response Interceptor will restructure response to standard response (general usage)
+
+		For example we have response from controller like this
+
+		```ts
+		// Param of response must be path from message
+
+		@Get('/hello')
+		@Response('app.testHello') // <<<< do like this
+		async testHello(): Promise<void> {
+			return;
+		}
+		```
+
+		Response will be like this
+		```json
+		{
+			"username": "andre",
+			"email": "andrechristikan@gmail.com"
+		}
+		```
+
+		Then Response Interceptor will restructure to this
+
+		```json
+		{
+			"statusCode": 200,
+			"message": "success to get data from endpoint",
+			"data": {
+				"username": "andre",
+				"email": "andrechristikan@gmail.com"
+			}
+		}
+		```
+
+		Response interceptor will use `MessageService` to get the message based on language path and `statusCode` will same with `Http Success Code`.
+
+		Http Success Code will be rewrite with `HttpCode Decorator` from nestjs
+		
+		```ts
+		// Param of response must be path from message
+
+		@Get('/hello')
+		@Response('app.testHello')
+    	@HttpCode(HttpStatus.CREATED) // <<<< this will return 201 http code 
+		async testHello(): Promise<void> {
+			return;
+		}
+
+		```
+
+		and response will be like this
+
+		```json
+		{
+			"statusCode": 201,
+			"message": "success to get data from endpoint",
+			"data": {
+				"username": "andre",
+				"email": "andrechristikan@gmail.com"
+			}
+		}
+		```
+
+	- Response Paging Interceptor
+
+		Same with Response Interceptor above, response paging interceptor will restructure response and this purpose interceptor will handle response with `data paging`.
+
+		```ts
+		@Get('/')
+		@ResponsePaging('user.findAll')
+		async findAll(
+			@Query('page', new DefaultValuePipe(DEFAULT_PAGE), ParseIntPipe)
+			page: number,
+			@Query('perPage', new DefaultValuePipe(DEFAULT_PER_PAGE), ParseIntPipe)
+			perPage: number
+		): Promise<IResponsePaging> {
+			const skip = await this.paginationService.skip(page, perPage);
+			const users: UserDocument[] = await this.userService.findAll<UserDocument>(
+				{},
+				{
+					limit: perPage,
+					skip: skip
+				}
+			);
+			const totalData: number = await this.userService.totalData();
+			const totalPage = await this.paginationService.totalPage(
+				totalData,
+				perPage
+			);
+
+			return { // <<<< response must like this
+				totalData,
+				totalPage,
+				currentPage: page,
+				perPage,
+				data: users
+			};
+		}
+		```
+
+		Response from controller must be same with `IResponsePaging` Interface.
+
+		```ts
+		// src/response/response.interface.ts
+
+		export interface IResponsePaging {
+			totalData: number;
+			totalPage: number;
+			currentPage: number;
+			perPage: number;
+			data: Record<string,any>[]
+		}
+		```
+
+		Then, Response paging interceptor will restructure like this
+		
+		```json
+		{
+			"statusCode": 200,
+			"totalData": 1,
+			"totalPage": 1,
+			"currentPage": 1,
+			"perPage": 10,
+			"message": "success to get data from endpoint",
+			"data": [
+				{
+					"username": "andre1",
+					"email": "andrechristikan1@gmail.com"
+				},
+				{
+					"username": "andre2",
+					"email": "andrechristikan2@gmail.com"
+				}
+			]
+		}
+		```
+
 4. Mongoose to integrate with MongoDB
 
-	`MongoDB` is one of popular no sql database. `Mongoose` is popular package to integrate between mongodb and nodejs. This project use `@nestjs/mongoose` from `nestjs`. Database configuration will set in `database.config.ts`
+	`MongoDB` is one of popular no sql database. `Mongoose` is popular package to integrate between mongodb and nodejs. This project will use `@nestjs/mongoose` from `nestjs`. Database configuration will set in `database.config.ts`
 
 	```ts
 	// src/config/database.config.ts
@@ -631,9 +772,101 @@ In this section will explain details base on `features` sections.
 		```
 
 11. Logger Service will write in files and can switch to on/off
+
+	Logger Service will write in files. Output path will in `/logs/*`.
+
+	- Http Log
+
+		Http Log will used `Morgan Package` to handle that and will write in day. This log will write and any incoming request into file.
+
+		```
+		└── logs
+			└── http
+				├── 2021-01-01.log
+				└── 2021-01-02.log
+		```
+
+		with this format
+
+		```
+		':remote-addr' - ':remote-user' - '[:date[iso]]' - 'HTTP/:http-version' - '[:status]' - ':method' - ':url' - 'Request Header :: :req-headers' - 'Request Params :: :req-params' - 'Request Body :: :req-body' - 'Response Header :: :res[header]' - 'Response Body :: :res-body' - ':response-time ms' - ':referrer' - ':user-agent'
+		```
+
+		and for more information we can read [Morgan Docs](#acknowledgements)
+
+	- System Log
+
+		However typescript have console log to print any data and will write in temporary storage. But we won't like that, we want to write log into files, keep it, and sometimes we want to see the log. So base on this case, system log will help you to solve that case. 
+		
+		System Log will user `Winston Logger`. System Log will write log by day. System log will write the log into files and store file in `log/system/*`. 
+
+		```
+		└── logs
+			└── system
+				├── 2021-01-01.log
+				└── 2021-01-02.log
+		```
+
+		and will return log like this. `Request id `will never same with other. `Request id will change every incoming request`.
+
+		```json
+		{
+			"message": "message success",
+			"level": "info",
+			"requestId": "1627983261551por3y04a6mo74e6app6uxh",
+			"timestamp": "2021-08-03T09:34:22.436Z"
+		}
+		```
+
+		How to use System Log ? you can use system log with `LoggerService`. LoggerService already store into `Global`, so you can easily call the service just with decorator and `stop use console.log`.
+
+		```ts
+		// use @Logger decorator
+
+		import { Logger as LoggerService } from 'winston';
+		import { Logger } from 'src/logger/logger.decorator';
+
+		@Controller('/user')
+		export class UserController {
+			constructor(
+				@Logger() private readonly logger: LoggerService // <<<< call the service
+			) {}
+
+			@Get('/')
+			async findAll(
+			): Promise<void> {
+				this.logger.info('message success'); // <<<< use like this
+			}
+		}
+		```
+
+	Note if you want to switch logger to off, simply you can change the setting in `src/config/app.config.ts` to `off`
+
+	```ts
+	export default (): Record<string, any> => ({
+    	app: {
+			logger: {
+				http: {
+					silent: false, // <<<< change this value to switch off the http logger
+					maxFiles: 5,
+					maxSize: '10M'
+				},
+				system: {
+					silent: false, // <<<< change this value to switch off the http logger
+					maxFiles: '7d',
+					maxSize: '10m'
+				}
+			}
+		}
+	});
+	```
+
 12. Data Transformer with Class Transformer
+
 13. Basic Token Auth with Decorator
-14. Encryption Response and Decryption Request with Encryption Decorator
+
+14. Encryption Response and Decryption Request with Decorator
+
 15. Support Docker
 
 #### Endpoints

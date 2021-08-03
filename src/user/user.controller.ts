@@ -32,7 +32,6 @@ import { Logger } from 'src/logger/logger.decorator';
 import { UserDocument, UserDocumentFull } from './user.interface';
 import { PermissionList } from 'src/permission/permission.constant';
 import { Permissions } from 'src/permission/permission.decorator';
-import { UserTransformer } from './transformer/user.transformer';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
 
 @Controller('/user')
