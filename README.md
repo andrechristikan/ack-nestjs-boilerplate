@@ -537,14 +537,17 @@ In this section will explain details base on `features` sections.
 			"firstName": "admin",
 			"email": "admin@mail.com",
 			"mobileNumber": "08111111111",
-			"role": "admin",
+			"role": {
+				"name": "admin",
+				"permissions": [
+					"UserCreate",
+					"UserDelete",
+					"UserRead",         
+					"UserUpdate"
+				]
+			},
 			"lastName": "test",
-			"permissions": [
-				"UserCreate",
-				"UserDelete",
-				"UserRead",         
-				"UserUpdate"
-			]
+			
 		}
 		```
 
@@ -720,7 +723,7 @@ In this section will explain details base on `features` sections.
 
 10. Request Validation with Class Validation
 
-	This project Combine `class-validator` with `Nestjs Pipe` for create `Request Validation Pipe`. `Request Validation Pipe` use for validate request incoming before get into endpoint. `Request Validation Pipe` need a `Validation Schema` to run.
+	This project Combine `class-validator` with `Nestjs Pipe` for create `Request Validation Pipe`. `Request Validation Pipe` use for validate request incoming before get into endpoint. `Request Validation Pipe` need a `Validation Schema` to run. 
 
 	- User Create Endpoint
 
@@ -840,7 +843,7 @@ In this section will explain details base on `features` sections.
 		}
 		```
 
-	Note if you want to switch logger to off, simply you can change the setting in `src/config/app.config.ts` to `off`
+	If you want to switch logger to off, simply you can change the setting in `src/config/app.config.ts` to `off`
 
 	```ts
 	export default (): Record<string, any> => ({
@@ -863,9 +866,158 @@ In this section will explain details base on `features` sections.
 
 12. Data Transformer with Class Transformer
 
+	This project use `Class Transformer`. The purpose is transform data into `object plain` or `class` that we has created.
+
+	```ts
+	// src/user/transformer/user.transformer.ts
+
+	export class UserTransformer {
+		@Transform(({ value }) => {
+			return `${value}`;
+		})
+		_id: string;
+
+		@Transform(({ value }) => {
+			const permissions: string[] = value.permissions.map(
+				(val: Record<string, any>) => val.name
+			);
+
+			return {
+				name: value.name,
+				permissions: permissions
+			};
+		}, { toClassOnly: true })
+		role: RoleDocumentFull;
+
+		firstName: string;
+		lastName: string;
+		email: string;
+		mobileNumber: string;
+
+		@Exclude()
+		password: string;
+
+		@Exclude()
+		__v: string;
+	}
+	```
+
+	Example usage
+
+	```ts
+	// src/user/user.service.ts
+
+	import { classToPlain, plainToClass } from 'class-transformer';
+
+	async safeProfile(data: UserDocumentFull): Promise<Record<string, any>> {
+        return classToPlain(plainToClass(UserTransformer, data));
+    }
+	```
+
+	For the example, here example data before transform
+	
+	```json
+	{
+		"_id": "",
+        "firstName": "admin",
+        "email": "admin@mail.com",
+        "mobileNumber": "08111111111",
+        "password": "",
+        "role": {
+            "_id": "",
+            "name": "admin",
+            "permissions": [
+                {
+                    "_id": "",
+                    "name": "UserCreate",
+                    "isActive": true
+                },
+                {
+                    "_id": "",
+                    "name": "UserDelete",
+                    "isActive": true
+                },
+                {
+                    "_id": "",
+                    "name": "UserRead",
+                    "isActive": true
+                },
+                {
+                    "_id": "",
+                    "name": "UserUpdate",
+                    "isActive": true
+                }
+            ],
+            "isActive": true
+        },
+        "lastName": "test"
+	}
+	```
+
+	and this data after transform
+	
+	```json
+	{
+		"_id": "60cc8db6ed2d8421b54700b7",
+        "firstName": "admin",
+        "email": "admin@mail.com",
+        "mobileNumber": "08111111111",
+        "role": {
+            "name": "admin",
+            "permissions": [
+                "UserCreate",
+                "UserDelete",
+                "UserRead",
+                "UserUpdate"
+            ]
+        },
+        "lastName": "test"
+	}
+	```
+
+
 13. Basic Token Auth with Decorator
 
+	This project also provide `Basic Token` decorator to authorization basic token. For usage we can use like this
+
+	```ts
+	// src/app/app.controller.ts
+	import { AuthBasicGuard } from 'src/auth/auth.decorator';
+
+	@Get('/hello-basic')
+    @HttpCode(HttpStatus.CREATED)
+    @AuthBasicGuard() // <<<< this decorator will guard the endpoint with basic auth
+    @Response('app.testHelloBasicToken')
+    async testHelloBasicToken(): Promise<void> {
+        return;
+    }
+	```
+
+
 14. Encryption Response and Decryption Request with Decorator
+
+	We can decrypt string with `@Decryption` Decorator and encrypt with `@Encryption` from `EncryptionModule`.
+
+	For usage 
+
+	```ts
+	// src/encryption/encryption.controller.ts
+
+	// Encryption
+    @Get('/encrypt')
+    @Encryption() // <<<< use like this
+    async en(): Promise<IResponse> {
+        return { message: this.messageService.get('encryption.en') };
+    }
+
+	// Decryption
+	@Post('/decrypt-data')
+    @Decryption() // <<<< use like this
+    @HttpCode(HttpStatus.OK)
+    async deData(@Body() body: Record<string, any>): Promise<IResponse> {
+        return body;
+    }
+	```
 
 15. Support Docker
 

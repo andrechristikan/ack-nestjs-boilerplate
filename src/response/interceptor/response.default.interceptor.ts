@@ -13,10 +13,11 @@ import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 
 // This interceptor for restructure response success
-export function ResponseInterceptor(
+export function ResponseDefaultInterceptor(
     messagePath: string
 ): Type<NestInterceptor> {
-    class MixinResponseInterceptor implements NestInterceptor<Promise<any>> {
+    class MixinResponseDefaultInterceptor
+        implements NestInterceptor<Promise<any>> {
         constructor(
             @Message() private readonly messageService: MessageService
         ) {}
@@ -46,5 +47,5 @@ export function ResponseInterceptor(
         }
     }
 
-    return mixin(MixinResponseInterceptor);
+    return mixin(MixinResponseDefaultInterceptor);
 }

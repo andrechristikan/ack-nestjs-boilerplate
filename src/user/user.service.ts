@@ -11,8 +11,9 @@ import { Message } from 'src/message/message.decorator';
 import { RoleEntity } from 'src/role/role.schema';
 import { PermissionEntity } from 'src/permission/permission.schema';
 import { Types } from 'mongoose';
-import { UserTransformer } from './transformer/user.transformer';
-import { classToPlain, plainToClass } from 'class-transformer';
+import { UserProfileTransformer } from './transformer/user.profile.transformer';
+import { plainToClass } from 'class-transformer';
+import { UserLoginTransformer } from './transformer/user.login.transformer';
 
 @Injectable()
 export class UserService {
@@ -58,8 +59,12 @@ export class UserService {
         return this.userModel.countDocuments(find);
     }
 
-    async safe(data: UserDocumentFull): Promise<Record<string, any>> {
-        return plainToClass(UserTransformer, data);
+    async safeProfile(data: UserDocumentFull): Promise<Record<string, any>> {
+        return plainToClass(UserProfileTransformer, data);
+    }
+
+    async safeLogin(data: UserDocumentFull): Promise<Record<string, any>> {
+        return plainToClass(UserLoginTransformer, data);
     }
 
     async findOneById<T>(userId: string, populate?: boolean): Promise<T> {

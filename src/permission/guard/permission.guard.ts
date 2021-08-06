@@ -29,17 +29,18 @@ export class PermissionGuard implements CanActivate {
         }
 
         const { user } = context.switchToHttp().getRequest();
-        const { permissions } = user;
+        const { role } = user;
+        const { permissions } = role;
 
-        const permission: boolean = requiredPermission.every((role) =>
-            permissions.includes(role)
+        const hasPermission: boolean = requiredPermission.every((permission) =>
+            permissions.includes(permission)
         );
 
-        if (!permission) {
+        if (!hasPermission) {
             throw new ForbiddenException(
                 this.messageService.get('http.clientError.forbidden')
             );
         }
-        return permission;
+        return hasPermission;
     }
 }

@@ -17,6 +17,7 @@ import { Logger } from 'src/logger/logger.decorator';
 import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
 import { IResponse } from 'src/response/response.interface';
+import { classToPlain } from 'class-transformer';
 
 @Controller('/auth')
 export class AuthController {
@@ -67,17 +68,12 @@ export class AuthController {
             );
         }
 
-        const { _id, email, firstName, lastName, role } = user;
-        const permissions: string[] = role.permissions.map((val) => val.name);
-
-        const accessToken: string = await this.authService.createAccessToken({
-            _id,
-            email,
-            firstName,
-            lastName,
-            role: user.role.name,
-            permissions
-        });
+        const safe: Record<string, any> = await this.userService.safeLogin(
+            user
+        );
+        const accessToken: string = await this.authService.createAccessToken(
+            classToPlain(safe)
+        );
 
         return {
             accessToken,

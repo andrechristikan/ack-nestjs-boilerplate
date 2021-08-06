@@ -96,7 +96,7 @@ export class UserController {
             );
         }
 
-        return this.userService.safe(user);
+        return this.userService.safeProfile(user);
     }
 
     @Get('/:userId')
