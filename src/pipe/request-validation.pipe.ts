@@ -1,9 +1,7 @@
 import {
     PipeTransform,
     ArgumentMetadata,
-    BadRequestException,
-    Type,
-    mixin
+    BadRequestException
 } from '@nestjs/common';
 import { validate } from 'class-validator';
 import { Logger } from 'src/logger/logger.decorator';
@@ -15,58 +13,52 @@ import { UserUpdateValidation } from 'src/user/validation/user.update.validation
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
 import { plainToClass } from 'class-transformer';
 
-export function RequestValidationPipe(schema: {
-    new (...args: any[]): any;
-}): Type<PipeTransform> {
-    class MixinRequestValidationPipe implements PipeTransform {
-        constructor(
-            @Message() private readonly messageService: MessageService,
-            @Logger() private readonly logger: LoggerService
-        ) {}
+export class RequestValidationPipe implements PipeTransform {
+    constructor(
+        @Message() private readonly messageService: MessageService,
+        @Logger() private readonly logger: LoggerService
+    ) {}
 
-        async transform(
-            value: Record<string, any>,
-            { metatype }: ArgumentMetadata
-        ): Promise<Record<string, any>> {
-            if (!metatype || !this.toValidate(metatype)) {
-                return value;
-            }
-
-            const request = plainToClass(schema, value);
-            this.logger.info('Request Data', {
-                class: 'RequestValidationPipe',
-                function: 'transform',
-                request: request
-            });
-
-            const rawErrors: Record<string, any>[] = await validate(request);
-            if (rawErrors.length > 0) {
-                const errors: IErrors[] = this.messageService.getRequestErrorsMessage(
-                    rawErrors
-                );
-
-                this.logger.error('Request Errors', {
-                    class: 'RequestValidationPipe',
-                    function: 'transform',
-                    errors
-                });
-
-                throw new BadRequestException(
-                    errors,
-                    this.messageService.get('http.clientError.badRequest')
-                );
-            }
+    async transform(
+        value: Record<string, any>,
+        { metatype }: ArgumentMetadata
+    ): Promise<Record<string, any>> {
+        if (!metatype || !this.toValidate(metatype)) {
             return value;
         }
 
-        private toValidate(metatype: Record<string, any>): boolean {
-            const types: Record<string, any>[] = [
-                UserUpdateValidation,
-                UserCreateValidation
-            ];
-            return types.includes(metatype);
+        const request = plainToClass(metatype, value);
+        this.logger.info('Request Data', {
+            class: 'RequestValidationPipe',
+            function: 'transform',
+            request: request
+        });
+
+        const rawErrors: Record<string, any>[] = await validate(request);
+        if (rawErrors.length > 0) {
+            const errors: IErrors[] = this.messageService.getRequestErrorsMessage(
+                rawErrors
+            );
+
+            this.logger.error('Request Errors', {
+                class: 'RequestValidationPipe',
+                function: 'transform',
+                errors
+            });
+
+            throw new BadRequestException(
+                errors,
+                this.messageService.get('http.clientError.badRequest')
+            );
         }
+        return value;
     }
 
-    return mixin(MixinRequestValidationPipe);
+    private toValidate(metatype: Record<string, any>): boolean {
+        const types: Record<string, any>[] = [
+            UserUpdateValidation,
+            UserCreateValidation
+        ];
+        return types.includes(metatype);
+    }
 }

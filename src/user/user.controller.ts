@@ -127,8 +127,8 @@ export class UserController {
     @Response('user.create')
     @Permissions(PermissionList.UserRead, PermissionList.UserCreate)
     async create(
-        @Body(RequestValidationPipe(UserCreateValidation))
-        data: Record<string, any>
+        @Body(RequestValidationPipe)
+        data: UserCreateValidation
     ): Promise<IResponse> {
         const errors: IErrors[] = await this.userService.checkExist(
             data.email,
@@ -205,7 +205,7 @@ export class UserController {
     @Permissions(PermissionList.UserRead, PermissionList.UserUpdate)
     async update(
         @Param('userId') userId: string,
-        @Body(RequestValidationPipe(UserUpdateValidation))
+        @Body(RequestValidationPipe)
         data: UserUpdateValidation
     ): Promise<IResponse> {
         const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(

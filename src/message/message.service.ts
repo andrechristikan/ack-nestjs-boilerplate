@@ -28,16 +28,12 @@ export class MessageService {
     }
 
     getRequestErrorsMessage(requestErrors: Record<string, any>[]): IErrors[] {
-        const messageErrors: IErrors[] = requestErrors.map((value) => {
-            for (const i in value.constraints) {
-                return {
-                    property: value.property,
-                    message: this.get(`request.${value.constraints[i]}`)
-                        .replace('$property', value.property)
-                        .replace('$value', value.value)
-                };
-            }
-        });
+        const messageErrors: IErrors[] = requestErrors.map((value) => ({
+            property: value.property,
+            message: this.get(`request.${value.constraints[0]}`)
+                .replace('$property', value.property)
+                .replace('$value', value.value)
+        }));
         return messageErrors;
     }
 }

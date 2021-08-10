@@ -733,8 +733,7 @@ In this section will explain details base on `features` sections.
 
 		@Post('/create')
 		async create(
-			@Body(RequestValidationPipe(UserCreateValidation)) // <<<< use like this
-			data: Record<string, any>
+			@Body(RequestValidationPipe) data: UserCreateValidation // <<<< use like this
 		): Promise<IResponse> {}
 		```
 
