@@ -30,7 +30,7 @@ import {
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
 import { UserDocument, UserDocumentFull } from './user.interface';
-import { PermissionList } from 'src/permission/permission.constant';
+import { PERMISSION_LIST } from 'src/permission/permission.constant';
 import { Permissions } from 'src/permission/permission.decorator';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
 
@@ -46,7 +46,7 @@ export class UserController {
     @Get('/')
     @AuthJwtGuard()
     @ResponsePaging('user.findAll')
-    @Permissions(PermissionList.UserRead)
+    @Permissions(PERMISSION_LIST.USER_READ)
     async findAll(
         @Query('page', new DefaultValuePipe(DEFAULT_PAGE), ParseIntPipe)
         page: number,
@@ -79,7 +79,7 @@ export class UserController {
     @Get('/profile')
     @AuthJwtGuard()
     @Response('user.profile')
-    @Permissions(PermissionList.ProfileRead)
+    @Permissions(PERMISSION_LIST.PROFILE_READ)
     async profile(@User('_id') userId: string): Promise<IResponse> {
         const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
             userId,
@@ -102,7 +102,7 @@ export class UserController {
     @Get('/:userId')
     @AuthJwtGuard()
     @Response('user.findOneById')
-    @Permissions(PermissionList.UserRead)
+    @Permissions(PERMISSION_LIST.USER_READ)
     async findOneById(@Param('userId') userId: string): Promise<IResponse> {
         const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
             userId,
@@ -125,7 +125,7 @@ export class UserController {
     @Post('/create')
     @AuthJwtGuard()
     @Response('user.create')
-    @Permissions(PermissionList.UserRead, PermissionList.UserCreate)
+    @Permissions(PERMISSION_LIST.USER_READ, PERMISSION_LIST.USER_CREATE)
     async create(
         @Body(RequestValidationPipe)
         data: UserCreateValidation
@@ -171,7 +171,7 @@ export class UserController {
     @Delete('/delete/:userId')
     @AuthJwtGuard()
     @Response('user.delete')
-    @Permissions(PermissionList.UserRead, PermissionList.UserDelete)
+    @Permissions(PERMISSION_LIST.USER_READ, PERMISSION_LIST.USER_DELETE)
     async delete(@Param('userId') userId: string): Promise<void> {
         const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
             userId,
@@ -202,7 +202,7 @@ export class UserController {
     @Put('/update/:userId')
     @AuthJwtGuard()
     @Response('user.update')
-    @Permissions(PermissionList.UserRead, PermissionList.UserUpdate)
+    @Permissions(PERMISSION_LIST.USER_READ, PERMISSION_LIST.USER_UPDATE)
     async update(
         @Param('userId') userId: string,
         @Body(RequestValidationPipe)

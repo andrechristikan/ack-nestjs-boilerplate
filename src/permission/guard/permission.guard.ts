@@ -7,22 +7,18 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
-import { Role } from 'src/role/role.decorator';
-import { RoleDocumentFull } from 'src/role/role.interface';
-import { RoleService } from 'src/role/role.service';
-import { PermissionList, PERMISSION_META_KEY } from '../permission.constant';
+import { PERMISSION_LIST, PERMISSION_META_KEY } from '../permission.constant';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
     constructor(
         @Message() private readonly messageService: MessageService,
-        @Role() private readonly roleService: RoleService,
         private reflector: Reflector
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const requiredPermission: PermissionList[] = this.reflector.getAllAndOverride<
-            PermissionList[]
+        const requiredPermission: PERMISSION_LIST[] = this.reflector.getAllAndOverride<
+            PERMISSION_LIST[]
         >(PERMISSION_META_KEY, [context.getHandler(), context.getClass()]);
         if (!requiredPermission) {
             return true;

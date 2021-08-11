@@ -7,7 +7,7 @@ import { PermissionService } from 'src/permission/permission.service';
 import { RoleService } from 'src/role/role.service';
 import { PermissionDocument } from 'src/permission/permission.interface';
 import { RoleDocument } from 'src/role/role.interface';
-import { PermissionList } from 'src/permission/permission.constant';
+import { PERMISSION_LIST } from 'src/permission/permission.constant';
 
 @Injectable()
 export class RoleSeed {
@@ -25,7 +25,7 @@ export class RoleSeed {
     async create(): Promise<void> {
         let permissions: PermissionDocument[] = await this.permissionService.findAll(
             {
-                name: { $in: Object.keys(PermissionList) }
+                name: { $in: Object.keys(PERMISSION_LIST) }
             },
             {
                 limit: 20,

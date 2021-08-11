@@ -1,25 +1,18 @@
-export enum PermissionList {
-    // User
-    UserCreate = 'UserCreate',
-    UserUpdate = 'UserUpdate',
-    UserRead = 'UserRead',
-    UserDelete = 'UserDelete',
-
-    // Profile
-    ProfileUpdate = 'ProfileUpdate',
-    ProfileRead = 'ProfileRead',
-
-    // Role
-    RoleCreate = 'RoleCreate',
-    RoleUpdate = 'RoleUpdate',
-    RoleRead = 'RoleRead',
-    RoleDelete = 'RoleDelete',
-
-    // Permission
-    PermissionCreate = 'PermissionCreate',
-    PermissionUpdate = 'PermissionCreate',
-    PermissionRead = 'PermissionCreate',
-    PermissionDelete = 'PermissionCreate'
+export enum PERMISSION_LIST {
+    USER_CREATE = 'USER_CREATE',
+    USER_UPDATE = 'USER_UPDATE',
+    USER_READ = 'USER_READ',
+    USER_DELETE = 'USER_DELETE',
+    PROFILE_UPDATE = 'PROFILE_UPDATE',
+    PROFILE_READ = 'PROFILE_READ',
+    ROLE_CREATE = 'ROLE_CREATE',
+    ROLE_UPDATE = 'ROLE_UPDATE',
+    ROLE_READ = 'ROLE_READ',
+    ROLE_DELETE = 'ROLE_DELETE',
+    PERMISSION_CREATE = 'PERMISSION_CREATE',
+    PERMISSION_UPDATE = 'PERMISSION_UPDATE',
+    PERMISSION_READ = 'PERMISSION_READ',
+    PERMISSION_DELETE = 'PERMISSION_DELETE'
 }
 
-export const PERMISSION_META_KEY = 'permissionsMetaKey';
+export const PERMISSION_META_KEY = 'PERMISSION_META_KEY';

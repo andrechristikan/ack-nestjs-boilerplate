@@ -4,7 +4,7 @@ import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
 
 import { PermissionService } from 'src/permission/permission.service';
-import { PermissionList } from 'src/permission/permission.constant';
+import { PERMISSION_LIST } from 'src/permission/permission.constant';
 import { PermissionDocument } from 'src/permission/permission.interface';
 
 @Injectable()
@@ -30,7 +30,7 @@ export class PermissionSeed {
         }
 
         try {
-            const permissions = Object.keys(PermissionList).map((val) => ({
+            const permissions = Object.keys(PERMISSION_LIST).map((val) => ({
                 name: val
             }));
             await this.permissionService.createMany(permissions);

@@ -7,7 +7,6 @@ import {
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
 import { HashService } from 'src/hash/hash.service';
 import { Request } from 'express';
 import rawBody from 'raw-body';

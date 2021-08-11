@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Response } from 'src/response/response.decorator';
 import { AuthJwtGuard } from 'src/auth/auth.decorator';
-import { PermissionList } from 'src/permission/permission.constant';
+import { PERMISSION_LIST } from 'src/permission/permission.constant';
 import { Permissions } from 'src/permission/permission.decorator';
 import { RoleService } from './role.service';
 import { PaginationService } from 'src/pagination/pagination.service';
@@ -29,7 +29,7 @@ export class RoleController {
     @Get('/')
     @AuthJwtGuard()
     @Response('role.findAll')
-    @Permissions(PermissionList.RoleRead)
+    @Permissions(PERMISSION_LIST.ROLE_READ)
     async findAll(
         @Query('page', new DefaultValuePipe(DEFAULT_PAGE), ParseIntPipe)
         page: number,

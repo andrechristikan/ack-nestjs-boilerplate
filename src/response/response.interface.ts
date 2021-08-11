@@ -5,5 +5,5 @@ export interface IResponsePaging {
     totalPage: number;
     currentPage: number;
     perPage: number;
-    data: Record<string,any>[]
+    data: Record<string, any>[];
 }
