@@ -23,3 +23,11 @@ export const User = createParamDecorator(
         return data ? user[data] : user;
     }
 );
+
+export const Token = createParamDecorator(
+    (data: string, ctx: ExecutionContext): string => {
+        const { headers } = ctx.switchToHttp().getRequest();
+        const authorization: string[] = headers.authorization.split(' ');
+        return authorization[1];
+    }
+);
