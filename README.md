@@ -454,6 +454,8 @@ In this section will explain details base on `features` sections.
 
 	export default (): Record<string, any> => ({
 		database: {
+			srv: process.env.DATABASE_SRV || false,
+			options: process.env.DATABASE_OPTIONS || '',
 			host: process.env.DATABASE_HOST || 'localhost:27017',
 			name: process.env.DATABASE_NAME || 'ack',
 			user: process.env.DATABASE_USER || null,
@@ -465,6 +467,8 @@ In this section will explain details base on `features` sections.
 	Database configuration also put into `.env` for `dynamic configuration`
 	
 	```env
+	DATABASE_SRV=false
+	DATABASE_OPTION=
 	DATABASE_HOST=localhost:27017
 	DATABASE_NAME=ack
 	DATABASE_USER=
