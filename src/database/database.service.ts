@@ -12,8 +12,10 @@ export class DatabaseService implements MongooseOptionsFactory {
     createMongooseOptions(): MongooseModuleOptions {
         const baseUrl = `${this.configService.get<string>('database.host')}`;
         const databaseName = this.configService.get<string>('database.name');
+        const srv = this.configService.get<string>('database.srv');
+        const options = this.configService.get<string>('database.options');
 
-        let uri: string = `mongodb://`;
+        let uri: string = `mongodb${srv ? '+srv' : ''}://`;
         if (
             this.configService.get<string>('database.user') &&
             this.configService.get<string>('database.password')
@@ -23,7 +25,7 @@ export class DatabaseService implements MongooseOptionsFactory {
             )}:${this.configService.get<string>('database.password')}@`;
         }
 
-        uri = `${uri}${baseUrl}/${databaseName}`;
+        uri = `${uri}${baseUrl}/${databaseName}?${options}`;
 
         mongoose.set('debug', this.configService.get<string>('app.debug'));
         return {

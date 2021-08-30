@@ -1,5 +1,7 @@
 export default (): Record<string, any> => ({
     database: {
+        srv: process.env.DATABASE_SRV || false,
+        options: process.env.DATABASE_OPTIONS || '',
         host: process.env.DATABASE_HOST || 'localhost:27017',
         name: process.env.DATABASE_NAME || 'ack',
         user: process.env.DATABASE_USER || null,
