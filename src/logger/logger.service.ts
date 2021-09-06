@@ -4,21 +4,20 @@ import winston from 'winston';
 import { LOGGER_NAME } from 'src/logger/logger.constant';
 import { ILoggerOptions } from 'src/logger/logger.interface';
 import { ConfigService } from '@nestjs/config';
-import moment from 'moment';
 
 @Injectable()
 export class LoggerService {
     constructor(private configService: ConfigService) {}
 
     createLogger(): ILoggerOptions {
-        const loggerEnv: boolean = !this.configService.get<boolean>(
-            'app.logger.system.silent'
-        );
+        const logger: boolean =
+            this.configService.get<boolean>('app.debug') &&
+            this.configService.get<boolean>('app.debugger.system.active');
         const maxSize = this.configService.get<string>(
-            'app.logger.system.maxSize'
+            'app.debugger.system.maxSize'
         );
         const maxFiles = this.configService.get<string>(
-            'app.logger.system.maxFiles'
+            'app.debugger.system.maxFiles'
         );
 
         const configTransportDefault: DailyRotateFile = new DailyRotateFile({
@@ -42,14 +41,14 @@ export class LoggerService {
         });
 
         const transports = [];
-        if (loggerEnv) {
+        if (logger) {
             transports.push(configTransportError);
             transports.push(configTransportDefault);
         }
 
         transports.push(
             new winston.transports.Console({
-                silent: !loggerEnv || false
+                silent: !logger
             })
         );
 

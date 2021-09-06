@@ -8,6 +8,7 @@ import { JwtGuard } from 'src/auth/guard/jwt/jwt.guard';
 import { BasicGuard } from 'src/auth/guard/basic/basic.guard';
 import { IApplyDecorator } from 'src/auth/auth.interface';
 import { PermissionGuard } from 'src/permission/guard/permission.guard';
+import { JwtRefreshGuard } from './guard/jwt-refresh/jwt-refresh.guard';
 
 export function AuthJwtGuard(): IApplyDecorator {
     return applyDecorators(UseGuards(JwtGuard, PermissionGuard));
@@ -15,6 +16,10 @@ export function AuthJwtGuard(): IApplyDecorator {
 
 export function AuthBasicGuard(): IApplyDecorator {
     return applyDecorators(UseGuards(BasicGuard));
+}
+
+export function AuthJwtRefreshGuard(): IApplyDecorator {
+    return applyDecorators(UseGuards(JwtRefreshGuard));
 }
 
 export const User = createParamDecorator(

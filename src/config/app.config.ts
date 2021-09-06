@@ -2,19 +2,21 @@ export default (): Record<string, any> => ({
     app: {
         env: process.env.APP_ENV || 'development',
         language: process.env.APP_LANGUAGE || 'en',
-        debug: process.env.APP_DEBUG === 'true' ? true : false,
         http: {
             host: process.env.APP_HOST || 'localhost',
             port: parseInt(process.env.APP_PORT) || 3000
         },
-        logger: {
+        logger: process.env.APP_LOGGER || false,
+
+        debug: process.env.APP_DEBUG === 'true' ? true : false,
+        debugger: {
             http: {
-                silent: false,
+                active: false,
                 maxFiles: 5,
                 maxSize: '10M'
             },
             system: {
-                silent: false,
+                active: false,
                 maxFiles: '7d',
                 maxSize: '10m'
             }

@@ -3,9 +3,10 @@ import { AuthService } from 'src/auth/auth.service';
 import { JwtStrategy } from 'src/auth/guard/jwt/jwt.strategy';
 import { UserModule } from 'src/user/user.module';
 import { AuthController } from 'src/auth/auth.controller';
+import { JwtRefreshStrategy } from './guard/jwt-refresh/jwt-refresh.strategy';
 
 @Module({
-    providers: [AuthService, JwtStrategy],
+    providers: [AuthService, JwtStrategy, JwtRefreshStrategy],
     exports: [AuthService],
     controllers: [AuthController],
     imports: [UserModule]

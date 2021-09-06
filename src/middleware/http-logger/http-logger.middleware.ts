@@ -41,10 +41,10 @@ export class HttpLoggerMiddleware implements NestMiddleware {
             stream: createStream(`${date}.log`, {
                 path: `./logs/${LOGGER_HTTP_NAME}/`,
                 maxSize: this.configService.get<string>(
-                    'app.logger.http.maxSize'
+                    'app.debugger.http.maxSize'
                 ),
                 maxFiles: this.configService.get<number>(
-                    'app.logger.http.maxFiles'
+                    'app.debugger.http.maxFiles'
                 ),
                 compress: true,
                 interval: '1d'
@@ -58,7 +58,10 @@ export class HttpLoggerMiddleware implements NestMiddleware {
     }
 
     use(req: Request, res: Response, next: NextFunction): void {
-        if (!this.configService.get<boolean>('app.logger.http.silent')) {
+        if (
+            this.configService.get<boolean>('app.debug') &&
+            this.configService.get<boolean>('app.debugger.http.active')
+        ) {
             const config: IHttpLoggerConfig = this.httpLogger();
             this.customToken();
             morgan(config.LOGGER_HTTP_FORMAT, config.HttpLoggerOptions)(

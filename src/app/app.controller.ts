@@ -1,7 +1,7 @@
 import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
 
 import { Response } from 'src/response/response.decorator';
-import { AuthBasicGuard, AuthJwtGuard } from 'src/auth/auth.decorator';
+import { AuthBasicGuard } from 'src/auth/auth.decorator';
 @Controller('/test')
 export class AppController {
     @Get('/hello')
