@@ -1,29 +1,103 @@
 import { Injectable } from '@nestjs/common';
-import { HashService } from 'src/hash/hash.service';
-import { Hash } from 'src/hash/hash.decorator';
+import { ConfigService } from '@nestjs/config';
+import { Helper } from 'src/helper/helper.decorator';
+import { HelperService } from 'src/helper/helper.service';
 
 @Injectable()
 export class AuthService {
-    constructor(@Hash() private readonly hashService: HashService) {}
+    constructor(
+        @Helper() private readonly helperService: HelperService,
+        private readonly configService: ConfigService
+    ) {}
 
-    async createAccessToken(payload: Record<string, any>): Promise<string> {
-        return this.hashService.jwtSign(payload);
+    async createAccessToken(
+        payload: Record<string, any>,
+        rememberMe: boolean
+    ): Promise<string> {
+        return this.helperService.jwtCreateToken(payload, {
+            secretKey: this.configService.get<string>(
+                'auth.jwt.accessToken.secretKey'
+            ),
+            expiredIn: rememberMe
+                ? this.configService.get<string>(
+                      'auth.jwt.accessToken.rememberMe.expirationTime'
+                  )
+                : this.configService.get<string>(
+                      'auth.jwt.accessToken.expirationTime'
+                  ),
+            notBefore: rememberMe
+                ? this.configService.get<string>(
+                      'auth.jwt.accessToken.rememberMe.notBeforeExpirationTime'
+                  )
+                : this.configService.get<string>(
+                      'auth.jwt.accessToken.notBeforeExpirationTime'
+                  )
+        });
     }
 
     async validateAccessToken(
-        token: string,
-        payload?: boolean
+        token: string
     ): Promise<boolean | Record<string, any>> {
-        const verify: boolean = await this.hashService.jwtVerify(token);
-        if (!verify) {
-            return verify;
-        }
+        return this.helperService.jwtVerify(token, {
+            secretKey: this.configService.get<string>(
+                'auth.jwt.accessToken.secretKey'
+            )
+        });
+    }
 
-        if (payload) {
-            return this.hashService.jwtPayload(token);
-        }
+    async payloadAccessToken(
+        token: string
+    ): Promise<boolean | Record<string, any>> {
+        return this.helperService.jwtPayload(token, {
+            secretKey: this.configService.get<string>(
+                'auth.jwt.accessToken.secretKey'
+            )
+        });
+    }
 
-        return verify;
+    async createRefreshToken(
+        payload: Record<string, any>,
+        rememberMe: boolean
+    ): Promise<string> {
+        return this.helperService.jwtCreateToken(payload, {
+            secretKey: this.configService.get<string>(
+                'auth.jwt.refreshToken.secretKey'
+            ),
+            expiredIn: rememberMe
+                ? this.configService.get<string>(
+                      'auth.jwt.refreshToken.rememberMe.expirationTime'
+                  )
+                : this.configService.get<string>(
+                      'auth.jwt.refreshToken.expirationTime'
+                  ),
+            notBefore: rememberMe
+                ? this.configService.get<string>(
+                      'auth.jwt.refreshToken.rememberMe.notBeforeExpirationTime'
+                  )
+                : this.configService.get<string>(
+                      'auth.jwt.refreshToken.notBeforeExpirationTime'
+                  )
+        });
+    }
+
+    async validateRefreshToken(
+        token: string
+    ): Promise<boolean | Record<string, any>> {
+        return this.helperService.jwtVerify(token, {
+            secretKey: this.configService.get<string>(
+                'auth.jwt.refreshToken.secretKey'
+            )
+        });
+    }
+
+    async payloadRefreshToken(
+        token: string
+    ): Promise<boolean | Record<string, any>> {
+        return this.helperService.jwtPayload(token, {
+            secretKey: this.configService.get<string>(
+                'auth.jwt.refreshToken.secretKey'
+            )
+        });
     }
 
     async createBasicToken(
@@ -31,7 +105,7 @@ export class AuthService {
         clientSecret: string
     ): Promise<string> {
         const token: string = `${clientId}:${clientSecret}`;
-        return this.hashService.encryptBase64(token);
+        return this.helperService.base64Encrypt(token);
     }
 
     async validateBasicToken(
@@ -48,7 +122,7 @@ export class AuthService {
         passwordString: string,
         passwordHash: string
     ): Promise<boolean> {
-        return this.hashService.bcryptComparePassword(
+        return this.helperService.bcryptComparePassword(
             passwordString,
             passwordHash
         );

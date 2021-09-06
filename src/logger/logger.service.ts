@@ -21,11 +21,6 @@ export class LoggerService {
             'app.logger.system.maxFiles'
         );
 
-        const randomString: string =
-            Math.random().toString(36).substring(2, 15) +
-            Math.random().toString(36).substring(2, 15);
-        const timestamp: number = moment().valueOf();
-
         const configTransportDefault: DailyRotateFile = new DailyRotateFile({
             filename: `%DATE%.log`,
             dirname: `logs/${LOGGER_NAME}/default`,
@@ -59,9 +54,6 @@ export class LoggerService {
         );
 
         const loggerOptions: ILoggerOptions = {
-            defaultMeta: {
-                requestId: `${timestamp}${randomString}`
-            },
             format: winston.format.combine(
                 winston.format.timestamp(),
                 winston.format.prettyPrint()

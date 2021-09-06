@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { HashService } from 'src/hash/hash.service';
+import { HelperService } from './helper.service';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
@@ -7,21 +7,24 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 @Module({
     providers: [
         {
-            provide: 'HashService',
-            useClass: HashService
+            provide: 'HelperService',
+            useClass: HelperService
         }
     ],
-    exports: [HashService],
+    exports: [HelperService],
+    controllers: [],
     imports: [
         JwtModule.registerAsync({
             inject: [ConfigService],
             imports: [ConfigModule],
             useFactory: (configService: ConfigService) => {
                 return {
-                    secret: configService.get<string>('auth.jwtSecretKey'),
+                    secret: configService.get<string>(
+                        'helper.jwt.defaultSecretKey'
+                    ),
                     signOptions: {
                         expiresIn: configService.get<string>(
-                            'auth.jwtExpirationTime'
+                            'helper.jwt.defaultExpirationTime'
                         )
                     }
                 };
@@ -29,4 +32,4 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         })
     ]
 })
-export class HashModule {}
+export class HelperModule {}

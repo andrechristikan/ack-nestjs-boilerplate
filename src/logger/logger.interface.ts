@@ -7,5 +7,4 @@ export interface ILoggerOptions {
         | DailyRotateFile
         | winston.transports.ConsoleTransportInstance
     )[];
-    defaultMeta: Record<string, any>;
 }

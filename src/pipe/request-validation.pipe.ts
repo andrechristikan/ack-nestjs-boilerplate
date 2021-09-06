@@ -1,7 +1,7 @@
 import {
     PipeTransform,
     ArgumentMetadata,
-    BadRequestException
+    UnprocessableEntityException
 } from '@nestjs/common';
 import { validate } from 'class-validator';
 import { Logger } from 'src/logger/logger.decorator';
@@ -12,6 +12,7 @@ import { IErrors } from 'src/message/message.interface';
 import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
 import { plainToClass } from 'class-transformer';
+import { AuthLoginValidation } from 'src/auth/validation/auth.login.validation';
 
 export class RequestValidationPipe implements PipeTransform {
     constructor(
@@ -46,7 +47,7 @@ export class RequestValidationPipe implements PipeTransform {
                 errors
             });
 
-            throw new BadRequestException(
+            throw new UnprocessableEntityException(
                 errors,
                 this.messageService.get('http.clientError.badRequest')
             );
@@ -57,7 +58,8 @@ export class RequestValidationPipe implements PipeTransform {
     private toValidate(metatype: Record<string, any>): boolean {
         const types: Record<string, any>[] = [
             UserUpdateValidation,
-            UserCreateValidation
+            UserCreateValidation,
+            AuthLoginValidation
         ];
         return types.includes(metatype);
     }

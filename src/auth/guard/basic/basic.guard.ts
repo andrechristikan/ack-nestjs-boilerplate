@@ -39,8 +39,8 @@ export class BasicGuard implements CanActivate {
 
         const clientBasicToken: string = authorization.replace('Basic ', '');
         const ourBasicToken: string = await this.authService.createBasicToken(
-            this.configService.get<string>('auth.basicTokenClientId'),
-            this.configService.get<string>('auth.basicTokenClientSecret')
+            this.configService.get<string>('auth.basicToken.clientId'),
+            this.configService.get<string>('auth.basicToken.clientSecret')
         );
 
         const validateBasicToken: boolean = await this.authService.validateBasicToken(

@@ -10,12 +10,11 @@ import { LoggerService } from 'src/logger/logger.service';
 import { LoggerModule } from 'src/logger/logger.module';
 import { UserModule } from 'src/user/user.module';
 import { AuthModule } from 'src/auth/auth.module';
-import { HashModule } from 'src/hash/hash.module';
 import { PaginationModule } from 'src/pagination/pagination.module';
 import { MiddlewareModule } from 'src/middleware/middleware.module';
-import { EncryptionModule } from 'src/encryption/encryption.module';
 import { SeedsModule } from 'src/database/seeds/seeds.module';
 import Configs from 'src/config/index';
+import { HelperModule } from 'src/helper/helper.module';
 
 @Module({
     controllers: [AppController],
@@ -44,13 +43,13 @@ import Configs from 'src/config/index';
         MessageModule,
         LoggerModule,
         PaginationModule,
-        HashModule,
+        HelperModule,
+        HelperModule,
 
         // seeder module
         SeedsModule,
 
         // other module
-        EncryptionModule,
         AuthModule,
         UserModule
     ]

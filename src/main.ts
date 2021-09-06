@@ -13,6 +13,7 @@ async function bootstrap() {
     const port: number = configService.get<number>('app.http.port');
 
     const logger = new Logger();
+    process.env.TZ = process.env.APP_TZ;
 
     // Global Prefix
     app.setGlobalPrefix('/api');

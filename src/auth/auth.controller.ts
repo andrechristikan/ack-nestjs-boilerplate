@@ -7,10 +7,8 @@ import {
     BadRequestException
 } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
-import { ILogin } from 'src/auth/auth.interface';
 import { UserService } from 'src/user/user.service';
 import { Response } from 'src/response/response.decorator';
-import { ConfigService } from '@nestjs/config';
 import { UserDocumentFull } from 'src/user/user.interface';
 import { Logger as LoggerService } from 'winston';
 import { Logger } from 'src/logger/logger.decorator';
@@ -18,6 +16,8 @@ import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
 import { IResponse } from 'src/response/response.interface';
 import { classToPlain } from 'class-transformer';
+import { RequestValidationPipe } from 'src/pipe/request-validation.pipe';
+import { AuthLoginValidation } from './validation/auth.login.validation';
 
 @Controller('/auth')
 export class AuthController {
@@ -25,18 +25,18 @@ export class AuthController {
         @Message() private readonly messageService: MessageService,
         @Logger() private readonly logger: LoggerService,
         private readonly authService: AuthService,
-        private readonly userService: UserService,
-        private readonly configService: ConfigService
+        private readonly userService: UserService
     ) {}
 
     @Post('/login')
     @Response('auth.login')
     @HttpCode(HttpStatus.OK)
-    async login(@Body() data: ILogin): Promise<IResponse> {
+    async login(
+        @Body(RequestValidationPipe) data: AuthLoginValidation
+    ): Promise<IResponse> {
         const user: UserDocumentFull = await this.userService.findOne<UserDocumentFull>(
             {
-                email:
-                    data[this.configService.get<string>('auth.defaultUsername')]
+                email: data.email
             },
             true
         );
@@ -72,12 +72,18 @@ export class AuthController {
             user
         );
         const accessToken: string = await this.authService.createAccessToken(
-            classToPlain(safe)
+            classToPlain(safe),
+            data.rememberMe ? true : false
+        );
+
+        const refreshToken: string = await this.authService.createRefreshToken(
+            classToPlain(safe),
+            data.rememberMe ? true : false
         );
 
         return {
             accessToken,
-            expiredIn: this.configService.get<string>('auth.jwtExpirationTime')
+            refreshToken
         };
     }
 }

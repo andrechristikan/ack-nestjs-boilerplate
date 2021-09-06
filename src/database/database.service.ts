@@ -12,8 +12,10 @@ export class DatabaseService implements MongooseOptionsFactory {
     createMongooseOptions(): MongooseModuleOptions {
         const baseUrl = `${this.configService.get<string>('database.host')}`;
         const databaseName = this.configService.get<string>('database.name');
-        const srv = this.configService.get<string>('database.srv');
-        const options = this.configService.get<string>('database.options');
+        const srv = this.configService.get<boolean>('database.srv');
+        const options = this.configService.get<string>('database.options')
+            ? `?${this.configService.get<string>('database.options')}`
+            : '';
 
         let uri: string = `mongodb${srv ? '+srv' : ''}://`;
         if (
@@ -25,15 +27,18 @@ export class DatabaseService implements MongooseOptionsFactory {
             )}:${this.configService.get<string>('database.password')}@`;
         }
 
-        uri = `${uri}${baseUrl}/${databaseName}?${options}`;
-
+        uri = `${uri}${baseUrl}/${databaseName}${options}`;
+        console.log('uri', uri);
         mongoose.set('debug', this.configService.get<string>('app.debug'));
+
         return {
             uri,
             useNewUrlParser: true,
             useUnifiedTopology: true,
             useCreateIndex: true,
             useFindAndModify: false
+            // authSource: 'admin',
+            // ssl: true
         };
     }
 }

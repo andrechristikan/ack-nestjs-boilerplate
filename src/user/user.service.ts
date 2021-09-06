@@ -3,8 +3,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserEntity } from 'src/user/user.schema';
 import { UserDocument, UserDocumentFull } from 'src/user/user.interface';
-import { HashService } from 'src/hash/hash.service';
-import { Hash } from 'src/hash/hash.decorator';
 import { IErrors } from 'src/message/message.interface';
 import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
@@ -14,13 +12,15 @@ import { Types } from 'mongoose';
 import { UserProfileTransformer } from './transformer/user.profile.transformer';
 import { plainToClass } from 'class-transformer';
 import { UserLoginTransformer } from './transformer/user.login.transformer';
+import { Helper } from 'src/helper/helper.decorator';
+import { HelperService } from 'src/helper/helper.service';
 
 @Injectable()
 export class UserService {
     constructor(
         @InjectModel(UserEntity.name)
         private readonly userModel: Model<UserDocument>,
-        @Hash() private readonly hashService: HashService,
+        @Helper() private readonly helperService: HelperService,
         @Message() private readonly messageService: MessageService
     ) {}
 
@@ -113,8 +113,8 @@ export class UserService {
     }
 
     async create(data: Record<string, any>): Promise<UserDocument> {
-        const salt: string = await this.hashService.randomSalt();
-        const passwordHash = await this.hashService.hashPassword(
+        const salt: string = await this.helperService.randomSalt();
+        const passwordHash = await this.helperService.bcryptHashPassword(
             data.password,
             salt
         );

@@ -5,8 +5,6 @@ import { Logger } from 'src/logger/logger.decorator';
 
 import { RoleService } from 'src/role/role.service';
 import { UserService } from 'src/user/user.service';
-import { Hash } from 'src/hash/hash.decorator';
-import { HashService } from 'src/hash/hash.service';
 import { RoleDocument } from 'src/role/role.interface';
 import { UserDocument } from 'src/user/user.interface';
 
@@ -15,8 +13,7 @@ export class UserSeed {
     constructor(
         @Logger() private readonly logger: LoggerService,
         private readonly userService: UserService,
-        private readonly roleService: RoleService,
-        @Hash() readonly hashService: HashService
+        private readonly roleService: RoleService
     ) {}
 
     @Command({
