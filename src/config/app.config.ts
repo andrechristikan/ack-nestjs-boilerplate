@@ -6,7 +6,6 @@ export default (): Record<string, any> => ({
             host: process.env.APP_HOST || 'localhost',
             port: parseInt(process.env.APP_PORT) || 3000
         },
-        logger: process.env.APP_LOGGER || false,
 
         debug: process.env.APP_DEBUG === 'true' ? true : false,
         debugger: {
@@ -16,7 +15,7 @@ export default (): Record<string, any> => ({
                 maxSize: '10M'
             },
             system: {
-                active: false,
+                active: true,
                 maxFiles: '7d',
                 maxSize: '10m'
             }

@@ -6,8 +6,8 @@ import { DatabaseModule } from 'src/database/database.module';
 import { MessageModule } from 'src/message/message.module';
 import { ConfigModule } from '@nestjs/config';
 import { WinstonModule } from 'nest-winston';
-import { LoggerService } from 'src/logger/logger.service';
-import { LoggerModule } from 'src/logger/logger.module';
+import { DebuggerService } from 'src/debugger/debugger.service';
+import { DebuggerModule } from 'src/debugger/debugger.module';
 import { UserModule } from 'src/user/user.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { PaginationModule } from 'src/pagination/pagination.module';
@@ -29,9 +29,9 @@ import { HelperModule } from 'src/helper/helper.module';
             cache: true
         }),
         WinstonModule.forRootAsync({
-            inject: [LoggerService],
-            imports: [LoggerModule],
-            useFactory: (loggerService: LoggerService) =>
+            inject: [DebuggerService],
+            imports: [DebuggerModule],
+            useFactory: (loggerService: DebuggerService) =>
                 loggerService.createLogger()
         }),
         MongooseModule.forRootAsync({
@@ -41,7 +41,7 @@ import { HelperModule } from 'src/helper/helper.module';
                 databaseService.createMongooseOptions()
         }),
         MessageModule,
-        LoggerModule,
+        DebuggerModule,
         PaginationModule,
         HelperModule,
         HelperModule,

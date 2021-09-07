@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import winston from 'winston';
-import { LOGGER_NAME } from 'src/logger/logger.constant';
-import { ILoggerOptions } from 'src/logger/logger.interface';
+import { DEBUGGER_NAME } from 'src/debugger/debugger.constant';
+import { IDebuggerOptions } from 'src/debugger/debugger.interface';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class LoggerService {
+export class DebuggerService {
     constructor(private configService: ConfigService) {}
 
-    createLogger(): ILoggerOptions {
+    createLogger(): IDebuggerOptions {
         const logger: boolean =
             this.configService.get<boolean>('app.debug') &&
             this.configService.get<boolean>('app.debugger.system.active');
@@ -22,7 +22,7 @@ export class LoggerService {
 
         const configTransportDefault: DailyRotateFile = new DailyRotateFile({
             filename: `%DATE%.log`,
-            dirname: `logs/${LOGGER_NAME}/default`,
+            dirname: `logs/${DEBUGGER_NAME}/default`,
             datePattern: 'YYYY-MM-DD',
             zippedArchive: true,
             maxSize: maxSize,
@@ -32,7 +32,7 @@ export class LoggerService {
 
         const configTransportError: DailyRotateFile = new DailyRotateFile({
             filename: `%DATE%.log`,
-            dirname: `logs/${LOGGER_NAME}/error`,
+            dirname: `logs/${DEBUGGER_NAME}/error`,
             datePattern: 'YYYY-MM-DD',
             zippedArchive: true,
             maxSize: maxSize,
@@ -52,7 +52,7 @@ export class LoggerService {
             })
         );
 
-        const loggerOptions: ILoggerOptions = {
+        const loggerOptions: IDebuggerOptions = {
             format: winston.format.combine(
                 winston.format.timestamp(),
                 winston.format.prettyPrint()

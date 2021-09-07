@@ -1,7 +1,7 @@
 import { AuthGuard } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { Logger as LoggerService } from 'winston';
-import { Logger } from 'src/logger/logger.decorator';
+import { Logger as DebuggerService } from 'winston';
+import { Debugger } from 'src/debugger/debugger.decorator';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 
@@ -9,7 +9,7 @@ import { MessageService } from 'src/message/message.service';
 export class JwtRefreshGuard extends AuthGuard('jwtRefresh') {
     constructor(
         @Message() private readonly messageService: MessageService,
-        @Logger() private readonly logger: LoggerService
+        @Debugger() private readonly debuggerService: DebuggerService
     ) {
         super();
     }
@@ -20,7 +20,7 @@ export class JwtRefreshGuard extends AuthGuard('jwtRefresh') {
         info: string
     ): TUser {
         if (err || !user) {
-            this.logger.error('AuthJwtGuardError', {
+            this.debuggerService.error('AuthJwtGuardError', {
                 class: 'JwtRefreshGuard',
                 function: 'handleRequest',
                 description: info,

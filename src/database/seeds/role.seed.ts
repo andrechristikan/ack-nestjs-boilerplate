@@ -1,7 +1,7 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { Logger as LoggerService } from 'winston';
-import { Logger } from 'src/logger/logger.decorator';
+import { Logger as DebuggerService } from 'winston';
+import { Debugger } from 'src/debugger/debugger.decorator';
 
 import { PermissionService } from 'src/permission/permission.service';
 import { RoleService } from 'src/role/role.service';
@@ -12,7 +12,7 @@ import { PERMISSION_LIST } from 'src/permission/permission.constant';
 @Injectable()
 export class RoleSeed {
     constructor(
-        @Logger() private readonly logger: LoggerService,
+        @Debugger() private readonly debuggerService: DebuggerService,
         private readonly permissionService: PermissionService,
         private readonly roleService: RoleService
     ) {}
@@ -34,16 +34,19 @@ export class RoleSeed {
         );
 
         if (!permissions && permissions.length === 0) {
-            this.logger.error('Go Insert Permissions Before Insert Roles', {
-                class: 'RoleSeed',
-                function: 'create'
-            });
+            this.debuggerService.error(
+                'Go Insert Permissions Before Insert Roles',
+                {
+                    class: 'RoleSeed',
+                    function: 'create'
+                }
+            );
             return;
         }
 
         const check: RoleDocument = await this.roleService.findOne<RoleDocument>();
         if (check) {
-            this.logger.error('Only for initial purpose', {
+            this.debuggerService.error('Only for initial purpose', {
                 class: 'RoleSeed',
                 function: 'create'
             });
@@ -59,12 +62,12 @@ export class RoleSeed {
                 }
             ]);
 
-            this.logger.info('Insert Role Succeed', {
+            this.debuggerService.info('Insert Role Succeed', {
                 class: 'RoleSeed',
                 function: 'create'
             });
         } catch (e) {
-            this.logger.error(e.message, {
+            this.debuggerService.error(e.message, {
                 class: 'RoleSeed',
                 function: 'create'
             });
@@ -80,12 +83,12 @@ export class RoleSeed {
         try {
             await this.roleService.deleteMany();
 
-            this.logger.info('Remove Role Succeed', {
+            this.debuggerService.info('Remove Role Succeed', {
                 class: 'RoleSeed',
                 function: 'remove'
             });
         } catch (e) {
-            this.logger.error(e.message, {
+            this.debuggerService.error(e.message, {
                 class: 'RoleSeed',
                 function: 'remove'
             });

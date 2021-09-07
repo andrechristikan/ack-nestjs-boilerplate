@@ -10,8 +10,8 @@ import { AuthService } from 'src/auth/auth.service';
 import { UserService } from 'src/user/user.service';
 import { Response } from 'src/response/response.decorator';
 import { UserDocumentFull } from 'src/user/user.interface';
-import { Logger as LoggerService } from 'winston';
-import { Logger } from 'src/logger/logger.decorator';
+import { Logger as DebuggerService } from 'winston';
+import { Debugger } from 'src/debugger/debugger.decorator';
 import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
 import { IResponse } from 'src/response/response.interface';
@@ -23,7 +23,7 @@ import { AuthLoginValidation } from './validation/auth.login.validation';
 export class AuthController {
     constructor(
         @Message() private readonly messageService: MessageService,
-        @Logger() private readonly logger: LoggerService,
+        @Debugger() private readonly debuggerService: DebuggerService,
         private readonly authService: AuthService,
         private readonly userService: UserService
     ) {}
@@ -42,7 +42,7 @@ export class AuthController {
         );
 
         if (!user) {
-            this.logger.error('Authorized error user not found', {
+            this.debuggerService.error('Authorized error user not found', {
                 class: 'AuthController',
                 function: 'login'
             });
@@ -58,7 +58,7 @@ export class AuthController {
         );
 
         if (!validate) {
-            this.logger.error('Authorized error', {
+            this.debuggerService.error('Authorized error', {
                 class: 'AuthController',
                 function: 'login'
             });

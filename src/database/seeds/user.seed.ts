@@ -1,7 +1,7 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { Logger as LoggerService } from 'winston';
-import { Logger } from 'src/logger/logger.decorator';
+import { Logger as DebuggerService } from 'winston';
+import { Debugger } from 'src/debugger/debugger.decorator';
 
 import { RoleService } from 'src/role/role.service';
 import { UserService } from 'src/user/user.service';
@@ -11,7 +11,7 @@ import { UserDocument } from 'src/user/user.interface';
 @Injectable()
 export class UserSeed {
     constructor(
-        @Logger() private readonly logger: LoggerService,
+        @Debugger() private readonly debuggerService: DebuggerService,
         private readonly userService: UserService,
         private readonly roleService: RoleService
     ) {}
@@ -25,7 +25,7 @@ export class UserSeed {
         const role: RoleDocument = await this.roleService.findOne<RoleDocument>();
 
         if (!role) {
-            this.logger.error('Go Insert Roles Before Insert User', {
+            this.debuggerService.error('Go Insert Roles Before Insert User', {
                 class: 'UserSeed',
                 function: 'create'
             });
@@ -34,7 +34,7 @@ export class UserSeed {
 
         const check: UserDocument = await this.userService.findOne<UserDocument>();
         if (check) {
-            this.logger.error('Only for initial purpose', {
+            this.debuggerService.error('Only for initial purpose', {
                 class: 'UserSeed',
                 function: 'create'
             });
@@ -51,12 +51,12 @@ export class UserSeed {
                 role: role._id
             });
 
-            this.logger.info('Insert User Succeed', {
+            this.debuggerService.info('Insert User Succeed', {
                 class: 'UserSeed',
                 function: 'create'
             });
         } catch (e) {
-            this.logger.error(e.message, {
+            this.debuggerService.error(e.message, {
                 class: 'UserSeed',
                 function: 'create'
             });
@@ -72,12 +72,12 @@ export class UserSeed {
         try {
             await this.userService.deleteMany();
 
-            this.logger.info('Remove User Succeed', {
+            this.debuggerService.info('Remove User Succeed', {
                 class: 'UserSeed',
                 function: 'remove'
             });
         } catch (e) {
-            this.logger.error(e.message, {
+            this.debuggerService.error(e.message, {
                 class: 'UserSeed',
                 function: 'remove'
             });

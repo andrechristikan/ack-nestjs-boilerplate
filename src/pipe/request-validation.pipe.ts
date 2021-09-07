@@ -4,8 +4,8 @@ import {
     UnprocessableEntityException
 } from '@nestjs/common';
 import { validate } from 'class-validator';
-import { Logger } from 'src/logger/logger.decorator';
-import { Logger as LoggerService } from 'winston';
+import { Debugger } from 'src/debugger/debugger.decorator';
+import { Logger as DebuggerService } from 'winston';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { IErrors } from 'src/message/message.interface';
@@ -17,7 +17,7 @@ import { AuthLoginValidation } from 'src/auth/validation/auth.login.validation';
 export class RequestValidationPipe implements PipeTransform {
     constructor(
         @Message() private readonly messageService: MessageService,
-        @Logger() private readonly logger: LoggerService
+        @Debugger() private readonly debuggerService: DebuggerService
     ) {}
 
     async transform(
@@ -29,7 +29,7 @@ export class RequestValidationPipe implements PipeTransform {
         }
 
         const request = plainToClass(metatype, value);
-        this.logger.info('Request Data', {
+        this.debuggerService.info('Request Data', {
             class: 'RequestValidationPipe',
             function: 'transform',
             request: request
@@ -41,7 +41,7 @@ export class RequestValidationPipe implements PipeTransform {
                 rawErrors
             );
 
-            this.logger.error('Request Errors', {
+            this.debuggerService.error('Request Errors', {
                 class: 'RequestValidationPipe',
                 function: 'transform',
                 errors

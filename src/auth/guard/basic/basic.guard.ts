@@ -5,8 +5,8 @@ import {
     UnauthorizedException
 } from '@nestjs/common';
 import { Request } from 'express';
-import { Logger as LoggerService } from 'winston';
-import { Logger } from 'src/logger/logger.decorator';
+import { Logger as DebuggerService } from 'winston';
+import { Debugger } from 'src/debugger/debugger.decorator';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from 'src/auth/auth.service';
 import { Message } from 'src/message/message.decorator';
@@ -16,7 +16,7 @@ import { MessageService } from 'src/message/message.service';
 export class BasicGuard implements CanActivate {
     constructor(
         @Message() private readonly messageService: MessageService,
-        @Logger() private readonly logger: LoggerService,
+        @Debugger() private readonly debuggerService: DebuggerService,
         private readonly configService: ConfigService,
         private readonly authService: AuthService
     ) {}
@@ -27,7 +27,7 @@ export class BasicGuard implements CanActivate {
         const authorization: string = request.headers.authorization;
 
         if (!authorization) {
-            this.logger.error('AuthBasicGuardError', {
+            this.debuggerService.error('AuthBasicGuardError', {
                 class: 'BasicGuard',
                 function: 'canActivate'
             });
@@ -49,10 +49,13 @@ export class BasicGuard implements CanActivate {
         );
 
         if (!validateBasicToken) {
-            this.logger.error('AuthBasicGuardError Validate Basic Token', {
-                class: 'BasicGuard',
-                function: 'canActivate'
-            });
+            this.debuggerService.error(
+                'AuthBasicGuardError Validate Basic Token',
+                {
+                    class: 'BasicGuard',
+                    function: 'canActivate'
+                }
+            );
 
             throw new UnauthorizedException(
                 this.messageService.get('http.clientError.unauthorized')

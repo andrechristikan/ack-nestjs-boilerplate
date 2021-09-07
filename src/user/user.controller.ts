@@ -27,8 +27,8 @@ import {
     DEFAULT_PAGE,
     DEFAULT_PER_PAGE
 } from 'src/pagination/pagination.constant';
-import { Logger as LoggerService } from 'winston';
-import { Logger } from 'src/logger/logger.decorator';
+import { Logger as DebuggerService } from 'winston';
+import { Debugger } from 'src/debugger/debugger.decorator';
 import { UserDocument, UserDocumentFull } from './user.interface';
 import { PERMISSION_LIST } from 'src/permission/permission.constant';
 import { Permissions } from 'src/permission/permission.decorator';
@@ -39,7 +39,7 @@ export class UserController {
     constructor(
         @Message() private readonly messageService: MessageService,
         @Pagination() private readonly paginationService: PaginationService,
-        @Logger() private readonly logger: LoggerService,
+        @Debugger() private readonly debuggerService: DebuggerService,
         private readonly userService: UserService
     ) {}
 
@@ -86,7 +86,7 @@ export class UserController {
             true
         );
         if (!user) {
-            this.logger.error('user Error', {
+            this.debuggerService.error('user Error', {
                 class: 'UserController',
                 function: 'profile'
             });
@@ -109,7 +109,7 @@ export class UserController {
             true
         );
         if (!user) {
-            this.logger.error('user Error', {
+            this.debuggerService.error('user Error', {
                 class: 'UserController',
                 function: 'findOneById'
             });
@@ -136,7 +136,7 @@ export class UserController {
         );
 
         if (errors.length > 0) {
-            this.logger.error('create errors', {
+            this.debuggerService.error('create errors', {
                 class: 'UserController',
                 function: 'create',
                 errors
@@ -157,7 +157,7 @@ export class UserController {
 
             return user;
         } catch (err: any) {
-            this.logger.error('create try catch', {
+            this.debuggerService.error('create try catch', {
                 class: 'UserController',
                 function: 'create',
                 error: err
@@ -178,7 +178,7 @@ export class UserController {
             true
         );
         if (!user) {
-            this.logger.error('user Error', {
+            this.debuggerService.error('user Error', {
                 class: 'UserController',
                 function: 'delete'
             });
@@ -213,7 +213,7 @@ export class UserController {
             true
         );
         if (!user) {
-            this.logger.error('user Error', {
+            this.debuggerService.error('user Error', {
                 class: 'UserController',
                 function: 'delete'
             });
@@ -231,7 +231,7 @@ export class UserController {
 
             return user;
         } catch (err: any) {
-            this.logger.error('update try catch', {
+            this.debuggerService.error('update try catch', {
                 class: 'UserController',
                 function: 'update',
                 error: {

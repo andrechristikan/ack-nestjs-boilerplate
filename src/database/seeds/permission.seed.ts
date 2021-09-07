@@ -1,7 +1,7 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { Logger as LoggerService } from 'winston';
-import { Logger } from 'src/logger/logger.decorator';
+import { Logger as DebuggerService } from 'winston';
+import { Debugger } from 'src/debugger/debugger.decorator';
 
 import { PermissionService } from 'src/permission/permission.service';
 import { PERMISSION_LIST } from 'src/permission/permission.constant';
@@ -10,7 +10,7 @@ import { PermissionDocument } from 'src/permission/permission.interface';
 @Injectable()
 export class PermissionSeed {
     constructor(
-        @Logger() private readonly logger: LoggerService,
+        @Debugger() private readonly debuggerService: DebuggerService,
         private readonly permissionService: PermissionService
     ) {}
 
@@ -22,7 +22,7 @@ export class PermissionSeed {
     async create(): Promise<void> {
         const check: PermissionDocument = await this.permissionService.findOne();
         if (check) {
-            this.logger.error('Only for initial purpose', {
+            this.debuggerService.error('Only for initial purpose', {
                 class: 'PermissionSeed',
                 function: 'create'
             });
@@ -35,12 +35,12 @@ export class PermissionSeed {
             }));
             await this.permissionService.createMany(permissions);
 
-            this.logger.info('Insert Permission Succeed', {
+            this.debuggerService.info('Insert Permission Succeed', {
                 class: 'PermissionSeed',
                 function: 'create'
             });
         } catch (e) {
-            this.logger.error(e.message, {
+            this.debuggerService.error(e.message, {
                 class: 'PermissionSeed',
                 function: 'create'
             });
@@ -56,12 +56,12 @@ export class PermissionSeed {
         try {
             await this.permissionService.deleteMany();
 
-            this.logger.info('Remove Permission Succeed', {
+            this.debuggerService.info('Remove Permission Succeed', {
                 class: 'PermissionSeed',
                 function: 'remove'
             });
         } catch (e) {
-            this.logger.error(e.message, {
+            this.debuggerService.error(e.message, {
                 class: 'PermissionSeed',
                 function: 'remove'
             });
