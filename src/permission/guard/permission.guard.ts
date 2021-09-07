@@ -7,7 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
-import { PERMISSION_LIST, PERMISSION_META_KEY } from '../permission.constant';
+import { ENUM_PERMISSIONS, PERMISSION_META_KEY } from '../permission.constant';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -17,8 +17,8 @@ export class PermissionGuard implements CanActivate {
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const requiredPermission: PERMISSION_LIST[] = this.reflector.getAllAndOverride<
-            PERMISSION_LIST[]
+        const requiredPermission: ENUM_PERMISSIONS[] = this.reflector.getAllAndOverride<
+            ENUM_PERMISSIONS[]
         >(PERMISSION_META_KEY, [context.getHandler(), context.getClass()]);
         if (!requiredPermission) {
             return true;

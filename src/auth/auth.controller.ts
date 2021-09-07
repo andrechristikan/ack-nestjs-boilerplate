@@ -18,6 +18,9 @@ import { IResponse } from 'src/response/response.interface';
 import { classToPlain } from 'class-transformer';
 import { RequestValidationPipe } from 'src/pipe/request-validation.pipe';
 import { AuthLoginValidation } from './validation/auth.login.validation';
+import { LoggerService } from 'src/logger/logger.service';
+import { ENUM_LOGGER_ACTION } from 'src/logger/logger.constant';
+import { AuthJwtRefreshGuard, Token } from './auth.decorator';
 
 @Controller('/auth')
 export class AuthController {
@@ -25,7 +28,8 @@ export class AuthController {
         @Message() private readonly messageService: MessageService,
         @Debugger() private readonly debuggerService: DebuggerService,
         private readonly authService: AuthService,
-        private readonly userService: UserService
+        private readonly userService: UserService,
+        private readonly loggerService: LoggerService
     ) {}
 
     @Post('/login')
@@ -34,6 +38,7 @@ export class AuthController {
     async login(
         @Body(RequestValidationPipe) data: AuthLoginValidation
     ): Promise<IResponse> {
+        const rememberMe: boolean = data.rememberMe ? true : false;
         const user: UserDocumentFull = await this.userService.findOne<UserDocumentFull>(
             {
                 email: data.email
@@ -71,14 +76,55 @@ export class AuthController {
         const safe: Record<string, any> = await this.userService.safeLogin(
             user
         );
+        const payload: Record<string, any> = {
+            ...classToPlain(safe),
+            rememberMe
+        };
         const accessToken: string = await this.authService.createAccessToken(
-            classToPlain(safe),
-            data.rememberMe ? true : false
+            payload,
+            rememberMe
         );
 
         const refreshToken: string = await this.authService.createRefreshToken(
-            classToPlain(safe),
-            data.rememberMe ? true : false
+            payload,
+            rememberMe
+        );
+
+        await this.loggerService.info(
+            ENUM_LOGGER_ACTION.LOGIN,
+            `${user._id} do login`,
+            user._id,
+            ['login', 'withEmail']
+        );
+
+        return {
+            accessToken,
+            refreshToken
+        };
+    }
+
+    @Post('/refresh')
+    @Response('auth.refresh')
+    @AuthJwtRefreshGuard()
+    @HttpCode(HttpStatus.OK)
+    async refresh(@Token() token: string): Promise<IResponse> {
+        const {
+            exp,
+            nbf,
+            iat,
+            ...payload
+        }: Record<string, any> = await this.authService.payloadRefreshToken(
+            token
+        );
+
+        const accessToken: string = await this.authService.createAccessToken(
+            payload,
+            payload.rememberMe
+        );
+
+        const refreshToken: string = await this.authService.createRefreshToken(
+            payload,
+            payload.rememberMe
         );
 
         return {

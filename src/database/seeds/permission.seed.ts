@@ -4,7 +4,7 @@ import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 
 import { PermissionService } from 'src/permission/permission.service';
-import { PERMISSION_LIST } from 'src/permission/permission.constant';
+import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { PermissionDocument } from 'src/permission/permission.interface';
 
 @Injectable()
@@ -30,7 +30,7 @@ export class PermissionSeed {
         }
 
         try {
-            const permissions = Object.keys(PERMISSION_LIST).map((val) => ({
+            const permissions = Object.keys(ENUM_PERMISSIONS).map((val) => ({
                 name: val
             }));
             await this.permissionService.createMany(permissions);

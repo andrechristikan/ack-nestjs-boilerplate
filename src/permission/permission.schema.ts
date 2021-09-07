@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
-@Schema()
+@Schema({ timestamps: true, versionKey: false })
 export class PermissionEntity {
     @Prop({
         required: true,

@@ -15,7 +15,7 @@ export default (): Record<string, any> => ({
                 maxSize: '10M'
             },
             system: {
-                active: true,
+                active: false,
                 maxFiles: '7d',
                 maxSize: '10m'
             }

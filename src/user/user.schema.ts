@@ -2,7 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
 import { RoleEntity } from 'src/role/role.schema';
 
-@Schema()
+@Schema({ timestamps: true, versionKey: false })
 export class UserEntity {
     @Prop({
         required: true,

@@ -44,7 +44,6 @@ import { HelperModule } from 'src/helper/helper.module';
         DebuggerModule,
         PaginationModule,
         HelperModule,
-        HelperModule,
 
         // seeder module
         SeedsModule,

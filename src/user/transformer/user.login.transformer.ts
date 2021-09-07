@@ -22,10 +22,14 @@ export class UserLoginTransformer {
     )
     role: RoleDocumentFull;
 
-    firstName: string;
-    lastName: string;
     email: string;
     mobileNumber: string;
+
+    @Exclude()
+    firstName: string;
+
+    @Exclude()
+    lastName: string;
 
     @Exclude()
     password: string;

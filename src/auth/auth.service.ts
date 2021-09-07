@@ -35,9 +35,7 @@ export class AuthService {
         });
     }
 
-    async validateAccessToken(
-        token: string
-    ): Promise<boolean | Record<string, any>> {
+    async validateAccessToken(token: string): Promise<boolean> {
         return this.helperService.jwtVerify(token, {
             secretKey: this.configService.get<string>(
                 'auth.jwt.accessToken.secretKey'
@@ -45,9 +43,7 @@ export class AuthService {
         });
     }
 
-    async payloadAccessToken(
-        token: string
-    ): Promise<boolean | Record<string, any>> {
+    async payloadAccessToken(token: string): Promise<Record<string, any>> {
         return this.helperService.jwtPayload(token, {
             secretKey: this.configService.get<string>(
                 'auth.jwt.accessToken.secretKey'
@@ -80,9 +76,7 @@ export class AuthService {
         });
     }
 
-    async validateRefreshToken(
-        token: string
-    ): Promise<boolean | Record<string, any>> {
+    async validateRefreshToken(token: string): Promise<boolean> {
         return this.helperService.jwtVerify(token, {
             secretKey: this.configService.get<string>(
                 'auth.jwt.refreshToken.secretKey'
@@ -90,9 +84,7 @@ export class AuthService {
         });
     }
 
-    async payloadRefreshToken(
-        token: string
-    ): Promise<boolean | Record<string, any>> {
+    async payloadRefreshToken(token: string): Promise<Record<string, any>> {
         return this.helperService.jwtPayload(token, {
             secretKey: this.configService.get<string>(
                 'auth.jwt.refreshToken.secretKey'
