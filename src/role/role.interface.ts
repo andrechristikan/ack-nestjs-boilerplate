@@ -4,6 +4,6 @@ import { PermissionDocument } from 'src/permission/permission.interface';
 
 export type RoleDocument = RoleEntity & Document;
 
-export interface RoleDocumentFull extends Omit<RoleDocument, 'permissions'> {
+export interface IRoleDocument extends Omit<RoleDocument, 'permissions'> {
     permissions: PermissionDocument[];
 }

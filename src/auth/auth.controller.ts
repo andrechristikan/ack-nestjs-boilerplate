@@ -9,7 +9,7 @@ import {
 import { AuthService } from 'src/auth/auth.service';
 import { UserService } from 'src/user/user.service';
 import { Response } from 'src/response/response.decorator';
-import { UserDocumentFull } from 'src/user/user.interface';
+import { IUserDocument } from 'src/user/user.interface';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { MessageService } from 'src/message/message.service';
@@ -39,7 +39,7 @@ export class AuthController {
         @Body(RequestValidationPipe) data: AuthLoginValidation
     ): Promise<IResponse> {
         const rememberMe: boolean = data.rememberMe ? true : false;
-        const user: UserDocumentFull = await this.userService.findOne<UserDocumentFull>(
+        const user: IUserDocument = await this.userService.findOne<IUserDocument>(
             {
                 email: data.email
             },

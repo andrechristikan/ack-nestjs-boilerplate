@@ -29,7 +29,7 @@ import {
 } from 'src/pagination/pagination.constant';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
-import { UserDocument, UserDocumentFull } from './user.interface';
+import { UserDocument, IUserDocument } from './user.interface';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { Permissions } from 'src/permission/permission.decorator';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
@@ -81,7 +81,7 @@ export class UserController {
     @Response('user.profile')
     @Permissions(ENUM_PERMISSIONS.PROFILE_READ)
     async profile(@User('_id') userId: string): Promise<IResponse> {
-        const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
+        const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
             userId,
             true
         );
@@ -104,7 +104,7 @@ export class UserController {
     @Response('user.findOneById')
     @Permissions(ENUM_PERMISSIONS.USER_READ)
     async findOneById(@Param('userId') userId: string): Promise<IResponse> {
-        const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
+        const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
             userId,
             true
         );
@@ -150,7 +150,7 @@ export class UserController {
 
         try {
             const create = await this.userService.create(data);
-            const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
+            const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
                 create._id,
                 true
             );
@@ -173,7 +173,7 @@ export class UserController {
     @Response('user.delete')
     @Permissions(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_DELETE)
     async delete(@Param('userId') userId: string): Promise<void> {
-        const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
+        const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
             userId,
             true
         );
@@ -208,7 +208,7 @@ export class UserController {
         @Body(RequestValidationPipe)
         data: UserUpdateValidation
     ): Promise<IResponse> {
-        const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
+        const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
             userId,
             true
         );
@@ -224,7 +224,7 @@ export class UserController {
 
         try {
             await this.userService.updateOneById(userId, data);
-            const user: UserDocumentFull = await this.userService.findOneById<UserDocumentFull>(
+            const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
                 userId,
                 true
             );

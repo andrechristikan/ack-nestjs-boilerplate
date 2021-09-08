@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserEntity } from 'src/user/user.schema';
-import { UserDocument, UserDocumentFull } from 'src/user/user.interface';
+import { UserDocument, IUserDocument } from 'src/user/user.interface';
 import { IErrors } from 'src/message/message.interface';
 import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
@@ -59,11 +59,11 @@ export class UserService {
         return this.userModel.countDocuments(find);
     }
 
-    async safeProfile(data: UserDocumentFull): Promise<Record<string, any>> {
+    async safeProfile(data: IUserDocument): Promise<Record<string, any>> {
         return plainToClass(UserProfileTransformer, data);
     }
 
-    async safeLogin(data: UserDocumentFull): Promise<Record<string, any>> {
+    async safeLogin(data: IUserDocument): Promise<Record<string, any>> {
         return plainToClass(UserLoginTransformer, data);
     }
 

@@ -7,7 +7,7 @@ import { isString } from 'class-validator';
 import { JwtService } from '@nestjs/jwt';
 import { createCipheriv, createDecipheriv, scrypt } from 'crypto';
 import { promisify } from 'util';
-import { HelperJwtOptions } from './helper.interface';
+import { IHelperJwtOptions } from './helper.interface';
 
 @Injectable()
 export class HelperService {
@@ -83,7 +83,7 @@ export class HelperService {
 
     async jwtCreateToken(
         payload: Record<string, any>,
-        options?: HelperJwtOptions
+        options?: IHelperJwtOptions
     ): Promise<string> {
         return this.jwtService.sign(payload, {
             secret:
@@ -102,7 +102,7 @@ export class HelperService {
 
     async jwtVerify(
         token: string,
-        options?: HelperJwtOptions
+        options?: IHelperJwtOptions
     ): Promise<boolean> {
         const payload: Record<string, any> = this.jwtService.verify(token, {
             secret:
@@ -115,7 +115,7 @@ export class HelperService {
 
     async jwtPayload(
         token: string,
-        options?: HelperJwtOptions
+        options?: IHelperJwtOptions
     ): Promise<Record<string, any>> {
         return this.jwtService.verify(token, {
             secret:
