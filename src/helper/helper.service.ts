@@ -129,7 +129,7 @@ export class HelperService {
         });
     }
 
-    async AES256BitEncrypt(
+    async aes256BitEncrypt(
         data: string | Record<string, any> | Record<string, any>[],
         key: string,
         iv: string
@@ -150,7 +150,7 @@ export class HelperService {
         return encryptedText.toString('base64');
     }
 
-    async AES256BitDecrypt(
+    async aes256BitDecrypt(
         encrypted: string,
         key: string,
         iv: string
@@ -166,7 +166,7 @@ export class HelperService {
         return decryptedText.toString('utf8');
     }
 
-    async SHA256Decrypt(string: string): Promise<string> {
+    async sha256Decrypt(string: string): Promise<string> {
         return createHash('sha256').update(string).digest('hex');
     }
 }
