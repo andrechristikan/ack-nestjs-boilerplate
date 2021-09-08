@@ -70,7 +70,7 @@ export class UserSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.userService.deleteMany();
+            await this.userService.deleteMany({});
 
             this.debuggerService.info('Remove User Succeed', {
                 class: 'UserSeed',

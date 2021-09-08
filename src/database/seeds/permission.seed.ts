@@ -54,7 +54,7 @@ export class PermissionSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.permissionService.deleteMany();
+            await this.permissionService.deleteMany({});
 
             this.debuggerService.info('Remove Permission Succeed', {
                 class: 'PermissionSeed',

@@ -42,12 +42,10 @@ export class UserService {
                 path: 'role',
                 model: RoleEntity.name,
                 match: { isActive: true },
-                select: '-__v',
                 populate: {
                     path: 'permissions',
                     model: PermissionEntity.name,
-                    match: { isActive: true },
-                    select: '-__v'
+                    match: { isActive: true }
                 }
             });
         }
@@ -75,12 +73,10 @@ export class UserService {
                 path: 'role',
                 model: RoleEntity.name,
                 match: { isActive: true },
-                select: '-__v',
                 populate: {
                     path: 'permissions',
                     model: PermissionEntity.name,
-                    match: { isActive: true },
-                    select: '-__v'
+                    match: { isActive: true }
                 }
             });
         }
@@ -99,12 +95,10 @@ export class UserService {
                 path: 'role',
                 match: { isActive: true },
                 model: RoleEntity.name,
-                select: '-__v',
                 populate: {
                     path: 'permissions',
                     match: { isActive: true },
-                    model: PermissionEntity.name,
-                    select: '-__v'
+                    model: PermissionEntity.name
                 }
             });
         }
@@ -202,7 +196,7 @@ export class UserService {
     }
 
     // For migration
-    async deleteMany(find?: Record<string, any>): Promise<boolean> {
+    async deleteMany(find: Record<string, any>): Promise<boolean> {
         try {
             await this.userModel.deleteMany(find);
             return true;

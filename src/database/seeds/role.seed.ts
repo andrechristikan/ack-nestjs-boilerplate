@@ -23,7 +23,7 @@ export class RoleSeed {
         autoExit: true
     })
     async create(): Promise<void> {
-        let permissions: PermissionDocument[] = await this.permissionService.findAll(
+        const permissions: PermissionDocument[] = await this.permissionService.findAll(
             {
                 name: { $in: Object.keys(ENUM_PERMISSIONS) }
             },
@@ -54,11 +54,11 @@ export class RoleSeed {
         }
 
         try {
-            permissions = permissions.map((val) => val._id);
+            const permissionsMap = permissions.map((val) => val._id);
             await this.roleService.createMany([
                 {
                     name: 'admin',
-                    permissions: permissions
+                    permissions: permissionsMap
                 }
             ]);
 
@@ -81,7 +81,7 @@ export class RoleSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.roleService.deleteMany();
+            await this.roleService.deleteMany({});
 
             this.debuggerService.info('Remove Role Succeed', {
                 class: 'RoleSeed',

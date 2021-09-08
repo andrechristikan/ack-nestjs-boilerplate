@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { PermissionEntity } from 'src/permission/permission.schema';
-import { RoleDocument } from './role.interface';
+import { IRoleCreate, RoleDocument } from './role.interface';
 import { RoleEntity } from './role.schema';
 
 @Injectable()
@@ -29,8 +29,7 @@ export class RoleService {
             findAll.populate({
                 path: 'permissions',
                 model: PermissionEntity.name,
-                match: { isActive: true },
-                select: '-__v'
+                match: { isActive: true }
             });
         }
 
@@ -65,27 +64,24 @@ export class RoleService {
             role.populate({
                 path: 'permissions',
                 model: PermissionEntity.name,
-                match: { isActive: true },
-                select: '-__v'
+                match: { isActive: true }
             });
         }
 
         return role.lean();
     }
 
-    async create(data: Record<string, any>): Promise<RoleDocument> {
+    async create(data: IRoleCreate): Promise<RoleDocument> {
         const create: RoleDocument = new this.roleModel({
             name: data.name,
             permissions: data.permissions,
-            isActive: true,
-            select: '-__v'
+            isActive: true
         });
 
         return create.save();
     }
 
-    // For migration
-    async deleteMany(find?: Record<string, any>): Promise<boolean> {
+    async deleteMany(find: Record<string, any>): Promise<boolean> {
         return new Promise((resolve, reject) => {
             this.roleModel
                 .deleteMany(find)
@@ -98,8 +94,8 @@ export class RoleService {
         });
     }
 
-    async createMany(data: Record<string, any>[]): Promise<boolean> {
-        const newData = data.map((val: Record<string, any>) => ({
+    async createMany(data: IRoleCreate[]): Promise<boolean> {
+        const newData = data.map((val: IRoleCreate) => ({
             name: val.name,
             permissions: val.permissions,
             isActive: true

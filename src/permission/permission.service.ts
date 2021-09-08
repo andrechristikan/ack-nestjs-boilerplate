@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { PermissionDocument } from './permission.interface';
+import { IPermissionCreate, PermissionDocument } from './permission.interface';
 import { PermissionEntity } from './permission.schema';
 
 @Injectable()
@@ -30,7 +30,7 @@ export class PermissionService {
         return this.permissionModel.findOne(find).lean();
     }
 
-    async create(data: Record<string, any>): Promise<PermissionDocument> {
+    async create(data: IPermissionCreate): Promise<PermissionDocument> {
         const create: PermissionDocument = new this.permissionModel({
             name: data.name,
             isActive: true
@@ -39,8 +39,7 @@ export class PermissionService {
         return create.save();
     }
 
-    // For migration
-    async deleteMany(find?: Record<string, any>): Promise<boolean> {
+    async deleteMany(find: Record<string, any>): Promise<boolean> {
         return new Promise((resolve, reject) => {
             this.permissionModel
                 .deleteMany(find)
@@ -53,8 +52,8 @@ export class PermissionService {
         });
     }
 
-    async createMany(data: Record<string, any>[]): Promise<boolean> {
-        const newData = data.map((val: Record<string, any>) => ({
+    async createMany(data: IPermissionCreate[]): Promise<boolean> {
+        const newData = data.map((val: IPermissionCreate) => ({
             name: val.name,
             isActive: true
         }));
