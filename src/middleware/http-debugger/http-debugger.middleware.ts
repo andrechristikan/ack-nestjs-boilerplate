@@ -4,18 +4,18 @@ import { Request, Response, NextFunction } from 'express';
 import { createStream } from 'rotating-file-stream';
 import moment from 'moment';
 import {
-    LOGGER_HTTP_FORMAT,
-    LOGGER_HTTP_NAME
-} from 'src/middleware/http-logger/http-logger.constant';
+    DEBUGGER_HTTP_FORMAT,
+    DEBUGGER_HTTP_NAME
+} from 'src/middleware/http-debugger/http-debugger.constant';
 import {
     ICustomResponse,
-    IHttpLoggerConfig,
-    IHttpLoggerConfigOptions
-} from 'src/middleware/http-logger/http-logger.interface';
+    IHttpDebuggerConfig,
+    IHttpDebuggerConfigOptions
+} from 'src/middleware/http-debugger/http-debugger.interface';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class HttpLoggerMiddleware implements NestMiddleware {
+export class HttpDebuggerMiddleware implements NestMiddleware {
     constructor(private readonly configService: ConfigService) {}
 
     private customToken(): void {
@@ -35,11 +35,11 @@ export class HttpLoggerMiddleware implements NestMiddleware {
         );
     }
 
-    private httpLogger(): IHttpLoggerConfig {
+    private httpLogger(): IHttpDebuggerConfig {
         const date: string = moment().format('YYYY-MM-DD');
-        const HttpLoggerOptions: IHttpLoggerConfigOptions = {
+        const HttpDebuggerOptions: IHttpDebuggerConfigOptions = {
             stream: createStream(`${date}.log`, {
-                path: `./logs/${LOGGER_HTTP_NAME}/`,
+                path: `./logs/${DEBUGGER_HTTP_NAME}/`,
                 maxSize: this.configService.get<string>(
                     'app.debugger.http.maxSize'
                 ),
@@ -52,8 +52,8 @@ export class HttpLoggerMiddleware implements NestMiddleware {
         };
 
         return {
-            LOGGER_HTTP_FORMAT,
-            HttpLoggerOptions
+            DEBUGGER_HTTP_FORMAT,
+            HttpDebuggerOptions
         };
     }
 
@@ -62,9 +62,9 @@ export class HttpLoggerMiddleware implements NestMiddleware {
             this.configService.get<boolean>('app.debug') &&
             this.configService.get<boolean>('app.debugger.http.active')
         ) {
-            const config: IHttpLoggerConfig = this.httpLogger();
+            const config: IHttpDebuggerConfig = this.httpLogger();
             this.customToken();
-            morgan(config.LOGGER_HTTP_FORMAT, config.HttpLoggerOptions)(
+            morgan(config.DEBUGGER_HTTP_FORMAT, config.HttpDebuggerOptions)(
                 req,
                 res,
                 next
@@ -76,7 +76,7 @@ export class HttpLoggerMiddleware implements NestMiddleware {
 }
 
 @Injectable()
-export class HttpLoggerResponseMiddleware implements NestMiddleware {
+export class HttpDebuggerResponseMiddleware implements NestMiddleware {
     use(req: Request, res: Response, next: NextFunction): void {
         const send: any = res.send;
         const resOld: any = res;

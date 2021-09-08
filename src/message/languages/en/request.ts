@@ -11,5 +11,7 @@ export default {
     isPositive: '$property should be a positive number.',
     isEmail: '$property should be a type of email.',
     isInt: '$property should be a number.',
-    isNumberString: '$property should be a number.'
+    isNumberString: '$property should be a number.',
+    isMongoId: '$property should reference with mongo object id.',
+    isBoolean: '$property should be a boolean'
 };

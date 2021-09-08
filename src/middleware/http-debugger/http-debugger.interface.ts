@@ -1,13 +1,13 @@
 import { RotatingFileStream } from 'rotating-file-stream';
 import { Response } from 'express';
 
-export interface IHttpLoggerConfigOptions {
+export interface IHttpDebuggerConfigOptions {
     readonly stream: RotatingFileStream;
 }
 
-export interface IHttpLoggerConfig {
-    readonly LOGGER_HTTP_FORMAT: string;
-    readonly HttpLoggerOptions: IHttpLoggerConfigOptions;
+export interface IHttpDebuggerConfig {
+    readonly DEBUGGER_HTTP_FORMAT: string;
+    readonly HttpDebuggerOptions: IHttpDebuggerConfigOptions;
 }
 
 export interface ICustomResponse extends Response {

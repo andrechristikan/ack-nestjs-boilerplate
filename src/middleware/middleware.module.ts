@@ -1,7 +1,7 @@
 import {
-    HttpLoggerMiddleware,
-    HttpLoggerResponseMiddleware
-} from 'src/middleware/http-logger/http-logger.middleware';
+    HttpDebuggerMiddleware,
+    HttpDebuggerResponseMiddleware
+} from 'src/middleware/http-debugger/http-debugger.middleware';
 import { HelmetMiddleware } from 'src/middleware/helmet/helmet.middleware';
 import { RateLimitMiddleware } from 'src/middleware/rate-limit/rate-limit.middleware';
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
@@ -12,8 +12,8 @@ export class MiddlewareModule implements NestModule {
         //! middleware
         consumer
             .apply(
-                HttpLoggerResponseMiddleware,
-                HttpLoggerMiddleware,
+                HttpDebuggerResponseMiddleware,
+                HttpDebuggerMiddleware,
                 HelmetMiddleware,
                 RateLimitMiddleware
             )
