@@ -8,7 +8,7 @@
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "nest build",
-    "format": "prettier --write \"src/**/*.ts\" \"e2e/**/*.ts\" \"test/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\"",
     "migrate:rollback": "nestjs-command remove:user && nestjs-command remove:role && nestjs-command remove:permission",
     "migrate": "nestjs-command create:permission && nestjs-command create:role && nestjs-command create:user",
     "start": "nest start",

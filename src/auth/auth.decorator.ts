@@ -6,19 +6,19 @@ import {
 } from '@nestjs/common';
 import { JwtGuard } from 'src/auth/guard/jwt/jwt.guard';
 import { BasicGuard } from 'src/auth/guard/basic/basic.guard';
-import { IApplyDecorator } from 'src/auth/auth.interface';
+import { IAuthApplyDecorator } from 'src/auth/auth.interface';
 import { PermissionGuard } from 'src/permission/guard/permission.guard';
 import { JwtRefreshGuard } from './guard/jwt-refresh/jwt-refresh.guard';
 
-export function AuthJwtGuard(): IApplyDecorator {
+export function AuthJwtGuard(): IAuthApplyDecorator {
     return applyDecorators(UseGuards(JwtGuard, PermissionGuard));
 }
 
-export function AuthBasicGuard(): IApplyDecorator {
+export function AuthBasicGuard(): IAuthApplyDecorator {
     return applyDecorators(UseGuards(BasicGuard));
 }
 
-export function AuthJwtRefreshGuard(): IApplyDecorator {
+export function AuthJwtRefreshGuard(): IAuthApplyDecorator {
     return applyDecorators(UseGuards(JwtRefreshGuard));
 }
 
