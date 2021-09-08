@@ -1,11 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { randomBytes } from 'crypto';
 import moment from 'moment';
 import { ConfigService } from '@nestjs/config';
 import { hash, compare, genSalt } from 'bcrypt';
 import { isString } from 'class-validator';
 import { JwtService } from '@nestjs/jwt';
-import { createCipheriv, createDecipheriv, scrypt } from 'crypto';
+import {
+    createCipheriv,
+    createDecipheriv,
+    scrypt,
+    createHash,
+    randomBytes
+} from 'crypto';
 import { promisify } from 'util';
 import { IHelperJwtOptions } from './helper.interface';
 
@@ -159,5 +164,9 @@ export class HelperService {
         ]);
 
         return decryptedText.toString('utf8');
+    }
+
+    async SHA256Decrypt(string: string): Promise<string> {
+        return createHash('sha256').update(string).digest('hex');
     }
 }
