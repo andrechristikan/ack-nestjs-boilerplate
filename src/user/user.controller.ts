@@ -22,7 +22,6 @@ import { IErrors } from 'src/message/message.interface';
 import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
 import { PaginationService } from 'src/pagination/pagination.service';
-import { Pagination } from 'src/pagination/pagination.decorator';
 import {
     DEFAULT_PAGE,
     DEFAULT_PER_PAGE
@@ -38,8 +37,8 @@ import { IResponse, IResponsePaging } from 'src/response/response.interface';
 export class UserController {
     constructor(
         @Message() private readonly messageService: MessageService,
-        @Pagination() private readonly paginationService: PaginationService,
         @Debugger() private readonly debuggerService: DebuggerService,
+        private readonly paginationService: PaginationService,
         private readonly userService: UserService
     ) {}
 

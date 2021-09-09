@@ -9,26 +9,26 @@ import { Response } from 'src/response/response.decorator';
 import { AuthJwtGuard } from 'src/auth/auth.decorator';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { Permissions } from 'src/permission/permission.decorator';
-import { RoleService } from './role.service';
 import { PaginationService } from 'src/pagination/pagination.service';
-import { RoleDocument } from './role.interface';
 import {
     DEFAULT_PAGE,
     DEFAULT_PER_PAGE
 } from 'src/pagination/pagination.constant';
 import { IResponsePaging } from 'src/response/response.interface';
+import { PermissionService } from './permission.service';
+import { PermissionDocument } from './permission.interface';
 
-@Controller('/role')
-export class RoleController {
+@Controller('/permission')
+export class PermissionController {
     constructor(
         private readonly paginationService: PaginationService,
-        private readonly roleService: RoleService
+        private readonly permissionService: PermissionService
     ) {}
 
     @Get('/')
     @AuthJwtGuard()
-    @Response('role.findAll')
-    @Permissions(ENUM_PERMISSIONS.ROLE_READ)
+    @Response('permission.findAll')
+    @Permissions(ENUM_PERMISSIONS.PERMISSION_READ)
     async findAll(
         @Query('page', new DefaultValuePipe(DEFAULT_PAGE), ParseIntPipe)
         page: number,
@@ -36,7 +36,7 @@ export class RoleController {
         perPage: number
     ): Promise<IResponsePaging> {
         const skip = await this.paginationService.skip(page, perPage);
-        const roles: RoleDocument[] = await this.roleService.findAll<RoleDocument>(
+        const permissions: PermissionDocument[] = await this.permissionService.findAll(
             {},
             {
                 skip: skip,
@@ -44,7 +44,7 @@ export class RoleController {
             }
         );
 
-        const totalData: number = await this.roleService.getTotalData();
+        const totalData: number = await this.permissionService.getTotalData();
         const totalPage = await this.paginationService.totalPage(
             totalData,
             perPage
@@ -55,7 +55,7 @@ export class RoleController {
             totalPage,
             currentPage: page,
             perPage,
-            data: roles
+            data: permissions
         };
     }
 }

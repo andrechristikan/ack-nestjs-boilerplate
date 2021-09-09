@@ -15,12 +15,13 @@ import { MiddlewareModule } from 'src/middleware/middleware.module';
 import { SeedsModule } from 'src/database/seeds/seeds.module';
 import Configs from 'src/config/index';
 import { HelperModule } from 'src/helper/helper.module';
+import { RoleModule } from 'src/role/role.module';
+import { PermissionModule } from 'src/permission/permission.module';
 
 @Module({
     controllers: [AppController],
     providers: [],
     imports: [
-        // main module
         MiddlewareModule,
         ConfigModule.forRoot({
             load: Configs,
@@ -44,13 +45,12 @@ import { HelperModule } from 'src/helper/helper.module';
         DebuggerModule,
         PaginationModule,
         HelperModule,
-
-        // seeder module
         SeedsModule,
 
-        // other module
         AuthModule,
-        UserModule
+        UserModule,
+        RoleModule,
+        PermissionModule
     ]
 })
 export class AppModule {}

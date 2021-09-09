@@ -30,6 +30,10 @@ export class PermissionService {
         return this.permissionModel.findOne(find).lean();
     }
 
+    async getTotalData(find?: Record<string, any>): Promise<number> {
+        return this.permissionModel.countDocuments(find);
+    }
+
     async create(data: IPermissionCreate): Promise<PermissionDocument> {
         const create: PermissionDocument = new this.permissionModel({
             name: data.name,
