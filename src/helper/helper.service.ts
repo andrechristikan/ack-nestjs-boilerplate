@@ -26,8 +26,8 @@ export class HelperService {
     }
 
     async randomOtpNumber(length: number): Promise<string> {
-        const min: number = parseInt(`1`.padEnd(length - 1, '0'));
-        const max: number = parseInt(`9`.padEnd(length - 1, '9'));
+        const min: number = parseInt(`1`.padEnd(length, '0'));
+        const max: number = parseInt(`9`.padEnd(length, '9'));
         return this.randomNumberInRange(min, max);
     }
 
