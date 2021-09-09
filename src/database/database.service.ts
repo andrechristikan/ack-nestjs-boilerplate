@@ -13,6 +13,7 @@ export class DatabaseService implements MongooseOptionsFactory {
         const baseUrl = `${this.configService.get<string>('database.host')}`;
         const databaseName = this.configService.get<string>('database.name');
         const srv = this.configService.get<boolean>('database.srv');
+        const admin = this.configService.get<boolean>('database.admin');
         const options = this.configService.get<string>('database.options')
             ? `?${this.configService.get<string>('database.options')}`
             : '';
@@ -30,14 +31,19 @@ export class DatabaseService implements MongooseOptionsFactory {
         uri = `${uri}${baseUrl}/${databaseName}${options}`;
         mongoose.set('debug', this.configService.get<string>('app.debug'));
 
-        return {
+        const mongooseOptions: MongooseModuleOptions = {
             uri,
             useNewUrlParser: true,
             useUnifiedTopology: true,
             useCreateIndex: true,
             useFindAndModify: false
-            // authSource: 'admin',
-            // ssl: true
         };
+
+        if (admin) {
+            mongooseOptions.authSource = 'admin';
+            mongooseOptions.ssl = true;
+        }
+
+        return mongooseOptions;
     }
 }
