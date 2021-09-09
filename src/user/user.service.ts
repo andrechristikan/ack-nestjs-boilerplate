@@ -53,15 +53,15 @@ export class UserService {
         return findAll.lean();
     }
 
-    async totalData(find?: Record<string, any>): Promise<number> {
+    async getTotalData(find?: Record<string, any>): Promise<number> {
         return this.userModel.countDocuments(find);
     }
 
-    async safeProfile(data: IUserDocument): Promise<Record<string, any>> {
+    async mapProfile(data: IUserDocument): Promise<Record<string, any>> {
         return plainToClass(UserProfileTransformer, data);
     }
 
-    async safeLogin(data: IUserDocument): Promise<Record<string, any>> {
+    async mapLogin(data: IUserDocument): Promise<Record<string, any>> {
         return plainToClass(UserLoginTransformer, data);
     }
 

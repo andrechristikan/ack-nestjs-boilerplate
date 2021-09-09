@@ -36,7 +36,7 @@ export class RoleService {
         return findAll.lean();
     }
 
-    async totalData(find?: Record<string, any>): Promise<number> {
+    async getTotalData(find?: Record<string, any>): Promise<number> {
         return this.roleModel.countDocuments(find);
     }
 

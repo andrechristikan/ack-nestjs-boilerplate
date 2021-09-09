@@ -61,7 +61,7 @@ export class UserController {
                 skip: skip
             }
         );
-        const totalData: number = await this.userService.totalData();
+        const totalData: number = await this.userService.getTotalData();
         const totalPage = await this.paginationService.totalPage(
             totalData,
             perPage
@@ -96,7 +96,7 @@ export class UserController {
             );
         }
 
-        return this.userService.safeProfile(user);
+        return this.userService.mapProfile(user);
     }
 
     @Get('/:userId')

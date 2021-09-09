@@ -73,9 +73,7 @@ export class AuthController {
             );
         }
 
-        const safe: Record<string, any> = await this.userService.safeLogin(
-            user
-        );
+        const safe: Record<string, any> = await this.userService.mapLogin(user);
         const payload: Record<string, any> = {
             ...classToPlain(safe),
             rememberMe

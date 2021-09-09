@@ -45,7 +45,7 @@ export class RoleController {
             }
         );
 
-        const totalData: number = await this.roleService.totalData();
+        const totalData: number = await this.roleService.getTotalData();
         const totalPage = await this.paginationService.totalPage(
             totalData,
             perPage
