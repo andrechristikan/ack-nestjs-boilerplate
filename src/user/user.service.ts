@@ -30,7 +30,6 @@ export class UserService {
     ): Promise<T[]> {
         const findAll = this.userModel
             .find(find)
-            .select('-__v')
             .skip(options && options.skip ? options.skip : 0);
 
         if (options && options.limit) {
@@ -66,7 +65,7 @@ export class UserService {
     }
 
     async findOneById<T>(userId: string, populate?: boolean): Promise<T> {
-        const user = this.userModel.findById(userId).select('-__v');
+        const user = this.userModel.findById(userId);
 
         if (populate) {
             user.populate({
@@ -88,7 +87,7 @@ export class UserService {
         find?: Record<string, any>,
         populate?: boolean
     ): Promise<T> {
-        const user = this.userModel.findOne(find).select('-__v');
+        const user = this.userModel.findOne(find);
 
         if (populate) {
             user.populate({

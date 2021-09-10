@@ -18,7 +18,6 @@ export class RoleService {
     ): Promise<T[]> {
         const findAll = this.roleModel
             .find(find)
-            .select('-__v')
             .skip(options && options.skip ? options.skip : 0);
 
         if (options && options.limit) {
@@ -41,7 +40,7 @@ export class RoleService {
     }
 
     async findOneById<T>(roleId: string, populate?: boolean): Promise<T> {
-        const role = this.roleModel.findById(roleId).select('-__v');
+        const role = this.roleModel.findById(roleId);
 
         if (populate) {
             role.populate({
@@ -58,7 +57,7 @@ export class RoleService {
         find?: Record<string, any>,
         populate?: boolean
     ): Promise<T> {
-        const role = this.roleModel.findOne(find).select('-__v');
+        const role = this.roleModel.findOne(find);
 
         if (populate) {
             role.populate({

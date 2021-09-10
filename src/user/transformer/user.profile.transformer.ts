@@ -29,7 +29,4 @@ export class UserProfileTransformer {
 
     @Exclude()
     password: string;
-
-    @Exclude()
-    __v: string;
 }

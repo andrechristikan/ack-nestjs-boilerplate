@@ -33,7 +33,4 @@ export class UserLoginTransformer {
 
     @Exclude()
     password: string;
-
-    @Exclude()
-    __v: string;
 }
