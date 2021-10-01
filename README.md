@@ -1,5 +1,6 @@
 <!-- TABLE OF CONTENTS -->
-## Table of Contents
+# LAST UPDATE ON 30 AUG 2021
+## Table of Contents 
 
 * [About the Project](#about-the-project)
   * [Built With](#built-with)
