@@ -1,5 +1,10 @@
 <!-- TABLE OF CONTENTS -->
-# LAST UPDATE ON 30 AUG 2021
+# ##### LAST UPDATE README ON 30 AUG 2021
+### Maybe some document will difference with source code
+
+---
+
+
 ## Table of Contents 
 
 * [About the Project](#about-the-project)
