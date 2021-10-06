@@ -21,6 +21,11 @@ export class HelperService {
         private readonly jwtService: JwtService
     ) {}
 
+    async checkEmail(email: string): Promise<boolean> {
+        const regex = /\S+@\S+\.\S+/;
+        return regex.test(email);
+    }
+
     async randomReference(prefix?: string): Promise<string> {
         const timestamp: string = `${new Date().valueOf()}`;
         const randomString: string = await this.randomString(10);
@@ -90,6 +95,7 @@ export class HelperService {
         const buff: Buffer = Buffer.from(data);
         return buff.toString('base64');
     }
+
     async base64Decrypt(data: string): Promise<string> {
         const buff: Buffer = Buffer.from(data, 'base64');
         return buff.toString('utf8');
