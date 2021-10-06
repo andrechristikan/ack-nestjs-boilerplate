@@ -21,6 +21,15 @@ export class HelperService {
         private readonly jwtService: JwtService
     ) {}
 
+    async randomReference(prefix?: string): Promise<string> {
+        const timestamp: string = `${new Date().valueOf()}`;
+        const randomString: string = await this.randomString(10);
+        const reference: string = prefix
+            ? `${prefix}-${timestamp}${randomString}`
+            : `${timestamp}${randomString}`;
+        return reference.toUpperCase();
+    }
+
     async randomString(length: number): Promise<string> {
         return randomBytes(length).toString('hex');
     }
