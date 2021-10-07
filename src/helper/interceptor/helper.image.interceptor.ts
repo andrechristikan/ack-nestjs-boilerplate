@@ -11,15 +11,15 @@ import { Observable } from 'rxjs';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
-import { HelperImageValidation } from '../validator/helper.image.validator';
-import { validate } from 'class-validator';
-import { IErrors } from 'src/message/message.interface';
+import { ConfigService } from '@nestjs/config';
+import { ENUM_HELPER_IMAGE } from '../helper.constant';
 
 @Injectable()
 export class HelperImageInterceptor implements NestInterceptor {
     constructor(
         @Message() private readonly messageService: MessageService,
-        @Debugger() private readonly debuggerService: DebuggerService
+        @Debugger() private readonly debuggerService: DebuggerService,
+        private readonly configService: ConfigService
     ) {}
 
     async intercept(
@@ -29,30 +29,25 @@ export class HelperImageInterceptor implements NestInterceptor {
         const ctx: HttpArgumentsHost = context.switchToHttp();
         const { file } = ctx.getRequest();
 
+        if (!file) {
+            throw new UnprocessableEntityException(
+                this.messageService.get('helper.error.imageNotFound')
+            );
+        }
+
         const { size, mimetype } = file;
         const mime = (mimetype as string)
             .replace('image/', '')
             .toLocaleUpperCase();
 
-        const validator = new HelperImageValidation();
-        validator.mime = mime;
-        validator.size = size;
-
-        const rawErrors: Record<string, any>[] = await validate(validator);
-        if (rawErrors.length > 0) {
-            const errors: IErrors[] = this.messageService.getRequestErrorsMessage(
-                rawErrors
-            );
-
-            this.debuggerService.error('Request File Errors', {
-                class: 'HelperImageInterceptor',
-                function: 'intercept',
-                errors
-            });
-
+        const maxSize = this.configService.get<number>('helper.image.maxSize');
+        if (size > maxSize) {
             throw new UnprocessableEntityException(
-                errors,
-                this.messageService.get('http.clientError.badRequest')
+                this.messageService.get('helper.error.imageMaxSize')
+            );
+        } else if (!ENUM_HELPER_IMAGE[mime.toUpperCase()]) {
+            throw new UnprocessableEntityException(
+                this.messageService.get('helper.error.imageMimeInvalid')
             );
         }
 

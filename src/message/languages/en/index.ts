@@ -5,6 +5,7 @@ import auth from './auth';
 import app from './app';
 import response from './response';
 import role from './role';
+import helper from './helper';
 
 export default {
     role,
@@ -13,5 +14,6 @@ export default {
     request,
     auth,
     app,
-    response
+    response,
+    helper
 };

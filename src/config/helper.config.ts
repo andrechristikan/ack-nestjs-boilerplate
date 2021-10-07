@@ -7,6 +7,9 @@ export default (): Record<string, any> => ({
             secretKey: '123456',
             expirationTime: '1h',
             notBeforeExpirationTime: '1h'
+        },
+        image: {
+            maxSize: parseInt(process.env.HELPER_IMAGE_MAX_SIZE) || 1048576 // 1 MB
         }
     }
 });
