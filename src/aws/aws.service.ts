@@ -36,12 +36,6 @@ export class AwsService {
 
         this.bucket = this.configService.get<string>('aws.s3.bucket');
         this.baseUrl = this.configService.get<string>('aws.s3.baseUrl');
-
-        this.s3ListBucket().then((list) => {
-            if (list.indexOf(this.bucket) < 0) {
-                this.s3CreateBucket();
-            }
-        });
     }
 
     async s3ListBucket(): Promise<string[]> {
