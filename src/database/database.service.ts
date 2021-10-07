@@ -15,6 +15,7 @@ export class DatabaseService implements MongooseOptionsFactory {
     private readonly admin: boolean;
     private readonly ssl: boolean;
     private readonly debug: boolean;
+    private readonly options: string;
 
     constructor(private readonly configService: ConfigService) {
         this.host = this.configService.get<string>('database.host');
@@ -25,6 +26,9 @@ export class DatabaseService implements MongooseOptionsFactory {
         this.admin = this.configService.get<boolean>('database.admin');
         this.ssl = this.configService.get<boolean>('database.ssl');
         this.debug = this.configService.get<boolean>('database.debug');
+        this.options = this.configService.get<string>('database.options')
+            ? `?${this.configService.get<string>('database.options')}`
+            : '';
     }
 
     createMongooseOptions(): MongooseModuleOptions {
@@ -33,7 +37,7 @@ export class DatabaseService implements MongooseOptionsFactory {
             uri = `${uri}${this.user}:${this.password}@`;
         }
 
-        uri = `${uri}${this.host}/${this.database}`;
+        uri = `${uri}${this.host}/${this.database}${this.options}`;
         mongoose.set('debug', this.debug);
 
         const mongooseOptions: MongooseModuleOptions = {

@@ -7,6 +7,7 @@ export default (): Record<string, any> => ({
         admin: process.env.DATABASE_ADMIN === 'true' ? true : false,
         srv: process.env.DATABASE_SRV === 'true' ? true : false,
         ssl: process.env.DATABASE_SSL === 'true' ? true : false,
-        debug: process.env.DATABASE_DEBUG === 'true' || false
+        debug: process.env.DATABASE_DEBUG === 'true' || false,
+        options: process.env.DATABASE_OPTIONS
     }
 });
