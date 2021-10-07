@@ -6,13 +6,16 @@ import { IErrors } from 'src/message/message.interface';
 @Injectable()
 export class MessageService {
     private readonly languages: Record<string, any> = languages;
+    private readonly language: string;
 
-    constructor(private readonly configService: ConfigService) {}
+    constructor(private readonly configService: ConfigService) {
+        this.language = this.configService.get<string>('app.language');
+    }
 
     get(key: string): string {
         const keys: string[] = key.split('.');
         let selectedMessage: Record<string, any> | string = this.languages[
-            this.configService.get<string>('app.language')
+            this.language
         ];
 
         for (const i of keys) {

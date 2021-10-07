@@ -7,29 +7,34 @@ import mongoose from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class DatabaseService implements MongooseOptionsFactory {
-    constructor(private readonly configService: ConfigService) {}
+    private readonly host: string;
+    private readonly database: string;
+    private readonly user: string;
+    private readonly password: string;
+    private readonly srv: boolean;
+    private readonly admin: boolean;
+    private readonly ssl: boolean;
+    private readonly debug: boolean;
+
+    constructor(private readonly configService: ConfigService) {
+        this.host = this.configService.get<string>('database.host');
+        this.database = this.configService.get<string>('database.name');
+        this.user = this.configService.get<string>('database.user');
+        this.password = this.configService.get<string>('database.password');
+        this.srv = this.configService.get<boolean>('database.srv');
+        this.admin = this.configService.get<boolean>('database.admin');
+        this.ssl = this.configService.get<boolean>('database.ssl');
+        this.debug = this.configService.get<boolean>('database.debug');
+    }
 
     createMongooseOptions(): MongooseModuleOptions {
-        const baseUrl = `${this.configService.get<string>('database.host')}`;
-        const databaseName = this.configService.get<string>('database.name');
-        const srv = this.configService.get<boolean>('database.srv');
-        const admin = this.configService.get<boolean>('database.admin');
-        const options = this.configService.get<string>('database.options')
-            ? `?${this.configService.get<string>('database.options')}`
-            : '';
-
-        let uri: string = `mongodb${srv ? '+srv' : ''}://`;
-        if (
-            this.configService.get<string>('database.user') &&
-            this.configService.get<string>('database.password')
-        ) {
-            uri = `${uri}${this.configService.get<string>(
-                'database.user'
-            )}:${this.configService.get<string>('database.password')}@`;
+        let uri: string = `mongodb${this.srv ? '+srv' : ''}://`;
+        if (this.user && this.password) {
+            uri = `${uri}${this.user}:${this.password}@`;
         }
 
-        uri = `${uri}${baseUrl}/${databaseName}${options}`;
-        mongoose.set('debug', this.configService.get<string>('app.debug'));
+        uri = `${uri}${this.host}/${this.database}`;
+        mongoose.set('debug', this.debug);
 
         const mongooseOptions: MongooseModuleOptions = {
             uri,
@@ -39,8 +44,11 @@ export class DatabaseService implements MongooseOptionsFactory {
             useFindAndModify: false
         };
 
-        if (admin) {
+        if (this.admin) {
             mongooseOptions.authSource = 'admin';
+        }
+
+        if (this.ssl) {
             mongooseOptions.ssl = true;
         }
 

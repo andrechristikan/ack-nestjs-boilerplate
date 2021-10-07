@@ -17,9 +17,9 @@ import { IAwsResponse } from './aws.interface';
 
 @Injectable()
 export class AwsService {
-    private s3Client: S3Client;
-    private bucket: string;
-    private baseUrl: string;
+    private readonly s3Client: S3Client;
+    private readonly bucket: string;
+    private readonly baseUrl: string;
 
     constructor(private readonly configService: ConfigService) {
         this.s3Client = new S3Client({

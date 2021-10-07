@@ -14,12 +14,22 @@ import { MessageService } from 'src/message/message.service';
 
 @Injectable()
 export class BasicGuard implements CanActivate {
+    private readonly clientId: string;
+    private readonly clientSecret: string;
+
     constructor(
         @Message() private readonly messageService: MessageService,
         @Debugger() private readonly debuggerService: DebuggerService,
         private readonly configService: ConfigService,
         private readonly authService: AuthService
-    ) {}
+    ) {
+        this.clientId = this.configService.get<string>(
+            'auth.basicToken.clientId'
+        );
+        this.clientSecret = this.configService.get<string>(
+            'auth.basicToken.clientSecret'
+        );
+    }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request: Request = context.switchToHttp().getRequest();
@@ -39,8 +49,8 @@ export class BasicGuard implements CanActivate {
 
         const clientBasicToken: string = authorization.replace('Basic ', '');
         const ourBasicToken: string = await this.authService.createBasicToken(
-            this.configService.get<string>('auth.basicToken.clientId'),
-            this.configService.get<string>('auth.basicToken.clientSecret')
+            this.clientId,
+            this.clientSecret
         );
 
         const validateBasicToken: boolean = await this.authService.validateBasicToken(
