@@ -17,7 +17,6 @@ import Configs from 'src/config/index';
 import { HelperModule } from 'src/helper/helper.module';
 import { RoleModule } from 'src/role/role.module';
 import { PermissionModule } from 'src/permission/permission.module';
-import { AwsModule } from 'src/aws/aws.module';
 
 @Module({
     controllers: [AppController],
