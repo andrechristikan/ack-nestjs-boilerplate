@@ -26,7 +26,7 @@
 	Made with following <a href="https://github.com/goldbergyoni/nodebestpractices"><strong>nodejs-best-practice</strong></a> as benchmark and NestJs Habit.
     <br />
     <br />
-    <a href="https://github.com/andrechristikan/ack-nestjs-mongoose"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/andrechristikan/ack-nestjs-mongoose/blob/main/README.md"><strong>Explore the docs »</strong></a>
     <br />
     <br />
     <a href="https://github.com/andrechristikan/ack-nestjs-mongoose">View Demo</a>
@@ -277,6 +277,7 @@ Distributed under [MIT licensed](LICENSE.md).
 [stars-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/stargazers
 [forks-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/network/members
 [contributors-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/graphs/contributors
+[readme-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/blob/main/README.md
 
 <!-- NESTJS LINKS -->
 [nestjs-url]: http://nestjs.com/
