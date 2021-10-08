@@ -116,7 +116,7 @@ Make sure that we don't get any error after installation, open our terminal and 
 node --version
 
 # will return 
-/# v12.21.0
+# v12.21.0
 ```
 
 2. Check Yarn
@@ -135,7 +135,7 @@ mongod --version
 # db version v4.4.0
 ```
 
-After successful installation. We need to clone repo, install all dependencies, and setting up the project.
+Clone repo, install all dependencies.
 1. Clone
 ```sh
 git clone https://github.com/andrechristikan/ack-nestjs-mongoose
@@ -151,7 +151,9 @@ cd ack-nestjs-mongoose
 yarn
 ```
 
-4. Build our Env based on `.env.example` file.
+Setting up the project
+
+1. Build our Env based on `.env.example` file.
 ```sh
 cp .env.example .env
 ```
@@ -198,21 +200,22 @@ AWS_S3_REGION=us-east-2
 AWS_S3_BUCKET=acks3
 ```
 
-5. Create Database, follow [this instruction from mongodb official](mongodb-create-database-url)
+2. Create Database, follow [this instruction from mongodb official](mongodb-create-database-url)
 
-6. We need to Migration Role and Permission for first usage
+3. We need to Migration Role and Permission for first usage
 ```
 yarn migrate
 ```
 
-to rollback
+if we want to rollback
 ```
 yarn migrate:rollback
 ```
 
 7.  <strong> *** PLEASE SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET *** </strong>. 
 
-Make sure we have the same page with run the test module with jest
+Make sure we do the correct step. Go run `TestModule` and make sure all test passed with success status.
+
 Run Unit Testing
 ```
 yarn test
@@ -223,12 +226,13 @@ And then Run E2E Testing
 yarn test:e2e
 ```
 
-8. run project
+8. Last step, run the project
 ```sh
 yarn start:dev
 ```
 
-9. We can test manual testing with do import all endpoint into postman, see [this instruction](#endpoint)
+Cheers 🍻🍻, our project is running well.
+We can test manual testing with `REST Client`, let assume we use [Postman Client](postman-url) to do that thing. To do that import all endpoint into postman, see [this instruction](#endpoint).
 
 
 ## Usage
@@ -296,5 +300,6 @@ Distributed under [MIT licensed](LICENSE.md).
 [yarn-url]: https://yarnpkg.com
 [typescript-url]: https://www.typescriptlang.org/
 [jwt-url]: https://jwt.io
+[postman-url]: https://www.postman.com/product/rest-client/
 [mongodb-create-database-url]: https://www.mongodb.com/basics/create-database
 [nodejs-bestpractice-url]: https://github.com/goldbergyoni/nodebestpractices
