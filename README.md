@@ -108,7 +108,7 @@ We assume that all people are coming to here is `Programmer with intermediate kn
 All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [Follow this step for import into Postman](https://learning.postman.com/docs/getting-started/importing-and-exporting-data/)
 
 ## Getting Started
-Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), [Yarn](yarn-url), and [MongoDB](mongodb-url) (Suggest LTS Version). 
+Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), [Yarn](yarn-url), and [MongoDB](mongodb-url) (Suggest LTS Version). Please see their official document. 
 
 Make sure that we don't get any error after installation, open our terminal and follow this instruction
 1. Check NodeJs is successful installed in our OS. 
@@ -200,7 +200,7 @@ AWS_S3_REGION=us-east-2
 AWS_S3_BUCKET=acks3
 ```
 
-2. Create Database, follow [this instruction from mongodb official](mongodb-create-database-url)
+2. Create Database, [follow this instruction from mongodb official](mongodb-create-database-url)
 
 3. We need to Migration Role and Permission for first usage
 ```
@@ -232,10 +232,11 @@ yarn start:dev
 ```
 
 Cheers 🍻🍻, our project is running well.
-We can test manual testing with `REST Client`, let assume we use [Postman Client](postman-url) to do that thing. To do that import all endpoint into postman, see [this instruction](#endpoint).
+We can test manual testing with `REST Client`, let assume we use [Postman Client](postman-url) to do that thing. To do that import all endpoint into postman, [see this instruction](#endpoint).
 
 
 ## Usage
+Documents usage will has difference file. Document will put in [USAGE.md](usage-url)
 
 ## License
 
@@ -282,6 +283,7 @@ Distributed under [MIT licensed](LICENSE.md).
 [forks-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/network/members
 [contributors-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/graphs/contributors
 [readme-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/blob/main/README.md
+[usage-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/blob/main/USAGE.md
 
 <!-- NESTJS LINKS -->
 [nestjs-url]: http://nestjs.com/
