@@ -1,5 +1,5 @@
 # ##### LAST UPDATE README ON 30 AUG 2021
-### Maybe some document will difference with source code
+### Maybe some document will difference with current source code
 
 #### Usage
 In this section will explain details base on `features` sections.

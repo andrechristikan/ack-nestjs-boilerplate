@@ -42,7 +42,7 @@
 
 <div align="center">
 	<hr>
-	<h1> ##### LAST UPDATE README ON 08 OCT 2021 ( STILL ONGOING) ##### </h1>
+	<h1> ##### LAST UPDATE README ON 11 OCT 2021 ( STILL ONGOING) ##### </h1>
 	<hr>
 </div>
 
@@ -51,7 +51,7 @@
 ACK is a [NestJs](nestjs-url) boilerplate 🚀. ACK uses [Typescript](typescript-url) Program Language.
 Best uses for build an API Project, and Microservice Project. Made with following [nodejs-best-practice](nodejs-bestpractice-url) as benchmark and NestJs Habit.
 
-ACK will provide JWT (Json Web Token) Implementation 🔐 (Access Token and Refresh Token), Role and Permission Implementation 👥 , Multi Language Support 🔣 , Database migration, etc. [Spill about Awesome Features](#features)
+ACK will provide JWT (Json Web Token) Implementation 🔐 (Access Token and Refresh Token), Role and Permission Implementation 👥 , Multi Language Support 🔣 , Database migration, etc. [Spill about Features](#features)
 
 ## Prerequisites
 We assume that all people are coming to here is `Programmer with intermediate knowledge of programming` and we need to understanding more knowledge before we start to reduce knowledge gaps.
@@ -69,8 +69,8 @@ We assume that all people are coming to here is `Programmer with intermediate kn
 * [Yarn](yarn-url) v1.22.10
 
 ## Features
+The features will spill on this section, please read secretly and keep silent 🤫 🤫
 
-#### Modules
 - [x] Centralize Configuration
 - [x] Centralize Exception
 - [x] Centralize Response
@@ -84,9 +84,26 @@ We assume that all people are coming to here is `Programmer with intermediate kn
 - [x] Incoming Request Validation
 - [x] Logger Module level Database
 - [x] Debugger Module level File, on/off feature
-- [x] Aws S3 Module
+
+#### Modules
+- [x] AppModule - MainModule
+- [x] AuthModule
+- [x] AwsModule - S3 Implementation
+- [x] ConfigModule
+- [x] DatabaseModule
+- [x] DebuggerModule
 - [x] Helper Module (e.g Manipulation DateTime, Random string or int, etc)
-- [ ] Many Module**
+- [x] LoggerModule
+- [x] MessageModule - Include LanguageModule
+- [x] PaginationModule
+- [x] PermissionModule
+- [x] PipeModule - RequestValidationPipe
+- [x] ResponseModule
+- [x] RoleModule
+- [x] UserModule
+- [x] Other Module**
+
+You can request other modules, [feel free to request](issues-url)
 
 #### Middleware
 - [x] Rate Limit
@@ -104,8 +121,9 @@ We assume that all people are coming to here is `Programmer with intermediate kn
 - [x] Simple CRUD
 - [x] Mongoose Population and Deep Population
 - [ ] Upload Image into AWS S3
+
 ## Endpoints
-All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [Follow this step for import into Postman](https://learning.postman.com/docs/getting-started/importing-and-exporting-data/)
+All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [Follow this step for import into Postman](postman-import-endpoint)
 
 ## Getting Started
 Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), [Yarn](yarn-url), and [MongoDB](mongodb-url) (Suggest LTS Version). Please see their official document. 
@@ -285,6 +303,7 @@ Distributed under [MIT licensed](LICENSE.md).
 [readme-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/blob/main/README.md
 [usage-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/blob/main/USAGE.md
 
+
 <!-- NESTJS LINKS -->
 [nestjs-url]: http://nestjs.com/
 [nestjs-fundamental-url]: http://nestjs.com/
@@ -303,5 +322,6 @@ Distributed under [MIT licensed](LICENSE.md).
 [typescript-url]: https://www.typescriptlang.org/
 [jwt-url]: https://jwt.io
 [postman-url]: https://www.postman.com/product/rest-client/
+[postman-import-endpoint]: https://learning.postman.com/docs/getting-started/importing-and-exporting-data/
 [mongodb-create-database-url]: https://www.mongodb.com/basics/create-database
 [nodejs-bestpractice-url]: https://github.com/goldbergyoni/nodebestpractices
