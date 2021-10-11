@@ -137,13 +137,22 @@ node --version
 # v12.21.0
 ```
 
-2. Check Yarn
+2. Check package manager is running, with yarn
 ```sh
 yarn --version
 
 # will return 
 # 1.22.10
 ```
+
+with npm
+```sh
+npm --version
+
+# will return 
+# 7.8.0
+```
+
 
 3. Check MongoDB
 ```sh
@@ -167,6 +176,11 @@ cd ack-nestjs-mongoose
 3. Install dependencies, here we use `Yarn as Package Manager`
 ```sh
 yarn
+```
+
+with `NPM as Package Manager`
+```sh
+npm i
 ```
 
 Setting up the project
@@ -221,27 +235,48 @@ AWS_S3_BUCKET=acks3
 2. Create Database, [follow this instruction from mongodb official](mongodb-create-database-url)
 
 3. We need to Migration Role and Permission for first usage
-```
-yarn migrate
+- Fresh migrate
+```sh
+yarn Migrate
 ```
 
-if we want to rollback
+with npm
+```sh
+npm run migrate
 ```
+
+- Rollback migrate
+```sh
 yarn migrate:rollback
+```
+
+with npm
+```sh
+npm run migrate:rollback
 ```
 
 7.  <strong> *** PLEASE SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET *** </strong>. 
 
 Make sure we do the correct step. Go run `TestModule` and make sure all test passed with success status.
 
-Run Unit Testing
-```
+- Run Unit Testing
+```sh
 yarn test
 ```
 
-And then Run E2E Testing
+with npm
+```sh
+npm run test
 ```
+
+- Run E2E Testing
+```sh
 yarn test:e2e
+```
+
+with npm
+```sh
+npm run test:e2e
 ```
 
 8. Last step, run the project
@@ -249,8 +284,15 @@ yarn test:e2e
 yarn start:dev
 ```
 
-Cheers 🍻🍻, our project is running well.
-We can test manual testing with `REST Client`, let assume we use [Postman Client](postman-url) to do that thing. To do that import all endpoint into postman, [see this instruction](#endpoint).
+with npm
+```sh
+npm run start:dev
+```
+
+Congrats !!! Cheers 🍻🍻, our project is running well. Now we can use all features.
+
+Go install or open `REST Client` you prefer. In this case, let assume we use [Postman Client](postman-url). 
+After installation, we need to import all endpoint into postman, [see this instruction](#endpoint).
 
 
 ## Usage
