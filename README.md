@@ -42,7 +42,7 @@
 
 <div align="center">
 	<hr>
-	<h1> ##### LAST UPDATE README ON 11 OCT 2021 ( STILL ONGOING) ##### </h1>
+	<h1> ##### LAST UPDATE README ON 11 OCT 2021 ( ONGOING) ##### </h1>
 	<hr>
 </div>
 
@@ -101,7 +101,7 @@ The features will spill on this section, please read secretly and keep silent �
 - [x] ResponseModule
 - [x] RoleModule
 - [x] UserModule
-- [x] Other Module**
+- [ ] Other Module** (Ongoing)
 
 You can request other modules, [feel free to request](issues-url)
 
@@ -128,166 +128,167 @@ All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [F
 ## Getting Started
 Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), [Yarn](yarn-url), and [MongoDB](mongodb-url) (Suggest LTS Version). Please see their official document. 
 
-Make sure that we don't get any error after installation, open our terminal and follow this instruction
+#### Make sure that we don't get any error after installation, open our terminal and follow this instruction
 1. Check NodeJs is successful installed in our OS. 
-```sh
-node --version
+    ```sh
+    node --version
 
-# will return 
-# v12.21.0
-```
+    # will return 
+    # v12.21.0
+    ```
 
 2. Check package manager is running, with yarn
-```sh
-yarn --version
+    ```sh
+    yarn --version
 
-# will return 
-# 1.22.10
-```
+    # will return 
+    # 1.22.10
+    ```
 
-with npm
-```sh
-npm --version
+    with npm
+    ```sh
+    npm --version
 
-# will return 
-# 7.8.0
-```
+    # will return 
+    # 7.8.0
+    ```
 
 
 3. Check MongoDB
-```sh
-mongod --version
+    ```sh
+    mongod --version
 
-# will return 
-# db version v4.4.0
-```
+    # will return 
+    # db version v4.4.0
+    ```
 
-Clone repo, install all dependencies.
+#### Clone repo, and install all dependencies.
 1. Clone
-```sh
-git clone https://github.com/andrechristikan/ack-nestjs-mongoose
-```
+    ```sh
+    git clone https://github.com/andrechristikan/ack-nestjs-mongoose
+    ```
 
 2. Go to into dir
-```sh
-cd ack-nestjs-mongoose
-```
+    ```sh
+    cd ack-nestjs-mongoose
+    ```
 
 3. Install dependencies, here we use `Yarn as Package Manager`
-```sh
-yarn
-```
+    ```sh
+    yarn
+    ```
 
-with `NPM as Package Manager`
-```sh
-npm i
-```
+    with `NPM as Package Manager`
+    ```sh
+    npm i
+    ```
 
-Setting up the project
+#### Setting up the project
 
 1. Build our Env based on `.env.example` file.
-```sh
-cp .env.example .env
-```
+    ```sh
+    cp .env.example .env
+    ```
 
-and then we need to adjust with our env
-```env
-APP_ENV=development
-APP_HOST=localhost
-APP_PORT= 3000
-APP_LANGUAGE=en
-APP_DEBUG=false
-APP_TZ=Asia/Jakarta
+    and then we need to adjust with our env
+    ```env
+    APP_ENV=development
+    APP_HOST=localhost
+    APP_PORT= 3000
+    APP_LANGUAGE=en
+    APP_DEBUG=false
+    APP_TZ=Asia/Jakarta
 
-DATABASE_HOST=localhost:27017
-DATABASE_NAME=ack
-DATABASE_USER=
-DATABASE_PASSWORD=
-DATABASE_ADMIN=false
-DATABASE_SRV=false
-DATABASE_DEBUG=false
-DATABASE_SSL=false
-DATABASE_OPTIONS=
+    DATABASE_HOST=localhost:27017
+    DATABASE_NAME=ack
+    DATABASE_USER=
+    DATABASE_PASSWORD=
+    DATABASE_ADMIN=false
+    DATABASE_SRV=false
+    DATABASE_DEBUG=false
+    DATABASE_SSL=false
+    DATABASE_OPTIONS=
 
-AUTH_JWT_ACCESS_TOKEN_SECRET_KEY=123456
-AUTH_JWT_ACCESS_TOKEN_EXPIRATION_TIME=1d
-AUTH_JWT_ACCESS_TOKEN_NOT_BEFORE_EXPIRATION_TIME=0
-AUTH_JWT_ACCESS_TOKEN_REMEMBER_ME_EXPIRATION_TIME=7d
-AUTH_JWT_ACCESS_TOKEN_REMEMBER_ME_NOT_BEFORE_EXPIRATION_TIME=0
+    AUTH_JWT_ACCESS_TOKEN_SECRET_KEY=123456
+    AUTH_JWT_ACCESS_TOKEN_EXPIRATION_TIME=1d
+    AUTH_JWT_ACCESS_TOKEN_NOT_BEFORE_EXPIRATION_TIME=0
+    AUTH_JWT_ACCESS_TOKEN_REMEMBER_ME_EXPIRATION_TIME=7d
+    AUTH_JWT_ACCESS_TOKEN_REMEMBER_ME_NOT_BEFORE_EXPIRATION_TIME=0
 
-AUTH_JWT_REFRESH_TOKEN_SECRET_KEY=01001231
-AUTH_JWT_REFRESH_TOKEN_EXPIRATION_TIME=2d
-AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION_TIME=1d
-AUTH_JWT_REFRESH_TOKEN_REMEMBER_ME_EXPIRATION_TIME=9d
-AUTH_JWT_REFRESH_TOKEN_REMEMBER_ME_NOT_BEFORE_EXPIRATION_TIME=7d
+    AUTH_JWT_REFRESH_TOKEN_SECRET_KEY=01001231
+    AUTH_JWT_REFRESH_TOKEN_EXPIRATION_TIME=2d
+    AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION_TIME=1d
+    AUTH_JWT_REFRESH_TOKEN_REMEMBER_ME_EXPIRATION_TIME=9d
+    AUTH_JWT_REFRESH_TOKEN_REMEMBER_ME_NOT_BEFORE_EXPIRATION_TIME=7d
 
-AUTH_BASIC_TOKEN_CLIENT_ID=asdzxc
-AUTH_BASIC_TOKEN_CLIENT_SECRET=1234567890
+    AUTH_BASIC_TOKEN_CLIENT_ID=asdzxc
+    AUTH_BASIC_TOKEN_CLIENT_SECRET=1234567890
 
-HELPER_IMAGE_MAX_SIZE=1048576
+    HELPER_IMAGE_MAX_SIZE=1048576
 
-AWS_CREDENTIAL_KEY=awskey12345
-AWS_CREDENTIAL_SECRET=awssecret12345
-AWS_S3_REGION=us-east-2
-AWS_S3_BUCKET=acks3
-```
+    AWS_CREDENTIAL_KEY=awskey12345
+    AWS_CREDENTIAL_SECRET=awssecret12345
+    AWS_S3_REGION=us-east-2
+    AWS_S3_BUCKET=acks3
+    ```
 
 2. Create Database, [follow this instruction from mongodb official](mongodb-create-database-url)
 
 3. We need to Migration Role and Permission for first usage
-- Fresh migrate
-```sh
-yarn Migrate
-```
 
-with npm
-```sh
-npm run migrate
-```
+    - Fresh migrate
+      ```sh
+      yarn Migrate
+      ```
 
-- Rollback migrate
-```sh
-yarn migrate:rollback
-```
+      with npm
+      ```sh
+      npm run migrate
+      ```
 
-with npm
-```sh
-npm run migrate:rollback
-```
+    - Rollback migrate
+      ```sh
+      yarn migrate:rollback
+      ```
+
+      with npm
+      ```sh
+      npm run migrate:rollback
+      ```
 
 7.  <strong> *** PLEASE SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET *** </strong>. 
 
-Make sure we do the correct step. Go run `TestModule` and make sure all test passed with success status.
+    Make sure we do the correct step. Go run `TestModule` and make sure all test passed with success status.
 
-- Run Unit Testing
-```sh
-yarn test
-```
+    - Run Unit Testing
+      ```sh
+      yarn test
+      ```
 
-with npm
-```sh
-npm run test
-```
+      with npm
+      ```sh
+      npm run test
+      ```
 
-- Run E2E Testing
-```sh
-yarn test:e2e
-```
+    - Run E2E Testing
+      ```sh
+      yarn test:e2e
+      ```
 
-with npm
-```sh
-npm run test:e2e
-```
+      with npm
+      ```sh
+      npm run test:e2e
+      ```
 
 8. Last step, run the project
-```sh
-yarn start:dev
-```
+    ```sh
+    yarn start:dev
+    ```
 
-with npm
-```sh
-npm run start:dev
-```
+    with npm
+    ```sh
+    npm run start:dev
+    ```
 
 Congrats !!! Cheers 🍻🍻, our project is running well. Now we can use all features.
 
