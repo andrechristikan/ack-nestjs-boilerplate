@@ -18,7 +18,7 @@
 <div align="center">
   <a href="https://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo_text.svg" width="320" alt="Nest Logo" /></a>
 
-  <h3 align="center">ACK NestJs Boilerplate 🚀🚀🚀 </h3>
+  <h3 align="center">ACK NestJs Boilerplate AS RESTFUL API🚀🚀🚀 </h3>
 
   <p align="center">
 	Boilerplate with <a href="https://github.com/goldbergyoni/nodebestpractices"><strong>Mongoose</strong></a> and <a href="https://github.com/goldbergyoni/nodebestpractices"><strong>MongoDB</strong></a> as Database. 
