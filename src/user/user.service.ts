@@ -194,7 +194,6 @@ export class UserService {
         return errors;
     }
 
-    // For migration
     async deleteMany(find: Record<string, any>): Promise<boolean> {
         try {
             await this.userModel.deleteMany(find);

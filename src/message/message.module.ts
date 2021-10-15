@@ -3,12 +3,7 @@ import { MessageService } from 'src/message/message.service';
 
 @Global()
 @Module({
-    providers: [
-        {
-            provide: 'MessageService',
-            useClass: MessageService
-        }
-    ],
+    providers: [MessageService],
     exports: [MessageService],
     imports: []
 })

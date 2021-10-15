@@ -1,5 +1,8 @@
-export default (): Record<string, any> => ({
-    helper: {
+import { registerAs } from '@nestjs/config';
+
+export default registerAs(
+    'helper',
+    (): Record<string, any> => ({
         salt: {
             length: 8
         },
@@ -11,5 +14,5 @@ export default (): Record<string, any> => ({
         image: {
             maxSize: parseInt(process.env.HELPER_IMAGE_MAX_SIZE) || 1048576 // 1 MB
         }
-    }
-});
+    })
+);

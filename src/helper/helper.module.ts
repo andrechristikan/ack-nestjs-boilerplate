@@ -5,12 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Global()
 @Module({
-    providers: [
-        {
-            provide: 'HelperService',
-            useClass: HelperService
-        }
-    ],
+    providers: [HelperService],
     exports: [HelperService],
     controllers: [],
     imports: [
