@@ -101,6 +101,9 @@ The features will spill on this section, please read secretly and keep silent ðŸ
 - [x] ResponseModule
 - [x] RoleModule
 - [x] UserModule
+- [x] KafkaModule - Kafka Admin
+  - [x] ProducerModule
+  - [x] ConsumerModule
 - [ ] Other Module** (Ongoing)
 
 You can request other modules, [feel free to request](issues-url)
