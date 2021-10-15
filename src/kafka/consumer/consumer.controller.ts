@@ -8,6 +8,7 @@ import {
 } from '@nestjs/microservices';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
+import { IKafkaMessage } from '../kafka.interface';
 
 @Controller()
 export class KafkaConsumerController {
@@ -17,7 +18,7 @@ export class KafkaConsumerController {
 
     @MessagePattern('nestjs.ack.topic', Transport.KAFKA)
     async testKafka(
-        @Payload() message: Record<string, any>,
+        @Payload() message: IKafkaMessage,
         @Ctx() context: KafkaContext
     ): Promise<any> {
         const originalMessage = context.getMessage();
