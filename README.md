@@ -144,7 +144,15 @@ The features will spill on this section, please read secretly and keep silent ðŸ
 All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [Follow this step for import into Postman](postman-import-endpoint)
 
 ## Getting Started
-Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), [Yarn](yarn-url), and [MongoDB](mongodb-url) (Suggest LTS Version). Please see their official document.
+Before we start, we need to install :
+- [NodeJs](nodejs-url) (Suggest LTS Version),
+- [MongoDB](mongodb-url) (Suggest LTS Version), and
+- **Optional** [Kafka Apache](kafka-url) (Suggest LTS Version). 
+
+Please see their official document.
+
+> For Windows User, **do not install kafka on your Windows OS**. There are has a unsolved issue, while delete topic on Windows OS. 
+> Go install kafka with virtual machine or docker.
 
 #### Make sure that we don't get any error after installation, open our terminal and follow this instruction
 1. Check NodeJs is successful installed in our OS. 
@@ -180,7 +188,13 @@ Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), 
     # db version v4.4.0
     ```
 
-4. Kafka
+4. **Optional** Kafka
+    ```sh
+    kafka-topics --version
+
+    # will return 
+    # 2.8.0 (Commit:ebb1d6e21cc92130
+    ```
 
 #### Clone repo, and install all dependencies.
 1. Clone
@@ -193,12 +207,12 @@ Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), 
     cd ack-nestjs-mongoose
     ```
 
-3. Install dependencies, here we use `Yarn as Package Manager`
+3. Install dependencies
     ```sh
     yarn
     ```
 
-    with `NPM as Package Manager`
+    with npm
     ```sh
     npm i
     ```
@@ -246,6 +260,9 @@ Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), 
 
     HELPER_IMAGE_MAX_SIZE=1048576
 
+    KAFKA_CONSUMER_GROUP=nestjs.ack
+    KAFKA_BROKERS=localhost:9092
+
     AWS_CREDENTIAL_KEY=awskey12345
     AWS_CREDENTIAL_SECRET=awssecret12345
     AWS_S3_REGION=us-east-2
@@ -276,7 +293,7 @@ Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), 
       npm run migrate:rollback
       ```
 
-7.  <strong> *** PLEASE SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET *** </strong>. 
+4.  <strong> *** PLEASE SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET *** </strong>. 
 
     Make sure we do the correct step. Go run `TestModule` and make sure all test passed with success status.
 
@@ -300,7 +317,61 @@ Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), 
       npm run test:e2e
       ```
 
-8. Last step, run the project
+5. **Optional**, while we want to use `KafkaModule`. We need to adjustment.
+
+In `src/main.ts`, Add This Code
+
+```ts
+// src/main.ts
+
+...
+...
+
+app.select(CommandModule).get(CommandService).exec();
+
+const kafka = await import('./kafka');
+await kafka.default(
+    app,
+    configService,
+    logger
+);
+
+
+await app.listenAsync(port, host);
+
+...
+...
+
+```
+
+and in `src/app/app.module.ts`, Import `KafkaModule`
+
+```ts
+// src/app/app.module.ts
+import { KafkaModule } from 'src/kafka/kafka.module';
+
+@Module({
+  controllers: [AppController],
+  providers: [],
+  imports: [
+    ...
+    ...
+
+    SeedsModule,
+    KafkaModule, // <<<---- Add this
+
+    AuthModule,
+    UserModule,
+
+    ...
+    ...
+  ]
+})
+export class AppModule {}
+
+```
+
+6. Last step, run the project
     ```sh
     yarn start:dev
     ```
@@ -389,3 +460,4 @@ Distributed under [MIT licensed](LICENSE.md).
 [postman-import-endpoint]: https://learning.postman.com/docs/getting-started/importing-and-exporting-data/
 [mongodb-create-database-url]: https://www.mongodb.com/basics/create-database
 [nodejs-bestpractice-url]: https://github.com/goldbergyoni/nodebestpractices
+[kafka-url]: https://kafka.apache.org/quickstart
