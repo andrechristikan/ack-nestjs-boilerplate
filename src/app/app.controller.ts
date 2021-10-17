@@ -1,11 +1,11 @@
 import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
 
 import { AuthBasicGuard } from 'src/auth/auth.decorator';
+import { ENUM_ERROR_STATUS_CODE } from 'src/error/error.constant';
+import { ErrorHttpException } from 'src/error/filter/error.http.filter';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
-import { ENUM_RESPONSE_STATUS_CODE } from 'src/response/response.constant';
 import { Response } from 'src/response/response.decorator';
-import { CustomHttpException } from 'src/response/response.filter';
 @Controller('/test')
 export class AppController {
     constructor(@Message() private readonly messageService: MessageService) {}
@@ -19,13 +19,13 @@ export class AppController {
     @Get('/error')
     @Response('app.testHello')
     async testError(): Promise<void> {
-        throw new CustomHttpException(ENUM_RESPONSE_STATUS_CODE.TEST_ERROR);
+        throw new ErrorHttpException(ENUM_ERROR_STATUS_CODE.TEST_ERROR);
     }
 
     @Get('/error-rewrite')
     @Response('app.testHello')
     async testErrorRewrite(): Promise<void> {
-        throw new CustomHttpException(ENUM_RESPONSE_STATUS_CODE.TEST_ERROR, {
+        throw new ErrorHttpException(ENUM_ERROR_STATUS_CODE.TEST_ERROR, {
             message: this.messageService.get('app.testErrorRewrite')
         });
     }
@@ -33,7 +33,7 @@ export class AppController {
     @Get('/error-data')
     @Response('app.testHello')
     async testErrorData(): Promise<void> {
-        throw new CustomHttpException(ENUM_RESPONSE_STATUS_CODE.TEST_ERROR, {
+        throw new ErrorHttpException(ENUM_ERROR_STATUS_CODE.TEST_ERROR, {
             message: this.messageService.get('app.testErrorData'),
             errors: [
                 {

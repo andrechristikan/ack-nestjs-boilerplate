@@ -3,7 +3,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserEntity } from 'src/user/user.schema';
 import { UserDocument, IUserDocument } from 'src/user/user.interface';
-import { IErrors } from 'src/message/message.interface';
 import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
 import { RoleEntity } from 'src/role/role.schema';
@@ -14,6 +13,7 @@ import { plainToClass } from 'class-transformer';
 import { UserLoginTransformer } from './transformer/user.login.transformer';
 import { Helper } from 'src/helper/helper.decorator';
 import { HelperService } from 'src/helper/helper.service';
+import { IErrors } from 'src/error/error.interface';
 
 @Injectable()
 export class UserService {

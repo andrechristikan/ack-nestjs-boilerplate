@@ -8,19 +8,16 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { Response } from 'express';
+import { ENUM_ERROR_STATUS_CODE, ERROR_MESSAGE } from '../error.constant';
 import {
-    ENUM_RESPONSE_STATUS_CODE,
-    RESPONSE_CUSTOM_ERROR
-} from './response.constant';
-import {
-    IResponseCustomError,
-    IResponseCustomErrorOptions
-} from './response.interface';
-import { IErrors } from 'src/message/message.interface';
+    IErrorHttpException,
+    IErrorHttpExceptionOptions,
+    IErrors
+} from '../error.interface';
 
 // Restructure Response Object For Guard Exception
 @Catch(HttpException)
-export class ResponseFilter implements ExceptionFilter {
+export class ErrorHttpFilter implements ExceptionFilter {
     constructor(@Message() private readonly messageService: MessageService) {}
 
     catch(exception: HttpException, host: ArgumentsHost): void {
@@ -28,9 +25,9 @@ export class ResponseFilter implements ExceptionFilter {
         const responseHttp: any = ctx.getResponse<Response>();
 
         const statusHttp: number = exception.getStatus();
-        const response: IResponseCustomErrorOptions = exception.getResponse() as IResponseCustomErrorOptions;
-        const responseError: IResponseCustomError =
-            RESPONSE_CUSTOM_ERROR[ENUM_RESPONSE_STATUS_CODE[statusHttp]];
+        const response: IErrorHttpExceptionOptions = exception.getResponse() as IErrorHttpExceptionOptions;
+        const responseError: IErrorHttpException =
+            ERROR_MESSAGE[ENUM_ERROR_STATUS_CODE[statusHttp]];
 
         // Restructure
         const httpCode: number = responseError.httpCode;
@@ -54,10 +51,10 @@ export class ResponseFilter implements ExceptionFilter {
     }
 }
 
-export class CustomHttpException extends HttpException {
+export class ErrorHttpException extends HttpException {
     constructor(
-        statusCode: ENUM_RESPONSE_STATUS_CODE,
-        options?: IResponseCustomErrorOptions
+        statusCode: ENUM_ERROR_STATUS_CODE,
+        options?: IErrorHttpExceptionOptions
     ) {
         super(options || undefined, statusCode);
     }

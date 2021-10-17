@@ -4,10 +4,8 @@ import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from 'src/auth/auth.service';
-import { Message } from 'src/message/message.decorator';
-import { MessageService } from 'src/message/message.service';
-import { CustomHttpException } from 'src/response/response.filter';
-import { ENUM_RESPONSE_STATUS_CODE } from 'src/response/response.constant';
+import { ErrorHttpException } from 'src/error/filter/error.http.filter';
+import { ENUM_ERROR_STATUS_CODE } from 'src/error/error.constant';
 
 @Injectable()
 export class BasicGuard implements CanActivate {
@@ -15,7 +13,6 @@ export class BasicGuard implements CanActivate {
     private readonly clientSecret: string;
 
     constructor(
-        @Message() private readonly messageService: MessageService,
         @Debugger() private readonly debuggerService: DebuggerService,
         private readonly configService: ConfigService,
         private readonly authService: AuthService
@@ -39,8 +36,8 @@ export class BasicGuard implements CanActivate {
                 function: 'canActivate'
             });
 
-            throw new CustomHttpException(
-                ENUM_RESPONSE_STATUS_CODE.AUTH_GUARD_BASIC_TOKEN_NEEDED_ERROR
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.AUTH_GUARD_BASIC_TOKEN_NEEDED_ERROR
             );
         }
 
@@ -64,8 +61,8 @@ export class BasicGuard implements CanActivate {
                 }
             );
 
-            throw new CustomHttpException(
-                ENUM_RESPONSE_STATUS_CODE.AUTH_GUARD_BASIC_TOKEN_INVALID_ERROR
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.AUTH_GUARD_BASIC_TOKEN_INVALID_ERROR
             );
         }
 

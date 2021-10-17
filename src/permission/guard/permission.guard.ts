@@ -1,7 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ENUM_RESPONSE_STATUS_CODE } from 'src/response/response.constant';
-import { CustomHttpException } from 'src/response/response.filter';
+import { ENUM_ERROR_STATUS_CODE } from 'src/error/error.constant';
+import { ErrorHttpException } from 'src/error/filter/error.http.filter';
 import { ENUM_PERMISSIONS, PERMISSION_META_KEY } from '../permission.constant';
 
 @Injectable()
@@ -25,8 +25,8 @@ export class PermissionGuard implements CanActivate {
         );
 
         if (!hasPermission) {
-            throw new CustomHttpException(
-                ENUM_RESPONSE_STATUS_CODE.PERMISSION_GUARD_INVALID_ERROR
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.PERMISSION_GUARD_INVALID_ERROR
             );
         }
         return hasPermission;

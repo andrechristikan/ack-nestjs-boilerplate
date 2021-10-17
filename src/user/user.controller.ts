@@ -15,7 +15,6 @@ import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe'
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
 import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
 import { AuthJwtGuard, User } from 'src/auth/auth.decorator';
-import { IErrors } from 'src/message/message.interface';
 import { PaginationService } from 'src/pagination/pagination.service';
 import {
     DEFAULT_PAGE,
@@ -27,8 +26,9 @@ import { UserDocument, IUserDocument } from './user.interface';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
 import { Response, ResponsePaging } from 'src/response/response.decorator';
-import { CustomHttpException } from 'src/response/response.filter';
-import { ENUM_RESPONSE_STATUS_CODE } from 'src/response/response.constant';
+import { ErrorHttpException } from 'src/error/filter/error.http.filter';
+import { ENUM_ERROR_STATUS_CODE } from 'src/error/error.constant';
+import { IErrors } from 'src/error/error.interface';
 
 @Controller('/user')
 export class UserController {
@@ -84,8 +84,8 @@ export class UserController {
                 function: 'profile'
             });
 
-            throw new CustomHttpException(
-                ENUM_RESPONSE_STATUS_CODE.USER_NOT_FOUND_ERROR
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.USER_NOT_FOUND_ERROR
             );
         }
 
@@ -106,8 +106,8 @@ export class UserController {
                 function: 'findOneById'
             });
 
-            throw new CustomHttpException(
-                ENUM_RESPONSE_STATUS_CODE.USER_NOT_FOUND_ERROR
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.USER_NOT_FOUND_ERROR
             );
         }
 
@@ -133,8 +133,8 @@ export class UserController {
                 errors
             });
 
-            throw new CustomHttpException(
-                ENUM_RESPONSE_STATUS_CODE.USER_EXISTS_ERROR
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.USER_EXISTS_ERROR
             );
         }
 
@@ -153,9 +153,7 @@ export class UserController {
                 error: err
             });
 
-            throw new CustomHttpException(
-                ENUM_RESPONSE_STATUS_CODE.UNKNOWN_ERROR
-            );
+            throw new ErrorHttpException(ENUM_ERROR_STATUS_CODE.UNKNOWN_ERROR);
         }
     }
 
@@ -173,17 +171,15 @@ export class UserController {
                 function: 'delete'
             });
 
-            throw new CustomHttpException(
-                ENUM_RESPONSE_STATUS_CODE.USER_NOT_FOUND_ERROR
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.USER_NOT_FOUND_ERROR
             );
         }
 
         const del: boolean = await this.userService.deleteOneById(userId);
 
         if (!del) {
-            throw new CustomHttpException(
-                ENUM_RESPONSE_STATUS_CODE.UNKNOWN_ERROR
-            );
+            throw new ErrorHttpException(ENUM_ERROR_STATUS_CODE.UNKNOWN_ERROR);
         }
 
         return;
@@ -206,8 +202,8 @@ export class UserController {
                 class: 'UserController',
                 function: 'delete'
             });
-            throw new CustomHttpException(
-                ENUM_RESPONSE_STATUS_CODE.USER_NOT_FOUND_ERROR
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.USER_NOT_FOUND_ERROR
             );
         }
 
@@ -228,9 +224,7 @@ export class UserController {
                 }
             });
 
-            throw new CustomHttpException(
-                ENUM_RESPONSE_STATUS_CODE.UNKNOWN_ERROR
-            );
+            throw new ErrorHttpException(ENUM_ERROR_STATUS_CODE.UNKNOWN_ERROR);
         }
     }
 }

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { IErrors } from 'src/error/error.interface';
 import languages from 'src/message/message.constant';
-import { IErrors } from 'src/message/message.interface';
 
 @Injectable()
 export class MessageService {

@@ -12,8 +12,8 @@ import { ENUM_LOGGER_ACTION } from 'src/logger/logger.constant';
 import { AuthJwtRefreshGuard, Token } from './auth.decorator';
 import { Response } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
-import { CustomHttpException } from 'src/response/response.filter';
-import { ENUM_RESPONSE_STATUS_CODE } from 'src/response/response.constant';
+import { ENUM_ERROR_STATUS_CODE } from 'src/error/error.constant';
+import { ErrorHttpException } from 'src/error/filter/error.http.filter';
 
 @Controller('/auth')
 export class AuthController {
@@ -44,8 +44,8 @@ export class AuthController {
                 function: 'login'
             });
 
-            throw new CustomHttpException(
-                ENUM_RESPONSE_STATUS_CODE.AUTH_USER_NOT_FOUND
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.AUTH_USER_NOT_FOUND
             );
         }
 
@@ -60,8 +60,8 @@ export class AuthController {
                 function: 'login'
             });
 
-            throw new CustomHttpException(
-                ENUM_RESPONSE_STATUS_CODE.AUTH_PASSWORD_NOT_MATCH
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.AUTH_PASSWORD_NOT_MATCH
             );
         }
 

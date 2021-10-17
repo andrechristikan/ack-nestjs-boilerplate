@@ -1,6 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 
-export enum ENUM_RESPONSE_STATUS_CODE {
+export enum ENUM_ERROR_STATUS_CODE {
     AUTH_USER_NOT_FOUND = 5100,
     AUTH_PASSWORD_NOT_MATCH = 5101,
     AUTH_GUARD_BASIC_TOKEN_NEEDED_ERROR = 5101,
@@ -23,7 +23,7 @@ export enum ENUM_RESPONSE_STATUS_CODE {
     TEST_ERROR = 5999
 }
 
-export const RESPONSE_CUSTOM_ERROR = {
+export const ERROR_MESSAGE = {
     // AUTH
     AUTH_USER_NOT_FOUND: {
         httpCode: HttpStatus.NOT_FOUND,

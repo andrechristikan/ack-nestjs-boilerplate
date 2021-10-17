@@ -2,8 +2,8 @@ import { AuthGuard } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
-import { CustomHttpException } from 'src/response/response.filter';
-import { ENUM_RESPONSE_STATUS_CODE } from 'src/response/response.constant';
+import { ErrorHttpException } from 'src/error/filter/error.http.filter';
+import { ENUM_ERROR_STATUS_CODE } from 'src/error/error.constant';
 
 @Injectable()
 export class JwtGuard extends AuthGuard('jwt') {
@@ -24,8 +24,8 @@ export class JwtGuard extends AuthGuard('jwt') {
                 error: { ...err }
             });
 
-            throw new CustomHttpException(
-                ENUM_RESPONSE_STATUS_CODE.AUTH_GUARD_JWT_ACCESS_TOKEN_ERROR
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.AUTH_GUARD_JWT_ACCESS_TOKEN_ERROR
             );
         }
 
