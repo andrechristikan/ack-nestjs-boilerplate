@@ -1,6 +1,6 @@
-export type IResponse = Record<string, any>;
+export type IHttpResponse = Record<string, any>;
 
-export interface IResponsePaging {
+export interface IHttpResponsePaging {
     totalData: number;
     totalPage: number;
     currentPage: number;

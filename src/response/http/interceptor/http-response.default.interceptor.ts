@@ -13,7 +13,7 @@ import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 
 // This interceptor for restructure response success
-export function ResponseDefaultInterceptor(
+export function HttpResponseDefaultInterceptor(
     messagePath: string
 ): Type<NestInterceptor> {
     class MixinResponseDefaultInterceptor

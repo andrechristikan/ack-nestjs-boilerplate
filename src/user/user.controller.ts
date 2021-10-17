@@ -13,7 +13,6 @@ import {
     ParseIntPipe
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
-import { Response, ResponsePaging } from 'src/response/response.decorator';
 import { RequestValidationPipe } from 'src/pipe/request-validation.pipe';
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
 import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
@@ -30,8 +29,14 @@ import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { UserDocument, IUserDocument } from './user.interface';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
-import { Permissions } from 'src/permission/permission.decorator';
-import { IResponse, IResponsePaging } from 'src/response/response.interface';
+import {
+    IHttpResponse,
+    IHttpResponsePaging
+} from 'src/response/http/http-response.interface';
+import {
+    HttpResponse,
+    HttpResponsePaging
+} from 'src/response/http/http-response.decorator';
 
 @Controller('/user')
 export class UserController {
@@ -43,15 +48,14 @@ export class UserController {
     ) {}
 
     @Get('/')
-    @AuthJwtGuard()
-    @ResponsePaging('user.findAll')
-    @Permissions(ENUM_PERMISSIONS.USER_READ)
+    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ)
+    @HttpResponsePaging('user.findAll')
     async findAll(
         @Query('page', new DefaultValuePipe(DEFAULT_PAGE), ParseIntPipe)
         page: number,
         @Query('perPage', new DefaultValuePipe(DEFAULT_PER_PAGE), ParseIntPipe)
         perPage: number
-    ): Promise<IResponsePaging> {
+    ): Promise<IHttpResponsePaging> {
         const skip = await this.paginationService.skip(page, perPage);
         const users: UserDocument[] = await this.userService.findAll<UserDocument>(
             {},
@@ -76,10 +80,9 @@ export class UserController {
     }
 
     @Get('/profile')
-    @AuthJwtGuard()
-    @Response('user.profile')
-    @Permissions(ENUM_PERMISSIONS.PROFILE_READ)
-    async profile(@User('_id') userId: string): Promise<IResponse> {
+    @AuthJwtGuard(ENUM_PERMISSIONS.PROFILE_READ)
+    @HttpResponse('user.profile')
+    async profile(@User('_id') userId: string): Promise<IHttpResponse> {
         const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
             userId,
             true
@@ -99,10 +102,9 @@ export class UserController {
     }
 
     @Get('/:userId')
-    @AuthJwtGuard()
-    @Response('user.findOneById')
-    @Permissions(ENUM_PERMISSIONS.USER_READ)
-    async findOneById(@Param('userId') userId: string): Promise<IResponse> {
+    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ)
+    @HttpResponse('user.findOneById')
+    async findOneById(@Param('userId') userId: string): Promise<IHttpResponse> {
         const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
             userId,
             true
@@ -122,13 +124,12 @@ export class UserController {
     }
 
     @Post('/create')
-    @AuthJwtGuard()
-    @Response('user.create')
-    @Permissions(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_CREATE)
+    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_CREATE)
+    @HttpResponse('user.create')
     async create(
         @Body(RequestValidationPipe)
         data: UserCreateValidation
-    ): Promise<IResponse> {
+    ): Promise<IHttpResponse> {
         const errors: IErrors[] = await this.userService.checkExist(
             data.email,
             data.mobileNumber
@@ -168,9 +169,8 @@ export class UserController {
     }
 
     @Delete('/delete/:userId')
-    @AuthJwtGuard()
-    @Response('user.delete')
-    @Permissions(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_DELETE)
+    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_DELETE)
+    @HttpResponse('user.delete')
     async delete(@Param('userId') userId: string): Promise<void> {
         const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
             userId,
@@ -199,14 +199,13 @@ export class UserController {
     }
 
     @Put('/update/:userId')
-    @AuthJwtGuard()
-    @Response('user.update')
-    @Permissions(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
+    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
+    @HttpResponse('user.update')
     async update(
         @Param('userId') userId: string,
         @Body(RequestValidationPipe)
         data: UserUpdateValidation
-    ): Promise<IResponse> {
+    ): Promise<IHttpResponse> {
         const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
             userId,
             true

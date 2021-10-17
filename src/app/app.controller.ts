@@ -1,11 +1,11 @@
 import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
 
-import { Response } from 'src/response/response.decorator';
 import { AuthBasicGuard } from 'src/auth/auth.decorator';
+import { HttpResponse } from 'src/response/http/http-response.decorator';
 @Controller('/test')
 export class AppController {
     @Get('/hello')
-    @Response('app.testHello')
+    @HttpResponse('app.testHello')
     async testHello(): Promise<void> {
         return;
     }
@@ -14,7 +14,7 @@ export class AppController {
     @Get('/hello-basic')
     @HttpCode(HttpStatus.CREATED)
     @AuthBasicGuard()
-    @Response('app.testHelloBasicToken')
+    @HttpResponse('app.testHelloBasicToken')
     async testHelloBasicToken(): Promise<void> {
         return;
     }

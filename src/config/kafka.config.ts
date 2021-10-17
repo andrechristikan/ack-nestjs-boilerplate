@@ -3,10 +3,6 @@ import { registerAs } from '@nestjs/config';
 export default registerAs(
     'kafka',
     (): Record<string, any> => ({
-        use: process.env.KAFKA_USE === 'true' ? true : false,
-        topics: process.env.KAFKA_TOPICS
-            ? process.env.KAFKA_TOPICS.split(',')
-            : [],
         brokers: process.env.KAFKA_BROKERS
             ? process.env.KAFKA_BROKERS.split(',')
             : ['localhost:9092'],

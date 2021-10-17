@@ -4,7 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { DatabaseService } from 'src/database/database.service';
 import { DatabaseModule } from 'src/database/database.module';
 import { MessageModule } from 'src/message/message.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { WinstonModule } from 'nest-winston';
 import { DebuggerService } from 'src/debugger/debugger.service';
 import { DebuggerModule } from 'src/debugger/debugger.module';
@@ -47,7 +47,6 @@ import { KafkaModule } from 'src/kafka/kafka.module';
         PaginationModule,
         HelperModule,
         SeedsModule,
-        process.env.KAFKA_USE ? KafkaModule : null,
 
         AuthModule,
         UserModule,

@@ -1,23 +1,27 @@
 import { Controller, Get, Inject } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { ClientKafka } from '@nestjs/microservices';
-import { Response } from 'src/response/response.decorator';
-import { IResponse } from 'src/response/response.interface';
-import { IKafkaMessageResponse } from '../kafka.interface';
-import { KAFKA_PRODUCER_SERVICE_NAME } from './producer.constant';
+import { HttpResponse } from 'src/response/http/http-response.decorator';
+import { IHttpResponse } from 'src/response/http/http-response.interface';
+import {
+    IMessageRequest,
+    IMessageResponse
+} from 'src/response/message/message-response.interface';
+import {
+    KAFKA_PRODUCER_SERVICE_NAME,
+    KAFKA_PRODUCER_TOPICS
+} from './producer.constant';
 
 @Controller('kafka/produce')
 export class KafkaProducerController {
     constructor(
         @Inject(KAFKA_PRODUCER_SERVICE_NAME)
-        private readonly client: ClientKafka,
-        private readonly configService: ConfigService
+        private readonly client: ClientKafka
     ) {}
 
     async onModuleInit(): Promise<void> {
-        this.configService
-            .get<string[]>('kafka.topics')
-            .forEach((val) => this.client.subscribeToResponseOf(val));
+        KAFKA_PRODUCER_TOPICS.forEach((val) =>
+            this.client.subscribeToResponseOf(val)
+        );
 
         await this.client.connect();
     }
@@ -27,13 +31,16 @@ export class KafkaProducerController {
     }
 
     @Get('/')
-    @Response('kafka.produce')
-    async produce(): Promise<IResponse> {
-        const kafka: IKafkaMessageResponse = await this.client
-            .send('nestjs.ack.topic', {
-                value: '127.0.0.1',
-                key: new Date().valueOf()
-            })
+    @HttpResponse('kafka.produce')
+    async produce(): Promise<IHttpResponse> {
+        const message: IMessageRequest = {
+            value: {
+                from: '127.0.0.1'
+            },
+            key: `${new Date().valueOf()}`
+        };
+        const kafka: IMessageResponse = await this.client
+            .send('nestjs.ack.topic', message)
             .toPromise();
 
         return kafka;

@@ -5,18 +5,17 @@ import {
     ParseIntPipe,
     Query
 } from '@nestjs/common';
-import { Response } from 'src/response/response.decorator';
 import { AuthJwtGuard } from 'src/auth/auth.decorator';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
-import { Permissions } from 'src/permission/permission.decorator';
 import { PaginationService } from 'src/pagination/pagination.service';
 import {
     DEFAULT_PAGE,
     DEFAULT_PER_PAGE
 } from 'src/pagination/pagination.constant';
-import { IResponsePaging } from 'src/response/response.interface';
 import { PermissionService } from './permission.service';
 import { PermissionDocument } from './permission.interface';
+import { HttpResponse } from 'src/response/http/http-response.decorator';
+import { IHttpResponsePaging } from 'src/response/http/http-response.interface';
 
 @Controller('/permission')
 export class PermissionController {
@@ -26,15 +25,14 @@ export class PermissionController {
     ) {}
 
     @Get('/')
-    @AuthJwtGuard()
-    @Response('permission.findAll')
-    @Permissions(ENUM_PERMISSIONS.PERMISSION_READ)
+    @AuthJwtGuard(ENUM_PERMISSIONS.PERMISSION_READ)
+    @HttpResponse('permission.findAll')
     async findAll(
         @Query('page', new DefaultValuePipe(DEFAULT_PAGE), ParseIntPipe)
         page: number,
         @Query('perPage', new DefaultValuePipe(DEFAULT_PER_PAGE), ParseIntPipe)
         perPage: number
-    ): Promise<IResponsePaging> {
+    ): Promise<IHttpResponsePaging> {
         const skip = await this.paginationService.skip(page, perPage);
         const permissions: PermissionDocument[] = await this.permissionService.findAll(
             {},

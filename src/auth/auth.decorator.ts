@@ -2,16 +2,26 @@ import {
     UseGuards,
     createParamDecorator,
     ExecutionContext,
-    applyDecorators
+    applyDecorators,
+    SetMetadata
 } from '@nestjs/common';
 import { JwtGuard } from 'src/auth/guard/jwt/jwt.guard';
 import { BasicGuard } from 'src/auth/guard/basic/basic.guard';
 import { IAuthApplyDecorator } from 'src/auth/auth.interface';
 import { PermissionGuard } from 'src/permission/guard/permission.guard';
 import { JwtRefreshGuard } from './guard/jwt-refresh/jwt-refresh.guard';
+import {
+    ENUM_PERMISSIONS,
+    PERMISSION_META_KEY
+} from 'src/permission/permission.constant';
 
-export function AuthJwtGuard(): IAuthApplyDecorator {
-    return applyDecorators(UseGuards(JwtGuard, PermissionGuard));
+export function AuthJwtGuard(
+    ...permissions: ENUM_PERMISSIONS[]
+): IAuthApplyDecorator {
+    return applyDecorators(
+        UseGuards(JwtGuard, PermissionGuard),
+        SetMetadata(PERMISSION_META_KEY, permissions)
+    );
 }
 
 export function AuthBasicGuard(): IAuthApplyDecorator {

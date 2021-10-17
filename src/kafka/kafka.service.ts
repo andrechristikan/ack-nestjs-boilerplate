@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Admin, Kafka, KafkaConfig } from 'kafkajs';
 import { Logger } from '@nestjs/common/services/logger.service';
 import { ConfigService } from '@nestjs/config';
-
+import { KAFKA_TOPICS } from './kafka.constant';
 @Injectable()
 export class KafkaService {
     private readonly kafka: Kafka;
@@ -17,7 +17,7 @@ export class KafkaService {
 
     constructor(private readonly configService: ConfigService) {
         this.brokers = this.configService.get<string[]>('kafka.brokers');
-        this.topics = this.configService.get<string[]>('kafka.topics');
+        this.topics = KAFKA_TOPICS;
         this.clientId = this.configService.get<string>('kafka.admin.clientId');
         this.kafkaOptions = {
             clientId: this.clientId,

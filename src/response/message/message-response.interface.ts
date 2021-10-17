@@ -1,4 +1,4 @@
-export interface IKafkaMessage {
+export interface IMessageRequest {
     key: string;
     value: Record<string, any>;
     headers?: Record<string, any>;
@@ -6,7 +6,7 @@ export interface IKafkaMessage {
     user?: Record<string, any>;
 }
 
-export interface IKafkaMessageResponse {
+export interface IMessageResponse {
     key: string;
     value: Record<string, any>;
 }
