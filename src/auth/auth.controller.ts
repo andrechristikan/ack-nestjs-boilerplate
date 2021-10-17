@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, HttpStatus } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
 import { UserService } from 'src/user/user.service';
 import { IUserDocument } from 'src/user/user.interface';
@@ -25,8 +25,7 @@ export class AuthController {
     ) {}
 
     @Post('/login')
-    @Response('auth.login')
-    @HttpCode(HttpStatus.OK)
+    @Response('auth.login', HttpStatus.OK)
     async login(
         @Body(RequestValidationPipe) data: AuthLoginValidation
     ): Promise<IResponse> {
@@ -94,9 +93,8 @@ export class AuthController {
     }
 
     @Post('/refresh')
-    @Response('auth.refresh')
     @AuthJwtRefreshGuard()
-    @HttpCode(HttpStatus.OK)
+    @Response('auth.refresh', HttpStatus.OK)
     async refresh(@Token() token: string): Promise<IResponse> {
         const {
             exp,

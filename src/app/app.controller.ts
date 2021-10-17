@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, HttpStatus } from '@nestjs/common';
 
 import { AuthBasicGuard } from 'src/auth/auth.decorator';
 import { ENUM_ERROR_STATUS_CODE } from 'src/error/error.constant';
@@ -46,9 +46,8 @@ export class AppController {
 
     // HTTP STATUS MANIPULATE TO 201
     @Get('/hello-basic')
-    @HttpCode(HttpStatus.CREATED)
     @AuthBasicGuard()
-    @Response('app.testHelloBasicToken')
+    @Response('app.testHelloBasicToken', HttpStatus.CREATED)
     async testHelloBasicToken(): Promise<void> {
         return;
     }
