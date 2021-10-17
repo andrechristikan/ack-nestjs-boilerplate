@@ -11,7 +11,7 @@ import { MessageService } from 'src/message/message.service';
 
 // Restructure Response Object For Guard Exception
 @Catch()
-export class HttpResponseFilter implements ExceptionFilter {
+export class ResponseFilter implements ExceptionFilter {
     constructor(@Message() private readonly messageService: MessageService) {}
 
     catch(exception: unknown, host: ArgumentsHost): void {

@@ -3,7 +3,7 @@ import { BaseRpcExceptionFilter } from '@nestjs/microservices';
 import { Observable } from 'rxjs';
 
 @Catch()
-export class MessageResponseFilter extends BaseRpcExceptionFilter {
+export class KafkaResponseFilter extends BaseRpcExceptionFilter {
     catch(exception: unknown, host: ArgumentsHost): Observable<any> {
         console.log('exception', exception);
         console.log('host', host);

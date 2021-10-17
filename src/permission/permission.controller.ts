@@ -14,8 +14,8 @@ import {
 } from 'src/pagination/pagination.constant';
 import { PermissionService } from './permission.service';
 import { PermissionDocument } from './permission.interface';
-import { HttpResponse } from 'src/response/http/http-response.decorator';
-import { IHttpResponsePaging } from 'src/response/http/http-response.interface';
+import { Response } from 'src/response/response.decorator';
+import { IResponsePaging } from 'src/response/response.interface';
 
 @Controller('/permission')
 export class PermissionController {
@@ -26,13 +26,13 @@ export class PermissionController {
 
     @Get('/')
     @AuthJwtGuard(ENUM_PERMISSIONS.PERMISSION_READ)
-    @HttpResponse('permission.findAll')
+    @Response('permission.findAll')
     async findAll(
         @Query('page', new DefaultValuePipe(DEFAULT_PAGE), ParseIntPipe)
         page: number,
         @Query('perPage', new DefaultValuePipe(DEFAULT_PER_PAGE), ParseIntPipe)
         perPage: number
-    ): Promise<IHttpResponsePaging> {
+    ): Promise<IResponsePaging> {
         const skip = await this.paginationService.skip(page, perPage);
         const permissions: PermissionDocument[] = await this.permissionService.findAll(
             {},

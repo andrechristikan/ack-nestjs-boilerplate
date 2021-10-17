@@ -1,11 +1,11 @@
 import { Controller, Get, Inject } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
-import { HttpResponse } from 'src/response/http/http-response.decorator';
-import { IHttpResponse } from 'src/response/http/http-response.interface';
+import { Response } from 'src/response/response.decorator';
+import { IResponse } from 'src/response/response.interface';
 import {
-    IMessageRequest,
-    IMessageResponse
-} from 'src/response/message/message-response.interface';
+    IKafkaRequest,
+    IKafkaResponse
+} from '../response/kafka.response.interface';
 import {
     KAFKA_PRODUCER_SERVICE_NAME,
     KAFKA_PRODUCER_TOPICS
@@ -31,15 +31,15 @@ export class KafkaProducerController {
     }
 
     @Get('/')
-    @HttpResponse('kafka.produce')
-    async produce(): Promise<IHttpResponse> {
-        const message: IMessageRequest = {
+    @Response('kafka.produce')
+    async produce(): Promise<IResponse> {
+        const message: IKafkaRequest = {
             value: {
                 from: '127.0.0.1'
             },
             key: `${new Date().valueOf()}`
         };
-        const kafka: IMessageResponse = await this.client
+        const kafka: IKafkaResponse = await this.client
             .send('nestjs.ack.topic', message)
             .toPromise();
 

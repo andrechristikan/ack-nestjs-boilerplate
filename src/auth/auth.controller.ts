@@ -19,8 +19,8 @@ import { AuthLoginValidation } from './validation/auth.login.validation';
 import { LoggerService } from 'src/logger/logger.service';
 import { ENUM_LOGGER_ACTION } from 'src/logger/logger.constant';
 import { AuthJwtRefreshGuard, Token } from './auth.decorator';
-import { HttpResponse } from 'src/response/http/http-response.decorator';
-import { IHttpResponse } from 'src/response/http/http-response.interface';
+import { Response } from 'src/response/response.decorator';
+import { IResponse } from 'src/response/response.interface';
 
 @Controller('/auth')
 export class AuthController {
@@ -33,11 +33,11 @@ export class AuthController {
     ) {}
 
     @Post('/login')
-    @HttpResponse('auth.login')
+    @Response('auth.login')
     @HttpCode(HttpStatus.OK)
     async login(
         @Body(RequestValidationPipe) data: AuthLoginValidation
-    ): Promise<IHttpResponse> {
+    ): Promise<IResponse> {
         const rememberMe: boolean = data.rememberMe ? true : false;
         const user: IUserDocument = await this.userService.findOne<IUserDocument>(
             {
@@ -102,10 +102,10 @@ export class AuthController {
     }
 
     @Post('/refresh')
-    @HttpResponse('auth.refresh')
+    @Response('auth.refresh')
     @AuthJwtRefreshGuard()
     @HttpCode(HttpStatus.OK)
-    async refresh(@Token() token: string): Promise<IHttpResponse> {
+    async refresh(@Token() token: string): Promise<IResponse> {
         const {
             exp,
             nbf,
