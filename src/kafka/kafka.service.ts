@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Admin, Kafka, KafkaConfig } from 'kafkajs';
 import { Logger } from '@nestjs/common/services/logger.service';
 import { ConfigService } from '@nestjs/config';
 import { KAFKA_TOPICS } from './kafka.constant';
 @Injectable()
-export class KafkaService {
+export class KafkaService implements OnModuleInit, OnModuleDestroy {
     private readonly kafka: Kafka;
     private readonly admin: Admin;
     private readonly topics: string[];

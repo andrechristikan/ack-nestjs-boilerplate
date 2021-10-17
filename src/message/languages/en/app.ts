@@ -7,6 +7,7 @@ export default {
     testErrorData: 'This is error data test endpoint',
     testErrors: 'Errors test',
     error: {
-        default: 'Default error'
+        default: 'Default error',
+        kafka: 'Error Kafka'
     }
 };

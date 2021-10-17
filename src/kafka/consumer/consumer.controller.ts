@@ -2,11 +2,11 @@ import { Controller } from '@nestjs/common';
 import { Payload, KafkaContext, Ctx } from '@nestjs/microservices';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
-import {
-    IKafkaRequest,
-    IKafkaResponse
-} from '../response/kafka.response.interface';
+import { IKafkaResponse } from '../response/kafka.response.interface';
 import { KafkaResponse } from '../response/kafka.response.decorator';
+import { IKafkaRequest } from '../request/kafka.request.inteface';
+import { KafkaErrorException } from '../error/kafka.error.filter';
+import { ENUM_ERROR_STATUS_CODE } from 'src/error/error.constant';
 
 @Controller()
 export class KafkaConsumerController {
@@ -14,7 +14,7 @@ export class KafkaConsumerController {
         @Debugger() private readonly debuggerService: DebuggerService
     ) {}
 
-    @KafkaResponse('nestjs.ack.topic')
+    @KafkaResponse('nestjs.ack.success')
     async testKafka(
         @Payload() message: IKafkaRequest,
         @Ctx() context: KafkaContext
@@ -55,8 +55,50 @@ export class KafkaConsumerController {
 
         return {
             key: message.key,
-            message: message.value,
-            from: 'kafka-ack-consumer'
+            value: message.value,
+            headers: message.headers
         };
+    }
+
+    @KafkaResponse('nestjs.ack.error')
+    async testKafkaError(
+        @Payload() message: IKafkaRequest,
+        @Ctx() context: KafkaContext
+    ): Promise<IKafkaResponse> {
+        const originalMessage = context.getMessage();
+        const topic = context.getTopic();
+        const partition = context.getPartition();
+
+        this.debuggerService.error('Original Message', {
+            class: 'KafkaConsumerController',
+            function: 'testKafka',
+            ...originalMessage
+        });
+
+        this.debuggerService.error('Original Message', {
+            class: 'KafkaConsumerController',
+            function: 'testKafka',
+            ...originalMessage
+        });
+
+        this.debuggerService.error('Topic', {
+            class: 'KafkaConsumerController',
+            function: 'testKafka',
+            topic
+        });
+
+        this.debuggerService.error('Partition', {
+            class: 'KafkaConsumerController',
+            function: 'testKafka',
+            partition
+        });
+
+        this.debuggerService.error('Message', {
+            class: 'KafkaConsumerController',
+            function: 'testKafka',
+            message
+        });
+
+        throw new KafkaErrorException(ENUM_ERROR_STATUS_CODE.TEST_KAFKA_ERROR);
     }
 }

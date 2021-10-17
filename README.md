@@ -42,8 +42,12 @@
 
 <div align="center">
 	<hr>
-	<h1> ##### LAST UPDATE README ON 11 OCT 2021 ( ONGOING) ##### </h1>
-	<hr>
+	<h1> ###### IMPORTANT ###### </h1>
+	<h2> ##### LAST UPDATE README ON 18 OCT 2021 ( ONGOING) ##### </h2>
+  <h4>There huge differences between documentation and source code after KafkaModule added, <a href="https://github.com/andrechristikan/ack-nestjs-mongoose/commits/main">Click here to check</a> </h4>
+
+  <hr>
+
 </div>
 
 ## Description
@@ -84,6 +88,7 @@ The features will spill on this section, please read secretly and keep silent ðŸ
 - [x] Incoming Request Validation
 - [x] Logger Module level Database
 - [x] Debugger Module level File, on/off feature
+- [x] Custom Status Code for Each Error and Success Request
 
 #### Modules
 - [x] AppModule - MainModule
@@ -106,7 +111,7 @@ The features will spill on this section, please read secretly and keep silent ðŸ
   - [x] ConsumerModule
 - [ ] Other Module** (Ongoing)
 
-You can request other modules, [feel free to request](issues-url)
+[Welcome to request for other modules](issues-url)
 
 #### Middleware
 - [x] Rate Limit
@@ -117,19 +122,24 @@ You can request other modules, [feel free to request](issues-url)
 - [x] Cors
 
 #### Example
-- [x] Login
-- [x] Refresh Token
-- [ ] Sign Up
-- [x] Server Side Pagination
+- [x] Simple Test, and Error Test
 - [x] Simple CRUD
-- [x] Mongoose Population and Deep Population
+- [x] Server Side Pagination
+- [x] Access Token with JWT
+- [x] Refresh Token with JWT
+- [x] Basic Auth Implementation
+- [x] Login
+- [ ] Sign Up
 - [ ] Upload Image into AWS S3
+- [ ] Decryption Request and Encryption Response for Secure App
+- [x] Kafka Consume and Produce Message
+- [x] Mongoose Population and Deep Population
 
 ## Endpoints
 All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [Follow this step for import into Postman](postman-import-endpoint)
 
 ## Getting Started
-Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), [Yarn](yarn-url), and [MongoDB](mongodb-url) (Suggest LTS Version). Please see their official document. 
+Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), [Yarn](yarn-url), and [MongoDB](mongodb-url) (Suggest LTS Version). Please see their official document.
 
 #### Make sure that we don't get any error after installation, open our terminal and follow this instruction
 1. Check NodeJs is successful installed in our OS. 
@@ -164,6 +174,8 @@ Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), 
     # will return 
     # db version v4.4.0
     ```
+
+4. Kafka
 
 #### Clone repo, and install all dependencies.
 1. Clone
@@ -348,6 +360,7 @@ Distributed under [MIT licensed](LICENSE.md).
 [contributors-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/graphs/contributors
 [readme-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/blob/main/README.md
 [usage-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/blob/main/USAGE.md
+[history-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/commits/main
 
 
 <!-- NESTJS LINKS -->

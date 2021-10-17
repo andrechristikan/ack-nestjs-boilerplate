@@ -1,11 +1,11 @@
-import { NestFactory } from '@nestjs/core';
+import { NestApplication, NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
-// import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { CommandModule, CommandService } from 'nestjs-command';
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule, {
+    const app: NestApplication = await NestFactory.create(AppModule, {
         cors: true,
         bodyParser: true
     });
@@ -18,37 +18,17 @@ async function bootstrap() {
 
     // Global Prefix
     app.setGlobalPrefix('/api');
+    app.select(CommandModule).get(CommandService).exec();
 
-    // For kafka consumer
-    // const brokers: string[] = configService.get<string[]>('kafka.brokers');
-    // const clientId: string = configService.get<string>('kafka.clientId');
-    // const consumerGroup: string = configService.get<string>(
-    //     'kafka.consumerGroup'
+    // Kafka
+    // const kafka = await import('./kafka');
+    // await kafka.default(
+    //     app,
+    //     configService,
+    //     logger
     // );
 
-    // app.connectMicroservice<MicroserviceOptions>({
-    //     transport: Transport.KAFKA,
-    //     options: {
-    //         client: {
-    //             clientId,
-    //             brokers
-    //         },
-    //         consumer: {
-    //             groupId: consumerGroup,
-    //             allowAutoTopicCreation: false
-    //         },
-    //         producer: {
-    //             allowAutoTopicCreation: false
-    //         }
-    //     }
-    // });
-
-    // await app.startAllMicroservicesAsync();
-    // logger.log(
-    //     `Kafka server connected on brokers ${brokers.join(', ')}`,
-    //     'NestApplication'
-    // );
-
+    // Listen
     await app.listenAsync(port, host);
     logger.log(
         `Database running on ${configService.get<string>(

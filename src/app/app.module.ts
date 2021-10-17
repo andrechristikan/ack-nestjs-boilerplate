@@ -17,7 +17,7 @@ import Configs from 'src/config/index';
 import { HelperModule } from 'src/helper/helper.module';
 import { RoleModule } from 'src/role/role.module';
 import { PermissionModule } from 'src/permission/permission.module';
-// import { KafkaModule } from 'src/kafka/kafka.module';
+import { KafkaModule } from 'src/kafka/kafka.module';
 
 @Module({
     controllers: [AppController],

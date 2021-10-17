@@ -1,1 +1,1 @@
-export const KAFKA_TOPICS = ['nestjs.ack.topic'];
+export const KAFKA_TOPICS = ['nestjs.ack.error', 'nestjs.ack.success'];

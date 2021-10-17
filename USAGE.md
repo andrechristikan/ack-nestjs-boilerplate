@@ -1,6 +1,9 @@
 # ##### LAST UPDATE DOCUMENT ON 30 AUG 2021 (ONGOING)
-### Maybe some document will difference with current source code
+## Intro
+Maybe usage documentation will difference with current source code. Will update ASAP.
 
+<strong>KAFKA MODULE DOCUMENT NOT READY YET</strong><br>
+<strong>USAGE DOCUMENTATION NOT READY YET</strong>
 #### Usage
 In this section will explain details base on `features` sections.
 

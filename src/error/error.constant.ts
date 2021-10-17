@@ -20,7 +20,8 @@ export enum ENUM_ERROR_STATUS_CODE {
     UNKNOWN_ERROR = 5900,
     UNSTRUCTURED_RESPONSE_ERROR = 5901,
     REQUEST_VALIDATION_ERROR = 5902,
-    TEST_ERROR = 5999
+    TEST_ERROR = 5990,
+    TEST_KAFKA_ERROR = 5991
 }
 
 export const ERROR_MESSAGE = {
@@ -96,5 +97,9 @@ export const ERROR_MESSAGE = {
     TEST_ERROR: {
         httpCode: HttpStatus.INTERNAL_SERVER_ERROR,
         messagePath: 'app.error.default'
+    },
+    TEST_KAFKA_ERROR: {
+        httpCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        messagePath: 'app.error.kafka'
     }
 };
