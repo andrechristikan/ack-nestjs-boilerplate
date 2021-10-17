@@ -135,6 +135,11 @@ The features will spill on this section, please read secretly and keep silent ðŸ
 - [x] Kafka Consume and Produce Message
 - [x] Mongoose Population and Deep Population
 
+#### Todo
+- [ ] Give More Example
+- [ ] Unit Test and E2E Test
+- [ ] Update Documentation
+
 ## Endpoints
 All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [Follow this step for import into Postman](postman-import-endpoint)
 
