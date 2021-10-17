@@ -23,7 +23,7 @@ export enum ENUM_RESPONSE_STATUS_CODE {
     TEST_ERROR = 5999
 }
 
-export const RESPONSE_ERROR = {
+export const RESPONSE_CUSTOM_ERROR = {
     // AUTH
     AUTH_USER_NOT_FOUND: {
         httpCode: HttpStatus.NOT_FOUND,

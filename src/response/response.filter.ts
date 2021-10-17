@@ -8,8 +8,14 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { Response } from 'express';
-import { ENUM_RESPONSE_STATUS_CODE, RESPONSE_ERROR } from './response.constant';
-import { IResponseError, IResponseException } from './response.interface';
+import {
+    ENUM_RESPONSE_STATUS_CODE,
+    RESPONSE_CUSTOM_ERROR
+} from './response.constant';
+import {
+    IResponseCustomError,
+    IResponseCustomErrorOptions
+} from './response.interface';
 import { IErrors } from 'src/message/message.interface';
 
 // Restructure Response Object For Guard Exception
@@ -22,9 +28,9 @@ export class ResponseFilter implements ExceptionFilter {
         const responseHttp: any = ctx.getResponse<Response>();
 
         const statusHttp: number = exception.getStatus();
-        const response: IResponseException = exception.getResponse() as IResponseException;
-        const responseError: IResponseError =
-            RESPONSE_ERROR[ENUM_RESPONSE_STATUS_CODE[statusHttp]];
+        const response: IResponseCustomErrorOptions = exception.getResponse() as IResponseCustomErrorOptions;
+        const responseError: IResponseCustomError =
+            RESPONSE_CUSTOM_ERROR[ENUM_RESPONSE_STATUS_CODE[statusHttp]];
 
         // Restructure
         const httpCode: number = responseError.httpCode;
@@ -51,7 +57,7 @@ export class ResponseFilter implements ExceptionFilter {
 export class CustomHttpException extends HttpException {
     constructor(
         statusCode: ENUM_RESPONSE_STATUS_CODE,
-        options?: IResponseException
+        options?: IResponseCustomErrorOptions
     ) {
         super(options || undefined, statusCode);
     }

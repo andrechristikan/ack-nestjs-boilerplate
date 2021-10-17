@@ -11,7 +11,7 @@ import {
     ParseIntPipe
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
-import { RequestValidationPipe } from 'src/pipe/request-validation.pipe';
+import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe';
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
 import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
 import { AuthJwtGuard, User } from 'src/auth/auth.decorator';
