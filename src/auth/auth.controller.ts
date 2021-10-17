@@ -1,18 +1,9 @@
-import {
-    Controller,
-    Post,
-    Body,
-    HttpCode,
-    HttpStatus,
-    BadRequestException
-} from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
 import { UserService } from 'src/user/user.service';
 import { IUserDocument } from 'src/user/user.interface';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
-import { MessageService } from 'src/message/message.service';
-import { Message } from 'src/message/message.decorator';
 import { classToPlain } from 'class-transformer';
 import { RequestValidationPipe } from 'src/pipe/request-validation.pipe';
 import { AuthLoginValidation } from './validation/auth.login.validation';
@@ -21,11 +12,12 @@ import { ENUM_LOGGER_ACTION } from 'src/logger/logger.constant';
 import { AuthJwtRefreshGuard, Token } from './auth.decorator';
 import { Response } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
+import { CustomHttpException } from 'src/response/response.filter';
+import { ENUM_RESPONSE_STATUS_CODE } from 'src/response/response.constant';
 
 @Controller('/auth')
 export class AuthController {
     constructor(
-        @Message() private readonly messageService: MessageService,
         @Debugger() private readonly debuggerService: DebuggerService,
         private readonly authService: AuthService,
         private readonly userService: UserService,
@@ -52,8 +44,8 @@ export class AuthController {
                 function: 'login'
             });
 
-            throw new BadRequestException(
-                this.messageService.get('auth.error.emailNotFound')
+            throw new CustomHttpException(
+                ENUM_RESPONSE_STATUS_CODE.AUTH_USER_NOT_FOUND
             );
         }
 
@@ -68,8 +60,8 @@ export class AuthController {
                 function: 'login'
             });
 
-            throw new BadRequestException(
-                this.messageService.get('auth.error.passwordNotMatch')
+            throw new CustomHttpException(
+                ENUM_RESPONSE_STATUS_CODE.AUTH_PASSWORD_NOT_MATCH
             );
         }
 

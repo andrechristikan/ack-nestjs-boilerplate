@@ -2,8 +2,7 @@ import {
     Injectable,
     NestInterceptor,
     ExecutionContext,
-    CallHandler,
-    UnprocessableEntityException
+    CallHandler
 } from '@nestjs/common';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { Logger as DebuggerService } from 'winston';
@@ -13,6 +12,8 @@ import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { ConfigService } from '@nestjs/config';
 import { ENUM_HELPER_IMAGE } from '../helper.constant';
+import { CustomHttpException } from 'src/response/response.filter';
+import { ENUM_RESPONSE_STATUS_CODE } from 'src/response/response.constant';
 
 @Injectable()
 export class HelperImageInterceptor implements NestInterceptor {
@@ -30,8 +31,8 @@ export class HelperImageInterceptor implements NestInterceptor {
         const { file } = ctx.getRequest();
 
         if (!file) {
-            throw new UnprocessableEntityException(
-                this.messageService.get('helper.error.imageNotFound')
+            throw new CustomHttpException(
+                ENUM_RESPONSE_STATUS_CODE.HELPER_IMAGE_NEEDED_ERROR
             );
         }
 
@@ -42,12 +43,12 @@ export class HelperImageInterceptor implements NestInterceptor {
 
         const maxSize = this.configService.get<number>('helper.image.maxSize');
         if (size > maxSize) {
-            throw new UnprocessableEntityException(
-                this.messageService.get('helper.error.imageMaxSize')
+            throw new CustomHttpException(
+                ENUM_RESPONSE_STATUS_CODE.HELPER_IMAGE_MAX_SIZE_ERROR
             );
         } else if (!ENUM_HELPER_IMAGE[mime.toUpperCase()]) {
-            throw new UnprocessableEntityException(
-                this.messageService.get('helper.error.imageMimeInvalid')
+            throw new CustomHttpException(
+                ENUM_RESPONSE_STATUS_CODE.HELPER_IMAGE_EXTENSION_ERROR
             );
         }
 

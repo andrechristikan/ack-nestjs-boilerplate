@@ -7,8 +7,6 @@ import {
     Delete,
     Put,
     Query,
-    BadRequestException,
-    InternalServerErrorException,
     DefaultValuePipe,
     ParseIntPipe
 } from '@nestjs/common';
@@ -18,8 +16,6 @@ import { UserCreateValidation } from 'src/user/validation/user.create.validation
 import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
 import { AuthJwtGuard, User } from 'src/auth/auth.decorator';
 import { IErrors } from 'src/message/message.interface';
-import { MessageService } from 'src/message/message.service';
-import { Message } from 'src/message/message.decorator';
 import { PaginationService } from 'src/pagination/pagination.service';
 import {
     DEFAULT_PAGE,
@@ -31,11 +27,12 @@ import { UserDocument, IUserDocument } from './user.interface';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
 import { Response, ResponsePaging } from 'src/response/response.decorator';
+import { CustomHttpException } from 'src/response/response.filter';
+import { ENUM_RESPONSE_STATUS_CODE } from 'src/response/response.constant';
 
 @Controller('/user')
 export class UserController {
     constructor(
-        @Message() private readonly messageService: MessageService,
         @Debugger() private readonly debuggerService: DebuggerService,
         private readonly paginationService: PaginationService,
         private readonly userService: UserService
@@ -87,8 +84,8 @@ export class UserController {
                 function: 'profile'
             });
 
-            throw new BadRequestException(
-                this.messageService.get('http.clientError.notFound')
+            throw new CustomHttpException(
+                ENUM_RESPONSE_STATUS_CODE.USER_NOT_FOUND_ERROR
             );
         }
 
@@ -109,8 +106,8 @@ export class UserController {
                 function: 'findOneById'
             });
 
-            throw new BadRequestException(
-                this.messageService.get('http.clientError.notFound')
+            throw new CustomHttpException(
+                ENUM_RESPONSE_STATUS_CODE.USER_NOT_FOUND_ERROR
             );
         }
 
@@ -136,9 +133,8 @@ export class UserController {
                 errors
             });
 
-            throw new BadRequestException(
-                errors,
-                this.messageService.get('user.error.createError')
+            throw new CustomHttpException(
+                ENUM_RESPONSE_STATUS_CODE.USER_EXISTS_ERROR
             );
         }
 
@@ -156,8 +152,9 @@ export class UserController {
                 function: 'create',
                 error: err
             });
-            throw new InternalServerErrorException(
-                this.messageService.get('http.serverError.internalServerError')
+
+            throw new CustomHttpException(
+                ENUM_RESPONSE_STATUS_CODE.UNKNOWN_ERROR
             );
         }
     }
@@ -176,16 +173,16 @@ export class UserController {
                 function: 'delete'
             });
 
-            throw new BadRequestException(
-                this.messageService.get('http.clientError.notFound')
+            throw new CustomHttpException(
+                ENUM_RESPONSE_STATUS_CODE.USER_NOT_FOUND_ERROR
             );
         }
 
         const del: boolean = await this.userService.deleteOneById(userId);
 
         if (!del) {
-            throw new InternalServerErrorException(
-                this.messageService.get('http.serverError.internalServerError')
+            throw new CustomHttpException(
+                ENUM_RESPONSE_STATUS_CODE.UNKNOWN_ERROR
             );
         }
 
@@ -209,8 +206,8 @@ export class UserController {
                 class: 'UserController',
                 function: 'delete'
             });
-            throw new BadRequestException(
-                this.messageService.get('http.clientError.notFound')
+            throw new CustomHttpException(
+                ENUM_RESPONSE_STATUS_CODE.USER_NOT_FOUND_ERROR
             );
         }
 
@@ -231,8 +228,8 @@ export class UserController {
                 }
             });
 
-            throw new InternalServerErrorException(
-                this.messageService.get('http.serverError.internalServerError')
+            throw new CustomHttpException(
+                ENUM_RESPONSE_STATUS_CODE.UNKNOWN_ERROR
             );
         }
     }

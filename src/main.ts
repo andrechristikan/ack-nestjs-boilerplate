@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
-import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+// import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
@@ -20,7 +20,6 @@ async function bootstrap() {
     app.setGlobalPrefix('/api');
 
     // For kafka consumer
-
     // const brokers: string[] = configService.get<string[]>('kafka.brokers');
     // const clientId: string = configService.get<string>('kafka.clientId');
     // const consumerGroup: string = configService.get<string>(

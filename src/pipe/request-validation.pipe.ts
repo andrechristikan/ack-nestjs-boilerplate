@@ -1,8 +1,4 @@
-import {
-    PipeTransform,
-    ArgumentMetadata,
-    UnprocessableEntityException
-} from '@nestjs/common';
+import { PipeTransform, ArgumentMetadata } from '@nestjs/common';
 import { validate } from 'class-validator';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { Logger as DebuggerService } from 'winston';
@@ -13,6 +9,8 @@ import { UserUpdateValidation } from 'src/user/validation/user.update.validation
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
 import { plainToClass } from 'class-transformer';
 import { AuthLoginValidation } from 'src/auth/validation/auth.login.validation';
+import { CustomHttpException } from 'src/response/response.filter';
+import { ENUM_RESPONSE_STATUS_CODE } from 'src/response/response.constant';
 
 export class RequestValidationPipe implements PipeTransform {
     constructor(
@@ -47,9 +45,8 @@ export class RequestValidationPipe implements PipeTransform {
                 errors
             });
 
-            throw new UnprocessableEntityException(
-                errors,
-                this.messageService.get('http.clientError.badRequest')
+            throw new CustomHttpException(
+                ENUM_RESPONSE_STATUS_CODE.REQUEST_VALIDATION_ERROR
             );
         }
         return value;

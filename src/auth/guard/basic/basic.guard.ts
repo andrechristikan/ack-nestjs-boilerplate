@@ -1,9 +1,4 @@
-import {
-    Injectable,
-    CanActivate,
-    ExecutionContext,
-    UnauthorizedException
-} from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Request } from 'express';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
@@ -11,6 +6,8 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from 'src/auth/auth.service';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
+import { CustomHttpException } from 'src/response/response.filter';
+import { ENUM_RESPONSE_STATUS_CODE } from 'src/response/response.constant';
 
 @Injectable()
 export class BasicGuard implements CanActivate {
@@ -42,8 +39,8 @@ export class BasicGuard implements CanActivate {
                 function: 'canActivate'
             });
 
-            throw new UnauthorizedException(
-                this.messageService.get('http.clientError.unauthorized')
+            throw new CustomHttpException(
+                ENUM_RESPONSE_STATUS_CODE.AUTH_GUARD_BASIC_TOKEN_NEEDED_ERROR
             );
         }
 
@@ -67,8 +64,8 @@ export class BasicGuard implements CanActivate {
                 }
             );
 
-            throw new UnauthorizedException(
-                this.messageService.get('http.clientError.unauthorized')
+            throw new CustomHttpException(
+                ENUM_RESPONSE_STATUS_CODE.AUTH_GUARD_BASIC_TOKEN_INVALID_ERROR
             );
         }
 

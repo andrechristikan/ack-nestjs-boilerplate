@@ -1,12 +1,12 @@
-import { Catch, ArgumentsHost } from '@nestjs/common';
-import { BaseRpcExceptionFilter } from '@nestjs/microservices';
-import { Observable } from 'rxjs';
+import { Catch, RpcExceptionFilter } from '@nestjs/common';
+import { Observable, throwError } from 'rxjs';
+import { RpcException } from '@nestjs/microservices';
+import { IKafkaResponseError } from './kafka.response.interface';
 
-@Catch()
-export class KafkaResponseFilter extends BaseRpcExceptionFilter {
-    catch(exception: unknown, host: ArgumentsHost): Observable<any> {
-        console.log('exception', exception);
-        console.log('host', host);
-        return super.catch(exception, host);
+@Catch(RpcException)
+export class KafkaResponseFilter implements RpcExceptionFilter<RpcException> {
+    catch(exception: RpcException): Observable<any> {
+        const errors: IKafkaResponseError = exception.getError() as IKafkaResponseError;
+        return throwError(JSON.stringify(errors));
     }
 }

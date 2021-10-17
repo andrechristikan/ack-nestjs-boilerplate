@@ -2,7 +2,10 @@ import { Controller } from '@nestjs/common';
 import { Payload, KafkaContext, Ctx } from '@nestjs/microservices';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
-import { IKafkaRequest } from '../response/kafka.response.interface';
+import {
+    IKafkaRequest,
+    IKafkaResponse
+} from '../response/kafka.response.interface';
 import { KafkaResponse } from '../response/kafka.response.decorator';
 
 @Controller()
@@ -15,7 +18,7 @@ export class KafkaConsumerController {
     async testKafka(
         @Payload() message: IKafkaRequest,
         @Ctx() context: KafkaContext
-    ): Promise<any> {
+    ): Promise<IKafkaResponse> {
         const originalMessage = context.getMessage();
         const topic = context.getTopic();
         const partition = context.getPartition();

@@ -6,7 +6,10 @@ export interface IKafkaRequest {
     user?: Record<string, any>;
 }
 
-export interface IKafkaResponse {
-    key: string;
+export type IKafkaResponse = Record<string, any>;
+
+export type IKafkaResponseError = {
     value: Record<string, any>;
-}
+    message: string;
+    statusCode: number;
+};
