@@ -2,7 +2,8 @@
   "name": "ack-nestjs-boilerplate",
   "version": "1.0.0",
   "description": "NestJs BoilerPlate With Mongoose",
-  "author": "Andre Christi Kan",
+  "repository": "https://github.com/andrechristikan/ack-nestjs-mongoose.git",
+  "author": "andrechristikan <andrechristikan@gmail.com>",
   "private": true,
   "license": "MIT",
   "scripts": {

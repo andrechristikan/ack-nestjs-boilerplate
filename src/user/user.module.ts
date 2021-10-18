@@ -4,6 +4,7 @@ import { UserEntity, UserDatabaseName, UserSchema } from 'src/user/user.schema';
 import { UserService } from 'src/user/user.service';
 import { UserController } from 'src/user/user.controller';
 import { PaginationModule } from 'src/pagination/pagination.module';
+import { AwsModule } from 'src/aws/aws.module';
 
 @Module({
     imports: [
@@ -14,7 +15,8 @@ import { PaginationModule } from 'src/pagination/pagination.module';
                 collection: UserDatabaseName
             }
         ]),
-        PaginationModule
+        PaginationModule,
+        AwsModule
     ],
     exports: [UserService],
     providers: [UserService],
