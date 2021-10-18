@@ -3,11 +3,16 @@ import { Admin, Kafka, KafkaConfig } from 'kafkajs';
 import { Logger } from '@nestjs/common/services/logger.service';
 import { ConfigService } from '@nestjs/config';
 import { KAFKA_TOPICS } from './kafka.constant';
+import { ITopicConfig } from '@nestjs/microservices/external/kafka.interface';
+import { Helper } from 'src/helper/helper.decorator';
+import { HelperService } from 'src/helper/helper.service';
 @Injectable()
 export class KafkaService implements OnModuleInit, OnModuleDestroy {
     private readonly kafka: Kafka;
     private readonly admin: Admin;
     private readonly topics: string[];
+    private readonly topicsWithReply: string[];
+    private readonly allTopics: string[];
     private readonly brokers: string[];
     private readonly name: string;
     private readonly clientId: string;
@@ -15,9 +20,14 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
     protected logger = new Logger(KafkaService.name);
 
-    constructor(private readonly configService: ConfigService) {
+    constructor(
+        @Helper() private readonly helperService: HelperService,
+        private readonly configService: ConfigService
+    ) {
         this.brokers = this.configService.get<string[]>('kafka.brokers');
         this.topics = KAFKA_TOPICS;
+        this.topicsWithReply = KAFKA_TOPICS.map((val) => `${val}.reply`);
+        this.allTopics = [...this.topics, ...this.topicsWithReply].sort();
         this.clientId = this.configService.get<string>('kafka.admin.clientId');
         this.kafkaOptions = {
             clientId: this.clientId,
@@ -32,7 +42,6 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
         });
 
         this.admin = this.kafka.admin();
-        this.logger.log(`${this.name} Admin Connected`);
 
         this.logger.log(`Brokers ${this.brokers.join(', ')}`);
         this.logger.log(`Topics ${this.topics.join(', ')}`);
@@ -40,8 +49,17 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
     async onModuleInit(): Promise<void> {
         await this.connect();
+        const currentTopicUnique: string[] = await this.getAllTopicUnique();
 
-        await this.bindAllTopic();
+        if (
+            JSON.stringify(currentTopicUnique) !==
+            JSON.stringify(this.allTopics)
+        ) {
+            await this.createTopics();
+            await this.helperService.delay(10000);
+        }
+
+        this.logger.log(`${this.name} Admin Connected`);
         this.logger.log(`${this.name} Topic Created`);
         this.logger.log(`${this.name} Connected`);
     }
@@ -58,38 +76,48 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
         await this.admin.disconnect();
     }
 
-    private async bindAllTopic(): Promise<void> {
-        const topics: string[] = await this.getAllTopic();
-
-        this.topics.forEach(async (topic) => {
-            const checkTopic: number = topics.indexOf(topic);
-            const checkTopicReply: number = topics.indexOf(`${topic}.reply`);
-
-            if (checkTopic < 0) {
-                await this.createTopic(topic);
-            }
-
-            if (checkTopicReply < 0) {
-                await this.createTopic(`${topic}.reply`);
-            }
-        });
-        return;
-    }
-
-    async getAllTopic(): Promise<string[]> {
+    private async getAllTopic(): Promise<string[]> {
         return this.admin.listTopics();
     }
 
-    async createTopic(topic: string): Promise<boolean> {
-        return this.admin.createTopics({
-            waitForLeaders: true,
-            topics: [
-                {
-                    topic: topic,
+    private async getAllTopicUnique(): Promise<string[]> {
+        return [...new Set(await this.getAllTopic())]
+            .sort()
+            .filter((val) => val !== '__consumer_offsets');
+    }
+
+    private async createTopics(): Promise<boolean> {
+        const currentTopic: string[] = await this.getAllTopic();
+        const data: ITopicConfig[] = [];
+
+        this.topics.forEach((val) => {
+            const topic: string = val;
+            const topicReply: string = `${val}.reply`;
+
+            if (currentTopic.indexOf(topic) < 0) {
+                data.push({
+                    topic,
                     numPartitions: 3,
                     replicationFactor: this.brokers.length >= 3 ? 3 : 1
-                }
-            ]
+                });
+            }
+
+            if (currentTopic.indexOf(topicReply) < 0) {
+                data.push({
+                    topic: topicReply,
+                    numPartitions: 3,
+                    replicationFactor: this.brokers.length >= 3 ? 3 : 1
+                });
+            }
         });
+
+        if (data && data.length > 0) {
+            this.admin.createTopics({
+                waitForLeaders: true,
+                topics: data
+            });
+        }
+
+        return true;
     }
 }

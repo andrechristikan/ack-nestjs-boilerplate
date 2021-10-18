@@ -183,7 +183,6 @@ Please see their official document.
     # 7.8.0
     ```
 
-
 3. Check MongoDB
     ```sh
     mongod --version
@@ -279,7 +278,7 @@ Please see their official document.
 
     - Fresh migrate
       ```sh
-      yarn Migrate
+      yarn migrate
       ```
 
       with npm
@@ -323,7 +322,7 @@ Please see their official document.
 
 5. **Optional**, while we want to use `KafkaModule`. We need to adjustment.
 
-In `src/main.ts`, Add This Code
+In `src/main.ts`, Add This Code.
 
 ```ts
 // src/main.ts
@@ -331,7 +330,7 @@ In `src/main.ts`, Add This Code
 ...
 ...
 
-app.select(CommandModule).get(CommandService).exec();
+app.setGlobalPrefix('/api');
 
 const kafka = await import('./kafka');
 await kafka.default(
@@ -348,7 +347,7 @@ await app.listenAsync(port, host);
 
 ```
 
-and in `src/app/app.module.ts`, Import `KafkaModule`
+In `src/app/app.module.ts`, Import `KafkaModule`.
 
 ```ts
 // src/app/app.module.ts
@@ -426,8 +425,6 @@ Distributed under [MIT licensed](LICENSE.md).
 [aws-shield]: https://img.shields.io/badge/Amazon_AWS-{232F3E}?style=for-the-badge&logo=amazonaws&logoColor=white
 [kafka-shield]: https://img.shields.io/badge/kafka-0000?style=for-the-badge&logo=apachekafka&logoColor=black&color=white
 [jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
-<!-- /v1?label=<LABEL>&message=<MESSAGE>&color=<COLOR> -->
-<!-- ?logo=231F20&style=for-the-badge&logo=jest&logoColor=white -->
 
 <!-- CONTACTS -->
 [author-linkedin]: https://linkedin.com/in/andrechristikan

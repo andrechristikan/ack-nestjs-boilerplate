@@ -2,7 +2,6 @@ import { NestApplication, NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
-import { CommandModule, CommandService } from 'nestjs-command';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule, {
@@ -18,7 +17,6 @@ async function bootstrap() {
 
     // Global Prefix
     app.setGlobalPrefix('/api');
-    app.select(CommandModule).get(CommandService).exec();
 
     // Kafka
     // const kafka = await import('./kafka');

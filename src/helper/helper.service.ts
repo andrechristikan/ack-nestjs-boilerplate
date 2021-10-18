@@ -21,6 +21,10 @@ export class HelperService {
         private readonly jwtService: JwtService
     ) {}
 
+    async delay(ms: number): Promise<void> {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
     async checkEmail(email: string): Promise<boolean> {
         const regex = /\S+@\S+\.\S+/;
         return regex.test(email);

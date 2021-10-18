@@ -10,13 +10,13 @@ import {
     DeleteObjectsCommand,
     ObjectIdentifier
 } from '@aws-sdk/client-s3';
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Readable } from 'stream';
 import { IAwsResponse } from './aws.interface';
 
 @Injectable()
-export class AwsService {
+export class AwsService implements OnModuleInit {
     private readonly s3Client: S3Client;
     private readonly bucket: string;
     private readonly baseUrl: string;
@@ -36,6 +36,19 @@ export class AwsService {
 
         this.bucket = this.configService.get<string>('aws.s3.bucket');
         this.baseUrl = this.configService.get<string>('aws.s3.baseUrl');
+    }
+
+    async onModuleInit(): Promise<void> {
+        const bucketCreateFromInit: boolean = this.configService.get<boolean>(
+            'aws.bucketCreateFromInit'
+        );
+        if (bucketCreateFromInit) {
+            this.s3ListBucket().then((list) => {
+                if (list.indexOf(this.bucket) < 0) {
+                    this.s3CreateBucket();
+                }
+            });
+        }
     }
 
     async s3ListBucket(): Promise<string[]> {
