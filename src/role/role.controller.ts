@@ -5,10 +5,8 @@ import {
     ParseIntPipe,
     Query
 } from '@nestjs/common';
-import { Response } from 'src/response/response.decorator';
 import { AuthJwtGuard } from 'src/auth/auth.decorator';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
-import { Permissions } from 'src/permission/permission.decorator';
 import { RoleService } from './role.service';
 import { PaginationService } from 'src/pagination/pagination.service';
 import { RoleDocument } from './role.interface';
@@ -16,6 +14,7 @@ import {
     DEFAULT_PAGE,
     DEFAULT_PER_PAGE
 } from 'src/pagination/pagination.constant';
+import { Response } from 'src/response/response.decorator';
 import { IResponsePaging } from 'src/response/response.interface';
 
 @Controller('/role')
@@ -26,9 +25,8 @@ export class RoleController {
     ) {}
 
     @Get('/')
-    @AuthJwtGuard()
+    @AuthJwtGuard(ENUM_PERMISSIONS.ROLE_READ)
     @Response('role.findAll')
-    @Permissions(ENUM_PERMISSIONS.ROLE_READ)
     async findAll(
         @Query('page', new DefaultValuePipe(DEFAULT_PAGE), ParseIntPipe)
         page: number,

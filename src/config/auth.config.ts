@@ -1,5 +1,8 @@
-export default (): Record<string, any> => ({
-    auth: {
+import { registerAs } from '@nestjs/config';
+
+export default registerAs(
+    'auth',
+    (): Record<string, any> => ({
         jwt: {
             accessToken: {
                 secretKey:
@@ -52,5 +55,5 @@ export default (): Record<string, any> => ({
             clientSecret:
                 process.env.AUTH_BASIC_TOKEN_CLIENT_SECRET || '1234567890'
         }
-    }
-});
+    })
+);

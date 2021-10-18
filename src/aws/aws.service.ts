@@ -116,7 +116,8 @@ export class AwsService {
         const command: PutObjectCommand = new PutObjectCommand({
             Bucket: this.bucket,
             Key: key,
-            Body: content
+            Body: content,
+            ACL: 'public-read'
         });
 
         await this.s3Client.send(command);

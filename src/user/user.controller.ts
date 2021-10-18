@@ -7,20 +7,14 @@ import {
     Delete,
     Put,
     Query,
-    BadRequestException,
-    InternalServerErrorException,
     DefaultValuePipe,
     ParseIntPipe
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
-import { Response, ResponsePaging } from 'src/response/response.decorator';
-import { RequestValidationPipe } from 'src/pipe/request-validation.pipe';
+import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe';
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
 import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
 import { AuthJwtGuard, User } from 'src/auth/auth.decorator';
-import { IErrors } from 'src/message/message.interface';
-import { MessageService } from 'src/message/message.service';
-import { Message } from 'src/message/message.decorator';
 import { PaginationService } from 'src/pagination/pagination.service';
 import {
     DEFAULT_PAGE,
@@ -30,22 +24,23 @@ import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { UserDocument, IUserDocument } from './user.interface';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
-import { Permissions } from 'src/permission/permission.decorator';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
+import { Response, ResponsePaging } from 'src/response/response.decorator';
+import { ErrorHttpException } from 'src/error/filter/error.http.filter';
+import { ENUM_ERROR_STATUS_CODE } from 'src/error/error.constant';
+import { IErrors } from 'src/error/error.interface';
 
 @Controller('/user')
 export class UserController {
     constructor(
-        @Message() private readonly messageService: MessageService,
         @Debugger() private readonly debuggerService: DebuggerService,
         private readonly paginationService: PaginationService,
         private readonly userService: UserService
     ) {}
 
     @Get('/')
-    @AuthJwtGuard()
+    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ)
     @ResponsePaging('user.findAll')
-    @Permissions(ENUM_PERMISSIONS.USER_READ)
     async findAll(
         @Query('page', new DefaultValuePipe(DEFAULT_PAGE), ParseIntPipe)
         page: number,
@@ -76,9 +71,8 @@ export class UserController {
     }
 
     @Get('/profile')
-    @AuthJwtGuard()
+    @AuthJwtGuard(ENUM_PERMISSIONS.PROFILE_READ)
     @Response('user.profile')
-    @Permissions(ENUM_PERMISSIONS.PROFILE_READ)
     async profile(@User('_id') userId: string): Promise<IResponse> {
         const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
             userId,
@@ -90,8 +84,8 @@ export class UserController {
                 function: 'profile'
             });
 
-            throw new BadRequestException(
-                this.messageService.get('http.clientError.notFound')
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.USER_NOT_FOUND_ERROR
             );
         }
 
@@ -99,9 +93,8 @@ export class UserController {
     }
 
     @Get('/:userId')
-    @AuthJwtGuard()
+    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ)
     @Response('user.findOneById')
-    @Permissions(ENUM_PERMISSIONS.USER_READ)
     async findOneById(@Param('userId') userId: string): Promise<IResponse> {
         const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
             userId,
@@ -113,8 +106,8 @@ export class UserController {
                 function: 'findOneById'
             });
 
-            throw new BadRequestException(
-                this.messageService.get('http.clientError.notFound')
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.USER_NOT_FOUND_ERROR
             );
         }
 
@@ -122,9 +115,8 @@ export class UserController {
     }
 
     @Post('/create')
-    @AuthJwtGuard()
+    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_CREATE)
     @Response('user.create')
-    @Permissions(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_CREATE)
     async create(
         @Body(RequestValidationPipe)
         data: UserCreateValidation
@@ -141,9 +133,8 @@ export class UserController {
                 errors
             });
 
-            throw new BadRequestException(
-                errors,
-                this.messageService.get('user.error.createError')
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.USER_EXISTS_ERROR
             );
         }
 
@@ -161,16 +152,14 @@ export class UserController {
                 function: 'create',
                 error: err
             });
-            throw new InternalServerErrorException(
-                this.messageService.get('http.serverError.internalServerError')
-            );
+
+            throw new ErrorHttpException(ENUM_ERROR_STATUS_CODE.UNKNOWN_ERROR);
         }
     }
 
     @Delete('/delete/:userId')
-    @AuthJwtGuard()
+    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_DELETE)
     @Response('user.delete')
-    @Permissions(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_DELETE)
     async delete(@Param('userId') userId: string): Promise<void> {
         const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
             userId,
@@ -182,26 +171,23 @@ export class UserController {
                 function: 'delete'
             });
 
-            throw new BadRequestException(
-                this.messageService.get('http.clientError.notFound')
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.USER_NOT_FOUND_ERROR
             );
         }
 
         const del: boolean = await this.userService.deleteOneById(userId);
 
         if (!del) {
-            throw new InternalServerErrorException(
-                this.messageService.get('http.serverError.internalServerError')
-            );
+            throw new ErrorHttpException(ENUM_ERROR_STATUS_CODE.UNKNOWN_ERROR);
         }
 
         return;
     }
 
     @Put('/update/:userId')
-    @AuthJwtGuard()
+    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
     @Response('user.update')
-    @Permissions(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
     async update(
         @Param('userId') userId: string,
         @Body(RequestValidationPipe)
@@ -216,8 +202,8 @@ export class UserController {
                 class: 'UserController',
                 function: 'delete'
             });
-            throw new BadRequestException(
-                this.messageService.get('http.clientError.notFound')
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.USER_NOT_FOUND_ERROR
             );
         }
 
@@ -238,9 +224,7 @@ export class UserController {
                 }
             });
 
-            throw new InternalServerErrorException(
-                this.messageService.get('http.serverError.internalServerError')
-            );
+            throw new ErrorHttpException(ENUM_ERROR_STATUS_CODE.UNKNOWN_ERROR);
         }
     }
 }

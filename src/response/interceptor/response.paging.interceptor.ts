@@ -16,6 +16,7 @@ import { MessageService } from 'src/message/message.service';
 export function ResponsePagingInterceptor(
     messagePath: string
 ): Type<NestInterceptor> {
+    @Injectable()
     class MixinResponseInterceptor implements NestInterceptor<Promise<any>> {
         constructor(
             @Message() private readonly messageService: MessageService

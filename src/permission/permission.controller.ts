@@ -5,18 +5,17 @@ import {
     ParseIntPipe,
     Query
 } from '@nestjs/common';
-import { Response } from 'src/response/response.decorator';
 import { AuthJwtGuard } from 'src/auth/auth.decorator';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
-import { Permissions } from 'src/permission/permission.decorator';
 import { PaginationService } from 'src/pagination/pagination.service';
 import {
     DEFAULT_PAGE,
     DEFAULT_PER_PAGE
 } from 'src/pagination/pagination.constant';
-import { IResponsePaging } from 'src/response/response.interface';
 import { PermissionService } from './permission.service';
 import { PermissionDocument } from './permission.interface';
+import { Response } from 'src/response/response.decorator';
+import { IResponsePaging } from 'src/response/response.interface';
 
 @Controller('/permission')
 export class PermissionController {
@@ -26,9 +25,8 @@ export class PermissionController {
     ) {}
 
     @Get('/')
-    @AuthJwtGuard()
+    @AuthJwtGuard(ENUM_PERMISSIONS.PERMISSION_READ)
     @Response('permission.findAll')
-    @Permissions(ENUM_PERMISSIONS.PERMISSION_READ)
     async findAll(
         @Query('page', new DefaultValuePipe(DEFAULT_PAGE), ParseIntPipe)
         page: number,

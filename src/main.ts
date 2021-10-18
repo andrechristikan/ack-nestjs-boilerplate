@@ -1,10 +1,11 @@
-import { NestFactory } from '@nestjs/core';
+import { NestApplication, NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
+import { CommandModule, CommandService } from 'nestjs-command';
 
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule, {
+    const app: NestApplication = await NestFactory.create(AppModule, {
         cors: true,
         bodyParser: true
     });
@@ -17,18 +18,24 @@ async function bootstrap() {
 
     // Global Prefix
     app.setGlobalPrefix('/api');
+    app.select(CommandModule).get(CommandService).exec();
 
-    await app.listen(port, host, () => {
-        logger.log(
-            `Database running on ${configService.get<string>(
-                'database.host'
-            )}/${configService.get<string>('database.name')}`,
-            'NestApplication'
-        );
-        logger.log(
-            `Server running on http://${host}:${port}`,
-            'NestApplication'
-        );
-    });
+    // Kafka
+    // const kafka = await import('./kafka');
+    // await kafka.default(
+    //     app,
+    //     configService,
+    //     logger
+    // );
+
+    // Listen
+    await app.listenAsync(port, host);
+    logger.log(
+        `Database running on ${configService.get<string>(
+            'database.host'
+        )}/${configService.get<string>('database.name')}`,
+        'NestApplication'
+    );
+    logger.log(`Server running on http://${host}:${port}`, 'NestApplication');
 }
 bootstrap();

@@ -6,6 +6,7 @@ import app from './app';
 import response from './response';
 import role from './role';
 import helper from './helper';
+import kafka from './kafka';
 
 export default {
     role,
@@ -15,5 +16,6 @@ export default {
     auth,
     app,
     response,
-    helper
+    helper,
+    kafka
 };

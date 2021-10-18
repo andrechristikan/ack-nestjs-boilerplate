@@ -10,7 +10,8 @@
 [![MongoDB][mongodb-shield]][mongodb-url]
 [![AWS][aws-shield]][aws-url]
 [![JWT][jwt-shield]][jwt-url]
-
+[![Jest][jest-shield]][jest-url]
+[![Kafka][kafka-shield]][kafka-url]
 
 
 <!-- PROJECT LOGO -->
@@ -18,7 +19,7 @@
 <div align="center">
   <a href="https://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo_text.svg" width="320" alt="Nest Logo" /></a>
 
-  <h3 align="center">ACK NestJs Boilerplate as Restful API🚀🚀🚀 </h3>
+  <h3 align="center">ACK NestJs Boilerplate 🚀🚀🚀 </h3>
 
   <p align="center">
 	Boilerplate with <a href="https://github.com/goldbergyoni/nodebestpractices"><strong>Mongoose</strong></a> and <a href="https://github.com/goldbergyoni/nodebestpractices"><strong>MongoDB</strong></a> as Database. 
@@ -42,8 +43,12 @@
 
 <div align="center">
 	<hr>
-	<h1> ##### LAST UPDATE README ON 11 OCT 2021 ( ONGOING) ##### </h1>
-	<hr>
+	<h1> ###### IMPORTANT ###### </h1>
+	<h2> ##### LAST UPDATE README ON 18 OCT 2021 ( ONGOING) ##### </h2>
+  <h4>There huge differences between documentation and source code after KafkaModule added, <a href="https://github.com/andrechristikan/ack-nestjs-mongoose/commits/main">Click here to check</a> </h4>
+
+  <hr>
+
 </div>
 
 ## Description
@@ -52,9 +57,10 @@ ACK is a [NestJs](nestjs-url) boilerplate 🚀. ACK uses [Typescript](typescript
 Best uses for build an API Project, and Microservice Project. Made with following [nodejs-best-practice](nodejs-bestpractice-url) as benchmark and NestJs Habit.
 
 ACK will provide JWT (Json Web Token) Implementation 🔐 (Access Token and Refresh Token), Role and Permission Implementation 👥 , Multi Language Support 🔣 , Database migration, etc. [Spill about Features](#features)
+Also provide KafkaModule 🔥, Consumer, and Producer.
 
 ## Prerequisites
-We assume that all people are coming to here is `Programmer with intermediate knowledge of programming` and we need to understanding more knowledge before we start to reduce knowledge gaps.
+We assume that all people are coming to here is `Programmer with intermediate knowledge` and also we need to understanding more knowledge before we start to reduce knowledge gaps.
 
 * Understood [ExpressJs Fundamental](expressjs-url), NodeJs Base Framework. It will help we to understand how the NestJs works.
 * Understood [Typescript Fundamental](typescript-url), Programming Language. It will help we to write and read the code.
@@ -67,6 +73,7 @@ We assume that all people are coming to here is `Programmer with intermediate kn
 * [MongoDB](mongodb-url) v4.4.0
 * [NodeJs](nodejs-url) v12.21.0
 * [Yarn](yarn-url) v1.22.10
+* [Kafka](kafka-url) v2.8.0
 
 ## Features
 The features will spill on this section, please read secretly and keep silent 🤫 🤫
@@ -84,6 +91,7 @@ The features will spill on this section, please read secretly and keep silent �
 - [x] Incoming Request Validation
 - [x] Logger Module level Database
 - [x] Debugger Module level File, on/off feature
+- [x] Custom Status Code for Each Error and Success Request
 
 #### Modules
 - [x] AppModule - MainModule
@@ -101,9 +109,12 @@ The features will spill on this section, please read secretly and keep silent �
 - [x] ResponseModule
 - [x] RoleModule
 - [x] UserModule
+- [x] KafkaModule - Kafka Admin
+  - [x] ProducerModule
+  - [x] ConsumerModule
 - [ ] Other Module** (Ongoing)
 
-You can request other modules, [feel free to request](issues-url)
+[Welcome to request for other modules](issues-url)
 
 #### Middleware
 - [x] Rate Limit
@@ -114,19 +125,38 @@ You can request other modules, [feel free to request](issues-url)
 - [x] Cors
 
 #### Example
-- [x] Login
-- [x] Refresh Token
-- [ ] Sign Up
-- [x] Server Side Pagination
+- [x] Simple Test, and Error Test
 - [x] Simple CRUD
-- [x] Mongoose Population and Deep Population
+- [x] Server Side Pagination
+- [x] Access Token with JWT
+- [x] Refresh Token with JWT
+- [x] Basic Auth Implementation
+- [x] Login
+- [ ] Sign Up
 - [ ] Upload Image into AWS S3
+- [ ] Decryption Request and Encryption Response for Secure App
+- [x] Kafka Consume and Produce Message
+- [x] Mongoose Population and Deep Population
+
+#### Todo
+- [ ] Update version NestJs
+- [ ] Give More Example
+- [ ] Unit Test and E2E Test
+- [ ] Update Documentation
 
 ## Endpoints
 All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [Follow this step for import into Postman](postman-import-endpoint)
 
 ## Getting Started
-Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), [Yarn](yarn-url), and [MongoDB](mongodb-url) (Suggest LTS Version). Please see their official document. 
+Before we start, we need to install :
+- [NodeJs](nodejs-url) (Suggest LTS Version),
+- [MongoDB](mongodb-url) (Suggest LTS Version), and
+- **Optional** [Kafka Apache](kafka-url) (Suggest LTS Version). 
+
+Please see their official document.
+
+> For Windows User, **do not install kafka on your Windows OS**. There are has a unsolved issue, while delete topic on Windows OS. 
+> Go install kafka with virtual machine or docker.
 
 #### Make sure that we don't get any error after installation, open our terminal and follow this instruction
 1. Check NodeJs is successful installed in our OS. 
@@ -162,6 +192,14 @@ Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), 
     # db version v4.4.0
     ```
 
+4. **Optional** Kafka
+    ```sh
+    kafka-topics --version
+
+    # will return 
+    # 2.8.0 (Commit:ebb1d6e21cc92130
+    ```
+
 #### Clone repo, and install all dependencies.
 1. Clone
     ```sh
@@ -173,12 +211,12 @@ Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), 
     cd ack-nestjs-mongoose
     ```
 
-3. Install dependencies, here we use `Yarn as Package Manager`
+3. Install dependencies
     ```sh
     yarn
     ```
 
-    with `NPM as Package Manager`
+    with npm
     ```sh
     npm i
     ```
@@ -226,6 +264,9 @@ Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), 
 
     HELPER_IMAGE_MAX_SIZE=1048576
 
+    KAFKA_CONSUMER_GROUP=nestjs.ack
+    KAFKA_BROKERS=localhost:9092
+
     AWS_CREDENTIAL_KEY=awskey12345
     AWS_CREDENTIAL_SECRET=awssecret12345
     AWS_S3_REGION=us-east-2
@@ -256,7 +297,7 @@ Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), 
       npm run migrate:rollback
       ```
 
-7.  <strong> *** PLEASE SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET *** </strong>. 
+4.  <strong> *** PLEASE SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET *** </strong>. 
 
     Make sure we do the correct step. Go run `TestModule` and make sure all test passed with success status.
 
@@ -280,7 +321,61 @@ Before we start, we need to install [NodeJs](nodejs-url) (Suggest LTS Version), 
       npm run test:e2e
       ```
 
-8. Last step, run the project
+5. **Optional**, while we want to use `KafkaModule`. We need to adjustment.
+
+In `src/main.ts`, Add This Code
+
+```ts
+// src/main.ts
+
+...
+...
+
+app.select(CommandModule).get(CommandService).exec();
+
+const kafka = await import('./kafka');
+await kafka.default(
+    app,
+    configService,
+    logger
+);
+
+
+await app.listenAsync(port, host);
+
+...
+...
+
+```
+
+and in `src/app/app.module.ts`, Import `KafkaModule`
+
+```ts
+// src/app/app.module.ts
+import { KafkaModule } from 'src/kafka/kafka.module';
+
+@Module({
+  controllers: [AppController],
+  providers: [],
+  imports: [
+    ...
+    ...
+
+    SeedsModule,
+    KafkaModule, // <<<---- Add this
+
+    AuthModule,
+    UserModule,
+
+    ...
+    ...
+  ]
+})
+export class AppModule {}
+
+```
+
+6. Last step, run the project
     ```sh
     yarn start:dev
     ```
@@ -329,6 +424,10 @@ Distributed under [MIT licensed](LICENSE.md).
 [nodejs-shield]: https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
 [jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
 [aws-shield]: https://img.shields.io/badge/Amazon_AWS-{232F3E}?style=for-the-badge&logo=amazonaws&logoColor=white
+[kafka-shield]: https://img.shields.io/badge/kafka-0000?style=for-the-badge&logo=apachekafka&logoColor=black&color=white
+[jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
+<!-- /v1?label=<LABEL>&message=<MESSAGE>&color=<COLOR> -->
+<!-- ?logo=231F20&style=for-the-badge&logo=jest&logoColor=white -->
 
 <!-- CONTACTS -->
 [author-linkedin]: https://linkedin.com/in/andrechristikan
@@ -345,6 +444,7 @@ Distributed under [MIT licensed](LICENSE.md).
 [contributors-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/graphs/contributors
 [readme-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/blob/main/README.md
 [usage-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/blob/main/USAGE.md
+[history-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/commits/main
 
 
 <!-- NESTJS LINKS -->
@@ -368,3 +468,5 @@ Distributed under [MIT licensed](LICENSE.md).
 [postman-import-endpoint]: https://learning.postman.com/docs/getting-started/importing-and-exporting-data/
 [mongodb-create-database-url]: https://www.mongodb.com/basics/create-database
 [nodejs-bestpractice-url]: https://github.com/goldbergyoni/nodebestpractices
+[kafka-url]: https://kafka.apache.org/quickstart
+[jest-url]: https://jestjs.io/docs/getting-started

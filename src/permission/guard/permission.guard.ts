@@ -1,20 +1,12 @@
-import {
-    Injectable,
-    CanActivate,
-    ExecutionContext,
-    ForbiddenException
-} from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Message } from 'src/message/message.decorator';
-import { MessageService } from 'src/message/message.service';
+import { ENUM_ERROR_STATUS_CODE } from 'src/error/error.constant';
+import { ErrorHttpException } from 'src/error/filter/error.http.filter';
 import { ENUM_PERMISSIONS, PERMISSION_META_KEY } from '../permission.constant';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
-    constructor(
-        @Message() private readonly messageService: MessageService,
-        private reflector: Reflector
-    ) {}
+    constructor(private reflector: Reflector) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredPermission: ENUM_PERMISSIONS[] = this.reflector.getAllAndOverride<
@@ -33,8 +25,8 @@ export class PermissionGuard implements CanActivate {
         );
 
         if (!hasPermission) {
-            throw new ForbiddenException(
-                this.messageService.get('http.clientError.forbidden')
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.PERMISSION_GUARD_INVALID_ERROR
             );
         }
         return hasPermission;

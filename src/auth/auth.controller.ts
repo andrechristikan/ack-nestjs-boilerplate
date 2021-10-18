@@ -1,31 +1,23 @@
-import {
-    Controller,
-    Post,
-    Body,
-    HttpCode,
-    HttpStatus,
-    BadRequestException
-} from '@nestjs/common';
+import { Controller, Post, Body, HttpStatus } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
 import { UserService } from 'src/user/user.service';
-import { Response } from 'src/response/response.decorator';
 import { IUserDocument } from 'src/user/user.interface';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
-import { MessageService } from 'src/message/message.service';
-import { Message } from 'src/message/message.decorator';
-import { IResponse } from 'src/response/response.interface';
 import { classToPlain } from 'class-transformer';
-import { RequestValidationPipe } from 'src/pipe/request-validation.pipe';
+import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe';
 import { AuthLoginValidation } from './validation/auth.login.validation';
 import { LoggerService } from 'src/logger/logger.service';
 import { ENUM_LOGGER_ACTION } from 'src/logger/logger.constant';
 import { AuthJwtRefreshGuard, Token } from './auth.decorator';
+import { Response } from 'src/response/response.decorator';
+import { IResponse } from 'src/response/response.interface';
+import { ENUM_ERROR_STATUS_CODE } from 'src/error/error.constant';
+import { ErrorHttpException } from 'src/error/filter/error.http.filter';
 
 @Controller('/auth')
 export class AuthController {
     constructor(
-        @Message() private readonly messageService: MessageService,
         @Debugger() private readonly debuggerService: DebuggerService,
         private readonly authService: AuthService,
         private readonly userService: UserService,
@@ -33,8 +25,7 @@ export class AuthController {
     ) {}
 
     @Post('/login')
-    @Response('auth.login')
-    @HttpCode(HttpStatus.OK)
+    @Response('auth.login', HttpStatus.OK)
     async login(
         @Body(RequestValidationPipe) data: AuthLoginValidation
     ): Promise<IResponse> {
@@ -52,8 +43,8 @@ export class AuthController {
                 function: 'login'
             });
 
-            throw new BadRequestException(
-                this.messageService.get('auth.error.emailNotFound')
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.AUTH_USER_NOT_FOUND
             );
         }
 
@@ -68,8 +59,8 @@ export class AuthController {
                 function: 'login'
             });
 
-            throw new BadRequestException(
-                this.messageService.get('auth.error.passwordNotMatch')
+            throw new ErrorHttpException(
+                ENUM_ERROR_STATUS_CODE.AUTH_PASSWORD_NOT_MATCH
             );
         }
 
@@ -102,9 +93,8 @@ export class AuthController {
     }
 
     @Post('/refresh')
-    @Response('auth.refresh')
     @AuthJwtRefreshGuard()
-    @HttpCode(HttpStatus.OK)
+    @Response('auth.refresh', HttpStatus.OK)
     async refresh(@Token() token: string): Promise<IResponse> {
         const {
             exp,

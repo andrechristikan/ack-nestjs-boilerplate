@@ -1,24 +1,33 @@
 import {
     applyDecorators,
-    Inject,
+    HttpCode,
+    HttpStatus,
     UseFilters,
     UseInterceptors
 } from '@nestjs/common';
 import { IAuthApplyDecorator } from 'src/auth/auth.interface';
-import { ResponseFilter } from './response.filter';
+import { ErrorHttpFilter } from 'src/error/filter/error.http.filter';
 import { ResponseDefaultInterceptor } from './interceptor/response.default.interceptor';
 import { ResponsePagingInterceptor } from './interceptor/response.paging.interceptor';
 
-export function Response(messagePath: string): IAuthApplyDecorator {
+export function Response(
+    messagePath: string,
+    httpCode?: HttpStatus
+): IAuthApplyDecorator {
     return applyDecorators(
         UseInterceptors(ResponseDefaultInterceptor(messagePath)),
-        UseFilters(ResponseFilter)
+        HttpCode(httpCode),
+        UseFilters(ErrorHttpFilter)
     );
 }
 
-export function ResponsePaging(messagePath: string): IAuthApplyDecorator {
+export function ResponsePaging(
+    messagePath: string,
+    httpCode?: HttpStatus
+): IAuthApplyDecorator {
     return applyDecorators(
         UseInterceptors(ResponsePagingInterceptor(messagePath)),
-        UseFilters(ResponseFilter)
+        HttpCode(httpCode),
+        UseFilters(ErrorHttpFilter)
     );
 }

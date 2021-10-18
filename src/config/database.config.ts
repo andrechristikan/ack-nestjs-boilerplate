@@ -1,5 +1,8 @@
-export default (): Record<string, any> => ({
-    database: {
+import { registerAs } from '@nestjs/config';
+
+export default registerAs(
+    'database',
+    (): Record<string, any> => ({
         host: process.env.DATABASE_HOST || 'localhost:27017',
         name: process.env.DATABASE_NAME || 'ack',
         user: process.env.DATABASE_USER || null,
@@ -9,5 +12,5 @@ export default (): Record<string, any> => ({
         ssl: process.env.DATABASE_SSL === 'true' ? true : false,
         debug: process.env.DATABASE_DEBUG === 'true' || false,
         options: process.env.DATABASE_OPTIONS
-    }
-});
+    })
+);

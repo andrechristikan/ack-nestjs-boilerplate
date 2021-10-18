@@ -244,6 +244,165 @@
 			]
 		},
 		{
+			"name": "test",
+			"item": [
+				{
+					"name": "hello",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\":\"12345\",\n    \"age\":\"dasd\",\n    \"breed\":\"asd\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/test/hello",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"test",
+								"hello"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "hello basic",
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "password",
+									"value": "{{basicTokenSecret}}",
+									"type": "string"
+								},
+								{
+									"key": "username",
+									"value": "{{basicTokenId}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/test/hello-basic",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"test",
+								"hello-basic"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "error",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/test/error",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"test",
+								"error"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "error rewrite",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/test/error-rewrite",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"test",
+								"error-rewrite"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "error data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/test/error-data",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"test",
+								"error-data"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "kafka produce",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/kafka/produce",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"kafka",
+								"produce"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "kafka produce error",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/kafka/produce/error",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"kafka",
+								"produce",
+								"error"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "login",
 			"request": {
 				"method": "POST",
@@ -265,69 +424,6 @@
 					"path": [
 						"auth",
 						"login"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "hello",
-			"protocolProfileBehavior": {
-				"disableBodyPruning": true
-			},
-			"request": {
-				"method": "GET",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"name\":\"12345\",\n    \"age\":\"dasd\",\n    \"breed\":\"asd\"\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{base_url}}/test/hello",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"test",
-						"hello"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "hello basic",
-			"request": {
-				"auth": {
-					"type": "basic",
-					"basic": [
-						{
-							"key": "password",
-							"value": "{{basicTokenSecret}}",
-							"type": "string"
-						},
-						{
-							"key": "username",
-							"value": "{{basicTokenId}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{base_url}}/test/hello-basic",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"test",
-						"hello-basic"
 					]
 				}
 			},

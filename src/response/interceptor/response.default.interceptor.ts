@@ -16,6 +16,7 @@ import { MessageService } from 'src/message/message.service';
 export function ResponseDefaultInterceptor(
     messagePath: string
 ): Type<NestInterceptor> {
+    @Injectable()
     class MixinResponseDefaultInterceptor
         implements NestInterceptor<Promise<any>> {
         constructor(

@@ -1,5 +1,8 @@
-export default (): Record<string, any> => ({
-    app: {
+import { registerAs } from '@nestjs/config';
+
+export default registerAs(
+    'app',
+    (): Record<string, any> => ({
         env: process.env.APP_ENV || 'development',
         language: process.env.APP_LANGUAGE || 'en',
         http: {
@@ -20,5 +23,5 @@ export default (): Record<string, any> => ({
                 maxSize: '10m'
             }
         }
-    }
-});
+    })
+);
