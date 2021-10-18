@@ -27,10 +27,10 @@
 	Made with following <a href="https://github.com/goldbergyoni/nodebestpractices"><strong>nodejs-best-practice</strong></a> as benchmark and NestJs Habit.
     <br />
     <br />
-    <a href="https://github.com/andrechristikan/ack-nestjs-mongoose/blob/main/README.md"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/andrechristikan/ack-nestjs-mongoose/blob/main/USAGE.md"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/andrechristikan/ack-nestjs-mongoose">View Demo</a>
+    <a href="https://github.com/andrechristikan/ack-nestjs-mongoose">View Source</a>
     ·
     <a href="https://github.com/andrechristikan/ack-nestjs-mongoose/issues">Report Bug</a>
     ·
@@ -45,7 +45,7 @@
 	<hr>
 	<h1> ###### IMPORTANT ###### </h1>
 	<h2> ##### LAST UPDATE README ON 18 OCT 2021 ( ONGOING) ##### </h2>
-  <h4>There huge differences between documentation and source code after KafkaModule added, <a href="https://github.com/andrechristikan/ack-nestjs-mongoose/commits/main">Click here to check</a> </h4>
+  <h4>There huge differences between USAGE.md Documentation and source code after KafkaModule added, <a href="https://github.com/andrechristikan/ack-nestjs-mongoose/commits/main">Click here to check</a> </h4>
 
   <hr>
 
@@ -122,7 +122,6 @@ The features will spill on this section, please read secretly and keep silent �
 - [x] Helmet
 - [x] Cors
 - [x] BodyParser
-- [x] Cors
 
 #### Example
 - [x] Simple Test, and Error Test
@@ -142,6 +141,7 @@ The features will spill on this section, please read secretly and keep silent �
 - [ ] Update version NestJs
 - [ ] Give More Example
 - [ ] Unit Test and E2E Test
+- [ ] Update Performance ( Code quality and maybe change to fastify)
 - [ ] Update Documentation
 
 ## Endpoints
