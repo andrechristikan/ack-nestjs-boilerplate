@@ -15,7 +15,7 @@ import {
 } from './producer.constant';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
-import { IKafkaRequest } from '../request/kafka.request.inteface';
+import { IKafkaRequest } from '../request/kafka.request.interface';
 import { IKafkaError } from '../error/kafka.error.interface';
 import { ErrorHttpException } from 'src/error/filter/error.http.filter';
 
