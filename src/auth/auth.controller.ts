@@ -44,7 +44,7 @@ export class AuthController {
             });
 
             throw new ErrorHttpException(
-                ENUM_ERROR_STATUS_CODE.AUTH_USER_NOT_FOUND
+                ENUM_ERROR_STATUS_CODE.AUTH_USER_NOT_FOUND_ERROR
             );
         }
 
@@ -60,7 +60,7 @@ export class AuthController {
             });
 
             throw new ErrorHttpException(
-                ENUM_ERROR_STATUS_CODE.AUTH_PASSWORD_NOT_MATCH
+                ENUM_ERROR_STATUS_CODE.AUTH_PASSWORD_NOT_MATCH_ERROR
             );
         }
 

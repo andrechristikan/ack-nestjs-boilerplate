@@ -1,8 +1,8 @@
 import { HttpStatus } from '@nestjs/common';
 
 export enum ENUM_ERROR_STATUS_CODE {
-    AUTH_USER_NOT_FOUND = 5100,
-    AUTH_PASSWORD_NOT_MATCH = 5101,
+    AUTH_USER_NOT_FOUND_ERROR = 5100,
+    AUTH_PASSWORD_NOT_MATCH_ERROR = 5101,
     AUTH_GUARD_BASIC_TOKEN_NEEDED_ERROR = 5102,
     AUTH_GUARD_BASIC_TOKEN_INVALID_ERROR = 5103,
     AUTH_GUARD_JWT_ACCESS_TOKEN_ERROR = 5104,
@@ -26,11 +26,11 @@ export enum ENUM_ERROR_STATUS_CODE {
 
 export const ERROR_MESSAGE = {
     // AUTH
-    AUTH_USER_NOT_FOUND: {
+    AUTH_USER_NOT_FOUND_ERROR: {
         httpCode: HttpStatus.NOT_FOUND,
         messagePath: 'auth.error.userNotFound'
     },
-    AUTH_PASSWORD_NOT_MATCH: {
+    AUTH_PASSWORD_NOT_MATCH_ERROR: {
         httpCode: HttpStatus.BAD_REQUEST,
         messagePath: 'auth.error.passwordNotMatch'
     },
