@@ -10,7 +10,8 @@
 [![MongoDB][mongodb-shield]][mongodb-url]
 [![AWS][aws-shield]][aws-url]
 [![JWT][jwt-shield]][jwt-url]
-
+[![Jest][jest-shield]][jest-url]
+[![Kafka][kafka-shield]][kafka-url]
 
 
 <!-- PROJECT LOGO -->
@@ -56,9 +57,10 @@ ACK is a [NestJs](nestjs-url) boilerplate 🚀. ACK uses [Typescript](typescript
 Best uses for build an API Project, and Microservice Project. Made with following [nodejs-best-practice](nodejs-bestpractice-url) as benchmark and NestJs Habit.
 
 ACK will provide JWT (Json Web Token) Implementation 🔐 (Access Token and Refresh Token), Role and Permission Implementation 👥 , Multi Language Support 🔣 , Database migration, etc. [Spill about Features](#features)
+Also provide KafkaModule 🔥, Consumer, and Producer.
 
 ## Prerequisites
-We assume that all people are coming to here is `Programmer with intermediate knowledge of programming` and we need to understanding more knowledge before we start to reduce knowledge gaps.
+We assume that all people are coming to here is `Programmer with intermediate knowledge` and also we need to understanding more knowledge before we start to reduce knowledge gaps.
 
 * Understood [ExpressJs Fundamental](expressjs-url), NodeJs Base Framework. It will help we to understand how the NestJs works.
 * Understood [Typescript Fundamental](typescript-url), Programming Language. It will help we to write and read the code.
@@ -71,6 +73,7 @@ We assume that all people are coming to here is `Programmer with intermediate kn
 * [MongoDB](mongodb-url) v4.4.0
 * [NodeJs](nodejs-url) v12.21.0
 * [Yarn](yarn-url) v1.22.10
+* [Kafka](kafka-url) v2.8.0
 
 ## Features
 The features will spill on this section, please read secretly and keep silent 🤫 🤫
@@ -136,6 +139,7 @@ The features will spill on this section, please read secretly and keep silent �
 - [x] Mongoose Population and Deep Population
 
 #### Todo
+- [ ] Update version NestJs
 - [ ] Give More Example
 - [ ] Unit Test and E2E Test
 - [ ] Update Documentation
@@ -420,6 +424,10 @@ Distributed under [MIT licensed](LICENSE.md).
 [nodejs-shield]: https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
 [jwt-shield]: https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white
 [aws-shield]: https://img.shields.io/badge/Amazon_AWS-{232F3E}?style=for-the-badge&logo=amazonaws&logoColor=white
+[kafka-shield]: https://img.shields.io/badge/kafka-0000?style=for-the-badge&logo=apachekafka&logoColor=black&color=white
+[jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
+<!-- /v1?label=<LABEL>&message=<MESSAGE>&color=<COLOR> -->
+<!-- ?logo=231F20&style=for-the-badge&logo=jest&logoColor=white -->
 
 <!-- CONTACTS -->
 [author-linkedin]: https://linkedin.com/in/andrechristikan
@@ -461,3 +469,4 @@ Distributed under [MIT licensed](LICENSE.md).
 [mongodb-create-database-url]: https://www.mongodb.com/basics/create-database
 [nodejs-bestpractice-url]: https://github.com/goldbergyoni/nodebestpractices
 [kafka-url]: https://kafka.apache.org/quickstart
+[jest-url]: https://jestjs.io/docs/getting-started
