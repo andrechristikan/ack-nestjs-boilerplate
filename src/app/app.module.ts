@@ -17,8 +17,8 @@ import Configs from 'src/config/index';
 import { HelperModule } from 'src/helper/helper.module';
 import { RoleModule } from 'src/role/role.module';
 import { PermissionModule } from 'src/permission/permission.module';
-import { KafkaProducerModule } from 'src/kafka/producer/producer.module';
-import { KafkaConsumerModule } from 'src/kafka/consumer/consumer.module';
+// import { KafkaProducerModule } from 'src/kafka/producer/producer.module';
+// import { KafkaConsumerModule } from 'src/kafka/consumer/consumer.module';
 @Module({
     controllers: [AppController],
     providers: [],
@@ -47,8 +47,8 @@ import { KafkaConsumerModule } from 'src/kafka/consumer/consumer.module';
         PaginationModule,
         HelperModule,
         SeedsModule,
-        KafkaProducerModule,
-        KafkaConsumerModule,
+        // KafkaProducerModule,
+        // KafkaConsumerModule,
 
         AuthModule,
         UserModule,

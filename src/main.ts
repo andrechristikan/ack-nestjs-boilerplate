@@ -19,8 +19,8 @@ async function bootstrap() {
     app.setGlobalPrefix('/api');
 
     // Kafka
-    const kafka = await import('./kafka');
-    await kafka.default(app, configService, logger);
+    // const kafka = await import('./kafka');
+    // await kafka.default(app, configService, logger);
 
     // Listen
     await app.listenAsync(port, host);
