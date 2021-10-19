@@ -109,9 +109,10 @@ The features will spill on this section, please read secretly and keep silent ðŸ
 - [x] ResponseModule
 - [x] RoleModule
 - [x] UserModule
-- [x] KafkaModule - Kafka Admin
+- [x] KafkaModule
   - [x] ProducerModule
   - [x] ConsumerModule
+  - [x] AdminModule
 - [ ] Other Module** (Ongoing)
 
 [Welcome to request for other modules](issues-url)
@@ -351,7 +352,9 @@ In `src/app/app.module.ts`, Import `KafkaModule`.
 
 ```ts
 // src/app/app.module.ts
-import { KafkaModule } from 'src/kafka/kafka.module';
+import { KafkaAdminModule } from 'src/kafka/admin/kafka.admin.module';
+import { KafkaProducerModule } from 'src/kafka/producer/producer.module';
+import { KafkaConsumerModule } from 'src/kafka/consumer/consumer.module';
 
 @Module({
   controllers: [AppController],
@@ -361,7 +364,9 @@ import { KafkaModule } from 'src/kafka/kafka.module';
     ...
 
     SeedsModule,
-    KafkaModule, // <<<---- Add this
+    KafkaAdminModule, // <<<---- Optional, add this if we want to admin access 
+    KafkaProducerModule, // <<<---- Add this
+    KafkaConsumerModule, // <<<---- Add this
 
     AuthModule,
     UserModule,

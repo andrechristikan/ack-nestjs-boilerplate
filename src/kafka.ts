@@ -23,10 +23,10 @@ export default async function (
             },
             consumer: {
                 groupId: consumerGroup,
-                allowAutoTopicCreation: false
+                allowAutoTopicCreation: true
             },
             producer: {
-                allowAutoTopicCreation: false
+                allowAutoTopicCreation: true
             }
         }
     });

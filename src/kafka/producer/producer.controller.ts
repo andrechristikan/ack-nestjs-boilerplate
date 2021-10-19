@@ -2,8 +2,8 @@ import {
     Controller,
     Get,
     Inject,
-    OnApplicationBootstrap,
-    OnApplicationShutdown
+    OnModuleDestroy,
+    OnModuleInit
 } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import { Response } from 'src/response/response.decorator';
@@ -20,23 +20,22 @@ import { IKafkaError } from '../error/kafka.error.interface';
 import { ErrorHttpException } from 'src/error/filter/error.http.filter';
 
 @Controller('kafka/produce')
-export class KafkaProducerController
-    implements OnApplicationBootstrap, OnApplicationShutdown {
+export class KafkaProducerController implements OnModuleInit, OnModuleDestroy {
     constructor(
         @Inject(KAFKA_PRODUCER_SERVICE_NAME)
         private readonly client: ClientKafka,
         @Debugger() private readonly debuggerService: DebuggerService
     ) {}
 
-    async onApplicationBootstrap(): Promise<void> {
+    async onModuleInit(): Promise<void> {
+        await this.client.connect();
+
         KAFKA_PRODUCER_TOPICS.forEach((val) =>
             this.client.subscribeToResponseOf(val)
         );
-
-        await this.client.connect();
     }
 
-    async onApplicationShutdown(): Promise<void> {
+    async onModuleDestroy(): Promise<void> {
         await this.client.close();
     }
 

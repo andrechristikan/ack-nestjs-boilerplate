@@ -2,12 +2,13 @@ import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Admin, Kafka, KafkaConfig } from 'kafkajs';
 import { Logger } from '@nestjs/common/services/logger.service';
 import { ConfigService } from '@nestjs/config';
-import { KAFKA_TOPICS } from './kafka.constant';
 import { ITopicConfig } from '@nestjs/microservices/external/kafka.interface';
 import { Helper } from 'src/helper/helper.decorator';
 import { HelperService } from 'src/helper/helper.service';
+import { KAFKA_TOPICS } from './kafka.admin.constant';
+
 @Injectable()
-export class KafkaService implements OnModuleInit, OnModuleDestroy {
+export class KafkaAdminService implements OnModuleInit, OnModuleDestroy {
     private readonly kafka: Kafka;
     private readonly admin: Admin;
     private readonly topics: string[];
@@ -16,7 +17,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     private readonly clientId: string;
     private readonly kafkaOptions: KafkaConfig;
 
-    protected logger = new Logger(KafkaService.name);
+    protected logger = new Logger(KafkaAdminService.name);
 
     constructor(
         @Helper() private readonly helperService: HelperService,
@@ -29,7 +30,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
             clientId: this.clientId,
             brokers: this.brokers
         };
-        this.name = KafkaService.name;
+        this.name = KafkaAdminService.name;
 
         this.logger.log(`Starting ${this.name} ...`);
         this.kafka = new Kafka({
@@ -82,10 +83,24 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     }
 
     private async createTopics(): Promise<boolean> {
-        const currentTopic: string[] = await this.getAllTopic();
+        const currentTopic: string[] = await this.getAllTopicUnique();
+        const topics: string[] = this.topics;
+        const replyTopic: string[] = this.topics.map((val) => `${val}.reply`);
         const data: ITopicConfig[] = [];
 
-        this.topics.forEach((val) => {
+        topics.forEach((val) => {
+            const topic: string = val;
+
+            if (currentTopic.indexOf(topic) < 0) {
+                data.push({
+                    topic,
+                    numPartitions: 3,
+                    replicationFactor: this.brokers.length >= 3 ? 3 : 1
+                });
+            }
+        });
+
+        replyTopic.forEach((val) => {
             const topic: string = val;
 
             if (currentTopic.indexOf(topic) < 0) {

@@ -28,10 +28,10 @@ import { KafkaProducerController } from './producer.controller';
                             groupId: configService.get<string>(
                                 'kafka.consumerGroup'
                             ),
-                            allowAutoTopicCreation: false
+                            allowAutoTopicCreation: true
                         },
                         producer: {
-                            allowAutoTopicCreation: false
+                            allowAutoTopicCreation: true
                         }
                     }
                 })
