@@ -56,11 +56,11 @@ export class UserService {
         return this.userModel.countDocuments(find);
     }
 
-    async mapProfile(data: IUserDocument): Promise<Record<string, any>> {
+    async mapProfile(data: IUserDocument): Promise<UserProfileTransformer> {
         return plainToClass(UserProfileTransformer, data);
     }
 
-    async mapLogin(data: IUserDocument): Promise<Record<string, any>> {
+    async mapLogin(data: IUserDocument): Promise<UserLoginTransformer> {
         return plainToClass(UserLoginTransformer, data);
     }
 

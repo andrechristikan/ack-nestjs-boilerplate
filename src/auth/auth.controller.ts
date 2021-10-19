@@ -9,11 +9,13 @@ import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe'
 import { AuthLoginValidation } from './validation/auth.login.validation';
 import { LoggerService } from 'src/logger/logger.service';
 import { ENUM_LOGGER_ACTION } from 'src/logger/logger.constant';
-import { AuthJwtRefreshGuard, Token } from './auth.decorator';
+import { AuthJwtRefreshGuard, User } from './auth.decorator';
 import { Response } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
 import { ENUM_ERROR_STATUS_CODE } from 'src/error/error.constant';
 import { ErrorHttpException } from 'src/error/filter/error.http.filter';
+import { UserLoginTransformer } from 'src/user/transformer/user.login.transformer';
+import { IPayload } from './auth.interface';
 
 @Controller('/auth')
 export class AuthController {
@@ -64,7 +66,9 @@ export class AuthController {
             );
         }
 
-        const safe: Record<string, any> = await this.userService.mapLogin(user);
+        const safe: UserLoginTransformer = await this.userService.mapLogin(
+            user
+        );
         const payload: Record<string, any> = {
             ...classToPlain(safe),
             rememberMe
@@ -95,24 +99,17 @@ export class AuthController {
     @Post('/refresh')
     @AuthJwtRefreshGuard()
     @Response('auth.refresh', HttpStatus.OK)
-    async refresh(@Token() token: string): Promise<IResponse> {
-        const {
-            exp,
-            nbf,
-            iat,
-            ...payload
-        }: Record<string, any> = await this.authService.payloadRefreshToken(
-            token
-        );
+    async refresh(@User() payload: IPayload): Promise<IResponse> {
+        const { exp, nbf, iat, ...others } = payload;
 
         const accessToken: string = await this.authService.createAccessToken(
-            payload,
-            payload.rememberMe
+            others,
+            others.rememberMe
         );
 
         const refreshToken: string = await this.authService.createRefreshToken(
-            payload,
-            payload.rememberMe
+            others,
+            others.rememberMe
         );
 
         return {
