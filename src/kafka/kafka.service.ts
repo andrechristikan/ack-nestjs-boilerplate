@@ -11,8 +11,6 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     private readonly kafka: Kafka;
     private readonly admin: Admin;
     private readonly topics: string[];
-    private readonly topicsWithReply: string[];
-    private readonly allTopics: string[];
     private readonly brokers: string[];
     private readonly name: string;
     private readonly clientId: string;
@@ -26,8 +24,6 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     ) {
         this.brokers = this.configService.get<string[]>('kafka.brokers');
         this.topics = KAFKA_TOPICS;
-        this.topicsWithReply = KAFKA_TOPICS.map((val) => `${val}.reply`);
-        this.allTopics = [...this.topics, ...this.topicsWithReply].sort();
         this.clientId = this.configService.get<string>('kafka.admin.clientId');
         this.kafkaOptions = {
             clientId: this.clientId,
@@ -52,8 +48,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
         const currentTopicUnique: string[] = await this.getAllTopicUnique();
 
         if (
-            JSON.stringify(currentTopicUnique) !==
-            JSON.stringify(this.allTopics)
+            JSON.stringify(currentTopicUnique) !== JSON.stringify(this.topics)
         ) {
             await this.createTopics();
             await this.helperService.delay(10000);
@@ -92,19 +87,10 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
         this.topics.forEach((val) => {
             const topic: string = val;
-            const topicReply: string = `${val}.reply`;
 
             if (currentTopic.indexOf(topic) < 0) {
                 data.push({
                     topic,
-                    numPartitions: 3,
-                    replicationFactor: this.brokers.length >= 3 ? 3 : 1
-                });
-            }
-
-            if (currentTopic.indexOf(topicReply) < 0) {
-                data.push({
-                    topic: topicReply,
                     numPartitions: 3,
                     replicationFactor: this.brokers.length >= 3 ? 3 : 1
                 });
