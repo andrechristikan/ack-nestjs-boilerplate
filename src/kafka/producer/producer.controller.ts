@@ -16,7 +16,7 @@ import {
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { IKafkaRequest } from '../request/kafka.request.interface';
-import { IKafkaError } from '../error/kafka.error.interface';
+import { IErrorKafka } from '../error/kafka.error.interface';
 import { ErrorHttpException } from 'src/error/filter/error.http.filter';
 
 @Controller('kafka/produce')
@@ -62,7 +62,7 @@ export class KafkaProducerController implements OnModuleInit, OnModuleDestroy {
                 ...err
             });
 
-            const errors: IKafkaError = err as IKafkaError;
+            const errors: IErrorKafka = err as IErrorKafka;
             throw new ErrorHttpException(errors.statusCode);
         }
     }
@@ -90,7 +90,7 @@ export class KafkaProducerController implements OnModuleInit, OnModuleDestroy {
                 ...err
             });
 
-            const errors: IKafkaError = err as IKafkaError;
+            const errors: IErrorKafka = err as IErrorKafka;
             throw new ErrorHttpException(errors.statusCode);
         }
     }

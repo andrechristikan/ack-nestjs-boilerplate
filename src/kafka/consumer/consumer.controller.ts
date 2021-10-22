@@ -5,7 +5,7 @@ import { Debugger } from 'src/debugger/debugger.decorator';
 import { IKafkaResponse } from '../response/kafka.response.interface';
 import { KafkaResponse } from '../response/kafka.response.decorator';
 import { IKafkaRequest } from '../request/kafka.request.interface';
-import { KafkaErrorException } from '../error/kafka.error.filter';
+import { ErrorKafkaException } from '../error/kafka.error.filter';
 import { ENUM_ERROR_STATUS_CODE } from 'src/error/error.constant';
 
 @Controller()
@@ -99,6 +99,6 @@ export class KafkaConsumerController {
             message
         });
 
-        throw new KafkaErrorException(ENUM_ERROR_STATUS_CODE.TEST_KAFKA_ERROR);
+        throw new ErrorKafkaException(ENUM_ERROR_STATUS_CODE.TEST_KAFKA_ERROR);
     }
 }
