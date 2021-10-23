@@ -1,13 +1,10 @@
 import { Controller, Get, HttpStatus } from '@nestjs/common';
-
-import { AuthBasicGuard, AuthJwtGuard, User } from 'src/auth/auth.decorator';
+import { AuthBasicGuard } from 'src/auth/auth.decorator';
 import { ENUM_ERROR_STATUS_CODE } from 'src/error/error.constant';
 import { ErrorHttpException } from 'src/error/filter/error.http.filter';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { Response } from 'src/response/response.decorator';
-import { IResponse } from 'src/response/response.interface';
-import { UserLoginTransformer } from 'src/user/transformer/user.login.transformer';
 @Controller('/test')
 export class AppController {
     constructor(@Message() private readonly messageService: MessageService) {}
@@ -16,13 +13,6 @@ export class AppController {
     @Response('app.testHello')
     async testHello(): Promise<void> {
         return;
-    }
-
-    @AuthJwtGuard()
-    @Get('/auth')
-    @Response('app.auth')
-    async auth(@User() user: UserLoginTransformer): Promise<IResponse> {
-        return user;
     }
 
     @Get('/error')
