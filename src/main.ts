@@ -18,10 +18,6 @@ async function bootstrap() {
     // Global Prefix
     app.setGlobalPrefix('/api');
 
-    // Kafka
-    // const kafka = await import('./kafka/kafka');
-    // await kafka.default(app, configService, logger);
-
     // Listen
     await app.listenAsync(port, host);
     logger.log(
@@ -31,5 +27,9 @@ async function bootstrap() {
         'NestApplication'
     );
     logger.log(`Server running on http://${host}:${port}`, 'NestApplication');
+
+    // Kafka
+    // const kafka = await import('./kafka/kafka');
+    // await kafka.default(app, configService, logger);
 }
 bootstrap();
