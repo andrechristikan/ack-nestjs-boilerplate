@@ -21,7 +21,7 @@ export class KafkaProducerController {
     @Response('kafka.produce')
     async produce(): Promise<IResponse> {
         try {
-            const kafka: IKafkaResponse = await this.kafkaProducerService.sendAwaitResponse(
+            const kafka: IKafkaResponse = await this.kafkaProducerService.sendAwait(
                 'nestjs.ack.success',
                 {
                     from: '127.0.0.1'
@@ -45,7 +45,7 @@ export class KafkaProducerController {
     @Response('kafka.error.produce')
     async produceError(): Promise<IResponse> {
         try {
-            const kafka: IKafkaResponse = await this.kafkaProducerService.sendAwaitResponse(
+            const kafka: IKafkaResponse = await this.kafkaProducerService.sendAwait(
                 'nestjs.ack.error',
                 {
                     from: '127.0.0.1'

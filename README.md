@@ -331,7 +331,7 @@ In `src/main.ts`, Add This Code.
 ...
 ...
 
-app.setGlobalPrefix('/api');
+await app.listenAsync(port, host);
 
 const kafka = await import('./kafka');
 await kafka.default(
@@ -339,9 +339,6 @@ await kafka.default(
     configService,
     logger
 );
-
-
-await app.listenAsync(port, host);
 
 ...
 ...
@@ -364,7 +361,7 @@ import { KafkaConsumerModule } from 'src/kafka/consumer/consumer.module';
     ...
 
     SeedsModule,
-    KafkaAdminModule, // <<<---- Optional, add this if we want to admin access 
+    KafkaAdminModule, // <<<---- Optional, add this if we want to create custom partition and partition replication
     KafkaProducerModule, // <<<---- Add this
     KafkaConsumerModule, // <<<---- Add this
 
