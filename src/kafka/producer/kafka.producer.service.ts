@@ -50,7 +50,7 @@ export class KafkaProducerService
         return;
     }
 
-    async sendAwaitResponse(
+    async sendAwait(
         topic: string,
         data: Record<string, any>,
         headers?: Record<string, any>
