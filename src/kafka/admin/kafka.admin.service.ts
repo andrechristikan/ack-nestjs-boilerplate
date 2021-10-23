@@ -5,8 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { ITopicConfig } from '@nestjs/microservices/external/kafka.interface';
 import { Helper } from 'src/helper/helper.decorator';
 import { HelperService } from 'src/helper/helper.service';
-import { KAFKA_TOPICS } from './kafka.admin.constant';
-
+import { KAFKA_TOPICS } from 'src/kafka/kafka.constant';
 @Injectable()
 export class KafkaAdminService implements OnModuleInit, OnModuleDestroy {
     private readonly kafka: Kafka;

@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { KAFKA_PRODUCER_SERVICE_NAME } from './producer.constant';
-import { KafkaProducerController } from './producer.controller';
+import { KAFKA_PRODUCER_SERVICE_NAME } from './kafka.producer.constant';
+import { KafkaProducerService } from './kafka.producer.service';
+
 @Module({
-    providers: [],
-    exports: [],
-    controllers: [KafkaProducerController],
+    providers: [KafkaProducerService],
+    exports: [KafkaProducerService],
+    controllers: [],
     imports: [
         ClientsModule.registerAsync([
             {
@@ -28,10 +29,10 @@ import { KafkaProducerController } from './producer.controller';
                             groupId: configService.get<string>(
                                 'kafka.consumerGroup'
                             ),
-                            allowAutoTopicCreation: true
+                            allowAutoTopicCreation: false
                         },
                         producer: {
-                            allowAutoTopicCreation: true
+                            allowAutoTopicCreation: false
                         }
                     }
                 })

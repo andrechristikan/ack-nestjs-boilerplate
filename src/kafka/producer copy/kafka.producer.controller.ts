@@ -1,58 +1,32 @@
-import {
-    Controller,
-    Get,
-    Inject,
-    OnModuleDestroy,
-    OnModuleInit
-} from '@nestjs/common';
-import { ClientKafka } from '@nestjs/microservices';
+import { Controller, Get } from '@nestjs/common';
 import { Response } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
 import { IKafkaResponse } from '../response/kafka.response.interface';
-import {
-    KAFKA_PRODUCER_SERVICE_NAME,
-    KAFKA_PRODUCER_TOPICS
-} from './producer.constant';
+
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { IKafkaRequest } from '../request/kafka.request.interface';
 import { IKafkaError } from '../error/kafka.error.interface';
 import { ErrorHttpException } from 'src/error/filter/error.http.filter';
+import { KafkaProducerService } from './kafka.producer.service';
 
 @Controller('kafka/produce')
-export class KafkaProducerController implements OnModuleInit, OnModuleDestroy {
+export class KafkaProducerController {
     constructor(
-        @Inject(KAFKA_PRODUCER_SERVICE_NAME)
-        private readonly client: ClientKafka,
-        @Debugger() private readonly debuggerService: DebuggerService
+        @Debugger() private readonly debuggerService: DebuggerService,
+        private readonly kafkaProducerService: KafkaProducerService
     ) {}
-
-    async onModuleInit(): Promise<void> {
-        await this.client.connect();
-
-        KAFKA_PRODUCER_TOPICS.forEach((val) =>
-            this.client.subscribeToResponseOf(val)
-        );
-    }
-
-    async onModuleDestroy(): Promise<void> {
-        await this.client.close();
-    }
 
     @Get('/')
     @Response('kafka.produce')
     async produce(): Promise<IResponse> {
-        const message: IKafkaRequest = {
-            value: {
-                from: '127.0.0.1'
-            },
-            key: `${new Date().valueOf()}`
-        };
-
         try {
-            const kafka: IKafkaResponse = await this.client
-                .send('nestjs.ack.success', message)
-                .toPromise();
+            const kafka: IKafkaResponse = await this.kafkaProducerService.sendAwaitResponse(
+                'nestjs.ack.success',
+                {
+                    from: '127.0.0.1'
+                }
+            );
 
             return kafka;
         } catch (err: any) {
@@ -70,17 +44,13 @@ export class KafkaProducerController implements OnModuleInit, OnModuleDestroy {
     @Get('/error')
     @Response('kafka.error.produce')
     async produceError(): Promise<IResponse> {
-        const message: IKafkaRequest = {
-            value: {
-                from: '127.0.0.1'
-            },
-            key: `${new Date().valueOf()}`
-        };
-
         try {
-            const kafka: IKafkaResponse = await this.client
-                .send('nestjs.ack.error', message)
-                .toPromise();
+            const kafka: IKafkaResponse = await this.kafkaProducerService.sendAwaitResponse(
+                'nestjs.ack.error',
+                {
+                    from: '127.0.0.1'
+                }
+            );
 
             return kafka;
         } catch (err: any) {
