@@ -22,7 +22,8 @@ export class KafkaProducerService
     ) {}
 
     async onApplicationBootstrap(): Promise<void> {
-        KAFKA_TOPICS.forEach((val) => {
+        const topics: string[] = [...new Set(KAFKA_TOPICS)];
+        topics.forEach((val) => {
             this.kafka.subscribeToResponseOf(val);
         });
 

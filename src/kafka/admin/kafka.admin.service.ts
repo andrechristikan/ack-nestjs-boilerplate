@@ -23,7 +23,7 @@ export class KafkaAdminService implements OnModuleInit, OnModuleDestroy {
         private readonly configService: ConfigService
     ) {
         this.brokers = this.configService.get<string[]>('kafka.brokers');
-        this.topics = KAFKA_TOPICS;
+        this.topics = [...new Set(KAFKA_TOPICS)];
         this.clientId = this.configService.get<string>('kafka.admin.clientId');
         this.kafkaOptions = {
             clientId: this.clientId,
