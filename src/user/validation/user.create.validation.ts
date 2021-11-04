@@ -4,9 +4,10 @@ import {
     IsEmail,
     MaxLength,
     MinLength,
-    IsMongoId
+    IsMongoId,
+    IsOptional,
+    ValidateIf
 } from 'class-validator';
-import { Types } from 'mongoose';
 
 export class UserCreateValidation {
     @IsEmail()
@@ -21,10 +22,11 @@ export class UserCreateValidation {
     readonly firstName: string;
 
     @IsString()
-    @IsNotEmpty()
+    @IsOptional()
+    @ValidateIf((val) => val !== '')
     @MinLength(3)
     @MaxLength(30)
-    readonly lastName: string;
+    readonly lastName?: string;
 
     @IsString()
     @IsNotEmpty()
@@ -32,8 +34,9 @@ export class UserCreateValidation {
     @MaxLength(13)
     readonly mobileNumber: string;
 
+    @IsNotEmpty()
     @IsMongoId()
-    readonly role: Types.ObjectId;
+    readonly role: string;
 
     @IsString()
     @IsNotEmpty()

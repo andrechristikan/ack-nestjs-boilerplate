@@ -1,5 +1,5 @@
 import { Exclude, Transform } from 'class-transformer';
-import { IRoleDocument } from 'src/role/role.interface';
+import { IRoleFullDocument } from 'src/role/role.interface';
 
 export class UserProfileTransformer {
     @Transform(({ value }) => {
@@ -20,7 +20,7 @@ export class UserProfileTransformer {
         },
         { toClassOnly: true }
     )
-    role: IRoleDocument;
+    role: IRoleFullDocument;
 
     firstName: string;
     lastName: string;
@@ -29,4 +29,10 @@ export class UserProfileTransformer {
 
     @Exclude()
     password: string;
+
+    @Exclude()
+    createdAt: Date;
+
+    @Exclude()
+    updatedAt: Date;
 }

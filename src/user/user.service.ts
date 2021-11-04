@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserEntity } from 'src/user/user.schema';
-import { UserDocument, IUserDocument } from 'src/user/user.interface';
+import {
+    UserDocument,
+    IUserDocument,
+    IUserCreate,
+    IUserUpdate
+} from 'src/user/user.interface';
 import { MessageService } from 'src/message/message.service';
 import { Message } from 'src/message/message.decorator';
 import { RoleEntity } from 'src/role/role.schema';
@@ -36,6 +41,10 @@ export class UserService {
             findAll.limit(options.limit);
         }
 
+        if (options && options.sort) {
+            findAll.sort(options.sort);
+        }
+
         if (options && options.populate) {
             findAll.populate({
                 path: 'role',
@@ -64,10 +73,13 @@ export class UserService {
         return plainToClass(UserLoginTransformer, data);
     }
 
-    async findOneById<T>(userId: string, populate?: boolean): Promise<T> {
-        const user = this.userModel.findById(userId);
+    async findOneById<T>(
+        _id: string,
+        options?: Record<string, any>
+    ): Promise<T> {
+        const user = this.userModel.findById(_id);
 
-        if (populate) {
+        if (options && options.populate) {
             user.populate({
                 path: 'role',
                 model: RoleEntity.name,
@@ -85,11 +97,11 @@ export class UserService {
 
     async findOne<T>(
         find?: Record<string, any>,
-        populate?: boolean
+        options?: Record<string, any>
     ): Promise<T> {
         const user = this.userModel.findOne(find);
 
-        if (populate) {
+        if (options && options.populate) {
             user.populate({
                 path: 'role',
                 match: { isActive: true },
@@ -105,33 +117,41 @@ export class UserService {
         return user.lean();
     }
 
-    async create(data: Record<string, any>): Promise<UserDocument> {
+    async create({
+        firstName,
+        lastName,
+        password,
+        email,
+        mobileNumber,
+        role
+    }: IUserCreate): Promise<UserDocument> {
         const salt: string = await this.helperService.randomSalt();
         const passwordHash = await this.helperService.bcryptHashPassword(
-            data.password,
+            password,
             salt
         );
 
         const newUser: UserEntity = {
-            firstName: data.firstName.toLowerCase(),
-            email: data.email.toLowerCase(),
-            mobileNumber: data.mobileNumber,
+            firstName: firstName.toLowerCase(),
+            email: email.toLowerCase(),
+            mobileNumber: mobileNumber,
             password: passwordHash,
-            role: Types.ObjectId(data.role)
+            role: new Types.ObjectId(role),
+            isActive: true
         };
 
-        if (data.lastName) {
-            newUser.lastName = data.lastName.toLowerCase();
+        if (lastName) {
+            newUser.lastName = lastName.toLowerCase();
         }
 
         const create: UserDocument = new this.userModel(newUser);
         return create.save();
     }
 
-    async deleteOneById(userId: string): Promise<boolean> {
+    async deleteOneById(_id: string): Promise<boolean> {
         try {
             this.userModel.deleteOne({
-                _id: userId
+                _id: new Types.ObjectId(_id)
             });
             return true;
         } catch (e: unknown) {
@@ -140,16 +160,16 @@ export class UserService {
     }
 
     async updateOneById(
-        userId: string,
-        data: Record<string, any>
+        _id: string,
+        { firstName, lastName }: IUserUpdate
     ): Promise<UserDocument> {
         return this.userModel.updateOne(
             {
-                _id: userId
+                _id: new Types.ObjectId(_id)
             },
             {
-                firstName: data.firstName.toLowerCase(),
-                lastName: data.lastName.toLowerCase()
+                firstName: firstName.toLowerCase(),
+                lastName: lastName.toLowerCase()
             }
         );
     }
@@ -157,14 +177,14 @@ export class UserService {
     async checkExist(
         email: string,
         mobileNumber: string,
-        userId?: string
+        _id?: string
     ): Promise<IErrors[]> {
         const existEmail: UserDocument = await this.userModel
             .findOne({
                 email: email
             })
             .where('_id')
-            .ne(userId)
+            .ne(new Types.ObjectId(_id))
             .lean();
 
         const existMobileNumber: UserDocument = await this.userModel
@@ -172,7 +192,7 @@ export class UserService {
                 mobileNumber: mobileNumber
             })
             .where('_id')
-            .ne(userId)
+            .ne(new Types.ObjectId(_id))
             .lean();
 
         const errors: IErrors[] = [];

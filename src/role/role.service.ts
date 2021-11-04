@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { PermissionEntity } from 'src/permission/permission.schema';
 import { IRoleCreate, RoleDocument } from './role.interface';
 import { RoleEntity } from './role.schema';
@@ -22,6 +22,10 @@ export class RoleService {
 
         if (options && options.limit) {
             findAll.limit(options.limit);
+        }
+
+        if (options && options.sort) {
+            findAll.sort(options.sort);
         }
 
         if (options && options.populate) {
@@ -70,14 +74,20 @@ export class RoleService {
         return role.lean();
     }
 
-    async create(data: IRoleCreate): Promise<RoleDocument> {
+    async create({ name, permissions }: IRoleCreate): Promise<RoleDocument> {
         const create: RoleDocument = new this.roleModel({
-            name: data.name,
-            permissions: data.permissions,
+            name: name.toLowerCase(),
+            permissions: permissions,
             isActive: true
         });
 
         return create.save();
+    }
+
+    async deleteOneById(_id: string): Promise<RoleDocument> {
+        return this.roleModel.deleteOne({
+            _id: new Types.ObjectId(_id)
+        });
     }
 
     async deleteMany(find: Record<string, any>): Promise<boolean> {

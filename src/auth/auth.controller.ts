@@ -5,7 +5,9 @@ import {
     HttpStatus,
     HttpCode,
     NotFoundException,
-    BadRequestException
+    BadRequestException,
+    UnauthorizedException,
+    ForbiddenException
 } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
 import { UserService } from 'src/user/user.service';
@@ -25,6 +27,8 @@ import {
     ENUM_AUTH_STATUS_CODE_ERROR,
     ENUM_AUTH_STATUS_CODE_SUCCESS
 } from './auth.constant';
+import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
 
 @Controller('/auth')
 export class AuthController {
@@ -46,7 +50,7 @@ export class AuthController {
             {
                 email: data.email
             },
-            true
+            { populate: true }
         );
 
         if (!user) {
@@ -59,6 +63,21 @@ export class AuthController {
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_USER_NOT_FOUND_ERROR,
                 message: 'auth.error.userNotFound'
+            });
+        } else if (!user.isActive) {
+            this.debuggerService.error('Auth Block', {
+                class: 'AuthController',
+                function: 'refresh'
+            });
+
+            throw new UnauthorizedException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE,
+                message: 'http.clientError.unauthorized'
+            });
+        } else if (!user.role.isActive) {
+            throw new ForbiddenException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE,
+                message: 'http.clientError.forbidden'
             });
         }
 
@@ -115,7 +134,28 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     @Response('auth.refresh')
     async refresh(@User() payload: Record<string, any>): Promise<IResponse> {
-        const { exp, nbf, iat, ...others } = payload;
+        const { exp, nbf, iat, _id, ...others } = payload;
+        const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
+            _id,
+            { populate: true }
+        );
+
+        if (!user.isActive) {
+            this.debuggerService.error('Auth Block', {
+                class: 'AuthController',
+                function: 'refresh'
+            });
+
+            throw new UnauthorizedException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE,
+                message: 'http.clientError.unauthorized'
+            });
+        } else if (!user.role.isActive) {
+            throw new ForbiddenException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE,
+                message: 'http.clientError.forbidden'
+            });
+        }
 
         const accessToken: string = await this.authService.createAccessToken(
             others,

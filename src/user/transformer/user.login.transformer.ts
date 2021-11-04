@@ -1,5 +1,5 @@
 import { Exclude, Transform } from 'class-transformer';
-import { IRoleDocument } from 'src/role/role.interface';
+import { IRoleFullDocument } from 'src/role/role.interface';
 
 export class UserLoginTransformer {
     @Transform(({ value }) => {
@@ -9,8 +9,11 @@ export class UserLoginTransformer {
 
     @Transform(
         ({ value }) => {
-            const permissions: string[] = value.permissions.map(
-                (val: Record<string, any>) => val.name
+            const permissions: Record<string, any>[] = value.permissions.map(
+                (val: Record<string, any>) => ({
+                    name: val.name,
+                    isActive: val.isActive
+                })
             );
 
             return {
@@ -20,7 +23,7 @@ export class UserLoginTransformer {
         },
         { toClassOnly: true }
     )
-    role: IRoleDocument;
+    role: IRoleFullDocument;
 
     email: string;
     mobileNumber: string;
@@ -33,4 +36,10 @@ export class UserLoginTransformer {
 
     @Exclude()
     password: string;
+
+    @Exclude()
+    createdAt: Date;
+
+    @Exclude()
+    updatedAt: Date;
 }

@@ -23,6 +23,10 @@ export class PermissionService {
             findAll.limit(options.limit);
         }
 
+        if (options && options.sort) {
+            findAll.sort(options.sort);
+        }
+
         return findAll.lean();
     }
 
@@ -32,15 +36,6 @@ export class PermissionService {
 
     async getTotalData(find?: Record<string, any>): Promise<number> {
         return this.permissionModel.countDocuments(find);
-    }
-
-    async create(data: IPermissionCreate): Promise<PermissionDocument> {
-        const create: PermissionDocument = new this.permissionModel({
-            name: data.name,
-            isActive: true
-        });
-
-        return create.save();
     }
 
     async deleteMany(find: Record<string, any>): Promise<boolean> {

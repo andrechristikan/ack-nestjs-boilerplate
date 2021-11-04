@@ -1,21 +1,13 @@
-import {
-    Controller,
-    Get,
-    DefaultValuePipe,
-    ParseIntPipe,
-    Query
-} from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { AuthJwtGuard } from 'src/auth/auth.decorator';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { PaginationService } from 'src/pagination/pagination.service';
-import {
-    DEFAULT_PAGE,
-    DEFAULT_PER_PAGE
-} from 'src/pagination/pagination.constant';
 import { PermissionService } from './permission.service';
 import { PermissionDocument } from './permission.interface';
 import { Response } from 'src/response/response.decorator';
 import { IResponsePaging } from 'src/response/response.interface';
+import { RequestQueryValidationPipe } from 'src/request/pipe/request.query.validation.pipe';
+import { PermissionListValidation } from './validation/permission.list.validation';
 
 @Controller('/permission')
 export class PermissionController {
@@ -24,26 +16,39 @@ export class PermissionController {
         private readonly permissionService: PermissionService
     ) {}
 
-    @Get('/')
+    @Get('/list')
     @AuthJwtGuard(ENUM_PERMISSIONS.PERMISSION_READ)
     @Response('permission.findAll')
     async findAll(
-        @Query('page', new DefaultValuePipe(DEFAULT_PAGE), ParseIntPipe)
-        page: number,
-        @Query('perPage', new DefaultValuePipe(DEFAULT_PER_PAGE), ParseIntPipe)
-        perPage: number
+        @Query(RequestQueryValidationPipe)
+        { page, perPage, sort, search }: PermissionListValidation
     ): Promise<IResponsePaging> {
-        const skip = await this.paginationService.skip(page, perPage);
+        const skip: number = await this.paginationService.skip(page, perPage);
+        const find: Record<string, any> = {};
+        if (search) {
+            find['$or'] = [
+                {
+                    name: {
+                        $regex: new RegExp(search),
+                        $options: 'i'
+                    }
+                }
+            ];
+        }
+
         const permissions: PermissionDocument[] = await this.permissionService.findAll(
-            {},
+            find,
             {
                 skip: skip,
-                limit: perPage
+                limit: perPage,
+                sort
             }
         );
 
-        const totalData: number = await this.permissionService.getTotalData();
-        const totalPage = await this.paginationService.totalPage(
+        const totalData: number = await this.permissionService.getTotalData(
+            find
+        );
+        const totalPage: number = await this.paginationService.totalPage(
             totalData,
             perPage
         );
