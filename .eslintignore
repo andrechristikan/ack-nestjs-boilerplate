@@ -1,0 +1,8 @@
+# /node_modules/* in the project root is ignored by default
+# build artefacts
+dist/*
+coverage/*
+e2e-coverage/*
+node_modules/*
+logs/*
+initdb/

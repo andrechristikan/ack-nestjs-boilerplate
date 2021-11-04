@@ -1,0 +1,461 @@
+{
+	"info": {
+		"_postman_id": "57d63008-b9ba-4d0b-8213-d7defe1b3563",
+		"name": "ac.k",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "auth",
+			"item": [
+				{
+					"name": "user",
+					"item": [
+						{
+							"name": "create",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"firstName\": \"andre\",\n    \"lastName\": \"ck\",\n    \"mobileNumber\": \"6281219968822\",\n    \"password\": \"123456\",\n    \"role\": \"610381862553550acc7b1270\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/user/create",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"user",
+										"create"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "get by id",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/user/:userId",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"user",
+										":userId"
+									],
+									"variable": [
+										{
+											"key": "userId",
+											"value": "610381950a842447fcb4919d",
+											"type": "string"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "delete",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/user/delete/:userId",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"user",
+										"delete",
+										":userId"
+									],
+									"variable": [
+										{
+											"key": "userId",
+											"value": "61038c8364c8d44600af2f11"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "update",
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"firstName\": \"andre\",\n    \"lastName\": \"kan\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/user/update/:userId",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"user",
+										"update",
+										":userId"
+									],
+									"variable": [
+										{
+											"key": "userId",
+											"value": "610392cbc7fd9e3c9cdb21d3"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "get all",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/user?page=1&perPage=10",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"user"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "perPage",
+											"value": "10"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "profile",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/user/profile",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"user",
+										"profile"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Role",
+					"item": [
+						{
+							"name": "get all",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/role",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"role"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			],
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MGNjOGRiNmVkMmQ4NDIxYjU0NzAwYjciLCJlbWFpbCI6ImFkbWluQG1haWwuY29tIiwiZmlyc3ROYW1lIjoiYWRtaW4iLCJsYXN0TmFtZSI6InRlc3QiLCJyb2xlIjoiYWRtaW4iLCJwZXJtaXNzaW9ucyI6WyJQZXJtaXNzaW9uQ3JlYXRlIiwiUGVybWlzc2lvbkRlbGV0ZSIsIlBlcm1pc3Npb25SZWFkIiwiUGVybWlzc2lvblVwZGF0ZSIsIlByb2ZpbGVSZWFkIiwiUHJvZmlsZVVwZGF0ZSIsIlJvbGVDcmVhdGUiLCJSb2xlRGVsZXRlIiwiUm9sZVJlYWQiLCJSb2xlVXBkYXRlIiwiVXNlckNyZWF0ZSIsIlVzZXJEZWxldGUiLCJVc2VyUmVhZCIsIlVzZXJVcGRhdGUiXSwiaWF0IjoxNjI4MjMxNTIyLCJleHAiOjE2MjgyMzUxMjJ9.oL6fg4DEWx4dA4y2mfpqhZszaVgR0UC-FLcsHYFq1Rc",
+						"type": "string"
+					}
+				]
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "test",
+			"item": [
+				{
+					"name": "hello",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\":\"12345\",\n    \"age\":\"dasd\",\n    \"breed\":\"asd\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/test/hello",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"test",
+								"hello"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "hello basic",
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "password",
+									"value": "{{basicTokenSecret}}",
+									"type": "string"
+								},
+								{
+									"key": "username",
+									"value": "{{basicTokenId}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/test/hello-basic",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"test",
+								"hello-basic"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "error",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/test/error",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"test",
+								"error"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "error rewrite",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/test/error-rewrite",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"test",
+								"error-rewrite"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "error data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/test/error-data",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"test",
+								"error-data"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "kafka produce",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/kafka/produce",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"kafka",
+								"produce"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "kafka produce error",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/kafka/produce/error",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"kafka",
+								"produce",
+								"error"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "login",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"email\":\"admin@mail.com\",\r\n    \"password\":\"123456\",\r\n    \"rememberMe\": true\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/auth/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"auth",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "refresh",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{refreshToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/auth/refresh",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"auth",
+						"refresh"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
