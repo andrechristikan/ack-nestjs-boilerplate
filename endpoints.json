@@ -44,19 +44,19 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{base_url}}/user/:userId",
+									"raw": "{{base_url}}/user/get/:_id",
 									"host": [
 										"{{base_url}}"
 									],
 									"path": [
 										"user",
-										":userId"
+										"get",
+										":_id"
 									],
 									"variable": [
 										{
-											"key": "userId",
-											"value": "610381950a842447fcb4919d",
-											"type": "string"
+											"key": "_id",
+											"value": null
 										}
 									]
 								}
@@ -64,24 +64,24 @@
 							"response": []
 						},
 						{
-							"name": "delete",
+							"name": "delete by id",
 							"request": {
 								"method": "DELETE",
 								"header": [],
 								"url": {
-									"raw": "{{base_url}}/user/delete/:userId",
+									"raw": "{{base_url}}/user/delete/:_id",
 									"host": [
 										"{{base_url}}"
 									],
 									"path": [
 										"user",
 										"delete",
-										":userId"
+										":_id"
 									],
 									"variable": [
 										{
-											"key": "userId",
-											"value": "61038c8364c8d44600af2f11"
+											"key": "_id",
+											"value": null
 										}
 									]
 								}
@@ -89,7 +89,7 @@
 							"response": []
 						},
 						{
-							"name": "update",
+							"name": "update by id",
 							"request": {
 								"method": "PUT",
 								"header": [],
@@ -103,19 +103,19 @@
 									}
 								},
 								"url": {
-									"raw": "{{base_url}}/user/update/:userId",
+									"raw": "{{base_url}}/user/update/:_id",
 									"host": [
 										"{{base_url}}"
 									],
 									"path": [
 										"user",
 										"update",
-										":userId"
+										":_id"
 									],
 									"variable": [
 										{
-											"key": "userId",
-											"value": "610392cbc7fd9e3c9cdb21d3"
+											"key": "_id",
+											"value": null
 										}
 									]
 								}
@@ -123,12 +123,12 @@
 							"response": []
 						},
 						{
-							"name": "get all",
+							"name": "list",
 							"request": {
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{base_url}}/user?page=1&perPage=10",
+									"raw": "{{base_url}}/user?page=1&perPage=10&sort=name@asc&search",
 									"host": [
 										"{{base_url}}"
 									],
@@ -143,6 +143,14 @@
 										{
 											"key": "perPage",
 											"value": "10"
+										},
+										{
+											"key": "sort",
+											"value": "name@asc"
+										},
+										{
+											"key": "search",
+											"value": null
 										}
 									]
 								}
@@ -190,22 +198,102 @@
 					]
 				},
 				{
-					"name": "Role",
+					"name": "role",
 					"item": [
 						{
-							"name": "get all",
+							"name": "list",
 							"request": {
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{base_url}}/role",
+									"raw": "{{base_url}}/role?page=1&perPage=10&sort=name@asc",
 									"host": [
 										"{{base_url}}"
 									],
 									"path": [
 										"role"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "perPage",
+											"value": "10"
+										},
+										{
+											"key": "sort",
+											"value": "name@asc"
+										}
 									]
 								}
+							},
+							"response": []
+						},
+						{
+							"name": "create",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"role1\",\n    \"permissions\": [\n        \"618412bc94c5845969a05a15\",\n        \"618412c394c5845969a05a16\"\n    ]\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/role/create",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"role",
+										"create"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "delete",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/role/delete/:_id",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"role",
+										"delete",
+										":_id"
+									],
+									"variable": [
+										{
+											"key": "_id",
+											"value": null
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "permission",
+					"item": [
+						{
+							"name": "list",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": null
 							},
 							"response": []
 						}
