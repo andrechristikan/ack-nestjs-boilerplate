@@ -16,14 +16,14 @@ export class PermissionController {
         private readonly permissionService: PermissionService
     ) {}
 
-    @Get('/')
+    @Get('/list')
     @AuthJwtGuard(ENUM_PERMISSIONS.PERMISSION_READ)
     @Response('permission.findAll')
     async findAll(
         @Query(RequestQueryValidationPipe)
         { page, perPage, sort, search }: PermissionListValidation
     ): Promise<IResponsePaging> {
-        const skip = await this.paginationService.skip(page, perPage);
+        const skip: number = await this.paginationService.skip(page, perPage);
         const find: Record<string, any> = {};
         if (search) {
             find['$or'] = [
@@ -48,7 +48,7 @@ export class PermissionController {
         const totalData: number = await this.permissionService.getTotalData(
             find
         );
-        const totalPage = await this.paginationService.totalPage(
+        const totalPage: number = await this.paginationService.totalPage(
             totalData,
             perPage
         );

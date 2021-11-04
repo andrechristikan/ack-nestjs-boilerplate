@@ -136,7 +136,8 @@ export class UserService {
             email: email.toLowerCase(),
             mobileNumber: mobileNumber,
             password: passwordHash,
-            role: Types.ObjectId(role)
+            role: new Types.ObjectId(role),
+            isActive: true
         };
 
         if (lastName) {

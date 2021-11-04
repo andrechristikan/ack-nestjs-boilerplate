@@ -38,6 +38,19 @@ export class PermissionService {
         return this.permissionModel.countDocuments(find);
     }
 
+    async deleteMany(find: Record<string, any>): Promise<boolean> {
+        return new Promise((resolve, reject) => {
+            this.permissionModel
+                .deleteMany(find)
+                .then(() => {
+                    resolve(true);
+                })
+                .catch((err: any) => {
+                    reject(err);
+                });
+        });
+    }
+
     async createMany(data: IPermissionCreate[]): Promise<boolean> {
         const newData = data.map((val: IPermissionCreate) => ({
             name: val.name,

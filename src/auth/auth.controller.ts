@@ -27,10 +27,8 @@ import {
     ENUM_AUTH_STATUS_CODE_ERROR,
     ENUM_AUTH_STATUS_CODE_SUCCESS
 } from './auth.constant';
-import { PermissionDocument } from 'src/permission/permission.interface';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
-import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/permission/permission.constant';
 
 @Controller('/auth')
 export class AuthController {

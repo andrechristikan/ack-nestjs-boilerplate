@@ -37,24 +37,45 @@ export class UserController {
         private readonly userService: UserService
     ) {}
 
-    @Get('/')
+    @Get('/list')
     @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ)
     @ResponsePaging('user.findAll')
     async findAll(
         @Query(RequestQueryValidationPipe)
-        { page, perPage, sort }: UserListValidation
+        { page, perPage, sort, search }: UserListValidation
     ): Promise<IResponsePaging> {
-        const skip = await this.paginationService.skip(page, perPage);
+        const skip: number = await this.paginationService.skip(page, perPage);
+        const find: Record<string, any> = {};
+
+        if (search) {
+            find['$or'] = [
+                {
+                    firstName: {
+                        $regex: new RegExp(search),
+                        $options: 'i'
+                    },
+                    lastName: {
+                        $regex: new RegExp(search),
+                        $options: 'i'
+                    },
+                    email: {
+                        $regex: new RegExp(search),
+                        $options: 'i'
+                    },
+                    mobileNumber: search
+                }
+            ];
+        }
         const users: UserDocument[] = await this.userService.findAll<UserDocument>(
-            {},
+            find,
             {
                 limit: perPage,
                 skip: skip,
                 sort
             }
         );
-        const totalData: number = await this.userService.getTotalData();
-        const totalPage = await this.paginationService.totalPage(
+        const totalData: number = await this.userService.getTotalData(find);
+        const totalPage: number = await this.paginationService.totalPage(
             totalData,
             perPage
         );
@@ -93,7 +114,7 @@ export class UserController {
         return this.userService.mapProfile(user);
     }
 
-    @Get('/:_id')
+    @Get('get/:_id')
     @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ)
     @Response('user.findOneById')
     async findOneById(@Param('_id') _id: string): Promise<IResponse> {

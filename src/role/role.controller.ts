@@ -35,14 +35,14 @@ export class RoleController {
         private readonly roleService: RoleService
     ) {}
 
-    @Get('/')
+    @Get('/list')
     @AuthJwtGuard(ENUM_PERMISSIONS.ROLE_READ)
     @Response('role.findAll')
     async findAll(
         @Query(RequestQueryValidationPipe)
         { page, perPage, sort }: RoleListValidation
     ): Promise<IResponsePaging> {
-        const skip = await this.paginationService.skip(page, perPage);
+        const skip: number = await this.paginationService.skip(page, perPage);
         const roles: RoleDocument[] = await this.roleService.findAll<RoleDocument>(
             {},
             {
@@ -52,8 +52,8 @@ export class RoleController {
             }
         );
 
-        const totalData: number = await this.roleService.getTotalData();
-        const totalPage = await this.paginationService.totalPage(
+        const totalData: number = await this.roleService.getTotalData({});
+        const totalPage: number = await this.paginationService.totalPage(
             totalData,
             perPage
         );
