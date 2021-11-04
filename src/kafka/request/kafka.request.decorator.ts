@@ -1,4 +1,4 @@
-import { applyDecorators, UseFilters, UsePipes } from '@nestjs/common';
+import { applyDecorators, UsePipes } from '@nestjs/common';
 import { MessagePattern, Transport } from '@nestjs/microservices';
 import { ClassConstructor } from 'class-transformer';
 import { IAuthApplyDecorator } from 'src/auth/auth.interface';

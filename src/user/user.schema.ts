@@ -48,6 +48,12 @@ export class UserEntity {
         required: true
     })
     password: string;
+
+    @Prop({
+        required: true,
+        default: true
+    })
+    isActive: boolean;
 }
 
 export const UserDatabaseName = 'users';
