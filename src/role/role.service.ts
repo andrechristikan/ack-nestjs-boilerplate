@@ -31,8 +31,7 @@ export class RoleService {
         if (options && options.populate) {
             findAll.populate({
                 path: 'permissions',
-                model: PermissionEntity.name,
-                match: { isActive: true }
+                model: PermissionEntity.name
             });
         }
 
@@ -49,8 +48,7 @@ export class RoleService {
         if (populate) {
             role.populate({
                 path: 'permissions',
-                model: PermissionEntity.name,
-                match: { isActive: true }
+                model: PermissionEntity.name
             });
         }
 
@@ -66,8 +64,7 @@ export class RoleService {
         if (populate) {
             role.populate({
                 path: 'permissions',
-                model: PermissionEntity.name,
-                match: { isActive: true }
+                model: PermissionEntity.name
             });
         }
 
@@ -75,9 +72,10 @@ export class RoleService {
     }
 
     async create({ name, permissions }: IRoleCreate): Promise<RoleDocument> {
+        const rPermissions = permissions.map((val) => new Types.ObjectId(val));
         const create: RoleDocument = new this.roleModel({
             name: name.toLowerCase(),
-            permissions: permissions,
+            permissions: rPermissions,
             isActive: true
         });
 
@@ -105,8 +103,8 @@ export class RoleService {
 
     async createMany(data: IRoleCreate[]): Promise<boolean> {
         const newData = data.map((val: IRoleCreate) => ({
-            name: val.name,
-            permissions: val.permissions,
+            name: val.name.toLowerCase(),
+            permissions: val.permissions.map((val) => new Types.ObjectId(val)),
             isActive: true
         }));
 

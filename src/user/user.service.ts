@@ -49,11 +49,9 @@ export class UserService {
             findAll.populate({
                 path: 'role',
                 model: RoleEntity.name,
-                match: { isActive: true },
                 populate: {
                     path: 'permissions',
-                    model: PermissionEntity.name,
-                    match: { isActive: true }
+                    model: PermissionEntity.name
                 }
             });
         }
@@ -83,11 +81,9 @@ export class UserService {
             user.populate({
                 path: 'role',
                 model: RoleEntity.name,
-                match: { isActive: true },
                 populate: {
                     path: 'permissions',
-                    model: PermissionEntity.name,
-                    match: { isActive: true }
+                    model: PermissionEntity.name
                 }
             });
         }
@@ -104,11 +100,9 @@ export class UserService {
         if (options && options.populate) {
             user.populate({
                 path: 'role',
-                match: { isActive: true },
                 model: RoleEntity.name,
                 populate: {
                     path: 'permissions',
-                    match: { isActive: true },
                     model: PermissionEntity.name
                 }
             });

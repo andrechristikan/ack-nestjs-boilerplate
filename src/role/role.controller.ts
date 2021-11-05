@@ -68,7 +68,7 @@ export class RoleController {
 
     @Post('/create')
     @AuthJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_DELETE)
-    @Response('user.create')
+    @Response('role.create')
     async create(
         @Body(RequestValidationPipe)
         { name, permissions }: RoleCreateValidation
@@ -89,12 +89,9 @@ export class RoleController {
         }
 
         try {
-            const rPermisisons: Types.ObjectId[] = permissions.map(
-                (val) => new Types.ObjectId(val)
-            );
             const create = await this.roleService.create({
                 name,
-                permissions: rPermisisons
+                permissions
             });
 
             return {
@@ -102,7 +99,7 @@ export class RoleController {
             };
         } catch (err: any) {
             this.debuggerService.error('create try catch', {
-                class: 'UserController',
+                class: 'RoleController',
                 function: 'create',
                 error: err
             });
@@ -139,7 +136,7 @@ export class RoleController {
         } catch (err) {
             this.debuggerService.error('delete try catch', {
                 class: 'RoleController',
-                function: 'create',
+                function: 'delete',
                 error: err
             });
             throw new InternalServerErrorException({

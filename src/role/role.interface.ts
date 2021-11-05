@@ -15,5 +15,5 @@ export interface IRoleFullDocument extends Omit<RoleEntity, 'permissions'> {
 
 export interface IRoleCreate {
     name: string;
-    permissions: Types.ObjectId[];
+    permissions: string[];
 }
