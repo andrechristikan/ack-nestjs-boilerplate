@@ -17,7 +17,6 @@ import { PaginationService } from 'src/pagination/pagination.service';
 import { RoleDocument } from './role.interface';
 import { Response } from 'src/response/response.decorator';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
-import { RequestQueryValidationPipe } from 'src/request/pipe/request.query.validation.pipe';
 import { RoleListValidation } from './validation/role.list.validation';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from './role.constant';
 import { ENUM_STATUS_CODE_ERROR } from 'src/error/error.constant';
@@ -39,7 +38,7 @@ export class RoleController {
     @AuthJwtGuard(ENUM_PERMISSIONS.ROLE_READ)
     @Response('role.findAll')
     async findAll(
-        @Query(RequestQueryValidationPipe)
+        @Query(RequestValidationPipe)
         { page, perPage, sort }: RoleListValidation
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);

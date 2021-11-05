@@ -10,10 +10,13 @@ import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
-import { plainToClass } from 'class-transformer';
+import { classToPlain, plainToClass } from 'class-transformer';
 import { AuthLoginValidation } from 'src/auth/validation/auth.login.validation';
 import { IErrors } from 'src/error/error.interface';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from '../request.constant';
+import { PermissionListValidation } from 'src/permission/validation/permission.list.validation';
+import { RoleListValidation } from 'src/role/validation/role.list.validation';
+import { UserListValidation } from 'src/user/validation/user.list.validation';
 
 export class RequestValidationPipe implements PipeTransform {
     constructor(
@@ -55,14 +58,17 @@ export class RequestValidationPipe implements PipeTransform {
                 errors
             });
         }
-        return value;
+        return classToPlain(request, { exposeUnsetFields: false });
     }
 
     private toValidate(metatype: Record<string, any>): boolean {
         const types: Record<string, any>[] = [
             UserUpdateValidation,
             UserCreateValidation,
-            AuthLoginValidation
+            AuthLoginValidation,
+            PermissionListValidation,
+            RoleListValidation,
+            UserListValidation
         ];
         return types.includes(metatype);
     }

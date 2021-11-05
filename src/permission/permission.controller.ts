@@ -6,8 +6,8 @@ import { PermissionService } from './permission.service';
 import { PermissionDocument } from './permission.interface';
 import { Response } from 'src/response/response.decorator';
 import { IResponsePaging } from 'src/response/response.interface';
-import { RequestQueryValidationPipe } from 'src/request/pipe/request.query.validation.pipe';
 import { PermissionListValidation } from './validation/permission.list.validation';
+import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe';
 
 @Controller('/permission')
 export class PermissionController {
@@ -20,7 +20,7 @@ export class PermissionController {
     @AuthJwtGuard(ENUM_PERMISSIONS.PERMISSION_READ)
     @Response('permission.findAll')
     async findAll(
-        @Query(RequestQueryValidationPipe)
+        @Query(RequestValidationPipe)
         { page, perPage, sort, search }: PermissionListValidation
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
