@@ -26,7 +26,6 @@ import { Response, ResponsePaging } from 'src/response/response.decorator';
 import { ENUM_STATUS_CODE_ERROR } from 'src/error/error.constant';
 import { IErrors } from 'src/error/error.interface';
 import { ENUM_USER_STATUS_CODE_ERROR } from './user.constant';
-import { RequestQueryValidationPipe } from 'src/request/pipe/request.query.validation.pipe';
 import { UserListValidation } from './validation/user.list.validation';
 
 @Controller('/user')
@@ -41,7 +40,7 @@ export class UserController {
     @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ)
     @ResponsePaging('user.findAll')
     async findAll(
-        @Query(RequestQueryValidationPipe)
+        @Query(RequestValidationPipe)
         { page, perPage, sort, search }: UserListValidation
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
