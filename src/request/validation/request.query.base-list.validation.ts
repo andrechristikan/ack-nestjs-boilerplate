@@ -12,10 +12,16 @@ import {
 } from 'src/pagination/pagination.constant';
 
 export class RequestQueryBaseListValidation {
-    constructor(defaultSort: string) {
+    constructor(
+        defaultSort: string,
+        defaultPage?: number,
+        defaultPerPage?: number
+    ) {
         const fieldSort: string = defaultSort.split('@')[0];
         const typeSort: number = defaultSort.split('@')[1] === 'desc' ? -1 : 1;
         this.sort = { [fieldSort]: typeSort };
+        this.page = defaultPage;
+        this.perPage = defaultPerPage;
     }
 
     @IsString()
