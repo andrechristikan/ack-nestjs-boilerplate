@@ -31,25 +31,42 @@ export class MessageService {
     }
 
     getRequestErrorsMessage(requestErrors: Record<string, any>[]): IErrors[] {
-        const messageErrors: IErrors[] = requestErrors.map(
+        const messageErrors: Record<string, any>[] = requestErrors.map(
             (value: Record<string, any>) => {
-                if (value.children && value.children.length > 0) {
-                    return value.children.map((val: Record<string, any>) => ({
-                        property: `${value.property}.${val.property}`,
-                        message: this.get(`request.${val.constraints[0]}`)
-                            .replace('$property', val.property)
-                            .replace('$value', val.val)
-                    }));
-                } else {
-                    return {
-                        property: value.property,
-                        message: this.get(`request.${value.constraints[0]}`)
-                            .replace('$property', value.property)
-                            .replace('$value', value.value)
-                    };
+                let children: Record<string, any>[] = value.children || [];
+                let constraints: string[] = value.constraints
+                    ? Object.keys(value.constraints)
+                    : [];
+                let property: string = value.property;
+                let val: string = value.value;
+
+                if (children.length > 0) {
+                    while (children.length > 0) {
+                        for (const child of children) {
+                            property = `${property}.${child.property}`;
+
+                            if (child.constraints) {
+                                constraints = Object.keys(child.constraints);
+                                children = [];
+                                val = child.value;
+                                break;
+                            }
+                            if (child.children.length > 0) {
+                                children = child.children;
+                                break;
+                            }
+                        }
+                    }
                 }
+
+                return constraints.map((l) => ({
+                    property: property,
+                    message: this.get(`request.${l}`)
+                        .replace('$property', property)
+                        .replace('$value', val)
+                }));
             }
         );
-        return messageErrors.flat(1);
+        return messageErrors.flat(1) as IErrors[];
     }
 }
