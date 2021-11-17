@@ -134,7 +134,7 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     @Response('auth.refresh')
     async refresh(@User() payload: Record<string, any>): Promise<IResponse> {
-        const { exp, nbf, iat, _id, ...others } = payload;
+        const { _id, rememberMe } = payload;
         const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
             _id,
             { populate: true }
@@ -157,14 +157,22 @@ export class AuthController {
             });
         }
 
+        const safe: UserLoginTransformer = await this.userService.mapLogin(
+            user
+        );
+        const newPayload: Record<string, any> = {
+            ...classToPlain(safe),
+            rememberMe
+        };
+
         const accessToken: string = await this.authService.createAccessToken(
-            others,
-            others.rememberMe
+            newPayload,
+            rememberMe
         );
 
         const refreshToken: string = await this.authService.createRefreshToken(
-            others,
-            others.rememberMe
+            newPayload,
+            rememberMe
         );
 
         return {

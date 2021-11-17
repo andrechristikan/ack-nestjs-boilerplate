@@ -12,7 +12,7 @@ import {
 } from '../permission.constant';
 
 @Injectable()
-export class PermissionGuard implements CanActivate {
+export class PermissionDefaultGuard implements CanActivate {
     constructor(private reflector: Reflector) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -25,9 +25,7 @@ export class PermissionGuard implements CanActivate {
 
         const { user } = context.switchToHttp().getRequest();
         const { role } = user;
-        const permissions = role.permissions
-            .filter((val: Record<string, any>) => val.isActive)
-            .map((val: Record<string, any>) => val.name);
+        const permissions = role.permissions;
 
         const hasPermission: boolean = requiredPermission.every((permission) =>
             permissions.includes(permission)

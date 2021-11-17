@@ -10,10 +10,7 @@ export class UserLoginTransformer {
     @Transform(
         ({ value }) => {
             const permissions: Record<string, any>[] = value.permissions.map(
-                (val: Record<string, any>) => ({
-                    name: val.name,
-                    isActive: val.isActive
-                })
+                (val: Record<string, any>) => val.name
             );
 
             return {
