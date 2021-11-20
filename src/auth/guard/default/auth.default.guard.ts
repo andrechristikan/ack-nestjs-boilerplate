@@ -26,7 +26,7 @@ export class AuthDefaultGuard implements CanActivate {
             throw new UnauthorizedException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GUARD_JWT_ACCESS_TOKEN_ERROR,
-                message: 'http.clientError.unauthorized'
+                message: 'auth.error.blocked'
             });
         }
 
