@@ -34,9 +34,9 @@ export class RoleController {
         private readonly roleService: RoleService
     ) {}
 
-    @Get('/list')
-    @AuthJwtGuard(ENUM_PERMISSIONS.ROLE_READ)
     @Response('role.findAll')
+    @AuthJwtGuard(ENUM_PERMISSIONS.ROLE_READ)
+    @Get('/list')
     async findAll(
         @Query(RequestValidationPipe)
         { page, perPage, sort }: RoleListValidation
@@ -66,9 +66,9 @@ export class RoleController {
         };
     }
 
-    @Post('/create')
-    @AuthJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_DELETE)
     @Response('role.create')
+    @AuthJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_DELETE)
+    @Post('/create')
     async create(
         @Body(RequestValidationPipe)
         { name, permissions }: RoleCreateValidation
@@ -111,9 +111,9 @@ export class RoleController {
         }
     }
 
-    @Delete('/delete/:_id')
-    @AuthJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_DELETE)
     @Response('role.delete')
+    @AuthJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_DELETE)
+    @Delete('/delete/:_id')
     async delete(@Param('_id') _id: string): Promise<void> {
         const role: RoleDocument = await this.roleService.findOneById<RoleDocument>(
             _id

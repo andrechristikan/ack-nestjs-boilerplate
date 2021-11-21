@@ -39,9 +39,9 @@ export class AuthController {
         private readonly loggerService: LoggerService
     ) {}
 
-    @Post('/login')
-    @HttpCode(HttpStatus.OK)
     @Response('auth.login', ENUM_AUTH_STATUS_CODE_SUCCESS.AUTH_LOGIN_SUCCESS)
+    @HttpCode(HttpStatus.OK)
+    @Post('/login')
     async login(
         @Body(RequestValidationPipe) data: AuthLoginValidation
     ): Promise<IResponse> {
@@ -129,10 +129,10 @@ export class AuthController {
         };
     }
 
-    @Post('/refresh')
+    @Response('auth.refresh')
     @AuthJwtRefreshGuard()
     @HttpCode(HttpStatus.OK)
-    @Response('auth.refresh')
+    @Post('/refresh')
     async refresh(@User() payload: Record<string, any>): Promise<IResponse> {
         const { _id, rememberMe } = payload;
         const user: IUserDocument = await this.userService.findOneById<IUserDocument>(

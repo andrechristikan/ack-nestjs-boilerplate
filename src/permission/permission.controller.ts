@@ -16,9 +16,9 @@ export class PermissionController {
         private readonly permissionService: PermissionService
     ) {}
 
-    @Get('/list')
-    @AuthJwtGuard(ENUM_PERMISSIONS.PERMISSION_READ)
     @Response('permission.findAll')
+    @AuthJwtGuard(ENUM_PERMISSIONS.PERMISSION_READ)
+    @Get('/list')
     async findAll(
         @Query(RequestValidationPipe)
         { page, perPage, sort, search }: PermissionListValidation

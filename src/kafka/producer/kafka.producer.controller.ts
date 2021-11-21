@@ -15,8 +15,8 @@ export class KafkaProducerController {
         private readonly kafkaProducerService: KafkaProducerService
     ) {}
 
-    @Get('/')
     @Response('kafka.produce')
+    @Get('/')
     async produce(): Promise<IResponse> {
         try {
             const kafka: IKafkaResponse = await this.kafkaProducerService.sendAwait(
@@ -42,8 +42,8 @@ export class KafkaProducerController {
         }
     }
 
-    @Get('/error')
     @Response('kafka.error.produce')
+    @Get('/error')
     async produceError(): Promise<IResponse> {
         try {
             const kafka: IKafkaResponse = await this.kafkaProducerService.sendAwait(

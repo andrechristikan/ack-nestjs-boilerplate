@@ -36,9 +36,9 @@ export class UserController {
         private readonly userService: UserService
     ) {}
 
-    @Get('/list')
-    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ)
     @ResponsePaging('user.findAll')
+    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ)
+    @Get('/list')
     async findAll(
         @Query(RequestValidationPipe)
         { page, perPage, sort, search }: UserListValidation
@@ -88,9 +88,9 @@ export class UserController {
         };
     }
 
-    @Get('/profile')
-    @AuthJwtGuard(ENUM_PERMISSIONS.PROFILE_READ)
     @Response('user.profile')
+    @AuthJwtGuard(ENUM_PERMISSIONS.PROFILE_READ)
+    @Get('/profile')
     async profile(@User('_id') _id: string): Promise<IResponse> {
         const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
             _id,
@@ -113,9 +113,9 @@ export class UserController {
         return this.userService.mapProfile(user);
     }
 
-    @Get('get/:_id')
-    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ)
     @Response('user.findOneById')
+    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ)
+    @Get('get/:_id')
     async findOneById(@Param('_id') _id: string): Promise<IResponse> {
         const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
             _id,
@@ -138,9 +138,9 @@ export class UserController {
         return user;
     }
 
-    @Post('/create')
-    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_CREATE)
     @Response('user.create')
+    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_CREATE)
+    @Post('/create')
     async create(
         @Body(RequestValidationPipe)
         data: UserCreateValidation
@@ -184,9 +184,9 @@ export class UserController {
         }
     }
 
-    @Delete('/delete/:_id')
-    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_DELETE)
     @Response('user.delete')
+    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_DELETE)
+    @Delete('/delete/:_id')
     async delete(@Param('_id') _id: string): Promise<void> {
         const check: UserDocument = await this.userService.findOneById<UserDocument>(
             _id
@@ -219,9 +219,9 @@ export class UserController {
         }
     }
 
-    @Put('/update/:_id')
-    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
     @Response('user.update')
+    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
+    @Put('/update/:_id')
     async update(
         @Param('_id') _id: string,
         @Body(RequestValidationPipe)
