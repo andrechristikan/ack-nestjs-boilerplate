@@ -8,8 +8,12 @@ export function KafkaRequest(
     topic: string,
     validation?: ClassConstructor<unknown>
 ): IAuthApplyDecorator {
-    return applyDecorators(
-        MessagePattern(topic, Transport.KAFKA),
-        validation ? UsePipes(RequestKafkaValidationPipe(validation)) : null
-    );
+    if (validation) {
+        return applyDecorators(
+            MessagePattern(topic, Transport.KAFKA),
+            UsePipes(RequestKafkaValidationPipe(validation))
+        );
+    }
+
+    return applyDecorators(MessagePattern(topic, Transport.KAFKA));
 }

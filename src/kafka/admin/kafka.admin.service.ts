@@ -33,15 +33,13 @@ export class KafkaAdminService implements OnModuleInit, OnModuleDestroy {
         this.name = KafkaAdminService.name;
 
         this.logger.log(`Starting ${this.name} ...`);
-        this.kafka = new Kafka({
-            clientId: this.kafkaOptions.clientId,
-            brokers: this.brokers
-        });
-
-        this.admin = this.kafka.admin();
-
         this.logger.log(`Brokers ${this.brokers.join(', ')}`);
         this.logger.log(`Topics ${this.topics.join(', ')}`);
+
+        this.kafka = new Kafka(this.kafkaOptions);
+
+        this.logger.log(`Connecting ${this.name} Admin ...`);
+        this.admin = this.kafka.admin();
     }
 
     async onModuleInit(): Promise<void> {
