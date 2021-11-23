@@ -55,7 +55,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
 export class SuccessException extends HttpException {
     constructor(
         data: Record<string, any> | string,
-        httpCode:
+        httpCode?:
             | HttpStatus.OK
             | HttpStatus.CREATED
             | HttpStatus.ACCEPTED
@@ -64,6 +64,6 @@ export class SuccessException extends HttpException {
             | HttpStatus.RESET_CONTENT
             | HttpStatus.PARTIAL_CONTENT
     ) {
-        super(data, httpCode);
+        super(data, httpCode || HttpStatus.OK);
     }
 }
