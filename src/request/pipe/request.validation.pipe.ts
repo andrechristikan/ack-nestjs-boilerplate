@@ -10,7 +10,7 @@ import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
-import { classToClass } from 'class-transformer';
+import { plainToClass } from 'class-transformer';
 import { AuthLoginValidation } from 'src/auth/validation/auth.login.validation';
 import { IErrors } from 'src/error/error.interface';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from '../request.constant';
@@ -33,7 +33,10 @@ export class RequestValidationPipe implements PipeTransform {
         }
 
         const classTransformer = new metatype(value);
-        const request = classToClass(classTransformer);
+        const request = plainToClass(metatype, {
+            ...classTransformer,
+            ...value
+        });
         this.debuggerService.info('Request Data', {
             class: 'RequestValidationPipe',
             function: 'transform',

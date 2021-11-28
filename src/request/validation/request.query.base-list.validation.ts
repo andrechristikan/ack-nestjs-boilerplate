@@ -69,7 +69,7 @@ export class RequestQueryBaseListValidation {
     @ValidateIf((e) => e.sort !== '')
     @Expose()
     @Transform(
-        ({ value, key, obj }) => {
+        ({ value, obj }) => {
             if (!value) {
                 value = obj._sort;
             }

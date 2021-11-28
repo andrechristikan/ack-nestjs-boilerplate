@@ -24,7 +24,6 @@ import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { RoleCreateValidation } from './validation/role.create.validation';
 import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe';
-import { Types } from 'mongoose';
 
 @Controller('/role')
 export class RoleController {
