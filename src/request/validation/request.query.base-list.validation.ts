@@ -1,4 +1,4 @@
-import { Expose, Transform } from 'class-transformer';
+import { Exclude, Expose, Transform } from 'class-transformer';
 import {
     IsString,
     IsOptional,
@@ -17,12 +17,19 @@ export class RequestQueryBaseListValidation {
         defaultPage?: number,
         defaultPerPage?: number
     ) {
-        const fieldSort: string = defaultSort.split('@')[0];
-        const typeSort: number = defaultSort.split('@')[1] === 'desc' ? -1 : 1;
-        this.sort = { [fieldSort]: typeSort };
-        this.page = defaultPage;
-        this.perPage = defaultPerPage;
+        this._sort = defaultSort;
+        this._page = defaultPage;
+        this._perPage = defaultPerPage;
     }
+
+    @Exclude()
+    readonly _sort: string;
+
+    @Exclude()
+    readonly _page: number;
+
+    @Exclude()
+    readonly _perPage: number;
 
     @IsString()
     @IsOptional()
@@ -38,8 +45,8 @@ export class RequestQueryBaseListValidation {
     @ValidateIf((e) => e.page !== '')
     @Expose()
     @Transform(
-        ({ value }) =>
-            value && !isNaN(value) ? parseInt(value) : DEFAULT_PAGE,
+        ({ value, obj }) =>
+            value && !isNaN(value) ? parseInt(value) : obj.page || DEFAULT_PAGE,
         { toClassOnly: true }
     )
     readonly page: number;
@@ -49,8 +56,10 @@ export class RequestQueryBaseListValidation {
     @ValidateIf((e) => e.perPage !== '')
     @Expose()
     @Transform(
-        ({ value }) =>
-            value && !isNaN(value) ? parseInt(value) : DEFAULT_PER_PAGE,
+        ({ value, obj }) =>
+            value && !isNaN(value)
+                ? parseInt(value)
+                : obj._perPage || DEFAULT_PER_PAGE,
         { toClassOnly: true }
     )
     readonly perPage: number;
@@ -60,9 +69,9 @@ export class RequestQueryBaseListValidation {
     @ValidateIf((e) => e.sort !== '')
     @Expose()
     @Transform(
-        ({ value }) => {
+        ({ value, key, obj }) => {
             if (!value) {
-                return undefined;
+                value = obj._sort;
             }
 
             const sort = value.split('@');
