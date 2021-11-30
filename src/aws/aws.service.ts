@@ -117,8 +117,12 @@ export class AwsService implements OnModuleInit {
             | Readable
             | ReadableStream
             | Blob,
-        path?: string
+        options?: Record<string, any>
     ): Promise<IAwsResponse> {
+        let path: string = options && options.path ? options.path : undefined;
+        const acl: string =
+            options && options.acl ? options.acl : 'public-read';
+
         if (path)
             path = path.startsWith('/') ? path.replace('/', '') : `${path}`;
 
@@ -130,7 +134,7 @@ export class AwsService implements OnModuleInit {
             Bucket: this.bucket,
             Key: key,
             Body: content,
-            ACL: 'public-read'
+            ACL: acl
         });
 
         await this.s3Client.send(command);

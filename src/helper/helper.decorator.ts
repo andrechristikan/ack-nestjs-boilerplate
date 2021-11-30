@@ -17,3 +17,137 @@ export function Image(field: string): IAuthApplyDecorator {
         UseInterceptors(FileInterceptor(field), HelperImageInterceptor)
     );
 }
+
+import {
+    registerDecorator,
+    ValidationOptions,
+    ValidationArguments
+} from 'class-validator';
+
+export function IsPasswordStrong(
+    minLength: number = 8,
+    validationOptions?: ValidationOptions
+) {
+    return function (object: Record<string, any>, propertyName: string): any {
+        registerDecorator({
+            name: 'IsPasswordStrong',
+            target: object.constructor,
+            propertyName: propertyName,
+            options: validationOptions,
+            constraints: [minLength],
+            validator: {
+                validate(value: any, args: ValidationArguments) {
+                    // At least one upper case English letter, (?=.*?[A-Z])
+                    // At least one lower case English letter, (?=.*?[a-z])
+                    // At least one digit, (?=.*?[0-9])
+                    // At least one special character, (?=.*?[#?!@$%^&*-])
+                    // Minimum eight in length .{8,} (with the anchors)
+                    if (typeof value !== 'string') {
+                        return false;
+                    }
+
+                    const [relatedPropertyName] = args.constraints;
+
+                    const regex = new RegExp(
+                        `^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{${relatedPropertyName},}$`
+                    );
+                    return regex.test(value);
+                }
+            }
+        });
+    };
+}
+
+export function IsPasswordMedium(
+    minLength: number = 8,
+    validationOptions?: ValidationOptions
+) {
+    return function (object: Record<string, any>, propertyName: string): any {
+        registerDecorator({
+            name: 'IsPasswordMedium',
+            target: object.constructor,
+            propertyName: propertyName,
+            options: validationOptions,
+            constraints: [minLength],
+            validator: {
+                validate(value: any, args: ValidationArguments) {
+                    // At least one upper case English letter, (?=.*?[A-Z])
+                    // At least one lower case English letter, (?=.*?[a-z])
+                    // At least one digit, (?=.*?[0-9])
+                    // Minimum eight in length .{8,} (with the anchors)
+                    if (typeof value !== 'string') {
+                        return false;
+                    }
+
+                    const [relatedPropertyName] = args.constraints;
+
+                    const regex = new RegExp(
+                        `^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9]).{${relatedPropertyName},}$`
+                    );
+                    return regex.test(value);
+                }
+            }
+        });
+    };
+}
+
+export function IsPasswordWeak(
+    minLength: number = 8,
+    validationOptions?: ValidationOptions
+) {
+    return function (object: Record<string, any>, propertyName: string): any {
+        registerDecorator({
+            name: 'IsPasswordWeak',
+            target: object.constructor,
+            propertyName: propertyName,
+            options: validationOptions,
+            constraints: [minLength],
+            validator: {
+                validate(password: any, args: ValidationArguments) {
+                    // At least one upper case English letter, (?=.*?[A-Z])
+                    // At least one lower case English letter, (?=.*?[a-z])
+                    // Minimum eight in length .{8,} (with the anchors)
+                    if (typeof password !== 'string') {
+                        return false;
+                    }
+
+                    const [relatedPropertyName] = args.constraints;
+
+                    const regex = new RegExp(
+                        `^(?=.*?[A-Z])(?=.*?[a-z]).{${relatedPropertyName},}$`
+                    );
+                    return regex.test(password);
+                }
+            }
+        });
+    };
+}
+
+export function IsStartWith(
+    prefix: string,
+    validationOptions?: ValidationOptions
+) {
+    return function (object: Record<string, any>, propertyName: string): any {
+        registerDecorator({
+            name: 'IsStartWith',
+            target: object.constructor,
+            propertyName: propertyName,
+            options: validationOptions,
+            constraints: [prefix],
+            validator: {
+                validate(value: any, args: ValidationArguments) {
+                    // At least one upper case English letter, (?=.*?[A-Z])
+                    // At least one lower case English letter, (?=.*?[a-z])
+                    // Minimum eight in length .{8,} (with the anchors)
+                    if (typeof value !== 'string') {
+                        return false;
+                    }
+
+                    const [relatedPropertyName] = args.constraints;
+
+                    return value.startsWith(relatedPropertyName);
+                }
+            }
+        });
+    };
+}
