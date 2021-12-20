@@ -13,6 +13,7 @@ import {
 } from 'src/permission/permission.constant';
 import { BasicGuard } from './guard/basic/auth.basic.guard';
 import { AuthDefaultGuard } from './guard/default/auth.default.guard';
+import { AuthExpiredGuard } from './guard/default/auth.expired.guard';
 import { JwtRefreshGuard } from './guard/jwt-refresh/auth.jwt-refresh.guard';
 import { JwtGuard } from './guard/jwt/auth.jwt.guard';
 
@@ -20,7 +21,12 @@ export function AuthJwtGuard(
     ...permissions: ENUM_PERMISSIONS[]
 ): IAuthApplyDecorator {
     return applyDecorators(
-        UseGuards(JwtGuard, PermissionDefaultGuard, AuthDefaultGuard),
+        UseGuards(
+            JwtGuard,
+            AuthExpiredGuard,
+            AuthDefaultGuard,
+            PermissionDefaultGuard
+        ),
         SetMetadata(PERMISSION_META_KEY, permissions)
     );
 }
