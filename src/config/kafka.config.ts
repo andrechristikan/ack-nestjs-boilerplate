@@ -10,7 +10,8 @@ export default registerAs(
         clientId: 'KAFKA_ACK_CLIENT_ID',
 
         admin: {
-            clientId: 'KAFKA_ADMIN_ACK_CLIENT_ID'
+            clientId: 'KAFKA_ADMIN_ACK_CLIENT_ID',
+            defaultPartition: 3
         }
     })
 );

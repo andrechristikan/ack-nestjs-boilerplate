@@ -16,6 +16,7 @@ export class KafkaAdminService implements OnModuleInit, OnModuleDestroy {
     private readonly name: string;
     private readonly clientId: string;
     private readonly kafkaOptions: KafkaConfig;
+    private readonly defaultPartition: number;
 
     protected logger = new Logger(KafkaAdminService.name);
 
@@ -31,6 +32,9 @@ export class KafkaAdminService implements OnModuleInit, OnModuleDestroy {
             brokers: this.brokers
         };
         this.name = KafkaAdminService.name;
+        this.defaultPartition = this.configService.get<number>(
+            'kafka.admin.defaultPartition'
+        );
 
         this.logger.log(`Starting ${this.name} ...`);
         this.logger.log(`Brokers ${this.brokers.join(', ')}`);
@@ -92,8 +96,8 @@ export class KafkaAdminService implements OnModuleInit, OnModuleDestroy {
             if (!currentTopic.includes(topic)) {
                 data.push({
                     topic,
-                    numPartitions: 3,
-                    replicationFactor: this.brokers.length >= 3 ? 3 : 1
+                    numPartitions: this.defaultPartition,
+                    replicationFactor: this.brokers.length
                 });
             }
         });
@@ -104,8 +108,8 @@ export class KafkaAdminService implements OnModuleInit, OnModuleDestroy {
             if (!currentTopic.includes(topic)) {
                 data.push({
                     topic,
-                    numPartitions: 3,
-                    replicationFactor: this.brokers.length >= 3 ? 3 : 1
+                    numPartitions: this.defaultPartition,
+                    replicationFactor: this.brokers.length
                 });
             }
         });

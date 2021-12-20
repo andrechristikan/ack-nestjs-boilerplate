@@ -352,7 +352,7 @@ Please see their official document.
 
     await app.listenAsync(port, host);
 
-    const kafka = await import('./kafka');
+    const kafka = await import('./kafka/kafka');
     await kafka.default(
         app,
         configService,
@@ -395,9 +395,23 @@ Please see their official document.
 
     ```
 
+    Then, make sure our topics was created or we can use auto create topics with `KafkaAdminModule`. `Partition` default value is 3 (we can change the value in config file), and `Replication Factor` default value is `count of our brokers`.
+
+    ```ts
+    // src/kafka/kafka.constant.ts
+
+    export const KAFKA_TOPICS = [
+      'nestjs.ack.success', // <<<---- Simply, add or remove some topics
+      'nestjs.ack.error'
+    ]; 
+
+    ```
+
     We can test `KafkaProducerModule` and `KafkaConsumerModule` with manual hit `/kafka/produce` endpoint.
 
     > Note: If we won't use kafka, simply we can delete `kafka folder` and remove `config in config/kafka.config.ts`
+
+
 
 6. Last step, run the project
 
