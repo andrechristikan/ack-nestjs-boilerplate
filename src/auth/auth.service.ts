@@ -68,11 +68,14 @@ export class AuthService {
         });
     }
 
-    async createRefreshToken(payload: Record<string, any>): Promise<string> {
+    async createRefreshToken(
+        payload: Record<string, any>,
+        test?: boolean
+    ): Promise<string> {
         return this.helperService.jwtCreateToken(payload, {
             secretKey: this.refreshTokenSecretToken,
             expiredIn: this.refreshTokenExpirationTime,
-            notBefore: this.refreshTokenNotBeforeExpirationTime
+            notBefore: test ? '0' : this.refreshTokenNotBeforeExpirationTime
         });
     }
 
