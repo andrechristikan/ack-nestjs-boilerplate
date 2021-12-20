@@ -4,7 +4,11 @@ import {
     Get,
     InternalServerErrorException
 } from '@nestjs/common';
-import { AuthBasicGuard } from 'src/auth/auth.decorator';
+import {
+    AuthBasicGuard,
+    AuthJwtGuard,
+    AuthJwtRefreshGuard
+} from 'src/auth/auth.decorator';
 import { ENUM_STATUS_CODE_ERROR } from 'src/error/error.constant';
 import { Response } from 'src/response/response.decorator';
 @Controller('/test')
@@ -39,10 +43,24 @@ export class AppController {
         });
     }
 
-    @Response('app.helloBasicToken')
+    @Response('app.basic')
     @AuthBasicGuard()
-    @Get('/hello-basic')
-    async helloBasicToken(): Promise<void> {
+    @Get('/basic')
+    async basic(): Promise<void> {
+        return;
+    }
+
+    @Response('app.auth')
+    @AuthJwtGuard()
+    @Get('/auth')
+    async auth(): Promise<void> {
+        return;
+    }
+
+    @Response('app.refresh')
+    @AuthJwtRefreshGuard()
+    @Get('/refresh')
+    async refresh(): Promise<void> {
         return;
     }
 }

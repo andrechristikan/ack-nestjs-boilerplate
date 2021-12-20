@@ -6,16 +6,15 @@ import { HelperService } from 'src/helper/helper.service';
 @Injectable()
 export class AuthService {
     private readonly accessTokenSecretToken: string;
-    private readonly accessTokenRememberMeExpirationTime: string;
-    private readonly accessTokenRememberMeNotBeforeExpirationTime: string;
     private readonly accessTokenExpirationTime: string;
     private readonly accessTokenNotBeforeExpirationTime: string;
 
     private readonly refreshTokenSecretToken: string;
-    private readonly refreshTokenRememberMeExpirationTime: string;
-    private readonly refreshTokenRememberMeNotBeforeExpirationTime: string;
     private readonly refreshTokenExpirationTime: string;
     private readonly refreshTokenNotBeforeExpirationTime: string;
+
+    private readonly rememberMeNotChecked: number;
+    private readonly rememberMeChecked: number;
 
     constructor(
         @Helper() private readonly helperService: HelperService,
@@ -23,12 +22,6 @@ export class AuthService {
     ) {
         this.accessTokenSecretToken = this.configService.get<string>(
             'auth.jwt.accessToken.secretKey'
-        );
-        this.accessTokenRememberMeExpirationTime = this.configService.get<string>(
-            'auth.jwt.accessToken.rememberMe.expirationTime'
-        );
-        this.accessTokenRememberMeNotBeforeExpirationTime = this.configService.get<string>(
-            'auth.jwt.accessToken.rememberMe.notBeforeExpirationTime'
         );
         this.accessTokenExpirationTime = this.configService.get<string>(
             'auth.jwt.accessToken.expirationTime'
@@ -40,32 +33,26 @@ export class AuthService {
         this.refreshTokenSecretToken = this.configService.get<string>(
             'auth.jwt.refreshToken.secretKey'
         );
-        this.refreshTokenRememberMeExpirationTime = this.configService.get<string>(
-            'auth.jwt.refreshToken.rememberMe.expirationTime'
-        );
-        this.refreshTokenRememberMeNotBeforeExpirationTime = this.configService.get<string>(
-            'auth.jwt.refreshToken.rememberMe.notBeforeExpirationTime'
-        );
         this.refreshTokenExpirationTime = this.configService.get<string>(
             'auth.jwt.refreshToken.expirationTime'
         );
         this.refreshTokenNotBeforeExpirationTime = this.configService.get<string>(
             'auth.jwt.refreshToken.notBeforeExpirationTime'
         );
+
+        this.rememberMeNotChecked = this.configService.get<number>(
+            'auth.jwt.rememberMe.notChecked'
+        );
+        this.rememberMeChecked = this.configService.get<number>(
+            'auth.jwt.rememberMe.checked'
+        );
     }
 
-    async createAccessToken(
-        payload: Record<string, any>,
-        rememberMe: boolean
-    ): Promise<string> {
+    async createAccessToken(payload: Record<string, any>): Promise<string> {
         return this.helperService.jwtCreateToken(payload, {
             secretKey: this.accessTokenSecretToken,
-            expiredIn: rememberMe
-                ? this.accessTokenRememberMeExpirationTime
-                : this.accessTokenExpirationTime,
-            notBefore: rememberMe
-                ? this.accessTokenRememberMeNotBeforeExpirationTime
-                : this.accessTokenNotBeforeExpirationTime
+            expiredIn: this.accessTokenExpirationTime,
+            notBefore: this.accessTokenNotBeforeExpirationTime
         });
     }
 
@@ -81,18 +68,11 @@ export class AuthService {
         });
     }
 
-    async createRefreshToken(
-        payload: Record<string, any>,
-        rememberMe: boolean
-    ): Promise<string> {
+    async createRefreshToken(payload: Record<string, any>): Promise<string> {
         return this.helperService.jwtCreateToken(payload, {
             secretKey: this.refreshTokenSecretToken,
-            expiredIn: rememberMe
-                ? this.refreshTokenRememberMeExpirationTime
-                : this.refreshTokenExpirationTime,
-            notBefore: rememberMe
-                ? this.refreshTokenRememberMeNotBeforeExpirationTime
-                : this.refreshTokenNotBeforeExpirationTime
+            expiredIn: this.refreshTokenExpirationTime,
+            notBefore: this.refreshTokenNotBeforeExpirationTime
         });
     }
 
@@ -134,5 +114,12 @@ export class AuthService {
             passwordString,
             passwordHash
         );
+    }
+
+    async rememberMeExpired(rememberMe: boolean): Promise<Date> {
+        const expired: number = rememberMe
+            ? this.rememberMeChecked
+            : this.rememberMeNotChecked;
+        return this.helperService.dateTimeForwardInDays(expired);
     }
 }

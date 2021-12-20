@@ -117,7 +117,6 @@ The features will spill on this section, please read secretly and keep silent ðŸ
   - [x] ProducerModule
   - [x] ConsumerModule
   - [x] AdminModule
-- [ ] Other Module** (Ongoing)
 
 [Welcome to request for other modules](issues-url)
 

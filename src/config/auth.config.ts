@@ -8,25 +8,20 @@ export default registerAs(
                 secretKey:
                     process.env.AUTH_JWT_ACCESS_TOKEN_SECRET_KEY || '123456',
                 expirationTime: '1d',
-                notBeforeExpirationTime: '0',
-
-                rememberMe: {
-                    expirationTime: '7d',
-                    notBeforeExpirationTime: '0'
-                }
+                notBeforeExpirationTime: '0'
             },
 
             refreshToken: {
                 secretKey:
                     process.env.AUTH_JWT_REFRESH_TOKEN_SECRET_KEY ||
                     '123456000',
-                expirationTime: '1d',
-                notBeforeExpirationTime: '1d',
+                expirationTime: '7d',
+                notBeforeExpirationTime: '1d' // 1d
+            },
 
-                rememberMe: {
-                    expirationTime: '7d',
-                    notBeforeExpirationTime: '7d'
-                }
+            rememberMe: {
+                notChecked: 1, // in days
+                checked: 2 // in days
             }
         },
 
