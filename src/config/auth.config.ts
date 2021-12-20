@@ -15,13 +15,13 @@ export default registerAs(
                 secretKey:
                     process.env.AUTH_JWT_REFRESH_TOKEN_SECRET_KEY ||
                     '123456000',
-                expirationTime: '7d',
+                expirationTime: '8d',
                 notBeforeExpirationTime: '1d' // 1d
             },
 
             rememberMe: {
-                notChecked: 1, // in days
-                checked: 2 // in days
+                notChecked: 7, // in days
+                checked: 30 // in days
             }
         },
 
