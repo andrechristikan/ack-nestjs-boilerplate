@@ -10,7 +10,7 @@ export default registerAs(
             port: parseInt(process.env.APP_PORT) || 3000
         },
 
-        debug: process.env.APP_DEBUG === 'true' ? true : false,
+        debug: process.env.APP_DEBUG === 'true' || false,
         debugger: {
             http: {
                 active: true,

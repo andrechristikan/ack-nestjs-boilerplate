@@ -66,6 +66,7 @@
     "@types/jest": "^27.0.2",
     "@types/mongoose": "5.10.3",
     "@types/morgan": "^1.9.2",
+    "@types/multer": "^1.4.7",
     "@types/node": "14.14.22",
     "@types/passport-jwt": "^3.0.3",
     "@types/passport-local": "^1.0.33",

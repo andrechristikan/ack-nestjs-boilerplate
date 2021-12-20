@@ -5,4 +5,5 @@ export type PermissionDocument = PermissionEntity & Document;
 
 export interface IPermissionCreate {
     name: string;
+    isActive?: boolean;
 }

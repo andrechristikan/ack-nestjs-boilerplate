@@ -52,7 +52,7 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
         };
 
         return {
-            DEBUGGER_HTTP_FORMAT,
+            debuggerHttpFormat: DEBUGGER_HTTP_FORMAT,
             HttpDebuggerOptions
         };
     }
@@ -64,7 +64,7 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
         ) {
             const config: IHttpDebuggerConfig = this.httpLogger();
             this.customToken();
-            morgan(config.DEBUGGER_HTTP_FORMAT, config.HttpDebuggerOptions)(
+            morgan(config.debuggerHttpFormat, config.HttpDebuggerOptions)(
                 req,
                 res,
                 next

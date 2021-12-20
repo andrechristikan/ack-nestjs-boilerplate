@@ -16,10 +16,10 @@ export class PermissionController {
         private readonly permissionService: PermissionService
     ) {}
 
-    @Response('permission.findAll')
+    @Response('permission.list')
     @AuthJwtGuard(ENUM_PERMISSIONS.PERMISSION_READ)
     @Get('/list')
-    async findAll(
+    async list(
         @Query(RequestValidationPipe)
         { page, perPage, sort, search }: PermissionListValidation
     ): Promise<IResponsePaging> {
@@ -45,9 +45,7 @@ export class PermissionController {
             }
         );
 
-        const totalData: number = await this.permissionService.getTotalData(
-            find
-        );
+        const totalData: number = await this.permissionService.getTotal(find);
         const totalPage: number = await this.paginationService.totalPage(
             totalData,
             perPage

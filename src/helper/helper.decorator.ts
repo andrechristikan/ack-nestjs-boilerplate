@@ -124,7 +124,7 @@ export function IsPasswordWeak(
 }
 
 export function IsStartWith(
-    prefix: string,
+    prefix: string[],
     validationOptions?: ValidationOptions
 ) {
     return function (object: Record<string, any>, propertyName: string): any {
@@ -136,16 +136,15 @@ export function IsStartWith(
             constraints: [prefix],
             validator: {
                 validate(value: any, args: ValidationArguments) {
-                    // At least one upper case English letter, (?=.*?[A-Z])
-                    // At least one lower case English letter, (?=.*?[a-z])
-                    // Minimum eight in length .{8,} (with the anchors)
                     if (typeof value !== 'string') {
                         return false;
                     }
 
                     const [relatedPropertyName] = args.constraints;
 
-                    return value.startsWith(relatedPropertyName);
+                    return relatedPropertyName.every((prf: string) =>
+                        value.startsWith(prf)
+                    );
                 }
             }
         });

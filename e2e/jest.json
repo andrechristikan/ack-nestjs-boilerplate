@@ -6,8 +6,8 @@
         "../"
     ],
     "testEnvironment": "node",
-    "testRegex": "../e2e/.*\\.(e2e-test|e2e-spec).(ts|tsx|js)$",
-    "collectCoverage": false,
+    "testRegex": "index.spec.ts",
+    "collectCoverage": true,
     "collectCoverageFrom" : ["../e2e/**/*.{js,jsx,tsx,ts}", "!**/src/**/*.{js,jsx,tsx,ts}", "!**/node_modules/**", "!**/vendor/**"],
     "coveragePathIgnorePatterns": [
         "../node_modules", 

@@ -2,8 +2,6 @@ import {
     BadRequestException,
     Controller,
     Get,
-    HttpCode,
-    HttpStatus,
     InternalServerErrorException
 } from '@nestjs/common';
 import { AuthBasicGuard } from 'src/auth/auth.decorator';
@@ -11,24 +9,24 @@ import { ENUM_STATUS_CODE_ERROR } from 'src/error/error.constant';
 import { Response } from 'src/response/response.decorator';
 @Controller('/test')
 export class AppController {
-    @Response('app.testHello')
+    @Response('app.hello')
     @Get('/hello')
-    async testHello(): Promise<void> {
+    async hello(): Promise<void> {
         return;
     }
 
-    @Response('app.testHello')
+    @Response('app.error')
     @Get('/error')
-    async testError(): Promise<void> {
+    async error(): Promise<void> {
         throw new BadRequestException({
             statusCode: ENUM_STATUS_CODE_ERROR.TEST_ERROR,
             message: 'app.error.default'
         });
     }
 
-    @Response('app.testHello')
+    @Response('app.errorData')
     @Get('/error-data')
-    async testErrorData(): Promise<void> {
+    async errorData(): Promise<void> {
         throw new InternalServerErrorException({
             statusCode: ENUM_STATUS_CODE_ERROR.TEST_ERROR,
             message: 'app.testErrorData',
@@ -41,12 +39,10 @@ export class AppController {
         });
     }
 
-    // HTTP STATUS MANIPULATE TO 201
-    @Response('app.testHelloBasicToken')
+    @Response('app.helloBasicToken')
     @AuthBasicGuard()
-    @HttpCode(HttpStatus.CREATED)
     @Get('/hello-basic')
-    async testHelloBasicToken(): Promise<void> {
+    async helloBasicToken(): Promise<void> {
         return;
     }
 }

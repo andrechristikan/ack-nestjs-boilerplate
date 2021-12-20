@@ -22,7 +22,8 @@ export class RoleEntity {
     permissions: Types.ObjectId[];
 
     @Prop({
-        required: true
+        required: true,
+        default: true
     })
     isActive: boolean;
 }

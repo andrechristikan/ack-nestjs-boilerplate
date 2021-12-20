@@ -1,4 +1,23 @@
+
+# Build dependencies
 node_modules/
 e2e-coverage/
 dist/
+
+# Logs
 logs/
+
+# Environment (contains sensitive data)
+.env*
+
+# Versioning and metadata
+.git
+.gitignore
+.dockerignore
+
+# Files not required for production
+.editorconfig
+Dockerfile
+README.md
+tslint.json
+nodemon.json

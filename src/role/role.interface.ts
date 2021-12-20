@@ -16,4 +16,5 @@ export interface IRoleFullDocument extends Omit<RoleEntity, 'permissions'> {
 export interface IRoleCreate {
     name: string;
     permissions: string[];
+    isActive?: boolean;
 }

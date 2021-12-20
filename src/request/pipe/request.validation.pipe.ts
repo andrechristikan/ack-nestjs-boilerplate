@@ -17,6 +17,8 @@ import { ENUM_REQUEST_STATUS_CODE_ERROR } from '../request.constant';
 import { PermissionListValidation } from 'src/permission/validation/permission.list.validation';
 import { RoleListValidation } from 'src/role/validation/role.list.validation';
 import { UserListValidation } from 'src/user/validation/user.list.validation';
+import { UserSignUpValidation } from 'src/user/validation/user.sign-up.validation';
+import { RoleCreateValidation } from 'src/role/validation/role.create.validation';
 
 export class RequestValidationPipe implements PipeTransform {
     constructor(
@@ -67,12 +69,14 @@ export class RequestValidationPipe implements PipeTransform {
 
     private toValidate(metatype: Record<string, any>): boolean {
         const types: Record<string, any>[] = [
+            UserListValidation,
             UserUpdateValidation,
             UserCreateValidation,
+            UserSignUpValidation,
             AuthLoginValidation,
             PermissionListValidation,
             RoleListValidation,
-            UserListValidation
+            RoleCreateValidation
         ];
         return types.includes(metatype);
     }

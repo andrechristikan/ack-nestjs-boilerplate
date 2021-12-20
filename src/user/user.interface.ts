@@ -18,3 +18,8 @@ export interface IUserCreate {
 }
 
 export type IUserUpdate = Pick<IUserCreate, 'firstName' | 'lastName'>;
+
+export interface IUserCheckExist {
+    email: boolean;
+    mobileNumber: boolean;
+}

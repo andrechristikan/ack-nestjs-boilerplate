@@ -12,56 +12,49 @@ export class RoleService {
         private readonly roleModel: Model<RoleDocument>
     ) {}
 
-    async findAll<T>(
+    async findAll(
         find?: Record<string, any>,
         options?: Record<string, any>
-    ): Promise<T[]> {
-        const findAll = this.roleModel
-            .find(find)
-            .skip(options && options.skip ? options.skip : 0);
-
-        if (options && options.limit) {
-            findAll.limit(options.limit);
+    ): Promise<RoleDocument[]> {
+        const roles = this.roleModel.find(find);
+        if (options && options.limit && options.skip) {
+            roles.limit(options.limit).skip(options.skip);
         }
 
         if (options && options.sort) {
-            findAll.sort(options.sort);
+            roles.sort(options.sort);
         }
 
-        if (options && options.populate) {
-            findAll.populate({
-                path: 'permissions',
-                model: PermissionEntity.name
-            });
-        }
-
-        return findAll.lean();
+        return roles.lean();
     }
 
-    async getTotalData(find?: Record<string, any>): Promise<number> {
+    async getTotal(find?: Record<string, any>): Promise<number> {
         return this.roleModel.countDocuments(find);
     }
 
-    async findOneById<T>(roleId: string, populate?: boolean): Promise<T> {
-        const role = this.roleModel.findById(roleId);
+    async findOneById<T>(
+        _id: string,
+        options?: Record<string, any>
+    ): Promise<T> {
+        const roles = this.roleModel.findById(_id);
 
-        if (populate) {
-            role.populate({
+        if (options && options.populate && options.populate.permission) {
+            roles.populate({
                 path: 'permissions',
                 model: PermissionEntity.name
             });
         }
 
-        return role.lean();
+        return roles.lean();
     }
 
     async findOne<T>(
         find?: Record<string, any>,
-        populate?: boolean
+        options?: Record<string, any>
     ): Promise<T> {
         const role = this.roleModel.findOne(find);
 
-        if (populate) {
+        if (options && options.populate && options.populate.permission) {
             role.populate({
                 path: 'permissions',
                 model: PermissionEntity.name
@@ -71,12 +64,15 @@ export class RoleService {
         return role.lean();
     }
 
-    async create({ name, permissions }: IRoleCreate): Promise<RoleDocument> {
-        const rPermissions = permissions.map((val) => new Types.ObjectId(val));
+    async create({
+        name,
+        permissions,
+        isActive
+    }: IRoleCreate): Promise<RoleDocument> {
         const create: RoleDocument = new this.roleModel({
-            name: name.toLowerCase(),
-            permissions: rPermissions,
-            isActive: true
+            name: name,
+            permissions: permissions.map((val) => new Types.ObjectId(val)),
+            isActive: isActive ? isActive : true
         });
 
         return create.save();
@@ -89,34 +85,18 @@ export class RoleService {
     }
 
     async deleteMany(find: Record<string, any>): Promise<boolean> {
-        return new Promise((resolve, reject) => {
-            this.roleModel
-                .deleteMany(find)
-                .then(() => {
-                    resolve(true);
-                })
-                .catch((err: any) => {
-                    reject(err);
-                });
-        });
+        await this.roleModel.deleteMany(find);
+        return true;
     }
 
     async createMany(data: IRoleCreate[]): Promise<boolean> {
-        const newData = data.map((val: IRoleCreate) => ({
-            name: val.name.toLowerCase(),
-            permissions: val.permissions.map((val) => new Types.ObjectId(val)),
-            isActive: true
-        }));
-
-        return new Promise((resolve, reject) => {
-            this.roleModel
-                .insertMany(newData)
-                .then(() => {
-                    resolve(true);
-                })
-                .catch((err: any) => {
-                    reject(err);
-                });
-        });
+        await this.roleModel.insertMany(
+            data.map(({ name, isActive, permissions }) => ({
+                name,
+                isActive: isActive ? isActive : true,
+                permissions: permissions.map((val) => Types.ObjectId(val))
+            }))
+        );
+        return true;
     }
 }

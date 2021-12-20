@@ -18,7 +18,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"firstName\": \"andre\",\n    \"lastName\": \"ck\",\n    \"mobileNumber\": \"6281219968822\",\n    \"password\": \"123456\",\n    \"role\": \"610381862553550acc7b1270\"\n}",
+									"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"firstName\": \"andre\",\n    \"lastName\": \"ck\",\n    \"mobileNumber\": \"6281321312212\",\n    \"password\": \"aa@AA123456\",\n    \"role\": \"61572e9b44c5132c14f6a5fe\"\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -26,9 +26,9 @@
 									}
 								},
 								"url": {
-									"raw": "{{base_url}}/user/create",
+									"raw": "{{baseUrl}}/user/create",
 									"host": [
-										"{{base_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
 										"user",
@@ -44,19 +44,19 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{base_url}}/user/get/:_id",
+									"raw": "{{baseUrl}}/user/get/:user",
 									"host": [
-										"{{base_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
 										"user",
 										"get",
-										":_id"
+										":user"
 									],
 									"variable": [
 										{
-											"key": "_id",
-											"value": null
+											"key": "user",
+											"value": "61c047c9567c3319208dbe87"
 										}
 									]
 								}
@@ -69,19 +69,19 @@
 								"method": "DELETE",
 								"header": [],
 								"url": {
-									"raw": "{{base_url}}/user/delete/:_id",
+									"raw": "{{baseUrl}}/user/delete/:user",
 									"host": [
-										"{{base_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
 										"user",
 										"delete",
-										":_id"
+										":user"
 									],
 									"variable": [
 										{
-											"key": "_id",
-											"value": null
+											"key": "user",
+											"value": "61c047c9567c3319208dbe87"
 										}
 									]
 								}
@@ -103,19 +103,19 @@
 									}
 								},
 								"url": {
-									"raw": "{{base_url}}/user/update/:_id",
+									"raw": "{{baseUrl}}/user/update/:user",
 									"host": [
-										"{{base_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
 										"user",
 										"update",
-										":_id"
+										":user"
 									],
 									"variable": [
 										{
-											"key": "_id",
-											"value": null
+											"key": "user",
+											"value": "61c047c9567c3319208dbe87"
 										}
 									]
 								}
@@ -128,12 +128,13 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{base_url}}/user?page=1&perPage=10&sort=name@asc&search",
+									"raw": "{{baseUrl}}/user/list?page=1&perPage=10&sort=name@asc&search",
 									"host": [
-										"{{base_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
-										"user"
+										"user",
+										"list"
 									],
 									"query": [
 										{
@@ -152,24 +153,6 @@
 											"key": "search",
 											"value": null
 										}
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "profile",
-							"request": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/user/profile",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"user",
-										"profile"
 									]
 								}
 							},
@@ -206,12 +189,13 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{base_url}}/role?page=1&perPage=10&sort=name@asc",
+									"raw": "{{baseUrl}}/role/list?page=1&perPage=10&sort=name@asc",
 									"host": [
-										"{{base_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
-										"role"
+										"role",
+										"list"
 									],
 									"query": [
 										{
@@ -232,13 +216,38 @@
 							"response": []
 						},
 						{
+							"name": "get",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/role/get/:role",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"role",
+										"get",
+										":role"
+									],
+									"variable": [
+										{
+											"key": "role",
+											"value": "61c0453924c48c16fa3f711a"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "create",
 							"request": {
 								"method": "POST",
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"name\": \"role1\",\n    \"permissions\": [\n        \"618412bc94c5845969a05a15\",\n        \"618412c394c5845969a05a16\"\n    ]\n}",
+									"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ]\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -246,9 +255,9 @@
 									}
 								},
 								"url": {
-									"raw": "{{base_url}}/role/create",
+									"raw": "{{baseUrl}}/role/create",
 									"host": [
-										"{{base_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
 										"role",
@@ -264,19 +273,19 @@
 								"method": "DELETE",
 								"header": [],
 								"url": {
-									"raw": "{{base_url}}/role/delete/:_id",
+									"raw": "{{baseUrl}}/role/delete/:role",
 									"host": [
-										"{{base_url}}"
+										"{{baseUrl}}"
 									],
 									"path": [
 										"role",
 										"delete",
-										":_id"
+										":role"
 									],
 									"variable": [
 										{
-											"key": "_id",
-											"value": null
+											"key": "role",
+											"value": "61c0453924c48c16fa3f711a"
 										}
 									]
 								}
@@ -293,7 +302,34 @@
 							"request": {
 								"method": "GET",
 								"header": [],
-								"url": null
+								"url": {
+									"raw": "{{baseUrl}}/permission/list?perPage=10&page=1&sort=name@asc&search=",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"permission",
+										"list"
+									],
+									"query": [
+										{
+											"key": "perPage",
+											"value": "10"
+										},
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "sort",
+											"value": "name@asc"
+										},
+										{
+											"key": "search",
+											"value": ""
+										}
+									]
+								}
 							},
 							"response": []
 						}
@@ -305,7 +341,7 @@
 				"bearer": [
 					{
 						"key": "token",
-						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MGNjOGRiNmVkMmQ4NDIxYjU0NzAwYjciLCJlbWFpbCI6ImFkbWluQG1haWwuY29tIiwiZmlyc3ROYW1lIjoiYWRtaW4iLCJsYXN0TmFtZSI6InRlc3QiLCJyb2xlIjoiYWRtaW4iLCJwZXJtaXNzaW9ucyI6WyJQZXJtaXNzaW9uQ3JlYXRlIiwiUGVybWlzc2lvbkRlbGV0ZSIsIlBlcm1pc3Npb25SZWFkIiwiUGVybWlzc2lvblVwZGF0ZSIsIlByb2ZpbGVSZWFkIiwiUHJvZmlsZVVwZGF0ZSIsIlJvbGVDcmVhdGUiLCJSb2xlRGVsZXRlIiwiUm9sZVJlYWQiLCJSb2xlVXBkYXRlIiwiVXNlckNyZWF0ZSIsIlVzZXJEZWxldGUiLCJVc2VyUmVhZCIsIlVzZXJVcGRhdGUiXSwiaWF0IjoxNjI4MjMxNTIyLCJleHAiOjE2MjgyMzUxMjJ9.oL6fg4DEWx4dA4y2mfpqhZszaVgR0UC-FLcsHYFq1Rc",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MTU3MmVhMDk1ZmEyNjJjMTU3YjIxNDMiLCJlbWFpbCI6ImFkbWluQG1haWwuY29tIiwibW9iaWxlTnVtYmVyIjoiMDgxMTExMTExMTEiLCJyb2xlIjp7Im5hbWUiOiJhZG1pbiIsInBlcm1pc3Npb25zIjpbIlBFUk1JU1NJT05fQ1JFQVRFIiwiUEVSTUlTU0lPTl9ERUxFVEUiLCJQRVJNSVNTSU9OX1JFQUQiLCJQRVJNSVNTSU9OX1VQREFURSIsIlBST0ZJTEVfUkVBRCIsIlBST0ZJTEVfVVBEQVRFIiwiUk9MRV9DUkVBVEUiLCJST0xFX0RFTEVURSIsIlJPTEVfUkVBRCIsIlJPTEVfVVBEQVRFIiwiVVNFUl9DUkVBVEUiLCJVU0VSX0RFTEVURSIsIlVTRVJfUkVBRCIsIlVTRVJfVVBEQVRFIl0sImlzQWN0aXZlIjp0cnVlfSwiaXNBY3RpdmUiOnRydWUsInJlbWVtYmVyTWUiOnRydWUsImlhdCI6MTYzOTk5MDMzOSwibmJmIjoxNjM5OTkwMzM5LCJleHAiOjE2NDA1OTUxMzl9.cma9xneTaIH_wDrdzNid9xQswRYle7wSwkU8qHmBDjk",
 						"type": "string"
 					}
 				]
@@ -352,9 +388,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{base_url}}/test/hello",
+							"raw": "{{baseUrl}}/test/hello",
 							"host": [
-								"{{base_url}}"
+								"{{baseUrl}}"
 							],
 							"path": [
 								"test",
@@ -385,9 +421,9 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/test/hello-basic",
+							"raw": "{{baseUrl}}/test/hello-basic",
 							"host": [
-								"{{base_url}}"
+								"{{baseUrl}}"
 							],
 							"path": [
 								"test",
@@ -410,24 +446,6 @@
 							"path": [
 								"test",
 								"error"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "error rewrite",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/test/error-rewrite",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"test",
-								"error-rewrite"
 							]
 						}
 					},
@@ -491,6 +509,57 @@
 			]
 		},
 		{
+			"name": "profile",
+			"item": [
+				{
+					"name": "profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/user/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"user",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "upload",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/Users/andrechristikan/Downloads/snowshoe.jpg"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/user/upload",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"user",
+								"upload"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "login",
 			"request": {
 				"method": "POST",
@@ -540,6 +609,33 @@
 					"path": [
 						"auth",
 						"refresh"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "sign up",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/user/sign-up",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"user",
+						"sign-up"
 					]
 				}
 			},

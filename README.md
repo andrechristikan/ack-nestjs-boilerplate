@@ -44,7 +44,7 @@
 <div align="center">
 	<hr>
 	<h1> ###### IMPORTANT ###### </h1>
-	<h2> ##### LAST UPDATE README ON 18 OCT 2021 ( ONGOING) ##### </h2>
+	<h2> ##### LAST UPDATE README ON 20 DEC 2021 ( ONGOING) ##### </h2>
   <h4>There huge differences between USAGE.md Documentation and source code after KafkaModule added, <a href="https://github.com/andrechristikan/ack-nestjs-mongoose/commits/main">Click here to check</a> </h4>
 
   <hr>
@@ -60,6 +60,7 @@ ACK will provide JWT (Json Web Token) Implementation 🔐 (Access Token and Refr
 Also provide KafkaModule 🔥, Consumer, and Producer.
 
 ## Prerequisites
+
 We assume that all people are coming to here is `Programmer with intermediate knowledge` and also we need to understanding more knowledge before we start to reduce knowledge gaps.
 
 * Understood [ExpressJs Fundamental](expressjs-url), NodeJs Base Framework. It will help we to understand how the NestJs works.
@@ -68,6 +69,7 @@ We assume that all people are coming to here is `Programmer with intermediate kn
 * Understand what is and how NoSql works as a Database, specially [MongoDB](#acknowledgements).
 
 ## Build With
+
 * [NestJs](nestjs-url) v7.6.11
 * [Mongoose](mongoose-url) v5.11.14
 * [MongoDB](mongodb-url) v4.4.0
@@ -76,6 +78,7 @@ We assume that all people are coming to here is `Programmer with intermediate kn
 * [Kafka](kafka-url) v2.8.0
 
 ## Features
+
 The features will spill on this section, please read secretly and keep silent 🤫 🤫
 
 - [x] Centralize Configuration
@@ -94,6 +97,7 @@ The features will spill on this section, please read secretly and keep silent �
 - [x] Custom Status Code for Each Error and Success Request
 
 #### Modules
+
 - [x] AppModule - MainModule
 - [x] AuthModule
 - [x] AwsModule - S3 Implementation
@@ -118,6 +122,7 @@ The features will spill on this section, please read secretly and keep silent �
 [Welcome to request for other modules](issues-url)
 
 #### Middleware
+
 - [x] Rate Limit
 - [x] Compression
 - [x] Helmet
@@ -125,6 +130,7 @@ The features will spill on this section, please read secretly and keep silent �
 - [x] BodyParser
 
 #### Example
+
 - [x] Simple Test, and Error Test
 - [x] Simple CRUD
 - [x] Server Side Pagination
@@ -133,25 +139,29 @@ The features will spill on this section, please read secretly and keep silent �
 - [x] Basic Auth Implementation
 - [x] Login
 - [x] Block User, Block Role, and Block Permissions
-- [ ] Sign Up
-- [ ] Upload Image into AWS S3
+- [x] Sign Up
+- [x] Upload Image into AWS S3
 - [x] Kafka Consume and Produce Message
 - [x] Mongoose Population and Deep Population
 
 #### Todo
+
 - [ ] Update version NestJs
 - [ ] Unit Test and E2E Test
-- [ ] Update Performance ( Code quality and maybe change to fastify)
 - [ ] Update Documentation
+- [ ] Update Performance
 
 ## Endpoints
+
 All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [Follow this step for import into Postman](postman-import-endpoint)
 
 ## Getting Started
+
 Before we start, we need to install :
+
 - [NodeJs](nodejs-url) (Suggest LTS Version),
 - [MongoDB](mongodb-url) (Suggest LTS Version), and
-- **Optional**, [Kafka Apache](kafka-url) (Suggest LTS Version). 
+- **Optional**, [Kafka Apache](kafka-url) (Suggest LTS Version).
 
 Please see their official document.
 
@@ -159,7 +169,9 @@ Please see their official document.
 > Go install kafka with virtual machine or docker.
 
 #### Make sure that we don't get any error after installation, open our terminal and follow this instruction
-1. Check NodeJs is successful installed in our OS. 
+
+1. Check NodeJs is successful installed in our OS.
+
     ```sh
     node --version
 
@@ -168,6 +180,7 @@ Please see their official document.
     ```
 
 2. Check package manager is running, with yarn
+
     ```sh
     yarn --version
 
@@ -176,6 +189,7 @@ Please see their official document.
     ```
 
     with npm
+
     ```sh
     npm --version
 
@@ -184,6 +198,7 @@ Please see their official document.
     ```
 
 3. Check MongoDB
+
     ```sh
     mongod --version
 
@@ -192,6 +207,7 @@ Please see their official document.
     ```
 
 4. **Optional**, Kafka
+
     ```sh
     kafka-topics --version
 
@@ -200,22 +216,27 @@ Please see their official document.
     ```
 
 #### Clone repo, and install all dependencies.
+
 1. Clone
+
     ```sh
     git clone https://github.com/andrechristikan/ack-nestjs-mongoose
     ```
 
 2. Go to into dir
+
     ```sh
     cd ack-nestjs-mongoose
     ```
 
 3. Install dependencies
+
     ```sh
     yarn
     ```
 
     with npm
+
     ```sh
     npm i
     ```
@@ -223,11 +244,13 @@ Please see their official document.
 #### Setting up the project
 
 1. Build our Env based on `.env.example` file.
+
     ```sh
     cp .env.example .env
     ```
 
     and then we need to adjust with our env
+
     ```env
     APP_ENV=development
     APP_HOST=localhost
@@ -277,45 +300,53 @@ Please see their official document.
 3. We need to Migration Role and Permission for first usage
 
     - Fresh migrate
+
       ```sh
       yarn migrate
       ```
 
       with npm
+
       ```sh
       npm run migrate
       ```
 
     - Rollback migrate
+
       ```sh
       yarn migrate:rollback
       ```
 
       with npm
+
       ```sh
       npm run migrate:rollback
       ```
 
-4.  <strong> *** PLEASE SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET *** </strong>. 
+4.  <strong> *** SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET *** </strong>. 
 
     Make sure we do the correct step. Go run `TestModule` and make sure all test passed with success status.
 
     - Run Unit Testing
+
       ```sh
       yarn test
       ```
 
       with npm
+
       ```sh
       npm run test
       ```
 
     - Run E2E Testing
+
       ```sh
       yarn test:e2e
       ```
 
       with npm
+
       ```sh
       npm run test:e2e
       ```
@@ -359,7 +390,7 @@ Please see their official document.
         ...
 
         SeedsModule,
-        KafkaAdminModule, // <<<---- Optional, add this if we want to create custom partition and partition replication
+        KafkaAdminModule, // <<<---- Add this
         KafkaProducerModule, // <<<---- Add this
         KafkaConsumerModule, // <<<---- Add this
 
@@ -379,22 +410,24 @@ Please see their official document.
     > Note: If we won't use kafka, simply we can delete `kafka folder` and remove `config in config/kafka.config.ts`
 
 6. Last step, run the project
+
     ```sh
     yarn start:dev
     ```
 
     with npm
+
     ```sh
     npm run start:dev
     ```
 
-Congrats !!! Cheers 🍻🍻, our project is running well. Now we can use all features.
+Cheers 🍻🍻 !!! our project is running well. Now we can use all features.
 
-Go install or open `REST Client` you prefer. In this case, let assume we use [Postman Client](postman-url). 
+Then go install or open `REST Client`. In this case, let assume we use [Postman Client](postman-url).
 After installation, we need to import all endpoint into postman, [see this instruction](#endpoints).
 
-
 ## Usage
+
 Documents usage will has difference file. Document will put in [USAGE.md](usage-url)
 
 ## License

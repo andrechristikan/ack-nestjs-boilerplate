@@ -50,7 +50,12 @@ export class AuthController {
             {
                 email: data.email
             },
-            { populate: true }
+            {
+                populate: {
+                    role: true,
+                    permission: true
+                }
+            }
         );
 
         if (!user) {
@@ -72,12 +77,12 @@ export class AuthController {
 
             throw new UnauthorizedException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE,
-                message: 'http.clientError.unauthorized'
+                message: 'auth.error.inactive'
             });
         } else if (!user.role.isActive) {
             throw new ForbiddenException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE,
-                message: 'http.clientError.forbidden'
+                message: 'role.error.inactive'
             });
         }
 
@@ -137,7 +142,12 @@ export class AuthController {
         const { _id, rememberMe } = payload;
         const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
             _id,
-            { populate: true }
+            {
+                populate: {
+                    role: true,
+                    permission: true
+                }
+            }
         );
 
         if (!user.isActive) {

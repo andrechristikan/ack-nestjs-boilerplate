@@ -15,12 +15,11 @@ export class PermissionService {
         find?: Record<string, any>,
         options?: Record<string, any>
     ): Promise<PermissionDocument[]> {
-        const findAll = this.permissionModel
-            .find(find)
-            .skip(options && options.skip ? options.skip : 0);
-
-        if (options && options.limit) {
-            findAll.limit(options.limit);
+        const findAll = this.permissionModel.find(find);
+        if (options && options.limit && options.skip) {
+            findAll
+                .limit(options.limit)
+                .skip(options && options.skip ? options.skip : 0);
         }
 
         if (options && options.sort) {
@@ -34,38 +33,22 @@ export class PermissionService {
         return this.permissionModel.findOne(find).lean();
     }
 
-    async getTotalData(find?: Record<string, any>): Promise<number> {
+    async getTotal(find?: Record<string, any>): Promise<number> {
         return this.permissionModel.countDocuments(find);
     }
 
     async deleteMany(find: Record<string, any>): Promise<boolean> {
-        return new Promise((resolve, reject) => {
-            this.permissionModel
-                .deleteMany(find)
-                .then(() => {
-                    resolve(true);
-                })
-                .catch((err: any) => {
-                    reject(err);
-                });
-        });
+        await this.permissionModel.deleteMany(find);
+        return true;
     }
 
     async createMany(data: IPermissionCreate[]): Promise<boolean> {
-        const newData = data.map((val: IPermissionCreate) => ({
-            name: val.name,
-            isActive: true
-        }));
-
-        return new Promise((resolve, reject) => {
-            this.permissionModel
-                .insertMany(newData)
-                .then(() => {
-                    resolve(true);
-                })
-                .catch((err: any) => {
-                    reject(err);
-                });
-        });
+        await this.permissionModel.insertMany(
+            data.map(({ isActive, name }) => ({
+                name,
+                isActive: isActive ? isActive : true
+            }))
+        );
+        return true;
     }
 }

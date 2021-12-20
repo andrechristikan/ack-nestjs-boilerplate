@@ -6,10 +6,9 @@ import {
     UserDocument,
     IUserDocument,
     IUserCreate,
-    IUserUpdate
+    IUserUpdate,
+    IUserCheckExist
 } from 'src/user/user.interface';
-import { MessageService } from 'src/message/message.service';
-import { Message } from 'src/message/message.decorator';
 import { RoleEntity } from 'src/role/role.schema';
 import { PermissionEntity } from 'src/permission/permission.schema';
 import { Types } from 'mongoose';
@@ -19,47 +18,42 @@ import { UserLoginTransformer } from './transformer/user.login.transformer';
 import { Helper } from 'src/helper/helper.decorator';
 import { HelperService } from 'src/helper/helper.service';
 import { IErrors } from 'src/error/error.interface';
+import { IAwsResponse } from 'src/aws/aws.interface';
+import { UserListValidation } from './validation/user.list.validation';
+import { UserListTransformer } from './transformer/user.list.transformer';
+import { UserGetTransformer } from './transformer/user.get.tranformer';
 
 @Injectable()
 export class UserService {
     constructor(
         @InjectModel(UserEntity.name)
         private readonly userModel: Model<UserDocument>,
-        @Helper() private readonly helperService: HelperService,
-        @Message() private readonly messageService: MessageService
+        @Helper() private readonly helperService: HelperService
     ) {}
 
-    async findAll<T>(
+    async findAll(
         find?: Record<string, any>,
         options?: Record<string, any>
-    ): Promise<T[]> {
-        const findAll = this.userModel
-            .find(find)
-            .skip(options && options.skip ? options.skip : 0);
+    ): Promise<IUserDocument[]> {
+        const users = this.userModel.find(find).populate({
+            path: 'role',
+            model: RoleEntity.name
+        });
 
-        if (options && options.limit) {
-            findAll.limit(options.limit);
+        if (options && options.limit && options.skip) {
+            users
+                .limit(options.limit)
+                .skip(options && options.skip ? options.skip : 0);
         }
 
         if (options && options.sort) {
-            findAll.sort(options.sort);
+            users.sort(options.sort);
         }
 
-        if (options && options.populate) {
-            findAll.populate({
-                path: 'role',
-                model: RoleEntity.name,
-                populate: {
-                    path: 'permissions',
-                    model: PermissionEntity.name
-                }
-            });
-        }
-
-        return findAll.lean();
+        return users.lean();
     }
 
-    async getTotalData(find?: Record<string, any>): Promise<number> {
+    async getTotal(find?: Record<string, any>): Promise<number> {
         return this.userModel.countDocuments(find);
     }
 
@@ -71,21 +65,36 @@ export class UserService {
         return plainToClass(UserLoginTransformer, data);
     }
 
+    async mapList(data: IUserDocument[]): Promise<UserListTransformer[]> {
+        return plainToClass(UserListTransformer, data);
+    }
+
+    async mapGet(data: IUserDocument): Promise<UserGetTransformer> {
+        return plainToClass(UserGetTransformer, data);
+    }
+
     async findOneById<T>(
         _id: string,
         options?: Record<string, any>
     ): Promise<T> {
         const user = this.userModel.findById(_id);
 
-        if (options && options.populate) {
+        if (options && options.populate && options.populate.role) {
             user.populate({
                 path: 'role',
-                model: RoleEntity.name,
-                populate: {
-                    path: 'permissions',
-                    model: PermissionEntity.name
-                }
+                model: RoleEntity.name
             });
+
+            if (options.populate.permission) {
+                user.populate({
+                    path: 'role',
+                    model: RoleEntity.name,
+                    populate: {
+                        path: 'permissions',
+                        model: PermissionEntity.name
+                    }
+                });
+            }
         }
 
         return user.lean();
@@ -97,15 +106,22 @@ export class UserService {
     ): Promise<T> {
         const user = this.userModel.findOne(find);
 
-        if (options && options.populate) {
+        if (options && options.populate && options.populate.role) {
             user.populate({
                 path: 'role',
-                model: RoleEntity.name,
-                populate: {
-                    path: 'permissions',
-                    model: PermissionEntity.name
-                }
+                model: RoleEntity.name
             });
+
+            if (options.populate.permission) {
+                user.populate({
+                    path: 'role',
+                    model: RoleEntity.name,
+                    populate: {
+                        path: 'permissions',
+                        model: PermissionEntity.name
+                    }
+                });
+            }
         }
 
         return user.lean();
@@ -125,26 +141,23 @@ export class UserService {
             salt
         );
 
-        const newUser: UserEntity = {
-            firstName: firstName.toLowerCase(),
-            email: email.toLowerCase(),
-            mobileNumber: mobileNumber,
+        const user: UserEntity = {
+            firstName,
+            email,
+            mobileNumber,
             password: passwordHash,
             role: new Types.ObjectId(role),
-            isActive: true
+            isActive: true,
+            lastName: lastName || undefined
         };
 
-        if (lastName) {
-            newUser.lastName = lastName.toLowerCase();
-        }
-
-        const create: UserDocument = new this.userModel(newUser);
+        const create: UserDocument = new this.userModel(user);
         return create.save();
     }
 
     async deleteOneById(_id: string): Promise<boolean> {
         try {
-            this.userModel.deleteOne({
+            await this.userModel.deleteOne({
                 _id: new Types.ObjectId(_id)
             });
             return true;
@@ -157,25 +170,22 @@ export class UserService {
         _id: string,
         { firstName, lastName }: IUserUpdate
     ): Promise<UserDocument> {
-        return this.userModel.updateOne(
-            {
-                _id: new Types.ObjectId(_id)
-            },
-            {
-                firstName: firstName.toLowerCase(),
-                lastName: lastName.toLowerCase()
-            }
-        );
+        const user: UserDocument = await this.userModel.findById(_id);
+
+        user.firstName = firstName;
+        user.lastName = lastName || undefined;
+
+        return user.save();
     }
 
     async checkExist(
         email: string,
         mobileNumber: string,
         _id?: string
-    ): Promise<IErrors[]> {
+    ): Promise<IUserCheckExist> {
         const existEmail: UserDocument = await this.userModel
             .findOne({
-                email: email
+                email
             })
             .where('_id')
             .ne(new Types.ObjectId(_id))
@@ -183,29 +193,16 @@ export class UserService {
 
         const existMobileNumber: UserDocument = await this.userModel
             .findOne({
-                mobileNumber: mobileNumber
+                mobileNumber
             })
             .where('_id')
             .ne(new Types.ObjectId(_id))
             .lean();
 
-        const errors: IErrors[] = [];
-        if (existEmail) {
-            errors.push({
-                message: this.messageService.get('user.error.emailExist'),
-                property: 'email'
-            });
-        }
-        if (existMobileNumber) {
-            errors.push({
-                message: this.messageService.get(
-                    'user.error.mobileNumberExist'
-                ),
-                property: 'mobileNumber'
-            });
-        }
-
-        return errors;
+        return {
+            email: existEmail ? true : false,
+            mobileNumber: existMobileNumber ? true : false
+        };
     }
 
     async deleteMany(find: Record<string, any>): Promise<boolean> {
@@ -215,5 +212,16 @@ export class UserService {
         } catch (e: unknown) {
             return false;
         }
+    }
+
+    async updatePhoto(_id: string, aws: IAwsResponse): Promise<UserDocument> {
+        const user: UserDocument = await this.userModel.findById(_id);
+        user.photo = aws;
+
+        return user.save();
+    }
+
+    async createRandomFilename(): Promise<string> {
+        return this.helperService.randomString(20);
     }
 }

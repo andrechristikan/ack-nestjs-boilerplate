@@ -5,13 +5,12 @@ import {
     IsEmail,
     MaxLength,
     MinLength,
-    IsMongoId,
     IsOptional,
     ValidateIf
 } from 'class-validator';
 import { IsPasswordStrong, IsStartWith } from 'src/helper/helper.decorator';
 
-export class UserCreateValidation {
+export class UserSignUpValidation {
     @IsEmail()
     @IsNotEmpty()
     @MaxLength(100)
@@ -51,10 +50,6 @@ export class UserCreateValidation {
     @MaxLength(13)
     @IsStartWith(['628'])
     readonly mobileNumber: string;
-
-    @IsNotEmpty()
-    @IsMongoId()
-    readonly role: string;
 
     @IsNotEmpty()
     @IsPasswordStrong()

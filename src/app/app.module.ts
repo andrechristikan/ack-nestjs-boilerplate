@@ -30,7 +30,8 @@ import { PermissionModule } from 'src/permission/permission.module';
             load: Configs,
             ignoreEnvFile: false,
             isGlobal: true,
-            cache: true
+            cache: true,
+            envFilePath: '.env'
         }),
         WinstonModule.forRootAsync({
             inject: [DebuggerService],

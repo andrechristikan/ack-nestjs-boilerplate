@@ -26,10 +26,6 @@ export class RoleSeed {
         const permissions: PermissionDocument[] = await this.permissionService.findAll(
             {
                 name: { $in: Object.keys(ENUM_PERMISSIONS) }
-            },
-            {
-                limit: 20,
-                skip: 0
             }
         );
 
@@ -59,6 +55,10 @@ export class RoleSeed {
                 {
                     name: 'admin',
                     permissions: permissionsMap
+                },
+                {
+                    name: 'user',
+                    permissions: []
                 }
             ]);
 

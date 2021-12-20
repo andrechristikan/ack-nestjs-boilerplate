@@ -1,11 +1,12 @@
 import { Exclude, Transform } from 'class-transformer';
+import { IAwsResponse } from 'src/aws/aws.interface';
 import { IRoleFullDocument } from 'src/role/role.interface';
 
 export class UserLoginTransformer {
     @Transform(({ value }) => {
         return `${value}`;
     })
-    _id: string;
+    readonly _id: string;
 
     @Transform(
         ({ value }) => {
@@ -15,28 +16,33 @@ export class UserLoginTransformer {
 
             return {
                 name: value.name,
-                permissions: permissions
+                permissions: permissions,
+                isActive: value.isActive
             };
         },
         { toClassOnly: true }
     )
-    role: IRoleFullDocument;
+    readonly role: IRoleFullDocument;
 
-    email: string;
-    mobileNumber: string;
-
-    @Exclude()
-    firstName: string;
+    readonly email: string;
+    readonly mobileNumber: string;
+    readonly isActive: boolean;
 
     @Exclude()
-    lastName: string;
+    readonly firstName: string;
 
     @Exclude()
-    password: string;
+    readonly lastName: string;
 
     @Exclude()
-    createdAt: Date;
+    readonly photo?: IAwsResponse;
 
     @Exclude()
-    updatedAt: Date;
+    readonly password: string;
+
+    @Exclude()
+    readonly createdAt: Date;
+
+    @Exclude()
+    readonly updatedAt: Date;
 }

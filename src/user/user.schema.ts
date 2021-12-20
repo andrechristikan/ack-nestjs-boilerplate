@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
+import { IAwsResponse } from 'src/aws/aws.interface';
 import { RoleEntity } from 'src/role/role.schema';
 
 @Schema({ timestamps: true, versionKey: false })
@@ -54,6 +55,19 @@ export class UserEntity {
         default: true
     })
     isActive: boolean;
+
+    @Prop({
+        required: false,
+        type: {
+            path: String,
+            path_with_filename: String,
+            filename: String,
+            completed_url: String,
+            base_url: String,
+            mime: String
+        }
+    })
+    photo?: IAwsResponse;
 }
 
 export const UserDatabaseName = 'users';

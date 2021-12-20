@@ -10,10 +10,15 @@ import {
     ENUM_PERMISSION_STATUS_CODE_ERROR,
     PERMISSION_META_KEY
 } from '../permission.constant';
+import { Debugger } from 'src/debugger/debugger.decorator';
+import { Logger as DebuggerService } from 'winston';
 
 @Injectable()
 export class PermissionDefaultGuard implements CanActivate {
-    constructor(private reflector: Reflector) {}
+    constructor(
+        @Debugger() private readonly debuggerService: DebuggerService,
+        private reflector: Reflector
+    ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredPermission: ENUM_PERMISSIONS[] = this.reflector.getAllAndOverride<
@@ -32,6 +37,11 @@ export class PermissionDefaultGuard implements CanActivate {
         );
 
         if (!hasPermission) {
+            this.debuggerService.error('Permission not has permission', {
+                class: 'PermissionDefaultGuard',
+                function: 'canActivate'
+            });
+
             throw new ForbiddenException({
                 statusCode:
                     ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_GUARD_INVALID_ERROR,

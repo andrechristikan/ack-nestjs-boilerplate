@@ -11,7 +11,8 @@ export class PermissionEntity {
     name: string;
 
     @Prop({
-        required: true
+        required: true,
+        default: true
     })
     isActive: boolean;
 }

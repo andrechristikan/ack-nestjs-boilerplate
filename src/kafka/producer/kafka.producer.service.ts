@@ -60,26 +60,6 @@ export class KafkaProducerService
             headers: headers || {}
         };
 
-        this.kafka.send(topic, request).toPromise();
-
-        return;
-    }
-
-    async sendAwait(
-        topic: string,
-        data: Record<string, string>,
-        headers?: Record<string, string>
-    ): Promise<IKafkaResponse> {
-        if (this.testingMode) {
-            return;
-        }
-
-        const request: IKafkaRequest<Record<string, string>> = {
-            key: await this.createId(),
-            value: data,
-            headers: headers || {}
-        };
-
         return this.kafka.send(topic, request).toPromise();
     }
 

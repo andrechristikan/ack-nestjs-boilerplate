@@ -6,7 +6,7 @@ export interface IHttpDebuggerConfigOptions {
 }
 
 export interface IHttpDebuggerConfig {
-    readonly DEBUGGER_HTTP_FORMAT: string;
+    readonly debuggerHttpFormat: string;
     readonly HttpDebuggerOptions: IHttpDebuggerConfigOptions;
 }
 

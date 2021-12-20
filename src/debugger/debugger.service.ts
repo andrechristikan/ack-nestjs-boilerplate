@@ -44,13 +44,13 @@ export class DebuggerService {
         if (logger) {
             transports.push(configTransportError);
             transports.push(configTransportDefault);
-        }
 
-        transports.push(
-            new winston.transports.Console({
-                silent: !logger
-            })
-        );
+            transports.push(
+                new winston.transports.Console({
+                    silent: !logger
+                })
+            );
+        }
 
         const loggerOptions: IDebuggerOptions = {
             format: winston.format.combine(

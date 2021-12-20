@@ -20,12 +20,12 @@ export default registerAs(
                 secretKey:
                     process.env.AUTH_JWT_REFRESH_TOKEN_SECRET_KEY ||
                     '123456000',
-                expirationTime: '2d',
-                notBeforeExpirationTime: '0',
+                expirationTime: '1d',
+                notBeforeExpirationTime: '1d',
 
                 rememberMe: {
-                    expirationTime: '9d',
-                    notBeforeExpirationTime: '0'
+                    expirationTime: '7d',
+                    notBeforeExpirationTime: '7d'
                 }
             }
         },

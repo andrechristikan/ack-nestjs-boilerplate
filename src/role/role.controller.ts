@@ -5,8 +5,6 @@ import {
     Delete,
     Get,
     InternalServerErrorException,
-    NotFoundException,
-    Param,
     Post,
     Query
 } from '@nestjs/common';
@@ -14,7 +12,7 @@ import { AuthJwtGuard } from 'src/auth/auth.decorator';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { RoleService } from './role.service';
 import { PaginationService } from 'src/pagination/pagination.service';
-import { RoleDocument } from './role.interface';
+import { IRoleDocument, RoleDocument } from './role.interface';
 import { Response } from 'src/response/response.decorator';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
 import { RoleListValidation } from './validation/role.list.validation';
@@ -24,6 +22,8 @@ import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { RoleCreateValidation } from './validation/role.create.validation';
 import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe';
+import { modelNames } from 'mongoose';
+import { GetRole, RoleGetGuard } from './role.decorator';
 
 @Controller('/role')
 export class RoleController {
@@ -33,24 +33,33 @@ export class RoleController {
         private readonly roleService: RoleService
     ) {}
 
-    @Response('role.findAll')
+    @Response('role.list')
     @AuthJwtGuard(ENUM_PERMISSIONS.ROLE_READ)
     @Get('/list')
-    async findAll(
+    async list(
         @Query(RequestValidationPipe)
-        { page, perPage, sort }: RoleListValidation
+        { page, perPage, sort, search }: RoleListValidation
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
-        const roles: RoleDocument[] = await this.roleService.findAll<RoleDocument>(
-            {},
-            {
-                skip: skip,
-                limit: perPage,
-                sort
-            }
-        );
+        const find: Record<string, any> = {};
+        if (search) {
+            find['$or'] = [
+                {
+                    name: {
+                        $regex: new RegExp(search),
+                        $options: 'i'
+                    }
+                }
+            ];
+        }
 
-        const totalData: number = await this.roleService.getTotalData({});
+        const roles: RoleDocument[] = await this.roleService.findAll(find, {
+            skip: skip,
+            limit: perPage,
+            sort
+        });
+
+        const totalData: number = await this.roleService.getTotal({});
         const totalPage: number = await this.paginationService.totalPage(
             totalData,
             perPage
@@ -65,6 +74,14 @@ export class RoleController {
         };
     }
 
+    @Response('role.get')
+    @RoleGetGuard()
+    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ)
+    @Get('get/:role')
+    async get(@GetRole() role: IRoleDocument): Promise<IResponse> {
+        return role;
+    }
+
     @Response('role.create')
     @AuthJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_DELETE)
     @Post('/create')
@@ -72,10 +89,10 @@ export class RoleController {
         @Body(RequestValidationPipe)
         { name, permissions }: RoleCreateValidation
     ): Promise<IResponse> {
-        const check: RoleDocument = await this.roleService.findOne({
-            name: name.toLowerCase()
+        const exist: RoleDocument = await this.roleService.findOne({
+            name: modelNames
         });
-        if (check) {
+        if (exist) {
             this.debuggerService.error('Role Error', {
                 class: 'RoleController',
                 function: 'delete'
@@ -111,26 +128,12 @@ export class RoleController {
     }
 
     @Response('role.delete')
+    @RoleGetGuard()
     @AuthJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_DELETE)
-    @Delete('/delete/:_id')
-    async delete(@Param('_id') _id: string): Promise<void> {
-        const role: RoleDocument = await this.roleService.findOneById<RoleDocument>(
-            _id
-        );
-        if (!role) {
-            this.debuggerService.error('Role Error', {
-                class: 'RoleController',
-                function: 'delete'
-            });
-
-            throw new NotFoundException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
-                message: 'role.error.notFound'
-            });
-        }
-
+    @Delete('/delete/:role')
+    async delete(@GetRole() role: IRoleDocument): Promise<void> {
         try {
-            await this.roleService.deleteOneById(_id);
+            await this.roleService.deleteOneById(role._id);
             return;
         } catch (err) {
             this.debuggerService.error('delete try catch', {
