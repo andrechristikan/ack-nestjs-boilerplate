@@ -158,7 +158,8 @@ export class AuthController {
             });
 
             throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_EXPIRED_ERROR,
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GUARD_EXPIRED_ERROR,
                 message: 'auth.error.expired'
             });
         }
