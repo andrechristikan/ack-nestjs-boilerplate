@@ -25,6 +25,16 @@ export class HelperService {
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
+    async calculateAge(dateOfBirth: Date): Promise<number> {
+        const today: Date = new Date();
+        let age: number = today.getFullYear() - dateOfBirth.getFullYear();
+        const m = today.getMonth() - dateOfBirth.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dateOfBirth.getDate())) {
+            age--;
+        }
+        return age;
+    }
+
     async checkEmail(email: string): Promise<boolean> {
         const regex = /\S+@\S+\.\S+/;
         return regex.test(email);
