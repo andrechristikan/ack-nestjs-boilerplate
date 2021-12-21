@@ -1,11 +1,5 @@
 import { Exclude, Expose, Transform } from 'class-transformer';
-import {
-    IsString,
-    IsOptional,
-    ValidateIf,
-    IsNumber,
-    IsObject
-} from 'class-validator';
+import { IsString, IsOptional, ValidateIf, IsObject } from 'class-validator';
 import {
     DEFAULT_PAGE,
     DEFAULT_PER_PAGE
@@ -40,26 +34,30 @@ export class RequestQueryBaseListValidation {
     })
     readonly search?: string;
 
-    @IsNumber()
-    @IsOptional()
-    @ValidateIf((e) => e.page !== '')
     @Expose()
     @Transform(
         ({ value, obj }) =>
-            value && !isNaN(value) ? parseInt(value) : obj.page || DEFAULT_PAGE,
+            !obj._page
+                ? DEFAULT_PAGE
+                : !value
+                ? obj._page
+                : value && isNaN(value)
+                ? obj._page
+                : parseInt(value),
         { toClassOnly: true }
     )
     readonly page: number;
 
-    @IsNumber()
-    @IsOptional()
-    @ValidateIf((e) => e.perPage !== '')
     @Expose()
     @Transform(
         ({ value, obj }) =>
-            value && !isNaN(value)
-                ? parseInt(value)
-                : obj._perPage || DEFAULT_PER_PAGE,
+            !obj._perPage
+                ? DEFAULT_PER_PAGE
+                : !value
+                ? obj._perPage
+                : value && isNaN(value)
+                ? obj._page
+                : parseInt(value),
         { toClassOnly: true }
     )
     readonly perPage: number;
@@ -74,13 +72,10 @@ export class RequestQueryBaseListValidation {
                 value = obj._sort;
             }
 
-            const sort = value.split('@');
             const fieldSort: string = value.split('@')[0];
             const typeSort: number = value.split('@')[1] === 'desc' ? -1 : 1;
 
-            return value && sort.length === 2
-                ? { [fieldSort]: typeSort }
-                : undefined;
+            return { [fieldSort]: typeSort };
         },
         {
             toClassOnly: true
