@@ -53,7 +53,7 @@ export class HelperService {
         return randomBytes(length).toString('hex');
     }
 
-    async randomOtpNumber(length: number): Promise<string> {
+    async randomNumber(length: number): Promise<string> {
         const min: number = parseInt(`1`.padEnd(length, '0'));
         const max: number = parseInt(`9`.padEnd(length, '9'));
         return this.randomNumberInRange(min, max);
