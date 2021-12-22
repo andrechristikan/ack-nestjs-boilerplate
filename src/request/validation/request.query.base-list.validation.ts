@@ -1,5 +1,4 @@
 import { Exclude, Expose, Transform } from 'class-transformer';
-import { IsString, IsOptional, ValidateIf, IsObject } from 'class-validator';
 import {
     DEFAULT_PAGE,
     DEFAULT_PER_PAGE
@@ -25,9 +24,6 @@ export class RequestQueryBaseListValidation {
     @Exclude()
     readonly _perPage: number;
 
-    @IsString()
-    @IsOptional()
-    @ValidateIf((e) => e.search !== '')
     @Expose()
     @Transform(({ value }) => (value ? value : undefined), {
         toClassOnly: true
@@ -62,9 +58,6 @@ export class RequestQueryBaseListValidation {
     )
     readonly perPage: number;
 
-    @IsObject()
-    @IsOptional()
-    @ValidateIf((e) => e.sort !== '')
     @Expose()
     @Transform(
         ({ value, obj }) => {

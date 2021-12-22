@@ -3,7 +3,8 @@ import {
     IsEmail,
     MaxLength,
     IsBoolean,
-    IsOptional
+    IsOptional,
+    ValidateIf
 } from 'class-validator';
 
 export class AuthLoginValidation {
@@ -14,6 +15,7 @@ export class AuthLoginValidation {
 
     @IsOptional()
     @IsBoolean()
+    @ValidateIf((e) => e.rememberMe !== '')
     readonly rememberMe?: boolean;
 
     readonly password: string;
