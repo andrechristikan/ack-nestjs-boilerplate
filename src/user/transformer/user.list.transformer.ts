@@ -1,11 +1,9 @@
-import { Exclude, Transform } from 'class-transformer';
+import { Exclude, Type } from 'class-transformer';
 import { Types } from 'mongoose';
 import { IAwsResponse } from 'src/aws/aws.interface';
 
 export class UserListTransformer {
-    @Transform(({ value }) => {
-        return `${value}`;
-    })
+    @Type(() => String)
     readonly _id: string;
 
     @Exclude()
