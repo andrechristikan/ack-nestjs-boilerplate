@@ -12,6 +12,7 @@
 [![JWT][jwt-shield]][jwt-url]
 [![Jest][jest-shield]][jest-url]
 [![Kafka][kafka-shield]][kafka-url]
+[![Docker][docker-shield]][docker-url]
 
 
 <!-- PROJECT LOGO -->
@@ -77,6 +78,8 @@ Main packages and Main Tools
 * [Mongoose](mongoose-url) v5.11.14
 * [MongoDB](mongodb-url) v4.4.0
 * [Yarn](yarn-url) v1.22.10
+* [Docker](docker-url) v19.03.13
+* [Docker Compose](docker-compose-url) v1.27.4
 
 ## Features
 
@@ -97,6 +100,7 @@ The features will spill on this section, please read secretly and keep silent ü
 - [x] Debugger Module level File, on/off feature
 - [x] Custom Status Code for Each Error and Success Request
 - [x] Husky Git pre-commit hooks for better code
+- [x] Support Docker
 
 #### Modules
 
@@ -147,7 +151,7 @@ The features will spill on this section, please read secretly and keep silent ü
 
 #### Todo
 
-- [-] Update version NestJs
+- [ ] Update version NestJs
 - [ ] Unit Test and E2E Test
 - [ ] Update Documentation
 - [ ] Update Performance
@@ -158,11 +162,11 @@ All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [F
 
 ## Getting Start
 
-Before we start, we need to install 
+Before we start, we need to install
 
 - [NodeJs](nodejs-url) 
-- [MongoDB](mongodb-url) 
-- [Yarn](yarn-url) 
+- [MongoDB](mongodb-url)
+- [Yarn](yarn-url)
 
 See their official document.
 
@@ -206,21 +210,14 @@ Open our terminal and follow this instruction
     # db version v4.4.0
     ```
 
-#### Clone repo, and install all dependencies.
+#### Clone repo
 
-1. Clone
+```sh
+git clone https://github.com/andrechristikan/ack-nestjs-mongoose
+```
+#### Installation
 
-    ```sh
-    git clone https://github.com/andrechristikan/ack-nestjs-mongoose
-    ```
-
-2. Go to into dir
-
-    ```sh
-    cd ack-nestjs-mongoose
-    ```
-
-3. Install dependencies
+1. Install dependencies
 
     ```sh
     yarn
@@ -232,9 +229,7 @@ Open our terminal and follow this instruction
     npm i
     ```
 
-#### Setting up the project
-
-1. Build our Env based on `.env.example` file.
+2. Build our Env based on `.env.example` file.
 
     ```sh
     cp .env.example .env
@@ -267,18 +262,15 @@ Open our terminal and follow this instruction
     AUTH_BASIC_TOKEN_CLIENT_ID=asdzxc
     AUTH_BASIC_TOKEN_CLIENT_SECRET=1234567890
 
-    KAFKA_CONSUMER_GROUP=nestjs.ack
-    KAFKA_BROKERS=localhost:9092
-
     AWS_CREDENTIAL_KEY=awskey12345
     AWS_CREDENTIAL_SECRET=awssecret12345
     AWS_S3_REGION=us-east-2
     AWS_S3_BUCKET=acks3
     ```
 
-2. Create Database, [follow this instruction from mongodb official](mongodb-create-database-url)
+3. Create Database, [follow this instruction from mongodb official](mongodb-create-database-url)
 
-3. We need to Migration Role and Permission for first usage
+4. We need to Migration Role and Permission for first usage
 
     - Fresh migrate
 
@@ -304,7 +296,7 @@ Open our terminal and follow this instruction
       npm run migrate:rollback
       ```
 
-4.  <strong> *** SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET *** </strong>. 
+5.  <strong> *** SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET *** </strong>. 
 
     Make sure we do the correct step. Go run `TestModule` and make sure all test passed with success status.
 
@@ -331,30 +323,82 @@ Open our terminal and follow this instruction
         ```sh
         npm run test:e2e
         ```
-6. **--- Optional ---**, Implement [Husky](husky-url)
+6. Implement Husky
 
-    For better code, we will consume `Husky`. This will check our code with eslint. Our code must follow eslint rule or tslint rule before commit.
+    For better code, we will consume [Husky](husky-url). This will check our code with eslint. Our code must follow eslint rule or tslint rule before commit.
     
     ```sh
     yarn prepare
     ```
 
-7. Last step, run the project
+#### Run project
 
-    ```sh
-    yarn start:dev
-    ```
+```sh
+yarn start:dev
+```
 
-    with npm
+with npm
 
-    ```sh
-    npm run start:dev
-    ```
+```sh
+npm run start:dev
+```
 
 Cheers üçªüçª !!! our project is running well. Now we can use all features.
 
 Then go install or open `REST Client`. In this case, let assume we use [Postman Client](postman-url).
 After installation, we need to import all endpoint into postman, [see this instruction](#endpoints).
+
+#### Run with Docker
+
+1. We need to install `docker` and `docker compose`.
+
+    - Docker official Documentation, [here](docker-url)
+    - Docker Compose official Documentation, [here](docker-compose-url)
+
+2. Environment will be a little different. We will use `.env.docker`.
+
+    ```sh
+    cp .env.docker .env
+    ```
+
+    let adjust some value if necessary.
+
+    ```env
+    APP_ENV=development
+    APP_HOST=0.0.0.0
+    APP_PORT= 3000
+    APP_LANGUAGE=en
+    APP_DEBUG=false
+    APP_TZ=Asia/Jakarta
+
+    DATABASE_HOST=mongodb:27017
+    DATABASE_NAME=ack
+    DATABASE_USER=
+    DATABASE_PASSWORD=
+    DATABASE_ADMIN=false
+    DATABASE_SRV=false
+    DATABASE_DEBUG=false
+    DATABASE_SSL=false
+    DATABASE_OPTIONS=
+
+    AUTH_JWT_ACCESS_TOKEN_SECRET_KEY=123456
+
+    AUTH_JWT_REFRESH_TOKEN_SECRET_KEY=01001231
+
+    AUTH_BASIC_TOKEN_CLIENT_ID=asdzxc
+    AUTH_BASIC_TOKEN_CLIENT_SECRET=1234567890
+
+    AWS_CREDENTIAL_KEY=awskey12345
+    AWS_CREDENTIAL_SECRET=awssecret12345
+    AWS_S3_REGION=us-east-2
+    AWS_S3_BUCKET=acks3
+    ```
+
+3. Run docker compose
+
+    ```sh
+    docker-compose up -d
+    ```
 
 ## Usage
 
@@ -437,3 +481,5 @@ Distributed under [MIT licensed](LICENSE.md).
 [kafka-url]: https://kafka.apache.org/quickstart
 [jest-url]: https://jestjs.io/docs/getting-started
 [husky-url]: https://docs.nestjs.com/microservices/kafka
+[docker-url]: https://docs.docker.com
+[docker-compose-url]: https://docs.docker.com/compose/
