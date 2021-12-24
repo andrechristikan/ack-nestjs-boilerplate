@@ -19,9 +19,8 @@ import { Helper } from 'src/helper/helper.decorator';
 import { HelperService } from 'src/helper/helper.service';
 import { IErrors } from 'src/error/error.interface';
 import { IAwsResponse } from 'src/aws/aws.interface';
-import { UserListValidation } from './validation/user.list.validation';
 import { UserListTransformer } from './transformer/user.list.transformer';
-import { UserGetTransformer } from './transformer/user.get.tranformer';
+import { UserGetTransformer } from './transformer/user.get.transformer';
 
 @Injectable()
 export class UserService {
