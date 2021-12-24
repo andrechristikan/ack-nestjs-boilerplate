@@ -4,7 +4,6 @@ import {
     ExecutionContext,
     UseGuards
 } from '@nestjs/common';
-import { IAuthApplyDecorator } from 'src/auth/auth.interface';
 import { UserPayloadPutToRequestGuard } from './guard/payload/user.payload.put-to-request.guard';
 import { UserNotFoundGuard } from './guard/user.not-found.guard';
 import { UserPutToRequestGuard } from './guard/user.put-to-request.guard';
@@ -16,11 +15,11 @@ export const GetUser = createParamDecorator(
     }
 );
 
-export function UserGetGuard(): IAuthApplyDecorator {
+export function UserGetGuard(): any {
     return applyDecorators(UseGuards(UserPutToRequestGuard, UserNotFoundGuard));
 }
 
-export function UserProfileGuard(): IAuthApplyDecorator {
+export function UserProfileGuard(): any {
     return applyDecorators(
         UseGuards(UserPayloadPutToRequestGuard, UserNotFoundGuard)
     );

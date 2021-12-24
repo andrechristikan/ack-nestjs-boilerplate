@@ -41,7 +41,7 @@ export class HelperService {
     }
 
     async randomReference(prefix?: string): Promise<string> {
-        const timestamp: string = `${new Date().valueOf()}`;
+        const timestamp = `${new Date().valueOf()}`;
         const randomString: string = await this.randomString(10);
         const reference: string = prefix
             ? `${prefix}-${timestamp}${randomString}`

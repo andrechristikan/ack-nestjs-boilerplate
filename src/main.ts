@@ -27,9 +27,5 @@ async function bootstrap() {
         'NestApplication'
     );
     logger.log(`Server running on http://${host}:${port}`, 'NestApplication');
-
-    // Kafka
-    // const kafka = await import('./kafka/kafka');
-    // await kafka.default(app, configService, logger);
 }
 bootstrap();

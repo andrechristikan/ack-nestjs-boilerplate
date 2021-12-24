@@ -1,25 +1,23 @@
 {
-
+    "testTimeout": 1000,
     "verbose": true,
     "rootDir": "./",
     "modulePaths": [
         "../"
     ],
     "testEnvironment": "node",
-    "testRegex": "../test/.*\\.(test|spec).(ts|tsx|js)$",
-    "collectCoverage": false,
-    "collectCoverageFrom" : ["../test/**/*.{js,jsx,tsx,ts}", "!**/src/**/*.{js,jsx,tsx,ts}", "!**/node_modules/**", "!**/vendor/**"],
+    "testRegex": "/test/.*\\.(test-spec).(ts|tsx)$",
+    "collectCoverage": true,
+    "collectCoverageFrom" : ["test/**/*.{tsx,ts}", "!**/src/**/*.{js,jsx,tsx,ts}", "!**/dist/**", "!**/node_modules/**", "!**/vendor/**"],
     "coveragePathIgnorePatterns": [
         "../node_modules", 
         "../vendor",
         "../src"
     ],
     "coverageReporters": ["json", "lcov"],
-    "coverageDirectory": "../coverage",
+    "coverageDirectory": "../test-coverage",
     "moduleFileExtensions": [
         "ts",
-        "tsx",
-        "js",
         "json"
     ],
     "transform": {

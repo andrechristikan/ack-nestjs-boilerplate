@@ -65,7 +65,7 @@ export class KafkaProducerService
 
     private async createId(): Promise<string> {
         const rand: string = await this.helperService.randomString(10);
-        const timestamp: string = `${new Date().valueOf()}`;
+        const timestamp = `${new Date().valueOf()}`;
         return `${timestamp}-${rand}`;
     }
 }

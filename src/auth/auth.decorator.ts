@@ -5,7 +5,6 @@ import {
     applyDecorators,
     SetMetadata
 } from '@nestjs/common';
-import { IAuthApplyDecorator } from 'src/auth/auth.interface';
 import { PermissionDefaultGuard } from 'src/permission/guard/permission.default.guard';
 import {
     ENUM_PERMISSIONS,
@@ -17,9 +16,7 @@ import { AuthExpiredGuard } from './guard/default/auth.expired.guard';
 import { JwtRefreshGuard } from './guard/jwt-refresh/auth.jwt-refresh.guard';
 import { JwtGuard } from './guard/jwt/auth.jwt.guard';
 
-export function AuthJwtGuard(
-    ...permissions: ENUM_PERMISSIONS[]
-): IAuthApplyDecorator {
+export function AuthJwtGuard(...permissions: ENUM_PERMISSIONS[]): any {
     return applyDecorators(
         UseGuards(
             JwtGuard,
@@ -31,11 +28,11 @@ export function AuthJwtGuard(
     );
 }
 
-export function AuthBasicGuard(): IAuthApplyDecorator {
+export function AuthBasicGuard(): any {
     return applyDecorators(UseGuards(BasicGuard));
 }
 
-export function AuthJwtRefreshGuard(): IAuthApplyDecorator {
+export function AuthJwtRefreshGuard(): any {
     return applyDecorators(UseGuards(JwtRefreshGuard));
 }
 

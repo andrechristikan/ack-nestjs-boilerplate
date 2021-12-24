@@ -4,7 +4,6 @@ import {
     ExecutionContext,
     UseGuards
 } from '@nestjs/common';
-import { IAuthApplyDecorator } from 'src/auth/auth.interface';
 import { RoleNotFoundGuard } from './guard/role.not-found.guard';
 import { RolePutToRequestGuard } from './guard/role.put-to-request.guard';
 
@@ -15,6 +14,6 @@ export const GetRole = createParamDecorator(
     }
 );
 
-export function RoleGetGuard(): IAuthApplyDecorator {
+export function RoleGetGuard(): any {
     return applyDecorators(UseGuards(RolePutToRequestGuard, RoleNotFoundGuard));
 }

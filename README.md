@@ -70,12 +70,13 @@ We assume that all people are coming to here is `Programmer with intermediate kn
 
 ## Build With
 
+Main packages and Main Tools
+
 * [NestJs](nestjs-url) v7.6.11
+* [NodeJs](nodejs-url) v12.21.0
 * [Mongoose](mongoose-url) v5.11.14
 * [MongoDB](mongodb-url) v4.4.0
-* [NodeJs](nodejs-url) v12.21.0
 * [Yarn](yarn-url) v1.22.10
-* [Kafka](kafka-url) v2.8.0
 
 ## Features
 
@@ -95,6 +96,7 @@ The features will spill on this section, please read secretly and keep silent ðŸ
 - [x] Logger Module level Database
 - [x] Debugger Module level File, on/off feature
 - [x] Custom Status Code for Each Error and Success Request
+- [x] Husky Git pre-commit hooks for better code
 
 #### Modules
 
@@ -114,9 +116,9 @@ The features will spill on this section, please read secretly and keep silent ðŸ
 - [x] RoleModule
 - [x] UserModule
 - [x] KafkaModule
-  - [x] ProducerModule
-  - [x] ConsumerModule
-  - [x] AdminModule
+    - [x] ProducerModule
+    - [x] ConsumerModule
+    - [x] AdminModule
 
 [Welcome to request for other modules](issues-url)
 
@@ -145,7 +147,7 @@ The features will spill on this section, please read secretly and keep silent ðŸ
 
 #### Todo
 
-- [ ] Update version NestJs
+- [-] Update version NestJs
 - [ ] Unit Test and E2E Test
 - [ ] Update Documentation
 - [ ] Update Performance
@@ -154,20 +156,19 @@ The features will spill on this section, please read secretly and keep silent ðŸ
 
 All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [Follow this step for import into Postman](postman-import-endpoint)
 
-## Getting Started
+## Getting Start
 
-Before we start, we need to install :
+Before we start, we need to install 
 
-- [NodeJs](nodejs-url) (Suggest LTS Version),
-- [MongoDB](mongodb-url) (Suggest LTS Version), and
-- **Optional**, [Kafka Apache](kafka-url) (Suggest LTS Version).
+- [NodeJs](nodejs-url) 
+- [MongoDB](mongodb-url) 
+- [Yarn](yarn-url) 
 
-Please see their official document.
+See their official document.
 
-> For Windows User, **do not install kafka on your Windows OS**. There are has a unsolved issue, while delete topic on Windows OS. 
-> Go install kafka with virtual machine or docker.
+#### Make sure we don't get any error after installation
 
-#### Make sure that we don't get any error after installation, open our terminal and follow this instruction
+Open our terminal and follow this instruction
 
 1. Check NodeJs is successful installed in our OS.
 
@@ -203,15 +204,6 @@ Please see their official document.
 
     # will return 
     # db version v4.4.0
-    ```
-
-4. **Optional**, Kafka
-
-    ```sh
-    kafka-topics --version
-
-    # will return 
-    # 2.8.0 (Commit:ebb1d6e21cc92130
     ```
 
 #### Clone repo, and install all dependencies.
@@ -318,101 +310,36 @@ Please see their official document.
 
     - Run Unit Testing
 
-      ```sh
-      yarn test
-      ```
+        ```sh
+        yarn test
+        ```
 
-      with npm
+        with npm
 
-      ```sh
-      npm run test
-      ```
+        ```sh
+        npm run test
+        ```
 
     - Run E2E Testing
 
-      ```sh
-      yarn test:e2e
-      ```
+        ```sh
+        yarn test:e2e
+        ```
 
-      with npm
+        with npm
 
-      ```sh
-      npm run test:e2e
-      ```
+        ```sh
+        npm run test:e2e
+        ```
+6. **--- Optional ---**, Implement [Husky](husky-url)
 
-5. **Optional**, if we want to use `Kafka` we need to adjustment some point.
-    In `src/main.ts`, Add This Code.
-
-    ```ts
-    // src/main.ts
-
-    ...
-    ...
-
-    await app.listenAsync(port, host);
-
-    const kafka = await import('./kafka/kafka');
-    await kafka.default(
-        app,
-        configService,
-        logger
-    );
-
-    ...
-    ...
-
+    For better code, we will consume `Husky`. This will check our code with eslint. Our code must follow eslint rule or tslint rule before commit.
+    
+    ```sh
+    yarn prepare
     ```
 
-    In `src/app/app.module.ts`, Import add `KafkaAdminModule`, `KafkaProducerModule`, `KafkaConsumerModule`.
-
-    ```ts
-    // src/app/app.module.ts
-    import { KafkaAdminModule } from 'src/kafka/admin/kafka.admin.module';
-    import { KafkaProducerModule } from 'src/kafka/producer/producer.module';
-    import { KafkaConsumerModule } from 'src/kafka/consumer/consumer.module';
-
-    @Module({
-      controllers: [AppController],
-      providers: [],
-      imports: [
-        ...
-        ...
-
-        SeedsModule,
-        KafkaAdminModule, // <<<---- Add this
-        KafkaProducerModule, // <<<---- Add this
-        KafkaConsumerModule, // <<<---- Add this
-
-        AuthModule,
-        UserModule,
-
-        ...
-        ...
-      ]
-    })
-    export class AppModule {}
-
-    ```
-
-    Then, make sure our topics was created or we can use auto create topics with `KafkaAdminModule`. `Partition` default value is 3 (we can change the value in config file), and `Replication Factor` default value is `count of our brokers`.
-
-    ```ts
-    // src/kafka/kafka.constant.ts
-
-    export const KAFKA_TOPICS = [
-      'nestjs.ack.success', // <<<---- Simply, add or remove some topics
-      'nestjs.ack.error'
-    ]; 
-
-    ```
-
-    We can test `KafkaProducerModule` and `KafkaConsumerModule` with manual hit `/kafka/produce` endpoint.
-
-    > Note: If we won't use kafka, simply we can delete `kafka folder` and remove `config in config/kafka.config.ts`
-
-
-
-6. Last step, run the project
+7. Last step, run the project
 
     ```sh
     yarn start:dev
@@ -431,7 +358,11 @@ After installation, we need to import all endpoint into postman, [see this instr
 
 ## Usage
 
-Documents usage will has difference file. Document will put in [USAGE.md](usage-url)
+Documents usage will write separate file. Document will put in [USAGE.md](USAGE.md)
+
+## Kafka
+
+Kafka document will write in separate file. Document will put in [KAFKA.md](KAFKA.md)
 
 ## License
 
@@ -479,8 +410,6 @@ Distributed under [MIT licensed](LICENSE.md).
 [stars-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/stargazers
 [forks-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/network/members
 [contributors-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/graphs/contributors
-[readme-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/blob/main/README.md
-[usage-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/blob/main/USAGE.md
 [history-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/commits/main
 
 
@@ -507,3 +436,4 @@ Distributed under [MIT licensed](LICENSE.md).
 [nodejs-bestpractice-url]: https://github.com/goldbergyoni/nodebestpractices
 [kafka-url]: https://kafka.apache.org/quickstart
 [jest-url]: https://jestjs.io/docs/getting-started
+[husky-url]: https://docs.nestjs.com/microservices/kafka

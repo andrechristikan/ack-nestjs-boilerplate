@@ -5,5 +5,3 @@ export enum ENUM_USER_STATUS_CODE_ERROR {
 }
 
 export const USER_DEFAULT_SORT = 'name@asc';
-
-export const USER_DEFAULT_SORT = 'name@asc';

@@ -95,7 +95,7 @@ export class AuthService {
         clientId: string,
         clientSecret: string
     ): Promise<string> {
-        const token: string = `${clientId}:${clientSecret}`;
+        const token = `${clientId}:${clientSecret}`;
         return this.helperService.base64Encrypt(token);
     }
 

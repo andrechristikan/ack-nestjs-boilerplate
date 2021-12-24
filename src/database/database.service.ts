@@ -32,7 +32,7 @@ export class DatabaseService implements MongooseOptionsFactory {
     }
 
     createMongooseOptions(): MongooseModuleOptions {
-        let uri: string = `mongodb${this.srv ? '+srv' : ''}://`;
+        let uri = `mongodb${this.srv ? '+srv' : ''}://`;
         if (this.user && this.password) {
             uri = `${uri}${this.user}:${this.password}@`;
         }

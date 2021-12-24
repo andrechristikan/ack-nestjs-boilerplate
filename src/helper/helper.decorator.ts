@@ -1,5 +1,4 @@
 import { Inject, applyDecorators, UseInterceptors } from '@nestjs/common';
-import { IAuthApplyDecorator } from 'src/auth/auth.interface';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { HelperImageInterceptor } from './interceptor/helper.image.interceptor';
 import { HelperService } from './helper.service';
@@ -12,7 +11,7 @@ export function Helper(): (
     return Inject(HelperService);
 }
 
-export function Image(field: string): IAuthApplyDecorator {
+export function Image(field: string): any {
     return applyDecorators(
         UseInterceptors(FileInterceptor(field), HelperImageInterceptor)
     );
@@ -25,7 +24,7 @@ import {
 } from 'class-validator';
 
 export function IsPasswordStrong(
-    minLength: number = 8,
+    minLength = 8,
     validationOptions?: ValidationOptions
 ) {
     return function (object: Record<string, any>, propertyName: string): any {
@@ -59,7 +58,7 @@ export function IsPasswordStrong(
 }
 
 export function IsPasswordMedium(
-    minLength: number = 8,
+    minLength = 8,
     validationOptions?: ValidationOptions
 ) {
     return function (object: Record<string, any>, propertyName: string): any {
@@ -92,7 +91,7 @@ export function IsPasswordMedium(
 }
 
 export function IsPasswordWeak(
-    minLength: number = 8,
+    minLength = 8,
     validationOptions?: ValidationOptions
 ) {
     return function (object: Record<string, any>, propertyName: string): any {

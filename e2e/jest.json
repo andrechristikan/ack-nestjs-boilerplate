@@ -1,14 +1,14 @@
 {
-    "testTimeout": 10000,
+    "testTimeout": 1000,
     "verbose": true,
     "rootDir": "./",
     "modulePaths": [
         "../"
     ],
     "testEnvironment": "node",
-    "testRegex": "index.spec.ts",
+    "testRegex": "/e2e/.*\\.(e2e-spec).(ts|tsx)$",
     "collectCoverage": true,
-    "collectCoverageFrom" : ["../e2e/**/*.{js,jsx,tsx,ts}", "!**/src/**/*.{js,jsx,tsx,ts}", "!**/node_modules/**", "!**/vendor/**"],
+    "collectCoverageFrom" : ["e2e/**/*.{tsx,ts}", "!**/src/**/*.{js,jsx,tsx,ts}", "!**/dist/**", "!**/node_modules/**", "!**/vendor/**"],
     "coveragePathIgnorePatterns": [
         "../node_modules", 
         "../vendor",
@@ -18,8 +18,6 @@
     "coverageDirectory": "../e2e-coverage",
     "moduleFileExtensions": [
         "ts",
-        "tsx",
-        "js",
         "json"
     ],
     "transform": {

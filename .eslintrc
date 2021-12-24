@@ -8,38 +8,16 @@
   "extends": [
     "plugin:@typescript-eslint/eslint-recommended",
     "plugin:@typescript-eslint/recommended",
-    "prettier",
-    "prettier/@typescript-eslint"
+    "prettier"
   ],
   "root": true,
   "env": {
     "node": true,
     "jest": true
   },
-  "ignorePatterns": [
-    ".eslintrc.js",
-    ".eslintrc"
-  ],
   "rules": {
-    "no-unused-vars": "off",
-    "@typescript-eslint/no-unused-vars": [
-      "warn",
-      {
-        "varsIgnorePattern": "^I"
-      }
-    ],
     "@typescript-eslint/interface-name-prefix": "off",
     "@typescript-eslint/explicit-function-return-type": "off",
-    "@typescript-eslint/no-explicit-any": "off",
-    "@typescript-eslint/no-inferrable-types": "off",
-    "@typescript-eslint/ban-types": [
-      "error",
-      {
-        "types":{
-          "Function": false
-        },
-        "extendDefaults": true
-      }
-    ]
+    "@typescript-eslint/no-explicit-any": "off"
   }
 }
