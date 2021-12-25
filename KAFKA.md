@@ -2,7 +2,6 @@
 
 Kafka documentation is optional and just in case if we want to use kafka.
 
-
 ## If we won't to use kafka
 
 1. Delete `kafka folder` in `src/kafka`
@@ -35,10 +34,10 @@ export default [
 
 ## Prerequisites
 
-Alright, we need some adjustment for next section.
+Alright, we need to know some knowledge before next section.
 
 * Follow [README](README.md) Documentation.
-* Understood [Kafka Fundamental](kafka-url). It will help how kafka works to maintain message.
+* Understood [Kafka Fundamental](kafka-url). It will help we to know how kafka works and why we need kafka.
 
 ## Build With
 
@@ -52,7 +51,7 @@ Main packages and Main Tools
 
 We need to install [Kafka Apache](kafka-url) before we start. See their official document.
 
-> NOTE : For Windows User, **do not install kafka on your Windows OS**. There are has a unsolved issue, while delete topic on Windows OS.
+> NOTE : For Windows User, **do not install kafka on your Windows OS**. There are has a unsolved issue, while delete topic on Windows OS. [See this issue for more information](kafka-issue)
 > Go install kafka with virtual machine or docker.
 
 #### Make sure we don't get any error after installation
@@ -136,7 +135,7 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
 
     - `KafkaAdminModule` use to create custom kafka topics.
     - `KafkaProducerModule` use to produce message to some topic
-    - `KafkaConsumerModule` consume for topics, or we can called endpoint for topic.
+    - `KafkaConsumerModule` consume for topics.
 
         ```ts
         // src/app/app.module.ts
@@ -311,3 +310,4 @@ This Instruction will little bit difference.
 [nestjs-microservice-url]: https://docs.nestjs.com/microservices/kafka
 [kafka-js-url]: https://kafka.js.org/docs/getting-started
 [kafka-url]: https://kafka.apache.org/quickstart
+[kafka-issue]: https://issues.apache.org/jira/browse/KAFKA-1194

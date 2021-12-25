@@ -45,7 +45,7 @@
 <div align="center">
 	<hr>
 	<h1> ###### IMPORTANT ###### </h1>
-	<h2> ##### LAST UPDATE README ON 20 DEC 2021 ( ONGOING) ##### </h2>
+	<h2> ##### LAST UPDATE README ON 24 DEC 2021 ( ONGOING) ##### </h2>
   <h4>There huge differences between USAGE.md Documentation and source code after KafkaModule added, <a href="https://github.com/andrechristikan/ack-nestjs-mongoose/commits/main">Click here to check</a> </h4>
 
   <hr>
@@ -54,11 +54,10 @@
 
 ## Description
 
-ACK is a [NestJs](nestjs-url) boilerplate 🚀. ACK uses [Typescript](typescript-url) Program Language.
-Best uses for build an API Project, and Microservice Project. Made with following [nodejs-best-practice](nodejs-bestpractice-url) as benchmark and NestJs Habit.
+ACK is a [NestJs](nestjs-url) boilerplate 🚀. Best uses for build an API Project, and Microservice Project. Made with following [nodejs-best-practice](nodejs-bestpractice-url) as benchmark and NestJs Habit.
 
 ACK will provide JWT (Json Web Token) Implementation 🔐 (Access Token and Refresh Token), Role and Permission Implementation 👥 , Multi Language Support 🔣 , Database migration, etc. [Spill about Features](#features)
-Also provide KafkaModule 🔥, Consumer, and Producer.
+Also provide KafkaModule, Consumer, and Producer 🔥.
 
 ## Prerequisites
 
@@ -101,6 +100,9 @@ The features will spill on this section, please read secretly and keep silent �
 - [x] Custom Status Code for Each Error and Success Request
 - [x] Husky Git pre-commit hooks for better code
 - [x] Support Docker
+- [x] Block User, Block Role
+- [x] Remember me implementation
+- [x] Manipulation Datetime, Random string, Random int, etc in HelperModule
 
 #### Modules
 
@@ -109,20 +111,22 @@ The features will spill on this section, please read secretly and keep silent �
 - [x] AwsModule - S3 Implementation
 - [x] ConfigModule
 - [x] DatabaseModule
-- [x] DebuggerModule
+- [x] DebuggerModule - write log in file
+- [x] ErrorModule
 - [x] Helper Module (e.g Manipulation DateTime, Random string or int, etc)
-- [x] LoggerModule
+- [x] KafkaModule
+    - [x] KafkaProducerModule
+    - [x] KafkaConsumerModule
+    - [x] KafkaAdminModule
+- [x] LoggerModule - write log in database
 - [x] MessageModule - Include LanguageModule
+- [x] MiddlewareModule
 - [x] PaginationModule
 - [x] PermissionModule
-- [x] PipeModule - RequestValidationPipe
+- [x] RequestModule - Include RequestValidationPipe, RequestKafkaValidation
 - [x] ResponseModule
 - [x] RoleModule
 - [x] UserModule
-- [x] KafkaModule
-    - [x] ProducerModule
-    - [x] ConsumerModule
-    - [x] AdminModule
 
 [Welcome to request for other modules](issues-url)
 
@@ -136,18 +140,19 @@ The features will spill on this section, please read secretly and keep silent �
 
 #### Example
 
-- [x] Simple Test, and Error Test
-- [x] Simple CRUD
+- [x] Example Test API, and Error Test API
+- [x] Example CRUD
 - [x] Server Side Pagination
-- [x] Access Token with JWT
-- [x] Refresh Token with JWT
-- [x] Basic Auth Implementation
+- [x] Request validation
+- [x] Access Token
+- [x] Refresh Token
+- [x] Basic Auth
 - [x] Login
-- [x] Block User, Block Role, and Block Permissions
 - [x] Sign Up
 - [x] Upload Image into AWS S3
 - [x] Kafka Consume and Produce Message
 - [x] Mongoose Population and Deep Population
+- [x] Permission
 
 #### Todo
 
@@ -215,6 +220,7 @@ Open our terminal and follow this instruction
 ```sh
 git clone https://github.com/andrechristikan/ack-nestjs-mongoose
 ```
+
 #### Installation
 
 1. Install dependencies
