@@ -5,12 +5,14 @@
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
 [![MIT License][license-shield]][license-url]
-[![Typescript][typescript-shield]][typescript-url]
+
+[![NestJs][nestjs-shield]][nestjs-url]
 [![NodeJs][nodejs-shield]][nodejs-url]
+[![Typescript][typescript-shield]][typescript-url]
 [![MongoDB][mongodb-shield]][mongodb-url]
-[![AWS][aws-shield]][aws-url]
 [![JWT][jwt-shield]][jwt-url]
 [![Jest][jest-shield]][jest-url]
+[![Yarn][yarn-shield]][yarn-url]
 [![Kafka][kafka-shield]][kafka-url]
 [![Docker][docker-shield]][docker-url]
 
@@ -74,6 +76,7 @@ Main packages and Main Tools
 
 * [NestJs](nestjs-url) v7.6.11
 * [NodeJs](nodejs-url) v12.21.0
+* [Typescript](typescript-url) v4.1.3
 * [Mongoose](mongoose-url) v5.11.14
 * [MongoDB](mongodb-url) v4.4.0
 * [Yarn](yarn-url) v1.22.10
@@ -446,6 +449,9 @@ Distributed under [MIT licensed](LICENSE.md).
 [aws-shield]: https://img.shields.io/badge/Amazon_AWS-{232F3E}?style=for-the-badge&logo=amazonaws&logoColor=white
 [kafka-shield]: https://img.shields.io/badge/kafka-0000?style=for-the-badge&logo=apachekafka&logoColor=black&color=white
 [jest-shield]: https://img.shields.io/badge/-jest-%23C21325?style=for-the-badge&logo=jest&logoColor=white
+[docker-shield]: https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white
+[nestjs-shield]: https://img.shields.io/badge/nestjs-%23E0234E.svg?style=for-the-badge&logo=nestjs&logoColor=white
+[yarn-shield]: https://img.shields.io/badge/yarn-%232C8EBB.svg?style=for-the-badge&logo=yarn&logoColor=white
 
 <!-- CONTACTS -->
 [author-linkedin]: https://linkedin.com/in/andrechristikan
