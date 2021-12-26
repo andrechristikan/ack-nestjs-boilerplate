@@ -4,6 +4,7 @@ import { Model, Types } from 'mongoose';
 import { PermissionEntity } from 'src/permission/permission.schema';
 import { IRoleCreate, RoleDocument } from './role.interface';
 import { RoleEntity } from './role.schema';
+import { DeleteResult } from 'mongodb';
 
 @Injectable()
 export class RoleService {
@@ -78,7 +79,7 @@ export class RoleService {
         return create.save();
     }
 
-    async deleteOneById(_id: string): Promise<RoleDocument> {
+    async deleteOneById(_id: string): Promise<DeleteResult> {
         return this.roleModel.deleteOne({
             _id: new Types.ObjectId(_id)
         });
@@ -94,7 +95,7 @@ export class RoleService {
             data.map(({ name, isActive, permissions }) => ({
                 name,
                 isActive: isActive ? isActive : true,
-                permissions: permissions.map((val) => Types.ObjectId(val))
+                permissions: permissions.map((val) => new Types.ObjectId(val))
             }))
         );
         return true;

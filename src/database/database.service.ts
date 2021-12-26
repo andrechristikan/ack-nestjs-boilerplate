@@ -43,9 +43,7 @@ export class DatabaseService implements MongooseOptionsFactory {
         const mongooseOptions: MongooseModuleOptions = {
             uri,
             useNewUrlParser: true,
-            useUnifiedTopology: true,
-            useCreateIndex: true,
-            useFindAndModify: false
+            useUnifiedTopology: true
         };
 
         if (this.admin) {

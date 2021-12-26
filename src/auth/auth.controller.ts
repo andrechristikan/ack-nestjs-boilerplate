@@ -45,17 +45,18 @@ export class AuthController {
         @Body(RequestValidationPipe) data: AuthLoginValidation
     ): Promise<IResponse> {
         const rememberMe: boolean = data.rememberMe ? true : false;
-        const user: IUserDocument = await this.userService.findOne<IUserDocument>(
-            {
-                email: data.email
-            },
-            {
-                populate: {
-                    role: true,
-                    permission: true
+        const user: IUserDocument =
+            await this.userService.findOne<IUserDocument>(
+                {
+                    email: data.email
+                },
+                {
+                    populate: {
+                        role: true,
+                        permission: true
+                    }
                 }
-            }
-        );
+            );
 
         if (!user) {
             this.debuggerService.error('Authorized error user not found', {
@@ -164,15 +165,13 @@ export class AuthController {
             });
         }
 
-        const user: IUserDocument = await this.userService.findOneById<IUserDocument>(
-            _id,
-            {
+        const user: IUserDocument =
+            await this.userService.findOneById<IUserDocument>(_id, {
                 populate: {
                     role: true,
                     permission: true
                 }
-            }
-        );
+            });
 
         if (!user.isActive) {
             this.debuggerService.error('Auth Block', {

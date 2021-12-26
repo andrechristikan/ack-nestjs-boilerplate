@@ -1,14 +1,11 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "declaration": false,
+    "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
-    "noUnusedLocals": false,
-    "noImplicitAny": false,
-    "noLib": false,
     "target": "ES2019",
     "sourceMap": true,
     "outDir": "./dist",

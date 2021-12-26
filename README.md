@@ -16,7 +16,6 @@
 [![Kafka][kafka-shield]][kafka-url]
 [![Docker][docker-shield]][docker-url]
 
-
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
@@ -58,16 +57,13 @@
 
 ACK is a [NestJs](nestjs-url) boilerplate üöÄ. Best uses for build an API Project, and Microservice Project. Made with following [nodejs-best-practice](nodejs-bestpractice-url) as benchmark and NestJs Habit.
 
-ACK will provide JWT (Json Web Token) Implementation üîê (Access Token and Refresh Token), Role and Permission Implementation üë• , Multi Language Support üî£ , Database migration, etc. [Spill about Features](#features)
-Also provide KafkaModule, Consumer, and Producer üî•.
-
 ## Prerequisites
 
 We assume that all people are coming to here is `Programmer with intermediate knowledge` and also we need to understanding more knowledge before we start to reduce knowledge gaps.
 
 * Understood [ExpressJs Fundamental](expressjs-url), NodeJs Base Framework. It will help we to understand how the NestJs works.
 * Understood [Typescript Fundamental](typescript-url), Programming Language. It will help we to write and read the code.
-* Understood [NestJs Fundamental](nestjs-fundamental-url), NodeJs Framework with support fully TypeScript.
+* Understood [NestJs Fundamental](nestjs-fundamental-url), Main Framework. NodeJs Framework with support fully TypeScript.
 * Understand what is and how NoSql works as a Database, specially [MongoDB](#acknowledgements).
 
 ## Build With
@@ -90,19 +86,19 @@ The features will spill on this section, please read secretly and keep silent ü
 - [x] Centralize Configuration
 - [x] Centralize Exception
 - [x] Centralize Response
-- [x] Mongoose Implementation
-- [x] Json Web Token Guard
-- [x] Basic Auth Guard
-- [x] Role and Permission Management.
+- [x] Mongoose Integration
+- [x] Json Web Token Implementation
+- [x] Basic Auth Implementation
+- [x] Role and Permission Management
 - [x] Hash Password with Bcrypt
-- [x] Database Migration
+- [x] Database Migration with Nestjs/Command
 - [x] Support Multi Language
 - [x] Incoming Request Validation
-- [x] Logger Module level Database
-- [x] Debugger Module level File, on/off feature
+- [x] Logger Module, insert into Database
+- [x] Debugger Module, insert into File, on/off feature.
 - [x] Custom Status Code for Each Error and Success Request
 - [x] Husky Git pre-commit hooks for better code
-- [x] Support Docker
+- [x] Support Docker Installation
 - [x] Block User, Block Role
 - [x] Remember me implementation
 - [x] Manipulation Datetime, Random string, Random int, etc in HelperModule
@@ -112,10 +108,10 @@ The features will spill on this section, please read secretly and keep silent ü
 - [x] AppModule - MainModule
 - [x] AuthModule
 - [x] AwsModule - S3 Implementation
-- [x] ConfigModule
+- [x] ConfigModule - Centralize Config
 - [x] DatabaseModule
 - [x] DebuggerModule - write log in file
-- [x] ErrorModule
+- [x] ErrorModule - Centralize Exception
 - [x] Helper Module (e.g Manipulation DateTime, Random string or int, etc)
 - [x] KafkaModule
     - [x] KafkaProducerModule
@@ -127,7 +123,7 @@ The features will spill on this section, please read secretly and keep silent ü
 - [x] PaginationModule
 - [x] PermissionModule
 - [x] RequestModule - Include RequestValidationPipe, RequestKafkaValidation
-- [x] ResponseModule
+- [x] ResponseModule - Centralize Response
 - [x] RoleModule
 - [x] UserModule
 
@@ -467,7 +463,6 @@ Distributed under [MIT licensed](LICENSE.md).
 [forks-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/network/members
 [contributors-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/graphs/contributors
 [history-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/commits/main
-
 
 <!-- NESTJS LINKS -->
 [nestjs-url]: http://nestjs.com/

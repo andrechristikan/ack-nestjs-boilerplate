@@ -6,5 +6,5 @@ export function Message(): (
     key: string | symbol,
     index?: number
 ) => void {
-    return Inject(MessageService.name);
+    return Inject(MessageService);
 }

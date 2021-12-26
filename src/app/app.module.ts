@@ -22,7 +22,6 @@ import { PermissionModule } from 'src/permission/permission.module';
     controllers: [AppController],
     providers: [],
     imports: [
-        MiddlewareModule,
         ConfigModule.forRoot({
             load: Configs,
             ignoreEnvFile: false,
@@ -43,15 +42,15 @@ import { PermissionModule } from 'src/permission/permission.module';
                 databaseService.createMongooseOptions()
         }),
         MessageModule,
-        DebuggerModule,
+        MiddlewareModule,
         PaginationModule,
+        DebuggerModule,
         HelperModule,
         SeedsModule,
-
         AuthModule,
+        PermissionModule,
         UserModule,
-        RoleModule,
-        PermissionModule
+        RoleModule
     ]
 })
 export class AppModule {}

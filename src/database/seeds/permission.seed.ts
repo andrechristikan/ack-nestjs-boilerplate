@@ -5,7 +5,6 @@ import { Debugger } from 'src/debugger/debugger.decorator';
 
 import { PermissionService } from 'src/permission/permission.service';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
-import { PermissionDocument } from 'src/permission/permission.interface';
 
 @Injectable()
 export class PermissionSeed {
@@ -15,42 +14,32 @@ export class PermissionSeed {
     ) {}
 
     @Command({
-        command: 'create:permission',
-        describe: 'insert permissions',
-        autoExit: true
+        command: 'insert:permission',
+        describe: 'insert permissions'
     })
-    async create(): Promise<void> {
-        const check: PermissionDocument = await this.permissionService.findOne();
-        if (check) {
-            this.debuggerService.error('Only for initial purpose', {
-                class: 'PermissionSeed',
-                function: 'create'
-            });
-            return;
-        }
-
+    async insert(): Promise<void> {
         try {
             const permissions = Object.keys(ENUM_PERMISSIONS).map((val) => ({
                 name: val
             }));
+
             await this.permissionService.createMany(permissions);
 
             this.debuggerService.info('Insert Permission Succeed', {
                 class: 'PermissionSeed',
-                function: 'create'
+                function: 'insert'
             });
         } catch (e) {
             this.debuggerService.error(e.message, {
                 class: 'PermissionSeed',
-                function: 'create'
+                function: 'insert'
             });
         }
     }
 
     @Command({
         command: 'remove:permission',
-        describe: 'remove permissions',
-        autoExit: true
+        describe: 'remove permissions'
     })
     async remove(): Promise<void> {
         try {

@@ -18,36 +18,14 @@ export class RoleSeed {
     ) {}
 
     @Command({
-        command: 'create:role',
-        describe: 'insert roles',
-        autoExit: true
+        command: 'insert:role',
+        describe: 'insert roles'
     })
-    async create(): Promise<void> {
-        const permissions: PermissionDocument[] = await this.permissionService.findAll(
-            {
-                name: { $in: Object.keys(ENUM_PERMISSIONS) }
-            }
-        );
-
-        if (!permissions && permissions.length === 0) {
-            this.debuggerService.error(
-                'Go Insert Permissions Before Insert Roles',
-                {
-                    class: 'RoleSeed',
-                    function: 'create'
-                }
-            );
-            return;
-        }
-
-        const check: RoleDocument = await this.roleService.findOne<RoleDocument>();
-        if (check) {
-            this.debuggerService.error('Only for initial purpose', {
-                class: 'RoleSeed',
-                function: 'create'
+    async insert(): Promise<void> {
+        const permissions: PermissionDocument[] =
+            await this.permissionService.findAll({
+                name: { $in: Object.values(ENUM_PERMISSIONS) }
             });
-            return;
-        }
 
         try {
             const permissionsMap = permissions.map((val) => val._id);
@@ -64,20 +42,19 @@ export class RoleSeed {
 
             this.debuggerService.info('Insert Role Succeed', {
                 class: 'RoleSeed',
-                function: 'create'
+                function: 'insert'
             });
         } catch (e) {
             this.debuggerService.error(e.message, {
                 class: 'RoleSeed',
-                function: 'create'
+                function: 'insert'
             });
         }
     }
 
     @Command({
         command: 'remove:role',
-        describe: 'remove roles',
-        autoExit: true
+        describe: 'remove roles'
     })
     async remove(): Promise<void> {
         try {

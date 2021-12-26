@@ -17,29 +17,15 @@ export class UserSeed {
     ) {}
 
     @Command({
-        command: 'create:user',
-        describe: 'insert users',
-        autoExit: true
+        command: 'insert:user',
+        describe: 'insert users'
     })
-    async create(): Promise<void> {
-        const role: RoleDocument = await this.roleService.findOne<RoleDocument>();
-
-        if (!role) {
-            this.debuggerService.error('Go Insert Roles Before Insert User', {
-                class: 'UserSeed',
-                function: 'create'
-            });
-            return;
-        }
-
-        const check: UserDocument = await this.userService.findOne<UserDocument>();
-        if (check) {
-            this.debuggerService.error('Only for initial purpose', {
-                class: 'UserSeed',
-                function: 'create'
-            });
-            return;
-        }
+    async insert(): Promise<void> {
+        const role: RoleDocument = await this.roleService.findOne<RoleDocument>(
+            {
+                name: 'admin'
+            }
+        );
 
         try {
             await this.userService.create({
@@ -53,20 +39,19 @@ export class UserSeed {
 
             this.debuggerService.info('Insert User Succeed', {
                 class: 'UserSeed',
-                function: 'create'
+                function: 'insert'
             });
         } catch (e) {
             this.debuggerService.error(e.message, {
                 class: 'UserSeed',
-                function: 'create'
+                function: 'insert'
             });
         }
     }
 
     @Command({
         command: 'remove:user',
-        describe: 'remove users',
-        autoExit: true
+        describe: 'remove users'
     })
     async remove(): Promise<void> {
         try {

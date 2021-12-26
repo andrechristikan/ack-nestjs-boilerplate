@@ -1,7 +1,6 @@
 import { applyDecorators, UseFilters, UsePipes } from '@nestjs/common';
 import { MessagePattern, Transport } from '@nestjs/microservices';
 import { ClassConstructor } from 'class-transformer';
-import { RequestKafkaValidationPipe } from 'src/request/pipe/request.kafka.validation.pipe';
 import { ErrorRcpFilter } from '../error/kafka.error.filter';
 
 export function KafkaRequest(
@@ -11,7 +10,6 @@ export function KafkaRequest(
     if (validation) {
         return applyDecorators(
             MessagePattern(topic, Transport.KAFKA),
-            UsePipes(RequestKafkaValidationPipe(validation)),
             UseFilters(ErrorRcpFilter)
         );
     }
