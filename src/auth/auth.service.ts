@@ -26,9 +26,10 @@ export class AuthService {
         this.accessTokenExpirationTime = this.configService.get<string>(
             'auth.jwt.accessToken.expirationTime'
         );
-        this.accessTokenNotBeforeExpirationTime = this.configService.get<string>(
-            'auth.jwt.accessToken.notBeforeExpirationTime'
-        );
+        this.accessTokenNotBeforeExpirationTime =
+            this.configService.get<string>(
+                'auth.jwt.accessToken.notBeforeExpirationTime'
+            );
 
         this.refreshTokenSecretToken = this.configService.get<string>(
             'auth.jwt.refreshToken.secretKey'
@@ -36,9 +37,10 @@ export class AuthService {
         this.refreshTokenExpirationTime = this.configService.get<string>(
             'auth.jwt.refreshToken.expirationTime'
         );
-        this.refreshTokenNotBeforeExpirationTime = this.configService.get<string>(
-            'auth.jwt.refreshToken.notBeforeExpirationTime'
-        );
+        this.refreshTokenNotBeforeExpirationTime =
+            this.configService.get<string>(
+                'auth.jwt.refreshToken.notBeforeExpirationTime'
+            );
 
         this.rememberMeNotChecked = this.configService.get<number>(
             'auth.jwt.rememberMe.notChecked'

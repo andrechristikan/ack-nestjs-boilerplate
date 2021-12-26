@@ -7,7 +7,7 @@ import { MessageService } from 'src/message/message.service';
 import { plainToClass } from 'class-transformer';
 import { IErrors } from 'src/error/error.interface';
 import { RpcException } from '@nestjs/microservices';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from '../request.constant';
+import { ENUM_KAFKA_REQUEST_STATUS_CODE_ERROR } from '../kafka.request.constant';
 
 export class RequestKafkaValidationPipe implements PipeTransform {
     constructor(
@@ -48,7 +48,7 @@ export class RequestKafkaValidationPipe implements PipeTransform {
 
             throw new RpcException({
                 statusCode:
-                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_KAFKA_VALIDATION_ERROR,
+                    ENUM_KAFKA_REQUEST_STATUS_CODE_ERROR.KAFKA_REQUEST_VALIDATION_ERROR,
                 message: 'http.clientError.unprocessableEntity',
                 errors
             });

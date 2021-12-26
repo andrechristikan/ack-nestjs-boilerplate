@@ -36,14 +36,12 @@ export class PermissionController {
             ];
         }
 
-        const permissions: PermissionDocument[] = await this.permissionService.findAll(
-            find,
-            {
+        const permissions: PermissionDocument[] =
+            await this.permissionService.findAll(find, {
                 skip: skip,
                 limit: perPage,
                 sort
-            }
-        );
+            });
 
         const totalData: number = await this.permissionService.getTotal(find);
         const totalPage: number = await this.paginationService.totalPage(

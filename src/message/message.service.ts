@@ -14,9 +14,8 @@ export class MessageService {
 
     get(key: string): string {
         const keys: string[] = key.split('.');
-        let selectedMessage: Record<string, any> | string = this.languages[
-            this.language
-        ];
+        let selectedMessage: Record<string, any> | string =
+            this.languages[this.language];
 
         for (const i of keys) {
             selectedMessage = selectedMessage[i];

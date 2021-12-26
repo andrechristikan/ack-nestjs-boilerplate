@@ -8,7 +8,7 @@ Kafka documentation is optional and just in case if we want to use kafka.
 
 2. Delete `kafka config` in `src/config/kafka.config.ts`,
 
-3. Remove kafka config in `src/config/index.ts` too.
+3. Remove kafka config in `src/config/index.ts`.
 
 ```ts
 // src/config/index.ts
@@ -32,6 +32,11 @@ export default [
 ];
 ```
 
+4. Remove dependencies in `package.json`.
+
+    - `@nestjs/microservices`
+    - `kafkajs`
+
 ## Prerequisites
 
 Alright, we need to know some knowledge before next section.
@@ -43,9 +48,9 @@ Alright, we need to know some knowledge before next section.
 
 Main packages and Main Tools
 
-* [NestJs-Microservice](nestjs-microservice-url) v7.6.11
+* [NestJs-Microservice](nestjs-microservice-url) v8.2.4
 * [KafkaJs](kafka-js-url) v1.15.0
-* [Kafka](kafka-url) v2.8.0
+* [Kafka](kafka-url) v3.0.0
 
 ## Getting start
 
@@ -60,12 +65,24 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
     kafka-topics --version
 
     # will return 
-    # 2.8.0 (Commit:ebb1d6e21cc92130
+    # 3.0.0 (Commit:8cb0a5e9d3441962
     ```
 
 #### Installation
 
-1. Our environment will be a little different. We will use `.env.kafka`
+1. Install dependencies `@nestjs/microservices` and `kafkajs`.
+
+    ```sh
+    yarn add @nestjs/microservices kafkajs
+    ```
+
+    Or with npm
+
+    ```sh
+    npm i @nestjs/microservices kafkajs
+    ```
+
+2. Our environment will be a little different. We will use `.env.kafka`
 
     ```sh
     cp .env.kafka .env
@@ -107,7 +124,7 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
     AWS_S3_BUCKET=acks3
     ```
 
-2. In `src/main.ts`, Add This Code below `app.listenAsync(port, host)`.
+3. In `src/main.ts`, Add This Code below `app.listenAsync(port, host)`.
 
     ```ts
     // src/main.ts
@@ -131,7 +148,7 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
 
     ```
 
-3. In `src/app/app.module.ts`, we need to import `KafkaAdminModule`, `KafkaProducerModule`, `KafkaConsumerModule`.
+4. In `src/app/app.module.ts`, we need to import `KafkaAdminModule`, `KafkaProducerModule`, `KafkaConsumerModule`.
 
     - `KafkaAdminModule` use to create custom kafka topics.
     - `KafkaProducerModule` use to produce message to some topic
@@ -173,7 +190,7 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
 
         ```
 
-4. `Partition` default value is 3 or we can set Partition in config file `src/config/kafka.config.ts`, and `Replication Factor` default value is `count of our brokers`.
+5. `Partition` default value is 3 or we can set Partition in config file `src/config/kafka.config.ts`, and `Replication Factor` default value is `count of our brokers`.
 
     ```ts
     // src/config/kafka.config.ts
@@ -224,7 +241,7 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
     ];
     ```
 
-5. Make sure our topics was created or we can use auto create topics with `KafkaAdminModule`.
+6. Make sure our topics was created or we can use auto create topics with `KafkaAdminModule`.
 
     ```ts
     // src/kafka/kafka.constant.ts
@@ -236,35 +253,58 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
 
     ```
 
-6. After all configuration, we need to test. We can test `KafkaProducerModule` and `KafkaConsumerModule` with manual hit `/kafka/produce` endpoint. [see this instruction](ack-endpoint-url)
+7. After all configuration, we need to test. We can test `KafkaProducerModule` and `KafkaConsumerModule` with manual hit `/kafka/produce` endpoint. [see this instruction](ack-endpoint-url)
 
 #### Run project
+
+Make sure our kafka is running
+
+```sh
+kafka-topics --version
+```
+
+Run project with yarn
 
 ```sh
 yarn start:dev
 ```
 
-with npm
+Or run project with npm
 
 ```sh
 npm run start:dev
 ```
 
 
-#### Run with Docker - \*\*\*\* Read Carefully \*\*\*\*
-
-
+#### Run with Docker ---- \*\*\*\* Read Carefully \*\*\*\*
 
 This Instruction will little bit difference.
 
-> DOCKER COMPOSE FILE WILL DIFFERENT BETWEEN `kafka implementation` and `non kafka implementation`. Docker compose file in `docker/docker-compose.kafka.yml`
+> `docker-compose.yml` FILE WILL DIFFERENT BETWEEN `kafka` and `non kafka`. The file will put in `docker/docker-compose.kafka.yml`
 
-1. We need to install `docker` and `docker compose`.
+1. Before we start, we need to install `docker` and `docker compose`.
 
     - Docker official Documentation, [here](docker-url)
     - Docker Compose official Documentation, [here](docker-compose-url)
 
-2. We will use `.env.docker` and combine with `.env.kafka`
+2. Check `docker` is running or not
+
+    ```sh
+    docker --version
+
+    # will return 
+    # Docker version 20.10.12, build e91ed5707e
+    ```
+
+    and check `docker-compose`
+
+    ```sh
+
+    # will return
+    # docker-compose version 1.27.4, build 40524192
+    ```
+
+3. We will use `.env.docker` and combine with `.env.kafka`
 
     ```env
     APP_ENV=development
@@ -300,7 +340,7 @@ This Instruction will little bit difference.
     AWS_S3_BUCKET=acks3
     ```
 
-3. Run docker compose
+4. Run docker compose
 
     ```sh
     docker-compose -f docker/docker-compose.kafka.yml up -d

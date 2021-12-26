@@ -34,6 +34,16 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 
+# yarn
+.yarn/*
+.pnp.*
+!.yarn/cache
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
 # environment
 .env
 .env.testing

@@ -34,7 +34,9 @@ export class DatabaseService implements MongooseOptionsFactory {
     createMongooseOptions(): MongooseModuleOptions {
         let uri = `mongodb${this.srv ? '+srv' : ''}://`;
         if (this.user && this.password) {
-            uri = `${uri}${this.user}:${this.password}@`;
+            uri = `${uri}${encodeURIComponent(this.user)}:${encodeURIComponent(
+                this.password
+            )}@`;
         }
 
         uri = `${uri}${this.host}/${this.database}${this.options}`;

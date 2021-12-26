@@ -24,9 +24,8 @@ export class AwsService implements OnModuleInit {
     constructor(private readonly configService: ConfigService) {
         this.s3Client = new S3Client({
             credentials: {
-                accessKeyId: this.configService.get<string>(
-                    'aws.credential.key'
-                ),
+                accessKeyId:
+                    this.configService.get<string>('aws.credential.key'),
                 secretAccessKey: this.configService.get<string>(
                     'aws.credential.secret'
                 )

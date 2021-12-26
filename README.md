@@ -46,7 +46,7 @@
 <div align="center">
 	<hr>
 	<h1> ###### IMPORTANT ###### </h1>
-	<h2> ##### LAST UPDATE README ON 24 DEC 2021 ( ONGOING) ##### </h2>
+	<h2> ##### LAST UPDATE README ON 26 DEC 2021 ( ONGOING) ##### </h2>
   <h4>There huge differences between USAGE.md Documentation and source code after KafkaModule added, <a href="https://github.com/andrechristikan/ack-nestjs-mongoose/commits/main">Click here to check</a> </h4>
 
   <hr>
@@ -55,7 +55,7 @@
 
 ## Description
 
-ACK is a [NestJs](nestjs-url) boilerplate 🚀. Best uses for build an API Project, and Microservice Project. Made with following [nodejs-best-practice](nodejs-bestpractice-url) as benchmark and NestJs Habit.
+ACK is a [NestJs](nestjs-url) boilerplate 🚀. Best uses for build an API Project or Microservice Project. Made with following [nodejs-best-practice](nodejs-bestpractice-url) as benchmark and NestJs Habit.
 
 ## Prerequisites
 
@@ -70,13 +70,14 @@ We assume that all people are coming to here is `Programmer with intermediate kn
 
 Main packages and Main Tools
 
-* [NestJs](nestjs-url) v7.6.11
-* [NodeJs](nodejs-url) v12.21.0
-* [Typescript](typescript-url) v4.1.3
-* [Mongoose](mongoose-url) v5.11.14
-* [MongoDB](mongodb-url) v4.4.0
-* [Yarn](yarn-url) v1.22.10
-* [Docker](docker-url) v19.03.13
+* [NestJs](nestjs-url) v8.2.4
+* [NodeJs](nodejs-url) v17.3.0
+* [Typescript](typescript-url) v4.5.4
+* [Mongoose](mongoose-url) v6.1.3
+* [NestJs-Mongoose](mongoose-url) v9.0.2
+* [MongoDB](mongodb-url) v5.0.4
+* [Yarn](yarn-url) v1.22.17
+* [Docker](docker-url) v20.10.12
 * [Docker Compose](docker-compose-url) v1.27.4
 
 ## Features
@@ -155,7 +156,7 @@ The features will spill on this section, please read secretly and keep silent �
 
 #### Todo
 
-- [ ] Update version NestJs
+- [x] Update version NestJs
 - [ ] Unit Test and E2E Test
 - [ ] Update Documentation
 - [ ] Update Performance
@@ -184,7 +185,7 @@ Open our terminal and follow this instruction
     node --version
 
     # will return 
-    # v12.21.0
+    # v17.3.0
     ```
 
 2. Check package manager is running, with yarn
@@ -193,7 +194,7 @@ Open our terminal and follow this instruction
     yarn --version
 
     # will return 
-    # 1.22.10
+    # 1.22.17
     ```
 
     with npm
@@ -202,7 +203,7 @@ Open our terminal and follow this instruction
     npm --version
 
     # will return 
-    # 7.8.0
+    # 8.3.0
     ```
 
 3. Check MongoDB
@@ -211,7 +212,7 @@ Open our terminal and follow this instruction
     mongod --version
 
     # will return 
-    # db version v4.4.0
+    # db version v5.0.4
     ```
 
 #### Clone repo
@@ -360,7 +361,24 @@ After installation, we need to import all endpoint into postman, [see this instr
     - Docker official Documentation, [here](docker-url)
     - Docker Compose official Documentation, [here](docker-compose-url)
 
-2. Environment will be a little different. We will use `.env.docker`.
+2. Check `docker` is running or not
+
+    ```sh
+    docker --version
+
+    # will return 
+    # Docker version 20.10.12, build e91ed5707e
+    ```
+
+    and check `docker-compose`
+
+    ```sh
+
+    # will return
+    # docker-compose version 1.27.4, build 40524192
+    ```
+
+3. Environment will be a little different. We will use `.env.docker`.
 
     ```sh
     cp .env.docker .env
@@ -399,7 +417,7 @@ After installation, we need to import all endpoint into postman, [see this instr
     AWS_S3_BUCKET=acks3
     ```
 
-3. Run docker compose
+4. Run docker compose
 
     ```sh
     docker-compose up -d
