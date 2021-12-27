@@ -19,11 +19,15 @@ async function bootstrap() {
     app.setGlobalPrefix('/api');
 
     // Listen
-    await app.listenAsync(port, host);
+    await app.listen(port, host);
     logger.log(
         `Database running on ${configService.get<string>(
             'database.host'
         )}/${configService.get<string>('database.name')}`,
+        'NestApplication'
+    );
+    logger.log(
+        `Database options ${configService.get<string>('database.options')}`,
         'NestApplication'
     );
     logger.log(`Server running on ${await app.getUrl()}`, 'NestApplication');

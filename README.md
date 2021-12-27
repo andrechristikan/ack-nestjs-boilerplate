@@ -276,6 +276,32 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
 
 3. Create Database, [follow this instruction from mongodb official](mongodb-create-database-url)
 
+    > NOTE: If you use mongodb < v5, you need some adjust in `src/database/database.service.ts`
+
+    ```ts
+    // src/database/database.service.ts
+
+    ...
+    ...
+    ...
+    mongoose.set('debug', this.debug);
+
+    const mongooseOptions: MongooseModuleOptions = {
+        uri,
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+        useMongoClient: true  // <<<<---- uncomment this
+    };
+
+
+    if (this.admin) {
+        mongooseOptions.authSource = 'admin';
+    }
+    ...
+    ...
+    ...
+    ```
+
 4. We need to Migration Role and Permission for first usage
 
     - Fresh migrate

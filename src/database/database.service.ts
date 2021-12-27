@@ -32,24 +32,28 @@ export class DatabaseService implements MongooseOptionsFactory {
     }
 
     createMongooseOptions(): MongooseModuleOptions {
-        let uri = `mongodb${this.srv ? '+srv' : ''}://`;
-        if (this.user && this.password) {
-            uri = `${uri}${encodeURIComponent(this.user)}:${encodeURIComponent(
-                this.password
-            )}@`;
-        }
+        const uri = `mongodb${this.srv ? '+srv' : ''}://${this.host}/${
+            this.database
+        }${this.options}`;
 
-        uri = `${uri}${this.host}/${this.database}${this.options}`;
         mongoose.set('debug', this.debug);
 
         const mongooseOptions: MongooseModuleOptions = {
             uri,
             useNewUrlParser: true,
             useUnifiedTopology: true
+            // useMongoClient: true
         };
 
         if (this.admin) {
             mongooseOptions.authSource = 'admin';
+        }
+
+        if (this.user && this.password) {
+            mongooseOptions.auth = {
+                username: this.user,
+                password: this.password
+            };
         }
 
         if (this.ssl) {
