@@ -433,11 +433,11 @@ In this section will explain details base on `features` sections.
 
 	Or we if want to rollback, we can run
 	```sh
-	yarn migrate:rollback
+	yarn rollback
 
 	-OR
 
-	npm run migrate:rollback
+	npm run rollback
 	```
 
 	`Migrate` script will execute `nestjs-command create:permission && nestjs-command create:role && nestjs-command create:user`
