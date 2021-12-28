@@ -14,7 +14,8 @@
     "incremental": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "moduleResolution": "node",
+    "moduleResolution": "node",     
+    "resolveJsonModule": true
   },
   "include": [
     "src/**/*",
