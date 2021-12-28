@@ -135,12 +135,7 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
 
     await app.listenAsync(port, host);
 
-    const kafka = await import('./kafka/kafka');
-    await kafka.default(
-        app,
-        configService,
-        logger
-    );
+    await kafka(app, configService, logger);
 
     ...
     ...
@@ -316,9 +311,9 @@ This Instruction will little bit difference.
 
     DATABASE_HOST=mongodb:27017
     DATABASE_NAME=ack
-    DATABASE_USER=
-    DATABASE_PASSWORD=
-    DATABASE_ADMIN=false
+    DATABASE_USER=root
+    DATABASE_PASSWORD=123456
+    DATABASE_ADMIN=true
     DATABASE_SRV=false
     DATABASE_DEBUG=false
     DATABASE_SSL=false

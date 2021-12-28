@@ -34,7 +34,7 @@ services:
       - mongodb-data:/data/db
     restart: unless-stopped
   zookeeper:
-    image: wurstmeister/zookeeper
+    image: wurstmeister/zookeeper:latest
     container_name: zookeeper
     hostname: zookeeper
     networks:
@@ -48,7 +48,7 @@ services:
     volumes:
       - zookeeper-data:/bitnami
   kafka:
-    image: wurstmeister/kafka
+    image: wurstmeister/kafka:latest
     container_name: kafka
     hostname: kafka
     networks:
