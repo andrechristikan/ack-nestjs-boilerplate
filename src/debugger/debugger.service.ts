@@ -7,26 +7,32 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class DebuggerService {
-    constructor(private configService: ConfigService) {}
+    private readonly env: string;
+    private readonly logger: boolean;
+    private readonly maxSize: string;
+    private readonly maxFiles: string;
 
-    createLogger(): IDebuggerOptions {
-        const logger: boolean =
+    constructor(private configService: ConfigService) {
+        this.env = this.configService.get<string>('app.env');
+        this.logger =
             this.configService.get<boolean>('app.debug') &&
             this.configService.get<boolean>('app.debugger.system.active');
-        const maxSize = this.configService.get<string>(
+        this.maxSize = this.configService.get<string>(
             'app.debugger.system.maxSize'
         );
-        const maxFiles = this.configService.get<string>(
+        this.maxFiles = this.configService.get<string>(
             'app.debugger.system.maxFiles'
         );
+    }
 
+    createLogger(): IDebuggerOptions {
         const configTransportDefault: DailyRotateFile = new DailyRotateFile({
             filename: `%DATE%.log`,
             dirname: `logs/${DEBUGGER_NAME}/default`,
             datePattern: 'YYYY-MM-DD',
             zippedArchive: true,
-            maxSize: maxSize,
-            maxFiles: maxFiles,
+            maxSize: this.maxSize,
+            maxFiles: this.maxFiles,
             level: 'info'
         });
 
@@ -35,20 +41,22 @@ export class DebuggerService {
             dirname: `logs/${DEBUGGER_NAME}/error`,
             datePattern: 'YYYY-MM-DD',
             zippedArchive: true,
-            maxSize: maxSize,
-            maxFiles: maxFiles,
+            maxSize: this.maxSize,
+            maxFiles: this.maxFiles,
             level: 'error'
         });
 
         const transports = [];
-        if (logger) {
+        if (this.logger) {
             transports.push(configTransportError);
-            transports.push(configTransportDefault);
+
+            if (this.env !== 'production' && this.env !== 'testing')
+                transports.push(configTransportDefault);
         }
 
         transports.push(
             new winston.transports.Console({
-                silent: !logger
+                silent: !this.logger
             })
         );
 

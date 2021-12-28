@@ -16,8 +16,10 @@ export class DatabaseService implements MongooseOptionsFactory {
     private readonly ssl: boolean;
     private readonly debug: boolean;
     private readonly options: string;
+    private readonly env: string;
 
     constructor(private readonly configService: ConfigService) {
+        this.env = this.configService.get<string>('app.env');
         this.host = this.configService.get<string>('database.host');
         this.database = this.configService.get<string>('database.name');
         this.user = this.configService.get<string>('database.user');
@@ -36,7 +38,9 @@ export class DatabaseService implements MongooseOptionsFactory {
             this.database
         }${this.options}`;
 
-        mongoose.set('debug', this.debug);
+        if (this.env !== 'production' && this.env !== 'testing') {
+            mongoose.set('debug', this.debug);
+        }
 
         const mongooseOptions: MongooseModuleOptions = {
             uri,
