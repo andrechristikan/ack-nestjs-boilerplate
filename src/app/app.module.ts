@@ -17,6 +17,9 @@ import Configs from 'src/config/index';
 import { HelperModule } from 'src/helper/helper.module';
 import { RoleModule } from 'src/role/role.module';
 import { PermissionModule } from 'src/permission/permission.module';
+import { KafkaAdminModule } from 'src/kafka/admin/kafka.admin.module';
+import { KafkaConsumerModule } from 'src/kafka/consumer/consumer.module';
+import { KafkaProducerModule } from 'src/kafka/producer/kafka.producer.module';
 
 @Module({
     controllers: [AppController],
@@ -47,6 +50,20 @@ import { PermissionModule } from 'src/permission/permission.module';
         DebuggerModule,
         HelperModule,
         SeedsModule.register({ env: process.env.APP_ENV }),
+
+        KafkaAdminModule.register({
+            env: process.env.APP_ENV,
+            active: process.env.KAFKA_ACTIVE === 'true' || false
+        }),
+        KafkaConsumerModule.register({
+            env: process.env.APP_ENV,
+            active: process.env.KAFKA_ACTIVE === 'true' || false
+        }),
+        KafkaProducerModule.register({
+            env: process.env.APP_ENV,
+            active: process.env.KAFKA_ACTIVE === 'true' || false
+        }),
+
         AuthModule,
         PermissionModule,
         UserModule,

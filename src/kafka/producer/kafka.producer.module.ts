@@ -1,13 +1,14 @@
-import { DynamicModule, Module } from '@nestjs/common';
+import { DynamicModule, Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { KAFKA_PRODUCER_SERVICE_NAME } from './kafka.producer.constant';
 import { KafkaProducerService } from './kafka.producer.service';
 
+@Global()
 @Module({})
 export class KafkaProducerModule {
-    static register({ env }): DynamicModule {
-        if (env === 'testing') {
+    static register({ env, active }): DynamicModule {
+        if (env === 'testing' || !active) {
             return {
                 module: KafkaProducerModule,
                 providers: [],

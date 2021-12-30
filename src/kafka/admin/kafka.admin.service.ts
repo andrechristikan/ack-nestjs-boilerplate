@@ -37,8 +37,8 @@ export class KafkaAdminService implements OnModuleInit, OnModuleDestroy {
         );
 
         this.logger.log(`Starting ${this.name} ...`);
-        this.logger.log(`Brokers ${this.brokers.join(', ')}`);
-        this.logger.log(`Topics ${this.topics.join(', ')}`);
+        this.logger.log(`Brokers ${this.brokers}`);
+        this.logger.log(`Topics ${this.topics}`);
 
         this.kafka = new Kafka(this.kafkaOptions);
 

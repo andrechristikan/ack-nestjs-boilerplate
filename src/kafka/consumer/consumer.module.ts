@@ -3,8 +3,8 @@ import { KafkaConsumerController } from './consumer.controller';
 
 @Module({})
 export class KafkaConsumerModule {
-    static register({ env }): DynamicModule {
-        if (env === 'testing') {
+    static register({ env, active }): DynamicModule {
+        if (env === 'testing' || !active) {
             return {
                 module: KafkaConsumerModule,
                 providers: [],
