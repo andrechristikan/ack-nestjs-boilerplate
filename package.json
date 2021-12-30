@@ -2,8 +2,26 @@
   "name": "ack-nestjs-boilerplate",
   "version": "1.0.0",
   "description": "NestJs BoilerPlate With Mongoose",
-  "repository": "https://github.com/andrechristikan/ack-nestjs-mongoose.git",
-  "author": "andrechristikan <andrechristikan@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andrechristikan/ack-nestjs-mongoose.git"
+  },
+  "keywords": [
+    "nestjs",
+    "boilerplate",
+    "mongoose",
+    "mongodb",
+    "api",
+    "restfulapi",
+    "backend",
+    "kafka",
+    "kafkajs",
+    "docker"
+  ],
+  "author": {
+    "name": "andrechristikan",
+    "email": "andrechristikan@gmail.com"
+  },
   "private": true,
   "license": "MIT",
   "scripts": {
@@ -60,7 +78,8 @@
     "rotating-file-stream": "^3.0.2",
     "rxjs": "^7.4.0",
     "winston": "^3.3.3",
-    "winston-daily-rotate-file": "^4.5.5"
+    "winston-daily-rotate-file": "^4.5.5",
+    "yargs": "^17.3.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^8.1.6",

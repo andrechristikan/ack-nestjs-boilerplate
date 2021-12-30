@@ -9,7 +9,7 @@ export default registerAs(
             host: process.env.APP_HOST || 'localhost',
             port: parseInt(process.env.APP_PORT) || 3000
         },
-
+        timezone: process.env.APP_TZ || 'Asia/Jakarta',
         debug: process.env.APP_DEBUG === 'true' || false,
         debugger: {
             http: {

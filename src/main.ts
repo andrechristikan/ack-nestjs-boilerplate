@@ -9,11 +9,14 @@ async function bootstrap() {
         bodyParser: true
     });
     const configService = app.get(ConfigService);
+    const env: string = configService.get<string>('app.env');
+    const tz: string = configService.get<string>('app.timezone');
     const host: string = configService.get<string>('app.http.host');
     const port: number = configService.get<number>('app.http.port');
 
     const logger = new Logger();
-    process.env.TZ = process.env.APP_TZ;
+    process.env.TZ = tz;
+    process.env.NODE_ENV = env;
 
     // Global Prefix
     app.setGlobalPrefix('/api');

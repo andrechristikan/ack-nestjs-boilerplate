@@ -12,6 +12,6 @@ RUN set -x && yarn
 
 COPY . .
 
-RUN yarn run prebuild && yarn run build
+RUN yarn build
 
-CMD [ "yarn", "run", "start:prod" ]
+CMD [ "yarn", "start:prod" ]

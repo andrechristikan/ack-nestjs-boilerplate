@@ -18,7 +18,9 @@
     "coverageDirectory": "../test-coverage",
     "moduleFileExtensions": [
         "ts",
-        "json"
+        "tsx",
+        "json",
+        "js"
     ],
     "transform": {
         "^.+\\.tsx?$": "ts-jest"

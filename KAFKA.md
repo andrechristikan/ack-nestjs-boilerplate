@@ -133,9 +133,13 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
     ...
     ...
 
+    const env: string = configService.get<string>('app.env');
+
     await app.listenAsync(port, host);
 
-    await kafka(app, configService, logger);
+    if(env !== 'testing'){
+        await kafka(app, configService, logger);
+    }
 
     ...
     ...
@@ -168,10 +172,11 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
             ...
             ...
 
-            SeedsModule,
-            KafkaAdminModule, // <<<---- Add this
-            KafkaProducerModule, // <<<---- Add this
-            KafkaConsumerModule, // <<<---- Add this
+            
+            SeedsModule.register({ env: process.env.APP_ENV }),
+            KafkaAdminModule.register({ env: process.env.APP_ENV }), // <<<---- Add this
+            KafkaProducerModule.register({ env: process.env.APP_ENV }), // <<<---- Add this
+            KafkaConsumerModule.register({ env: process.env.APP_ENV }), // <<<---- Add this
 
             AuthModule,
             UserModule,

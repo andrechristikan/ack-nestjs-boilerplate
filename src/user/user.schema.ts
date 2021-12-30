@@ -58,6 +58,7 @@ export class UserEntity {
 
     @Prop({
         required: false,
+        _id: false,
         type: {
             path: String,
             path_with_filename: String,

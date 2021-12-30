@@ -46,7 +46,7 @@ import { PermissionModule } from 'src/permission/permission.module';
         PaginationModule,
         DebuggerModule,
         HelperModule,
-        SeedsModule,
+        SeedsModule.register({ env: process.env.APP_ENV }),
         AuthModule,
         PermissionModule,
         UserModule,
