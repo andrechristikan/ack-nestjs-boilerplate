@@ -1,8 +1,13 @@
+#husky
 
 # Build dependencies
 node_modules/
 e2e-coverage/
+test-coverage/
+coverage/
 dist/
+.husky/
+docker/
 
 # Logs
 logs/
@@ -14,10 +19,14 @@ logs/
 .git
 .gitignore
 .dockerignore
+.eslintignore
 
 # Files not required for production
 .editorconfig
-Dockerfile
+dockerfile
+docker-compose.yml
+cspell.json
 README.md
-tslint.json
+USAGE.md
+KAFKA.md
 nodemon.json

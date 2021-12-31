@@ -3,5 +3,6 @@
 dist/*
 coverage/*
 e2e-coverage/*
+test-coverage/*
 node_modules/*
 logs/*
