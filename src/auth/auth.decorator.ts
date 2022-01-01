@@ -46,7 +46,7 @@ export const User = createParamDecorator(
 export const Token = createParamDecorator(
     (data: string, ctx: ExecutionContext): string => {
         const { headers } = ctx.switchToHttp().getRequest();
-        const authorization: string[] = headers.authorization.split(' ');
-        return authorization[1];
+        const { authorization } = headers;
+        return authorization ? authorization.split(' ')[1] : undefined;
     }
 );
