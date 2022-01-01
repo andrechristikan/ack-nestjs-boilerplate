@@ -2,6 +2,11 @@ import { Inject, applyDecorators, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { HelperImageInterceptor } from './interceptor/helper.image.interceptor';
 import { HelperService } from './helper.service';
+import {
+    registerDecorator,
+    ValidationOptions,
+    ValidationArguments
+} from 'class-validator';
 
 export function Helper(): (
     target: Record<string, any>,
@@ -16,12 +21,6 @@ export function Image(field: string): any {
         UseInterceptors(FileInterceptor(field), HelperImageInterceptor)
     );
 }
-
-import {
-    registerDecorator,
-    ValidationOptions,
-    ValidationArguments
-} from 'class-validator';
 
 export function IsPasswordStrong(
     minLength = 8,
@@ -144,6 +143,28 @@ export function IsStartWith(
                     return relatedPropertyName.every((prf: string) =>
                         value.startsWith(prf)
                     );
+                }
+            }
+        });
+    };
+}
+
+export function MinDateGreaterThan(
+    property: string,
+    validationOptions?: ValidationOptions
+) {
+    return function (object: Record<string, any>, propertyName: string) {
+        registerDecorator({
+            name: 'MinDateGreaterThan',
+            target: object.constructor,
+            propertyName: propertyName,
+            constraints: [property],
+            options: validationOptions,
+            validator: {
+                validate(value: any, args: ValidationArguments) {
+                    const [relatedPropertyName] = args.constraints;
+                    const relatedValue = args.object[relatedPropertyName];
+                    return new Date(value) > new Date(relatedValue);
                 }
             }
         });
