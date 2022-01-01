@@ -103,6 +103,7 @@ The features will spill on this section, please read secretly and keep silent ðŸ
 - [x] Block User, Block Role
 - [x] Remember me implementation
 - [x] Manipulation Datetime, Random string, Random int, etc in HelperModule
+- [x] Kafka Implementation
 
 #### Modules
 
