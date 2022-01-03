@@ -158,7 +158,7 @@ List of modules
 #### Todo
 
 - [x] Update version NestJs
-- [.] Unit Test and E2E Test
+- [ ] Unit Test and E2E Test
 - [ ] Update Documentation
 - [ ] Update Performance
 
