@@ -11,7 +11,7 @@ import { UserModule } from 'src/user/user.module';
 @Module({})
 export class SeedsModule {
     static register({ env }): DynamicModule {
-        if (env !== 'production' && env !== 'testing') {
+        if (env !== 'production') {
             return {
                 module: SeedsModule,
                 imports: [
