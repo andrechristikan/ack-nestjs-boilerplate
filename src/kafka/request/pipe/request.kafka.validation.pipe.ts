@@ -4,7 +4,7 @@ import { Debugger } from 'src/debugger/debugger.decorator';
 import { Logger as DebuggerService } from 'winston';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
-import { plainToClass } from 'class-transformer';
+import { plainToInstance } from 'class-transformer';
 import { IErrors } from 'src/error/error.interface';
 import { RpcException } from '@nestjs/microservices';
 import { ENUM_KAFKA_REQUEST_STATUS_CODE_ERROR } from '../kafka.request.constant';
@@ -25,7 +25,7 @@ export class RequestKafkaValidationPipe implements PipeTransform {
             return value;
         }
 
-        const request: Record<string, any> = plainToClass(
+        const request: Record<string, any> = plainToInstance(
             validation,
             value.value
         );

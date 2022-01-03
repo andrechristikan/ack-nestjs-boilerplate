@@ -2,48 +2,31 @@
 
 Kafka documentation is optional and just in case if we want to use kafka.
 
-## If we won't to use kafka
-
-1. Delete `kafka folder` in `src/kafka`
-
-2. Delete `kafka config` in `src/config/kafka.config.ts`,
-
-3. Remove kafka config in `src/config/index.ts`.
-
-```ts
-// src/config/index.ts
-
-import AppConfig from 'src/config/app.config';
-import AuthConfig from 'src/config/auth.config';
-import DatabaseConfig from 'src/config/database.config';
-import HelperConfig from 'src/config/helper.config';
-import MiddlewareConfig from 'src/config/middleware.config';
-import AwsConfig from 'src/config/aws.config';
-import UserConfig from './user.config';
-
-export default [
-    AppConfig,
-    AuthConfig,
-    DatabaseConfig,
-    HelperConfig,
-    MiddlewareConfig,
-    AwsConfig,
-    UserConfig
-];
-```
-
-4. Remove dependencies in `package.json`.
-
-    - `@nestjs/microservices`
-    - `kafkajs`
-
 ## Prerequisites
 
 Alright, we need to know some knowledge before next section.
 
 * Follow [README](README.md) Documentation.
-* Understood [Kafka Fundamental](kafka-url). It will help we to know how kafka works and why we need kafka.
+* Understood [Kafka Fundamental](kafka-url). It will help we to know how kafka works and why we need kafka in real project.
 
+As we mention in `Readme` at section `Features`, we can switch kafka on/of. We just need change value `KAFKA_ACTIVE` in `.env` file. This useful when you don't need kafka anymore after implementation.
+
+```env
+...
+...
+
+AUTH_BASIC_TOKEN_CLIENT_SECRET=1234567890
+
+KAFKA_ACTIVE=true // <<<<----- change this
+KAFKA_CONSUMER_GROUP=nestjs.ack
+KAFKA_BROKERS=localhost:9092
+
+AWS_CREDENTIAL_KEY=awskey12345
+
+...
+...
+...
+```
 ## Build With
 
 Main packages and Main Tools
@@ -115,6 +98,7 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
     AUTH_BASIC_TOKEN_CLIENT_ID=asdzxc
     AUTH_BASIC_TOKEN_CLIENT_SECRET=1234567890
 
+    KAFKA_ACTIVE=true
     KAFKA_CONSUMER_GROUP=nestjs.ack
     KAFKA_BROKERS=localhost:9092
 
@@ -136,9 +120,10 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
     const env: string = configService.get<string>('app.env');
 
     await app.listenAsync(port, host);
-
-    if(env !== 'testing'){
-        await kafka(app, configService, logger);
+    
+    const kafkaActive: boolean = configService.get<boolean>('kafka.active');
+    if (kafkaActive && env !== 'testing') {
+         await kafka(app, configService, logger);
     }
 
     ...
@@ -174,9 +159,18 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
 
             
             SeedsModule.register({ env: process.env.APP_ENV }),
-            KafkaAdminModule.register({ env: process.env.APP_ENV }), // <<<---- Add this
-            KafkaProducerModule.register({ env: process.env.APP_ENV }), // <<<---- Add this
-            KafkaConsumerModule.register({ env: process.env.APP_ENV }), // <<<---- Add this
+            KafkaAdminModule.register({
+                env: process.env.APP_ENV,
+                active: process.env.KAFKA_ACTIVE === 'true' || false
+            }),
+            KafkaConsumerModule.register({
+                env: process.env.APP_ENV,
+                active: process.env.KAFKA_ACTIVE === 'true' || false
+            }),
+            KafkaProducerModule.register({
+                env: process.env.APP_ENV,
+                active: process.env.KAFKA_ACTIVE === 'true' || false
+            }),
 
             AuthModule,
             UserModule,
@@ -253,15 +247,9 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
 
     ```
 
-7. After all configuration, we need to test. We can test `KafkaProducerModule` and `KafkaConsumerModule` with manual hit `/kafka/produce` endpoint. [see this instruction](ack-endpoint-url)
+7. After all configuration, we need to test. We can test `KafkaProducerModule` and `KafkaConsumerModule` with manual hit `/kafka/produce` endpoint. [see this instruction](ack-endpoint-url).
 
 #### Run project
-
-Make sure our kafka is running
-
-```sh
-kafka-topics --version
-```
 
 Run project with yarn
 
@@ -331,6 +319,7 @@ This Instruction will little bit difference.
     AUTH_BASIC_TOKEN_CLIENT_ID=asdzxc
     AUTH_BASIC_TOKEN_CLIENT_SECRET=1234567890
 
+    KAFKA_ACTIVE=true
     KAFKA_CONSUMER_GROUP=nestjs.ack
     KAFKA_BROKERS=kafka:9092
 
@@ -345,6 +334,49 @@ This Instruction will little bit difference.
     ```sh
     docker-compose -f docker/docker-compose.kafka.yml up -d
     ```
+
+## OPTIONAL, if we want delete kafka
+
+1. Delete `kafka folder` in `src/kafka`
+
+2. Delete `kafka config` in `src/config/kafka.config.ts`,
+
+3. Remove kafka config in `src/config/index.ts`.
+
+```ts
+// src/config/index.ts
+
+import AppConfig from 'src/config/app.config';
+import AuthConfig from 'src/config/auth.config';
+import DatabaseConfig from 'src/config/database.config';
+import HelperConfig from 'src/config/helper.config';
+import MiddlewareConfig from 'src/config/middleware.config';
+import AwsConfig from 'src/config/aws.config';
+import UserConfig from './user.config';
+
+export default [
+    AppConfig,
+    AuthConfig,
+    DatabaseConfig,
+    HelperConfig,
+    MiddlewareConfig,
+    AwsConfig,
+    UserConfig
+];
+```
+
+4. Remove dependencies `@nestjs/microservices` and `kafkajs`.
+
+```sh
+yarn remove @nestjs/microservices kafkajs
+```
+
+Or remove with npm
+
+```sh
+npm uninstall @nestjs/microservices kafkajs
+```
+
 
 [ack-endpoint-url]: https://github.com/andrechristikan/ack-nestjs-mongoose#endpoints
 [nestjs-microservice-url]: https://docs.nestjs.com/microservices/kafka

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { IPermissionCreate, PermissionDocument } from './permission.interface';
+import { IPermission, PermissionDocument } from './permission.interface';
 import { PermissionEntity } from './permission.schema';
 
 @Injectable()
@@ -42,7 +42,7 @@ export class PermissionService {
         return true;
     }
 
-    async createMany(data: IPermissionCreate[]): Promise<boolean> {
+    async createMany(data: IPermission[]): Promise<boolean> {
         await this.permissionModel.insertMany(
             data.map(({ isActive, name }) => ({
                 name,

@@ -1,4 +1,9 @@
-import { Controller, Get, InternalServerErrorException } from '@nestjs/common';
+import {
+    Controller,
+    Get,
+    InternalServerErrorException,
+    Optional
+} from '@nestjs/common';
 import { Response } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
 import { IKafkaResponse } from '../response/kafka.response.interface';
@@ -7,11 +12,14 @@ import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { IErrorKafka } from '../error/kafka.error.interface';
 import { KafkaProducerService } from './kafka.producer.service';
+import { KafkaProducer } from './kafka.producer.decorator';
 
 @Controller('kafka/produce')
 export class KafkaProducerController {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService,
+        @Optional()
+        @KafkaProducer()
         private readonly kafkaProducerService: KafkaProducerService
     ) {}
 

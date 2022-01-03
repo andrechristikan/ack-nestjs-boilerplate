@@ -6,7 +6,6 @@ import { Debugger } from 'src/debugger/debugger.decorator';
 import { PermissionService } from 'src/permission/permission.service';
 import { RoleService } from 'src/role/role.service';
 import { PermissionDocument } from 'src/permission/permission.interface';
-import { RoleDocument } from 'src/role/role.interface';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 
 @Injectable()

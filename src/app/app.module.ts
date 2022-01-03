@@ -47,6 +47,20 @@ import { PermissionModule } from 'src/permission/permission.module';
         DebuggerModule,
         HelperModule,
         SeedsModule.register({ env: process.env.APP_ENV }),
+
+        // KafkaAdminModule.register({
+        //     env: process.env.APP_ENV,
+        //     active: process.env.KAFKA_ACTIVE === 'true' || false
+        // }),
+        // KafkaConsumerModule.register({
+        //     env: process.env.APP_ENV,
+        //     active: process.env.KAFKA_ACTIVE === 'true' || false
+        // }),
+        // KafkaProducerModule.register({
+        //     env: process.env.APP_ENV,
+        //     active: process.env.KAFKA_ACTIVE === 'true' || false
+        // }),
+
         AuthModule,
         PermissionModule,
         UserModule,

@@ -13,7 +13,7 @@ import { RoleEntity } from 'src/role/role.schema';
 import { PermissionEntity } from 'src/permission/permission.schema';
 import { Types } from 'mongoose';
 import { UserProfileTransformer } from './transformer/user.profile.transformer';
-import { plainToClass } from 'class-transformer';
+import { plainToInstance } from 'class-transformer';
 import { UserLoginTransformer } from './transformer/user.login.transformer';
 import { Helper } from 'src/helper/helper.decorator';
 import { HelperService } from 'src/helper/helper.service';
@@ -56,19 +56,19 @@ export class UserService {
     }
 
     async mapProfile(data: IUserDocument): Promise<UserProfileTransformer> {
-        return plainToClass(UserProfileTransformer, data);
+        return plainToInstance(UserProfileTransformer, data);
     }
 
     async mapLogin(data: IUserDocument): Promise<UserLoginTransformer> {
-        return plainToClass(UserLoginTransformer, data);
+        return plainToInstance(UserLoginTransformer, data);
     }
 
     async mapList(data: IUserDocument[]): Promise<UserListTransformer[]> {
-        return plainToClass(UserListTransformer, data);
+        return plainToInstance(UserListTransformer, data);
     }
 
     async mapGet(data: IUserDocument): Promise<UserGetTransformer> {
-        return plainToClass(UserGetTransformer, data);
+        return plainToInstance(UserGetTransformer, data);
     }
 
     async findOneById<T>(

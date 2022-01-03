@@ -3,8 +3,8 @@ import { KafkaAdminService } from './kafka.admin.service';
 
 @Module({})
 export class KafkaAdminModule {
-    static register({ env }): DynamicModule {
-        if (env === 'testing') {
+    static register({ env, active }): DynamicModule {
+        if (env === 'testing' || !active) {
             return {
                 module: KafkaAdminModule,
                 providers: [],

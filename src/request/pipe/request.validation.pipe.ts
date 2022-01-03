@@ -10,7 +10,7 @@ import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
-import { plainToClass } from 'class-transformer';
+import { plainToInstance } from 'class-transformer';
 import { AuthLoginValidation } from 'src/auth/validation/auth.login.validation';
 import { IErrors } from 'src/error/error.interface';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from '../request.constant';
@@ -35,7 +35,7 @@ export class RequestValidationPipe implements PipeTransform {
         }
 
         const classTransformer = new metatype(value);
-        const request = plainToClass(metatype, {
+        const request = plainToInstance(metatype, {
             ...classTransformer,
             ...value
         });
@@ -47,9 +47,8 @@ export class RequestValidationPipe implements PipeTransform {
 
         const rawErrors: Record<string, any>[] = await validate(request);
         if (rawErrors.length > 0) {
-            const errors: IErrors[] = this.messageService.getRequestErrorsMessage(
-                rawErrors
-            );
+            const errors: IErrors[] =
+                this.messageService.getRequestErrorsMessage(rawErrors);
 
             this.debuggerService.error('Request Errors', {
                 class: 'RequestValidationPipe',

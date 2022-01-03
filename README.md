@@ -103,15 +103,18 @@ The features will spill on this section, please read secretly and keep silent ðŸ
 - [x] Block User, Block Role
 - [x] Remember me implementation
 - [x] Manipulation Datetime, Random string, Random int, etc in HelperModule
+- [x] Kafka Implementation, can on/off
 
 #### Modules
 
+List of modules
+
 - [x] AppModule - MainModule
-- [x] AuthModule
+- [x] AuthModule - Access Token, Refresh Token, and any Guard.
 - [x] AwsModule - S3 Implementation
 - [x] ConfigModule - Centralize Config
 - [x] DatabaseModule
-- [x] DebuggerModule - write log in file
+- [x] DebuggerModule - like `console.log` but can write into file. Catch http incoming request too and write into file.
 - [x] ErrorModule - Centralize Exception
 - [x] Helper Module (e.g Manipulation DateTime, Random string or int, etc)
 - [x] KafkaModule
@@ -127,8 +130,6 @@ The features will spill on this section, please read secretly and keep silent ðŸ
 - [x] ResponseModule - Centralize Response
 - [x] RoleModule
 - [x] UserModule
-
-[Welcome to request for other modules](issues-url)
 
 #### Middleware
 
@@ -157,7 +158,7 @@ The features will spill on this section, please read secretly and keep silent ðŸ
 #### Todo
 
 - [x] Update version NestJs
-- [ ] Unit Test and E2E Test
+- [.] Unit Test and E2E Test
 - [ ] Update Documentation
 - [ ] Update Performance
 

@@ -13,7 +13,7 @@ import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { RoleService } from './role.service';
 import { PaginationService } from 'src/pagination/pagination.service';
 import { IRoleDocument, RoleDocument } from './role.interface';
-import { Response } from 'src/response/response.decorator';
+import { Response, ResponsePaging } from 'src/response/response.decorator';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
 import { RoleListValidation } from './validation/role.list.validation';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from './role.constant';
@@ -33,7 +33,7 @@ export class RoleController {
         private readonly roleService: RoleService
     ) {}
 
-    @Response('role.list')
+    @ResponsePaging('role.list')
     @AuthJwtGuard(ENUM_PERMISSIONS.ROLE_READ)
     @Get('/list')
     async list(
