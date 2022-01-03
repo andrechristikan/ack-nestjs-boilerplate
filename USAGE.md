@@ -749,10 +749,10 @@ In this section will explain details base on `features` sections.
 	```ts
 	// src/user/user.service.ts
 
-	import { classToPlain, plainToClass } from 'class-transformer';
+	import { classToPlain, plainToInstance } from 'class-transformer';
 
 	async safeProfile(data: UserDocumentFull): Promise<Record<string, any>> {
-        return classToPlain(plainToClass(UserTransformer, data));
+        return classToPlain(plainToInstance(UserTransformer, data));
     }
 	```
 
