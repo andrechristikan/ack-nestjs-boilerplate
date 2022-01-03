@@ -4,7 +4,7 @@ import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { PaginationService } from 'src/pagination/pagination.service';
 import { PermissionService } from './permission.service';
 import { PermissionDocument } from './permission.interface';
-import { Response } from 'src/response/response.decorator';
+import { ResponsePaging } from 'src/response/response.decorator';
 import { IResponsePaging } from 'src/response/response.interface';
 import { PermissionListValidation } from './validation/permission.list.validation';
 import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe';
@@ -16,7 +16,7 @@ export class PermissionController {
         private readonly permissionService: PermissionService
     ) {}
 
-    @Response('permission.list')
+    @ResponsePaging('permission.list')
     @AuthJwtGuard(ENUM_PERMISSIONS.PERMISSION_READ)
     @Get('/list')
     async list(

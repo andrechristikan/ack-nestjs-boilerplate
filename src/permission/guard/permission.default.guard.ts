@@ -12,6 +12,7 @@ import {
 } from '../permission.constant';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { Logger as DebuggerService } from 'winston';
+import { IPermission } from '../permission.interface';
 
 @Injectable()
 export class PermissionDefaultGuard implements CanActivate {
@@ -21,16 +22,19 @@ export class PermissionDefaultGuard implements CanActivate {
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const requiredPermission: ENUM_PERMISSIONS[] = this.reflector.getAllAndOverride<
-            ENUM_PERMISSIONS[]
-        >(PERMISSION_META_KEY, [context.getHandler(), context.getClass()]);
+        const requiredPermission: ENUM_PERMISSIONS[] =
+            this.reflector.getAllAndOverride<ENUM_PERMISSIONS[]>(
+                PERMISSION_META_KEY,
+                [context.getHandler(), context.getClass()]
+            );
         if (!requiredPermission) {
             return true;
         }
-
         const { user } = context.switchToHttp().getRequest();
         const { role } = user;
-        const permissions = role.permissions;
+        const permissions: string[] = role.permissions
+            .filter((val: IPermission) => val.isActive)
+            .map((val: IPermission) => val.name);
 
         const hasPermission: boolean = requiredPermission.every((permission) =>
             permissions.includes(permission)

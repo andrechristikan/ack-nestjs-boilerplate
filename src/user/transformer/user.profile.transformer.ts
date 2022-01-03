@@ -9,9 +9,10 @@ export class UserProfileTransformer {
     @Transform(
         ({ value }) => ({
             name: value.name,
-            permissions: value.permissions.map(
-                (val: Record<string, any>) => val.name
-            ),
+            permissions: value.permissions.map((val: Record<string, any>) => ({
+                name: val.name,
+                isActive: val.isActive
+            })),
             isActive: value.isActive
         }),
         { toClassOnly: true }
