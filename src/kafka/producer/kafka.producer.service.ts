@@ -3,8 +3,10 @@ import {
     Injectable,
     Logger,
     OnApplicationBootstrap,
-    OnModuleDestroy
+    OnModuleDestroy,
+    Optional
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ClientKafka } from '@nestjs/microservices';
 import { Helper } from 'src/helper/helper.decorator';
 import { HelperService } from 'src/helper/helper.service';
@@ -17,15 +19,24 @@ import { KAFKA_PRODUCER_SERVICE_NAME } from './kafka.producer.constant';
 export class KafkaProducerService
     implements OnApplicationBootstrap, OnModuleDestroy
 {
+    private readonly testMode: boolean;
     protected logger = new Logger(KafkaProducerService.name);
 
     constructor(
         @Helper() private readonly helperService: HelperService,
+        @Optional()
         @Inject(KAFKA_PRODUCER_SERVICE_NAME)
-        private readonly kafka: ClientKafka
-    ) {}
+        private readonly kafka: ClientKafka,
+        private readonly configService: ConfigService
+    ) {
+        this.testMode = this.configService.get<string>('app.env') === 'testing';
+    }
 
     async onApplicationBootstrap(): Promise<void> {
+        if (this.testMode) {
+            return;
+        }
+
         const topics: string[] = [...new Set(KAFKA_TOPICS)];
         topics.forEach((val) => {
             this.kafka.subscribeToResponseOf(val);
@@ -37,6 +48,10 @@ export class KafkaProducerService
     }
 
     async onModuleDestroy(): Promise<void> {
+        if (this.testMode) {
+            return;
+        }
+
         await this.kafka.close();
     }
 
@@ -45,6 +60,10 @@ export class KafkaProducerService
         data: Record<string, string>,
         headers?: Record<string, string>
     ): Promise<IKafkaResponse> {
+        if (this.testMode) {
+            return;
+        }
+
         const request: IKafkaRequest<Record<string, string>> = {
             key: await this.createId(),
             value: data,
