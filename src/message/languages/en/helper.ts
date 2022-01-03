@@ -1,7 +1,7 @@
 export default {
     error: {
-        imageNotFound: 'User not found',
-        imageMaxSize: 'User not found',
-        imageMimeInvalid: 'User not found'
+        imageNotFound: 'File not found',
+        imageMaxSize: 'File size too big',
+        imageMimeInvalid: 'File extension not valid'
     }
 };
