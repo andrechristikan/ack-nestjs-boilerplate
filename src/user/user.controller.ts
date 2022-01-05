@@ -26,7 +26,6 @@ import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
 import { Response, ResponsePaging } from 'src/response/response.decorator';
 import { ENUM_STATUS_CODE_ERROR } from 'src/error/error.constant';
-import { IErrors } from 'src/error/error.interface';
 import { ENUM_USER_STATUS_CODE_ERROR } from './user.constant';
 import { UserListValidation } from './validation/user.list.validation';
 import { GetUser, UserGetGuard, UserProfileGuard } from './user.decorator';
@@ -124,33 +123,36 @@ export class UserController {
             data.mobileNumber
         );
 
-        const errors: IErrors[] = [];
-        if (checkExist.email) {
-            errors.push({
-                message: this.messageService.get('user.error.emailExist'),
-                property: 'email'
-            });
-        }
-        if (checkExist.mobileNumber) {
-            errors.push({
-                message: this.messageService.get(
-                    'user.error.mobileNumberExist'
-                ),
-                property: 'mobileNumber'
-            });
-        }
-
-        if (errors.length > 0) {
-            this.debuggerService.error('create errors', {
+        if (checkExist.email && checkExist.mobileNumber) {
+            this.debuggerService.error('create user exist', {
                 class: 'UserController',
-                function: 'create',
-                errors
+                function: 'create'
             });
 
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EXISTS_ERROR,
-                message: 'user.error.createError',
-                errors
+                message: 'user.error.exist'
+            });
+        } else if (checkExist.email) {
+            this.debuggerService.error('create user exist', {
+                class: 'UserController',
+                function: 'create'
+            });
+
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
+                message: 'user.error.emailExist'
+            });
+        } else if (checkExist.mobileNumber) {
+            this.debuggerService.error('create user exist', {
+                class: 'UserController',
+                function: 'create'
+            });
+
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
+                message: 'user.error.mobileNumberExist'
             });
         }
 
@@ -266,33 +268,36 @@ export class UserPublicController {
             mobileNumber
         );
 
-        const errors: IErrors[] = [];
-        if (checkExist.email) {
-            errors.push({
-                message: this.messageService.get('user.error.emailExist'),
-                property: 'email'
-            });
-        }
-        if (checkExist.mobileNumber) {
-            errors.push({
-                message: this.messageService.get(
-                    'user.error.mobileNumberExist'
-                ),
-                property: 'mobileNumber'
-            });
-        }
-
-        if (errors.length > 0) {
-            this.debuggerService.error('create errors', {
-                class: 'UserPublicController',
-                function: 'signUp',
-                errors
+        if (checkExist.email && checkExist.mobileNumber) {
+            this.debuggerService.error('create user exist', {
+                class: 'UserController',
+                function: 'create'
             });
 
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EXISTS_ERROR,
-                message: 'user.error.createError',
-                errors
+                message: 'user.error.exist'
+            });
+        } else if (checkExist.email) {
+            this.debuggerService.error('create user exist', {
+                class: 'UserController',
+                function: 'create'
+            });
+
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
+                message: 'user.error.emailExist'
+            });
+        } else if (checkExist.mobileNumber) {
+            this.debuggerService.error('create user exist', {
+                class: 'UserController',
+                function: 'create'
+            });
+
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
+                message: 'user.error.mobileNumberExist'
             });
         }
 

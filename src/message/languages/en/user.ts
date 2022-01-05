@@ -1,15 +1,17 @@
 export default {
-    findAll: 'Get All User Success.',
-    findOneById: 'Get One By Id User Success.',
-    profile: 'Profile Success',
-    delete: 'Delete User Success.',
+    list: 'List User Success.',
+    get: 'Get User Success.',
     create: 'Create User Success.',
+    delete: 'Delete User Success.',
     update: 'Update User Success.',
+    signUp: 'Signup Success',
+    profile: 'Profile Success',
+    upload: 'Upload Success',
     error: {
+        notFound: 'User not found.',
+        inactive: 'User inactive',
         emailExist: 'Email user used',
         mobileNumberExist: 'Mobile Number user used',
-        createError: 'Create Error',
-        notFound: 'User not found.',
-        userExist: 'User exist.'
+        exist: 'User exist.'
     }
 };

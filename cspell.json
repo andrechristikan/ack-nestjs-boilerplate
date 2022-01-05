@@ -4,6 +4,7 @@
         "metatype",
         "virtuals",
         "prebuild",
-        "Logform"
+        "Logform",
+        "transfomer"
     ]
 }

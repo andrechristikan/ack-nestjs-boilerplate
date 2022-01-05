@@ -2,6 +2,7 @@ import { NestApplication, NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
+import kafka from './kafka/kafka';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule, {
@@ -36,9 +37,9 @@ async function bootstrap() {
     logger.log(`Server running on ${await app.getUrl()}`, 'NestApplication');
 
     // Kafka
-    // const kafkaActive: boolean = configService.get<boolean>('kafka.active');
-    // if (kafkaActive && env !== 'testing') {
-    //     await kafka(app, configService, logger);
-    // }
+    const kafkaActive: boolean = configService.get<boolean>('kafka.active');
+    if (kafkaActive && env !== 'testing') {
+        await kafka(app, configService, logger);
+    }
 }
 bootstrap();

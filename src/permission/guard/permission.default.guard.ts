@@ -49,7 +49,7 @@ export class PermissionDefaultGuard implements CanActivate {
             throw new ForbiddenException({
                 statusCode:
                     ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_GUARD_INVALID_ERROR,
-                message: 'http.clientError.forbidden'
+                message: 'permission.error.forbidden'
             });
         }
         return hasPermission;
