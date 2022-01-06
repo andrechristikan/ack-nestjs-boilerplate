@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { plainToInstance } from 'class-transformer';
 import { Helper } from 'src/helper/helper.decorator';
 import { HelperService } from 'src/helper/helper.service';
+import { IUserDocument } from 'src/user/user.interface';
+import { AuthLoginTransformer } from './transformer/auth.login.transformer';
 
 @Injectable()
 export class AuthService {
@@ -126,5 +129,24 @@ export class AuthService {
             ? this.rememberMeChecked
             : this.rememberMeNotChecked;
         return this.helperService.dateTimeForwardInDays(expired);
+    }
+
+    async createPayload(
+        data: Record<string, any>,
+        rememberMe: boolean,
+        loginDate?: Date,
+        rememberMeExpired?: Date
+    ): Promise<Record<string, any>> {
+        return {
+            ...data,
+            loginDate: loginDate || new Date(),
+            rememberMe,
+            rememberMeExpired:
+                rememberMeExpired || (await this.rememberMeExpired(rememberMe))
+        };
+    }
+
+    async mapLogin(data: IUserDocument): Promise<AuthLoginTransformer> {
+        return plainToInstance(AuthLoginTransformer, data);
     }
 }

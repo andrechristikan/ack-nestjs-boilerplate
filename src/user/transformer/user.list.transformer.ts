@@ -23,5 +23,6 @@ export class UserListTransformer {
 
     readonly createdAt: Date;
 
+    @Exclude()
     readonly updatedAt: Date;
 }

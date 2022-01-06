@@ -14,8 +14,10 @@ import { ENUM_REQUEST_STATUS_CODE_ERROR } from '../request.constant';
 import { PermissionListValidation } from 'src/permission/validation/permission.list.validation';
 import { RoleListValidation } from 'src/role/validation/role.list.validation';
 import { UserListValidation } from 'src/user/validation/user.list.validation';
-import { UserSignUpValidation } from 'src/user/validation/user.sign-up.validation';
+import { AuthSignUpValidation } from 'src/auth/validation/auth.sign-up.validation';
 import { RoleCreateValidation } from 'src/role/validation/role.create.validation';
+import { PermissionUpdateValidation } from 'src/permission/validation/permission.update.validation';
+import { RoleUpdateValidation } from 'src/role/validation/role.update.validation';
 
 export class RequestValidationPipe implements PipeTransform {
     constructor(
@@ -64,11 +66,13 @@ export class RequestValidationPipe implements PipeTransform {
             UserListValidation,
             UserUpdateValidation,
             UserCreateValidation,
-            UserSignUpValidation,
+            AuthSignUpValidation,
             AuthLoginValidation,
             PermissionListValidation,
             RoleListValidation,
-            RoleCreateValidation
+            RoleCreateValidation,
+            PermissionUpdateValidation,
+            RoleUpdateValidation
         ];
         return types.includes(metatype);
     }

@@ -1,6 +1,6 @@
 import { Exclude, Transform, Type } from 'class-transformer';
 import { IAwsResponse } from 'src/aws/aws.interface';
-import { IRoleFullDocument } from 'src/role/role.interface';
+import { IRoleDocument } from 'src/role/role.interface';
 
 export class UserProfileTransformer {
     @Type(() => String)
@@ -17,7 +17,7 @@ export class UserProfileTransformer {
         }),
         { toClassOnly: true }
     )
-    readonly role: IRoleFullDocument;
+    readonly role: IRoleDocument;
 
     readonly firstName: string;
     readonly lastName: string;

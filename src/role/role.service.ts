@@ -2,9 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { PermissionEntity } from 'src/permission/permission.schema';
-import { IRoleCreate, RoleDocument } from './role.interface';
+import { IRoleDocument, RoleDocument } from './role.interface';
 import { RoleEntity } from './role.schema';
 import { DeleteResult } from 'mongodb';
+import { RoleGetTransformer } from './transformer/role.get.transformer';
+import { plainToInstance } from 'class-transformer';
+import { RoleListTransformer } from './transformer/role.list.transformer';
+import { RoleCreateValidation } from './validation/role.create.validation';
+import { RoleUpdateValidation } from './validation/role.update.validation';
 
 @Injectable()
 export class RoleService {
@@ -68,15 +73,42 @@ export class RoleService {
     async create({
         name,
         permissions,
-        isActive
-    }: IRoleCreate): Promise<RoleDocument> {
+        isAdmin
+    }: RoleCreateValidation): Promise<RoleDocument> {
         const create: RoleDocument = new this.roleModel({
             name: name,
             permissions: permissions.map((val) => new Types.ObjectId(val)),
-            isActive: isActive ? isActive : true
+            isActive: true,
+            isAdmin: isAdmin || false
         });
 
         return create.save();
+    }
+
+    async update(
+        _id: string,
+        { name, permissions, isAdmin }: RoleUpdateValidation
+    ): Promise<RoleDocument> {
+        const update: RoleDocument = await this.roleModel.findById(_id);
+        update.name = name;
+        update.permissions = permissions.map((val) => new Types.ObjectId(val));
+        update.isAdmin = isAdmin || false;
+
+        return update.save();
+    }
+
+    async inactive(_id: string): Promise<RoleDocument> {
+        const role: RoleDocument = await this.roleModel.findById(_id);
+
+        role.isActive = false;
+        return role.save();
+    }
+
+    async active(_id: string): Promise<RoleDocument> {
+        const role: RoleDocument = await this.roleModel.findById(_id);
+
+        role.isActive = true;
+        return role.save();
     }
 
     async deleteOneById(_id: string): Promise<DeleteResult> {
@@ -85,19 +117,28 @@ export class RoleService {
         });
     }
 
-    async deleteMany(find: Record<string, any>): Promise<boolean> {
-        await this.roleModel.deleteMany(find);
-        return true;
+    async deleteMany(find: Record<string, any>): Promise<DeleteResult> {
+        return await this.roleModel.deleteMany(find);
     }
 
-    async createMany(data: IRoleCreate[]): Promise<boolean> {
+    async createMany(data: RoleCreateValidation[]): Promise<boolean> {
         await this.roleModel.insertMany(
-            data.map(({ name, isActive, permissions }) => ({
+            data.map(({ name, permissions, isAdmin }) => ({
                 name,
-                isActive: isActive ? isActive : true,
+                isActive: true,
+                isAdmin: isAdmin || false,
                 permissions: permissions.map((val) => new Types.ObjectId(val))
             }))
         );
+
         return true;
+    }
+
+    async mapGet(data: IRoleDocument): Promise<RoleGetTransformer> {
+        return plainToInstance(RoleGetTransformer, data);
+    }
+
+    async mapList(data: RoleDocument[]): Promise<RoleListTransformer[]> {
+        return plainToInstance(RoleListTransformer, data);
     }
 }

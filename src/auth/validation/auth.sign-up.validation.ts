@@ -10,7 +10,7 @@ import {
 } from 'class-validator';
 import { IsPasswordStrong, IsStartWith } from 'src/helper/helper.decorator';
 
-export class UserSignUpValidation {
+export class AuthSignUpValidation {
     @IsEmail()
     @IsNotEmpty()
     @MaxLength(100)

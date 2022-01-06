@@ -10,21 +10,39 @@ import {
     ENUM_PERMISSIONS,
     PERMISSION_META_KEY
 } from 'src/permission/permission.constant';
+import { AUTH_ADMIN_META_KEY } from './auth.constant';
 import { BasicGuard } from './guard/basic/auth.basic.guard';
+import { AuthAdminGuard } from './guard/default/auth.admin.guard';
 import { AuthDefaultGuard } from './guard/default/auth.default.guard';
 import { AuthExpiredGuard } from './guard/default/auth.expired.guard';
 import { JwtRefreshGuard } from './guard/jwt-refresh/auth.jwt-refresh.guard';
 import { JwtGuard } from './guard/jwt/auth.jwt.guard';
 
-export function AuthJwtGuard(...permissions: ENUM_PERMISSIONS[]): any {
+export function AuthPublicJwtGuard(...permissions: ENUM_PERMISSIONS[]): any {
     return applyDecorators(
         UseGuards(
             JwtGuard,
             AuthExpiredGuard,
             AuthDefaultGuard,
+            AuthAdminGuard,
             PermissionDefaultGuard
         ),
-        SetMetadata(PERMISSION_META_KEY, permissions)
+        SetMetadata(PERMISSION_META_KEY, permissions),
+        SetMetadata(AUTH_ADMIN_META_KEY, [false])
+    );
+}
+
+export function AuthAdminJwtGuard(...permissions: ENUM_PERMISSIONS[]) {
+    return applyDecorators(
+        UseGuards(
+            JwtGuard,
+            AuthExpiredGuard,
+            AuthDefaultGuard,
+            AuthAdminGuard,
+            PermissionDefaultGuard
+        ),
+        SetMetadata(PERMISSION_META_KEY, permissions),
+        SetMetadata(AUTH_ADMIN_META_KEY, [true])
     );
 }
 

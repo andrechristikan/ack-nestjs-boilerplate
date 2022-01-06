@@ -247,7 +247,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ]\n}",
+									"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"isAdmin\": false\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -286,6 +286,90 @@
 										{
 											"key": "role",
 											"value": "61c0453924c48c16fa3f711a"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "update",
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61d6fafa5a9afd84238e65d3\"\n    ],\n    \"isAdmin\": false\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/role/update/:_id",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"role",
+										"update",
+										":_id"
+									],
+									"variable": [
+										{
+											"key": "_id",
+											"value": "61d6fb00803894a48c4f66c8"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "inactive",
+							"request": {
+								"method": "PATCH",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/role/inactive/:_id",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"role",
+										"inactive",
+										":_id"
+									],
+									"variable": [
+										{
+											"key": "_id",
+											"value": "61d713b3961be384f30ea9a1"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "active",
+							"request": {
+								"method": "PATCH",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/role/active/:_id",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"role",
+										"active",
+										":_id"
+									],
+									"variable": [
+										{
+											"key": "_id",
+											"value": "61d713b3961be384f30ea9a1"
 										}
 									]
 								}
@@ -332,6 +416,115 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "get",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/permission/get/:_id",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"permission",
+										"get",
+										":_id"
+									],
+									"variable": [
+										{
+											"key": "_id",
+											"value": "61d6fafa5a9afd84238e65db"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "update",
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"permission test\",\n    \"description\": \"test desc\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/permission/update/:_id",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"permission",
+										"update",
+										":_id"
+									],
+									"variable": [
+										{
+											"key": "_id",
+											"value": "61d6fafa5a9afd84238e65db"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "inactive",
+							"request": {
+								"method": "PATCH",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/permission/inactive/:_id",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"permission",
+										"inactive",
+										":_id"
+									],
+									"variable": [
+										{
+											"key": "_id",
+											"value": "61d713ac45497d0b189d88a4"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "active",
+							"request": {
+								"method": "PATCH",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/permission/active/:_id",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"permission",
+										"active",
+										":_id"
+									],
+									"variable": [
+										{
+											"key": "_id",
+											"value": "61d713ac45497d0b189d88a4"
+										}
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				}
@@ -341,7 +534,7 @@
 				"bearer": [
 					{
 						"key": "token",
-						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MTU3MmVhMDk1ZmEyNjJjMTU3YjIxNDMiLCJlbWFpbCI6ImFkbWluQG1haWwuY29tIiwibW9iaWxlTnVtYmVyIjoiMDgxMTExMTExMTEiLCJyb2xlIjp7Im5hbWUiOiJhZG1pbiIsInBlcm1pc3Npb25zIjpbIlBFUk1JU1NJT05fQ1JFQVRFIiwiUEVSTUlTU0lPTl9ERUxFVEUiLCJQRVJNSVNTSU9OX1JFQUQiLCJQRVJNSVNTSU9OX1VQREFURSIsIlBST0ZJTEVfUkVBRCIsIlBST0ZJTEVfVVBEQVRFIiwiUk9MRV9DUkVBVEUiLCJST0xFX0RFTEVURSIsIlJPTEVfUkVBRCIsIlJPTEVfVVBEQVRFIiwiVVNFUl9DUkVBVEUiLCJVU0VSX0RFTEVURSIsIlVTRVJfUkVBRCIsIlVTRVJfVVBEQVRFIl0sImlzQWN0aXZlIjp0cnVlfSwiaXNBY3RpdmUiOnRydWUsInJlbWVtYmVyTWUiOnRydWUsImlhdCI6MTYzOTk5MDMzOSwibmJmIjoxNjM5OTkwMzM5LCJleHAiOjE2NDA1OTUxMzl9.cma9xneTaIH_wDrdzNid9xQswRYle7wSwkU8qHmBDjk",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MWQ3MTNiOWUzMmY1OWMyMzIzYmI5MTgiLCJpc0FjdGl2ZSI6dHJ1ZSwicm9sZSI6eyJuYW1lIjoiYWRtaW4iLCJwZXJtaXNzaW9ucyI6W3siY29kZSI6IlBFUk1JU1NJT05fUkVBRCIsImlzQWN0aXZlIjp0cnVlfSx7ImNvZGUiOiJST0xFX0NSRUFURSIsImlzQWN0aXZlIjp0cnVlfSx7ImNvZGUiOiJST0xFX0RFTEVURSIsImlzQWN0aXZlIjp0cnVlfSx7ImNvZGUiOiJST0xFX1JFQUQiLCJpc0FjdGl2ZSI6dHJ1ZX0seyJjb2RlIjoiUk9MRV9VUERBVEUiLCJpc0FjdGl2ZSI6dHJ1ZX0seyJjb2RlIjoiVVNFUl9DUkVBVEUiLCJpc0FjdGl2ZSI6dHJ1ZX0seyJjb2RlIjoiVVNFUl9ERUxFVEUiLCJpc0FjdGl2ZSI6dHJ1ZX0seyJjb2RlIjoiVVNFUl9SRUFEIiwiaXNBY3RpdmUiOnRydWV9LHsiY29kZSI6IlVTRVJfVVBEQVRFIiwiaXNBY3RpdmUiOnRydWV9XSwiaXNBY3RpdmUiOnRydWUsImlzQWRtaW4iOnRydWV9LCJlbWFpbCI6ImFkbWluQG1haWwuY29tIiwibW9iaWxlTnVtYmVyIjoiMDgxMTExMTExMTEiLCJsb2dpbkRhdGUiOiIyMDIyLTAxLTA2VDE2OjA3OjU5LjM4N1oiLCJyZW1lbWJlck1lIjp0cnVlLCJyZW1lbWJlck1lRXhwaXJlZCI6IjIwMjItMDItMDVUMTY6MDc6NTkuMzg3WiIsImlhdCI6MTY0MTQ4NTI3OSwibmJmIjoxNjQxNDg1Mjc5LCJleHAiOjE2NDE1NzE2Nzl9.gXjK20ITqWlELTDcTloaVesSphELwP-uhs9kxuYNgRk",
 						"type": "string"
 					}
 				]
@@ -401,6 +594,42 @@
 					"response": []
 				},
 				{
+					"name": "hello multi language",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "app-languages",
+								"value": "EN,ID",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\":\"12345\",\n    \"age\":\"dasd\",\n    \"breed\":\"asd\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/test/hello",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"test",
+								"hello"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "hello basic",
 					"request": {
 						"auth": {
@@ -434,46 +663,17 @@
 					"response": []
 				},
 				{
-					"name": "error",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/test/error",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"test",
-								"error"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "error data",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/test/error-data",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"test",
-								"error-data"
-							]
-						}
-					},
-					"response": []
-				},
-				{
 					"name": "kafka produce",
 					"request": {
 						"method": "GET",
-						"header": [],
+						"header": [
+							{
+								"key": "app-languages",
+								"value": "ID,EN",
+								"type": "default",
+								"disabled": true
+							}
+						],
 						"url": {
 							"raw": "{{baseUrl}}/kafka/produce",
 							"host": [
@@ -560,13 +760,37 @@
 			]
 		},
 		{
+			"name": "enum",
+			"item": [
+				{
+					"name": "languages",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/message/enum/languages",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"message",
+								"enum",
+								"languages"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "login",
 			"request": {
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"email\":\"admin@mail.com\",\r\n    \"password\":\"123456\",\r\n    \"rememberMe\": true\r\n}",
+					"raw": "{\r\n    \"email\":\"admin@mail.com\",\r\n    \"password\":\"aaAA@@123444\",\r\n    \"rememberMe\": true\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -602,9 +826,9 @@
 				"method": "POST",
 				"header": [],
 				"url": {
-					"raw": "{{base_url}}/auth/refresh",
+					"raw": "{{baseUrl}}/auth/refresh",
 					"host": [
-						"{{base_url}}"
+						"{{baseUrl}}"
 					],
 					"path": [
 						"auth",
@@ -629,12 +853,12 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseUrl}}/user/sign-up",
+					"raw": "{{baseUrl}}/auth/sign-up",
 					"host": [
 						"{{baseUrl}}"
 					],
 					"path": [
-						"user",
+						"auth",
 						"sign-up"
 					]
 				}

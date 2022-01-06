@@ -34,7 +34,7 @@ export class PermissionDefaultGuard implements CanActivate {
         const { role } = user;
         const permissions: string[] = role.permissions
             .filter((val: IPermission) => val.isActive)
-            .map((val: IPermission) => val.name);
+            .map((val: IPermission) => val.code);
 
         const hasPermission: boolean = requiredPermission.every((permission) =>
             permissions.includes(permission)

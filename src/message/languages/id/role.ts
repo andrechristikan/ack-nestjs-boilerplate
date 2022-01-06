@@ -3,9 +3,14 @@ export default {
     get: 'Sukses ambil Role',
     create: 'Create sukses',
     delete: 'Delete sukses',
+    update: 'Update sukses',
+    inactive: 'Inactive sukses',
+    active: 'Active sukses',
     error: {
-        notfound: 'Role tidak ditemukan',
+        notFound: 'Role tidak ditemukan',
         inactive: 'Role tidak aktif',
-        exist: 'Role terdaftar'
+        exist: 'Role terdaftar',
+        active: 'Role status active tidak benar',
+        used: 'Role sedang digunakan'
     }
 };

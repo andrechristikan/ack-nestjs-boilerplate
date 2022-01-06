@@ -10,14 +10,12 @@ import {
     BadRequestException,
     HttpCode,
     HttpStatus,
-    UploadedFile,
-    NotFoundException
+    UploadedFile
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
 import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe';
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
 import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
-import { AuthJwtGuard } from 'src/auth/auth.decorator';
 import { PaginationService } from 'src/pagination/pagination.service';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
@@ -36,13 +34,10 @@ import { AwsService } from 'src/aws/aws.service';
 import { IAwsResponse } from 'src/aws/aws.interface';
 import { ConfigService } from '@nestjs/config';
 import { UserListTransformer } from './transformer/user.list.transformer';
-import { UserSignUpValidation } from './validation/user.sign-up.validation';
-import { RoleService } from 'src/role/role.service';
-import { RoleDocument } from 'src/role/role.interface';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
+import { AuthAdminJwtGuard, AuthPublicJwtGuard } from 'src/auth/auth.decorator';
 
 @Controller('/user')
-export class UserController {
+export class UserAdminController {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService,
         @Message() private readonly messageService: MessageService,
@@ -51,7 +46,7 @@ export class UserController {
     ) {}
 
     @ResponsePaging('user.list')
-    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ)
+    @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ)
     @Get('/list')
     async list(
         @Query(RequestValidationPipe)
@@ -105,14 +100,14 @@ export class UserController {
 
     @Response('user.get')
     @UserGetGuard()
-    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ)
+    @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ)
     @Get('get/:user')
     async get(@GetUser() user: IUserDocument): Promise<IResponse> {
         return this.userService.mapGet(user);
     }
 
     @Response('user.create')
-    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_CREATE)
+    @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_CREATE)
     @Post('/create')
     async create(
         @Body(RequestValidationPipe)
@@ -178,7 +173,7 @@ export class UserController {
 
     @Response('user.delete')
     @UserGetGuard()
-    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_DELETE)
+    @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_DELETE)
     @Delete('/delete/:user')
     async delete(@GetUser() user: IUserDocument): Promise<void> {
         try {
@@ -200,7 +195,7 @@ export class UserController {
 
     @Response('user.update')
     @UserGetGuard()
-    @AuthJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
+    @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
     @Put('/update/:user')
     async update(
         @GetUser() user: IUserDocument,
@@ -233,102 +228,14 @@ export class UserController {
 export class UserPublicController {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService,
-        @Message() private readonly messageService: MessageService,
         private readonly userService: UserService,
         private readonly awsService: AwsService,
-        private readonly configService: ConfigService,
-        private readonly roleService: RoleService
+        private readonly configService: ConfigService
     ) {}
-
-    @Response('user.signUp')
-    @Post('/sign-up')
-    async signUp(
-        @Body(RequestValidationPipe)
-        { email, mobileNumber, ...body }: UserSignUpValidation
-    ): Promise<IResponse> {
-        const role: RoleDocument = await this.roleService.findOne<RoleDocument>(
-            {
-                name: 'user'
-            }
-        );
-        if (!role) {
-            this.debuggerService.error('Role not found', {
-                class: 'UserPublicController',
-                function: 'signUp'
-            });
-
-            throw new NotFoundException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
-                message: 'role.error.notFound'
-            });
-        }
-
-        const checkExist: IUserCheckExist = await this.userService.checkExist(
-            email,
-            mobileNumber
-        );
-
-        if (checkExist.email && checkExist.mobileNumber) {
-            this.debuggerService.error('create user exist', {
-                class: 'UserController',
-                function: 'create'
-            });
-
-            throw new BadRequestException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EXISTS_ERROR,
-                message: 'user.error.exist'
-            });
-        } else if (checkExist.email) {
-            this.debuggerService.error('create user exist', {
-                class: 'UserController',
-                function: 'create'
-            });
-
-            throw new BadRequestException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
-                message: 'user.error.emailExist'
-            });
-        } else if (checkExist.mobileNumber) {
-            this.debuggerService.error('create user exist', {
-                class: 'UserController',
-                function: 'create'
-            });
-
-            throw new BadRequestException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
-                message: 'user.error.mobileNumberExist'
-            });
-        }
-
-        try {
-            const create = await this.userService.create({
-                ...body,
-                email,
-                mobileNumber,
-                role: role._id
-            });
-
-            return {
-                _id: create._id
-            };
-        } catch (err: any) {
-            this.debuggerService.error('Signup try catch', {
-                class: 'UserPublicController',
-                function: 'signUp',
-                error: err
-            });
-
-            throw new InternalServerErrorException({
-                statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
-                message: 'http.server.internalServerError'
-            });
-        }
-    }
 
     @Response('user.profile')
     @UserProfileGuard()
-    @AuthJwtGuard()
+    @AuthPublicJwtGuard()
     @Get('/profile')
     async profile(@GetUser() user: IUserDocument): Promise<IResponse> {
         return this.userService.mapProfile(user);
@@ -336,7 +243,7 @@ export class UserPublicController {
 
     @Response('user.upload')
     @UserProfileGuard()
-    @AuthJwtGuard()
+    @AuthPublicJwtGuard()
     @Image('file')
     @HttpCode(HttpStatus.OK)
     @Post('/profile/upload')

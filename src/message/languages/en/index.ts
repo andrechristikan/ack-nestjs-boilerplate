@@ -8,6 +8,7 @@ import role from './role';
 import helper from './helper';
 import kafka from './kafka';
 import message from './message';
+import permission from './permission';
 
 export default {
     role,
@@ -19,5 +20,6 @@ export default {
     response,
     helper,
     kafka,
-    message
+    message,
+    permission
 };

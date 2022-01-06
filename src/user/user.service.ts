@@ -14,7 +14,6 @@ import { PermissionEntity } from 'src/permission/permission.schema';
 import { Types } from 'mongoose';
 import { UserProfileTransformer } from './transformer/user.profile.transformer';
 import { plainToInstance } from 'class-transformer';
-import { UserLoginTransformer } from './transformer/user.login.transformer';
 import { Helper } from 'src/helper/helper.decorator';
 import { HelperService } from 'src/helper/helper.service';
 import { IAwsResponse } from 'src/aws/aws.interface';
@@ -57,10 +56,6 @@ export class UserService {
 
     async mapProfile(data: IUserDocument): Promise<UserProfileTransformer> {
         return plainToInstance(UserProfileTransformer, data);
-    }
-
-    async mapLogin(data: IUserDocument): Promise<UserLoginTransformer> {
-        return plainToInstance(UserLoginTransformer, data);
     }
 
     async mapList(data: IUserDocument[]): Promise<UserListTransformer[]> {

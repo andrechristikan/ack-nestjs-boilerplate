@@ -6,11 +6,12 @@ import { AuthController } from 'src/auth/auth.controller';
 import { JwtRefreshStrategy } from './guard/jwt-refresh/auth.jwt-refresh.strategy';
 import { LoggerModule } from 'src/logger/logger.module';
 import { MessageModule } from 'src/message/message.module';
+import { RoleModule } from 'src/role/role.module';
 
 @Module({
     providers: [AuthService, JwtStrategy, JwtRefreshStrategy],
     exports: [AuthService],
     controllers: [AuthController],
-    imports: [UserModule, LoggerModule, MessageModule]
+    imports: [UserModule, LoggerModule, MessageModule, RoleModule]
 })
 export class AuthModule {}

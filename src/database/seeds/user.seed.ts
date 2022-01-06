@@ -31,7 +31,7 @@ export class UserSeed {
                 firstName: 'admin',
                 lastName: 'test',
                 email: 'admin@mail.com',
-                password: '123456',
+                password: 'aaAA@@123444',
                 mobileNumber: '08111111111',
                 role: role._id
             });
