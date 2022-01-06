@@ -8,8 +8,9 @@ import {
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { IErrorHttpException } from './error.interface';
+import { IMessage } from 'src/message/message.interface';
 
 @Catch(HttpException)
 export class ErrorHttpFilter implements ExceptionFilter {
@@ -20,28 +21,49 @@ export class ErrorHttpFilter implements ExceptionFilter {
         const statusHttp: number = exception.getStatus();
         const responseHttp: any = ctx.getResponse<Response>();
 
+        const request: Request = ctx.getRequest<Request>();
+        const { headers } = request;
+        const appLanguages: string[] = headers['app-languages']
+            ? (headers['app-languages'] as string).split(',')
+            : undefined;
+
         // Restructure
         const response = exception.getResponse() as IErrorHttpException;
 
         if (typeof response === 'string') {
-            const rMessage: string = this.messageService.get(response);
+            const rMessage: string | IMessage[] = this.messageService.get(
+                response,
+                {
+                    appLanguages
+                }
+            );
             responseHttp.status(statusHttp).json({
                 statusCode: statusHttp,
                 message: rMessage
             });
         } else if (typeof response === 'object') {
             const { statusCode, message, errors, data } = response;
-            const rMessage: string = this.messageService.get(message);
+            const rErrors = errors
+                ? this.messageService.getRequestErrorsMessage(
+                      errors,
+                      appLanguages
+                  )
+                : undefined;
+            const rMessage: string | IMessage[] = this.messageService.get(
+                message,
+                { appLanguages }
+            );
 
             responseHttp.status(statusHttp).json({
                 statusCode,
                 message: rMessage,
-                errors,
+                errors: rErrors,
                 data
             });
         } else {
-            const rMessage: string = this.messageService.get(
-                'response.error.structure'
+            const rMessage: string | IMessage[] = this.messageService.get(
+                'response.error.structure',
+                { appLanguages }
             );
             responseHttp.status(statusHttp).json({
                 statusCode: 500,

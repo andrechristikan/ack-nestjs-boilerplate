@@ -1,9 +1,9 @@
 export default {
-    login: 'Login Success.',
-    refresh: 'Refresh Token Success',
+    login: 'Login success.',
+    refresh: 'Refresh token success',
     error: {
-        blocked: 'User Blocked',
-        userNotFound: 'Email not found in our system',
-        passwordNotMatch: 'Your password not match'
+        blocked: 'User blocked',
+        expired: 'User expired',
+        passwordNotMatch: 'Password not match'
     }
 };

@@ -2,6 +2,7 @@ import { DynamicModule, Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { KAFKA_PRODUCER_SERVICE_NAME } from './kafka.producer.constant';
+import { KafkaProducerController } from './kafka.producer.controller';
 import { KafkaProducerService } from './kafka.producer.service';
 
 @Global()
@@ -22,7 +23,7 @@ export class KafkaProducerModule {
             module: KafkaProducerModule,
             providers: [KafkaProducerService],
             exports: [KafkaProducerService],
-            controllers: [],
+            controllers: [KafkaProducerController],
             imports: [
                 ClientsModule.registerAsync([
                     {
