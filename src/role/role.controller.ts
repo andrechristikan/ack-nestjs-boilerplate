@@ -29,6 +29,7 @@ import { RoleCreateValidation } from './validation/role.create.validation';
 import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe';
 import {
     GetRole,
+    RoleDeleteGuard,
     RoleGetGuard,
     RoleUpdateActiveGuard,
     RoleUpdateGuard,
@@ -219,13 +220,12 @@ export class RoleAdminController {
     }
 
     @Response('role.delete')
-    @RoleGetGuard()
+    @RoleDeleteGuard()
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_DELETE)
     @Delete('/delete/:role')
     async delete(@GetRole() role: IRoleDocument): Promise<void> {
         try {
             await this.roleService.deleteOneById(role._id);
-            return;
         } catch (err) {
             this.debuggerService.error('delete try catch', {
                 class: 'RoleController',
@@ -237,6 +237,7 @@ export class RoleAdminController {
                 message: 'http.server.internalServerError'
             });
         }
+        return;
     }
 
     @Response('role.inactive')

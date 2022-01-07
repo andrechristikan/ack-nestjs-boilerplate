@@ -26,7 +26,13 @@ import { Response, ResponsePaging } from 'src/response/response.decorator';
 import { ENUM_STATUS_CODE_ERROR } from 'src/error/error.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from './user.constant';
 import { UserListValidation } from './validation/user.list.validation';
-import { GetUser, UserGetGuard, UserProfileGuard } from './user.decorator';
+import {
+    GetUser,
+    UserDeleteGuard,
+    UserGetGuard,
+    UserProfileGuard,
+    UserUpdateGuard
+} from './user.decorator';
 import { Message } from 'src/message/message.decorator';
 import { MessageService } from 'src/message/message.service';
 import { Image } from 'src/helper/helper.decorator';
@@ -172,7 +178,7 @@ export class UserAdminController {
     }
 
     @Response('user.delete')
-    @UserGetGuard()
+    @UserDeleteGuard()
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_DELETE)
     @Delete('/delete/:user')
     async delete(@GetUser() user: IUserDocument): Promise<void> {
@@ -194,7 +200,7 @@ export class UserAdminController {
     }
 
     @Response('user.update')
-    @UserGetGuard()
+    @UserUpdateGuard()
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
     @Put('/update/:user')
     async update(
