@@ -153,7 +153,6 @@ List of modules
 - [x] Upload Image into AWS S3
 - [x] Kafka Consume and Produce Message
 - [x] Mongoose Population and Deep Population
-- [x] Permission
 
 #### Todo
 
