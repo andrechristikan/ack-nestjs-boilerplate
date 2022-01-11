@@ -124,24 +124,22 @@ export class UserService {
         firstName,
         lastName,
         password,
+        passwordExpired,
+        salt,
         email,
         mobileNumber,
         role
     }: IUserCreate): Promise<UserDocument> {
-        const salt: string = await this.helperService.randomSalt();
-        const passwordHash = await this.helperService.bcryptHashPassword(
-            password,
-            salt
-        );
-
         const user: UserEntity = {
             firstName,
             email,
             mobileNumber,
-            password: passwordHash,
+            password,
             role: new Types.ObjectId(role),
             isActive: true,
-            lastName: lastName || undefined
+            lastName: lastName || undefined,
+            salt,
+            passwordExpired
         };
 
         const create: UserDocument = new this.userModel(user);

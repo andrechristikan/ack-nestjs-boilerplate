@@ -6,9 +6,10 @@ import {
     HttpCode,
     NotFoundException,
     BadRequestException,
-    UnauthorizedException,
     ForbiddenException,
-    InternalServerErrorException
+    InternalServerErrorException,
+    Inject,
+    forwardRef
 } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
 import { UserService } from 'src/user/user.service';
@@ -38,8 +39,9 @@ import { AuthLoginTransformer } from './transformer/auth.login.transformer';
 export class AuthController {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService,
-        private readonly authService: AuthService,
+        @Inject(forwardRef(() => UserService))
         private readonly userService: UserService,
+        private readonly authService: AuthService,
         private readonly loggerService: LoggerService,
         private readonly roleService: RoleService
     ) {}
@@ -71,8 +73,7 @@ export class AuthController {
             });
 
             throw new NotFoundException({
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_USER_NOT_FOUND_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
                 message: 'user.error.notFound'
             });
         } else if (!user.isActive) {
@@ -81,7 +82,7 @@ export class AuthController {
                 function: 'login'
             });
 
-            throw new UnauthorizedException({
+            throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR,
                 message: 'user.error.inactive'
             });
@@ -94,6 +95,22 @@ export class AuthController {
             throw new ForbiddenException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR,
                 message: 'role.error.inactive'
+            });
+        }
+
+        const today: Date = new Date();
+        const passwordExpired: Date = new Date(user.passwordExpired);
+
+        if (today > passwordExpired) {
+            this.debuggerService.error('Password expired', {
+                class: 'AuthController',
+                function: 'login'
+            });
+
+            throw new ForbiddenException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
+                message: 'auth.error.passwordExpired'
             });
         }
 
@@ -148,23 +165,8 @@ export class AuthController {
     @Post('/refresh')
     async refresh(
         @User()
-        { _id, rememberMe, loginDate, rememberMeExpired }: Record<string, any>
+        { _id, rememberMe, loginDate, loginExpired }: Record<string, any>
     ): Promise<IResponse> {
-        const today: Date = new Date();
-        const rememberMeExpiredDate = new Date(rememberMeExpired);
-        if (today > rememberMeExpiredDate) {
-            this.debuggerService.error('Auth expired', {
-                class: 'AuthController',
-                function: 'refresh'
-            });
-
-            throw new UnauthorizedException({
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GUARD_EXPIRED_ERROR,
-                message: 'auth.error.expired'
-            });
-        }
-
         const user: IUserDocument =
             await this.userService.findOneById<IUserDocument>(_id, {
                 populate: {
@@ -173,20 +175,51 @@ export class AuthController {
                 }
             });
 
-        if (!user.isActive) {
+        if (!user) {
+            this.debuggerService.error('Authorized error user not found', {
+                class: 'AuthController',
+                function: 'refresh'
+            });
+
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
+                message: 'user.error.notFound'
+            });
+        } else if (!user.isActive) {
             this.debuggerService.error('Auth Block', {
                 class: 'AuthController',
                 function: 'refresh'
             });
 
-            throw new UnauthorizedException({
+            throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR,
                 message: 'user.error.inactive'
             });
         } else if (!user.role.isActive) {
+            this.debuggerService.error('Role Block', {
+                class: 'AuthController',
+                function: 'refresh'
+            });
+
             throw new ForbiddenException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR,
                 message: 'role.error.inactive'
+            });
+        }
+
+        const today: Date = new Date();
+        const passwordExpired: Date = new Date(user.passwordExpired);
+
+        if (today > passwordExpired) {
+            this.debuggerService.error('Password expired', {
+                class: 'AuthController',
+                function: 'refresh'
+            });
+
+            throw new ForbiddenException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
+                message: 'auth.error.passwordExpired'
             });
         }
 
@@ -198,7 +231,7 @@ export class AuthController {
                 safe,
                 rememberMe,
                 loginDate,
-                rememberMeExpired
+                loginExpired
             );
 
         const accessToken: string = await this.authService.createAccessToken(
@@ -277,11 +310,19 @@ export class AuthController {
         }
 
         try {
+            const password = await this.authService.createPassword(
+                body.password
+            );
+
             const create = await this.userService.create({
-                ...body,
+                firstName: body.firstName,
+                lastName: body.lastName,
                 email,
                 mobileNumber,
-                role: role._id
+                role: role._id,
+                password: password.passwordHash,
+                passwordExpired: password.passwordExpired,
+                salt: password.salt
             });
 
             const user: IUserDocument =

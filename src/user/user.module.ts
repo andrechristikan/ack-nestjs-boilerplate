@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UserEntity, UserDatabaseName, UserSchema } from 'src/user/user.schema';
 import { UserService } from 'src/user/user.service';
@@ -8,6 +8,7 @@ import {
 } from 'src/user/user.controller';
 import { PaginationModule } from 'src/pagination/pagination.module';
 import { AwsModule } from 'src/aws/aws.module';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
     imports: [
@@ -19,7 +20,8 @@ import { AwsModule } from 'src/aws/aws.module';
             }
         ]),
         PaginationModule,
-        AwsModule
+        AwsModule,
+        forwardRef(() => AuthModule)
     ],
     exports: [UserService],
     providers: [UserService],

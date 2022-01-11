@@ -3,9 +3,11 @@ export default {
     refresh: 'Refresh token success',
     signUp: 'Signup Success',
     error: {
-        blocked: 'Auth blocked',
-        expired: 'Auth expired',
-        admin: 'Auth admin invalid',
+        blocked: 'Blocked',
+        loginExpired: 'Login expired',
+        passwordExpired:
+            'Password expired, you need to change your password asap',
+        admin: 'Admin invalid',
         passwordNotMatch: 'Password not match'
     }
 };

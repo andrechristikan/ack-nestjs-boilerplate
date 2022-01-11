@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PaginationModule } from 'src/pagination/pagination.module';
 import { PermissionModule } from 'src/permission/permission.module';
@@ -20,7 +20,7 @@ import { RoleDatabaseName, RoleEntity, RoleSchema } from './role.schema';
             }
         ]),
         PaginationModule,
-        UserModule,
+        forwardRef(() => UserModule),
         PermissionModule
     ]
 })

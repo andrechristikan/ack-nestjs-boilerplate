@@ -2,34 +2,34 @@ import {
     Injectable,
     CanActivate,
     ExecutionContext,
-    UnauthorizedException
+    ForbiddenException
 } from '@nestjs/common';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { Logger as DebuggerService } from 'winston';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
 
 @Injectable()
-export class AuthExpiredGuard implements CanActivate {
+export class AuthLoginExpiredGuard implements CanActivate {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const { user } = context.switchToHttp().getRequest();
-        const { rememberMeExpired } = user;
+        const { loginExpired } = user;
         const today: Date = new Date();
-        const rememberMeExpiredDate = new Date(rememberMeExpired);
+        const loginExpiredDate = new Date(loginExpired);
 
-        if (today > rememberMeExpiredDate) {
-            this.debuggerService.error('Auth expired', {
-                class: 'AuthExpiredGuard',
+        if (today > loginExpiredDate) {
+            this.debuggerService.error('Auth login expired', {
+                class: 'AuthLoginExpiredGuard',
                 function: 'canActivate'
             });
 
-            throw new UnauthorizedException({
+            throw new ForbiddenException({
                 statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GUARD_EXPIRED_ERROR,
-                message: 'auth.error.expired'
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GUARD_LOGIN_EXPIRED_ERROR,
+                message: 'auth.error.loginExpired'
             });
         }
 

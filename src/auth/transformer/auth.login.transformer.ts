@@ -23,6 +23,10 @@ export class AuthLoginTransformer {
     readonly email: string;
     readonly mobileNumber: string;
     readonly isActive: boolean;
+    readonly passwordExpired: Date;
+    readonly loginExpired: Date;
+    readonly loginDate: Date;
+    readonly rememberMe: boolean;
 
     @Exclude()
     readonly firstName: string;
@@ -35,6 +39,9 @@ export class AuthLoginTransformer {
 
     @Exclude()
     readonly password: string;
+
+    @Exclude()
+    readonly salt: string;
 
     @Exclude()
     readonly createdAt: Date;

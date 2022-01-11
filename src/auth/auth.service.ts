@@ -124,7 +124,7 @@ export class AuthService {
         );
     }
 
-    async rememberMeExpired(rememberMe: boolean): Promise<Date> {
+    async loginExpired(rememberMe: boolean): Promise<Date> {
         const expired: number = rememberMe
             ? this.rememberMeChecked
             : this.rememberMeNotChecked;
@@ -135,18 +135,42 @@ export class AuthService {
         data: Record<string, any>,
         rememberMe: boolean,
         loginDate?: Date,
-        rememberMeExpired?: Date
+        loginExpired?: Date
     ): Promise<Record<string, any>> {
         return {
             ...data,
             loginDate: loginDate || new Date(),
             rememberMe,
-            rememberMeExpired:
-                rememberMeExpired || (await this.rememberMeExpired(rememberMe))
+            loginExpired: loginExpired || (await this.loginExpired(rememberMe))
         };
     }
 
     async mapLogin(data: IUserDocument): Promise<AuthLoginTransformer> {
         return plainToInstance(AuthLoginTransformer, data);
+    }
+
+    async createPassword(password: string) {
+        const saltLength: number = this.configService.get<number>(
+            'auth.password.saltLength'
+        );
+
+        const salt: string = await this.helperService.randomSalt(saltLength);
+
+        const passwordExpiredInDays: number = this.configService.get<number>(
+            'auth.password.expiredInDay'
+        );
+        const passwordExpired: Date =
+            await this.helperService.dateTimeForwardInDays(
+                passwordExpiredInDays
+            );
+        const passwordHash = await this.helperService.bcryptHashPassword(
+            password,
+            salt
+        );
+        return {
+            passwordHash,
+            passwordExpired,
+            salt
+        };
     }
 }

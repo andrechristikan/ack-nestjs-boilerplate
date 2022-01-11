@@ -29,6 +29,11 @@ export default registerAs(
             clientId: process.env.AUTH_BASIC_TOKEN_CLIENT_ID || '123456',
             clientSecret:
                 process.env.AUTH_BASIC_TOKEN_CLIENT_SECRET || '1234567890'
+        },
+
+        password: {
+            saltLength: 8,
+            expiredInDay: 365 // 1 year
         }
     })
 );

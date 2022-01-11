@@ -11,6 +11,7 @@ export default {
         inactive: 'User tidak aktif',
         emailExist: 'Email sudah digunakan',
         mobileNumberExist: 'Mobile Number sudah digunakan',
-        exist: 'User terdaftar.'
+        exist: 'User terdaftar.',
+        passwordExpired: 'Sandi kardaluasa'
     }
 };

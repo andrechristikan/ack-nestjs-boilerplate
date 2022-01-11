@@ -10,7 +10,9 @@ import {
     BadRequestException,
     HttpCode,
     HttpStatus,
-    UploadedFile
+    UploadedFile,
+    forwardRef,
+    Inject
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
 import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe';
@@ -33,20 +35,20 @@ import {
     UserProfileGuard,
     UserUpdateGuard
 } from './user.decorator';
-import { Message } from 'src/message/message.decorator';
-import { MessageService } from 'src/message/message.service';
 import { Image } from 'src/helper/helper.decorator';
 import { AwsService } from 'src/aws/aws.service';
 import { IAwsResponse } from 'src/aws/aws.interface';
 import { ConfigService } from '@nestjs/config';
 import { UserListTransformer } from './transformer/user.list.transformer';
 import { AuthAdminJwtGuard, AuthPublicJwtGuard } from 'src/auth/auth.decorator';
+import { AuthService } from 'src/auth/auth.service';
 
 @Controller('/user')
 export class UserAdminController {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService,
-        @Message() private readonly messageService: MessageService,
+        @Inject(forwardRef(() => AuthService))
+        private readonly authService: AuthService,
         private readonly paginationService: PaginationService,
         private readonly userService: UserService
     ) {}
@@ -117,11 +119,11 @@ export class UserAdminController {
     @Post('/create')
     async create(
         @Body(RequestValidationPipe)
-        data: UserCreateValidation
+        body: UserCreateValidation
     ): Promise<IResponse> {
         const checkExist: IUserCheckExist = await this.userService.checkExist(
-            data.email,
-            data.mobileNumber
+            body.email,
+            body.mobileNumber
         );
 
         if (checkExist.email && checkExist.mobileNumber) {
@@ -158,7 +160,20 @@ export class UserAdminController {
         }
 
         try {
-            const create = await this.userService.create(data);
+            const password = await this.authService.createPassword(
+                body.password
+            );
+
+            const create = await this.userService.create({
+                firstName: body.firstName,
+                lastName: body.lastName,
+                email: body.email,
+                mobileNumber: body.mobileNumber,
+                role: body.role,
+                password: password.passwordHash,
+                passwordExpired: password.passwordExpired,
+                salt: password.salt
+            });
 
             return {
                 _id: create._id

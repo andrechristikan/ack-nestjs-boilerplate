@@ -28,6 +28,11 @@ export class UserProfileTransformer {
     @Exclude()
     readonly password: string;
 
+    readonly passwordExpired: Date;
+
+    @Exclude()
+    readonly salt: string;
+
     @Exclude()
     readonly createdAt: Date;
 

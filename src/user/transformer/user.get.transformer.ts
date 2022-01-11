@@ -29,6 +29,11 @@ export class UserGetTransformer {
     @Exclude()
     readonly password: string;
 
+    readonly passwordExpired: Date;
+
+    @Exclude()
+    readonly salt: string;
+
     readonly createdAt: Date;
 
     @Exclude()

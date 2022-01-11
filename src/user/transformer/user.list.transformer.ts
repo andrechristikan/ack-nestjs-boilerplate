@@ -21,6 +21,12 @@ export class UserListTransformer {
     @Exclude()
     readonly password: string;
 
+    @Exclude()
+    readonly passwordExpired: Date;
+
+    @Exclude()
+    readonly salt: string;
+
     readonly createdAt: Date;
 
     @Exclude()

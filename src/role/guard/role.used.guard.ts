@@ -2,7 +2,9 @@ import {
     Injectable,
     CanActivate,
     ExecutionContext,
-    BadRequestException
+    BadRequestException,
+    Inject,
+    forwardRef
 } from '@nestjs/common';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { Logger as DebuggerService } from 'winston';
@@ -15,6 +17,7 @@ import { UserDocument } from 'src/user/user.interface';
 export class RoleUsedGuard implements CanActivate {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService,
+        @Inject(forwardRef(() => UserService))
         private readonly userService: UserService
     ) {}
 

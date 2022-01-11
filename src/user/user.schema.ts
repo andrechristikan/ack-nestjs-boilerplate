@@ -51,6 +51,16 @@ export class UserEntity {
     password: string;
 
     @Prop({
+        required: true
+    })
+    passwordExpired: Date;
+
+    @Prop({
+        required: true
+    })
+    salt: string;
+
+    @Prop({
         required: true,
         default: true
     })
