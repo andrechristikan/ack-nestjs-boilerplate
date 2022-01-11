@@ -6,11 +6,13 @@ import { Debugger } from 'src/debugger/debugger.decorator';
 import { RoleService } from 'src/role/role.service';
 import { UserService } from 'src/user/user.service';
 import { RoleDocument } from 'src/role/role.interface';
+import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
 export class UserSeed {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService,
+        private readonly authService: AuthService,
         private readonly userService: UserService,
         private readonly roleService: RoleService
     ) {}
@@ -27,13 +29,19 @@ export class UserSeed {
         );
 
         try {
+            const password = await this.authService.createPassword(
+                'aaAA@@123444'
+            );
+
             await this.userService.create({
                 firstName: 'admin',
                 lastName: 'test',
                 email: 'admin@mail.com',
-                password: '123456',
+                password: password.passwordHash,
+                passwordExpired: password.passwordExpired,
                 mobileNumber: '08111111111',
-                role: role._id
+                role: role._id,
+                salt: password.salt
             });
 
             this.debuggerService.info('Insert User Succeed', {

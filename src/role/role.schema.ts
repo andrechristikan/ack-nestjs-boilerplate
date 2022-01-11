@@ -26,6 +26,12 @@ export class RoleEntity {
         default: true
     })
     isActive: boolean;
+
+    @Prop({
+        required: true,
+        default: false
+    })
+    isAdmin: boolean;
 }
 
 export const RoleDatabaseName = 'roles';

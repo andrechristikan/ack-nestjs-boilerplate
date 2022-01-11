@@ -19,6 +19,14 @@ export function UserGetGuard(): any {
     return applyDecorators(UseGuards(UserPutToRequestGuard, UserNotFoundGuard));
 }
 
+export function UserDeleteGuard(): any {
+    return applyDecorators(UseGuards(UserPutToRequestGuard, UserNotFoundGuard));
+}
+
+export function UserUpdateGuard(): any {
+    return applyDecorators(UseGuards(UserPutToRequestGuard, UserNotFoundGuard));
+}
+
 export function UserProfileGuard(): any {
     return applyDecorators(
         UseGuards(UserPayloadPutToRequestGuard, UserNotFoundGuard)

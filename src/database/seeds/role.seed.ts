@@ -23,7 +23,7 @@ export class RoleSeed {
     async insert(): Promise<void> {
         const permissions: PermissionDocument[] =
             await this.permissionService.findAll({
-                name: { $in: Object.values(ENUM_PERMISSIONS) }
+                code: { $in: Object.values(ENUM_PERMISSIONS) }
             });
 
         try {
@@ -31,11 +31,13 @@ export class RoleSeed {
             await this.roleService.createMany([
                 {
                     name: 'admin',
-                    permissions: permissionsMap
+                    permissions: permissionsMap,
+                    isAdmin: true
                 },
                 {
                     name: 'user',
-                    permissions: []
+                    permissions: [],
+                    isAdmin: false
                 }
             ]);
 

@@ -4,7 +4,6 @@ export default {
     create: 'Create User Success.',
     delete: 'Delete User Success.',
     update: 'Update User Success.',
-    signUp: 'Signup Success',
     profile: 'Profile Success',
     upload: 'Upload Success',
     error: {

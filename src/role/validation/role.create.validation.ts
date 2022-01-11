@@ -4,7 +4,8 @@ import {
     IsNotEmpty,
     MaxLength,
     MinLength,
-    IsMongoId
+    IsMongoId,
+    IsBoolean
 } from 'class-validator';
 
 export class RoleCreateValidation {
@@ -19,4 +20,8 @@ export class RoleCreateValidation {
     @IsMongoId({ each: true })
     @IsNotEmpty()
     readonly permissions: string[];
+
+    @IsBoolean()
+    @IsNotEmpty()
+    readonly isAdmin: boolean;
 }

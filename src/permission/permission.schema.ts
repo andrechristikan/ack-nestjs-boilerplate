@@ -8,7 +8,17 @@ export class PermissionEntity {
         unique: true,
         trim: true
     })
+    code: string;
+
+    @Prop({
+        required: true
+    })
     name: string;
+
+    @Prop({
+        required: false
+    })
+    description?: string;
 
     @Prop({
         required: true,

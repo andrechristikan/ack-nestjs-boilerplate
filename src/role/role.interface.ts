@@ -7,14 +7,3 @@ export type RoleDocument = RoleEntity & Document;
 export interface IRoleDocument extends Omit<RoleDocument, 'permissions'> {
     permissions: PermissionDocument[];
 }
-
-export interface IRoleFullDocument extends Omit<RoleEntity, 'permissions'> {
-    name: string;
-    permissions: string[];
-}
-
-export interface IRoleCreate {
-    name: string;
-    permissions: string[];
-    isActive?: boolean;
-}

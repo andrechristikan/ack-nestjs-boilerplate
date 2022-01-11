@@ -53,11 +53,11 @@
 
 </div>
 
-## Description
+# Description
 
 ACK is a [NestJs](nestjs-url) boilerplate 🚀. Best uses for build an API Project or Microservice Project. Made with following [nodejs-best-practice](nodejs-bestpractice-url) as benchmark and NestJs Habit.
 
-## Prerequisites
+# Prerequisites
 
 We assume that all people are coming to here is `Programmer with intermediate knowledge` and also we need to understanding more knowledge before we start to reduce knowledge gaps.
 
@@ -66,7 +66,7 @@ We assume that all people are coming to here is `Programmer with intermediate kn
 * Understood [NestJs Fundamental](nestjs-fundamental-url), Main Framework. NodeJs Framework with support fully TypeScript.
 * Understand what is and how NoSql works as a Database, specially [MongoDB](#acknowledgements).
 
-## Build With
+# Build With
 
 Main packages and Main Tools
 
@@ -77,61 +77,46 @@ Main packages and Main Tools
 * [NestJs-Mongoose](mongoose-url) v9.0.2
 * [MongoDB](mongodb-url) v5.0.4
 * [Yarn](yarn-url) v1.22.17
-* [Docker](docker-url) v20.10.12
-* [Docker Compose](docker-compose-url) v1.27.4
+* [Docker](docker-url) v20.10.11
+* [Docker Compose](docker-compose-url) v2.2.1
 
-## Features
+# Features
 
 The features will spill on this section, please read secretly and keep silent 🤫 🤫
 
 - [x] Centralize Configuration
 - [x] Centralize Exception
 - [x] Centralize Response
+
 - [x] Mongoose Integration
-- [x] Json Web Token Implementation
-- [x] Basic Auth Implementation
+- [x] Mongoose Populate and Deep Populate
+- [ ] Mongoose Transaction
+- [x] Database Migration with Nestjs/Command
+
+- [x] Json Web Token Guard
+- [x] Basic Auth Guard
+- [x] Password Expired Guard
+- [x] Block User, Block Role Guard
+- [x] Login Expired Guard
 - [x] Role and Permission Management
 - [x] Hash Password with Bcrypt
-- [x] Database Migration with Nestjs/Command
-- [x] Support Multi Language
-- [x] Incoming Request Validation
+
 - [x] Logger Module, insert into Database
-- [x] Debugger Module, insert into File, on/off feature.
-- [x] Custom Status Code for Each Error and Success Request
-- [x] Husky Git pre-commit hooks for better code
-- [x] Support Docker Installation
-- [x] Block User, Block Role
+- [x] Debugger Module, can write into file log
+- [x] Http Debugger Module, catch http incoming request and write into file log
+
+- [x] Incoming Request Validation
 - [x] Remember me implementation
-- [x] Manipulation Datetime, Random string, Random int, etc in HelperModule
+- [x] Support Multi Language, control from header
+- [x] Custom Status Code for Each Error and Success Request
+
 - [x] Kafka Implementation, can on/off
 
-#### Modules
+- [x] Husky Git pre-commit hooks for better code
+- [x] Support Docker Installation
+- [x] Helper Module, Manipulation Datetime/Random string/Random int/etc
 
-List of modules
-
-- [x] AppModule - MainModule
-- [x] AuthModule - Access Token, Refresh Token, and any Guard.
-- [x] AwsModule - S3 Implementation
-- [x] ConfigModule - Centralize Config
-- [x] DatabaseModule
-- [x] DebuggerModule - like `console.log` but can write into file. Catch http incoming request too and write into file.
-- [x] ErrorModule - Centralize Exception
-- [x] Helper Module (e.g Manipulation DateTime, Random string or int, etc)
-- [x] KafkaModule
-    - [x] KafkaProducerModule
-    - [x] KafkaConsumerModule
-    - [x] KafkaAdminModule
-- [x] LoggerModule - write log in database
-- [x] MessageModule - Include LanguageModule
-- [x] MiddlewareModule
-- [x] PaginationModule
-- [x] PermissionModule
-- [x] RequestModule - Include RequestValidationPipe, RequestKafkaValidation
-- [x] ResponseModule - Centralize Response
-- [x] RoleModule
-- [x] UserModule
-
-#### Middleware
+## Middleware
 
 - [x] Rate Limit
 - [x] Compression
@@ -139,7 +124,7 @@ List of modules
 - [x] Cors
 - [x] BodyParser
 
-#### Example
+## Example
 
 - [x] Example Test API, and Error Test API
 - [x] Example CRUD
@@ -153,20 +138,21 @@ List of modules
 - [x] Upload Image into AWS S3
 - [x] Kafka Consume and Produce Message
 - [x] Mongoose Population and Deep Population
-- [x] Permission
+- [ ] Mongoose Transaction
 
-#### Todo
+### Todo
 
 - [x] Update version NestJs
+- [ ] Mongoose Transaction
 - [ ] Unit Test and E2E Test
 - [ ] Update Documentation
 - [ ] Update Performance
 
-## Endpoints
+# Endpoints
 
 All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [Follow this step for import into Postman](postman-import-endpoint)
 
-## Getting Start
+# Getting Start
 
 Before we start, we need to install
 
@@ -176,7 +162,7 @@ Before we start, we need to install
 
 See their official document.
 
-#### Make sure we don't get any error after installation
+## Make sure we don't get any error after installation
 
 Open our terminal and follow this instruction
 
@@ -216,13 +202,13 @@ Open our terminal and follow this instruction
     # db version v5.0.4
     ```
 
-#### Clone repo
+## Clone repo
 
 ```sh
 git clone https://github.com/andrechristikan/ack-nestjs-mongoose
 ```
 
-#### Installation
+## Installation
 
 1. Install dependencies
 
@@ -364,7 +350,7 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
     yarn prepare
     ```
 
-#### Run project
+### Run project
 
 ```sh
 yarn start:dev
@@ -381,7 +367,7 @@ Cheers 🍻🍻 !!! our project is running well. Now we can use all features.
 Then go install or open `REST Client`. In this case, let assume we use [Postman Client](postman-url).
 After installation, we need to import all endpoint into postman, [see this instruction](#endpoints).
 
-#### Run with Docker
+### Run with Docker
 
 1. We need to install `docker` and `docker compose`.
 
@@ -450,19 +436,19 @@ After installation, we need to import all endpoint into postman, [see this instr
     docker-compose up -d
     ```
 
-## Usage
+# Usage
 
 Documents usage will write separate file. Document will put in [USAGE.md](USAGE.md)
 
-## Kafka
+# Kafka
 
 Kafka document will write in separate file. Document will put in [KAFKA.md](KAFKA.md)
 
-## License
+# License
 
 Distributed under [MIT licensed](LICENSE.md).
 
-## Contact
+# Contact
 
 [Andre Christi kan](author-email)
 

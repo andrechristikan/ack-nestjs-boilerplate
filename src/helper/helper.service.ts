@@ -4,15 +4,10 @@ import { ConfigService } from '@nestjs/config';
 import { hash, compare, genSalt } from 'bcrypt';
 import { isString } from 'class-validator';
 import { JwtService } from '@nestjs/jwt';
-import {
-    createCipheriv,
-    createDecipheriv,
-    scrypt,
-    createHash,
-    randomBytes
-} from 'crypto';
+import { createCipheriv, createDecipheriv, scrypt, createHash } from 'crypto';
 import { promisify } from 'util';
 import { IHelperJwtOptions } from './helper.interface';
+import faker from 'faker';
 
 @Injectable()
 export class HelperService {
@@ -26,13 +21,7 @@ export class HelperService {
     }
 
     async calculateAge(dateOfBirth: Date): Promise<number> {
-        const today: Date = new Date();
-        let age: number = today.getFullYear() - dateOfBirth.getFullYear();
-        const m = today.getMonth() - dateOfBirth.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < dateOfBirth.getDate())) {
-            age--;
-        }
-        return age;
+        return moment().diff(dateOfBirth, 'years');
     }
 
     async checkEmail(email: string): Promise<boolean> {
@@ -40,27 +29,39 @@ export class HelperService {
         return regex.test(email);
     }
 
-    async randomReference(prefix?: string): Promise<string> {
+    async randomReference(length: number, prefix?: string): Promise<string> {
         const timestamp = `${new Date().valueOf()}`;
-        const randomString: string = await this.randomString(10);
-        const reference: string = prefix
+        const randomString: string = await this.randomString(length, {
+            safe: true,
+            upperCase: true
+        });
+        return prefix
             ? `${prefix}-${timestamp}${randomString}`
             : `${timestamp}${randomString}`;
-        return reference.toUpperCase();
     }
 
-    async randomString(length: number): Promise<string> {
-        return randomBytes(length).toString('hex');
+    async randomString(
+        length: number,
+        options?: Record<string, any>
+    ): Promise<string> {
+        return options && options.safe
+            ? faker.random.alpha({
+                  count: length,
+                  upcase: options && options.upperCase ? true : false
+              })
+            : options && options.upperCase
+            ? faker.random.alphaNumeric(length).toUpperCase()
+            : faker.random.alphaNumeric(length);
     }
 
-    async randomNumber(length: number): Promise<string> {
+    async randomNumber(length: number): Promise<number> {
         const min: number = parseInt(`1`.padEnd(length, '0'));
         const max: number = parseInt(`9`.padEnd(length, '9'));
         return this.randomNumberInRange(min, max);
     }
 
-    async randomNumberInRange(min: number, max: number): Promise<string> {
-        return `${Math.floor(Math.random() * (max - min + 1)) + min}`;
+    async randomNumberInRange(min: number, max: number): Promise<number> {
+        return faker.datatype.number({ min, max });
     }
 
     async dateTimeForwardInMinutes(minutes: number): Promise<Date> {
@@ -94,8 +95,10 @@ export class HelperService {
         return hash(passwordString, salt);
     }
 
-    async randomSalt(): Promise<string> {
-        return genSalt(this.configService.get<number>('helper.salt.length'));
+    async randomSalt(length?: number): Promise<string> {
+        return genSalt(
+            length || this.configService.get<number>('helper.salt.length')
+        );
     }
 
     async bcryptComparePassword(

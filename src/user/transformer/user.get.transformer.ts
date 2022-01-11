@@ -1,6 +1,6 @@
 import { Exclude, Transform, Type } from 'class-transformer';
 import { IAwsResponse } from 'src/aws/aws.interface';
-import { IRoleFullDocument } from 'src/role/role.interface';
+import { IRoleDocument } from 'src/role/role.interface';
 
 export class UserGetTransformer {
     @Type(() => String)
@@ -17,7 +17,7 @@ export class UserGetTransformer {
         }),
         { toClassOnly: true }
     )
-    readonly role: IRoleFullDocument;
+    readonly role: IRoleDocument;
 
     readonly email: string;
     readonly mobileNumber: string;
@@ -29,7 +29,13 @@ export class UserGetTransformer {
     @Exclude()
     readonly password: string;
 
+    readonly passwordExpired: Date;
+
+    @Exclude()
+    readonly salt: string;
+
     readonly createdAt: Date;
 
+    @Exclude()
     readonly updatedAt: Date;
 }

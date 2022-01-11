@@ -1,8 +1,8 @@
 import { Exclude, Transform, Type } from 'class-transformer';
 import { IAwsResponse } from 'src/aws/aws.interface';
-import { IRoleFullDocument } from 'src/role/role.interface';
+import { IRoleDocument } from 'src/role/role.interface';
 
-export class UserLoginTransformer {
+export class AuthLoginTransformer {
     @Type(() => String)
     readonly _id: string;
 
@@ -10,18 +10,23 @@ export class UserLoginTransformer {
         ({ value }) => ({
             name: value.name,
             permissions: value.permissions.map((val: Record<string, any>) => ({
-                name: val.name,
+                code: val.code,
                 isActive: val.isActive
             })),
-            isActive: value.isActive
+            isActive: value.isActive,
+            isAdmin: value.isAdmin
         }),
         { toClassOnly: true }
     )
-    readonly role: IRoleFullDocument;
+    readonly role: IRoleDocument;
 
     readonly email: string;
     readonly mobileNumber: string;
     readonly isActive: boolean;
+    readonly passwordExpired: Date;
+    readonly loginExpired: Date;
+    readonly loginDate: Date;
+    readonly rememberMe: boolean;
 
     @Exclude()
     readonly firstName: string;
@@ -34,6 +39,9 @@ export class UserLoginTransformer {
 
     @Exclude()
     readonly password: string;
+
+    @Exclude()
+    readonly salt: string;
 
     @Exclude()
     readonly createdAt: Date;

@@ -4,7 +4,6 @@ export default {
     create: 'Create User sukses.',
     delete: 'Delete User sukses.',
     update: 'Update User sukses.',
-    signUp: 'Signup sukses',
     profile: 'Profile sukses',
     upload: 'Upload sukses',
     error: {
@@ -12,6 +11,7 @@ export default {
         inactive: 'User tidak aktif',
         emailExist: 'Email sudah digunakan',
         mobileNumberExist: 'Mobile Number sudah digunakan',
-        exist: 'User terdaftar.'
+        exist: 'User terdaftar.',
+        passwordExpired: 'Sandi kardaluasa'
     }
 };
