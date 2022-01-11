@@ -17,7 +17,7 @@ As we mention in `Readme` at section `Features`, we can switch kafka on/of. We j
 
 AUTH_BASIC_TOKEN_CLIENT_SECRET=1234567890
 
-KAFKA_ACTIVE=true // <<<<----- change this
+KAFKA_ACTIVE=true # <<<<----- change this
 KAFKA_CONSUMER_GROUP=nestjs.ack
 KAFKA_BROKERS=localhost:9092
 
@@ -42,7 +42,7 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
 > NOTE : For Windows User, **do not install kafka on your Windows OS**. There are has a unsolved issue, while delete topic on Windows OS. [See this issue for more information](kafka-issue)
 > Go install kafka with virtual machine or docker.
 
-#### Make sure we don't get any error after installation
+### Make sure we don't get any error after installation
 
     ```sh
     kafka-topics --version
@@ -51,7 +51,7 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
     # 3.0.0 (Commit:8cb0a5e9d3441962
     ```
 
-#### Installation
+### Installation
 
 1. Install dependencies `@nestjs/microservices` and `kafkajs`.
 
@@ -249,7 +249,7 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
 
 7. After all configuration, we need to test. We can test `KafkaProducerModule` and `KafkaConsumerModule` with manual hit `/kafka/produce` endpoint. [see this instruction](ack-endpoint-url).
 
-#### Run project
+### Run project
 
 Run project with yarn
 
@@ -264,7 +264,7 @@ npm run start:dev
 ```
 
 
-#### Run with Docker ---- \*\*\*\* Read Carefully \*\*\*\*
+### Run with Docker ---- \*\*\*\* Read Carefully \*\*\*\*
 
 This Instruction will little bit difference.
 
@@ -334,6 +334,12 @@ This Instruction will little bit difference.
     ```sh
     docker-compose -f docker/docker-compose.kafka.yml up -d
     ```
+
+## Usage
+
+We will cover this section when we update the USAGE.md document
+
+
 
 ## OPTIONAL, if we want delete kafka
 

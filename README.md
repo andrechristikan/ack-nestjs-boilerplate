@@ -57,7 +57,7 @@
 
 ACK is a [NestJs](nestjs-url) boilerplate ðŸš€. Best uses for build an API Project or Microservice Project. Made with following [nodejs-best-practice](nodejs-bestpractice-url) as benchmark and NestJs Habit.
 
-# Prerequisites
+## Prerequisites
 
 We assume that all people are coming to here is `Programmer with intermediate knowledge` and also we need to understanding more knowledge before we start to reduce knowledge gaps.
 
@@ -66,7 +66,7 @@ We assume that all people are coming to here is `Programmer with intermediate kn
 * Understood [NestJs Fundamental](nestjs-fundamental-url), Main Framework. NodeJs Framework with support fully TypeScript.
 * Understand what is and how NoSql works as a Database, specially [MongoDB](#acknowledgements).
 
-# Build With
+## Build With
 
 Main packages and Main Tools
 
@@ -80,7 +80,7 @@ Main packages and Main Tools
 * [Docker](docker-url) v20.10.11
 * [Docker Compose](docker-compose-url) v2.2.1
 
-# Features
+## Features
 
 The features will spill on this section, please read secretly and keep silent ðŸ¤« ðŸ¤«
 
@@ -116,7 +116,7 @@ The features will spill on this section, please read secretly and keep silent ðŸ
 - [x] Support Docker Installation
 - [x] Helper Module, Manipulation Datetime/Random string/Random int/etc
 
-## Middleware
+### Middleware
 
 - [x] Rate Limit
 - [x] Compression
@@ -124,7 +124,7 @@ The features will spill on this section, please read secretly and keep silent ðŸ
 - [x] Cors
 - [x] BodyParser
 
-## Example
+### Example
 
 - [x] Example Test API, and Error Test API
 - [x] Example CRUD
@@ -148,11 +148,11 @@ The features will spill on this section, please read secretly and keep silent ðŸ
 - [ ] Update Documentation
 - [ ] Update Performance
 
-# Endpoints
+## Endpoints
 
 All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [Follow this step for import into Postman](postman-import-endpoint)
 
-# Getting Start
+## Getting Start
 
 Before we start, we need to install
 
@@ -162,7 +162,7 @@ Before we start, we need to install
 
 See their official document.
 
-## Make sure we don't get any error after installation
+### Make sure we don't get any error after installation
 
 Open our terminal and follow this instruction
 
@@ -202,13 +202,13 @@ Open our terminal and follow this instruction
     # db version v5.0.4
     ```
 
-## Clone repo
+### Clone repo
 
 ```sh
 git clone https://github.com/andrechristikan/ack-nestjs-mongoose
 ```
 
-## Installation
+### Installation
 
 1. Install dependencies
 
@@ -276,7 +276,7 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
     const mongooseOptions: MongooseModuleOptions = {
         uri,
         useNewUrlParser: true,
-        useUnifiedTopology: true
+        useUnifiedTopology: true,
         useMongoClient: true  // <<<<---- uncomment this
     };
 
@@ -350,7 +350,7 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
     yarn prepare
     ```
 
-### Run project
+#### Run project
 
 ```sh
 yarn start:dev
@@ -367,7 +367,7 @@ Cheers ðŸ»ðŸ» !!! our project is running well. Now we can use all features.
 Then go install or open `REST Client`. In this case, let assume we use [Postman Client](postman-url).
 After installation, we need to import all endpoint into postman, [see this instruction](#endpoints).
 
-### Run with Docker
+#### Run with Docker
 
 1. We need to install `docker` and `docker compose`.
 
@@ -436,19 +436,19 @@ After installation, we need to import all endpoint into postman, [see this instr
     docker-compose up -d
     ```
 
-# Usage
+## Usage
 
 Documents usage will write separate file. Document will put in [USAGE.md](USAGE.md)
 
-# Kafka
+## Kafka
 
 Kafka document will write in separate file. Document will put in [KAFKA.md](KAFKA.md)
 
-# License
+## License
 
 Distributed under [MIT licensed](LICENSE.md).
 
-# Contact
+## Contact
 
 [Andre Christi kan](author-email)
 
