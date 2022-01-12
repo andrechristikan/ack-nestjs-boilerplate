@@ -18,6 +18,7 @@ import { AuthSignUpValidation } from 'src/auth/validation/auth.sign-up.validatio
 import { RoleCreateValidation } from 'src/role/validation/role.create.validation';
 import { PermissionUpdateValidation } from 'src/permission/validation/permission.update.validation';
 import { RoleUpdateValidation } from 'src/role/validation/role.update.validation';
+import { UserChangePasswordValidation } from 'src/user/validation/user.change-password.validation';
 
 export class RequestValidationPipe implements PipeTransform {
     constructor(
@@ -72,7 +73,8 @@ export class RequestValidationPipe implements PipeTransform {
             RoleListValidation,
             RoleCreateValidation,
             PermissionUpdateValidation,
-            RoleUpdateValidation
+            RoleUpdateValidation,
+            UserChangePasswordValidation
         ];
         return types.includes(metatype);
     }

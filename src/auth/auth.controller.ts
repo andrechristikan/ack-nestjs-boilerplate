@@ -34,6 +34,7 @@ import { RoleDocument } from 'src/role/role.interface';
 import { ENUM_STATUS_CODE_ERROR } from 'src/error/error.constant';
 import { RoleService } from 'src/role/role.service';
 import { AuthLoginTransformer } from './transformer/auth.login.transformer';
+import { SuccessException } from 'src/error/error.http.filter';
 
 @Controller('/auth')
 export class AuthController {
@@ -98,22 +99,6 @@ export class AuthController {
             });
         }
 
-        const today: Date = new Date();
-        const passwordExpired: Date = new Date(user.passwordExpired);
-
-        if (today > passwordExpired) {
-            this.debuggerService.error('Password expired', {
-                class: 'AuthController',
-                function: 'login'
-            });
-
-            throw new ForbiddenException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
-                message: 'auth.error.passwordExpired'
-            });
-        }
-
         const validate: boolean = await this.authService.validateUser(
             data.password,
             user.password
@@ -145,6 +130,26 @@ export class AuthController {
         const refreshToken: string = await this.authService.createRefreshToken(
             payload
         );
+
+        const today: Date = new Date();
+        const passwordExpired: Date = new Date(user.passwordExpired);
+
+        if (today > passwordExpired) {
+            this.debuggerService.error('Password expired', {
+                class: 'AuthController',
+                function: 'login'
+            });
+
+            throw new SuccessException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
+                message: 'auth.error.passwordExpired',
+                data: {
+                    accessToken,
+                    refreshToken
+                }
+            });
+        }
 
         await this.loggerService.info(
             ENUM_LOGGER_ACTION.LOGIN,

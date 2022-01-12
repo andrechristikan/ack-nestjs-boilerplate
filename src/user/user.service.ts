@@ -19,13 +19,15 @@ import { HelperService } from 'src/helper/helper.service';
 import { IAwsResponse } from 'src/aws/aws.interface';
 import { UserListTransformer } from './transformer/user.list.transformer';
 import { UserGetTransformer } from './transformer/user.get.transformer';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserService {
     constructor(
         @InjectModel(UserEntity.name)
         private readonly userModel: Model<UserDocument>,
-        @Helper() private readonly helperService: HelperService
+        @Helper() private readonly helperService: HelperService,
+        private readonly configService: ConfigService
     ) {}
 
     async findAll(
@@ -214,5 +216,20 @@ export class UserService {
 
     async createRandomFilename(): Promise<string> {
         return this.helperService.randomString(20);
+    }
+
+    async updatePassword(
+        _id: string,
+        salt: string,
+        password: string,
+        passwordExpired: Date
+    ): Promise<UserDocument> {
+        const auth: UserDocument = await this.userModel.findById(_id);
+
+        auth.password = password;
+        auth.passwordExpired = passwordExpired;
+        auth.salt = salt;
+
+        return auth.save();
     }
 }

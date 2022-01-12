@@ -149,7 +149,7 @@ export class AuthService {
         return plainToInstance(AuthLoginTransformer, data);
     }
 
-    async createPassword(password: string) {
+    async createPassword(password: string): Promise<Record<string, any>> {
         const saltLength: number = this.configService.get<number>(
             'auth.password.saltLength'
         );

@@ -19,6 +19,12 @@ import { AuthPasswordExpiredGuard } from './guard/default/auth.password-expired.
 import { JwtRefreshGuard } from './guard/jwt-refresh/auth.jwt-refresh.guard';
 import { JwtGuard } from './guard/jwt/auth.jwt.guard';
 
+export function AuthJwtGuard(): any {
+    return applyDecorators(
+        UseGuards(JwtGuard, AuthLoginExpiredGuard, AuthDefaultGuard)
+    );
+}
+
 export function AuthPublicJwtGuard(...permissions: ENUM_PERMISSIONS[]): any {
     return applyDecorators(
         UseGuards(

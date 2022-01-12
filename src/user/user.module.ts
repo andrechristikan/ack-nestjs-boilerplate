@@ -4,6 +4,7 @@ import { UserEntity, UserDatabaseName, UserSchema } from 'src/user/user.schema';
 import { UserService } from 'src/user/user.service';
 import {
     UserAdminController,
+    UserController,
     UserPublicController
 } from 'src/user/user.controller';
 import { PaginationModule } from 'src/pagination/pagination.module';
@@ -25,6 +26,6 @@ import { AuthModule } from 'src/auth/auth.module';
     ],
     exports: [UserService],
     providers: [UserService],
-    controllers: [UserAdminController, UserPublicController]
+    controllers: [UserAdminController, UserPublicController, UserController]
 })
 export class UserModule {}

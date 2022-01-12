@@ -6,6 +6,7 @@ export default {
     update: 'Update User Success.',
     profile: 'Profile Success',
     upload: 'Upload Success',
+    changePassword: 'Change Password Success',
     error: {
         notFound: 'User not found.',
         inactive: 'User inactive',

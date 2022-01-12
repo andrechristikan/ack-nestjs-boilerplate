@@ -12,7 +12,9 @@ import {
     HttpStatus,
     UploadedFile,
     forwardRef,
-    Inject
+    Inject,
+    Patch,
+    NotFoundException
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
 import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe';
@@ -21,7 +23,7 @@ import { UserUpdateValidation } from 'src/user/validation/user.update.validation
 import { PaginationService } from 'src/pagination/pagination.service';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
-import { IUserCheckExist, IUserDocument } from './user.interface';
+import { IUserCheckExist, IUserDocument, UserDocument } from './user.interface';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
 import { Response, ResponsePaging } from 'src/response/response.decorator';
@@ -40,8 +42,15 @@ import { AwsService } from 'src/aws/aws.service';
 import { IAwsResponse } from 'src/aws/aws.interface';
 import { ConfigService } from '@nestjs/config';
 import { UserListTransformer } from './transformer/user.list.transformer';
-import { AuthAdminJwtGuard, AuthPublicJwtGuard } from 'src/auth/auth.decorator';
+import {
+    AuthAdminJwtGuard,
+    AuthJwtGuard,
+    AuthPublicJwtGuard,
+    User
+} from 'src/auth/auth.decorator';
 import { AuthService } from 'src/auth/auth.service';
+import { UserChangePasswordValidation } from './validation/user.change-password.validation';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
 
 @Controller('/user')
 export class UserAdminController {
@@ -242,6 +251,103 @@ export class UserAdminController {
                 message: 'http.server.internalServerError'
             });
         }
+    }
+}
+
+@Controller('/user')
+export class UserController {
+    constructor(
+        @Debugger() private readonly debuggerService: DebuggerService,
+        @Inject(forwardRef(() => AuthService))
+        private readonly authService: AuthService,
+        private readonly userService: UserService
+    ) {}
+
+    @Response('auth.changePassword')
+    @AuthJwtGuard()
+    @Patch('/change-password')
+    async changePassword(
+        @Body(RequestValidationPipe) body: UserChangePasswordValidation,
+        @User('_id') _id: string
+    ): Promise<void> {
+        const user: UserDocument = await this.userService.findOneById(_id);
+        if (!user) {
+            this.debuggerService.error('User not found', {
+                class: 'UserController',
+                function: 'changePassword'
+            });
+
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
+                message: 'user.error.notFound'
+            });
+        }
+
+        const matchPassword: boolean = await this.authService.validateUser(
+            body.oldPassword,
+            user.password
+        );
+        if (!matchPassword) {
+            this.debuggerService.error("Old password don't match", {
+                class: 'UserController',
+                function: 'changePassword'
+            });
+
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR,
+                message: 'auth.error.passwordNotMatch'
+            });
+        }
+
+        const newMatchPassword: boolean = await this.authService.validateUser(
+            body.newPassword,
+            user.password
+        );
+        if (newMatchPassword) {
+            this.debuggerService.error(
+                "New password cant't same with old password",
+                {
+                    class: 'UserController',
+                    function: 'changePassword'
+                }
+            );
+
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_NEW_MUST_DIFFERENCE_ERROR,
+                message: 'user.error.newPasswordMustDifference'
+            });
+        }
+
+        try {
+            const password = await this.authService.createPassword(
+                body.newPassword
+            );
+
+            await this.userService.updatePassword(
+                user._id,
+                password.salt,
+                password.passwordHash,
+                password.passwordExpired
+            );
+        } catch (e) {
+            this.debuggerService.error(
+                'Change password error internal server error',
+                {
+                    class: 'AuthController',
+                    function: 'changePassword',
+                    error: { ...e }
+                }
+            );
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                message: 'http.serverError.internalServerError'
+            });
+        }
+
+        return;
     }
 }
 
