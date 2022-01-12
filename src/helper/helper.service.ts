@@ -64,6 +64,10 @@ export class HelperService {
         return faker.datatype.number({ min, max });
     }
 
+    async dateTimeToString(date: Date, format?: string): Promise<string> {
+        return moment(date).format(format || 'YYYY-MM-DD');
+    }
+
     async dateTimeForwardInMinutes(minutes: number): Promise<Date> {
         return moment().add(minutes, 'm').toDate();
     }
