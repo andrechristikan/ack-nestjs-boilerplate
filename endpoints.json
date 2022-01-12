@@ -6,7 +6,7 @@
 	},
 	"item": [
 		{
-			"name": "auth",
+			"name": "admin",
 			"item": [
 				{
 					"name": "user",
@@ -534,7 +534,7 @@
 				"bearer": [
 					{
 						"key": "token",
-						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MWQ3MTNiOWUzMmY1OWMyMzIzYmI5MTgiLCJpc0FjdGl2ZSI6dHJ1ZSwicm9sZSI6eyJuYW1lIjoiYWRtaW4iLCJwZXJtaXNzaW9ucyI6W3siY29kZSI6IlBFUk1JU1NJT05fUkVBRCIsImlzQWN0aXZlIjp0cnVlfSx7ImNvZGUiOiJST0xFX0NSRUFURSIsImlzQWN0aXZlIjp0cnVlfSx7ImNvZGUiOiJST0xFX0RFTEVURSIsImlzQWN0aXZlIjp0cnVlfSx7ImNvZGUiOiJST0xFX1JFQUQiLCJpc0FjdGl2ZSI6dHJ1ZX0seyJjb2RlIjoiUk9MRV9VUERBVEUiLCJpc0FjdGl2ZSI6dHJ1ZX0seyJjb2RlIjoiVVNFUl9DUkVBVEUiLCJpc0FjdGl2ZSI6dHJ1ZX0seyJjb2RlIjoiVVNFUl9ERUxFVEUiLCJpc0FjdGl2ZSI6dHJ1ZX0seyJjb2RlIjoiVVNFUl9SRUFEIiwiaXNBY3RpdmUiOnRydWV9LHsiY29kZSI6IlVTRVJfVVBEQVRFIiwiaXNBY3RpdmUiOnRydWV9XSwiaXNBY3RpdmUiOnRydWUsImlzQWRtaW4iOnRydWV9LCJlbWFpbCI6ImFkbWluQG1haWwuY29tIiwibW9iaWxlTnVtYmVyIjoiMDgxMTExMTExMTEiLCJsb2dpbkRhdGUiOiIyMDIyLTAxLTA2VDE2OjA3OjU5LjM4N1oiLCJyZW1lbWJlck1lIjp0cnVlLCJyZW1lbWJlck1lRXhwaXJlZCI6IjIwMjItMDItMDVUMTY6MDc6NTkuMzg3WiIsImlhdCI6MTY0MTQ4NTI3OSwibmJmIjoxNjQxNDg1Mjc5LCJleHAiOjE2NDE1NzE2Nzl9.gXjK20ITqWlELTDcTloaVesSphELwP-uhs9kxuYNgRk",
+						"value": "{{publicAccessToken}}",
 						"type": "string"
 					}
 				]
@@ -709,57 +709,6 @@
 			]
 		},
 		{
-			"name": "profile",
-			"item": [
-				{
-					"name": "profile",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/user/profile",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"user",
-								"profile"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "upload",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "file",
-									"type": "file",
-									"src": "/Users/andrechristikan/Downloads/snowshoe.jpg"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{baseUrl}}/user/upload",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"user",
-								"upload"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
 			"name": "enum",
 			"item": [
 				{
@@ -784,13 +733,100 @@
 			]
 		},
 		{
+			"name": "public",
+			"item": [
+				{
+					"name": "profile",
+					"item": [
+						{
+							"name": "profile",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/user/profile",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"user",
+										"profile"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "upload",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "file",
+											"type": "file",
+											"src": "/Users/andrechristikan/Downloads/snowshoe.jpg"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{baseUrl}}/user/profile/upload",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"user",
+										"profile",
+										"upload"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			],
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{publicAccessToken}}",
+						"type": "string"
+					}
+				]
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
 			"name": "login",
 			"request": {
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"email\":\"admin@mail.com\",\r\n    \"password\":\"aaAA@@123444\",\r\n    \"rememberMe\": true\r\n}",
+					"raw": "{\r\n    \"email\":\"andreck@mail.com\",\r\n    \"password\":\"aaAA@@13333\",\r\n    \"rememberMe\": true\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -860,6 +896,33 @@
 					"path": [
 						"auth",
 						"sign-up"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "change password",
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"oldPassword\": \"aaAA@@13333\",\n    \"newPassword\": \"aaAA@@13333\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/user/change-password",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"user",
+						"change-password"
 					]
 				}
 			},
