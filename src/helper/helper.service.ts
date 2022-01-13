@@ -92,17 +92,17 @@ export class HelperService {
         return moment().subtract(months, 'M').toDate();
     }
 
+    async randomSalt(length?: number): Promise<string> {
+        return genSalt(
+            length || this.configService.get<number>('helper.salt.length')
+        );
+    }
+
     async bcryptHashPassword(
         passwordString: string,
         salt: string
     ): Promise<string> {
         return hash(passwordString, salt);
-    }
-
-    async randomSalt(length?: number): Promise<string> {
-        return genSalt(
-            length || this.configService.get<number>('helper.salt.length')
-        );
     }
 
     async bcryptComparePassword(
@@ -165,7 +165,7 @@ export class HelperService {
         });
     }
 
-    async aes256BitEncrypt(
+    async aes256Encrypt(
         data: string | Record<string, any> | Record<string, any>[],
         key: string,
         iv: string
@@ -186,7 +186,7 @@ export class HelperService {
         return encryptedText.toString('base64');
     }
 
-    async aes256BitDecrypt(
+    async aes256Decrypt(
         encrypted: string,
         key: string,
         iv: string
@@ -202,7 +202,7 @@ export class HelperService {
         return decryptedText.toString('utf8');
     }
 
-    async sha256Decrypt(string: string): Promise<string> {
+    async sha256Hash(string: string): Promise<string> {
         return createHash('sha256').update(string).digest('hex');
     }
 }

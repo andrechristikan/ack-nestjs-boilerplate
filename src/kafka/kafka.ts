@@ -31,7 +31,7 @@ export default async function (
         }
     });
 
-    await app.startAllMicroservicesAsync();
+    await app.startAllMicroservices();
     logger.log(
         `Kafka server connected on brokers ${brokers.join(', ')}`,
         'NestApplication'

@@ -15,12 +15,12 @@ export default registerAs(
             http: {
                 active: true,
                 maxFiles: 5,
-                maxSize: '10M'
+                maxSize: '2M'
             },
             system: {
                 active: true,
                 maxFiles: '7d',
-                maxSize: '10m'
+                maxSize: '2m'
             }
         }
     })

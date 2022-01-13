@@ -2,6 +2,7 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
+import { MAX_REQUEST_PER_IP, RESET_TIME } from './rate-limit.constant';
 
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {
@@ -9,12 +10,8 @@ export class RateLimitMiddleware implements NestMiddleware {
 
     use(req: Request, res: Response, next: NextFunction): void {
         rateLimit({
-            windowMs: this.configService.get<number>(
-                'middleware.rateLimit.resetTime'
-            ),
-            max: this.configService.get<number>(
-                'middleware.rateLimit.maxRequestPerIp'
-            )
+            windowMs: RESET_TIME,
+            max: MAX_REQUEST_PER_IP
         })(req, res, next);
     }
 }

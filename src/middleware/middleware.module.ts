@@ -5,6 +5,8 @@ import {
 import { HelmetMiddleware } from 'src/middleware/helmet/helmet.middleware';
 import { RateLimitMiddleware } from 'src/middleware/rate-limit/rate-limit.middleware';
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { CorsMiddleware } from './cors/cors.middleware';
+import { BodyParserMiddleware } from './body-parser/body-parser.middleware';
 
 @Module({})
 export class MiddlewareModule implements NestModule {
@@ -14,7 +16,9 @@ export class MiddlewareModule implements NestModule {
                 HttpDebuggerResponseMiddleware,
                 HttpDebuggerMiddleware,
                 HelmetMiddleware,
-                RateLimitMiddleware
+                RateLimitMiddleware,
+                CorsMiddleware,
+                BodyParserMiddleware
             )
             .forRoutes('*');
     }

@@ -4,10 +4,7 @@ import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
-    const app: NestApplication = await NestFactory.create(AppModule, {
-        cors: true,
-        bodyParser: true
-    });
+    const app: NestApplication = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
     const env: string = configService.get<string>('app.env');
     const tz: string = configService.get<string>('app.timezone');
