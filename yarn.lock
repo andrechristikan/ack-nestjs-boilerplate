@@ -1462,15 +1462,6 @@
     "@types/jsonwebtoken" "8.5.4"
     jsonwebtoken "8.5.1"
 
-"@nestjs/microservices@^8.2.4":
-  version "8.2.4"
-  resolved "https://registry.yarnpkg.com/@nestjs/microservices/-/microservices-8.2.4.tgz#b81c21396f53251fb756a4a2a9d6475e9c2a6a41"
-  integrity sha512-u2/p8qJVYVZdUsh+3NNPX00WL/TIQCUnhlWtwaRlydJONI8E47fczclxCnj/LKfiWTf8JYkS4GEXmDdRafrKqQ==
-  dependencies:
-    iterare "1.2.1"
-    json-socket "0.3.0"
-    tslib "2.3.1"
-
 "@nestjs/mongoose@^9.0.2":
   version "9.0.2"
   resolved "https://registry.yarnpkg.com/@nestjs/mongoose/-/mongoose-9.0.2.tgz#3f06c57066c33766f293676bbfdd7474bfcff9af"
@@ -4876,11 +4867,6 @@ json-schema-traverse@^1.0.0:
   resolved "https://registry.yarnpkg.com/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz#ae7bcb3656ab77a73ba5c49bf654f38e6b6860e2"
   integrity sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==
 
-json-socket@0.3.0:
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/json-socket/-/json-socket-0.3.0.tgz#f4b953c685bb8e8bd0b72438f5208d9a0799ae07"
-  integrity sha512-jc8ZbUnYIWdxERFWQKVgwSLkGSe+kyzvmYxwNaRgx/c8NNyuHes4UHnPM3LUrAFXUx1BhNJ94n1h/KCRlbvV0g==
-
 json-stable-stringify-without-jsonify@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/json-stable-stringify-without-jsonify/-/json-stable-stringify-without-jsonify-1.0.1.tgz#9db7b59496ad3f3cfef30a75142d2d930ad72651"
@@ -4946,11 +4932,6 @@ jws@^3.2.2:
   dependencies:
     jwa "^1.4.1"
     safe-buffer "^5.0.1"
-
-kafkajs@^1.15.0:
-  version "1.15.0"
-  resolved "https://registry.yarnpkg.com/kafkajs/-/kafkajs-1.15.0.tgz#a5ada0d933edca2149177393562be6fb0875ec3a"
-  integrity sha512-yjPyEnQCkPxAuQLIJnY5dI+xnmmgXmhuOQ1GVxClG5KTOV/rJcW1qA3UfvyEJKTp/RTSqQnUR3HJsKFvHyTpNg==
 
 kareem@2.3.3:
   version "2.3.3"
