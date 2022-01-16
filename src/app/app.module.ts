@@ -80,18 +80,6 @@ import { RouterAdminModule } from 'src/router/router.admin.module';
                 module: RouterPublicModule,
             },
         ]),
-
-        // Kafka
-        // RouterKafkaModule.register({
-        //     env: process.env.APP_ENV,
-        //     active: process.env.KAFKA_ACTIVE === 'true' || false,
-        // }),
-        // RouterModule.register([
-        //     {
-        //         path: '/kafka',
-        //         module: RouterKafkaModule,
-        //     },
-        // ]),
     ],
 })
 export class AppModule {}

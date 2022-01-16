@@ -196,15 +196,6 @@ export class UserService {
         };
     }
 
-    async deleteMany(find: Record<string, any>): Promise<boolean> {
-        try {
-            await this.userModel.deleteMany(find);
-            return true;
-        } catch (e: unknown) {
-            return false;
-        }
-    }
-
     async updatePhoto(_id: string, aws: IAwsResponse): Promise<UserDocument> {
         const user: UserDocument = await this.userModel.findById(_id);
         user.photo = aws;
@@ -242,5 +233,22 @@ export class UserService {
 
         user.isActive = true;
         return user.save();
+    }
+}
+
+@Injectable()
+export class UserBulkService {
+    constructor(
+        @InjectModel(UserEntity.name)
+        private readonly userModel: Model<UserDocument>
+    ) {}
+
+    async deleteMany(find: Record<string, any>): Promise<boolean> {
+        try {
+            await this.userModel.deleteMany(find);
+            return true;
+        } catch (e: unknown) {
+            return false;
+        }
     }
 }

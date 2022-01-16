@@ -102,7 +102,7 @@ export class PermissionService {
 }
 
 @Injectable()
-export class PermissionSeedService {
+export class PermissionBulkService {
     constructor(
         @InjectModel(PermissionEntity.name)
         private readonly permissionModel: Model<PermissionDocument>

@@ -3,14 +3,14 @@ import { Injectable } from '@nestjs/common';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 
-import { PermissionSeedService } from 'src/permission/permission.service';
+import { PermissionBulkService } from 'src/permission/permission.service';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 
 @Injectable()
 export class PermissionSeed {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService,
-        private readonly permissionSeedService: PermissionSeedService
+        private readonly permissionBulkService: PermissionBulkService
     ) {}
 
     @Command({
@@ -24,7 +24,7 @@ export class PermissionSeed {
                 name: val.replace('_', ' '),
             }));
 
-            await this.permissionSeedService.createMany(permissions);
+            await this.permissionBulkService.createMany(permissions);
 
             this.debuggerService.info('Insert Permission Succeed', {
                 class: 'PermissionSeed',
@@ -44,7 +44,7 @@ export class PermissionSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.permissionSeedService.deleteMany({});
+            await this.permissionBulkService.deleteMany({});
 
             this.debuggerService.info('Remove Permission Succeed', {
                 class: 'PermissionSeed',

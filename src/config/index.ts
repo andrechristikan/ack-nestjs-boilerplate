@@ -4,7 +4,6 @@ import DatabaseConfig from 'src/config/database.config';
 import HelperConfig from 'src/config/helper.config';
 import AwsConfig from 'src/config/aws.config';
 import UserConfig from './user.config';
-import KafkaConfig from './kafka.config';
 import FileConfig from './file.config';
 
 export default [
@@ -14,6 +13,5 @@ export default [
     HelperConfig,
     AwsConfig,
     UserConfig,
-    KafkaConfig,
     FileConfig,
 ];

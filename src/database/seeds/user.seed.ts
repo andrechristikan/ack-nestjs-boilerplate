@@ -4,7 +4,7 @@ import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 
 import { RoleService } from 'src/role/role.service';
-import { UserService } from 'src/user/user.service';
+import { UserBulkService, UserService } from 'src/user/user.service';
 import { RoleDocument } from 'src/role/role.interface';
 import { AuthService } from 'src/auth/auth.service';
 
@@ -14,6 +14,7 @@ export class UserSeed {
         @Debugger() private readonly debuggerService: DebuggerService,
         private readonly authService: AuthService,
         private readonly userService: UserService,
+        private readonly userBulkService: UserBulkService,
         private readonly roleService: RoleService
     ) {}
 
@@ -62,7 +63,7 @@ export class UserSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.userService.deleteMany({});
+            await this.userBulkService.deleteMany({});
 
             this.debuggerService.info('Remove User Succeed', {
                 class: 'UserSeed',

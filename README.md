@@ -4,7 +4,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
+[![MIT License][license-shield]][LICENSE.md]
 
 [![NestJs][nestjs-shield]][nestjs-url]
 [![NodeJs][nodejs-shield]][nodejs-url]
@@ -16,54 +16,25 @@
 [![Kafka][kafka-shield]][kafka-url]
 [![Docker][docker-shield]][docker-url]
 
-<!-- PROJECT LOGO -->
-<br />
-<div align="center">
-  <a href="https://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo_text.svg" width="320" alt="Nest Logo" /></a>
+# ACK NestJs Boilerplate 🔥 🚀 
 
-  <h3 align="center">ACK NestJs Boilerplate 🚀🚀🚀 </h3>
+> NOTE: There will be huge differences between USAGE Documentation and Source Code
+>
+> Last update readme documentation on 16 Jan 2022
 
-  <p align="center">
-	Boilerplate with <a href="https://github.com/goldbergyoni/nodebestpractices"><strong>Mongoose</strong></a> and <a href="https://github.com/goldbergyoni/nodebestpractices"><strong>MongoDB</strong></a> as Database. 
-	<br /> 
-	Made with following <a href="https://github.com/goldbergyoni/nodebestpractices"><strong>nodejs-best-practice</strong></a> as benchmark and NestJs Habit.
-    <br />
-    <br />
-    <a href="https://github.com/andrechristikan/ack-nestjs-mongoose/blob/main/USAGE.md"><strong>Explore the docs »</strong></a>
-    <br />
-    <br />
-    <a href="https://github.com/andrechristikan/ack-nestjs-mongoose">View Source</a>
-    ·
-    <a href="https://github.com/andrechristikan/ack-nestjs-mongoose/issues">Report Bug</a>
-    ·
-    <a href="https://github.com/andrechristikan/ack-nestjs-mongoose/issues">Request Feature</a>
-  </p>
-</div>
+ACK is a [NestJs](nestjs-url) Boilerplate with [Mongoose](mongoose-url) and [MongoDB](mongodb-url) as Database. `Best uses for build an API Project or Microservice Project.` Made with following [nodejs-best-practice](nodejs-bestpractice-url) as benchmark and NestJs Habit
 
-<br />
+> KafkaModule just optional module, this can be add or remove if we don't need implement kafka, [see KAFKA Documentation](kafka/README.md)
 
-
-<div align="center">
-	<hr>
-	<h1> ###### IMPORTANT ###### </h1>
-	<h2> ##### LAST UPDATE README ON 26 DEC 2021 ( ONGOING) ##### </h2>
-  <h4>There huge differences between USAGE.md Documentation and source code after KafkaModule added, <a href="https://github.com/andrechristikan/ack-nestjs-mongoose/commits/main">Click here to check</a> </h4>
-
-  <hr>
-
-</div>
-
-# Description
-
-ACK is a [NestJs](nestjs-url) boilerplate 🚀. Best uses for build an API Project or Microservice Project. Made with following [nodejs-best-practice](nodejs-bestpractice-url) as benchmark and NestJs Habit.
+*You can [Request Feature](issues-url) or [Report Bug](issues-url) with following this link*
 
 ## Prerequisites
 
 We assume that all people are coming to here is `Programmer with intermediate knowledge` and also we need to understanding more knowledge before we start to reduce knowledge gaps.
 
-* Understood [ExpressJs Fundamental](expressjs-url), NodeJs Base Framework. It will help we to understand how the NestJs works.
-* Understood [Typescript Fundamental](typescript-url), Programming Language. It will help we to write and read the code.
 * Understood [NestJs Fundamental](nestjs-fundamental-url), Main Framework. NodeJs Framework with support fully TypeScript.
+* Understood [Typescript Fundamental](typescript-url), Programming Language. It will help we to write and read the code.
+* Understood [ExpressJs Fundamental](expressjs-url), NodeJs Base Framework. It will help we to understand how the NestJs Framework works.
 * Understand what is and how NoSql works as a Database, specially [MongoDB](#acknowledgements).
 
 ## Build With
@@ -82,70 +53,90 @@ Main packages and Main Tools
 
 ## Features
 
-The features will spill on this section, please read secretly and keep silent 🤫 🤫
+The features will spill on this section, please read secretly and keep silent
+
+### Configuration
 
 - [x] Centralize Configuration
 - [x] Centralize Exception
 - [x] Centralize Response
+- [x] Versioning
+- [x] Admin, Public, Common, and Test RouterModule
+- [x] Validation All Incoming Request
+- [x] Support Multi Language, control from header
+- [x] Custom Status Code for Each Error and Success Response
 
-- [x] Mongoose Integration
-- [x] Mongoose Populate and Deep Populate
-- [ ] Mongoose Transaction
-- [x] Database Migration with Nestjs/Command
+### Security
 
-- [x] Json Web Token Guard
+- [x] Json Web Token Guard, Access Token and Refresh Token (OAuth2)
 - [x] Basic Auth Guard
 - [x] Password Expired Guard
-- [x] Block User, Block Role Guard
+- [x] Block User
+- [x] Block Role Guard
 - [x] Login Expired Guard
 - [x] Role and Permission Management
 - [x] Hash Password with Bcrypt
+
+### Mongoose Modules
+
+- [x] Mongoose Integration
+- [x] Mongoose Populate and Deep Populate
+- [x] Mongoose Transaction, `Need MongoDB as Replication Instance to use this feature`
+- [x] Multi Database Connection
+- [x] Database Migration with Nestjs/Command
+
+### Logger Modules
 
 - [x] Logger Module, insert into Database
 - [x] Debugger Module, can write into file log
 - [x] Http Debugger Module, catch http incoming request and write into file log
 
-- [x] Incoming Request Validation
-- [x] Remember me implementation
-- [x] Support Multi Language, control from header
-- [x] Custom Status Code for Each Error and Success Request
+### Kafka Modules
 
-- [x] Kafka Implementation, can on/off
+All kafka features can switch on/off or remove, [read kafka section](#kafka)
 
-- [x] Husky Git pre-commit hooks for better code
-- [x] Support Docker Installation
-- [x] Helper Module, Manipulation Datetime/Random string/Random int/etc
+- [x] Kafka Admin Module, Create Topics with custom partition, and custom replication
+- [x] Kafka Producer Module, Store Message to Topic
 
-### Middleware
+### Middleware Modules
 
+- [x] Body Parser (JSON, Raw, Test, Multipart Form, and Urlencoded)
 - [x] Rate Limit
 - [x] Compression
 - [x] Helmet
 - [x] Cors
 - [x] BodyParser
 
+### Helper Module
+
+- [x] Manipulation Datetime
+- [x] Random string, Random String Length, Random String Prefix
+- [x] Random number, Random Number Between, Random OTP
+- [x] JWT signature
+- [x] Hashing
+- [x] Encryption and Decryption
+
+### Others
+
+- [x] Husky Git pre-commit hooks for better code
+- [x] Support Docker Installation
+
 ### Example
 
-- [x] Example Test API, and Error Test API
+- [x] Example Test Simple API
 - [x] Example CRUD
 - [x] Server Side Pagination
 - [x] Request validation
-- [x] Access Token
-- [x] Refresh Token
-- [x] Basic Auth
 - [x] Login
 - [x] Sign Up
-- [x] Upload Image into AWS S3
+- [x] Upload Image or File
 - [x] Kafka Consume and Produce Message
 - [x] Mongoose Population and Deep Population
-- [ ] Mongoose Transaction
 
 ### Todo
 
-- [x] Update version NestJs
-- [ ] Mongoose Transaction
 - [ ] Unit Test and E2E Test
-- [ ] Update Documentation
+- [ ] Update Usage Documentation
 - [ ] Update Performance
 
 ## Endpoints
@@ -157,10 +148,8 @@ All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [F
 Before we start, we need to install
 
 - [NodeJs](nodejs-url) 
-- [MongoDB](mongodb-url)
+- [MongoDB](mongodb-url) `go install and set mongoDB as replication if we need to use Mongoose Transaction Features`
 - [Yarn](yarn-url)
-
-See their official document.
 
 ### Make sure we don't get any error after installation
 
@@ -235,6 +224,7 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
     APP_HOST=localhost
     APP_PORT= 3000
     APP_LANGUAGE=en
+    APP_VERSIONING=false
     APP_DEBUG=false
     APP_TZ=Asia/Jakarta
 
@@ -263,7 +253,7 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
 
 3. Create Database, [follow this instruction from mongodb official](mongodb-create-database-url)
 
-    > NOTE: If you use mongodb < v5, you need some adjust in `src/database/database.service.ts`
+    > NOTE: If we use mongodb < v5, we need some adjust in `src/database/database.service.ts`
 
     ```ts
     // src/database/database.service.ts
@@ -303,7 +293,7 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
       npm run migrate
       ```
 
-    - Rollback migrate
+    - Rollback migrate, `be careful to use rollback, cause rollback will remove all data in collection`
 
       ```sh
       yarn migrate:rollback
@@ -342,15 +332,8 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
         ```sh
         npm run test:e2e
         ```
-6. Implement Husky
 
-    For better code, we will consume [Husky](husky-url). This will check our code with eslint. Our code must follow eslint rule or tslint rule before commit.
-    
-    ```sh
-    yarn prepare
-    ```
-
-#### Run project
+### Run project
 
 ```sh
 yarn start:dev
@@ -367,7 +350,7 @@ Cheers 🍻🍻 !!! our project is running well. Now we can use all features.
 Then go install or open `REST Client`. In this case, let assume we use [Postman Client](postman-url).
 After installation, we need to import all endpoint into postman, [see this instruction](#endpoints).
 
-#### Run with Docker
+### Run with Docker
 
 1. We need to install `docker` and `docker compose`.
 
@@ -386,6 +369,7 @@ After installation, we need to import all endpoint into postman, [see this instr
     and check `docker-compose`
 
     ```sh
+    docker-compose --version
 
     # will return
     # docker-compose version 1.27.4, build 40524192
@@ -404,6 +388,7 @@ After installation, we need to import all endpoint into postman, [see this instr
     APP_HOST=0.0.0.0
     APP_PORT= 3000
     APP_LANGUAGE=en
+    APP_VERSIONING=false
     APP_DEBUG=false
     APP_TZ=Asia/Jakarta
 
@@ -438,11 +423,11 @@ After installation, we need to import all endpoint into postman, [see this instr
 
 ## Usage
 
-Documents usage will write separate file. Document will put in [USAGE.md](USAGE.md)
+Documents usage will write separate file. Document will put in [USAGE Documentation](USAGE.md)
 
 ## Kafka
 
-Kafka document will write in separate file. Document will put in [KAFKA.md](KAFKA.md)
+Kafka document will write in separate file. Document will put in [KAFKA Documentation](kafka/README.md)
 
 ## License
 
@@ -456,8 +441,6 @@ Distributed under [MIT licensed](LICENSE.md).
 [![LinkedIn][linkedin-shield]][author-linkedin]
 [![Instagram][instagram-shield]][author-instagram]
 
-
-<br />
 <p align="right"><a href="#top">back to top</a></p>
 
 <!-- BADGE LINKS -->
@@ -483,12 +466,11 @@ Distributed under [MIT licensed](LICENSE.md).
 <!-- CONTACTS -->
 [author-linkedin]: https://linkedin.com/in/andrechristikan
 [author-instagram]: https://www.instagram.com/___ac.k
-[author-email]: mailto:andrechristikan@gmail.com
+[author-email]: mailto:ack@baibay.com
 [author-github]: https://github.com/andrechristikan
 
 <!-- GITHUB LINKS -->
 [repo-url]: https://github.com/andrechristikan/ack-nestjs-mongoose
-[license-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/blob/main/LICENSE.md
 [issues-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/issues
 [stars-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/stargazers
 [forks-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/network/members

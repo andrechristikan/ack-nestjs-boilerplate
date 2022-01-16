@@ -1,21 +1,19 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/database/database.constant';
-import {
-    PermissionSeedService,
-    PermissionService,
-} from 'src/permission/permission.service';
+
 import { PermissionDocument } from './permission.interface';
 import {
     PermissionDatabaseName,
     PermissionEntity,
     PermissionSchema,
 } from './permission.schema';
+import { PermissionBulkService, PermissionService } from './permission.service';
 
 @Module({
     controllers: [],
-    providers: [PermissionService, PermissionSeedService],
-    exports: [PermissionService, PermissionSeedService],
+    providers: [PermissionService, PermissionBulkService],
+    exports: [PermissionService, PermissionBulkService],
     imports: [
         MongooseModule.forFeatureAsync(
             [

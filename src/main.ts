@@ -43,11 +43,5 @@ async function bootstrap() {
         'NestApplication'
     );
     logger.log(`Server running on ${await app.getUrl()}`, 'NestApplication');
-
-    // Kafka
-    // const kafkaActive: boolean = configService.get<boolean>('kafka.active');
-    // if (kafkaActive && env !== 'testing') {
-    //     await kafka(app, configService, logger);
-    // }
 }
 bootstrap();

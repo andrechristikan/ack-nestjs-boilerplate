@@ -131,6 +131,22 @@ export class RoleService {
         });
     }
 
+    async mapGet(data: IRoleDocument): Promise<RoleGetTransformer> {
+        return plainToInstance(RoleGetTransformer, data);
+    }
+
+    async mapList(data: RoleDocument[]): Promise<RoleListTransformer[]> {
+        return plainToInstance(RoleListTransformer, data);
+    }
+}
+
+@Injectable()
+export class RoleBulkService {
+    constructor(
+        @InjectModel(RoleEntity.name)
+        private readonly roleModel: Model<RoleDocument>
+    ) {}
+
     async deleteMany(find: Record<string, any>): Promise<DeleteResult> {
         return await this.roleModel.deleteMany(find);
     }
@@ -146,13 +162,5 @@ export class RoleService {
         );
 
         return true;
-    }
-
-    async mapGet(data: IRoleDocument): Promise<RoleGetTransformer> {
-        return plainToInstance(RoleGetTransformer, data);
-    }
-
-    async mapList(data: RoleDocument[]): Promise<RoleListTransformer[]> {
-        return plainToInstance(RoleListTransformer, data);
     }
 }

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UserEntity, UserDatabaseName, UserSchema } from 'src/user/user.schema';
-import { UserService } from 'src/user/user.service';
+import { UserBulkService, UserService } from 'src/user/user.service';
 import { DATABASE_CONNECTION_NAME } from 'src/database/database.constant';
 import { UserDocument } from './user.interface';
 
@@ -30,8 +30,8 @@ import { UserDocument } from './user.interface';
             DATABASE_CONNECTION_NAME
         ),
     ],
-    exports: [UserService],
-    providers: [UserService],
+    exports: [UserService, UserBulkService],
+    providers: [UserService, UserBulkService],
     controllers: [],
 })
 export class UserModule {}

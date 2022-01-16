@@ -1,32 +1,16 @@
 # Kafka Documentation
 
+> Jump to [section remove KafkaModules](#optional,-complete-remove-kafka)
+
 Kafka documentation is optional and just in case if we want to use kafka.
 
 ## Prerequisites
 
 Alright, we need to know some knowledge before next section.
 
-* Follow [README](README.md) Documentation.
+* Follow and understood [README  Documentation](../README.md) .
 * Understood [Kafka Fundamental](kafka-url). It will help we to know how kafka works and why we need kafka in real project.
 
-As we mention in `Readme` at section `Features`, we can switch kafka on/of. We just need change value `KAFKA_ACTIVE` in `.env` file. This useful when you don't need kafka anymore after implementation.
-
-```env
-...
-...
-
-AUTH_BASIC_TOKEN_CLIENT_SECRET=1234567890
-
-KAFKA_ACTIVE=true # <<<<----- change this
-KAFKA_CONSUMER_GROUP=nestjs.ack
-KAFKA_BROKERS=localhost:9092
-
-AWS_CREDENTIAL_KEY=awskey12345
-
-...
-...
-...
-```
 ## Build With
 
 Main packages and Main Tools
@@ -37,23 +21,88 @@ Main packages and Main Tools
 
 ## Getting start
 
-We need to install [Kafka Apache](kafka-url) before we start. See their official document.
+We need to install [Kafka Apache](kafka-url) before we start
 
 > NOTE : For Windows User, **do not install kafka on your Windows OS**. There are has a unsolved issue, while delete topic on Windows OS. [See this issue for more information](kafka-issue)
-> Go install kafka with virtual machine or docker.
+>
+> Recommendation, Install Kafka with Virtual machine or [Docker](docker-compose.yml)
 
 ### Make sure we don't get any error after installation
 
-    ```sh
-    kafka-topics --version
+```sh
+kafka-topics --version
 
-    # will return 
-    # 3.0.0 (Commit:8cb0a5e9d3441962
+# will return 
+# 3.0.0 (Commit:8cb0a5e9d3441962
+```
+
+### Move KafkaModules into project
+
+1. Move Config `kafka/kafka.config.ts` into `src/config/*`
+
+    ```txt
+    .
+    src
+    ├── aws
+    ├── config           
+    │   .
+    │   ├── index.ts
+    │   ├── kafka.config.ts # ----------------- move to here
+    │   ├── middleware.config.ts
+    │   .
+    │   └── user.config.ts
+    ├── database
+    .
+    ```
+
+2. Move Language `kafka/kafka.language.ts` into `src/message/language/en/*`
+
+    ```txt
+    .
+    src
+    ├── logger
+    ├── message        
+    │   ├──languages
+    │   .   └── en 
+    │   .       .
+    │   .       ├── index.ts
+    │   .       ├── kafka.language.ts # -------- move to here
+    │   .       ├── message.language.ts
+    │   .       .
+    │   .       └──
+    │   └── message.service.ts
+    ├── middleware
+    .
+    ```
+
+3. Move the rest of files in `kafka/*` into `src/kafka`
+
+    > Except file
+    > - READNE.md
+    > - docker-compose.yml
+    > - .env*
+
+    ```txt
+    .
+    src
+    ├── helper
+    ├── kafka # ------------------------------- move to here
+    │   ├── admin
+    │   ├── consumer
+    │   ├── error
+    │   ├── producer
+    │   ├── request
+    │   ├── response
+    │   ├── router
+    │   ├── kafka.constant.ts
+    │   └── kafka.ts
+    ├── logger
+    .
     ```
 
 ### Installation
 
-1. Install dependencies `@nestjs/microservices` and `kafkajs`.
+1. Install dependencies `@nestjs/microservices` and `kafkajs`
 
     ```sh
     yarn add @nestjs/microservices kafkajs
@@ -65,7 +114,7 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
     npm i @nestjs/microservices kafkajs
     ```
 
-2. Our environment will be a little different. We will use `.env.kafka`
+2. Our environment will be a little different. We will use `kafka/.env.example`, [Click here to see details](.env.example). Copy and replace the env file into root dir.
 
     ```sh
     cp .env.kafka .env
@@ -78,6 +127,7 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
     APP_HOST=localhost
     APP_PORT= 3000
     APP_LANGUAGE=en
+    APP_VERSIONING=false
     APP_DEBUG=false
     APP_TZ=Asia/Jakarta
 
@@ -108,7 +158,28 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
     AWS_S3_BUCKET=acks3
     ```
 
-3. In `src/main.ts`, Add This Code below `app.listenAsync(port, host)`.
+    As we mention in `Readme` at section `Features`, we can switch kafka on/of. We just need change value `KAFKA_ACTIVE` in `.env` file. This useful when you don't need kafka anymore after implementation and don't want to remove it.
+
+    > NOTE: Kafka will inactive if `APP_ENV` value is `testing` or if `KAFKA_ACTIVE` is `false`
+
+    ```env
+    ...
+    ...
+
+    AUTH_BASIC_TOKEN_CLIENT_SECRET=1234567890
+
+    KAFKA_ACTIVE=true # <<<<----- change this
+    KAFKA_CONSUMER_GROUP=nestjs.ack
+    KAFKA_BROKERS=localhost:9092
+
+    AWS_CREDENTIAL_KEY=awskey12345
+
+    ...
+    ...
+    ...
+    ```
+
+3. In `src/main.ts`, Add This Code below `app.listen(port, host)`.
 
     ```ts
     // src/main.ts
@@ -119,11 +190,12 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
 
     const env: string = configService.get<string>('app.env');
 
-    await app.listenAsync(port, host);
+    await app.listen(port, host);
     
+    // Kafka
     const kafkaActive: boolean = configService.get<boolean>('kafka.active');
     if (kafkaActive && env !== 'testing') {
-         await kafka(app, configService, logger);
+        await kafka(app, configService, logger);
     }
 
     ...
@@ -132,11 +204,14 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
 
     ```
 
-4. In `src/app/app.module.ts`, we need to import `KafkaAdminModule`, `KafkaProducerModule`, `KafkaConsumerModule`.
+4. In `src/app/app.module.ts`, we need to import `RouterKafkaModule`, and `add RouterKafkaModule into RouterModule`.
 
-    - `KafkaAdminModule` use to create custom kafka topics.
-    - `KafkaProducerModule` use to produce message to some topic
-    - `KafkaConsumerModule` consume for topics.
+    - `RouterKafkaModule` use to import all `Kafka**Module`.
+        - `KafkaAdminModule` use to create custom kafka topics.
+        - `KafkaProducerModule` use to produce message to some topic
+        - `KafkaConsumerModule` consume for topics.
+
+    - `RouterModule` use to rewrite the url prefix
 
         ```ts
         // src/app/app.module.ts
@@ -145,12 +220,11 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
         ...
         ...
 
-        import { KafkaAdminModule } from 'src/kafka/admin/kafka.admin.module';
-        import { KafkaProducerModule } from 'src/kafka/producer/producer.module';
-        import { KafkaConsumerModule } from 'src/kafka/consumer/consumer.module';
+        import { RouterKafkaModule } from 'src/kafka/router/kafka.router.module';
+        import { RouterModule } from '@nestjs/core';
 
         @Module({
-        controllers: [AppController],
+        controllers: [],
         providers: [],
         imports: [
             ...
@@ -158,22 +232,22 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
             ...
 
             
-            SeedsModule.register({ env: process.env.APP_ENV }),
-            KafkaAdminModule.register({
+            
+            // Kafka
+            RouterKafkaModule.register({
                 env: process.env.APP_ENV,
-                active: process.env.KAFKA_ACTIVE === 'true' || false
+                active: process.env.KAFKA_ACTIVE === 'true' || false,
             }),
-            KafkaConsumerModule.register({
-                env: process.env.APP_ENV,
-                active: process.env.KAFKA_ACTIVE === 'true' || false
-            }),
-            KafkaProducerModule.register({
-                env: process.env.APP_ENV,
-                active: process.env.KAFKA_ACTIVE === 'true' || false
-            }),
+            RouterModule.register([
+                ...
+                ...
+                ...
 
-            AuthModule,
-            UserModule,
+                {
+                    path: '/kafka',
+                    module: RouterKafkaModule,
+                },
+            ]),
 
             ...
             ...
@@ -184,7 +258,7 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
 
         ```
 
-5. `Partition` default value is 3 or we can set Partition in config file `src/config/kafka.config.ts`, and `Replication Factor` default value is `count of our brokers`.
+5. Configuration. `Partition default value is 3` or we can change value of Partition in config file `src/config/kafka.config.ts`, and `Replication Factor` default value is `count of our brokers`.
 
     ```ts
     // src/config/kafka.config.ts
@@ -235,7 +309,23 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
     ];
     ```
 
-6. Make sure our topics was created or we can use auto create topics with `KafkaAdminModule`.
+6. Add kafka response message into `src/message/language/index.ts`
+
+    ```ts
+    // src/message/language/index.ts
+
+    import kafka from './kafka.language';
+
+    export default {
+        ...
+        ...
+        ...
+
+        kafka
+    };
+    ```
+
+7. Make sure our topics was created or we can use auto create topics with `KafkaAdminModule`.
 
     ```ts
     // src/kafka/kafka.constant.ts
@@ -247,7 +337,7 @@ We need to install [Kafka Apache](kafka-url) before we start. See their official
 
     ```
 
-7. After all configuration, we need to test. We can test `KafkaProducerModule` and `KafkaConsumerModule` with manual hit `/kafka/produce` endpoint. [see this instruction](ack-endpoint-url).
+8. After all configuration, we need to test manual hit `/api/kafka/producer` endpoint. [see this instruction](../README.md#endpoint).
 
 ### Run project
 
@@ -263,12 +353,11 @@ Or run project with npm
 npm run start:dev
 ```
 
+### Run with Docker
 
-### Run with Docker ---- \*\*\*\* Read Carefully \*\*\*\*
+This Instruction will little bit difficult
 
-This Instruction will little bit difference.
-
-> `docker-compose.yml` FILE WILL DIFFERENT BETWEEN `kafka` and `non kafka`. The file will put in `docker/docker-compose.kafka.yml`
+> `docker-compose.yml` FILE WILL DIFFERENT BETWEEN `kafka` and `non kafka`. The file will put in `kafka/docker-compose.yml`. [Click here to see details](docker-compose.yml)
 
 1. Before we start, we need to install `docker` and `docker compose`.
 
@@ -287,18 +376,20 @@ This Instruction will little bit difference.
     and check `docker-compose`
 
     ```sh
+    docker-compose --version
 
     # will return
     # docker-compose version 1.27.4, build 40524192
     ```
 
-3. We will use `.env.docker` and combine with `.env.kafka`
+3. We will use `kafka/.env.docker`, [Click here to see details](.env.docker)
 
     ```env
     APP_ENV=development
     APP_HOST=0.0.0.0
     APP_PORT= 3000
     APP_LANGUAGE=en
+    APP_VERSIONING=false
     APP_DEBUG=false
     APP_TZ=Asia/Jakarta
 
@@ -337,11 +428,22 @@ This Instruction will little bit difference.
 
 ## Usage
 
-We will cover this section when we update the USAGE.md document
+We will cover this section in next update
 
+## Remove KafkaModules
 
+We assume there have 2 condition while we want to remove KafkaModules
 
-## OPTIONAL, if we want delete kafka
+1. Before Move KafkaModules into project
+2. After Move KafkaModules into project
+
+### Before Move KafkaModules into project
+
+Just delete `kafka/` folder.
+
+### After Move KafkaModules into project
+
+> Jump to [section move KafkaModules](#move-kafkamodules-into-project)
 
 1. Delete `kafka folder` in `src/kafka`
 
@@ -371,7 +473,10 @@ export default [
 ];
 ```
 
-4. Remove dependencies `@nestjs/microservices` and `kafkajs`.
+### Remove dependencies
+
+After we remove KafkaModules, we need to make sure that dependencies also removed too.
+The dependencies is `@nestjs/microservices` and `kafkajs`
 
 ```sh
 yarn remove @nestjs/microservices kafkajs
@@ -383,8 +488,6 @@ Or remove with npm
 npm uninstall @nestjs/microservices kafkajs
 ```
 
-
-[ack-endpoint-url]: https://github.com/andrechristikan/ack-nestjs-mongoose#endpoints
 [nestjs-microservice-url]: https://docs.nestjs.com/microservices/kafka
 [kafka-js-url]: https://kafka.js.org/docs/getting-started
 [kafka-url]: https://kafka.apache.org/quickstart
