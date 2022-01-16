@@ -33,7 +33,7 @@ export class DebuggerService {
             zippedArchive: true,
             maxSize: this.maxSize,
             maxFiles: this.maxFiles,
-            level: 'info'
+            level: 'info',
         });
 
         const configTransportError: DailyRotateFile = new DailyRotateFile({
@@ -43,7 +43,7 @@ export class DebuggerService {
             zippedArchive: true,
             maxSize: this.maxSize,
             maxFiles: this.maxFiles,
-            level: 'error'
+            level: 'error',
         });
 
         const transports = [];
@@ -56,7 +56,7 @@ export class DebuggerService {
 
         transports.push(
             new winston.transports.Console({
-                silent: !this.logger
+                silent: !this.logger,
             })
         );
 
@@ -65,7 +65,7 @@ export class DebuggerService {
                 winston.format.timestamp(),
                 winston.format.prettyPrint()
             ),
-            transports
+            transports,
         };
         return loggerOptions;
     }

@@ -11,6 +11,6 @@ export default {
         inactive: 'Role inactive',
         exist: 'Role exist',
         active: 'Role status active invalid',
-        used: 'Role in used'
-    }
+        used: 'Role in used',
+    },
 };

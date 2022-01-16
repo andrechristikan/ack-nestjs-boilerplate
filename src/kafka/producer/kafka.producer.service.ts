@@ -4,7 +4,7 @@ import {
     Logger,
     OnApplicationBootstrap,
     OnModuleDestroy,
-    Optional
+    Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClientKafka } from '@nestjs/microservices';
@@ -67,7 +67,7 @@ export class KafkaProducerService
         const request: IKafkaRequest<Record<string, string>> = {
             key: await this.createId(),
             value: data,
-            headers: headers || {}
+            headers: headers || {},
         };
 
         return this.kafka.send(topic, request).toPromise();

@@ -11,7 +11,7 @@ export class RateLimitMiddleware implements NestMiddleware {
     use(req: Request, res: Response, next: NextFunction): void {
         rateLimit({
             windowMs: RESET_TIME,
-            max: MAX_REQUEST_PER_IP
+            max: MAX_REQUEST_PER_IP,
         })(req, res, next);
     }
 }

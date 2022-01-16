@@ -20,13 +20,13 @@ export class JwtRefreshGuard extends AuthGuard('jwtRefresh') {
                 class: 'JwtRefreshGuard',
                 function: 'handleRequest',
                 description: info,
-                error: { ...err }
+                error: { ...err },
             });
 
             throw new UnauthorizedException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GUARD_JWT_REFRESH_TOKEN_ERROR,
-                message: 'http.clientError.unauthorized'
+                message: 'http.clientError.unauthorized',
             });
         }
 

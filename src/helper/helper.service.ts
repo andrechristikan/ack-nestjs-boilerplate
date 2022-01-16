@@ -33,7 +33,7 @@ export class HelperService {
         const timestamp = `${new Date().valueOf()}`;
         const randomString: string = await this.randomString(length, {
             safe: true,
-            upperCase: true
+            upperCase: true,
         });
         return prefix
             ? `${prefix}-${timestamp}${randomString}`
@@ -47,7 +47,7 @@ export class HelperService {
         return options && options.safe
             ? faker.random.alpha({
                   count: length,
-                  upcase: options && options.upperCase ? true : false
+                  upcase: options && options.upperCase ? true : false,
               })
             : options && options.upperCase
             ? faker.random.alphaNumeric(length).toUpperCase()
@@ -137,7 +137,7 @@ export class HelperService {
                 options.notBefore ||
                 this.configService.get<string>(
                     'helper.jwt.notBeforeExpirationTime'
-                )
+                ),
         });
     }
 
@@ -148,7 +148,7 @@ export class HelperService {
         const payload: Record<string, any> = this.jwtService.verify(token, {
             secret:
                 options.secretKey ||
-                this.configService.get<string>('helper.jwt.secretKey')
+                this.configService.get<string>('helper.jwt.secretKey'),
         });
 
         return payload ? true : false;
@@ -161,7 +161,7 @@ export class HelperService {
         return this.jwtService.verify(token, {
             secret:
                 options.secretKey ||
-                this.configService.get<string>('helper.jwt.secretKey')
+                this.configService.get<string>('helper.jwt.secretKey'),
         });
     }
 
@@ -180,7 +180,7 @@ export class HelperService {
 
         const encryptedText = Buffer.concat([
             cipher.update(dataParse),
-            cipher.final()
+            cipher.final(),
         ]);
 
         return encryptedText.toString('base64');
@@ -196,7 +196,7 @@ export class HelperService {
         const decipher = createDecipheriv('aes-256-ctr', crp, iv);
         const decryptedText = Buffer.concat([
             decipher.update(data),
-            decipher.final()
+            decipher.final(),
         ]);
 
         return decryptedText.toString('utf8');

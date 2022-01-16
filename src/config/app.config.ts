@@ -5,9 +5,10 @@ export default registerAs(
     (): Record<string, any> => ({
         env: process.env.APP_ENV || 'development',
         language: process.env.APP_LANGUAGE || 'en',
+        versioning: process.env.APP_VERSIONING === 'true' || false,
         http: {
             host: process.env.APP_HOST || 'localhost',
-            port: parseInt(process.env.APP_PORT) || 3000
+            port: parseInt(process.env.APP_PORT) || 3000,
         },
         timezone: process.env.APP_TZ || 'Asia/Jakarta',
         debug: process.env.APP_DEBUG === 'true' || false,
@@ -15,13 +16,13 @@ export default registerAs(
             http: {
                 active: true,
                 maxFiles: 5,
-                maxSize: '2M'
+                maxSize: '2M',
             },
             system: {
                 active: true,
                 maxFiles: '7d',
-                maxSize: '2m'
-            }
-        }
+                maxSize: '2m',
+            },
+        },
     })
 );

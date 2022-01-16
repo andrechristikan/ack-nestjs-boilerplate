@@ -28,5 +28,5 @@ export default {
     minDateGreaterThan: '$property has less date than the $value',
     isPasswordStrong: '$property must have strong pattern',
     isPasswordMedium: '$property must have medium pattern',
-    isPasswordWeak: '$property must have weak pattern'
+    isPasswordWeak: '$property must have weak pattern',
 };

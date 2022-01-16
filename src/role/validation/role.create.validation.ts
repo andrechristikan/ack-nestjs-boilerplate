@@ -1,11 +1,11 @@
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import {
     IsString,
     IsNotEmpty,
     MaxLength,
     MinLength,
     IsMongoId,
-    IsBoolean
+    IsBoolean,
 } from 'class-validator';
 
 export class RoleCreateValidation {
@@ -14,7 +14,6 @@ export class RoleCreateValidation {
     @MinLength(3)
     @MaxLength(30)
     @Type(() => String)
-    @Transform(({ value }) => value.toLowerCase(), { toClassOnly: true })
     readonly name: string;
 
     @IsMongoId({ each: true })

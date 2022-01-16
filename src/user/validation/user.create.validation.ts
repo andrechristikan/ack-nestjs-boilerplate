@@ -1,4 +1,4 @@
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import {
     IsString,
     IsNotEmpty,
@@ -7,16 +7,15 @@ import {
     MinLength,
     IsMongoId,
     IsOptional,
-    ValidateIf
+    ValidateIf,
 } from 'class-validator';
-import { IsPasswordStrong, IsStartWith } from 'src/helper/helper.decorator';
+import { IsPasswordStrong, IsStartWith } from 'src/request/request.decorator';
 
 export class UserCreateValidation {
     @IsEmail()
     @IsNotEmpty()
     @MaxLength(100)
     @Type(() => String)
-    @Transform(({ value }) => value.toLowerCase(), { toClassOnly: true })
     readonly email: string;
 
     @IsString()
@@ -24,7 +23,6 @@ export class UserCreateValidation {
     @MinLength(1)
     @MaxLength(30)
     @Type(() => String)
-    @Transform(({ value }) => value.toLowerCase(), { toClassOnly: true })
     readonly firstName: string;
 
     @IsString()
@@ -33,7 +31,6 @@ export class UserCreateValidation {
     @MinLength(1)
     @MaxLength(30)
     @Type(() => String)
-    @Transform(({ value }) => value.toLowerCase(), { toClassOnly: true })
     readonly lastName?: string;
 
     @IsString()

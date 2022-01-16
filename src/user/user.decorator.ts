@@ -2,11 +2,14 @@ import {
     applyDecorators,
     createParamDecorator,
     ExecutionContext,
-    UseGuards
+    SetMetadata,
+    UseGuards,
 } from '@nestjs/common';
 import { UserPayloadPutToRequestGuard } from './guard/payload/user.payload.put-to-request.guard';
+import { UserActiveGuard } from './guard/user.active.guard';
 import { UserNotFoundGuard } from './guard/user.not-found.guard';
 import { UserPutToRequestGuard } from './guard/user.put-to-request.guard';
+import { USER_ACTIVE_META_KEY } from './user.constant';
 
 export const GetUser = createParamDecorator(
     (data: string, ctx: ExecutionContext) => {
@@ -30,5 +33,19 @@ export function UserUpdateGuard(): any {
 export function UserProfileGuard(): any {
     return applyDecorators(
         UseGuards(UserPayloadPutToRequestGuard, UserNotFoundGuard)
+    );
+}
+
+export function UserUpdateInactiveGuard(): any {
+    return applyDecorators(
+        UseGuards(UserPutToRequestGuard, UserNotFoundGuard, UserActiveGuard),
+        SetMetadata(USER_ACTIVE_META_KEY, [true])
+    );
+}
+
+export function UserUpdateActiveGuard(): any {
+    return applyDecorators(
+        UseGuards(UserPutToRequestGuard, UserNotFoundGuard, UserActiveGuard),
+        SetMetadata(USER_ACTIVE_META_KEY, [false])
     );
 }

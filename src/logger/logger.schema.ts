@@ -6,36 +6,36 @@ import { ENUM_LOGGER_ACTION, ENUM_LOGGER_LEVEL } from './logger.constant';
 export class LoggerEntity {
     @Prop({
         required: true,
-        enum: ENUM_LOGGER_LEVEL
+        enum: ENUM_LOGGER_LEVEL,
     })
     level: string;
 
     @Prop({
         required: true,
-        enum: ENUM_LOGGER_ACTION
+        enum: ENUM_LOGGER_ACTION,
     })
     action: string;
 
     @Prop({
-        required: false
+        required: false,
     })
     user?: Types.ObjectId;
 
     @Prop({
         required: true,
-        default: true
+        default: true,
     })
     anonymous: boolean;
 
     @Prop({
         required: true,
         trim: true,
-        lowercase: true
+        lowercase: true,
     })
     description: string;
 
     @Prop({
-        required: false
+        required: false,
     })
     tags?: string[];
 }

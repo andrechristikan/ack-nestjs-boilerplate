@@ -2,7 +2,7 @@ import {
     Injectable,
     CanActivate,
     ExecutionContext,
-    ForbiddenException
+    ForbiddenException,
 } from '@nestjs/common';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { Logger as DebuggerService } from 'winston';
@@ -20,13 +20,13 @@ export class AuthDefaultGuard implements CanActivate {
         if (!user.isActive || !user.role.isActive) {
             this.debuggerService.error('UserGuard Inactive', {
                 class: 'AuthDefaultGuard',
-                function: 'canActivate'
+                function: 'canActivate',
             });
 
             throw new ForbiddenException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GUARD_JWT_ACCESS_TOKEN_ERROR,
-                message: 'auth.error.blocked'
+                message: 'auth.error.blocked',
             });
         }
 

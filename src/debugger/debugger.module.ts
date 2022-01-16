@@ -4,6 +4,6 @@ import { DebuggerService } from 'src/debugger/debugger.service';
 @Module({
     providers: [DebuggerService],
     exports: [DebuggerService],
-    imports: []
+    imports: [],
 })
 export class DebuggerModule {}

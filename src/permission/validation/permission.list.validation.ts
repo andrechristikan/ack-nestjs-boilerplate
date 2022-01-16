@@ -2,7 +2,7 @@ import { RequestQueryBaseListValidation } from 'src/request/validation/request.q
 import {
     PERMISSION_DEFAULT_PAGE,
     PERMISSION_DEFAULT_PER_PAGE,
-    PERMISSION_DEFAULT_SORT
+    PERMISSION_DEFAULT_SORT,
 } from '../permission.constant';
 
 export class PermissionListValidation extends RequestQueryBaseListValidation {

@@ -1,7 +1,7 @@
 import { Exclude, Expose, Transform } from 'class-transformer';
 import {
     DEFAULT_PAGE,
-    DEFAULT_PER_PAGE
+    DEFAULT_PER_PAGE,
 } from 'src/pagination/pagination.constant';
 
 export class RequestQueryBaseListValidation {
@@ -26,7 +26,7 @@ export class RequestQueryBaseListValidation {
 
     @Expose()
     @Transform(({ value }) => (value ? value : undefined), {
-        toClassOnly: true
+        toClassOnly: true,
     })
     readonly search?: string;
 
@@ -71,7 +71,7 @@ export class RequestQueryBaseListValidation {
             return { [fieldSort]: typeSort };
         },
         {
-            toClassOnly: true
+            toClassOnly: true,
         }
     )
     readonly sort: Record<string, any>;

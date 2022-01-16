@@ -3,14 +3,14 @@ export default {
         ok: 'OK',
         created: 'Created',
         accepted: 'Accepted',
-        noContent: 'No Content'
+        noContent: 'No Content',
     },
     redirection: {
         movePermanently: 'Move Permanently',
         found: 'Found',
         notModified: 'Not Modified',
         temporaryRedirect: 'Temporary Redirect',
-        permanentRedirect: 'Permanent Redirect'
+        permanentRedirect: 'Permanent Redirect',
     },
     clientError: {
         badRequest: 'Bad Request',
@@ -26,13 +26,13 @@ export default {
         unprocessableEntity: 'Unprocessable Entity',
         tooManyRequest: 'Too Many Request',
         requestHeaderFieldsTooLarge: 'Request Header Fields Too Large',
-        unavailableForLegalReasons: 'Unavailable For Legal Reasons'
+        unavailableForLegalReasons: 'Unavailable For Legal Reasons',
     },
     serverError: {
         internalServerError: 'Internal Server Error',
         notImplemented: 'Not Implemented',
         badGateway: 'Bad Gateway',
         serviceUnavailable: 'Service Unavailable',
-        gatewayTimeout: 'Gateway Timeout'
-    }
+        gatewayTimeout: 'Gateway Timeout',
+    },
 };

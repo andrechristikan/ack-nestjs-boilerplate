@@ -2,7 +2,7 @@ import {
     Injectable,
     CanActivate,
     ExecutionContext,
-    UnauthorizedException
+    UnauthorizedException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { Logger as DebuggerService } from 'winston';
@@ -37,13 +37,13 @@ export class BasicGuard implements CanActivate {
         if (!authorization) {
             this.debuggerService.error('AuthBasicGuardError', {
                 class: 'BasicGuard',
-                function: 'canActivate'
+                function: 'canActivate',
             });
 
             throw new UnauthorizedException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GUARD_BASIC_TOKEN_NEEDED_ERROR,
-                message: 'http.clientError.unauthorized'
+                message: 'http.clientError.unauthorized',
             });
         }
 
@@ -53,24 +53,25 @@ export class BasicGuard implements CanActivate {
             this.clientSecret
         );
 
-        const validateBasicToken: boolean = await this.authService.validateBasicToken(
-            clientBasicToken,
-            ourBasicToken
-        );
+        const validateBasicToken: boolean =
+            await this.authService.validateBasicToken(
+                clientBasicToken,
+                ourBasicToken
+            );
 
         if (!validateBasicToken) {
             this.debuggerService.error(
                 'AuthBasicGuardError Validate Basic Token',
                 {
                     class: 'BasicGuard',
-                    function: 'canActivate'
+                    function: 'canActivate',
                 }
             );
 
             throw new UnauthorizedException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GUARD_BASIC_TOKEN_INVALID_ERROR,
-                message: 'http.clientError.unauthorized'
+                message: 'http.clientError.unauthorized',
             });
         }
 

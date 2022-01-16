@@ -18,12 +18,12 @@ export class RoleSeed {
 
     @Command({
         command: 'insert:role',
-        describe: 'insert roles'
+        describe: 'insert roles',
     })
     async insert(): Promise<void> {
         const permissions: PermissionDocument[] =
             await this.permissionService.findAll({
-                code: { $in: Object.values(ENUM_PERMISSIONS) }
+                code: { $in: Object.values(ENUM_PERMISSIONS) },
             });
 
         try {
@@ -32,30 +32,30 @@ export class RoleSeed {
                 {
                     name: 'admin',
                     permissions: permissionsMap,
-                    isAdmin: true
+                    isAdmin: true,
                 },
                 {
                     name: 'user',
                     permissions: [],
-                    isAdmin: false
-                }
+                    isAdmin: false,
+                },
             ]);
 
             this.debuggerService.info('Insert Role Succeed', {
                 class: 'RoleSeed',
-                function: 'insert'
+                function: 'insert',
             });
         } catch (e) {
             this.debuggerService.error(e.message, {
                 class: 'RoleSeed',
-                function: 'insert'
+                function: 'insert',
             });
         }
     }
 
     @Command({
         command: 'remove:role',
-        describe: 'remove roles'
+        describe: 'remove roles',
     })
     async remove(): Promise<void> {
         try {
@@ -63,12 +63,12 @@ export class RoleSeed {
 
             this.debuggerService.info('Remove Role Succeed', {
                 class: 'RoleSeed',
-                function: 'remove'
+                function: 'remove',
             });
         } catch (e) {
             this.debuggerService.error(e.message, {
                 class: 'RoleSeed',
-                function: 'remove'
+                function: 'remove',
             });
         }
     }

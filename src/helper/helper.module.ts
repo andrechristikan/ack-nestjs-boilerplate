@@ -20,11 +20,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
                     signOptions: {
                         expiresIn: configService.get<string>(
                             'helper.jwt.defaultExpirationTime'
-                        )
-                    }
+                        ),
+                    },
                 };
-            }
-        })
-    ]
+            },
+        }),
+    ],
 })
 export class HelperModule {}

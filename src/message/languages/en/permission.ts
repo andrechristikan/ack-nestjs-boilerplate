@@ -5,7 +5,8 @@ export default {
     active: 'Permission active succeed',
     inactive: 'Permission inactive succeed',
     error: {
+        notFound: 'Permission not found',
         forbidden: 'Permission invalid',
-        active: 'Permission active status invalid'
-    }
+        active: 'Permission active status invalid',
+    },
 };

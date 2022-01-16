@@ -4,6 +4,7 @@ import { plainToInstance } from 'class-transformer';
 import { Helper } from 'src/helper/helper.decorator';
 import { HelperService } from 'src/helper/helper.service';
 import { IUserDocument } from 'src/user/user.interface';
+import { IAuthPassword } from './auth.interface';
 import { AuthLoginTransformer } from './transformer/auth.login.transformer';
 
 @Injectable()
@@ -46,10 +47,10 @@ export class AuthService {
             );
 
         this.rememberMeNotChecked = this.configService.get<number>(
-            'auth.jwt.rememberMe.notChecked'
+            'auth.rememberMe.notChecked'
         );
         this.rememberMeChecked = this.configService.get<number>(
-            'auth.jwt.rememberMe.checked'
+            'auth.rememberMe.checked'
         );
     }
 
@@ -57,19 +58,19 @@ export class AuthService {
         return this.helperService.jwtCreateToken(payload, {
             secretKey: this.accessTokenSecretToken,
             expiredIn: this.accessTokenExpirationTime,
-            notBefore: this.accessTokenNotBeforeExpirationTime
+            notBefore: this.accessTokenNotBeforeExpirationTime,
         });
     }
 
     async validateAccessToken(token: string): Promise<boolean> {
         return this.helperService.jwtVerify(token, {
-            secretKey: this.accessTokenSecretToken
+            secretKey: this.accessTokenSecretToken,
         });
     }
 
     async payloadAccessToken(token: string): Promise<Record<string, any>> {
         return this.helperService.jwtPayload(token, {
-            secretKey: this.accessTokenSecretToken
+            secretKey: this.accessTokenSecretToken,
         });
     }
 
@@ -80,19 +81,19 @@ export class AuthService {
         return this.helperService.jwtCreateToken(payload, {
             secretKey: this.refreshTokenSecretToken,
             expiredIn: this.refreshTokenExpirationTime,
-            notBefore: test ? '0' : this.refreshTokenNotBeforeExpirationTime
+            notBefore: test ? '0' : this.refreshTokenNotBeforeExpirationTime,
         });
     }
 
     async validateRefreshToken(token: string): Promise<boolean> {
         return this.helperService.jwtVerify(token, {
-            secretKey: this.refreshTokenSecretToken
+            secretKey: this.refreshTokenSecretToken,
         });
     }
 
     async payloadRefreshToken(token: string): Promise<Record<string, any>> {
         return this.helperService.jwtPayload(token, {
-            secretKey: this.refreshTokenSecretToken
+            secretKey: this.refreshTokenSecretToken,
         });
     }
 
@@ -134,14 +135,16 @@ export class AuthService {
     async createPayload(
         data: Record<string, any>,
         rememberMe: boolean,
-        loginDate?: Date,
-        loginExpired?: Date
+        loginDate?: Date, // for refresh token
+        loginExpired?: Date // for refresh token
     ): Promise<Record<string, any>> {
+        const today = new Date();
+        const newLoginExpired = await this.loginExpired(rememberMe);
         return {
             ...data,
-            loginDate: loginDate || new Date(),
+            loginDate: loginDate || today,
             rememberMe,
-            loginExpired: loginExpired || (await this.loginExpired(rememberMe))
+            loginExpired: loginExpired || newLoginExpired,
         };
     }
 
@@ -149,7 +152,7 @@ export class AuthService {
         return plainToInstance(AuthLoginTransformer, data);
     }
 
-    async createPassword(password: string): Promise<Record<string, any>> {
+    async createPassword(password: string): Promise<IAuthPassword> {
         const saltLength: number = this.configService.get<number>(
             'auth.password.saltLength'
         );
@@ -170,7 +173,7 @@ export class AuthService {
         return {
             passwordHash,
             passwordExpired,
-            salt
+            salt,
         };
     }
 }

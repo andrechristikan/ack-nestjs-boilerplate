@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
     MongooseOptionsFactory,
-    MongooseModuleOptions
+    MongooseModuleOptions,
 } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
 import { ConfigService } from '@nestjs/config';
@@ -45,7 +45,7 @@ export class DatabaseService implements MongooseOptionsFactory {
         const mongooseOptions: MongooseModuleOptions = {
             uri,
             useNewUrlParser: true,
-            useUnifiedTopology: true
+            useUnifiedTopology: true,
             // useMongoClient: true
         };
 
@@ -56,7 +56,7 @@ export class DatabaseService implements MongooseOptionsFactory {
         if (this.user && this.password) {
             mongooseOptions.auth = {
                 username: this.user,
-                password: this.password
+                password: this.password,
             };
         }
 

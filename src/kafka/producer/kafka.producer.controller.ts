@@ -2,7 +2,8 @@ import {
     Controller,
     Get,
     InternalServerErrorException,
-    Optional
+    Optional,
+    VERSION_NEUTRAL,
 } from '@nestjs/common';
 import { Response } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
@@ -13,9 +14,12 @@ import { KafkaProducerService } from './kafka.producer.service';
 import { KafkaProducer } from './kafka.producer.decorator';
 import { ConfigService } from '@nestjs/config';
 
-@Controller('kafka/produce')
+@Controller({
+    version: VERSION_NEUTRAL,
+    path: 'producer',
+})
 export class KafkaProducerController {
-    private readonly env: string;
+    private readonly testMode: boolean;
 
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService,
@@ -24,28 +28,33 @@ export class KafkaProducerController {
         private readonly kafkaProducerService: KafkaProducerService,
         private readonly configService: ConfigService
     ) {
-        this.env = this.configService.get<string>('app.env');
+        this.testMode = this.configService.get<string>('app.env') === 'testing';
     }
 
     @Response('kafka.produce')
     @Get('/')
-    async produce(): Promise<void> {
-        if (this.env !== 'testing') {
+    async produce(): Promise<IResponse> {
+        if (!this.testMode) {
             try {
-                await this.kafkaProducerService.send('nestjs.ack.success', {
-                    from: '127.0.0.1'
-                });
+                const kafkaResponse = await this.kafkaProducerService.send(
+                    'nestjs.ack.success',
+                    {
+                        from: '127.0.0.1',
+                    }
+                );
+
+                return kafkaResponse;
             } catch (err: any) {
                 this.debuggerService.error('Produce Internal Server Error', {
-                    class: 'KafkaProducerController',
+                    class: 'KafkaProducerPublicController',
                     function: 'produce',
-                    ...err
+                    ...err,
                 });
 
                 const errors: IErrorKafka = err as IErrorKafka;
                 throw new InternalServerErrorException({
                     statusCode: errors.statusCode,
-                    message: errors.message
+                    message: errors.message,
                 });
             }
         }
@@ -56,25 +65,26 @@ export class KafkaProducerController {
     @Response('kafka.error.produce')
     @Get('/error')
     async produceError(): Promise<IResponse> {
-        if (this.env !== 'testing') {
+        if (!this.testMode) {
             try {
                 await this.kafkaProducerService.send('nestjs.ack.error', {
-                    from: '127.0.0.1'
+                    from: '127.0.0.1',
                 });
             } catch (err: any) {
                 this.debuggerService.error('Produce Internal Server Error', {
-                    class: 'KafkaProducerController',
+                    class: 'KafkaProducerPublicController',
                     function: 'produce',
-                    ...err
+                    ...err,
                 });
 
                 const errors: IErrorKafka = err as IErrorKafka;
                 throw new InternalServerErrorException({
                     statusCode: errors.statusCode,
-                    message: errors.message
+                    message: errors.message,
                 });
             }
         }
+
         return;
     }
 }

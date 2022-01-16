@@ -9,7 +9,7 @@ export class RoleEntity {
         index: true,
         unique: true,
         lowercase: true,
-        trim: true
+        trim: true,
     })
     name: string;
 
@@ -17,19 +17,19 @@ export class RoleEntity {
         required: true,
         type: Array,
         default: [],
-        ref: PermissionEntity.name
+        ref: PermissionEntity.name,
     })
     permissions: Types.ObjectId[];
 
     @Prop({
         required: true,
-        default: true
+        default: true,
     })
     isActive: boolean;
 
     @Prop({
         required: true,
-        default: false
+        default: false,
     })
     isAdmin: boolean;
 }

@@ -5,7 +5,7 @@ export const DEFAULT_METHOD_CORS = [
     'DELETE',
     'PUT',
     'PATCH',
-    'POST'
+    'POST',
 ];
 
 export const DEFAULT_ORIGIN_CORS = ['*'];

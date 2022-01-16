@@ -2,13 +2,13 @@ import {
     Injectable,
     CanActivate,
     ExecutionContext,
-    ForbiddenException
+    ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import {
     ENUM_PERMISSIONS,
     ENUM_PERMISSION_STATUS_CODE_ERROR,
-    PERMISSION_META_KEY
+    PERMISSION_META_KEY,
 } from '../permission.constant';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { Logger as DebuggerService } from 'winston';
@@ -43,13 +43,13 @@ export class PermissionDefaultGuard implements CanActivate {
         if (!hasPermission) {
             this.debuggerService.error('Permission not has permission', {
                 class: 'PermissionDefaultGuard',
-                function: 'canActivate'
+                function: 'canActivate',
             });
 
             throw new ForbiddenException({
                 statusCode:
                     ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_GUARD_INVALID_ERROR,
-                message: 'permission.error.forbidden'
+                message: 'permission.error.forbidden',
             });
         }
         return hasPermission;

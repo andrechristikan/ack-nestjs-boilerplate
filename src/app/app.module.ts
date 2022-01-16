@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AppController } from 'src/app/app.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DatabaseService } from 'src/database/database.service';
 import { DatabaseModule } from 'src/database/database.module';
@@ -8,63 +7,91 @@ import { ConfigModule } from '@nestjs/config';
 import { WinstonModule } from 'nest-winston';
 import { DebuggerService } from 'src/debugger/debugger.service';
 import { DebuggerModule } from 'src/debugger/debugger.module';
-import { UserModule } from 'src/user/user.module';
-import { AuthModule } from 'src/auth/auth.module';
 import { PaginationModule } from 'src/pagination/pagination.module';
-import { MiddlewareModule } from 'src/middleware/middleware.module';
 import { SeedsModule } from 'src/database/seeds/seeds.module';
 import Configs from 'src/config/index';
 import { HelperModule } from 'src/helper/helper.module';
-import { RoleModule } from 'src/role/role.module';
-import { PermissionModule } from 'src/permission/permission.module';
+import { DATABASE_CONNECTION_NAME } from 'src/database/database.constant';
+import { MiddlewareModule } from 'src/middleware/middleware.module';
+import { RouterCommonModule } from 'src/router/router.common.module';
+import { RouterModule } from '@nestjs/core';
+import { RouterTestModule } from 'src/router/router.test.module';
+import { RouterEnumModule } from 'src/router/router.enum.module';
+import { RouterPublicModule } from 'src/router/router.public.module';
+import { RouterAdminModule } from 'src/router/router.admin.module';
 
 @Module({
-    controllers: [AppController],
+    controllers: [],
     providers: [],
     imports: [
+        // Core
+        MiddlewareModule,
         ConfigModule.forRoot({
             load: Configs,
             ignoreEnvFile: false,
             isGlobal: true,
             cache: true,
-            envFilePath: '.env'
+            envFilePath: ['.env'],
         }),
         WinstonModule.forRootAsync({
             inject: [DebuggerService],
             imports: [DebuggerModule],
             useFactory: (loggerService: DebuggerService) =>
-                loggerService.createLogger()
+                loggerService.createLogger(),
         }),
         MongooseModule.forRootAsync({
+            connectionName: DATABASE_CONNECTION_NAME,
             inject: [DatabaseService],
             imports: [DatabaseModule],
             useFactory: (databaseService: DatabaseService) =>
-                databaseService.createMongooseOptions()
+                databaseService.createMongooseOptions(),
         }),
         MessageModule,
-        MiddlewareModule,
         PaginationModule,
         DebuggerModule,
         HelperModule,
         SeedsModule.register({ env: process.env.APP_ENV }),
 
-        // KafkaAdminModule.register({
-        //     env: process.env.APP_ENV,
-        //     active: process.env.KAFKA_ACTIVE === 'true' || false
-        // }),
-        // KafkaConsumerModule.register({
-        //     env: process.env.APP_ENV,
-        //     active: process.env.KAFKA_ACTIVE === 'true' || false
-        // }),
-        // KafkaProducerModule.register({
-        //     env: process.env.APP_ENV,
-        //     active: process.env.KAFKA_ACTIVE === 'true' || false
-        // }),
+        // Modules
+        RouterCommonModule,
+        RouterTestModule,
+        RouterEnumModule,
+        RouterPublicModule,
+        RouterAdminModule,
+        RouterModule.register([
+            {
+                path: '/',
+                module: RouterCommonModule,
+            },
+            {
+                path: '/test',
+                module: RouterTestModule,
+            },
+            {
+                path: '/enum',
+                module: RouterEnumModule,
+            },
+            {
+                path: '/admin',
+                module: RouterAdminModule,
+            },
+            {
+                path: '/public',
+                module: RouterPublicModule,
+            },
+        ]),
 
-        AuthModule,
-        PermissionModule,
-        UserModule,
-        RoleModule
-    ]
+        // Kafka
+        // RouterKafkaModule.register({
+        //     env: process.env.APP_ENV,
+        //     active: process.env.KAFKA_ACTIVE === 'true' || false,
+        // }),
+        // RouterModule.register([
+        //     {
+        //         path: '/kafka',
+        //         module: RouterKafkaModule,
+        //     },
+        // ]),
+    ],
 })
 export class AppModule {}

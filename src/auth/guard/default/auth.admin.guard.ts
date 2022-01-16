@@ -2,13 +2,13 @@ import {
     Injectable,
     CanActivate,
     ExecutionContext,
-    ForbiddenException
+    ForbiddenException,
 } from '@nestjs/common';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { Logger as DebuggerService } from 'winston';
 import {
     AUTH_ADMIN_META_KEY,
-    ENUM_AUTH_STATUS_CODE_ERROR
+    ENUM_AUTH_STATUS_CODE_ERROR,
 } from 'src/auth/auth.constant';
 import { Reflector } from '@nestjs/core';
 
@@ -30,16 +30,15 @@ export class AuthAdminGuard implements CanActivate {
         }
 
         const { user } = context.switchToHttp().getRequest();
-
         if (!required.includes(user.role.isAdmin)) {
             this.debuggerService.error('Auth active error', {
                 class: 'AuthActiveGuard',
-                function: 'canActivate'
+                function: 'canActivate',
             });
 
             throw new ForbiddenException({
                 statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GUARD_ADMIN_ERROR,
-                message: 'auth.error.admin'
+                message: 'auth.error.admin',
             });
         }
         return true;

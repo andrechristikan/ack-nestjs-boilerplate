@@ -11,10 +11,10 @@ export class AuthLoginTransformer {
             name: value.name,
             permissions: value.permissions.map((val: Record<string, any>) => ({
                 code: val.code,
-                isActive: val.isActive
+                isActive: val.isActive,
             })),
             isActive: value.isActive,
-            isAdmin: value.isAdmin
+            isAdmin: value.isAdmin,
         }),
         { toClassOnly: true }
     )

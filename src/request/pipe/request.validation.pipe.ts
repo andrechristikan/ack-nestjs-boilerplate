@@ -1,7 +1,7 @@
 import {
     PipeTransform,
     ArgumentMetadata,
-    UnprocessableEntityException
+    UnprocessableEntityException,
 } from '@nestjs/common';
 import { validate } from 'class-validator';
 import { Debugger } from 'src/debugger/debugger.decorator';
@@ -18,7 +18,7 @@ import { AuthSignUpValidation } from 'src/auth/validation/auth.sign-up.validatio
 import { RoleCreateValidation } from 'src/role/validation/role.create.validation';
 import { PermissionUpdateValidation } from 'src/permission/validation/permission.update.validation';
 import { RoleUpdateValidation } from 'src/role/validation/role.update.validation';
-import { UserChangePasswordValidation } from 'src/user/validation/user.change-password.validation';
+import { AuthChangePasswordValidation } from 'src/auth/validation/auth.change-password.validation';
 
 export class RequestValidationPipe implements PipeTransform {
     constructor(
@@ -36,12 +36,12 @@ export class RequestValidationPipe implements PipeTransform {
         const classTransformer = new metatype(value);
         const request = plainToInstance(metatype, {
             ...classTransformer,
-            ...value
+            ...value,
         });
         this.debuggerService.info('Request Data', {
             class: 'RequestValidationPipe',
             function: 'transform',
-            request: request
+            request: request,
         });
 
         const rawErrors: Record<string, any>[] = await validate(request);
@@ -49,14 +49,14 @@ export class RequestValidationPipe implements PipeTransform {
             this.debuggerService.error('Request Errors', {
                 class: 'RequestValidationPipe',
                 function: 'transform',
-                errors: rawErrors
+                errors: rawErrors,
             });
 
             throw new UnprocessableEntityException({
                 statusCode:
                     ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR,
                 message: 'http.clientError.unprocessableEntity',
-                errors: rawErrors
+                errors: rawErrors,
             });
         }
         return request;
@@ -74,7 +74,7 @@ export class RequestValidationPipe implements PipeTransform {
             RoleCreateValidation,
             PermissionUpdateValidation,
             RoleUpdateValidation,
-            UserChangePasswordValidation
+            AuthChangePasswordValidation,
         ];
         return types.includes(metatype);
     }

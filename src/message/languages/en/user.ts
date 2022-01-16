@@ -6,12 +6,14 @@ export default {
     update: 'Update User Success.',
     profile: 'Profile Success',
     upload: 'Upload Success',
-    changePassword: 'Change Password Success',
+    inactive: 'Inactive Succeed',
+    active: 'Active Succeed',
     error: {
         notFound: 'User not found.',
         inactive: 'User inactive',
         emailExist: 'Email user used',
         mobileNumberExist: 'Mobile Number user used',
-        exist: 'User exist.'
-    }
+        active: 'User status active invalid',
+        exist: 'User exist.',
+    },
 };

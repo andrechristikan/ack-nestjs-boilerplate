@@ -1,7 +1,7 @@
 import { IsString, IsNotEmpty } from 'class-validator';
-import { IsPasswordStrong } from 'src/helper/helper.decorator';
+import { IsPasswordStrong } from 'src/request/request.decorator';
 
-export class UserChangePasswordValidation {
+export class AuthChangePasswordValidation {
     @IsPasswordStrong()
     @IsNotEmpty()
     readonly newPassword: string;

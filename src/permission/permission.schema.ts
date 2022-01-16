@@ -6,23 +6,23 @@ export class PermissionEntity {
         required: true,
         index: true,
         unique: true,
-        trim: true
+        trim: true,
     })
     code: string;
 
     @Prop({
-        required: true
+        required: true,
     })
     name: string;
 
     @Prop({
-        required: false
+        required: false,
     })
     description?: string;
 
     @Prop({
         required: true,
-        default: true
+        default: true,
     })
     isActive: boolean;
 }

@@ -4,7 +4,7 @@ import {
     MaxLength,
     IsBoolean,
     IsOptional,
-    ValidateIf
+    ValidateIf,
 } from 'class-validator';
 
 export class AuthLoginValidation {

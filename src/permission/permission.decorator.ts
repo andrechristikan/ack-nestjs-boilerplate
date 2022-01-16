@@ -3,7 +3,7 @@ import {
     createParamDecorator,
     ExecutionContext,
     SetMetadata,
-    UseGuards
+    UseGuards,
 } from '@nestjs/common';
 import { PermissionActiveGuard } from './guard/permission.active.guard';
 import { PermissionNotFoundGuard } from './guard/permission.not-found.guard';

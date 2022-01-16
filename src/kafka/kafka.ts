@@ -19,16 +19,16 @@ export default async function (
         options: {
             client: {
                 clientId,
-                brokers
+                brokers,
             },
             consumer: {
                 groupId: consumerGroup,
-                allowAutoTopicCreation: false
+                allowAutoTopicCreation: false,
             },
             producer: {
-                allowAutoTopicCreation: false
-            }
-        }
+                allowAutoTopicCreation: false,
+            },
+        },
     });
 
     await app.startAllMicroservices();

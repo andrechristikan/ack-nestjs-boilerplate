@@ -5,7 +5,7 @@ import {
     InternalServerErrorException,
     Patch,
     Put,
-    Query
+    Query,
 } from '@nestjs/common';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { PaginationService } from 'src/pagination/pagination.service';
@@ -20,7 +20,7 @@ import {
     PermissionGetGuard,
     PermissionUpdateActiveGuard,
     PermissionUpdateGuard,
-    PermissionUpdateInactiveGuard
+    PermissionUpdateInactiveGuard,
 } from './permission.decorator';
 import { PermissionUpdateValidation } from './validation/permission.update.validation';
 import { ENUM_STATUS_CODE_ERROR } from 'src/error/error.constant';
@@ -28,7 +28,10 @@ import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
 
-@Controller('/permission')
+@Controller({
+    version: '1',
+    path: 'permission',
+})
 export class PermissionAdminController {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService,
@@ -50,9 +53,9 @@ export class PermissionAdminController {
                 {
                     name: {
                         $regex: new RegExp(search),
-                        $options: 'i'
-                    }
-                }
+                        $options: 'i',
+                    },
+                },
             ];
         }
 
@@ -60,7 +63,7 @@ export class PermissionAdminController {
             await this.permissionService.findAll(find, {
                 skip: skip,
                 limit: perPage,
-                sort
+                sort,
             });
 
         const totalData: number = await this.permissionService.getTotal(find);
@@ -74,7 +77,7 @@ export class PermissionAdminController {
             totalPage,
             currentPage: page,
             perPage,
-            data: permissions
+            data: permissions,
         };
     }
 
@@ -105,17 +108,17 @@ export class PermissionAdminController {
             this.debuggerService.error('Auth active server internal error', {
                 class: 'AuthAdminController',
                 function: 'updateActive',
-                error: { ...e }
+                error: { ...e },
             });
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
-                message: 'http.serverError.internalServerError'
+                message: 'http.serverError.internalServerError',
             });
         }
 
         return {
-            _id: permission._id
+            _id: permission._id,
         };
     }
 
@@ -128,7 +131,7 @@ export class PermissionAdminController {
     @Patch('/inactive/:permission')
     async inactive(
         @GetPermission() permission: PermissionDocument
-    ): Promise<IResponse> {
+    ): Promise<void> {
         try {
             await this.permissionService.inactive(permission._id);
         } catch (e) {
@@ -137,13 +140,13 @@ export class PermissionAdminController {
                 {
                     class: 'PermissionController',
                     function: 'inactive',
-                    error: { ...e }
+                    error: { ...e },
                 }
             );
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
-                message: 'http.serverError.internalServerError'
+                message: 'http.serverError.internalServerError',
             });
         }
 
@@ -159,7 +162,7 @@ export class PermissionAdminController {
     @Patch('/active/:permission')
     async active(
         @GetPermission() permission: PermissionDocument
-    ): Promise<IResponse> {
+    ): Promise<void> {
         try {
             await this.permissionService.active(permission._id);
         } catch (e) {
@@ -168,13 +171,13 @@ export class PermissionAdminController {
                 {
                     class: 'PermissionController',
                     function: 'active',
-                    error: { ...e }
+                    error: { ...e },
                 }
             );
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
-                message: 'http.serverError.internalServerError'
+                message: 'http.serverError.internalServerError',
             });
         }
 

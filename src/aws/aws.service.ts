@@ -8,7 +8,7 @@ import {
     DeleteBucketCommand,
     CreateBucketCommand,
     DeleteObjectsCommand,
-    ObjectIdentifier
+    ObjectIdentifier,
 } from '@aws-sdk/client-s3';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -28,9 +28,9 @@ export class AwsService implements OnModuleInit {
                     this.configService.get<string>('aws.credential.key'),
                 secretAccessKey: this.configService.get<string>(
                     'aws.credential.secret'
-                )
+                ),
             },
-            region: this.configService.get<string>('aws.s3.region')
+            region: this.configService.get<string>('aws.s3.region'),
         });
 
         this.bucket = this.configService.get<string>('aws.s3.bucket');
@@ -61,7 +61,7 @@ export class AwsService implements OnModuleInit {
     async s3ListItemInBucket(prefix?: string): Promise<IAwsResponse[]> {
         const command: ListObjectsV2Command = new ListObjectsV2Command({
             Bucket: this.bucket,
-            Prefix: prefix
+            Prefix: prefix,
         });
         const listItems: Record<string, any> = await this.s3Client.send(
             command
@@ -84,7 +84,7 @@ export class AwsService implements OnModuleInit {
                 filename: filename,
                 completedUrl: `${this.baseUrl}/${val.Key}`,
                 baseUrl: this.baseUrl,
-                mime
+                mime,
             };
         });
     }
@@ -99,7 +99,7 @@ export class AwsService implements OnModuleInit {
         const key: string = path ? `${path}/${filename}` : filename;
         const command: GetObjectCommand = new GetObjectCommand({
             Bucket: this.bucket,
-            Key: key
+            Key: key,
         });
 
         const item: Record<string, any> = await this.s3Client.send(command);
@@ -133,7 +133,7 @@ export class AwsService implements OnModuleInit {
             Bucket: this.bucket,
             Key: key,
             Body: content,
-            ACL: acl
+            ACL: acl,
         });
 
         await this.s3Client.send(command);
@@ -144,14 +144,14 @@ export class AwsService implements OnModuleInit {
             filename: filename,
             completedUrl: `${this.baseUrl}/${key}`,
             baseUrl: this.baseUrl,
-            mime
+            mime,
         };
     }
 
     async s3DeleteItemInBucket(filename: string): Promise<boolean> {
         const command: DeleteObjectCommand = new DeleteObjectCommand({
             Bucket: this.bucket,
-            Key: filename
+            Key: filename,
         });
 
         try {
@@ -164,13 +164,13 @@ export class AwsService implements OnModuleInit {
 
     async s3DeleteItemsInBucket(filenames: string[]): Promise<boolean> {
         const keys: ObjectIdentifier[] = filenames.map((val) => ({
-            Key: val
+            Key: val,
         }));
         const command: DeleteObjectsCommand = new DeleteObjectsCommand({
             Bucket: this.bucket,
             Delete: {
-                Objects: keys
-            }
+                Objects: keys,
+            },
         });
 
         try {
@@ -183,7 +183,7 @@ export class AwsService implements OnModuleInit {
 
     async s3DeleteBucket(): Promise<boolean> {
         const command: DeleteBucketCommand = new DeleteBucketCommand({
-            Bucket: this.bucket
+            Bucket: this.bucket,
         });
 
         try {
@@ -196,7 +196,7 @@ export class AwsService implements OnModuleInit {
 
     async s3CreateBucket(): Promise<boolean> {
         const command: CreateBucketCommand = new CreateBucketCommand({
-            Bucket: this.bucket
+            Bucket: this.bucket,
         });
 
         try {

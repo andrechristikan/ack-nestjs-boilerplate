@@ -1,10 +1,10 @@
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import {
     IsString,
     IsNotEmpty,
     MaxLength,
     IsOptional,
-    ValidateIf
+    ValidateIf,
 } from 'class-validator';
 
 export class UserUpdateValidation {
@@ -12,7 +12,6 @@ export class UserUpdateValidation {
     @IsNotEmpty()
     @MaxLength(30)
     @Type(() => String)
-    @Transform(({ value }) => value.toLowerCase(), { toClassOnly: true })
     readonly firstName: string;
 
     @IsString()
@@ -20,6 +19,5 @@ export class UserUpdateValidation {
     @ValidateIf((e) => e.lastName !== '')
     @MaxLength(30)
     @Type(() => String)
-    @Transform(({ value }) => value.toLowerCase(), { toClassOnly: true })
     readonly lastName?: string;
 }

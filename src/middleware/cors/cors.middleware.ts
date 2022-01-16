@@ -8,7 +8,7 @@ export class CorsMiddleware implements NestMiddleware {
     use(req: Request, res: Response, next: NextFunction): void {
         cors({
             origin: DEFAULT_ORIGIN_CORS,
-            methods: DEFAULT_METHOD_CORS
+            methods: DEFAULT_METHOD_CORS,
         })(req, res, next);
     }
 }

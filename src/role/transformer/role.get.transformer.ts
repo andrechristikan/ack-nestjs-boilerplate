@@ -15,7 +15,7 @@ export class RoleGetTransformer {
                 _id: `${val._id}`,
                 code: val.code,
                 name: val.name,
-                isActive: val.isActive
+                isActive: val.isActive,
             })),
         { toClassOnly: true }
     )

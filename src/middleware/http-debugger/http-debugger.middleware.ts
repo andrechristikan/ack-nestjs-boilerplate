@@ -5,12 +5,12 @@ import { createStream } from 'rotating-file-stream';
 import moment from 'moment';
 import {
     DEBUGGER_HTTP_FORMAT,
-    DEBUGGER_HTTP_NAME
+    DEBUGGER_HTTP_NAME,
 } from 'src/middleware/http-debugger/http-debugger.constant';
 import {
     ICustomResponse,
     IHttpDebuggerConfig,
-    IHttpDebuggerConfigOptions
+    IHttpDebuggerConfigOptions,
 } from 'src/middleware/http-debugger/http-debugger.interface';
 import { ConfigService } from '@nestjs/config';
 
@@ -47,13 +47,13 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
                     'app.debugger.http.maxFiles'
                 ),
                 compress: true,
-                interval: '1d'
-            })
+                interval: '1d',
+            }),
         };
 
         return {
             debuggerHttpFormat: DEBUGGER_HTTP_FORMAT,
-            HttpDebuggerOptions
+            HttpDebuggerOptions,
         };
     }
 

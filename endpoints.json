@@ -36,19 +36,181 @@
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "error request",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"firstName\": \"andre\",\n    \"lastName\": \"ck\",\n    \"mobileNumber\": \"6281321312212\",\n    \"password\": \"aa@AA123456\",\n    \"role\": \"61572e9b44c5132c14f6a5fe\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/user/create",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"user",
+												"create"
+											]
+										}
+									},
+									"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+									"code": 422,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5950,\n    \"message\": \"Unprocessable Entity\",\n    \"errors\": [\n        {\n            \"property\": \"email\",\n            \"message\": \"email should be a type of email.\"\n        }\n    ]\n}"
+								},
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"firstName\": \"andre\",\n    \"lastName\": \"ck\",\n    \"mobileNumber\": \"6281321312212\",\n    \"password\": \"aa@AA123456\",\n    \"role\": \"61572e9b44c5132c14f6a5fe\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/user/create",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"user",
+												"create"
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 201,\n    \"message\": \"Create User Success.\",\n    \"data\": {\n        \"_id\": \"61e3bc3e911d2d7f3c5d43b0\"\n    }\n}"
+								},
+								{
+									"name": "email exist",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"firstName\": \"andre\",\n    \"lastName\": \"ck\",\n    \"mobileNumber\": \"6281321312212\",\n    \"password\": \"aa@AA123456\",\n    \"role\": \"61572e9b44c5132c14f6a5fe\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/user/create",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"user",
+												"create"
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5403,\n    \"message\": \"Email user used\"\n}"
+								},
+								{
+									"name": "mobile number exist",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"firstName\": \"andre\",\n    \"lastName\": \"ck\",\n    \"mobileNumber\": \"6281321312212\",\n    \"password\": \"aa@AA123456\",\n    \"role\": \"61572e9b44c5132c14f6a5fe\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/user/create",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"user",
+												"create"
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": null,
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5404,\n    \"message\": \"Mobile Number user used\"\n}"
+								},
+								{
+									"name": "exist",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"firstName\": \"andre\",\n    \"lastName\": \"ck\",\n    \"mobileNumber\": \"6281321312212\",\n    \"password\": \"aa@AA123456\",\n    \"role\": \"61572e9b44c5132c14f6a5fe\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/user/create",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"user",
+												"create"
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5401,\n    \"message\": \"User exist.\"\n}"
+								}
+							]
 						},
 						{
-							"name": "get by id",
+							"name": "get",
 							"request": {
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/user/get/:user",
+									"raw": "{{baseUrl}}/admin/user/get/:user",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"admin",
 										"user",
 										"get",
 										":user"
@@ -56,24 +218,88 @@
 									"variable": [
 										{
 											"key": "user",
-											"value": "61c047c9567c3319208dbe87"
+											"value": "61d7af984344678d05a4d281"
 										}
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/user/get/:user",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"user",
+												"get",
+												":user"
+											],
+											"variable": [
+												{
+													"key": "user",
+													"value": "61c047c9567c3319208dbe87"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Get User Success.\",\n    \"data\": {\n        \"_id\": \"61d7af984344678d05a4d289\",\n        \"isActive\": true,\n        \"isAdmin\": true,\n        \"role\": {\n            \"name\": \"admin\",\n            \"permissions\": [\n                {\n                    \"name\": \"permission test\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"role create\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"role delete\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"role read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"role update\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"user create\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"user delete\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"user read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"user update\",\n                    \"isActive\": true\n                }\n            ],\n            \"isActive\": true\n        },\n        \"email\": \"admin@mail.com\",\n        \"mobileNumber\": \"08111111111\",\n        \"lastName\": \"test\",\n        \"firstName\": \"admin\",\n        \"createdAt\": \"2022-01-07T03:12:24.659Z\",\n        \"passwordExpired\": \"2023-01-14T17:52:47.120Z\"\n    }\n}"
+								},
+								{
+									"name": "not found",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/user/get/:user",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"user",
+												"get",
+												":user"
+											],
+											"variable": [
+												{
+													"key": "user",
+													"value": "61c047c9567c3319208dbe87"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5400,\n    \"message\": \"User not found.\"\n}"
+								}
+							]
 						},
 						{
-							"name": "delete by id",
+							"name": "delete",
 							"request": {
 								"method": "DELETE",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/user/delete/:user",
+									"raw": "{{baseUrl}}/admin/user/delete/:user",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"admin",
 										"user",
 										"delete",
 										":user"
@@ -81,21 +307,84 @@
 									"variable": [
 										{
 											"key": "user",
-											"value": "61c047c9567c3319208dbe87"
+											"value": "61e3bc3e911d2d7f3c5d43b0"
 										}
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "not found",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/user/delete/:user",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"user",
+												"delete",
+												":user"
+											],
+											"variable": [
+												{
+													"key": "user",
+													"value": "61e3bc3e911d2d7f3c5d43b0"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5400,\n    \"message\": \"User not found.\"\n}"
+								},
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/user/delete/:user",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"user",
+												"delete",
+												":user"
+											],
+											"variable": [
+												{
+													"key": "user",
+													"value": "61c047c9567c3319208dbe87"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Delete User Success.\"\n}"
+								}
+							]
 						},
 						{
-							"name": "update by id",
+							"name": "update",
 							"request": {
 								"method": "PUT",
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"firstName\": \"andre\",\n    \"lastName\": \"kan\"\n}",
+									"raw": "{\n    \"firstName\": [],\n    \"lastName\": \"kan\"\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -103,11 +392,12 @@
 									}
 								},
 								"url": {
-									"raw": "{{baseUrl}}/user/update/:user",
+									"raw": "{{baseUrl}}/admin/user/update/:user",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"admin",
 										"user",
 										"update",
 										":user"
@@ -115,12 +405,124 @@
 									"variable": [
 										{
 											"key": "user",
-											"value": "61c047c9567c3319208dbe87"
+											"value": "61e1b86fe80c50f05d812258"
 										}
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "not found",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/user/update/:user",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"user",
+												"update",
+												":user"
+											],
+											"variable": [
+												{
+													"key": "user",
+													"value": "61c047c9567c3319208dbe87"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5400,\n    \"message\": \"User not found.\"\n}"
+								},
+								{
+									"name": "error request",
+									"originalRequest": {
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"firstName\": \"andre\",\n    \"lastName\": \"kan\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin/user/update/:user",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"user",
+												"update",
+												":user"
+											],
+											"variable": [
+												{
+													"key": "user",
+													"value": "61c047c9567c3319208dbe87"
+												}
+											]
+										}
+									},
+									"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+									"code": 422,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5950,\n    \"message\": \"Unprocessable Entity\",\n    \"errors\": [\n        {\n            \"property\": \"firstName\",\n            \"message\": \"firstName has more elements than the maximum allowed.\"\n        },\n        {\n            \"property\": \"firstName\",\n            \"message\": \"firstName should be a type of string.\"\n        }\n    ]\n}"
+								},
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"firstName\": \"andre\",\n    \"lastName\": \"kan\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin/user/update/:user",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"user",
+												"update",
+												":user"
+											],
+											"variable": [
+												{
+													"key": "user",
+													"value": "61c047c9567c3319208dbe87"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Update User Success.\",\n    \"data\": {\n        \"_id\": \"61e1b86fe80c50f05d812258\"\n    }\n}"
+								}
+							]
 						},
 						{
 							"name": "list",
@@ -128,11 +530,12 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/user/list?page=1&perPage=10&sort=name@asc&search",
+									"raw": "{{baseUrl}}/admin/user/list?page=1&perPage=10&sort=name@asc&search",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"admin",
 										"user",
 										"list"
 									],
@@ -156,7 +559,290 @@
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/user/list?page=1&perPage=10&sort=name@asc&search",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"user",
+												"list"
+											],
+											"query": [
+												{
+													"key": "page",
+													"value": "1"
+												},
+												{
+													"key": "perPage",
+													"value": "10"
+												},
+												{
+													"key": "sort",
+													"value": "name@asc"
+												},
+												{
+													"key": "search",
+													"value": null
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"List User Success.\",\n    \"totalData\": 3,\n    \"totalPage\": 1,\n    \"currentPage\": 1,\n    \"perPage\": 10,\n    \"data\": [\n        {\n            \"_id\": \"61d7af984344678d05a4d289\",\n            \"isActive\": true,\n            \"isAdmin\": true,\n            \"email\": \"admin@mail.com\",\n            \"mobileNumber\": \"08111111111\",\n            \"lastName\": \"test\",\n            \"firstName\": \"admin\",\n            \"createdAt\": \"2022-01-07T03:12:24.659Z\"\n        },\n        {\n            \"_id\": \"61dda555c8d803d14bdf3d77\",\n            \"isActive\": true,\n            \"isAdmin\": false,\n            \"email\": \"andreck@mail.com\",\n            \"mobileNumber\": \"628123123311\",\n            \"lastName\": \"aaa\",\n            \"firstName\": \"test\",\n            \"createdAt\": \"2022-01-11T15:42:13.758Z\"\n        },\n        {\n            \"_id\": \"61e1b86fe80c50f05d812258\",\n            \"isActive\": true,\n            \"isAdmin\": false,\n            \"email\": \"andre@mail.com\",\n            \"mobileNumber\": \"628123121111\",\n            \"lastName\": \"aaa\",\n            \"firstName\": \"test\",\n            \"createdAt\": \"2022-01-14T17:52:47.145Z\"\n        }\n    ]\n}"
+								}
+							]
+						},
+						{
+							"name": "inactive",
+							"request": {
+								"method": "PATCH",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/admin/user/inactive/:_id",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin",
+										"user",
+										"inactive",
+										":_id"
+									],
+									"variable": [
+										{
+											"key": "_id",
+											"value": "61e25122a6162e9870bfab91"
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/user/inactive/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"user",
+												"inactive",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d713b3961be384f30ea9a1"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Inactive Succeed\"\n}"
+								},
+								{
+									"name": "not found",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/user/inactive/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"user",
+												"inactive",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d713b3961be384f30ea9a1"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5400,\n    \"message\": \"User not found\"\n}"
+								},
+								{
+									"name": "aready inactive",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/user/inactive/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"user",
+												"inactive",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d713b3961be384f30ea9a1"
+												}
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5405,\n    \"message\": \"User status active invalid\"\n}"
+								}
+							]
+						},
+						{
+							"name": "active",
+							"request": {
+								"method": "PATCH",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/admin/user/active/:_id",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"admin",
+										"user",
+										"active",
+										":_id"
+									],
+									"variable": [
+										{
+											"key": "_id",
+											"value": "61e25122a6162e9870bfab99"
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "not found",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/user/active/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"user",
+												"active",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d713b3961be384f30ea9a1"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5400,\n    \"message\": \"User not found\"\n}"
+								},
+								{
+									"name": "already active",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/user/active/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"user",
+												"active",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d713b3961be384f30ea9a1"
+												}
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5405,\n    \"message\": \"User status active invalid\"\n}"
+								},
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/user/active/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"user",
+												"active",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d713b3961be384f30ea9a1"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Active Succeed\"\n}"
+								}
+							]
 						}
 					],
 					"event": [
@@ -189,11 +875,12 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/role/list?page=1&perPage=10&sort=name@asc",
+									"raw": "{{baseUrl}}/admin/role/list?page=1&perPage=10&sort=name@asc&search=",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"admin",
 										"role",
 										"list"
 									],
@@ -209,11 +896,54 @@
 										{
 											"key": "sort",
 											"value": "name@asc"
+										},
+										{
+											"key": "search",
+											"value": ""
 										}
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/list?page=1&perPage=10&sort=name@asc",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"list"
+											],
+											"query": [
+												{
+													"key": "page",
+													"value": "1"
+												},
+												{
+													"key": "perPage",
+													"value": "10"
+												},
+												{
+													"key": "sort",
+													"value": "name@asc"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"List Role Success.\",\n    \"totalData\": 2,\n    \"totalPage\": 1,\n    \"currentPage\": 1,\n    \"perPage\": 10,\n    \"data\": [\n        {\n            \"_id\": \"61d7af92cd7c7b1c229327b1\",\n            \"isAdmin\": true,\n            \"isActive\": true,\n            \"name\": \"admin\",\n            \"createdAt\": \"2022-01-07T03:12:18.356Z\"\n        },\n        {\n            \"_id\": \"61d7af92cd7c7b1c229327b2\",\n            \"isAdmin\": false,\n            \"isActive\": true,\n            \"name\": \"user\",\n            \"createdAt\": \"2022-01-07T03:12:18.357Z\"\n        }\n    ]\n}"
+								}
+							]
 						},
 						{
 							"name": "get",
@@ -221,24 +951,88 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/role/get/:role",
+									"raw": "{{baseUrl}}/admin/role/get/:_id",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"admin",
 										"role",
 										"get",
-										":role"
+										":_id"
 									],
 									"variable": [
 										{
-											"key": "role",
-											"value": "61c0453924c48c16fa3f711a"
+											"key": "_id",
+											"value": null
 										}
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/get/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"get",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": null
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Get Role Success.\",\n    \"data\": {\n        \"_id\": \"61d7af92cd7c7b1c229327b1\",\n        \"isAdmin\": true,\n        \"isActive\": true,\n        \"permissions\": [\n            {\n                \"_id\": \"61d7af8cd0ed4081acb1f5f1\",\n                \"code\": \"PERMISSION_READ\",\n                \"name\": \"permission test\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"61d7af8cd0ed4081acb1f5ed\",\n                \"code\": \"ROLE_CREATE\",\n                \"name\": \"role create\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"61d7af8cd0ed4081acb1f5f0\",\n                \"code\": \"ROLE_DELETE\",\n                \"name\": \"role delete\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"61d7af8cd0ed4081acb1f5ef\",\n                \"code\": \"ROLE_READ\",\n                \"name\": \"role read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"61d7af8cd0ed4081acb1f5ee\",\n                \"code\": \"ROLE_UPDATE\",\n                \"name\": \"role update\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"61d7af8cd0ed4081acb1f5e9\",\n                \"code\": \"USER_CREATE\",\n                \"name\": \"user create\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"61d7af8cd0ed4081acb1f5ec\",\n                \"code\": \"USER_DELETE\",\n                \"name\": \"user delete\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"61d7af8cd0ed4081acb1f5eb\",\n                \"code\": \"USER_READ\",\n                \"name\": \"user read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"61d7af8cd0ed4081acb1f5ea\",\n                \"code\": \"USER_UPDATE\",\n                \"name\": \"user update\",\n                \"isActive\": true\n            }\n        ],\n        \"name\": \"admin\",\n        \"createdAt\": \"2022-01-07T03:12:18.356Z\"\n    }\n}"
+								},
+								{
+									"name": "not found",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/get/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"get",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": null
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5501,\n    \"message\": \"Role not found.\"\n}"
+								}
+							]
 						},
 						{
 							"name": "create",
@@ -247,7 +1041,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"isAdmin\": false\n}",
+									"raw": "{\n    \"name\": \"RRQasdasTT\",\n    \"permissions\": [\n        \"61d7af8cd0ed4081acb1f5f1\"\n    ],\n    \"isAdmin\": false\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -255,17 +1049,151 @@
 									}
 								},
 								"url": {
-									"raw": "{{baseUrl}}/role/create",
+									"raw": "{{baseUrl}}/admin/role/create",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"admin",
 										"role",
 										"create"
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "exists",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"isAdmin\": false\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/create",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"create"
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5502,\n    \"message\": \"Role exist\"\n}"
+								},
+								{
+									"name": "error request",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"isAdmin\": false\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/create",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"create"
+											]
+										}
+									},
+									"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+									"code": 422,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5950,\n    \"message\": \"Unprocessable Entity\",\n    \"errors\": [\n        {\n            \"property\": \"isAdmin\",\n            \"message\": \"isAdmin should be a boolean\"\n        }\n    ]\n}"
+								},
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"isAdmin\": false\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/create",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"create"
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 201,\n    \"message\": \"Create Succeed\",\n    \"data\": {\n        \"_id\": \"61e25122a6162e9870bfab99\"\n    }\n}"
+								},
+								{
+									"name": "permission not found",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"isAdmin\": false\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/create",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"create"
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5200,\n    \"message\": \"Permission not found\"\n}"
+								}
+							]
 						},
 						{
 							"name": "delete",
@@ -273,24 +1201,119 @@
 								"method": "DELETE",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/role/delete/:role",
+									"raw": "{{baseUrl}}/admin/role/delete/:_id",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"admin",
 										"role",
 										"delete",
-										":role"
+										":_id"
 									],
 									"variable": [
 										{
-											"key": "role",
-											"value": "61c0453924c48c16fa3f711a"
+											"key": "_id",
+											"value": "61e25122a6162e9870bfab99"
 										}
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "not found",
+									"originalRequest": {
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/delete/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"delete",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": null
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5501,\n    \"message\": \"Role not found\"\n}"
+								},
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/delete/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"delete",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": null
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Delete Succeed\"\n}"
+								},
+								{
+									"name": "in used",
+									"originalRequest": {
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/delete/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"delete",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": null
+												}
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5504,\n    \"message\": \"Role in used\"\n}"
+								}
+							]
 						},
 						{
 							"name": "update",
@@ -307,11 +1330,12 @@
 									}
 								},
 								"url": {
-									"raw": "{{baseUrl}}/role/update/:_id",
+									"raw": "{{baseUrl}}/admin/role/update/:_id",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"admin",
 										"role",
 										"update",
 										":_id"
@@ -324,7 +1348,206 @@
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61d6fafa5a9afd84238e65d3\"\n    ],\n    \"isAdmin\": false\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/update/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"update",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d6fb00803894a48c4f66c8"
+												}
+											]
+										}
+									},
+									"_postman_previewlanguage": null,
+									"header": null,
+									"cookie": [],
+									"body": null
+								},
+								{
+									"name": "not found",
+									"originalRequest": {
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61d6fafa5a9afd84238e65d3\"\n    ],\n    \"isAdmin\": false\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/update/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"update",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d6fb00803894a48c4f66c8"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5501,\n    \"message\": \"Role not found\"\n}"
+								},
+								{
+									"name": "exists",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"isAdmin\": false\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/update/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"update",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": null
+												}
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5502,\n    \"message\": \"Role exist\"\n}"
+								},
+								{
+									"name": "error request",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"isAdmin\": false\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/update/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"update",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": null
+												}
+											]
+										}
+									},
+									"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+									"code": 422,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5950,\n    \"message\": \"Unprocessable Entity\",\n    \"errors\": [\n        {\n            \"property\": \"isAdmin\",\n            \"message\": \"isAdmin should be a boolean\"\n        }\n    ]\n}"
+								},
+								{
+									"name": "permission not found",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"isAdmin\": false\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/update/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"update",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": null
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5200,\n    \"message\": \"Permission not found\"\n}"
+								}
+							]
 						},
 						{
 							"name": "inactive",
@@ -332,11 +1555,12 @@
 								"method": "PATCH",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/role/inactive/:_id",
+									"raw": "{{baseUrl}}/admin/role/inactive/:_id",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"admin",
 										"role",
 										"inactive",
 										":_id"
@@ -344,12 +1568,106 @@
 									"variable": [
 										{
 											"key": "_id",
-											"value": "61d713b3961be384f30ea9a1"
+											"value": "61e25122a6162e9870bfab91"
 										}
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/inactive/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"inactive",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d713b3961be384f30ea9a1"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Inactive Succeed\"\n}"
+								},
+								{
+									"name": "not found",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/inactive/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"inactive",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d713b3961be384f30ea9a1"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5501,\n    \"message\": \"Role not found\"\n}"
+								},
+								{
+									"name": "aready inactive",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/inactive/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"inactive",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d713b3961be384f30ea9a1"
+												}
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5503,\n    \"message\": \"Role status active invalid\"\n}"
+								}
+							]
 						},
 						{
 							"name": "active",
@@ -357,11 +1675,12 @@
 								"method": "PATCH",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/role/active/:_id",
+									"raw": "{{baseUrl}}/admin/role/active/:_id",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"admin",
 										"role",
 										"active",
 										":_id"
@@ -369,12 +1688,106 @@
 									"variable": [
 										{
 											"key": "_id",
-											"value": "61d713b3961be384f30ea9a1"
+											"value": "61e25122a6162e9870bfab99"
 										}
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "not found",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/active/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"active",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d713b3961be384f30ea9a1"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5501,\n    \"message\": \"Role not found\"\n}"
+								},
+								{
+									"name": "already active",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/active/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"active",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d713b3961be384f30ea9a1"
+												}
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5503,\n    \"message\": \"Role status active invalid\"\n}"
+								},
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/role/active/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"role",
+												"active",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d713b3961be384f30ea9a1"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Active Succeed\"\n}"
+								}
+							]
 						}
 					]
 				},
@@ -387,11 +1800,12 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/permission/list?perPage=10&page=1&sort=name@asc&search=",
+									"raw": "{{baseUrl}}/admin/permission/list?perPage=10&page=1&sort=name@asc&search=",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"admin",
 										"permission",
 										"list"
 									],
@@ -415,7 +1829,50 @@
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/permission/list?perPage=10&page=1&sort=name@asc&search=",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"permission",
+												"list"
+											],
+											"query": [
+												{
+													"key": "perPage",
+													"value": "10"
+												},
+												{
+													"key": "page",
+													"value": "1"
+												},
+												{
+													"key": "sort",
+													"value": "name@asc"
+												},
+												{
+													"key": "search",
+													"value": ""
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Permission list succeed\",\n    \"totalData\": 10,\n    \"totalPage\": 1,\n    \"currentPage\": 1,\n    \"perPage\": 10,\n    \"data\": [\n        {\n            \"_id\": \"61d7af8cd0ed4081acb1f5f1\",\n            \"isActive\": true,\n            \"name\": \"permission read\",\n            \"code\": \"PERMISSION_READ\",\n            \"createdAt\": \"2022-01-07T03:12:12.120Z\",\n            \"updatedAt\": \"2022-01-07T03:12:12.120Z\"\n        },\n        {\n            \"_id\": \"61d7af8cd0ed4081acb1f5f2\",\n            \"isActive\": true,\n            \"name\": \"permission update\",\n            \"code\": \"PERMISSION_UPDATE\",\n            \"createdAt\": \"2022-01-07T03:12:12.120Z\",\n            \"updatedAt\": \"2022-01-07T03:12:12.120Z\"\n        },\n        {\n            \"_id\": \"61d7af8cd0ed4081acb1f5ed\",\n            \"isActive\": true,\n            \"name\": \"role create\",\n            \"code\": \"ROLE_CREATE\",\n            \"createdAt\": \"2022-01-07T03:12:12.120Z\",\n            \"updatedAt\": \"2022-01-07T03:12:12.120Z\"\n        },\n        {\n            \"_id\": \"61d7af8cd0ed4081acb1f5f0\",\n            \"isActive\": true,\n            \"name\": \"role delete\",\n            \"code\": \"ROLE_DELETE\",\n            \"createdAt\": \"2022-01-07T03:12:12.120Z\",\n            \"updatedAt\": \"2022-01-07T03:12:12.120Z\"\n        },\n        {\n            \"_id\": \"61d7af8cd0ed4081acb1f5ef\",\n            \"isActive\": true,\n            \"name\": \"role read\",\n            \"code\": \"ROLE_READ\",\n            \"createdAt\": \"2022-01-07T03:12:12.120Z\",\n            \"updatedAt\": \"2022-01-07T03:12:12.120Z\"\n        },\n        {\n            \"_id\": \"61d7af8cd0ed4081acb1f5ee\",\n            \"isActive\": true,\n            \"name\": \"role update\",\n            \"code\": \"ROLE_UPDATE\",\n            \"createdAt\": \"2022-01-07T03:12:12.120Z\",\n            \"updatedAt\": \"2022-01-07T03:12:12.120Z\"\n        },\n        {\n            \"_id\": \"61d7af8cd0ed4081acb1f5e9\",\n            \"isActive\": true,\n            \"name\": \"user create\",\n            \"code\": \"USER_CREATE\",\n            \"createdAt\": \"2022-01-07T03:12:12.119Z\",\n            \"updatedAt\": \"2022-01-07T03:12:12.119Z\"\n        },\n        {\n            \"_id\": \"61d7af8cd0ed4081acb1f5ec\",\n            \"isActive\": true,\n            \"name\": \"user delete\",\n            \"code\": \"USER_DELETE\",\n            \"createdAt\": \"2022-01-07T03:12:12.120Z\",\n            \"updatedAt\": \"2022-01-07T03:12:12.120Z\"\n        },\n        {\n            \"_id\": \"61d7af8cd0ed4081acb1f5eb\",\n            \"isActive\": true,\n            \"name\": \"user read\",\n            \"code\": \"USER_READ\",\n            \"createdAt\": \"2022-01-07T03:12:12.120Z\",\n            \"updatedAt\": \"2022-01-07T03:12:12.120Z\"\n        },\n        {\n            \"_id\": \"61d7af8cd0ed4081acb1f5ea\",\n            \"isActive\": true,\n            \"name\": \"user update\",\n            \"code\": \"USER_UPDATE\",\n            \"createdAt\": \"2022-01-07T03:12:12.120Z\",\n            \"updatedAt\": \"2022-01-07T03:12:12.120Z\"\n        }\n    ]\n}"
+								}
+							]
 						},
 						{
 							"name": "get",
@@ -423,11 +1880,12 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/permission/get/:_id",
+									"raw": "{{baseUrl}}/admin/permission/get/:_id",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"admin",
 										"permission",
 										"get",
 										":_id"
@@ -435,12 +1893,74 @@
 									"variable": [
 										{
 											"key": "_id",
-											"value": "61d6fafa5a9afd84238e65db"
+											"value": "61d7af8cd0ed4081acb1f5f1"
 										}
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/permission/get/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"permission",
+												"get",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d6fafa5a9afd84238e65db"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Permission get succeed\",\n    \"data\": {\n        \"_id\": \"61d7af8cd0ed4081acb1f5f1\",\n        \"isActive\": true,\n        \"name\": \"permission read\",\n        \"code\": \"PERMISSION_READ\",\n        \"createdAt\": \"2022-01-07T03:12:12.120Z\"\n    }\n}"
+								},
+								{
+									"name": "not found",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/permission/get/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"permission",
+												"get",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d7af8cd0ed4081acb1f5f1"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5200,\n    \"message\": \"Permisison not found.\"\n}"
+								}
+							]
 						},
 						{
 							"name": "update",
@@ -457,11 +1977,12 @@
 									}
 								},
 								"url": {
-									"raw": "{{baseUrl}}/permission/update/:_id",
+									"raw": "{{baseUrl}}/admin/permission/update/:_id",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"admin",
 										"permission",
 										"update",
 										":_id"
@@ -469,12 +1990,123 @@
 									"variable": [
 										{
 											"key": "_id",
-											"value": "61d6fafa5a9afd84238e65db"
+											"value": "61d7af8cd0ed4081acb1f5f1"
 										}
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": \"permission test\",\n    \"description\": \"test desc\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/permission/update/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"permission",
+												"update",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d6fafa5a9afd84238e65db"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Permission update succeed\",\n    \"data\": {\n        \"_id\": \"61d7af8cd0ed4081acb1f5f1\"\n    }\n}"
+								},
+								{
+									"name": "not found",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/permission/update/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"permission",
+												"update",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d7af8cd0ed4081acb1f5f1"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5200,\n    \"message\": \"Permission not found.\"\n}"
+								},
+								{
+									"name": "error request",
+									"originalRequest": {
+										"method": "PUT",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": \"permission test\",\n    \"description\": \"test desc\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/admin/permission/update/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"permission",
+												"update",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d7af8cd0ed4081acb1f5f1"
+												}
+											]
+										}
+									},
+									"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+									"code": 422,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5950,\n    \"message\": \"Unprocessable Entity\",\n    \"errors\": [\n        {\n            \"property\": \"description\",\n            \"message\": \"description should be a type of string.\"\n        }\n    ]\n}"
+								}
+							]
 						},
 						{
 							"name": "inactive",
@@ -482,11 +2114,12 @@
 								"method": "PATCH",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/permission/inactive/:_id",
+									"raw": "{{baseUrl}}/admin/permission/inactive/:_id",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"admin",
 										"permission",
 										"inactive",
 										":_id"
@@ -499,7 +2132,101 @@
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "not found",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/permission/inactive/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"permission",
+												"inactive",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d7af8cd0ed4081acb1f5f1"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5200,\n    \"message\": \"Permission not found\"\n}"
+								},
+								{
+									"name": "already inactive",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/permission/inactive/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"permission",
+												"inactive",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d713ac45497d0b189d88a4"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5203,\n    \"message\": \"Permission active status invalid\"\n}"
+								},
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/permission/inactive/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"permission",
+												"inactive",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d713ac45497d0b189d88a4"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Permission inactive succeed\"\n}"
+								}
+							]
 						},
 						{
 							"name": "active",
@@ -507,11 +2234,12 @@
 								"method": "PATCH",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/permission/active/:_id",
+									"raw": "{{baseUrl}}/admin/permission/active/:_id",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"admin",
 										"permission",
 										"active",
 										":_id"
@@ -519,12 +2247,106 @@
 									"variable": [
 										{
 											"key": "_id",
-											"value": "61d713ac45497d0b189d88a4"
+											"value": "61d7af8cd0ed4081acb1f5f2"
 										}
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "not found",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/permission/active/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"permission",
+												"active",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d7af8cd0ed4081acb1f5f1"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5200,\n    \"message\": \"Permission not found\"\n}"
+								},
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/permission/active/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"permission",
+												"active",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d713ac45497d0b189d88a4"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Permission active succeed\"\n}"
+								},
+								{
+									"name": "already active",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/admin/permission/active/:_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"admin",
+												"permission",
+												"active",
+												":_id"
+											],
+											"variable": [
+												{
+													"key": "_id",
+													"value": "61d713ac45497d0b189d88a4"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5203,\n    \"message\": \"Permission active status invalid\"\n}"
+								}
+							]
 						}
 					]
 				}
@@ -534,7 +2356,7 @@
 				"bearer": [
 					{
 						"key": "token",
-						"value": "{{publicAccessToken}}",
+						"value": "{{accessToken}}",
 						"type": "string"
 					}
 				]
@@ -565,21 +2387,9 @@
 			"item": [
 				{
 					"name": "hello",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
 					"request": {
 						"method": "GET",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"name\":\"12345\",\n    \"age\":\"dasd\",\n    \"breed\":\"asd\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
 							"raw": "{{baseUrl}}/test/hello",
 							"host": [
@@ -591,7 +2401,31 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "sucecss",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/test/hello",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"test",
+										"hello"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"This is test endpoint.\"\n}"
+						}
+					]
 				},
 				{
 					"name": "hello multi language",
@@ -627,84 +2461,46 @@
 							]
 						}
 					},
-					"response": []
-				},
-				{
-					"name": "hello basic",
-					"request": {
-						"auth": {
-							"type": "basic",
-							"basic": [
-								{
-									"key": "password",
-									"value": "{{basicTokenSecret}}",
-									"type": "string"
+					"response": [
+						{
+							"name": "success",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "app-languages",
+										"value": "EN,ID",
+										"type": "default"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\":\"12345\",\n    \"age\":\"dasd\",\n    \"breed\":\"asd\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
 								},
-								{
-									"key": "username",
-									"value": "{{basicTokenId}}",
-									"type": "string"
+								"url": {
+									"raw": "{{baseUrl}}/test/hello",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"test",
+										"hello"
+									]
 								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/test/hello-basic",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"test",
-								"hello-basic"
-							]
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 200,\n    \"message\": [\n        {\n            \"language\": \"EN\",\n            \"message\": \"This is test endpoint.\"\n        },\n        {\n            \"language\": \"ID\",\n            \"message\": \"Ini adalah test endpoint\"\n        }\n    ]\n}"
 						}
-					},
-					"response": []
-				},
-				{
-					"name": "kafka produce",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "app-languages",
-								"value": "ID,EN",
-								"type": "default",
-								"disabled": true
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/kafka/produce",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"kafka",
-								"produce"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "kafka produce error",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/kafka/produce/error",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"kafka",
-								"produce",
-								"error"
-							]
-						}
-					},
-					"response": []
+					]
 				}
 			]
 		},
@@ -717,18 +2513,43 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/message/enum/languages",
+							"raw": "{{baseUrl}}/enum/message/languages",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
-								"message",
 								"enum",
+								"message",
 								"languages"
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "success",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/enum/message/languages",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"enum",
+										"message",
+										"languages"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"message enum languages\",\n    \"data\": {\n        \"languages\": [\n            \"EN\",\n            \"ID\"\n        ]\n    }\n}"
+						}
+					]
 				}
 			]
 		},
@@ -744,17 +2565,67 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/user/profile",
+									"raw": "{{baseUrl}}/public/user/profile",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"public",
 										"user",
 										"profile"
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/public/user/profile",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"public",
+												"user",
+												"profile"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Profile Success\",\n    \"data\": {\n        \"_id\": \"61dda555c8d803d14bdf3d77\",\n        \"isActive\": true,\n        \"passwordExpired\": \"2023-01-14T18:13:29.162Z\",\n        \"role\": {\n            \"name\": \"user\",\n            \"permissions\": [],\n            \"isActive\": true\n        },\n        \"email\": \"andreck@mail.com\",\n        \"mobileNumber\": \"628123123311\",\n        \"lastName\": \"aaa\",\n        \"firstName\": \"test\",\n        \"photo\": {\n            \"path\": \"user/61dda555c8d803d14bdf3d77\",\n            \"pathWithFilename\": \"user/61dda555c8d803d14bdf3d77/l0f93cd99ff1dbxgacle.JPG\",\n            \"filename\": \"l0f93cd99ff1dbxgacle.JPG\",\n            \"completedUrl\": \"https://koinsdev.s3.ap-southeast-1.amazonaws.com/user/61dda555c8d803d14bdf3d77/l0f93cd99ff1dbxgacle.JPG\",\n            \"baseUrl\": \"https://koinsdev.s3.ap-southeast-1.amazonaws.com\",\n            \"mime\": \"JPG\"\n        }\n    }\n}"
+								},
+								{
+									"name": "not found",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/public/user/profile",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"public",
+												"user",
+												"profile"
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5400,\n    \"message\": \"User not found.\"\n}"
+								}
+							]
 						},
 						{
 							"name": "upload",
@@ -767,23 +2638,190 @@
 										{
 											"key": "file",
 											"type": "file",
-											"src": "/Users/andrechristikan/Downloads/snowshoe.jpg"
+											"src": "/Users/andrechristikan/Downloads/Unknown.jpg"
 										}
 									]
 								},
 								"url": {
-									"raw": "{{baseUrl}}/user/profile/upload",
+									"raw": "{{baseUrl}}/public/user/profile/upload",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
+										"public",
 										"user",
 										"profile",
 										"upload"
 									]
 								}
 							},
-							"response": []
+							"response": [
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "formdata",
+											"formdata": [
+												{
+													"key": "file",
+													"type": "file",
+													"src": "/Users/andrechristikan/Downloads/snowshoe.jpg"
+												}
+											]
+										},
+										"url": {
+											"raw": "{{baseUrl}}/public/user/profile/upload",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"public",
+												"user",
+												"profile",
+												"upload"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Upload Success\"\n}"
+								},
+								{
+									"name": "not found",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/public/user/profile/upload",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"public",
+												"user",
+												"profile",
+												"upload"
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5400,\n    \"message\": \"User not found.\"\n}"
+								},
+								{
+									"name": "file not found",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "formdata",
+											"formdata": [
+												{
+													"key": "file",
+													"type": "file",
+													"src": "/Users/andrechristikan/Downloads/Unknown.jpg"
+												}
+											]
+										},
+										"url": {
+											"raw": "{{baseUrl}}/public/user/profile/upload",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"public",
+												"user",
+												"profile",
+												"upload"
+											]
+										}
+									},
+									"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+									"code": 422,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5800,\n    \"message\": \"File not found\"\n}"
+								},
+								{
+									"name": "unsupport mime",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "formdata",
+											"formdata": [
+												{
+													"key": "file",
+													"type": "file",
+													"src": []
+												}
+											]
+										},
+										"url": {
+											"raw": "{{baseUrl}}/public/user/profile/upload",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"public",
+												"user",
+												"profile",
+												"upload"
+											]
+										}
+									},
+									"status": "Unsupported Media Type",
+									"code": 415,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5802,\n    \"message\": \"File extension not valid\"\n}"
+								},
+								{
+									"name": "size too big",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "formdata",
+											"formdata": [
+												{
+													"key": "file",
+													"type": "file",
+													"src": []
+												}
+											]
+										},
+										"url": {
+											"raw": "{{baseUrl}}/public/user/profile/upload",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"public",
+												"user",
+												"profile",
+												"upload"
+											]
+										}
+									},
+									"status": "Request Entity Too Large",
+									"code": 413,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 5801,\n    \"message\": \"File size too big\"\n}"
+								}
+							]
 						}
 					]
 				}
@@ -793,7 +2831,7 @@
 				"bearer": [
 					{
 						"key": "token",
-						"value": "{{publicAccessToken}}",
+						"value": "{{accessToken}}",
 						"type": "string"
 					}
 				]
@@ -820,13 +2858,79 @@
 			]
 		},
 		{
+			"name": "kafka",
+			"item": [
+				{
+					"name": "producer",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/kafka/producer",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"kafka",
+								"producer"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "success",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/kafka/producer",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"kafka",
+										"producer"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"produce kafka succeed\"\n}"
+						}
+					]
+				},
+				{
+					"name": "producer error",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/kafka/producer/error",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"kafka",
+								"producer",
+								"error"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "login",
 			"request": {
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"email\":\"andreck@mail.com\",\r\n    \"password\":\"aaAA@@13333\",\r\n    \"rememberMe\": true\r\n}",
+					"raw": "{\r\n    \"email\":\"admin@mail.com\",\r\n    \"password\":\"aaAA@@123444\",\r\n    \"rememberMe\": true\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -834,17 +2938,234 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseUrl}}/auth/login",
+					"raw": "{{baseUrl}}/login",
 					"host": [
 						"{{baseUrl}}"
 					],
 					"path": [
-						"auth",
 						"login"
 					]
 				}
 			},
-			"response": []
+			"response": [
+				{
+					"name": "success",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\":\"andreck@mail.com\",\r\n    \"password\":\"aaAA@@13333\",\r\n    \"rememberMe\": true\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"login"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 1001,\n    \"message\": \"Login success.\",\n    \"data\": {\n        \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MWRkYTU1NWM4ZDgwM2QxNGJkZjNkNzciLCJpc0FjdGl2ZSI6dHJ1ZSwicGFzc3dvcmRFeHBpcmVkIjoiMjAyMy0wMS0xMlQwNDo1OTo1NS44ODlaIiwicm9sZSI6eyJuYW1lIjoidXNlciIsInBlcm1pc3Npb25zIjpbXSwiaXNBY3RpdmUiOnRydWUsImlzQWRtaW4iOmZhbHNlfSwiZW1haWwiOiJhbmRyZWNrQG1haWwuY29tIiwibW9iaWxlTnVtYmVyIjoiNjI4MTIzMTIzMzExIiwibG9naW5EYXRlIjoiMjAyMi0wMS0xNFQwOTo0MDo1OS41MjJaIiwicmVtZW1iZXJNZSI6dHJ1ZSwibG9naW5FeHBpcmVkIjoiMjAyMi0wMS0xNFQwOTo0MDo1OS41MjJaIiwiaWF0IjoxNjQyMTUzMjU5LCJuYmYiOjE2NDIxNTMyNTksImV4cCI6MTY0MjIzOTY1OX0.2S-7yHsZTO-nUjE6E2sAe8HbQEOIO1Xj7qaFPaKXXII\",\n        \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MWRkYTU1NWM4ZDgwM2QxNGJkZjNkNzciLCJpc0FjdGl2ZSI6dHJ1ZSwicGFzc3dvcmRFeHBpcmVkIjoiMjAyMy0wMS0xMlQwNDo1OTo1NS44ODlaIiwicm9sZSI6eyJuYW1lIjoidXNlciIsInBlcm1pc3Npb25zIjpbXSwiaXNBY3RpdmUiOnRydWUsImlzQWRtaW4iOmZhbHNlfSwiZW1haWwiOiJhbmRyZWNrQG1haWwuY29tIiwibW9iaWxlTnVtYmVyIjoiNjI4MTIzMTIzMzExIiwibG9naW5EYXRlIjoiMjAyMi0wMS0xNFQwOTo0MDo1OS41MjJaIiwicmVtZW1iZXJNZSI6dHJ1ZSwibG9naW5FeHBpcmVkIjoiMjAyMi0wMS0xNFQwOTo0MDo1OS41MjJaIiwiaWF0IjoxNjQyMTUzMjU5LCJuYmYiOjE2NDIyMzk2NTksImV4cCI6MTY0MjMyNjA1OX0.SkryEIvlJqzvPJaOW3MJVxR_X9Vv3Bp0in8NKoVD_4Y\"\n    }\n}"
+				},
+				{
+					"name": "not found",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\":\"andreck@mail.com\",\r\n    \"password\":\"aaAA@@13333\",\r\n    \"rememberMe\": true\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"login"
+							]
+						}
+					},
+					"status": "Not Found",
+					"code": 404,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5400,\n    \"message\": \"User not found.\"\n}"
+				},
+				{
+					"name": "role inactive",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\":\"andreck@mail.com\",\r\n    \"password\":\"aaAA@@13333\",\r\n    \"rememberMe\": true\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"login"
+							]
+						}
+					},
+					"status": "Forbidden",
+					"code": 403,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5500,\n    \"message\": \"Role inactive\"\n}"
+				},
+				{
+					"name": "user inactive",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\":\"andreck@mail.com\",\r\n    \"password\":\"aaAA@@13333\",\r\n    \"rememberMe\": true\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"login"
+							]
+						}
+					},
+					"status": "Forbidden",
+					"code": 403,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5402,\n    \"message\": \"User inactive\"\n}"
+				},
+				{
+					"name": "password not match",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\":\"andreck@mail.com\",\r\n    \"password\":\"aaAA@@13333\",\r\n    \"rememberMe\": true\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"login"
+							]
+						}
+					},
+					"status": "Bad Request",
+					"code": 400,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5107,\n    \"message\": \"Password not match\"\n}"
+				},
+				{
+					"name": "password expired",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\":\"andreck@mail.com\",\r\n    \"password\":\"aaAA@@13333\",\r\n    \"rememberMe\": true\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"login"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5109,\n    \"message\": \"Password expired, you need to change your password asap\",\n    \"data\": {\n        \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MWRkYTU1NWM4ZDgwM2QxNGJkZjNkNzciLCJpc0FjdGl2ZSI6dHJ1ZSwicGFzc3dvcmRFeHBpcmVkIjoiMjAyMS0wMS0xMlQwNDo1OTo1NS44ODlaIiwicm9sZSI6eyJuYW1lIjoidXNlciIsInBlcm1pc3Npb25zIjpbXSwiaXNBY3RpdmUiOnRydWUsImlzQWRtaW4iOmZhbHNlfSwiZW1haWwiOiJhbmRyZWNrQG1haWwuY29tIiwibW9iaWxlTnVtYmVyIjoiNjI4MTIzMTIzMzExIiwibG9naW5EYXRlIjoiMjAyMi0wMS0xNFQxNzoyNDoxMy4zMThaIiwicmVtZW1iZXJNZSI6dHJ1ZSwibG9naW5FeHBpcmVkIjoiMjAyMi0wMS0xNFQxNzoyNDoxMy4zMThaIiwiaWF0IjoxNjQyMTgxMDUzLCJuYmYiOjE2NDIxODEwNTMsImV4cCI6MTY0MjI2NzQ1M30.e00m_7KMXF3V3pEodCEXgocS8kCH3dP0KNgmqED2riM\",\n        \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MWRkYTU1NWM4ZDgwM2QxNGJkZjNkNzciLCJpc0FjdGl2ZSI6dHJ1ZSwicGFzc3dvcmRFeHBpcmVkIjoiMjAyMS0wMS0xMlQwNDo1OTo1NS44ODlaIiwicm9sZSI6eyJuYW1lIjoidXNlciIsInBlcm1pc3Npb25zIjpbXSwiaXNBY3RpdmUiOnRydWUsImlzQWRtaW4iOmZhbHNlfSwiZW1haWwiOiJhbmRyZWNrQG1haWwuY29tIiwibW9iaWxlTnVtYmVyIjoiNjI4MTIzMTIzMzExIiwibG9naW5EYXRlIjoiMjAyMi0wMS0xNFQxNzoyNDoxMy4zMThaIiwicmVtZW1iZXJNZSI6dHJ1ZSwibG9naW5FeHBpcmVkIjoiMjAyMi0wMS0xNFQxNzoyNDoxMy4zMThaIiwiaWF0IjoxNjQyMTgxMDUzLCJuYmYiOjE2NDIyNjc0NTMsImV4cCI6MTY0MjM1Mzg1M30.xRlpcb6AfRpLmK-yc5z2HnRdhcdYFVGJShEVx08wL_s\"\n    }\n}"
+				},
+				{
+					"name": "error request",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\":\"andreck@mail.com\",\r\n    \"password\":\"aaAA@@13333\",\r\n    \"rememberMe\": true\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"login"
+							]
+						}
+					},
+					"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+					"code": 422,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5950,\n    \"message\": \"Unprocessable Entity\",\n    \"errors\": [\n        {\n            \"property\": \"email\",\n            \"message\": \"email has more elements than the maximum allowed.\"\n        },\n        {\n            \"property\": \"email\",\n            \"message\": \"email should be a type of email.\"\n        }\n    ]\n}"
+				}
+			]
 		},
 		{
 			"name": "refresh",
@@ -854,7 +3175,7 @@
 					"bearer": [
 						{
 							"key": "token",
-							"value": "{{refreshToken}}",
+							"value": "{{adminRefreshToken}}",
 							"type": "string"
 						}
 					]
@@ -862,17 +3183,147 @@
 				"method": "POST",
 				"header": [],
 				"url": {
-					"raw": "{{baseUrl}}/auth/refresh",
+					"raw": "{{baseUrl}}/refresh",
 					"host": [
 						"{{baseUrl}}"
 					],
 					"path": [
-						"auth",
 						"refresh"
 					]
 				}
 			},
-			"response": []
+			"response": [
+				{
+					"name": "success",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/refresh",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"refresh"
+							]
+						}
+					},
+					"_postman_previewlanguage": null,
+					"header": null,
+					"cookie": [],
+					"body": null
+				},
+				{
+					"name": "not found",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/refresh",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"refresh"
+							]
+						}
+					},
+					"status": "Not Found",
+					"code": 404,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5400,\n    \"message\": \"User not found.\"\n}"
+				},
+				{
+					"name": "login expired",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/refresh",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"refresh"
+							]
+						}
+					},
+					"status": "Forbidden",
+					"code": 403,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5105,\n    \"message\": \"Login expired\"\n}"
+				},
+				{
+					"name": "user inactive",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/refresh",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"refresh"
+							]
+						}
+					},
+					"status": "Forbidden",
+					"code": 403,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5402,\n    \"message\": \"User inactive\"\n}"
+				},
+				{
+					"name": "role inactive",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/refresh",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"refresh"
+							]
+						}
+					},
+					"status": "Forbidden",
+					"code": 403,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5500,\n    \"message\": \"Role inactive\"\n}"
+				},
+				{
+					"name": "password expired",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/refresh",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"refresh"
+							]
+						}
+					},
+					"status": "Forbidden",
+					"code": 403,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5106,\n    \"message\": \"Password expired, you need to change your password asap\"\n}"
+				}
+			]
 		},
 		{
 			"name": "sign up",
@@ -881,7 +3332,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+					"raw": "{\n    \"email\": \"andre@mail.com\",\n    \"mobileNumber\": \"628123121111\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -889,26 +3340,191 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseUrl}}/auth/sign-up",
+					"raw": "{{baseUrl}}/sign-up",
 					"host": [
 						"{{baseUrl}}"
 					],
 					"path": [
-						"auth",
 						"sign-up"
 					]
 				}
 			},
-			"response": []
+			"response": [
+				{
+					"name": "user exist",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/sign-up",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"sign-up"
+							]
+						}
+					},
+					"status": "Bad Request",
+					"code": 400,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5401,\n    \"message\": \"User exist.\"\n}"
+				},
+				{
+					"name": "error request",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/sign-up",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"sign-up"
+							]
+						}
+					},
+					"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+					"code": 422,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5950,\n    \"message\": \"Unprocessable Entity\",\n    \"errors\": [\n        {\n            \"property\": \"email\",\n            \"message\": \"email should be a type of email.\"\n        }\n    ]\n}"
+				},
+				{
+					"name": "mobile number exist",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/sign-up",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"sign-up"
+							]
+						}
+					},
+					"status": "Bad Request",
+					"code": 400,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5404,\n    \"message\": \"Mobile Number user used\"\n}"
+				},
+				{
+					"name": "email exist",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/sign-up",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"sign-up"
+							]
+						}
+					},
+					"status": "Bad Request",
+					"code": 400,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5403,\n    \"message\": \"Email user used\"\n}"
+				},
+				{
+					"name": "success",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/sign-up",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"sign-up"
+							]
+						}
+					},
+					"status": "Created",
+					"code": 201,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 201,\n    \"message\": \"Signup Success\",\n    \"data\": {\n        \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MWUxYjg2ZmU4MGM1MGYwNWQ4MTIyNTgiLCJpc0FjdGl2ZSI6dHJ1ZSwicGFzc3dvcmRFeHBpcmVkIjoiMjAyMy0wMS0xNFQxNzo1Mjo0Ny4xMjBaIiwicm9sZSI6eyJuYW1lIjoidXNlciIsInBlcm1pc3Npb25zIjpbXSwiaXNBY3RpdmUiOnRydWUsImlzQWRtaW4iOmZhbHNlfSwiZW1haWwiOiJhbmRyZUBtYWlsLmNvbSIsIm1vYmlsZU51bWJlciI6IjYyODEyMzEyMTExMSIsImxvZ2luRGF0ZSI6IjIwMjItMDEtMTRUMTc6NTI6NDcuMTYyWiIsInJlbWVtYmVyTWUiOmZhbHNlLCJsb2dpbkV4cGlyZWQiOiIyMDIyLTAxLTE0VDE3OjUyOjQ3LjE2MloiLCJpYXQiOjE2NDIxODI3NjcsIm5iZiI6MTY0MjE4Mjc2NywiZXhwIjoxNjQyMjY5MTY3fQ.NgP-NM09J0Lfd5NiTUXpc7kArJWtHKsiA8sAKwxpGzs\",\n        \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MWUxYjg2ZmU4MGM1MGYwNWQ4MTIyNTgiLCJpc0FjdGl2ZSI6dHJ1ZSwicGFzc3dvcmRFeHBpcmVkIjoiMjAyMy0wMS0xNFQxNzo1Mjo0Ny4xMjBaIiwicm9sZSI6eyJuYW1lIjoidXNlciIsInBlcm1pc3Npb25zIjpbXSwiaXNBY3RpdmUiOnRydWUsImlzQWRtaW4iOmZhbHNlfSwiZW1haWwiOiJhbmRyZUBtYWlsLmNvbSIsIm1vYmlsZU51bWJlciI6IjYyODEyMzEyMTExMSIsImxvZ2luRGF0ZSI6IjIwMjItMDEtMTRUMTc6NTI6NDcuMTYyWiIsInJlbWVtYmVyTWUiOmZhbHNlLCJsb2dpbkV4cGlyZWQiOiIyMDIyLTAxLTE0VDE3OjUyOjQ3LjE2MloiLCJpYXQiOjE2NDIxODI3NjcsIm5iZiI6MTY0MjI2OTE2NywiZXhwIjoxNjQyMzU1NTY3fQ.LBvZryyZBz1EWv45sHPoHzGP9Iiumpw64BOaYZ2fEx8\"\n    }\n}"
+				}
+			]
 		},
 		{
 			"name": "change password",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{accessToken}}",
+							"type": "string"
+						}
+					]
+				},
 				"method": "PATCH",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"oldPassword\": \"aaAA@@13333\",\n    \"newPassword\": \"aaAA@@13333\"\n}",
+					"raw": "{\n    \"oldPassword\": \"aaAA@@13322\",\n    \"newPassword\": \"aaAA@@13333\"\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -916,17 +3532,176 @@
 					}
 				},
 				"url": {
-					"raw": "{{baseUrl}}/user/change-password",
+					"raw": "{{baseUrl}}/change-password",
 					"host": [
 						"{{baseUrl}}"
 					],
 					"path": [
-						"user",
 						"change-password"
 					]
 				}
 			},
-			"response": []
+			"response": [
+				{
+					"name": "new password must difference",
+					"originalRequest": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"oldPassword\": \"aaAA@@13333\",\n    \"newPassword\": \"aaAA@@13333\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/user/change-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"user",
+								"change-password"
+							]
+						}
+					},
+					"status": "Bad Request",
+					"code": 400,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5108,\n    \"message\": \"Your new password can't be same with previous password\"\n}"
+				},
+				{
+					"name": "not found",
+					"originalRequest": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"oldPassword\": \"aaAA@@13333\",\r\n    \"newPassword\": \"aaAA@@13333\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/change-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"change-password"
+							]
+						}
+					},
+					"status": "Not Found",
+					"code": 404,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5400,\n    \"message\": \"User not found.\"\n}"
+				},
+				{
+					"name": "change password",
+					"originalRequest": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"oldPassword\": \"aaAA@@13333\",\n    \"newPassword\": \"aaAA@@13333\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/user/change-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"user",
+								"change-password"
+							]
+						}
+					},
+					"status": "Bad Request",
+					"code": 400,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5107,\n    \"message\": \"Password not match\"\n}"
+				},
+				{
+					"name": "success",
+					"originalRequest": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"oldPassword\": \"aaAA@@13333\",\n    \"newPassword\": \"aaAA@@13333\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/user/change-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"user",
+								"change-password"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Change Password Success\"\n}"
+				},
+				{
+					"name": "error request",
+					"originalRequest": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"oldPassword\": \"aaAA@@13333\",\n    \"newPassword\": \"aaAA@@13333\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/user/change-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"user",
+								"change-password"
+							]
+						}
+					},
+					"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+					"code": 422,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5950,\n    \"message\": \"Unprocessable Entity\",\n    \"errors\": [\n        {\n            \"property\": \"newPassword\",\n            \"message\": \"en.request.IsPasswordStrong\"\n        }\n    ]\n}"
+				}
+			]
 		}
 	]
 }

@@ -19,12 +19,12 @@ export class UserSeed {
 
     @Command({
         command: 'insert:user',
-        describe: 'insert users'
+        describe: 'insert users',
     })
     async insert(): Promise<void> {
         const role: RoleDocument = await this.roleService.findOne<RoleDocument>(
             {
-                name: 'admin'
+                name: 'admin',
             }
         );
 
@@ -41,24 +41,24 @@ export class UserSeed {
                 passwordExpired: password.passwordExpired,
                 mobileNumber: '08111111111',
                 role: role._id,
-                salt: password.salt
+                salt: password.salt,
             });
 
             this.debuggerService.info('Insert User Succeed', {
                 class: 'UserSeed',
-                function: 'insert'
+                function: 'insert',
             });
         } catch (e) {
             this.debuggerService.error(e.message, {
                 class: 'UserSeed',
-                function: 'insert'
+                function: 'insert',
             });
         }
     }
 
     @Command({
         command: 'remove:user',
-        describe: 'remove users'
+        describe: 'remove users',
     })
     async remove(): Promise<void> {
         try {
@@ -66,12 +66,12 @@ export class UserSeed {
 
             this.debuggerService.info('Remove User Succeed', {
                 class: 'UserSeed',
-                function: 'remove'
+                function: 'remove',
             });
         } catch (e) {
             this.debuggerService.error(e.message, {
                 class: 'UserSeed',
-                function: 'remove'
+                function: 'remove',
             });
         }
     }
