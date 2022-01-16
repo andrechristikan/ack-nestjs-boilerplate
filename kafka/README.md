@@ -75,12 +75,12 @@ kafka-topics --version
     .
     ```
 
-3. Move the rest of files in `kafka/*` into `src/kafka`
+3. Move the rest of files in `kafka/*` into `src/kafka/*`
 
-    > Except file
-    > - READNE.md
-    > - docker-compose.yml
-    > - .env*
+    Except file
+    - READNE.md
+    - docker-compose.yml
+    - .env*
 
     ```txt
     .
@@ -99,6 +99,17 @@ kafka-topics --version
     ├── logger
     .
     ```
+
+*If you have done with move all KafkaModule, the kafka dir will look like this*
+
+```txt
+.
+kafka
+├── .env.docker
+├── .env.example
+├── docker-compose.yml
+└── README.md
+```
 
 ### Installation
 
