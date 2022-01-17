@@ -2,6 +2,7 @@ import { NestApplication, NestFactory } from '@nestjs/core';
 import { Logger, VersioningType } from '@nestjs/common';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
+import kafka from './kafka/kafka';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule);

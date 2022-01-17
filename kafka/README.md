@@ -40,8 +40,6 @@ kafka-topics --version
 
 ### Installation
 
-> We will assume our position in root dir
-
 1. Install dependencies `@nestjs/microservices` and `kafkajs`
 
     ```sh
@@ -54,12 +52,12 @@ kafka-topics --version
     npm i @nestjs/microservices kafkajs
     ```
 
-2. Our environment will be a little different. We will use `kafka/.env.example`, [Click here to see details](.env.example). 
+2. Our environment will be a little different. We will use `kafka/.env.example`, [Click here to see details](.env.example)
 
-    Replace the env file into root dir
+    Replace the env file with env file root dir
 
     ```sh
-    cp .env.kafka .env
+    yes | cp -rf .env.kafka .env
     ```
 
     and then we need to adjust with our env
@@ -135,10 +133,8 @@ kafka-topics --version
     await app.listen(port, host);
     
     // Kafka
-    const kafkaActive: boolean = configService.get<boolean>('kafka.active');
-    if (kafkaActive && env !== 'testing') {
-        await kafka(app, configService, logger);
-    }
+    await kafka(app, configService, logger);
+    
 
     ...
     ...
@@ -225,32 +221,6 @@ kafka-topics --version
 
     ```
 
-    Add `KafkaConfig` into into `src/config/index.ts`
-
-    ```ts
-    // src/config/index.ts
-
-    import AppConfig from 'src/config/app.config';
-    import AuthConfig from 'src/config/auth.config';
-    import DatabaseConfig from 'src/config/database.config';
-    import HelperConfig from 'src/config/helper.config';
-    import MiddlewareConfig from 'src/config/middleware.config';
-    import AwsConfig from 'src/config/aws.config';
-    import KafkaConfig from 'src/config/kafka.config';
-    import UserConfig from './user.config';
-
-    export default [
-        AppConfig,
-        AuthConfig,
-        DatabaseConfig,
-        HelperConfig,
-        MiddlewareConfig,
-        AwsConfig,
-        KafkaConfig, // <<<---- add this config
-        UserConfig
-    ];
-    ```
-
 6. Make sure our topics was created or we can use auto create topics with `KafkaAdminModule`.
 
     ```ts
@@ -281,7 +251,7 @@ npm run start:dev
 
 ### Run with Docker
 
-This Instruction will little bit difficult
+This Instruction will little bit difference
 
 > `docker-compose.yml` FILE WILL DIFFERENT BETWEEN `kafka` and `non kafka`. The file will put in `kafka/docker-compose.yml`. [Click here to see details](docker-compose.yml)
 
@@ -309,6 +279,14 @@ This Instruction will little bit difficult
     ```
 
 3. We will use `kafka/.env.docker`, [Click here to see details](.env.docker)
+
+    Replace the env file with env file root dir
+
+    ```sh
+    yes | cp -rf .env.docker .env
+    ```
+
+    and then we need to adjust with our env
 
     ```env
     APP_ENV=development
@@ -354,8 +332,11 @@ This Instruction will little bit difficult
 
 ## Usage
 
-We will cover this section in next update
+We will cover this section in next update, but if you want to read the source code
 
+- [KafkaAdminModule](../src/kafka/admin/)
+- [KafkaProducerModule](../src/kafka/producer/)
+- [KafkaConsumerModule](../src/kafka/consumer/)
 ## Remove KafkaModules
 
 1. Delete `kafka folder` in `src/kafka`
