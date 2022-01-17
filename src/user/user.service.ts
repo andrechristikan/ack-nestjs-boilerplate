@@ -20,6 +20,7 @@ import { IAwsResponse } from 'src/aws/aws.interface';
 import { UserListTransformer } from './transformer/user.list.transformer';
 import { UserGetTransformer } from './transformer/user.get.transformer';
 import { IAuthPassword } from 'src/auth/auth.interface';
+import { DeleteResult } from 'mongodb';
 
 @Injectable()
 export class UserService {
@@ -149,15 +150,10 @@ export class UserService {
         return create.save();
     }
 
-    async deleteOneById(_id: string): Promise<boolean> {
-        try {
-            await this.userModel.deleteOne({
-                _id: new Types.ObjectId(_id),
-            });
-            return true;
-        } catch (e: unknown) {
-            return false;
-        }
+    async deleteOneById(_id: string): Promise<UserDocument> {
+        return this.userModel.findOneAndDelete({
+            _id: new Types.ObjectId(_id),
+        });
     }
 
     async updateOneById(
@@ -243,12 +239,7 @@ export class UserBulkService {
         private readonly userModel: Model<UserDocument>
     ) {}
 
-    async deleteMany(find: Record<string, any>): Promise<boolean> {
-        try {
-            await this.userModel.deleteMany(find);
-            return true;
-        } catch (e: unknown) {
-            return false;
-        }
+    async deleteMany(find: Record<string, any>): Promise<DeleteResult> {
+        return this.userModel.deleteMany(find);
     }
 }

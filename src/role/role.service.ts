@@ -125,8 +125,8 @@ export class RoleService {
         return role.save();
     }
 
-    async deleteOneById(_id: string): Promise<DeleteResult> {
-        return this.roleModel.deleteOne({
+    async deleteOneById(_id: string): Promise<RoleDocument> {
+        return this.roleModel.findOneAndDelete({
             _id: new Types.ObjectId(_id),
         });
     }
