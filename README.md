@@ -4,7 +4,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][LICENSE.md]
+[![MIT License][license-shield]][readme-url]
 
 [![NestJs][nestjs-shield]][nestjs-url]
 [![NodeJs][nodejs-shield]][nodejs-url]
@@ -16,7 +16,7 @@
 [![Kafka][kafka-shield]][kafka-url]
 [![Docker][docker-shield]][docker-url]
 
-# ACK NestJs Boilerplate 🔥 🚀 
+# ACK NestJs Boilerplate 🔥 🚀
 
 > NOTE: There will be huge differences between USAGE Documentation and Source Code
 >
@@ -470,6 +470,7 @@ Distributed under [MIT licensed](LICENSE.md).
 [author-github]: https://github.com/andrechristikan
 
 <!-- GITHUB LINKS -->
+[readme-url]: LICENSE.md
 [repo-url]: https://github.com/andrechristikan/ack-nestjs-mongoose
 [issues-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/issues
 [stars-url]: https://github.com/andrechristikan/ack-nestjs-mongoose/stargazers
