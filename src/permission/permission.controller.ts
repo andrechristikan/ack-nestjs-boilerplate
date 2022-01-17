@@ -10,7 +10,6 @@ import {
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { PaginationService } from 'src/pagination/pagination.service';
 import { PermissionService } from './permission.service';
-import { PermissionDocument } from './permission.interface';
 import { Response, ResponsePaging } from 'src/response/response.decorator';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
 import { PermissionListValidation } from './validation/permission.list.validation';
@@ -27,6 +26,7 @@ import { ENUM_STATUS_CODE_ERROR } from 'src/error/error.constant';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
+import { PermissionDocument } from './permission.schema';
 
 @Controller({
     version: '1',

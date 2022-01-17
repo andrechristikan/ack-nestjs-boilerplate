@@ -17,7 +17,7 @@ import {
 } from 'src/permission/permission.constant';
 import { RoleService } from './role.service';
 import { PaginationService } from 'src/pagination/pagination.service';
-import { IRoleDocument, RoleDocument } from './role.interface';
+import { IRoleDocument } from './role.interface';
 import { Response, ResponsePaging } from 'src/response/response.decorator';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
 import { RoleListValidation } from './validation/role.list.validation';
@@ -36,10 +36,11 @@ import {
     RoleUpdateInactiveGuard,
 } from './role.decorator';
 import { RoleListTransformer } from './transformer/role.list.transformer';
-import { PermissionDocument } from 'src/permission/permission.interface';
 import { PermissionService } from 'src/permission/permission.service';
 import { RoleUpdateValidation } from './validation/role.update.validation';
 import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
+import { RoleDocument } from './role.schema';
+import { PermissionDocument } from 'src/permission/permission.schema';
 
 @Controller({
     version: '1',

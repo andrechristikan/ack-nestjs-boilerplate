@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
 
 @Schema({ timestamps: true, versionKey: false })
 export class PermissionEntity {
@@ -29,3 +30,12 @@ export class PermissionEntity {
 
 export const PermissionDatabaseName = 'permissions';
 export const PermissionSchema = SchemaFactory.createForClass(PermissionEntity);
+
+export type PermissionDocument = PermissionEntity & Document;
+
+// Hooks
+PermissionSchema.pre<PermissionDocument>('save', function (next) {
+    this.code = this.code.toUpperCase();
+    this.name = this.code.toLowerCase();
+    next();
+});

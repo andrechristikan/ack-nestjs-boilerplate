@@ -3,27 +3,14 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UserEntity, UserDatabaseName, UserSchema } from 'src/user/user.schema';
 import { UserBulkService, UserService } from 'src/user/user.service';
 import { DATABASE_CONNECTION_NAME } from 'src/database/database.constant';
-import { UserDocument } from './user.interface';
 
 @Module({
     imports: [
-        MongooseModule.forFeatureAsync(
+        MongooseModule.forFeature(
             [
                 {
                     name: UserEntity.name,
-                    useFactory: () => {
-                        const schema = UserSchema;
-                        schema.pre<UserDocument>('save', function (next) {
-                            this.email = this.email.toLowerCase();
-                            this.firstName = this.email.toLowerCase();
-
-                            if (this.lastName) {
-                                this.lastName = this.lastName.toLowerCase();
-                            }
-                            next();
-                        });
-                        return schema;
-                    },
+                    schema: UserSchema,
                     collection: UserDatabaseName,
                 },
             ],

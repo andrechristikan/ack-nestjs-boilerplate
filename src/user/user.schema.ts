@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Types } from 'mongoose';
+import { Types, Document } from 'mongoose';
 import { IAwsResponse } from 'src/aws/aws.interface';
 import { RoleEntity } from 'src/role/role.schema';
 
@@ -83,3 +83,16 @@ export class UserEntity {
 
 export const UserDatabaseName = 'users';
 export const UserSchema = SchemaFactory.createForClass(UserEntity);
+
+export type UserDocument = UserEntity & Document;
+
+// Hooks
+UserSchema.pre<UserDocument>('save', function (next) {
+    this.email = this.email.toLowerCase();
+    this.firstName = this.email.toLowerCase();
+
+    if (this.lastName) {
+        this.lastName = this.lastName.toLowerCase();
+    }
+    next();
+});

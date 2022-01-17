@@ -17,7 +17,7 @@ Alright, we need to know some knowledge before next section.
 
 Main Packages and Main Tools
 
-* [NestJs-Microservice](nestjs-microservice-url) v8.2.4
+* [NestJs-Microservice](nestjs-microservice-url) v8.2.5
 * [KafkaJs](kafka-js-url) v1.15.0
 * [Kafka](kafka-url) v3.0.0
 
@@ -127,7 +127,7 @@ kafka-topics --version
     await app.listen(port, host);
     
     // Kafka
-    await kafka(app, configService, logger);
+    await kafka(app, logger);
     
 
     ...

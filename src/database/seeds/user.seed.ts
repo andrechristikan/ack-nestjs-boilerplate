@@ -5,8 +5,8 @@ import { Debugger } from 'src/debugger/debugger.decorator';
 
 import { RoleService } from 'src/role/role.service';
 import { UserBulkService, UserService } from 'src/user/user.service';
-import { RoleDocument } from 'src/role/role.interface';
 import { AuthService } from 'src/auth/auth.service';
+import { RoleDocument } from 'src/role/role.schema';
 
 @Injectable()
 export class UserSeed {

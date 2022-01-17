@@ -41,15 +41,15 @@ We assume that all people are coming to here is `Programmer with intermediate kn
 
 Main Packages and Main Tools
 
-* [NestJs](nestjs-url) v8.2.4
+* [NestJs](nestjs-url) v8.2.5
 * [NodeJs](nodejs-url) v17.3.0
 * [Typescript](typescript-url) v4.5.4
-* [Mongoose](mongoose-url) v6.1.3
+* [Mongoose](mongoose-url) v6.1.6
 * [NestJs-Mongoose](mongoose-url) v9.0.2
 * [MongoDB](mongodb-url) v5.0.4
 * [Yarn](yarn-url) v1.22.17
-* [Docker](docker-url) v20.10.11
-* [Docker Compose](docker-compose-url) v2.2.1
+* [Docker](docker-url) v20.10.12
+* [Docker Compose](docker-compose-url) v2.2.3
 
 ## Features
 

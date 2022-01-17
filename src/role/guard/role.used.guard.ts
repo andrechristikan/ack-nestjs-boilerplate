@@ -9,7 +9,7 @@ import { Logger as DebuggerService } from 'winston';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '../role.constant';
 import { Types } from 'mongoose';
 import { UserService } from 'src/user/user.service';
-import { UserDocument } from 'src/user/user.interface';
+import { UserDocument } from 'src/user/user.schema';
 
 @Injectable()
 export class RoleUsedGuard implements CanActivate {

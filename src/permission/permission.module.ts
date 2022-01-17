@@ -1,8 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/database/database.constant';
-
-import { PermissionDocument } from './permission.interface';
 import {
     PermissionDatabaseName,
     PermissionEntity,
@@ -15,19 +13,11 @@ import { PermissionBulkService, PermissionService } from './permission.service';
     providers: [PermissionService, PermissionBulkService],
     exports: [PermissionService, PermissionBulkService],
     imports: [
-        MongooseModule.forFeatureAsync(
+        MongooseModule.forFeature(
             [
                 {
                     name: PermissionEntity.name,
-                    useFactory: () => {
-                        const schema = PermissionSchema;
-                        schema.pre<PermissionDocument>('save', function (next) {
-                            this.code = this.code.toUpperCase();
-                            this.name = this.code.toLowerCase();
-                            next();
-                        });
-                        return schema;
-                    },
+                    schema: PermissionSchema,
                     collection: PermissionDatabaseName,
                 },
             ],

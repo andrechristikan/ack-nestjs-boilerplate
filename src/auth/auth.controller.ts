@@ -12,11 +12,7 @@ import {
 } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
 import { UserService } from 'src/user/user.service';
-import {
-    IUserCheckExist,
-    IUserDocument,
-    UserDocument,
-} from 'src/user/user.interface';
+import { IUserCheckExist, IUserDocument } from 'src/user/user.interface';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe';
@@ -33,12 +29,13 @@ import {
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
 import { AuthSignUpValidation } from './validation/auth.sign-up.validation';
-import { RoleDocument } from 'src/role/role.interface';
 import { ENUM_STATUS_CODE_ERROR } from 'src/error/error.constant';
 import { RoleService } from 'src/role/role.service';
 import { AuthLoginTransformer } from './transformer/auth.login.transformer';
 import { SuccessException } from 'src/error/error.http.filter';
 import { AuthChangePasswordValidation } from './validation/auth.change-password.validation';
+import { RoleDocument } from 'src/role/role.schema';
+import { UserDocument } from 'src/user/user.schema';
 
 @Controller({
     version: '1',
