@@ -1,6 +1,8 @@
+<div id="top"></div>
+
 # Kafka Documentation
 
-> Jump to [section remove KafkaModules](#optional,-complete-remove-kafka)
+> Jump to [section remove KafkaModules](#remove-kafkamodules)
 
 Kafka documentation is optional and just in case if we want to use kafka.
 
@@ -8,8 +10,8 @@ Kafka documentation is optional and just in case if we want to use kafka.
 
 Alright, we need to know some knowledge before next section.
 
-* Follow and understood [README  Documentation](../README.md) .
-* Understood [Kafka Fundamental](kafka-url). It will help we to know how kafka works and why we need kafka in real project.
+* Follow and understood [README  Documentation](../README.md)
+* Understood [Kafka Fundamental](kafka-url). It will help we to know how kafka works and why we need kafka in real project
 
 ## Build With
 
@@ -36,82 +38,9 @@ kafka-topics --version
 # 3.0.0 (Commit:8cb0a5e9d3441962
 ```
 
-### Move KafkaModules into project
-
-1. Move Config `kafka/kafka.config.ts` into `src/config/*`
-
-    ```txt
-    .
-    src
-    ├── aws
-    ├── config           
-    │   .
-    │   ├── index.ts
-    │   ├── kafka.config.ts # ----------------- move to here
-    │   ├── middleware.config.ts
-    │   .
-    │   └── user.config.ts
-    ├── database
-    .
-    ```
-
-2. Move Language `kafka/kafka.language.ts` into `src/message/language/en/*`
-
-    ```txt
-    .
-    src
-    ├── logger
-    ├── message        
-    │   ├──languages
-    │   .   └── en 
-    │   .       .
-    │   .       ├── index.ts
-    │   .       ├── kafka.language.ts # -------- move to here
-    │   .       ├── message.language.ts
-    │   .       .
-    │   .       └──
-    │   └── message.service.ts
-    ├── middleware
-    .
-    ```
-
-3. Move the rest of files in `kafka/*` into `src/kafka/*`
-
-    Except file
-    - READNE.md
-    - docker-compose.yml
-    - .env*
-
-    ```txt
-    .
-    src
-    ├── helper
-    ├── kafka # ------------------------------- move to here
-    │   ├── admin
-    │   ├── consumer
-    │   ├── error
-    │   ├── producer
-    │   ├── request
-    │   ├── response
-    │   ├── router
-    │   ├── kafka.constant.ts
-    │   └── kafka.ts
-    ├── logger
-    .
-    ```
-
-*If you have done with move all KafkaModule, the kafka dir will look like this*
-
-```txt
-.
-kafka
-├── .env.docker
-├── .env.example
-├── docker-compose.yml
-└── README.md
-```
-
 ### Installation
+
+> We will assume our position in root dir
 
 1. Install dependencies `@nestjs/microservices` and `kafkajs`
 
@@ -125,7 +54,9 @@ kafka
     npm i @nestjs/microservices kafkajs
     ```
 
-2. Our environment will be a little different. We will use `kafka/.env.example`, [Click here to see details](.env.example). Copy and replace the env file into root dir.
+2. Our environment will be a little different. We will use `kafka/.env.example`, [Click here to see details](.env.example). 
+
+    Replace the env file into root dir
 
     ```sh
     cp .env.kafka .env
@@ -320,23 +251,7 @@ kafka
     ];
     ```
 
-6. Add kafka response message into `src/message/language/index.ts`
-
-    ```ts
-    // src/message/language/index.ts
-
-    import kafka from './kafka.language';
-
-    export default {
-        ...
-        ...
-        ...
-
-        kafka
-    };
-    ```
-
-7. Make sure our topics was created or we can use auto create topics with `KafkaAdminModule`.
+6. Make sure our topics was created or we can use auto create topics with `KafkaAdminModule`.
 
     ```ts
     // src/kafka/kafka.constant.ts
@@ -348,7 +263,7 @@ kafka
 
     ```
 
-8. After all configuration, we need to test manual hit `/api/kafka/producer` endpoint. [see this instruction](../README.md#endpoint).
+7. After all configuration, we need to test manual hit `/api/kafka/producer` endpoint. [see this instruction](../README.md#endpoint).
 
 ### Run project
 
@@ -443,61 +358,51 @@ We will cover this section in next update
 
 ## Remove KafkaModules
 
-We assume there have 2 condition while we want to remove KafkaModules
-
-1. Before Move KafkaModules into project
-2. After Move KafkaModules into project
-
-### Before Move KafkaModules into project
-
-Just delete `kafka/` folder.
-
-### After Move KafkaModules into project
-
-> Jump to [section move KafkaModules](#move-kafkamodules-into-project)
-
 1. Delete `kafka folder` in `src/kafka`
 
 2. Delete `kafka config` in `src/config/kafka.config.ts`,
 
 3. Remove kafka config in `src/config/index.ts`.
 
-```ts
-// src/config/index.ts
+    ```ts
+    // src/config/index.ts
 
-import AppConfig from 'src/config/app.config';
-import AuthConfig from 'src/config/auth.config';
-import DatabaseConfig from 'src/config/database.config';
-import HelperConfig from 'src/config/helper.config';
-import MiddlewareConfig from 'src/config/middleware.config';
-import AwsConfig from 'src/config/aws.config';
-import UserConfig from './user.config';
+    import AppConfig from 'src/config/app.config';
+    import AuthConfig from 'src/config/auth.config';
+    import DatabaseConfig from 'src/config/database.config';
+    import HelperConfig from 'src/config/helper.config';
+    import MiddlewareConfig from 'src/config/middleware.config';
+    import AwsConfig from 'src/config/aws.config';
+    import UserConfig from './user.config';
 
-export default [
-    AppConfig,
-    AuthConfig,
-    DatabaseConfig,
-    HelperConfig,
-    MiddlewareConfig,
-    AwsConfig,
-    UserConfig
-];
-```
+    export default [
+        AppConfig,
+        AuthConfig,
+        DatabaseConfig,
+        HelperConfig,
+        MiddlewareConfig,
+        AwsConfig,
+        UserConfig
+    ];
+    ```
 
-### Remove dependencies
+4. Remove dependencies
 
-After we remove KafkaModules, we need to make sure that dependencies also removed too.
-The dependencies is `@nestjs/microservices` and `kafkajs`
+    After we remove KafkaModules, we need to make sure that dependencies also removed too.
+    The dependencies is `@nestjs/microservices` and `kafkajs`
 
-```sh
-yarn remove @nestjs/microservices kafkajs
-```
+    ```sh
+    yarn remove @nestjs/microservices kafkajs
+    ```
 
-Or remove with npm
+    Or remove with npm
 
-```sh
-npm uninstall @nestjs/microservices kafkajs
-```
+    ```sh
+    npm uninstall @nestjs/microservices kafkajs
+    ```
+
+
+<p align="right"><a href="#top">back to top</a></p>
 
 [nestjs-microservice-url]: https://docs.nestjs.com/microservices/kafka
 [kafka-js-url]: https://kafka.js.org/docs/getting-started

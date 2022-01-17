@@ -7,7 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { createCipheriv, createDecipheriv, scrypt, createHash } from 'crypto';
 import { promisify } from 'util';
 import { IHelperJwtOptions } from './helper.interface';
-import faker from 'faker';
+import faker from '@faker-js/faker';
 
 @Injectable()
 export class HelperService {

@@ -60,24 +60,13 @@ The features will spill on this section, please read secretly and keep silent
 - [x] Centralize Configuration
 - [x] Centralize Exception
 - [x] Centralize Response
-- [x] Versioning
+- [x] Versioning, can on/off
 - [x] Admin, Public, Common, and Test RouterModule
 - [x] Validation All Incoming Request
 - [x] Support Multi Language, control from header
 - [x] Custom Status Code for Each Error and Success Response
 
-### Security
-
-- [x] Json Web Token Guard, Access Token and Refresh Token (OAuth2)
-- [x] Basic Auth Guard
-- [x] Password Expired Guard
-- [x] Block User
-- [x] Block Role Guard
-- [x] Login Expired Guard
-- [x] Role and Permission Management
-- [x] Hash Password with Bcrypt
-
-### Mongoose Modules
+### Mongoose
 
 - [x] Mongoose Integration
 - [x] Mongoose Populate and Deep Populate
@@ -85,7 +74,26 @@ The features will spill on this section, please read secretly and keep silent
 - [x] Multi Database Connection
 - [x] Database Migration with Nestjs/Command
 
-### Logger Modules
+### Security
+
+- [x] Json Web Token Guard, Access Token and Refresh Token (OAuth2)
+- [x] Basic Auth Guard
+- [x] Password Expired Guard
+- [x] Block User Guard
+- [x] Block Role Guard
+- [x] Login Expired Guard
+- [x] Role and Permission Management
+- [x] Hash Password with Bcrypt
+
+### Middleware
+
+- [x] Body Parser (JSON, Raw, Test, Multipart Form, and Urlencoded)
+- [x] Rate Limit
+- [x] Compression
+- [x] Helmet
+- [x] Cors
+
+### Logger
 
 - [x] Logger Module, insert into Database
 - [x] Debugger Module, can write into file log
@@ -93,19 +101,10 @@ The features will spill on this section, please read secretly and keep silent
 
 ### Kafka Modules
 
-All kafka features can switch on/off or remove, [read kafka section](#kafka)
+All kafka features can switch on/off or remove, [read kafka section](#kafka-document)
 
 - [x] Kafka Admin Module, Create Topics with custom partition, and custom replication
-- [x] Kafka Producer Module, Store Message to Topic
-
-### Middleware Modules
-
-- [x] Body Parser (JSON, Raw, Test, Multipart Form, and Urlencoded)
-- [x] Rate Limit
-- [x] Compression
-- [x] Helmet
-- [x] Cors
-- [x] BodyParser
+- [x] Kafka Producer Module, Store Message to consumer
 
 ### Helper Module
 
@@ -135,7 +134,7 @@ All kafka features can switch on/off or remove, [read kafka section](#kafka)
 
 ### Todo
 
-- [ ] Production Ready
+- [ ] Production Ready (Setting Module), can manage from Database
 - [ ] Unit Test and E2E Test
 - [ ] Update Usage Documentation
 - [ ] Update Performance
@@ -148,7 +147,7 @@ All endpoints in [endpoints.json](endpoints.json) and need import to PostMan. [F
 
 Before we start, we need to install
 
-- [NodeJs](nodejs-url) 
+- [NodeJs](nodejs-url) recommendation use lts version
 - [MongoDB](mongodb-url) `go install and set mongoDB as replication if we need to use Mongoose Transaction Features`
 - [Yarn](yarn-url)
 
@@ -284,27 +283,28 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
 
     - Fresh migrate
 
-      ```sh
-      yarn migrate
-      ```
+        ```sh
+        yarn migrate
+        ```
 
-      with npm
+        with npm
 
-      ```sh
-      npm run migrate
-      ```
+        ```sh
+        npm run migrate
+        ```
 
-    - Rollback migrate, `be careful to use rollback, cause rollback will remove all data in collection`
+    - Rollback migrate
+        > NOTE: be careful to use rollback, cause rollback will remove all data in collection
 
-      ```sh
-      yarn migrate:rollback
-      ```
+        ```sh
+        yarn migrate:rollback
+        ```
 
-      with npm
+        with npm
 
-      ```sh
-      npm run migrate:rollback
-      ```
+        ```sh
+        npm run migrate:rollback
+        ```
 
 5.  <strong> *** SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET *** </strong>. 
 
@@ -348,7 +348,6 @@ npm run start:dev
 
 Cheers 🍻🍻 !!! our project is running well. Now we can use all features.
 
-Then go install or open `REST Client`. In this case, let assume we use [Postman Client](postman-url).
 After installation, we need to import all endpoint into postman, [see this instruction](#endpoints).
 
 ### Run with Docker
@@ -422,11 +421,11 @@ After installation, we need to import all endpoint into postman, [see this instr
     docker-compose up -d
     ```
 
-## Usage
+## Usage Document
 
 Documents usage will write separate file. Document will put in [USAGE Documentation](USAGE.md)
 
-## Kafka
+## Kafka Document
 
 Kafka document will write in separate file. Document will put in [KAFKA Documentation](kafka/README.md)
 

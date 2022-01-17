@@ -5,6 +5,7 @@ import HelperConfig from 'src/config/helper.config';
 import AwsConfig from 'src/config/aws.config';
 import UserConfig from './user.config';
 import FileConfig from './file.config';
+import KafkaConfig from './kafka.config';
 
 export default [
     AppConfig,
@@ -14,4 +15,5 @@ export default [
     AwsConfig,
     UserConfig,
     FileConfig,
+    KafkaConfig,
 ];

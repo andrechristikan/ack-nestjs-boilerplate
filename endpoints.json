@@ -2919,7 +2919,32 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "error",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/kafka/producer/error",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"kafka",
+										"producer",
+										"error"
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 5991,\n    \"message\": \"produce kafka error\"\n}"
+						}
+					]
 				}
 			]
 		},
