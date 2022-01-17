@@ -11,10 +11,7 @@ import {
     HttpCode,
     HttpStatus,
     UploadedFile,
-    forwardRef,
-    Inject,
     Patch,
-    NotFoundException
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
 import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe';
@@ -23,7 +20,7 @@ import { UserUpdateValidation } from 'src/user/validation/user.update.validation
 import { PaginationService } from 'src/pagination/pagination.service';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
-import { IUserCheckExist, IUserDocument, UserDocument } from './user.interface';
+import { IUserCheckExist, IUserDocument } from './user.interface';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
 import { Response, ResponsePaging } from 'src/response/response.decorator';
@@ -35,31 +32,31 @@ import {
     UserDeleteGuard,
     UserGetGuard,
     UserProfileGuard,
-    UserUpdateGuard
+    UserUpdateActiveGuard,
+    UserUpdateGuard,
+    UserUpdateInactiveGuard,
 } from './user.decorator';
-import { Image } from 'src/helper/helper.decorator';
 import { AwsService } from 'src/aws/aws.service';
 import { IAwsResponse } from 'src/aws/aws.interface';
 import { ConfigService } from '@nestjs/config';
 import { UserListTransformer } from './transformer/user.list.transformer';
-import {
-    AuthAdminJwtGuard,
-    AuthJwtGuard,
-    AuthPublicJwtGuard,
-    User
-} from 'src/auth/auth.decorator';
+import { AuthAdminJwtGuard, AuthPublicJwtGuard } from 'src/auth/auth.decorator';
 import { AuthService } from 'src/auth/auth.service';
-import { UserChangePasswordValidation } from './validation/user.change-password.validation';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
+import { UploadFileSingle } from 'src/file/file.decorator';
+import { ENUM_FILE_TYPE } from 'src/file/file.constant';
+import { LoggerService } from 'src/logger/logger.service';
 
-@Controller('/user')
+@Controller({
+    version: '1',
+    path: 'user',
+})
 export class UserAdminController {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService,
-        @Inject(forwardRef(() => AuthService))
         private readonly authService: AuthService,
         private readonly paginationService: PaginationService,
-        private readonly userService: UserService
+        private readonly userService: UserService,
+        private readonly loggerService: LoggerService
     ) {}
 
     @ResponsePaging('user.list')
@@ -77,24 +74,24 @@ export class UserAdminController {
                 {
                     firstName: {
                         $regex: new RegExp(search),
-                        $options: 'i'
+                        $options: 'i',
                     },
                     lastName: {
                         $regex: new RegExp(search),
-                        $options: 'i'
+                        $options: 'i',
                     },
                     email: {
                         $regex: new RegExp(search),
-                        $options: 'i'
+                        $options: 'i',
                     },
-                    mobileNumber: search
-                }
+                    mobileNumber: search,
+                },
             ];
         }
         const users: IUserDocument[] = await this.userService.findAll(find, {
             limit: perPage,
             skip: skip,
-            sort
+            sort,
         });
         const totalData: number = await this.userService.getTotal(find);
         const totalPage: number = await this.paginationService.totalPage(
@@ -111,7 +108,7 @@ export class UserAdminController {
             totalPage,
             currentPage: page,
             perPage,
-            data
+            data,
         };
     }
 
@@ -138,33 +135,33 @@ export class UserAdminController {
         if (checkExist.email && checkExist.mobileNumber) {
             this.debuggerService.error('create user exist', {
                 class: 'UserController',
-                function: 'create'
+                function: 'create',
             });
 
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EXISTS_ERROR,
-                message: 'user.error.exist'
+                message: 'user.error.exist',
             });
         } else if (checkExist.email) {
             this.debuggerService.error('create user exist', {
                 class: 'UserController',
-                function: 'create'
+                function: 'create',
             });
 
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
-                message: 'user.error.emailExist'
+                message: 'user.error.emailExist',
             });
         } else if (checkExist.mobileNumber) {
             this.debuggerService.error('create user exist', {
                 class: 'UserController',
-                function: 'create'
+                function: 'create',
             });
 
             throw new BadRequestException({
                 statusCode:
                     ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
-                message: 'user.error.mobileNumberExist'
+                message: 'user.error.mobileNumberExist',
             });
         }
 
@@ -181,22 +178,22 @@ export class UserAdminController {
                 role: body.role,
                 password: password.passwordHash,
                 passwordExpired: password.passwordExpired,
-                salt: password.salt
+                salt: password.salt,
             });
 
             return {
-                _id: create._id
+                _id: create._id,
             };
         } catch (err: any) {
             this.debuggerService.error('create try catch', {
                 class: 'UserController',
                 function: 'create',
-                error: err
+                error: err,
             });
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
-                message: 'http.server.internalServerError'
+                message: 'http.serverError.internalServerError',
             });
         }
     }
@@ -208,19 +205,19 @@ export class UserAdminController {
     async delete(@GetUser() user: IUserDocument): Promise<void> {
         try {
             await this.userService.deleteOneById(user._id);
-
-            return;
         } catch (err) {
             this.debuggerService.error('delete try catch', {
                 class: 'UserController',
                 function: 'create',
-                error: err
+                error: err,
             });
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
-                message: 'http.server.internalServerError'
+                message: 'http.serverError.internalServerError',
             });
         }
+
+        return;
     }
 
     @Response('user.update')
@@ -234,116 +231,65 @@ export class UserAdminController {
     ): Promise<IResponse> {
         try {
             await this.userService.updateOneById(user._id, data);
-
-            return {
-                _id: user._id
-            };
         } catch (err: any) {
             this.debuggerService.error('update try catch', {
                 class: 'UserController',
                 function: 'update',
                 error: {
-                    ...err
-                }
+                    ...err,
+                },
             });
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
-                message: 'http.server.internalServerError'
+                message: 'http.serverError.internalServerError',
             });
         }
+
+        return {
+            _id: user._id,
+        };
     }
-}
 
-@Controller('/user')
-export class UserController {
-    constructor(
-        @Debugger() private readonly debuggerService: DebuggerService,
-        @Inject(forwardRef(() => AuthService))
-        private readonly authService: AuthService,
-        private readonly userService: UserService
-    ) {}
-
-    @Response('auth.changePassword')
-    @AuthJwtGuard()
-    @Patch('/change-password')
-    async changePassword(
-        @Body(RequestValidationPipe) body: UserChangePasswordValidation,
-        @User('_id') _id: string
-    ): Promise<void> {
-        const user: UserDocument = await this.userService.findOneById(_id);
-        if (!user) {
-            this.debuggerService.error('User not found', {
-                class: 'UserController',
-                function: 'changePassword'
-            });
-
-            throw new NotFoundException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
-                message: 'user.error.notFound'
-            });
-        }
-
-        const matchPassword: boolean = await this.authService.validateUser(
-            body.oldPassword,
-            user.password
-        );
-        if (!matchPassword) {
-            this.debuggerService.error("Old password don't match", {
-                class: 'UserController',
-                function: 'changePassword'
-            });
-
-            throw new BadRequestException({
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR,
-                message: 'auth.error.passwordNotMatch'
-            });
-        }
-
-        const newMatchPassword: boolean = await this.authService.validateUser(
-            body.newPassword,
-            user.password
-        );
-        if (newMatchPassword) {
-            this.debuggerService.error(
-                "New password cant't same with old password",
-                {
-                    class: 'UserController',
-                    function: 'changePassword'
-                }
-            );
-
-            throw new BadRequestException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_NEW_MUST_DIFFERENCE_ERROR,
-                message: 'user.error.newPasswordMustDifference'
-            });
-        }
-
+    @Response('user.inactive')
+    @UserUpdateInactiveGuard()
+    @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
+    @Patch('/inactive/:user')
+    async inactive(@GetUser() user: IUserDocument): Promise<void> {
         try {
-            const password = await this.authService.createPassword(
-                body.newPassword
-            );
-
-            await this.userService.updatePassword(
-                user._id,
-                password.salt,
-                password.passwordHash,
-                password.passwordExpired
-            );
+            await this.userService.inactive(user._id);
         } catch (e) {
-            this.debuggerService.error(
-                'Change password error internal server error',
-                {
-                    class: 'AuthController',
-                    function: 'changePassword',
-                    error: { ...e }
-                }
-            );
+            this.debuggerService.error('User inactive server internal error', {
+                class: 'UserController',
+                function: 'inactive',
+                error: { ...e },
+            });
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
-                message: 'http.serverError.internalServerError'
+                message: 'http.serverError.internalServerError',
+            });
+        }
+
+        return;
+    }
+
+    @Response('user.active')
+    @UserUpdateActiveGuard()
+    @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
+    @Patch('/active/:user')
+    async active(@GetUser() user: IUserDocument): Promise<void> {
+        try {
+            await this.userService.active(user._id);
+        } catch (e) {
+            this.debuggerService.error('User active server internal error', {
+                class: 'UserController',
+                function: 'active',
+                error: { ...e },
+            });
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                message: 'http.serverError.internalServerError',
             });
         }
 
@@ -351,7 +297,10 @@ export class UserController {
     }
 }
 
-@Controller('/user')
+@Controller({
+    version: '1',
+    path: 'user',
+})
 export class UserPublicController {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService,
@@ -371,44 +320,45 @@ export class UserPublicController {
     @Response('user.upload')
     @UserProfileGuard()
     @AuthPublicJwtGuard()
-    @Image('file')
+    @UploadFileSingle('file', ENUM_FILE_TYPE.IMAGE)
     @HttpCode(HttpStatus.OK)
     @Post('/profile/upload')
     async upload(
         @GetUser() user: IUserDocument,
         @UploadedFile() file: Express.Multer.File
     ): Promise<void> {
+        const filename: string = file.originalname;
+        const content: Buffer = file.buffer;
+        const mime: string = filename
+            .substring(filename.lastIndexOf('.') + 1, filename.length)
+            .toUpperCase();
+
+        const uploadPath: string =
+            this.configService.get<string>('user.uploadPath');
+
         try {
-            const filename: string = file.originalname;
-            const content: Buffer = file.buffer;
-            const mime: string = filename
-                .substring(filename.lastIndexOf('.') + 1, filename.length)
-                .toUpperCase();
-
-            const uploadPath: string =
-                this.configService.get<string>('user.uploadPath');
-
             const aws: IAwsResponse = await this.awsService.s3PutItemInBucket(
                 `${await this.userService.createRandomFilename()}.${mime}`,
                 content,
                 {
-                    path: `${uploadPath}/${user._id}`
+                    path: `${uploadPath}/${user._id}`,
                 }
             );
 
             await this.userService.updatePhoto(user._id, aws);
-            return;
         } catch (err) {
             this.debuggerService.error('Store photo user', {
                 class: 'UserPublicController',
                 function: 'upload',
-                error: err
+                error: err,
             });
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
-                message: 'http.serverError.internalServerError'
+                message: 'http.serverError.internalServerError',
             });
         }
+
+        return;
     }
 }

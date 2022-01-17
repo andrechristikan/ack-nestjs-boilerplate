@@ -7,7 +7,7 @@ import {
     IUserDocument,
     IUserCreate,
     IUserUpdate,
-    IUserCheckExist
+    IUserCheckExist,
 } from 'src/user/user.interface';
 import { RoleEntity } from 'src/role/role.schema';
 import { PermissionEntity } from 'src/permission/permission.schema';
@@ -19,15 +19,14 @@ import { HelperService } from 'src/helper/helper.service';
 import { IAwsResponse } from 'src/aws/aws.interface';
 import { UserListTransformer } from './transformer/user.list.transformer';
 import { UserGetTransformer } from './transformer/user.get.transformer';
-import { ConfigService } from '@nestjs/config';
+import { IAuthPassword } from 'src/auth/auth.interface';
 
 @Injectable()
 export class UserService {
     constructor(
         @InjectModel(UserEntity.name)
         private readonly userModel: Model<UserDocument>,
-        @Helper() private readonly helperService: HelperService,
-        private readonly configService: ConfigService
+        @Helper() private readonly helperService: HelperService
     ) {}
 
     async findAll(
@@ -36,13 +35,15 @@ export class UserService {
     ): Promise<IUserDocument[]> {
         const users = this.userModel.find(find).populate({
             path: 'role',
-            model: RoleEntity.name
+            model: RoleEntity.name,
         });
 
-        if (options && options.limit && options.skip) {
-            users
-                .limit(options.limit)
-                .skip(options && options.skip ? options.skip : 0);
+        if (
+            options &&
+            options.limit !== undefined &&
+            options.skip !== undefined
+        ) {
+            users.limit(options.limit).skip(options.skip);
         }
 
         if (options && options.sort) {
@@ -53,7 +54,7 @@ export class UserService {
     }
 
     async getTotal(find?: Record<string, any>): Promise<number> {
-        return this.userModel.countDocuments(find);
+        return this.userModel.estimatedDocumentCount(find);
     }
 
     async mapProfile(data: IUserDocument): Promise<UserProfileTransformer> {
@@ -77,7 +78,7 @@ export class UserService {
         if (options && options.populate && options.populate.role) {
             user.populate({
                 path: 'role',
-                model: RoleEntity.name
+                model: RoleEntity.name,
             });
 
             if (options.populate.permission) {
@@ -86,8 +87,8 @@ export class UserService {
                     model: RoleEntity.name,
                     populate: {
                         path: 'permissions',
-                        model: PermissionEntity.name
-                    }
+                        model: PermissionEntity.name,
+                    },
                 });
             }
         }
@@ -104,7 +105,7 @@ export class UserService {
         if (options && options.populate && options.populate.role) {
             user.populate({
                 path: 'role',
-                model: RoleEntity.name
+                model: RoleEntity.name,
             });
 
             if (options.populate.permission) {
@@ -113,8 +114,8 @@ export class UserService {
                     model: RoleEntity.name,
                     populate: {
                         path: 'permissions',
-                        model: PermissionEntity.name
-                    }
+                        model: PermissionEntity.name,
+                    },
                 });
             }
         }
@@ -130,7 +131,7 @@ export class UserService {
         salt,
         email,
         mobileNumber,
-        role
+        role,
     }: IUserCreate): Promise<UserDocument> {
         const user: UserEntity = {
             firstName,
@@ -141,7 +142,7 @@ export class UserService {
             isActive: true,
             lastName: lastName || undefined,
             salt,
-            passwordExpired
+            passwordExpired,
         };
 
         const create: UserDocument = new this.userModel(user);
@@ -151,7 +152,7 @@ export class UserService {
     async deleteOneById(_id: string): Promise<boolean> {
         try {
             await this.userModel.deleteOne({
-                _id: new Types.ObjectId(_id)
+                _id: new Types.ObjectId(_id),
             });
             return true;
         } catch (e: unknown) {
@@ -176,35 +177,23 @@ export class UserService {
         mobileNumber: string,
         _id?: string
     ): Promise<IUserCheckExist> {
-        const existEmail: UserDocument = await this.userModel
-            .findOne({
-                email
-            })
-            .where('_id')
-            .ne(new Types.ObjectId(_id))
-            .lean();
+        const existEmail: boolean = await this.userModel.exists({
+            email: {
+                $regex: new RegExp(email),
+                $options: 'i',
+            },
+            _id: { $nin: [new Types.ObjectId(_id)] },
+        });
 
-        const existMobileNumber: UserDocument = await this.userModel
-            .findOne({
-                mobileNumber
-            })
-            .where('_id')
-            .ne(new Types.ObjectId(_id))
-            .lean();
+        const existMobileNumber: boolean = await this.userModel.exists({
+            mobileNumber,
+            _id: { $nin: [new Types.ObjectId(_id)] },
+        });
 
         return {
-            email: existEmail ? true : false,
-            mobileNumber: existMobileNumber ? true : false
+            email: existEmail,
+            mobileNumber: existMobileNumber,
         };
-    }
-
-    async deleteMany(find: Record<string, any>): Promise<boolean> {
-        try {
-            await this.userModel.deleteMany(find);
-            return true;
-        } catch (e: unknown) {
-            return false;
-        }
     }
 
     async updatePhoto(_id: string, aws: IAwsResponse): Promise<UserDocument> {
@@ -220,16 +209,46 @@ export class UserService {
 
     async updatePassword(
         _id: string,
-        salt: string,
-        password: string,
-        passwordExpired: Date
+        { salt, passwordHash, passwordExpired }: IAuthPassword
     ): Promise<UserDocument> {
         const auth: UserDocument = await this.userModel.findById(_id);
 
-        auth.password = password;
+        auth.password = passwordHash;
         auth.passwordExpired = passwordExpired;
         auth.salt = salt;
 
         return auth.save();
+    }
+
+    async inactive(_id: string): Promise<UserDocument> {
+        const user: UserDocument = await this.userModel.findById(_id);
+
+        console.log('user', user);
+        user.isActive = false;
+        return user.save();
+    }
+
+    async active(_id: string): Promise<UserDocument> {
+        const user: UserDocument = await this.userModel.findById(_id);
+
+        user.isActive = true;
+        return user.save();
+    }
+}
+
+@Injectable()
+export class UserBulkService {
+    constructor(
+        @InjectModel(UserEntity.name)
+        private readonly userModel: Model<UserDocument>
+    ) {}
+
+    async deleteMany(find: Record<string, any>): Promise<boolean> {
+        try {
+            await this.userModel.deleteMany(find);
+            return true;
+        } catch (e: unknown) {
+            return false;
+        }
     }
 }

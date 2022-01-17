@@ -23,7 +23,11 @@ export class RoleService {
         options?: Record<string, any>
     ): Promise<RoleDocument[]> {
         const roles = this.roleModel.find(find);
-        if (options && options.limit && options.skip) {
+        if (
+            options &&
+            options.limit !== undefined &&
+            options.skip !== undefined
+        ) {
             roles.limit(options.limit).skip(options.skip);
         }
 
@@ -35,7 +39,7 @@ export class RoleService {
     }
 
     async getTotal(find?: Record<string, any>): Promise<number> {
-        return this.roleModel.countDocuments(find);
+        return this.roleModel.estimatedDocumentCount(find);
     }
 
     async findOneById<T>(
@@ -47,7 +51,7 @@ export class RoleService {
         if (options && options.populate && options.populate.permission) {
             roles.populate({
                 path: 'permissions',
-                model: PermissionEntity.name
+                model: PermissionEntity.name,
             });
         }
 
@@ -63,23 +67,33 @@ export class RoleService {
         if (options && options.populate && options.populate.permission) {
             role.populate({
                 path: 'permissions',
-                model: PermissionEntity.name
+                model: PermissionEntity.name,
             });
         }
 
         return role.lean();
     }
 
+    async exists(name: string, _id?: string): Promise<boolean> {
+        return this.roleModel.exists({
+            name: {
+                $regex: new RegExp(name),
+                $options: 'i',
+            },
+            _id: { $nin: new Types.ObjectId(_id) },
+        });
+    }
+
     async create({
         name,
         permissions,
-        isAdmin
+        isAdmin,
     }: RoleCreateValidation): Promise<RoleDocument> {
         const create: RoleDocument = new this.roleModel({
             name: name,
             permissions: permissions.map((val) => new Types.ObjectId(val)),
             isActive: true,
-            isAdmin: isAdmin || false
+            isAdmin: isAdmin || false,
         });
 
         return create.save();
@@ -113,9 +127,25 @@ export class RoleService {
 
     async deleteOneById(_id: string): Promise<DeleteResult> {
         return this.roleModel.deleteOne({
-            _id: new Types.ObjectId(_id)
+            _id: new Types.ObjectId(_id),
         });
     }
+
+    async mapGet(data: IRoleDocument): Promise<RoleGetTransformer> {
+        return plainToInstance(RoleGetTransformer, data);
+    }
+
+    async mapList(data: RoleDocument[]): Promise<RoleListTransformer[]> {
+        return plainToInstance(RoleListTransformer, data);
+    }
+}
+
+@Injectable()
+export class RoleBulkService {
+    constructor(
+        @InjectModel(RoleEntity.name)
+        private readonly roleModel: Model<RoleDocument>
+    ) {}
 
     async deleteMany(find: Record<string, any>): Promise<DeleteResult> {
         return await this.roleModel.deleteMany(find);
@@ -127,18 +157,10 @@ export class RoleService {
                 name,
                 isActive: true,
                 isAdmin: isAdmin || false,
-                permissions: permissions.map((val) => new Types.ObjectId(val))
+                permissions: permissions.map((val) => new Types.ObjectId(val)),
             }))
         );
 
         return true;
-    }
-
-    async mapGet(data: IRoleDocument): Promise<RoleGetTransformer> {
-        return plainToInstance(RoleGetTransformer, data);
-    }
-
-    async mapList(data: RoleDocument[]): Promise<RoleListTransformer[]> {
-        return plainToInstance(RoleListTransformer, data);
     }
 }

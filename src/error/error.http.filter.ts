@@ -3,7 +3,7 @@ import {
     Catch,
     ArgumentsHost,
     HttpException,
-    HttpStatus
+    HttpStatus,
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Message } from 'src/message/message.decorator';
@@ -34,12 +34,12 @@ export class ErrorHttpFilter implements ExceptionFilter {
             const rMessage: string | IMessage[] = this.messageService.get(
                 response,
                 {
-                    appLanguages
+                    appLanguages,
                 }
             );
             responseHttp.status(statusHttp).json({
                 statusCode: statusHttp,
-                message: rMessage
+                message: rMessage,
             });
         } else if (typeof response === 'object') {
             const { statusCode, message, errors, data } = response;
@@ -58,7 +58,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 statusCode,
                 message: rMessage,
                 errors: rErrors,
-                data
+                data,
             });
         } else {
             const rMessage: string | IMessage[] = this.messageService.get(
@@ -67,7 +67,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
             );
             responseHttp.status(statusHttp).json({
                 statusCode: 500,
-                message: rMessage
+                message: rMessage,
             });
         }
     }

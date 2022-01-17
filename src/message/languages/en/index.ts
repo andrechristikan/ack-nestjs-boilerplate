@@ -1,14 +1,14 @@
-import user from './user';
-import http from './http';
-import request from './request';
-import auth from './auth';
-import app from './app';
-import response from './response';
-import role from './role';
-import helper from './helper';
-import kafka from './kafka';
-import message from './message';
-import permission from './permission';
+import user from './user.language';
+import http from './http.language';
+import request from './request.language';
+import auth from './auth.language';
+import test from './test.language';
+import response from './response.language';
+import role from './role.language';
+import message from './message.language';
+import permission from './permission.language';
+import file from './file.language';
+import kafka from './kafka.language';
 
 export default {
     role,
@@ -16,10 +16,10 @@ export default {
     http,
     request,
     auth,
-    app,
+    test,
     response,
-    helper,
-    kafka,
     message,
-    permission
+    permission,
+    file,
+    kafka,
 };

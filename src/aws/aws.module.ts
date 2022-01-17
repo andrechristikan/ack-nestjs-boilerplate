@@ -5,6 +5,6 @@ import { AwsService } from './aws.service';
     imports: [],
     exports: [AwsService],
     providers: [AwsService],
-    controllers: []
+    controllers: [],
 })
 export class AwsModule {}

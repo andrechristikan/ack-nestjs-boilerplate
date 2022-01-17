@@ -20,10 +20,10 @@ export class SeedsModule {
                     PermissionModule,
                     UserModule,
                     AuthModule,
-                    RoleModule
+                    RoleModule,
                 ],
                 providers: [PermissionSeed, RoleSeed, UserSeed],
-                exports: []
+                exports: [],
             };
         }
 
@@ -31,7 +31,7 @@ export class SeedsModule {
             module: SeedsModule,
             imports: [],
             providers: [],
-            exports: []
+            exports: [],
         };
     }
 }

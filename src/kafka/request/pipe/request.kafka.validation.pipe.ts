@@ -28,7 +28,7 @@ export function RequestKafkaValidationPipe(
             this.debuggerService.info('Request Kafka Data', {
                 class: 'RequestKafkaValidationPipe',
                 function: 'transform',
-                request: request
+                request: request,
             });
 
             const rawErrors: Record<string, any>[] = await validate(request);
@@ -36,14 +36,14 @@ export function RequestKafkaValidationPipe(
                 this.debuggerService.error('Request Kafka Errors', {
                     class: 'RequestKafkaValidationPipe',
                     function: 'transform',
-                    errors: rawErrors
+                    errors: rawErrors,
                 });
 
                 throw new RpcException({
                     statusCode:
                         ENUM_KAFKA_REQUEST_STATUS_CODE_ERROR.KAFKA_REQUEST_VALIDATION_ERROR,
                     message: 'http.clientError.unprocessableEntity',
-                    errors: rawErrors
+                    errors: rawErrors,
                 });
             }
             return value;

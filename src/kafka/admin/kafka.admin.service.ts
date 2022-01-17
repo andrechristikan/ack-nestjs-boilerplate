@@ -29,7 +29,7 @@ export class KafkaAdminService implements OnModuleInit, OnModuleDestroy {
         this.clientId = this.configService.get<string>('kafka.admin.clientId');
         this.kafkaOptions = {
             clientId: this.clientId,
-            brokers: this.brokers
+            brokers: this.brokers,
         };
         this.name = KafkaAdminService.name;
         this.defaultPartition = this.configService.get<number>(
@@ -97,7 +97,7 @@ export class KafkaAdminService implements OnModuleInit, OnModuleDestroy {
                 data.push({
                     topic,
                     numPartitions: this.defaultPartition,
-                    replicationFactor: this.brokers.length
+                    replicationFactor: this.brokers.length,
                 });
             }
         });
@@ -109,7 +109,7 @@ export class KafkaAdminService implements OnModuleInit, OnModuleDestroy {
                 data.push({
                     topic,
                     numPartitions: this.defaultPartition,
-                    replicationFactor: this.brokers.length
+                    replicationFactor: this.brokers.length,
                 });
             }
         });
@@ -117,7 +117,7 @@ export class KafkaAdminService implements OnModuleInit, OnModuleDestroy {
         if (data && data.length > 0) {
             this.admin.createTopics({
                 waitForLeaders: true,
-                topics: data
+                topics: data,
             });
         }
 

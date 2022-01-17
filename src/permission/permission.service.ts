@@ -7,6 +7,7 @@ import { PermissionEntity } from './permission.schema';
 import { PermissionGetTransformer } from './transformer/permission.get.transformer';
 import { PermissionListTransformer } from './transformer/permission.list.transformer';
 import { PermissionUpdateValidation } from './validation/permission.update.validation';
+import { DeleteResult } from 'mongodb';
 
 @Injectable()
 export class PermissionService {
@@ -20,10 +21,12 @@ export class PermissionService {
         options?: Record<string, any>
     ): Promise<PermissionDocument[]> {
         const findAll = this.permissionModel.find(find);
-        if (options && options.limit && options.skip) {
-            findAll
-                .limit(options.limit)
-                .skip(options && options.skip ? options.skip : 0);
+        if (
+            options &&
+            options.limit !== undefined &&
+            options.skip !== undefined
+        ) {
+            findAll.limit(options.limit).skip(options.skip);
         }
 
         if (options && options.sort) {
@@ -42,12 +45,11 @@ export class PermissionService {
     }
 
     async getTotal(find?: Record<string, any>): Promise<number> {
-        return this.permissionModel.countDocuments(find);
+        return this.permissionModel.estimatedDocumentCount(find);
     }
 
-    async deleteMany(find: Record<string, any>): Promise<boolean> {
-        await this.permissionModel.deleteMany(find);
-        return true;
+    async deleteOne(find: Record<string, any>): Promise<PermissionDocument> {
+        return this.permissionModel.findOneAndDelete(find);
     }
 
     async create(data: IPermission): Promise<PermissionDocument> {
@@ -55,22 +57,10 @@ export class PermissionService {
             name: data.name,
             code: data.code,
             description: data.description,
-            isActive: data.isActive || true
+            isActive: data.isActive || true,
         });
 
         return create.save();
-    }
-
-    async createMany(data: IPermission[]): Promise<boolean> {
-        await this.permissionModel.insertMany(
-            data.map(({ isActive, code, description, name }) => ({
-                code: code,
-                name: name,
-                description: description,
-                isActive: isActive || true
-            }))
-        );
-        return true;
     }
 
     async update(
@@ -108,5 +98,29 @@ export class PermissionService {
 
         permission.isActive = true;
         return permission.save();
+    }
+}
+
+@Injectable()
+export class PermissionBulkService {
+    constructor(
+        @InjectModel(PermissionEntity.name)
+        private readonly permissionModel: Model<PermissionDocument>
+    ) {}
+
+    async createMany(data: IPermission[]): Promise<boolean> {
+        await this.permissionModel.insertMany(
+            data.map(({ isActive, code, description, name }) => ({
+                code: code,
+                name: name,
+                description: description,
+                isActive: isActive || true,
+            }))
+        );
+        return true;
+    }
+
+    async deleteMany(find: Record<string, any>): Promise<DeleteResult> {
+        return this.permissionModel.deleteMany(find);
     }
 }

@@ -3,7 +3,7 @@ import {
     createParamDecorator,
     ExecutionContext,
     SetMetadata,
-    UseGuards
+    UseGuards,
 } from '@nestjs/common';
 import { RoleActiveGuard } from './guard/role.active.guard';
 import { RoleNotFoundGuard } from './guard/role.not-found.guard';

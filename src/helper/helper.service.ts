@@ -7,7 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { createCipheriv, createDecipheriv, scrypt, createHash } from 'crypto';
 import { promisify } from 'util';
 import { IHelperJwtOptions } from './helper.interface';
-import faker from 'faker';
+import faker from '@faker-js/faker';
 
 @Injectable()
 export class HelperService {
@@ -33,7 +33,7 @@ export class HelperService {
         const timestamp = `${new Date().valueOf()}`;
         const randomString: string = await this.randomString(length, {
             safe: true,
-            upperCase: true
+            upperCase: true,
         });
         return prefix
             ? `${prefix}-${timestamp}${randomString}`
@@ -47,7 +47,7 @@ export class HelperService {
         return options && options.safe
             ? faker.random.alpha({
                   count: length,
-                  upcase: options && options.upperCase ? true : false
+                  upcase: options && options.upperCase ? true : false,
               })
             : options && options.upperCase
             ? faker.random.alphaNumeric(length).toUpperCase()
@@ -92,17 +92,17 @@ export class HelperService {
         return moment().subtract(months, 'M').toDate();
     }
 
+    async randomSalt(length?: number): Promise<string> {
+        return genSalt(
+            length || this.configService.get<number>('helper.salt.length')
+        );
+    }
+
     async bcryptHashPassword(
         passwordString: string,
         salt: string
     ): Promise<string> {
         return hash(passwordString, salt);
-    }
-
-    async randomSalt(length?: number): Promise<string> {
-        return genSalt(
-            length || this.configService.get<number>('helper.salt.length')
-        );
     }
 
     async bcryptComparePassword(
@@ -137,7 +137,7 @@ export class HelperService {
                 options.notBefore ||
                 this.configService.get<string>(
                     'helper.jwt.notBeforeExpirationTime'
-                )
+                ),
         });
     }
 
@@ -148,7 +148,7 @@ export class HelperService {
         const payload: Record<string, any> = this.jwtService.verify(token, {
             secret:
                 options.secretKey ||
-                this.configService.get<string>('helper.jwt.secretKey')
+                this.configService.get<string>('helper.jwt.secretKey'),
         });
 
         return payload ? true : false;
@@ -161,11 +161,11 @@ export class HelperService {
         return this.jwtService.verify(token, {
             secret:
                 options.secretKey ||
-                this.configService.get<string>('helper.jwt.secretKey')
+                this.configService.get<string>('helper.jwt.secretKey'),
         });
     }
 
-    async aes256BitEncrypt(
+    async aes256Encrypt(
         data: string | Record<string, any> | Record<string, any>[],
         key: string,
         iv: string
@@ -180,13 +180,13 @@ export class HelperService {
 
         const encryptedText = Buffer.concat([
             cipher.update(dataParse),
-            cipher.final()
+            cipher.final(),
         ]);
 
         return encryptedText.toString('base64');
     }
 
-    async aes256BitDecrypt(
+    async aes256Decrypt(
         encrypted: string,
         key: string,
         iv: string
@@ -196,13 +196,13 @@ export class HelperService {
         const decipher = createDecipheriv('aes-256-ctr', crp, iv);
         const decryptedText = Buffer.concat([
             decipher.update(data),
-            decipher.final()
+            decipher.final(),
         ]);
 
         return decryptedText.toString('utf8');
     }
 
-    async sha256Decrypt(string: string): Promise<string> {
+    async sha256Hash(string: string): Promise<string> {
         return createHash('sha256').update(string).digest('hex');
     }
 }

@@ -3,7 +3,7 @@ import {
     Payload,
     KafkaContext,
     Ctx,
-    RpcException
+    RpcException,
 } from '@nestjs/microservices';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
@@ -30,37 +30,37 @@ export class KafkaConsumerController {
         this.debuggerService.info('Original Message', {
             class: 'KafkaConsumerController',
             function: 'testKafka',
-            ...originalMessage
+            ...originalMessage,
         });
 
         this.debuggerService.info('Original Message', {
             class: 'KafkaConsumerController',
             function: 'testKafka',
-            ...originalMessage
+            ...originalMessage,
         });
 
         this.debuggerService.info('Topic', {
             class: 'KafkaConsumerController',
             function: 'testKafka',
-            topic
+            topic,
         });
 
         this.debuggerService.info('Partition', {
             class: 'KafkaConsumerController',
             function: 'testKafka',
-            partition
+            partition,
         });
 
         this.debuggerService.info('Message', {
             class: 'KafkaConsumerController',
             function: 'testKafka',
-            message
+            message,
         });
 
         return {
             key: message.key,
             value: message.value,
-            headers: message.headers
+            headers: message.headers,
         };
     }
 
@@ -76,36 +76,36 @@ export class KafkaConsumerController {
         this.debuggerService.error('Original Message', {
             class: 'KafkaConsumerController',
             function: 'testKafka',
-            ...originalMessage
+            ...originalMessage,
         });
 
         this.debuggerService.error('Original Message', {
             class: 'KafkaConsumerController',
             function: 'testKafka',
-            ...originalMessage
+            ...originalMessage,
         });
 
         this.debuggerService.error('Topic', {
             class: 'KafkaConsumerController',
             function: 'testKafka',
-            topic
+            topic,
         });
 
         this.debuggerService.error('Partition', {
             class: 'KafkaConsumerController',
             function: 'testKafka',
-            partition
+            partition,
         });
 
         this.debuggerService.error('Message', {
             class: 'KafkaConsumerController',
             function: 'testKafka',
-            message
+            message,
         });
 
         throw new RpcException({
             statusCode: ENUM_KAFKA_ERROR_STATUS_CODE.TEST_KAFKA_ERROR,
-            message: 'app.error.kafka'
+            message: 'kafka.error.produce',
         });
     }
 }

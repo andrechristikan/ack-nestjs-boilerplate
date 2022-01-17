@@ -4,7 +4,7 @@ import {
     ExecutionContext,
     CallHandler,
     mixin,
-    Type
+    Type,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -45,13 +45,13 @@ export function ResponseDefaultInterceptor(
                     const data: Record<string, any> = await response;
                     const message: string | IMessage[] =
                         this.messageService.get(messagePath, {
-                            appLanguages
+                            appLanguages,
                         }) || this.messageService.get('response.default');
 
                     return {
                         statusCode,
                         message,
-                        data
+                        data,
                     };
                 })
             );

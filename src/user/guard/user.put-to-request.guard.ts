@@ -11,15 +11,13 @@ export class UserPutToRequestGuard implements CanActivate {
         const { params } = request;
         const { user } = params;
 
-        const check: IUserDocument = await this.userService.findOneById<IUserDocument>(
-            user,
-            {
+        const check: IUserDocument =
+            await this.userService.findOneById<IUserDocument>(user, {
                 populate: {
                     role: true,
-                    permission: true
-                }
-            }
-        );
+                    permission: true,
+                },
+            });
         request.__user = check;
 
         return true;

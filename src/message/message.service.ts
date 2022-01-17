@@ -5,7 +5,7 @@ import messages, { ENUM_MESSAGE_LANGUAGE } from 'src/message/message.constant';
 import {
     IMessage,
     IMessageOptions,
-    IMessageSetOptions
+    IMessageSetOptions,
 } from './message.interface';
 import dot from 'dot-object';
 import { isArray } from 'class-validator';
@@ -29,7 +29,7 @@ export class MessageService {
                   )
                   .map((value) => ({
                       path: `${value.toLowerCase()}.${key}`,
-                      language: value
+                      language: value,
                   }))
             : [];
 
@@ -45,18 +45,18 @@ export class MessageService {
             }
             return this.setMessage(messages as string, {
                 property,
-                propertyValue
+                propertyValue,
             });
         }
 
         return messages.map((value) => {
             const message: string = this.setMessage(value.path, {
                 property,
-                propertyValue
+                propertyValue,
             });
             return {
                 language: value.language,
-                message
+                message,
             };
         });
     }
@@ -98,8 +98,8 @@ export class MessageService {
                     message: this.get(`request.${value}`, {
                         appLanguages,
                         property,
-                        propertyValue
-                    })
+                        propertyValue,
+                    }),
                 }));
             }
         );

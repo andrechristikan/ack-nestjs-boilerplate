@@ -3,12 +3,12 @@ import {
     createParamDecorator,
     ExecutionContext,
     applyDecorators,
-    SetMetadata
+    SetMetadata,
 } from '@nestjs/common';
 import { PermissionDefaultGuard } from 'src/permission/guard/permission.default.guard';
 import {
     ENUM_PERMISSIONS,
-    PERMISSION_META_KEY
+    PERMISSION_META_KEY,
 } from 'src/permission/permission.constant';
 import { AUTH_ADMIN_META_KEY } from './auth.constant';
 import { BasicGuard } from './guard/basic/auth.basic.guard';
@@ -64,7 +64,6 @@ export function AuthJwtRefreshGuard(): any {
         UseGuards(
             JwtRefreshGuard,
             AuthLoginExpiredGuard,
-            AuthDefaultGuard,
             AuthPasswordExpiredGuard
         )
     );

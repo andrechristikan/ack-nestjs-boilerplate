@@ -8,24 +8,27 @@ import {
     BadRequestException,
     ForbiddenException,
     InternalServerErrorException,
-    Inject,
-    forwardRef
+    Patch,
 } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
 import { UserService } from 'src/user/user.service';
-import { IUserCheckExist, IUserDocument } from 'src/user/user.interface';
+import {
+    IUserCheckExist,
+    IUserDocument,
+    UserDocument,
+} from 'src/user/user.interface';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe';
 import { AuthLoginValidation } from './validation/auth.login.validation';
 import { LoggerService } from 'src/logger/logger.service';
 import { ENUM_LOGGER_ACTION } from 'src/logger/logger.constant';
-import { AuthJwtRefreshGuard, User } from './auth.decorator';
+import { AuthJwtGuard, AuthJwtRefreshGuard, User } from './auth.decorator';
 import { Response } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
 import {
     ENUM_AUTH_STATUS_CODE_ERROR,
-    ENUM_AUTH_STATUS_CODE_SUCCESS
+    ENUM_AUTH_STATUS_CODE_SUCCESS,
 } from './auth.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
@@ -35,16 +38,18 @@ import { ENUM_STATUS_CODE_ERROR } from 'src/error/error.constant';
 import { RoleService } from 'src/role/role.service';
 import { AuthLoginTransformer } from './transformer/auth.login.transformer';
 import { SuccessException } from 'src/error/error.http.filter';
+import { AuthChangePasswordValidation } from './validation/auth.change-password.validation';
 
-@Controller('/auth')
+@Controller({
+    version: '1',
+})
 export class AuthController {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService,
-        @Inject(forwardRef(() => UserService))
         private readonly userService: UserService,
         private readonly authService: AuthService,
-        private readonly loggerService: LoggerService,
-        private readonly roleService: RoleService
+        private readonly roleService: RoleService,
+        private readonly loggerService: LoggerService
     ) {}
 
     @Response('auth.login', ENUM_AUTH_STATUS_CODE_SUCCESS.AUTH_LOGIN_SUCCESS)
@@ -57,45 +62,45 @@ export class AuthController {
         const user: IUserDocument =
             await this.userService.findOne<IUserDocument>(
                 {
-                    email: data.email
+                    email: data.email,
                 },
                 {
                     populate: {
                         role: true,
-                        permission: true
-                    }
+                        permission: true,
+                    },
                 }
             );
 
         if (!user) {
             this.debuggerService.error('Authorized error user not found', {
                 class: 'AuthController',
-                function: 'login'
+                function: 'login',
             });
 
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
-                message: 'user.error.notFound'
+                message: 'user.error.notFound',
             });
         } else if (!user.isActive) {
             this.debuggerService.error('Auth Block', {
                 class: 'AuthController',
-                function: 'login'
+                function: 'login',
             });
 
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR,
-                message: 'user.error.inactive'
+                message: 'user.error.inactive',
             });
         } else if (!user.role.isActive) {
             this.debuggerService.error('Role Block', {
                 class: 'AuthController',
-                function: 'login'
+                function: 'login',
             });
 
             throw new ForbiddenException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR,
-                message: 'role.error.inactive'
+                message: 'role.error.inactive',
             });
         }
 
@@ -107,13 +112,13 @@ export class AuthController {
         if (!validate) {
             this.debuggerService.error('Authorized error', {
                 class: 'AuthController',
-                function: 'login'
+                function: 'login',
             });
 
             throw new BadRequestException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR,
-                message: 'auth.error.passwordNotMatch'
+                message: 'auth.error.passwordNotMatch',
             });
         }
 
@@ -137,30 +142,30 @@ export class AuthController {
         if (today > passwordExpired) {
             this.debuggerService.error('Password expired', {
                 class: 'AuthController',
-                function: 'login'
+                function: 'login',
             });
 
             throw new SuccessException({
                 statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
+                    ENUM_AUTH_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
                 message: 'auth.error.passwordExpired',
                 data: {
                     accessToken,
-                    refreshToken
-                }
+                    refreshToken,
+                },
             });
         }
 
-        await this.loggerService.info(
-            ENUM_LOGGER_ACTION.LOGIN,
-            `${user._id} do login`,
-            user._id,
-            ['login', 'withEmail']
-        );
+        await this.loggerService.info({
+            action: ENUM_LOGGER_ACTION.LOGIN,
+            description: `${user._id} do login`,
+            user: user._id,
+            tags: ['login', 'withEmail'],
+        });
 
         return {
             accessToken,
-            refreshToken
+            refreshToken,
         };
     }
 
@@ -176,39 +181,39 @@ export class AuthController {
             await this.userService.findOneById<IUserDocument>(_id, {
                 populate: {
                     role: true,
-                    permission: true
-                }
+                    permission: true,
+                },
             });
 
         if (!user) {
             this.debuggerService.error('Authorized error user not found', {
                 class: 'AuthController',
-                function: 'refresh'
+                function: 'refresh',
             });
 
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
-                message: 'user.error.notFound'
+                message: 'user.error.notFound',
             });
         } else if (!user.isActive) {
             this.debuggerService.error('Auth Block', {
                 class: 'AuthController',
-                function: 'refresh'
+                function: 'refresh',
             });
 
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR,
-                message: 'user.error.inactive'
+                message: 'user.error.inactive',
             });
         } else if (!user.role.isActive) {
             this.debuggerService.error('Role Block', {
                 class: 'AuthController',
-                function: 'refresh'
+                function: 'refresh',
             });
 
             throw new ForbiddenException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR,
-                message: 'role.error.inactive'
+                message: 'role.error.inactive',
             });
         }
 
@@ -218,13 +223,13 @@ export class AuthController {
         if (today > passwordExpired) {
             this.debuggerService.error('Password expired', {
                 class: 'AuthController',
-                function: 'refresh'
+                function: 'refresh',
             });
 
             throw new ForbiddenException({
                 statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
-                message: 'auth.error.passwordExpired'
+                    ENUM_AUTH_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
+                message: 'auth.error.passwordExpired',
             });
         }
 
@@ -249,7 +254,7 @@ export class AuthController {
 
         return {
             accessToken,
-            refreshToken
+            refreshToken,
         };
     }
 
@@ -261,18 +266,18 @@ export class AuthController {
     ): Promise<IResponse> {
         const role: RoleDocument = await this.roleService.findOne<RoleDocument>(
             {
-                name: 'user'
+                name: 'user',
             }
         );
         if (!role) {
             this.debuggerService.error('Role not found', {
                 class: 'UserPublicController',
-                function: 'signUp'
+                function: 'signUp',
             });
 
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
-                message: 'role.error.notFound'
+                message: 'role.error.notFound',
             });
         }
 
@@ -284,33 +289,33 @@ export class AuthController {
         if (checkExist.email && checkExist.mobileNumber) {
             this.debuggerService.error('create user exist', {
                 class: 'UserController',
-                function: 'create'
+                function: 'create',
             });
 
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EXISTS_ERROR,
-                message: 'user.error.exist'
+                message: 'user.error.exist',
             });
         } else if (checkExist.email) {
             this.debuggerService.error('create user exist', {
                 class: 'UserController',
-                function: 'create'
+                function: 'create',
             });
 
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
-                message: 'user.error.emailExist'
+                message: 'user.error.emailExist',
             });
         } else if (checkExist.mobileNumber) {
             this.debuggerService.error('create user exist', {
                 class: 'UserController',
-                function: 'create'
+                function: 'create',
             });
 
             throw new BadRequestException({
                 statusCode:
                     ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
-                message: 'user.error.mobileNumberExist'
+                message: 'user.error.mobileNumberExist',
             });
         }
 
@@ -327,15 +332,15 @@ export class AuthController {
                 role: role._id,
                 password: password.passwordHash,
                 passwordExpired: password.passwordExpired,
-                salt: password.salt
+                salt: password.salt,
             });
 
             const user: IUserDocument =
                 await this.userService.findOneById<IUserDocument>(create._id, {
                     populate: {
                         role: true,
-                        permission: true
-                    }
+                        permission: true,
+                    },
                 });
             const safe: AuthLoginTransformer = await this.authService.mapLogin(
                 user
@@ -351,19 +356,101 @@ export class AuthController {
 
             return {
                 accessToken,
-                refreshToken
+                refreshToken,
             };
         } catch (err: any) {
             this.debuggerService.error('Signup try catch', {
                 class: 'UserPublicController',
                 function: 'signUp',
-                error: err
+                error: err,
             });
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
-                message: 'http.server.internalServerError'
+                message: 'http.serverError.internalServerError',
             });
         }
+    }
+
+    @Response('auth.changePassword')
+    @AuthJwtGuard()
+    @Patch('/change-password')
+    async changePassword(
+        @Body(RequestValidationPipe) body: AuthChangePasswordValidation,
+        @User('_id') _id: string
+    ): Promise<void> {
+        const user: UserDocument = await this.userService.findOneById(_id);
+        if (!user) {
+            this.debuggerService.error('User not found', {
+                class: 'AuthController',
+                function: 'changePassword',
+            });
+
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
+                message: 'user.error.notFound',
+            });
+        }
+
+        const matchPassword: boolean = await this.authService.validateUser(
+            body.oldPassword,
+            user.password
+        );
+        if (!matchPassword) {
+            this.debuggerService.error("Old password don't match", {
+                class: 'AuthController',
+                function: 'changePassword',
+            });
+
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR,
+                message: 'auth.error.passwordNotMatch',
+            });
+        }
+
+        const newMatchPassword: boolean = await this.authService.validateUser(
+            body.newPassword,
+            user.password
+        );
+        if (newMatchPassword) {
+            this.debuggerService.error(
+                "New password cant't same with old password",
+                {
+                    class: 'AuthController',
+                    function: 'changePassword',
+                }
+            );
+
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.USER_PASSWORD_NEW_MUST_DIFFERENCE_ERROR,
+                message: 'auth.error.newPasswordMustDifference',
+            });
+        }
+
+        try {
+            const password = await this.authService.createPassword(
+                body.newPassword
+            );
+
+            await this.userService.updatePassword(user._id, password);
+        } catch (e) {
+            this.debuggerService.error(
+                'Change password error internal server error',
+                {
+                    class: 'AuthController',
+                    function: 'changePassword',
+                    error: { ...e },
+                }
+            );
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                message: 'http.serverError.internalServerError',
+            });
+        }
+
+        return;
     }
 }

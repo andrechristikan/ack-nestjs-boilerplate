@@ -2,7 +2,7 @@ import {
     Injectable,
     CanActivate,
     ExecutionContext,
-    NotFoundException
+    NotFoundException,
 } from '@nestjs/common';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { Logger as DebuggerService } from 'winston';
@@ -20,12 +20,12 @@ export class RoleNotFoundGuard implements CanActivate {
         if (!__role) {
             this.debuggerService.error('Role not found', {
                 class: 'RoleNotFoundGuard',
-                function: 'canActivate'
+                function: 'canActivate',
             });
 
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
-                message: 'role.error.notFound'
+                message: 'role.error.notFound',
             });
         }
 

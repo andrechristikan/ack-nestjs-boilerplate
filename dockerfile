@@ -1,5 +1,5 @@
 FROM node:lts-alpine
-LABEL maintainer "andrechristikan@gmail.com"
+LABEL maintainer "ack@baibay.com"
 
 WORKDIR /app
 EXPOSE 3000

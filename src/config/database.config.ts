@@ -11,6 +11,6 @@ export default registerAs(
         srv: process.env.DATABASE_SRV === 'true' || false,
         ssl: process.env.DATABASE_SSL === 'true' || false,
         debug: process.env.DATABASE_DEBUG === 'true' || false,
-        options: process.env.DATABASE_OPTIONS
+        options: process.env.DATABASE_OPTIONS,
     })
 );

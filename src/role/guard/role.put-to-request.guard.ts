@@ -11,14 +11,12 @@ export class RolePutToRequestGuard implements CanActivate {
         const { params } = request;
         const { role } = params;
 
-        const check: IRoleDocument = await this.roleService.findOneById<IRoleDocument>(
-            role,
-            {
+        const check: IRoleDocument =
+            await this.roleService.findOneById<IRoleDocument>(role, {
                 populate: {
-                    permission: true
-                }
-            }
-        );
+                    permission: true,
+                },
+            });
         request.__role = check;
 
         return true;

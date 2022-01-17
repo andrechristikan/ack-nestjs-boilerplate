@@ -4,7 +4,7 @@ import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 
 import { RoleService } from 'src/role/role.service';
-import { UserService } from 'src/user/user.service';
+import { UserBulkService, UserService } from 'src/user/user.service';
 import { RoleDocument } from 'src/role/role.interface';
 import { AuthService } from 'src/auth/auth.service';
 
@@ -14,17 +14,18 @@ export class UserSeed {
         @Debugger() private readonly debuggerService: DebuggerService,
         private readonly authService: AuthService,
         private readonly userService: UserService,
+        private readonly userBulkService: UserBulkService,
         private readonly roleService: RoleService
     ) {}
 
     @Command({
         command: 'insert:user',
-        describe: 'insert users'
+        describe: 'insert users',
     })
     async insert(): Promise<void> {
         const role: RoleDocument = await this.roleService.findOne<RoleDocument>(
             {
-                name: 'admin'
+                name: 'admin',
             }
         );
 
@@ -41,37 +42,37 @@ export class UserSeed {
                 passwordExpired: password.passwordExpired,
                 mobileNumber: '08111111111',
                 role: role._id,
-                salt: password.salt
+                salt: password.salt,
             });
 
             this.debuggerService.info('Insert User Succeed', {
                 class: 'UserSeed',
-                function: 'insert'
+                function: 'insert',
             });
         } catch (e) {
             this.debuggerService.error(e.message, {
                 class: 'UserSeed',
-                function: 'insert'
+                function: 'insert',
             });
         }
     }
 
     @Command({
         command: 'remove:user',
-        describe: 'remove users'
+        describe: 'remove users',
     })
     async remove(): Promise<void> {
         try {
-            await this.userService.deleteMany({});
+            await this.userBulkService.deleteMany({});
 
             this.debuggerService.info('Remove User Succeed', {
                 class: 'UserSeed',
-                function: 'remove'
+                function: 'remove',
             });
         } catch (e) {
             this.debuggerService.error(e.message, {
                 class: 'UserSeed',
-                function: 'remove'
+                function: 'remove',
             });
         }
     }

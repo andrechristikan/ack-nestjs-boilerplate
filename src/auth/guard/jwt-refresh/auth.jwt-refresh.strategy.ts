@@ -13,11 +13,11 @@ export class JwtRefreshStrategy extends PassportStrategy(
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
             jsonWebTokenOptions: {
-                ignoreNotBefore: false
+                ignoreNotBefore: false,
             },
             secretOrKey: configService.get<string>(
                 'auth.jwt.refreshToken.secretKey'
-            )
+            ),
         });
     }
 

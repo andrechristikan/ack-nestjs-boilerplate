@@ -11,9 +11,9 @@ export class UserGetTransformer {
             name: value.name,
             permissions: value.permissions.map((val: Record<string, any>) => ({
                 name: val.name,
-                isActive: val.isActive
+                isActive: val.isActive,
             })),
-            isActive: value.isActive
+            isActive: value.isActive,
         }),
         { toClassOnly: true }
     )

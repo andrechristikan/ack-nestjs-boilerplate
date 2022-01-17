@@ -2,14 +2,14 @@ import {
     Injectable,
     CanActivate,
     ExecutionContext,
-    BadRequestException
+    BadRequestException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { Logger as DebuggerService } from 'winston';
 import {
     ENUM_PERMISSION_STATUS_CODE_ERROR,
-    PERMISSION_ACTIVE_META_KEY
+    PERMISSION_ACTIVE_META_KEY,
 } from '../permission.constant';
 
 @Injectable()
@@ -34,13 +34,13 @@ export class PermissionActiveGuard implements CanActivate {
         if (!required.includes(__permission.isActive)) {
             this.debuggerService.error('Permission active error', {
                 class: 'PermissionActiveGuard',
-                function: 'canActivate'
+                function: 'canActivate',
             });
 
             throw new BadRequestException({
                 statusCode:
                     ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_ACTIVE_ERROR,
-                message: 'permission.error.active'
+                message: 'permission.error.active',
             });
         }
         return true;

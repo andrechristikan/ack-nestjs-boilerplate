@@ -9,7 +9,7 @@ export class UserEntity {
         required: true,
         index: true,
         lowercase: true,
-        trim: true
+        trim: true,
     })
     firstName: string;
 
@@ -17,7 +17,7 @@ export class UserEntity {
         required: false,
         index: true,
         lowercase: true,
-        trim: true
+        trim: true,
     })
     lastName?: string;
 
@@ -25,7 +25,7 @@ export class UserEntity {
         required: true,
         index: true,
         unique: true,
-        trim: true
+        trim: true,
     })
     mobileNumber: string;
 
@@ -34,35 +34,35 @@ export class UserEntity {
         index: true,
         unique: true,
         lowercase: true,
-        trim: true
+        trim: true,
     })
     email: string;
 
     @Prop({
         required: true,
         type: Types.ObjectId,
-        ref: RoleEntity.name
+        ref: RoleEntity.name,
     })
     role: Types.ObjectId;
 
     @Prop({
-        required: true
+        required: true,
     })
     password: string;
 
     @Prop({
-        required: true
+        required: true,
     })
     passwordExpired: Date;
 
     @Prop({
-        required: true
+        required: true,
     })
     salt: string;
 
     @Prop({
         required: true,
-        default: true
+        default: true,
     })
     isActive: boolean;
 
@@ -71,12 +71,12 @@ export class UserEntity {
         _id: false,
         type: {
             path: String,
-            path_with_filename: String,
+            pathWithFilename: String,
             filename: String,
-            completed_url: String,
-            base_url: String,
-            mime: String
-        }
+            completedUrl: String,
+            baseUrl: String,
+            mime: String,
+        },
     })
     photo?: IAwsResponse;
 }
