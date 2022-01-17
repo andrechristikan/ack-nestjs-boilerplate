@@ -39,7 +39,7 @@ We assume that all people are coming to here is `Programmer with intermediate kn
 
 ## Build With
 
-Main packages and Main Tools
+Main Packages and Main Tools
 
 * [NestJs](nestjs-url) v8.2.4
 * [NodeJs](nodejs-url) v17.3.0
@@ -53,7 +53,7 @@ Main packages and Main Tools
 
 ## Features
 
-The features will spill on this section, please read secretly and keep silent
+The features will spill on this section
 
 ### Configuration
 
@@ -173,15 +173,6 @@ Open our terminal and follow this instruction
     # 1.22.17
     ```
 
-    with npm
-
-    ```sh
-    npm --version
-
-    # will return 
-    # 8.3.0
-    ```
-
 3. Check MongoDB
 
     ```sh
@@ -203,12 +194,6 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
 
     ```sh
     yarn
-    ```
-
-    with npm
-
-    ```sh
-    npm i
     ```
 
 2. Build our Env based on `.env.example` file.
@@ -287,12 +272,6 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
         yarn migrate
         ```
 
-        with npm
-
-        ```sh
-        npm run migrate
-        ```
-
     - Rollback migrate
         > NOTE: be careful to use rollback, cause rollback will remove all data in collection
 
@@ -300,13 +279,7 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
         yarn migrate:rollback
         ```
 
-        with npm
-
-        ```sh
-        npm run migrate:rollback
-        ```
-
-5.  <strong> *** SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET *** </strong>. 
+5.  **SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET**
 
     Make sure we do the correct step. Go run `TestModule` and make sure all test passed with success status.
 
@@ -316,34 +289,16 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
         yarn test
         ```
 
-        with npm
-
-        ```sh
-        npm run test
-        ```
-
     - Run E2E Testing
 
         ```sh
         yarn test:e2e
         ```
 
-        with npm
-
-        ```sh
-        npm run test:e2e
-        ```
-
 ### Run project
 
 ```sh
 yarn start:dev
-```
-
-with npm
-
-```sh
-npm run start:dev
 ```
 
 Cheers 🍻🍻 !!! our project is running well. Now we can use all features.

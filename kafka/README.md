@@ -15,7 +15,7 @@ Alright, we need to know some knowledge before next section.
 
 ## Build With
 
-Main packages and Main Tools
+Main Packages and Main Tools
 
 * [NestJs-Microservice](nestjs-microservice-url) v8.2.4
 * [KafkaJs](kafka-js-url) v1.15.0
@@ -44,12 +44,6 @@ kafka-topics --version
 
     ```sh
     yarn add @nestjs/microservices kafkajs
-    ```
-
-    Or with npm
-
-    ```sh
-    npm i @nestjs/microservices kafkajs
     ```
 
 2. Our environment will be a little different. We will use `kafka/.env.example`, [Click here to see details](.env.example)
@@ -243,12 +237,6 @@ Run project with yarn
 yarn start:dev
 ```
 
-Or run project with npm
-
-```sh
-npm run start:dev
-```
-
 ### Run with Docker
 
 This Instruction will little bit difference
@@ -375,13 +363,6 @@ We will cover this section in next update, but if you want to read the source co
     ```sh
     yarn remove @nestjs/microservices kafkajs
     ```
-
-    Or remove with npm
-
-    ```sh
-    npm uninstall @nestjs/microservices kafkajs
-    ```
-
 
 <p align="right"><a href="#top">back to top</a></p>
 
