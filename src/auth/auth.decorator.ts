@@ -25,17 +25,15 @@ export function AuthJwtGuard(): any {
     );
 }
 
-export function AuthPublicJwtGuard(...permissions: ENUM_PERMISSIONS[]): any {
+export function AuthPublicJwtGuard(): any {
     return applyDecorators(
         UseGuards(
             JwtGuard,
             AuthLoginExpiredGuard,
             AuthDefaultGuard,
             AuthPasswordExpiredGuard,
-            AuthAdminGuard,
-            PermissionDefaultGuard
+            AuthAdminGuard
         ),
-        SetMetadata(PERMISSION_META_KEY, permissions),
         SetMetadata(AUTH_ADMIN_META_KEY, [false])
     );
 }

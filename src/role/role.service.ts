@@ -151,8 +151,8 @@ export class RoleBulkService {
         return await this.roleModel.deleteMany(find);
     }
 
-    async createMany(data: RoleCreateValidation[]): Promise<boolean> {
-        await this.roleModel.insertMany(
+    async createMany(data: RoleCreateValidation[]): Promise<RoleDocument[]> {
+        return this.roleModel.insertMany(
             data.map(({ name, permissions, isAdmin }) => ({
                 name,
                 isActive: true,
@@ -160,7 +160,5 @@ export class RoleBulkService {
                 permissions: permissions.map((val) => new Types.ObjectId(val)),
             }))
         );
-
-        return true;
     }
 }

@@ -331,15 +331,14 @@ export class UserPublicController {
             .substring(filename.lastIndexOf('.') + 1, filename.length)
             .toUpperCase();
 
-        const uploadPath: string =
-            this.configService.get<string>('user.uploadPath');
+        const path = await this.userService.createRandomFilename();
 
         try {
             const aws: IAwsResponse = await this.awsService.s3PutItemInBucket(
-                `${await this.userService.createRandomFilename()}.${mime}`,
+                `${path.filename}.${mime}`,
                 content,
                 {
-                    path: `${uploadPath}/${user._id}`,
+                    path: `${path.path}/${user._id}`,
                 }
             );
 

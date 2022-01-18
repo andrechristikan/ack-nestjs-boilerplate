@@ -108,8 +108,8 @@ export class PermissionBulkService {
         private readonly permissionModel: Model<PermissionDocument>
     ) {}
 
-    async createMany(data: IPermission[]): Promise<boolean> {
-        await this.permissionModel.insertMany(
+    async createMany(data: IPermission[]): Promise<PermissionDocument[]> {
+        return this.permissionModel.insertMany(
             data.map(({ isActive, code, description, name }) => ({
                 code: code,
                 name: name,
@@ -117,7 +117,6 @@ export class PermissionBulkService {
                 isActive: isActive || true,
             }))
         );
-        return true;
     }
 
     async deleteMany(find: Record<string, any>): Promise<DeleteResult> {

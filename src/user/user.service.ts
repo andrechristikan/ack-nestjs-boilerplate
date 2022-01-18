@@ -20,14 +20,20 @@ import { UserListTransformer } from './transformer/user.list.transformer';
 import { UserGetTransformer } from './transformer/user.get.transformer';
 import { IAuthPassword } from 'src/auth/auth.interface';
 import { DeleteResult } from 'mongodb';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserService {
+    private readonly uploadPath: string;
+
     constructor(
         @InjectModel(UserEntity.name)
         private readonly userModel: Model<UserDocument>,
-        @Helper() private readonly helperService: HelperService
-    ) {}
+        @Helper() private readonly helperService: HelperService,
+        private readonly configService: ConfigService
+    ) {
+        this.uploadPath = this.configService.get<string>('user.uploadPath');
+    }
 
     async findAll(
         find?: Record<string, any>,
@@ -198,8 +204,13 @@ export class UserService {
         return user.save();
     }
 
-    async createRandomFilename(): Promise<string> {
-        return this.helperService.randomString(20);
+    async createRandomFilename(): Promise<Record<string, any>> {
+        const filename: string = await this.helperService.randomString(20);
+
+        return {
+            path: this.uploadPath,
+            filename: filename,
+        };
     }
 
     async updatePassword(
