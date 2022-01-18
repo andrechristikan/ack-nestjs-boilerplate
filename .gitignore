@@ -50,5 +50,6 @@ lerna-debug.log*
 .env.testing
 .env.development
 .env.production
+.env.key
 config.yaml
 config.yml

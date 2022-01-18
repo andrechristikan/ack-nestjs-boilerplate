@@ -133,7 +133,7 @@ export class AuthService {
     }
 
     async createPayload(
-        data: Record<string, any>,
+        data: AuthLoginTransformer,
         rememberMe: boolean,
         loginDate?: Date, // for refresh token
         loginExpired?: Date // for refresh token

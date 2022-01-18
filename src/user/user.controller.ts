@@ -44,7 +44,6 @@ import { AuthAdminJwtGuard, AuthPublicJwtGuard } from 'src/auth/auth.decorator';
 import { AuthService } from 'src/auth/auth.service';
 import { UploadFileSingle } from 'src/file/file.decorator';
 import { ENUM_FILE_TYPE } from 'src/file/file.constant';
-import { LoggerService } from 'src/logger/logger.service';
 
 @Controller({
     version: '1',
@@ -55,8 +54,7 @@ export class UserAdminController {
         @Debugger() private readonly debuggerService: DebuggerService,
         private readonly authService: AuthService,
         private readonly paginationService: PaginationService,
-        private readonly userService: UserService,
-        private readonly loggerService: LoggerService
+        private readonly userService: UserService
     ) {}
 
     @ResponsePaging('user.list')
@@ -227,10 +225,10 @@ export class UserAdminController {
     async update(
         @GetUser() user: IUserDocument,
         @Body(RequestValidationPipe)
-        data: UserUpdateValidation
+        body: UserUpdateValidation
     ): Promise<IResponse> {
         try {
-            await this.userService.updateOneById(user._id, data);
+            await this.userService.updateOneById(user._id, body);
         } catch (err: any) {
             this.debuggerService.error('update try catch', {
                 class: 'UserController',

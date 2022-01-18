@@ -18,9 +18,7 @@
 
 # ACK NestJs Boilerplate 🔥 🚀
 
-> NOTE: There will be huge differences between USAGE Documentation and Source Code
->
-> Last update readme documentation on 16 Jan 2022
+> NOTE: Last update readme documentation on 18 Jan 2022
 
 ACK is a [NestJs](nestjs-url) Boilerplate with [Mongoose](mongoose-url) and [MongoDB](mongodb-url) as Database. `Best uses for build an API Project or Microservice Project.` Made with following [nodejs-best-practice](nodejs-bestpractice-url) as benchmark and NestJs Habit
 
@@ -134,6 +132,7 @@ All kafka features can switch on/off or remove, [read kafka section](#kafka-docu
 
 ### Todo
 
+- [x] Split Env File
 - [ ] Production Ready (Setting Module), can manage from Database
 - [ ] Unit Test and E2E Test
 - [ ] Update Usage Documentation
@@ -196,7 +195,7 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
     yarn
     ```
 
-2. Build our Env based on `.env.example` file.
+2. Build our Env based on `.env` file.
 
     ```sh
     cp .env.example .env
@@ -222,21 +221,35 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
     DATABASE_DEBUG=false
     DATABASE_SSL=false
     DATABASE_OPTIONS=
+    ```
 
+3. Copy `.env.key`
+
+    > This method will useful when we have more than one application, and we need to share some environment between the projects
+
+    We will put all keys and secret keys into other file
+
+    ```sh
+    cp .env.key.example .env.key
+    ```
+
+    and then we need to adjust with our env
+
+    ```env
     AUTH_JWT_ACCESS_TOKEN_SECRET_KEY=123456
-
     AUTH_JWT_REFRESH_TOKEN_SECRET_KEY=01001231
 
     AUTH_BASIC_TOKEN_CLIENT_ID=asdzxc
     AUTH_BASIC_TOKEN_CLIENT_SECRET=1234567890
 
-    AWS_CREDENTIAL_KEY=awskey12345
-    AWS_CREDENTIAL_SECRET=awssecret12345
+    AWS_BUCKET_CREATE_FROM_INIT=false
+    AWS_CREDENTIAL_KEY=
+    AWS_CREDENTIAL_SECRET=
     AWS_S3_REGION=us-east-2
     AWS_S3_BUCKET=acks3
     ```
 
-3. Create Database, [follow this instruction from mongodb official](mongodb-create-database-url)
+4. Create Database, [follow this instruction from mongodb official](mongodb-create-database-url)
 
     > NOTE: If we use mongodb < v5, we need some adjust in `src/database/database.service.ts`
 
@@ -264,7 +277,7 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
     ...
     ```
 
-4. We need to Migration Role and Permission for first usage
+5. We need to Migration Role and Permission for first usage
 
     - Fresh migrate
 
@@ -279,7 +292,7 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
         yarn migrate:rollback
         ```
 
-5.  **SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET**
+6.  **SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET**
 
     Make sure we do the correct step. Go run `TestModule` and make sure all test passed with success status.
 
@@ -356,21 +369,31 @@ After installation, we need to import all endpoint into postman, [see this instr
     DATABASE_DEBUG=false
     DATABASE_SSL=false
     DATABASE_OPTIONS=
+    ```
 
+4. Copy `.env.key`
+
+    ```sh
+    cp .env.key.example .env.key
+    ```
+
+    and then we need to adjust with our env
+
+    ```env
     AUTH_JWT_ACCESS_TOKEN_SECRET_KEY=123456
-
     AUTH_JWT_REFRESH_TOKEN_SECRET_KEY=01001231
 
     AUTH_BASIC_TOKEN_CLIENT_ID=asdzxc
     AUTH_BASIC_TOKEN_CLIENT_SECRET=1234567890
 
-    AWS_CREDENTIAL_KEY=awskey12345
-    AWS_CREDENTIAL_SECRET=awssecret12345
+    AWS_BUCKET_CREATE_FROM_INIT=false
+    AWS_CREDENTIAL_KEY=
+    AWS_CREDENTIAL_SECRET=
     AWS_S3_REGION=us-east-2
     AWS_S3_BUCKET=acks3
     ```
 
-4. Run docker compose
+5. Run docker compose
 
     ```sh
     docker-compose up -d

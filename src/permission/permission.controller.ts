@@ -27,6 +27,7 @@ import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
 import { PermissionDocument } from './permission.schema';
+import { PermissionListTransformer } from './transformer/permission.list.transformer';
 
 @Controller({
     version: '1',
@@ -72,12 +73,15 @@ export class PermissionAdminController {
             perPage
         );
 
+        const data: PermissionListTransformer[] =
+            await this.permissionService.mapList(permissions);
+
         return {
             totalData,
             totalPage,
             currentPage: page,
             perPage,
-            data: permissions,
+            data,
         };
     }
 

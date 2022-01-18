@@ -39,7 +39,7 @@ export class RoleService {
     }
 
     async getTotal(find?: Record<string, any>): Promise<number> {
-        return this.roleModel.estimatedDocumentCount(find);
+        return this.roleModel.countDocuments(find);
     }
 
     async findOneById<T>(

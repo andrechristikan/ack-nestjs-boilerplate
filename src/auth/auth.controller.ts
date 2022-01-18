@@ -53,13 +53,13 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     @Post('/login')
     async login(
-        @Body(RequestValidationPipe) data: AuthLoginValidation
+        @Body(RequestValidationPipe) body: AuthLoginValidation
     ): Promise<IResponse> {
-        const rememberMe: boolean = data.rememberMe ? true : false;
+        const rememberMe: boolean = body.rememberMe ? true : false;
         const user: IUserDocument =
             await this.userService.findOne<IUserDocument>(
                 {
-                    email: data.email,
+                    email: body.email,
                 },
                 {
                     populate: {
@@ -78,6 +78,24 @@ export class AuthController {
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
                 message: 'user.error.notFound',
+            });
+        }
+
+        const validate: boolean = await this.authService.validateUser(
+            body.password,
+            user.password
+        );
+
+        if (!validate) {
+            this.debuggerService.error('Authorized error', {
+                class: 'AuthController',
+                function: 'login',
+            });
+
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR,
+                message: 'auth.error.passwordNotMatch',
             });
         } else if (!user.isActive) {
             this.debuggerService.error('Auth Block', {
@@ -101,30 +119,13 @@ export class AuthController {
             });
         }
 
-        const validate: boolean = await this.authService.validateUser(
-            data.password,
-            user.password
-        );
-
-        if (!validate) {
-            this.debuggerService.error('Authorized error', {
-                class: 'AuthController',
-                function: 'login',
-            });
-
-            throw new BadRequestException({
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR,
-                message: 'auth.error.passwordNotMatch',
-            });
-        }
-
         const safe: AuthLoginTransformer = await this.authService.mapLogin(
             user
         );
 
         const payload: Record<string, any> =
             await this.authService.createPayload(safe, rememberMe);
+
         const accessToken: string = await this.authService.createAccessToken(
             payload
         );

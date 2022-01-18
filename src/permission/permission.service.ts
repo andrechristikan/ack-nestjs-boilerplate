@@ -45,7 +45,7 @@ export class PermissionService {
     }
 
     async getTotal(find?: Record<string, any>): Promise<number> {
-        return this.permissionModel.estimatedDocumentCount(find);
+        return this.permissionModel.countDocuments(find);
     }
 
     async deleteOne(find: Record<string, any>): Promise<PermissionDocument> {

@@ -31,7 +31,7 @@ import { RouterAdminModule } from 'src/router/router.admin.module';
             ignoreEnvFile: false,
             isGlobal: true,
             cache: true,
-            envFilePath: ['.env'],
+            envFilePath: ['.env', '.env.key'],
         }),
         WinstonModule.forRootAsync({
             inject: [DebuggerService],

@@ -54,7 +54,7 @@ export class UserService {
     }
 
     async getTotal(find?: Record<string, any>): Promise<number> {
-        return this.userModel.estimatedDocumentCount(find);
+        return this.userModel.countDocuments(find);
     }
 
     async mapProfile(data: IUserDocument): Promise<UserProfileTransformer> {

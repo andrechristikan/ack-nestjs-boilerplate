@@ -1,10 +1,10 @@
-import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { Response } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
 import { MessageService } from './message.service';
 
 @Controller({
-    version: VERSION_NEUTRAL,
+    version: '1',
     path: 'message',
 })
 export class MessageEnumController {
