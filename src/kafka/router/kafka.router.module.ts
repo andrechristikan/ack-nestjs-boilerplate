@@ -22,11 +22,7 @@ export class RouterKafkaModule {
             controllers: [KafkaConsumerController, KafkaProducerController],
             providers: [],
             exports: [],
-            imports: [
-                KafkaAdminModule,
-                KafkaProducerModule,
-                KafkaProducerModule,
-            ],
+            imports: [KafkaAdminModule, KafkaProducerModule],
         };
     }
 }
