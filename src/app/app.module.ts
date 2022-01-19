@@ -19,6 +19,7 @@ import { RouterTestModule } from 'src/router/router.test.module';
 import { RouterEnumModule } from 'src/router/router.enum.module';
 import { RouterPublicModule } from 'src/router/router.public.module';
 import { RouterAdminModule } from 'src/router/router.admin.module';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
     controllers: [],
@@ -50,6 +51,7 @@ import { RouterAdminModule } from 'src/router/router.admin.module';
         PaginationModule,
         DebuggerModule,
         HelperModule,
+        AuthModule,
         SeedsModule.register({ env: process.env.APP_ENV }),
 
         // Modules
