@@ -108,7 +108,7 @@ export class RoleAdminController {
     }
 
     @Response('role.create')
-    @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_DELETE)
+    @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_CREATE)
     @Post('/create')
     async create(
         @Body(RequestValidationPipe)
