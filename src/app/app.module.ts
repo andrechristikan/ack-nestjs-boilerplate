@@ -20,6 +20,7 @@ import { RouterEnumModule } from 'src/router/router.enum.module';
 import { RouterPublicModule } from 'src/router/router.public.module';
 import { RouterAdminModule } from 'src/router/router.admin.module';
 import { AuthModule } from 'src/auth/auth.module';
+import { RouterCallbackModule } from 'src/router/router.callback.module';
 
 @Module({
     controllers: [],
@@ -60,6 +61,7 @@ import { AuthModule } from 'src/auth/auth.module';
         RouterEnumModule,
         RouterPublicModule,
         RouterAdminModule,
+        RouterCallbackModule,
         RouterModule.register([
             {
                 path: '/',
@@ -80,6 +82,10 @@ import { AuthModule } from 'src/auth/auth.module';
             {
                 path: '/public',
                 module: RouterPublicModule,
+            },
+            {
+                path: '/callback',
+                module: RouterCallbackModule,
             },
         ]),
     ],

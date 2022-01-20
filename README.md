@@ -59,7 +59,7 @@ The features will spill on this section
 - [x] Centralize Exception
 - [x] Centralize Response
 - [x] Versioning, can on/off
-- [x] Admin, Public, Common, and Test RouterModule
+- [x] Admin, Public, Common, Callback, and Test RouterModule
 - [x] Validation All Incoming Request
 - [x] Support Multi Language, control from header
 - [x] Custom Status Code for Each Error and Success Response
