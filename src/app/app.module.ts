@@ -33,7 +33,7 @@ import { RouterCallbackModule } from 'src/router/router.callback.module';
             ignoreEnvFile: false,
             isGlobal: true,
             cache: true,
-            envFilePath: ['.env', '.env.key'],
+            envFilePath: ['.env', '.env.share'],
         }),
         WinstonModule.forRootAsync({
             inject: [DebuggerService],
