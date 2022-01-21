@@ -33,8 +33,8 @@ export function ResponsePagingInterceptor(
 
             const request: Request = ctx.getRequest<Request>();
             const { headers } = request;
-            const appLanguages: string[] = headers['app-languages']
-                ? (headers['app-languages'] as string).split(',')
+            const appLanguages: string[] = headers['App-Languages']
+                ? (headers['App-Languages'] as string).split(',')
                 : undefined;
 
             return next.handle().pipe(

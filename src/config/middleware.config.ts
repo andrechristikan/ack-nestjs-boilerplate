@@ -13,7 +13,17 @@ export default registerAs(
                 'PATCH',
                 'POST',
             ],
-            allowOrigin: ['*'],
+            allowOrigin: '*',
+            allowHeader: [
+                'Accept',
+                'App-Languages',
+                'Origin',
+                'Accept',
+                'X-Requested-With',
+                'Content-Type',
+                'Access-Control-Request-Method',
+                'Access-Control-Request-Headers',
+            ],
         },
         rateLimit: {
             resetTime: 1 * 60 * 1000,
