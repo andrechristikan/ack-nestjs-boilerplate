@@ -251,7 +251,7 @@ export class UserAdminController {
     @Response('user.inactive')
     @UserUpdateInactiveGuard()
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
-    @Patch('/inactive/:user')
+    @Patch('/update/:user/inactive')
     async inactive(@GetUser() user: IUserDocument): Promise<void> {
         try {
             await this.userService.inactive(user._id);
@@ -274,7 +274,7 @@ export class UserAdminController {
     @Response('user.active')
     @UserUpdateActiveGuard()
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
-    @Patch('/active/:user')
+    @Patch('/update/:user/active')
     async active(@GetUser() user: IUserDocument): Promise<void> {
         try {
             await this.userService.active(user._id);

@@ -257,7 +257,7 @@ export class RoleAdminController {
     @Response('role.inactive')
     @RoleUpdateInactiveGuard()
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_UPDATE)
-    @Patch('/inactive/:role')
+    @Patch('/update/:role/inactive')
     async inactive(@GetRole() role: IRoleDocument): Promise<void> {
         try {
             await this.roleService.inactive(role._id);
@@ -280,7 +280,7 @@ export class RoleAdminController {
     @Response('role.active')
     @RoleUpdateActiveGuard()
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_UPDATE)
-    @Patch('/active/:role')
+    @Patch('/update/:role/active')
     async active(@GetRole() role: IRoleDocument): Promise<void> {
         try {
             await this.roleService.active(role._id);

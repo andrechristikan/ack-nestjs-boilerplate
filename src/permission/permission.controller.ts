@@ -132,7 +132,7 @@ export class PermissionAdminController {
         ENUM_PERMISSIONS.PERMISSION_READ,
         ENUM_PERMISSIONS.PERMISSION_UPDATE
     )
-    @Patch('/inactive/:permission')
+    @Patch('/update/:permission/inactive')
     async inactive(
         @GetPermission() permission: PermissionDocument
     ): Promise<void> {
@@ -163,7 +163,7 @@ export class PermissionAdminController {
         ENUM_PERMISSIONS.PERMISSION_READ,
         ENUM_PERMISSIONS.PERMISSION_UPDATE
     )
-    @Patch('/active/:permission')
+    @Patch('/update/:permission/active')
     async active(
         @GetPermission() permission: PermissionDocument
     ): Promise<void> {

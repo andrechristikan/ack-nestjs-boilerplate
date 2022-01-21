@@ -610,15 +610,16 @@
 								"method": "PATCH",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/admin/user/inactive/:_id",
+									"raw": "{{baseUrl}}/admin/user/update/:_id/inactive",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
 										"admin",
 										"user",
-										"inactive",
-										":_id"
+										"update",
+										":_id",
+										"inactive"
 									],
 									"variable": [
 										{
@@ -635,15 +636,16 @@
 										"method": "PATCH",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/user/inactive/:_id",
+											"raw": "{{baseUrl}}/admin/user/update/:_id/inactive",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"user",
-												"inactive",
-												":_id"
+												"update",
+												":_id",
+												"inactive"
 											],
 											"variable": [
 												{
@@ -666,15 +668,16 @@
 										"method": "PATCH",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/user/inactive/:_id",
+											"raw": "{{baseUrl}}/admin/user/update/:_id/inactive",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"user",
-												"inactive",
-												":_id"
+												"update",
+												":_id",
+												"inactive"
 											],
 											"variable": [
 												{
@@ -697,15 +700,16 @@
 										"method": "PATCH",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/user/inactive/:_id",
+											"raw": "{{baseUrl}}/admin/user/update/:_id/inactive",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"user",
-												"inactive",
-												":_id"
+												"update",
+												":_id",
+												"inactive"
 											],
 											"variable": [
 												{
@@ -730,15 +734,16 @@
 								"method": "PATCH",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/admin/user/active/:_id",
+									"raw": "{{baseUrl}}/admin/user/update/:_id/active",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
 										"admin",
 										"user",
-										"active",
-										":_id"
+										"update",
+										":_id",
+										"active"
 									],
 									"variable": [
 										{
@@ -755,15 +760,16 @@
 										"method": "PATCH",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/user/active/:_id",
+											"raw": "{{baseUrl}}/admin/user/update/:_id/active",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"user",
-												"active",
-												":_id"
+												"update",
+												":_id",
+												"active"
 											],
 											"variable": [
 												{
@@ -786,15 +792,16 @@
 										"method": "PATCH",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/user/active/:_id",
+											"raw": "{{baseUrl}}/admin/user/update/:_id/active",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"user",
-												"active",
-												":_id"
+												"update",
+												":_id",
+												"active"
 											],
 											"variable": [
 												{
@@ -817,15 +824,16 @@
 										"method": "PATCH",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/user/active/:_id",
+											"raw": "{{baseUrl}}/admin/user/update/:_id/active",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"user",
-												"active",
-												":_id"
+												"update",
+												":_id",
+												"active"
 											],
 											"variable": [
 												{
@@ -1555,15 +1563,16 @@
 								"method": "PATCH",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/admin/role/inactive/:_id",
+									"raw": "{{baseUrl}}/admin/role/update/:_id/inactive",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
 										"admin",
 										"role",
-										"inactive",
-										":_id"
+										"update",
+										":_id",
+										"inactive"
 									],
 									"variable": [
 										{
@@ -1580,15 +1589,16 @@
 										"method": "PATCH",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/role/inactive/:_id",
+											"raw": "{{baseUrl}}/admin/role/update/:_id/inactive",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"role",
-												"inactive",
-												":_id"
+												"update",
+												":_id",
+												"inactive"
 											],
 											"variable": [
 												{
@@ -1611,15 +1621,16 @@
 										"method": "PATCH",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/role/inactive/:_id",
+											"raw": "{{baseUrl}}/admin/role/update/:_id/inactive",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"role",
-												"inactive",
-												":_id"
+												"update",
+												":_id",
+												"inactive"
 											],
 											"variable": [
 												{
@@ -1642,15 +1653,16 @@
 										"method": "PATCH",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/role/inactive/:_id",
+											"raw": "{{baseUrl}}/admin/role/update/:_id/inactive",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"role",
-												"inactive",
-												":_id"
+												"update",
+												":_id",
+												"inactive"
 											],
 											"variable": [
 												{
@@ -1675,15 +1687,16 @@
 								"method": "PATCH",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/admin/role/active/:_id",
+									"raw": "{{baseUrl}}/admin/role/update/:_id/active",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
 										"admin",
 										"role",
-										"active",
-										":_id"
+										"update",
+										":_id",
+										"active"
 									],
 									"variable": [
 										{
@@ -1700,15 +1713,16 @@
 										"method": "PATCH",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/role/active/:_id",
+											"raw": "{{baseUrl}}/admin/role/update/:_id/active",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"role",
-												"active",
-												":_id"
+												"update",
+												":_id",
+												"active"
 											],
 											"variable": [
 												{
@@ -1731,15 +1745,16 @@
 										"method": "PATCH",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/role/active/:_id",
+											"raw": "{{baseUrl}}/admin/role/update/:_id/active",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"role",
-												"active",
-												":_id"
+												"update",
+												":_id",
+												"active"
 											],
 											"variable": [
 												{
@@ -1762,15 +1777,16 @@
 										"method": "PATCH",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/role/active/:_id",
+											"raw": "{{baseUrl}}/admin/role/update/:_id/active",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"role",
-												"active",
-												":_id"
+												"update",
+												":_id",
+												"active"
 											],
 											"variable": [
 												{
@@ -2114,15 +2130,16 @@
 								"method": "PATCH",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/admin/permission/inactive/:_id",
+									"raw": "{{baseUrl}}/admin/permission/update/:_id/inactive",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
 										"admin",
 										"permission",
-										"inactive",
-										":_id"
+										"update",
+										":_id",
+										"inactive"
 									],
 									"variable": [
 										{
@@ -2139,15 +2156,16 @@
 										"method": "GET",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/permission/inactive/:_id",
+											"raw": "{{baseUrl}}/admin/permission/update/:_id/inactive",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"permission",
-												"inactive",
-												":_id"
+												"update",
+												":_id",
+												"inactive"
 											],
 											"variable": [
 												{
@@ -2170,15 +2188,16 @@
 										"method": "PATCH",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/permission/inactive/:_id",
+											"raw": "{{baseUrl}}/admin/permission/update/:_id/inactive",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"permission",
-												"inactive",
-												":_id"
+												"update",
+												":_id",
+												"inactive"
 											],
 											"variable": [
 												{
@@ -2201,15 +2220,16 @@
 										"method": "PATCH",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/permission/inactive/:_id",
+											"raw": "{{baseUrl}}/admin/permission/update/:_id/inactive",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"permission",
-												"inactive",
-												":_id"
+												"update",
+												":_id",
+												"inactive"
 											],
 											"variable": [
 												{
@@ -2234,15 +2254,16 @@
 								"method": "PATCH",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/admin/permission/active/:_id",
+									"raw": "{{baseUrl}}/admin/permission/update/:_id/active",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
 										"admin",
 										"permission",
-										"active",
-										":_id"
+										"update",
+										":_id",
+										"active"
 									],
 									"variable": [
 										{
@@ -2259,15 +2280,16 @@
 										"method": "GET",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/permission/active/:_id",
+											"raw": "{{baseUrl}}/admin/permission/update/:_id/active",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"permission",
-												"active",
-												":_id"
+												"update",
+												":_id",
+												"active"
 											],
 											"variable": [
 												{
@@ -2290,15 +2312,16 @@
 										"method": "PATCH",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/permission/active/:_id",
+											"raw": "{{baseUrl}}/admin/permission/update/:_id/active",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"permission",
-												"active",
-												":_id"
+												"update",
+												":_id",
+												"active"
 											],
 											"variable": [
 												{
@@ -2321,15 +2344,16 @@
 										"method": "PATCH",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/admin/permission/active/:_id",
+											"raw": "{{baseUrl}}/admin/permission/update/:_id/active",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"admin",
 												"permission",
-												"active",
-												":_id"
+												"update",
+												":_id",
+												"active"
 											],
 											"variable": [
 												{
@@ -2436,7 +2460,7 @@
 						"method": "GET",
 						"header": [
 							{
-								"key": "accept-language",
+								"key": "app-languages",
 								"value": "EN,ID",
 								"type": "default"
 							}
@@ -2468,7 +2492,7 @@
 								"method": "GET",
 								"header": [
 									{
-										"key": "accept-language",
+										"key": "Accept-Language",
 										"value": "EN,ID",
 										"type": "default"
 									}
