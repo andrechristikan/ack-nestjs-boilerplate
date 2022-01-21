@@ -10,7 +10,7 @@ services:
       - app-network
     volumes:
       - .env:/app/.env
-      - .env.key:/app/.env.key
+      - .env.share:/app/.env.share
     depends_on:
       - mongodb
     links:

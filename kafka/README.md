@@ -99,10 +99,10 @@ kafka-topics --version
     ...
     ```
 
-3. Copy `.env.key`
+3. Copy `.env.share`
 
     ```sh
-    cp .env.key.example .env.key
+    cp .env.share.example .env.share
     ```
 
     and then we need to adjust with our env
@@ -309,10 +309,10 @@ This Instruction will little bit difference
     AWS_S3_BUCKET=acks3
     ```
 
-4. Copy `.env.key`
+4. Copy `.env.share`
 
     ```sh
-    cp .env.key.example .env.key
+    cp .env.share.example .env.share
     ```
 
     and then we need to adjust with our env

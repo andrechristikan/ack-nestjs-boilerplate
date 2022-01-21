@@ -224,14 +224,14 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
     DATABASE_OPTIONS=
     ```
 
-3. Copy `.env.key`
+3. Copy `.env.share`
 
     > This method will useful when we have more than one application, and we need to share some environment between the projects
 
     We will put all keys and secret keys into other file
 
     ```sh
-    cp .env.key.example .env.key
+    cp .env.share.example .env.share
     ```
 
     and then we need to adjust with our env
@@ -372,10 +372,10 @@ After installation, we need to import all endpoint into postman, [see this instr
     DATABASE_OPTIONS=
     ```
 
-4. Copy `.env.key`
+4. Copy `.env.share`
 
     ```sh
-    cp .env.key.example .env.key
+    cp .env.share.example .env.share
     ```
 
     and then we need to adjust with our env

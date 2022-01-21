@@ -87,7 +87,7 @@ pipeline {
                     try{
                         sh "docker run --rm --network ${APP_NETWORK} \
                             -v /app/${APP_NAME}/.env:/app/.env \
-                            -v /app/${APP_NAME}/.env.key:/app/.env.key \
+                            -v /app/${APP_NAME}/.env.share:/app/.env.share \
                             --name ${container_testing} \
                             ${app_image} \
                             sh -c 'yarn test:e2e'"     
@@ -140,7 +140,7 @@ pipeline {
                             --network ${APP_NETWORK} \
                             -v /app/${APP_NAME}/logs/:/app/logs/ \
                             -v /app/${APP_NAME}/.env:/app/.env \
-                            -v /app/${APP_NAME}/.env.key:/app/.env.key \
+                            -v /app/${APP_NAME}/.env.share:/app/.env.share \
                             --name ${APP_NAME} ${app_image}"
                     }
                 }
