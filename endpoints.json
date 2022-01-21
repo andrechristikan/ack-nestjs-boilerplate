@@ -2436,7 +2436,7 @@
 						"method": "GET",
 						"header": [
 							{
-								"key": "App-Languages",
+								"key": "Accept-Languages",
 								"value": "EN,ID",
 								"type": "default"
 							}
@@ -2468,7 +2468,7 @@
 								"method": "GET",
 								"header": [
 									{
-										"key": "App-Languages",
+										"key": "Accept-Languages",
 										"value": "EN,ID",
 										"type": "default"
 									}
