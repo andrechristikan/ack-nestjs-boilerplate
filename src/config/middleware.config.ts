@@ -12,6 +12,7 @@ export default registerAs(
                 'PUT',
                 'PATCH',
                 'POST',
+                'OPTIONS',
             ],
             allowOrigin: '*',
             allowHeader: [

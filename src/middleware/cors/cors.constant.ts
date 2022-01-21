@@ -6,6 +6,7 @@ export const DEFAULT_METHOD_CORS = [
     'PUT',
     'PATCH',
     'POST',
+    'OPTIONS',
 ];
 
 export const DEFAULT_ORIGIN_CORS = ['*'];
