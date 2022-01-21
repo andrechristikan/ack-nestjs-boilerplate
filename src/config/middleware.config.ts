@@ -16,7 +16,7 @@ export default registerAs(
             allowOrigin: ['*'],
             allowHeader: [
                 'Accept',
-                'Accept-Language',
+                'accept-language',
                 'Origin',
                 'Authorization',
                 'Content-Type',

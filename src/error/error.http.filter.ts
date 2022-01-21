@@ -23,8 +23,8 @@ export class ErrorHttpFilter implements ExceptionFilter {
 
         const request: Request = ctx.getRequest<Request>();
         const { headers } = request;
-        const appLanguages: string[] = headers['Accept-Languages']
-            ? (headers['Accept-Languages'] as string).split(',')
+        const appLanguages: string[] = headers['accept-language']
+            ? (headers['accept-language'] as string).split(',')
             : undefined;
 
         // Restructure

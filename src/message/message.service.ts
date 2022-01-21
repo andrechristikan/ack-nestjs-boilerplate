@@ -28,7 +28,7 @@ export class MessageService {
                       ENUM_MESSAGE_LANGUAGE[value] ? true : false
                   )
                   .map((value) => ({
-                      path: `${value.toLowerCase()}.${key}`,
+                      path: `${value}.${key}`,
                       language: value,
                   }))
             : [];
