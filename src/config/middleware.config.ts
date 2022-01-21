@@ -14,7 +14,7 @@ export default registerAs(
                 'POST',
                 'OPTIONS',
             ],
-            allowOrigin: '*',
+            allowOrigin: ['*'],
             allowHeader: [
                 'Accept',
                 'App-Languages',
