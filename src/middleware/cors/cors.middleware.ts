@@ -23,6 +23,10 @@ export class CorsMiddleware implements NestMiddleware {
             'middleware.cors.allowHeader'
         );
 
+        res.setHeader('Access-Control-Allow-Origin', allowOrigin.join(', '));
+        res.setHeader('Access-Control-Allow-Methods', allowMethod.join(', '));
+        res.setHeader('Access-Control-Allow-Headers', allowHeader.join(', '));
+
         cors({
             origin: allowOrigin || DEFAULT_ORIGIN_CORS,
             methods: allowMethod || DEFAULT_METHOD_CORS,

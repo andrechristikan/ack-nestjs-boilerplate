@@ -14,6 +14,7 @@ export const DEFAULT_HEADER_CORS = [
     'Accept',
     'App-Languages',
     'Origin',
+    'Authorization',
     'Accept',
     'X-Requested-With',
     'Content-Type',

@@ -18,6 +18,7 @@ export default registerAs(
                 'Accept',
                 'App-Languages',
                 'Origin',
+                'Authorization',
                 'Accept',
                 'X-Requested-With',
                 'Content-Type',
