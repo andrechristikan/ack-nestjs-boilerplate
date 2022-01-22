@@ -12,6 +12,7 @@ import {
     HttpStatus,
     UploadedFile,
     Patch,
+    NotFoundException,
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
 import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe';
@@ -38,12 +39,13 @@ import {
 } from './user.decorator';
 import { AwsService } from 'src/aws/aws.service';
 import { IAwsResponse } from 'src/aws/aws.interface';
-import { ConfigService } from '@nestjs/config';
 import { UserListTransformer } from './transformer/user.list.transformer';
 import { AuthAdminJwtGuard, AuthPublicJwtGuard } from 'src/auth/auth.decorator';
 import { AuthService } from 'src/auth/auth.service';
 import { UploadFileSingle } from 'src/file/file.decorator';
 import { ENUM_FILE_TYPE } from 'src/file/file.constant';
+import { RoleService } from 'src/role/role.service';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
 
 @Controller({
     version: '1',
@@ -54,7 +56,8 @@ export class UserAdminController {
         @Debugger() private readonly debuggerService: DebuggerService,
         private readonly authService: AuthService,
         private readonly paginationService: PaginationService,
-        private readonly userService: UserService
+        private readonly userService: UserService,
+        private readonly roleService: RoleService
     ) {}
 
     @ResponsePaging('user.list')
@@ -163,6 +166,19 @@ export class UserAdminController {
             });
         }
 
+        const role = await this.roleService.findOneById(body.role);
+        if (!role) {
+            this.debuggerService.error('Role not found', {
+                class: 'UserController',
+                function: 'create',
+            });
+
+            throw new NotFoundException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
+                message: 'role.error.notFound',
+            });
+        }
+
         try {
             const password = await this.authService.createPassword(
                 body.password
@@ -237,6 +253,7 @@ export class UserAdminController {
                     ...err,
                 },
             });
+
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
@@ -303,8 +320,7 @@ export class UserPublicController {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService,
         private readonly userService: UserService,
-        private readonly awsService: AwsService,
-        private readonly configService: ConfigService
+        private readonly awsService: AwsService
     ) {}
 
     @Response('user.profile')

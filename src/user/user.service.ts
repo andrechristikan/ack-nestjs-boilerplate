@@ -226,10 +226,19 @@ export class UserService {
         return auth.save();
     }
 
+    async updatePasswordExpired(
+        _id: string,
+        passwordExpired: Date
+    ): Promise<UserDocument> {
+        const auth: UserDocument = await this.userModel.findById(_id);
+        auth.passwordExpired = passwordExpired;
+
+        return auth.save();
+    }
+
     async inactive(_id: string): Promise<UserDocument> {
         const user: UserDocument = await this.userModel.findById(_id);
 
-        console.log('user', user);
         user.isActive = false;
         return user.save();
     }

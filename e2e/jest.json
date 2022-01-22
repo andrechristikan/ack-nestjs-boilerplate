@@ -1,26 +1,28 @@
 {
     "testTimeout": 1000,
     "verbose": true,
-    "rootDir": "./",
+    "rootDir": "../",
     "modulePaths": [
-        "../"
+        "./"
     ],
     "testEnvironment": "node",
-    "testRegex": "/e2e/.*\\.(e2e-spec).(ts|tsx)$",
+    "testRegex": "e2e/.*\\.(e2e-spec).(ts|tsx)$",
     "collectCoverage": true,
-    "collectCoverageFrom" : ["e2e/**/*.{tsx,ts}", "!**/src/**/*.{js,jsx,tsx,ts}", "!**/dist/**", "!**/node_modules/**", "!**/vendor/**"],
+    "collectCoverageFrom" : ["e2e/**/*.{tsx,ts}", "!**/test/**/*.{js,jsx,tsx,ts}", "!**/src/**/*.{js,jsx,tsx,ts}", "!**/dist/**", "!**/node_modules/**", "!**/vendor/**"],
     "coveragePathIgnorePatterns": [
-        "../node_modules", 
-        "../vendor",
-        "../src"
+        "node_modules", 
+        "vendor",
+        "src"
     ],
-    "coverageReporters": ["json", "lcov"],
-    "coverageDirectory": "../e2e-coverage",
+    "coverageReporters": ["clover", "json", "lcov", "text"],
+    "coverageDirectory": "e2e-coverage",
     "moduleFileExtensions": [
-        "ts",
-        "tsx",
-        "json",
-        "js"
+        "js", 
+        "jsx", 
+        "ts", 
+        "tsx", 
+        "json", 
+        "node"
     ],
     "transform": {
         "^.+\\.tsx?$": "ts-jest"

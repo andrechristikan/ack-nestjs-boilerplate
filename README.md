@@ -133,8 +133,9 @@ All kafka features can switch on/off or remove, [read kafka section](#kafka-docu
 ### Todo
 
 - [x] Split Env File
+- [ ] Unit Test
+- [x] E2E Test
 - [ ] Production Ready (Setting Module), can manage from Database
-- [ ] Unit Test and E2E Test
 - [ ] Swagger Module
 - [ ] Update Usage Documentation
 - [ ] Update Performance

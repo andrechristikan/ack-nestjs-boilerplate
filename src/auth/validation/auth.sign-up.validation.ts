@@ -35,7 +35,7 @@ export class AuthSignUpValidation {
     @IsString()
     @IsNotEmpty()
     @MinLength(10)
-    @MaxLength(13)
+    @MaxLength(14)
     @Type(() => String)
     @IsStartWith(['628'])
     readonly mobileNumber: string;
