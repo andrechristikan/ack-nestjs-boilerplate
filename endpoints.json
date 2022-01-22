@@ -2460,8 +2460,8 @@
 						"method": "GET",
 						"header": [
 							{
-								"key": "app-languages",
-								"value": "EN,ID",
+								"key": "Accept-Language",
+								"value": "en,id",
 								"type": "default"
 							}
 						],
@@ -2493,7 +2493,7 @@
 								"header": [
 									{
 										"key": "Accept-Language",
-										"value": "EN,ID",
+										"value": "en,id",
 										"type": "default"
 									}
 								],
@@ -2846,6 +2846,194 @@
 									"body": "{\n    \"statusCode\": 5801,\n    \"message\": \"File size too big\"\n}"
 								}
 							]
+						}
+					]
+				},
+				{
+					"name": "sign up",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"andre@mail.com\",\n    \"mobileNumber\": \"628123121111\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/public/sign-up",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"public",
+								"sign-up"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "user exist",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/public/sign-up",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"public",
+										"sign-up"
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 5401,\n    \"message\": \"User exist.\"\n}"
+						},
+						{
+							"name": "error request",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/public/sign-up",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"public",
+										"sign-up"
+									]
+								}
+							},
+							"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+							"code": 422,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 5950,\n    \"message\": \"Unprocessable Entity\",\n    \"errors\": [\n        {\n            \"property\": \"email\",\n            \"message\": \"email should be a type of email.\"\n        }\n    ]\n}"
+						},
+						{
+							"name": "mobile number exist",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/public/sign-up",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"public",
+										"sign-up"
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 5404,\n    \"message\": \"Mobile Number user used\"\n}"
+						},
+						{
+							"name": "email exist",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/public/sign-up",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"public",
+										"sign-up"
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 5403,\n    \"message\": \"Email user used\"\n}"
+						},
+						{
+							"name": "success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/public/sign-up",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"public",
+										"sign-up"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 201,\n    \"message\": \"Signup Success\",\n    \"data\": {\n        \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MWUxYjg2ZmU4MGM1MGYwNWQ4MTIyNTgiLCJpc0FjdGl2ZSI6dHJ1ZSwicGFzc3dvcmRFeHBpcmVkIjoiMjAyMy0wMS0xNFQxNzo1Mjo0Ny4xMjBaIiwicm9sZSI6eyJuYW1lIjoidXNlciIsInBlcm1pc3Npb25zIjpbXSwiaXNBY3RpdmUiOnRydWUsImlzQWRtaW4iOmZhbHNlfSwiZW1haWwiOiJhbmRyZUBtYWlsLmNvbSIsIm1vYmlsZU51bWJlciI6IjYyODEyMzEyMTExMSIsImxvZ2luRGF0ZSI6IjIwMjItMDEtMTRUMTc6NTI6NDcuMTYyWiIsInJlbWVtYmVyTWUiOmZhbHNlLCJsb2dpbkV4cGlyZWQiOiIyMDIyLTAxLTE0VDE3OjUyOjQ3LjE2MloiLCJpYXQiOjE2NDIxODI3NjcsIm5iZiI6MTY0MjE4Mjc2NywiZXhwIjoxNjQyMjY5MTY3fQ.NgP-NM09J0Lfd5NiTUXpc7kArJWtHKsiA8sAKwxpGzs\",\n        \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MWUxYjg2ZmU4MGM1MGYwNWQ4MTIyNTgiLCJpc0FjdGl2ZSI6dHJ1ZSwicGFzc3dvcmRFeHBpcmVkIjoiMjAyMy0wMS0xNFQxNzo1Mjo0Ny4xMjBaIiwicm9sZSI6eyJuYW1lIjoidXNlciIsInBlcm1pc3Npb25zIjpbXSwiaXNBY3RpdmUiOnRydWUsImlzQWRtaW4iOmZhbHNlfSwiZW1haWwiOiJhbmRyZUBtYWlsLmNvbSIsIm1vYmlsZU51bWJlciI6IjYyODEyMzEyMTExMSIsImxvZ2luRGF0ZSI6IjIwMjItMDEtMTRUMTc6NTI6NDcuMTYyWiIsInJlbWVtYmVyTWUiOmZhbHNlLCJsb2dpbkV4cGlyZWQiOiIyMDIyLTAxLTE0VDE3OjUyOjQ3LjE2MloiLCJpYXQiOjE2NDIxODI3NjcsIm5iZiI6MTY0MjI2OTE2NywiZXhwIjoxNjQyMzU1NTY3fQ.LBvZryyZBz1EWv45sHPoHzGP9Iiumpw64BOaYZ2fEx8\"\n    }\n}"
 						}
 					]
 				}
@@ -3371,188 +3559,6 @@
 					"header": null,
 					"cookie": [],
 					"body": "{\n    \"statusCode\": 5106,\n    \"message\": \"Password expired, you need to change your password asap\"\n}"
-				}
-			]
-		},
-		{
-			"name": "sign up",
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"email\": \"andre@mail.com\",\n    \"mobileNumber\": \"628123121111\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{baseUrl}}/sign-up",
-					"host": [
-						"{{baseUrl}}"
-					],
-					"path": [
-						"sign-up"
-					]
-				}
-			},
-			"response": [
-				{
-					"name": "user exist",
-					"originalRequest": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/sign-up",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"sign-up"
-							]
-						}
-					},
-					"status": "Bad Request",
-					"code": 400,
-					"_postman_previewlanguage": "json",
-					"header": null,
-					"cookie": [],
-					"body": "{\n    \"statusCode\": 5401,\n    \"message\": \"User exist.\"\n}"
-				},
-				{
-					"name": "error request",
-					"originalRequest": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/sign-up",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"sign-up"
-							]
-						}
-					},
-					"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
-					"code": 422,
-					"_postman_previewlanguage": "json",
-					"header": null,
-					"cookie": [],
-					"body": "{\n    \"statusCode\": 5950,\n    \"message\": \"Unprocessable Entity\",\n    \"errors\": [\n        {\n            \"property\": \"email\",\n            \"message\": \"email should be a type of email.\"\n        }\n    ]\n}"
-				},
-				{
-					"name": "mobile number exist",
-					"originalRequest": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/sign-up",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"sign-up"
-							]
-						}
-					},
-					"status": "Bad Request",
-					"code": 400,
-					"_postman_previewlanguage": "json",
-					"header": null,
-					"cookie": [],
-					"body": "{\n    \"statusCode\": 5404,\n    \"message\": \"Mobile Number user used\"\n}"
-				},
-				{
-					"name": "email exist",
-					"originalRequest": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/sign-up",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"sign-up"
-							]
-						}
-					},
-					"status": "Bad Request",
-					"code": 400,
-					"_postman_previewlanguage": "json",
-					"header": null,
-					"cookie": [],
-					"body": "{\n    \"statusCode\": 5403,\n    \"message\": \"Email user used\"\n}"
-				},
-				{
-					"name": "success",
-					"originalRequest": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/sign-up",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"sign-up"
-							]
-						}
-					},
-					"status": "Created",
-					"code": 201,
-					"_postman_previewlanguage": "json",
-					"header": null,
-					"cookie": [],
-					"body": "{\n    \"statusCode\": 201,\n    \"message\": \"Signup Success\",\n    \"data\": {\n        \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MWUxYjg2ZmU4MGM1MGYwNWQ4MTIyNTgiLCJpc0FjdGl2ZSI6dHJ1ZSwicGFzc3dvcmRFeHBpcmVkIjoiMjAyMy0wMS0xNFQxNzo1Mjo0Ny4xMjBaIiwicm9sZSI6eyJuYW1lIjoidXNlciIsInBlcm1pc3Npb25zIjpbXSwiaXNBY3RpdmUiOnRydWUsImlzQWRtaW4iOmZhbHNlfSwiZW1haWwiOiJhbmRyZUBtYWlsLmNvbSIsIm1vYmlsZU51bWJlciI6IjYyODEyMzEyMTExMSIsImxvZ2luRGF0ZSI6IjIwMjItMDEtMTRUMTc6NTI6NDcuMTYyWiIsInJlbWVtYmVyTWUiOmZhbHNlLCJsb2dpbkV4cGlyZWQiOiIyMDIyLTAxLTE0VDE3OjUyOjQ3LjE2MloiLCJpYXQiOjE2NDIxODI3NjcsIm5iZiI6MTY0MjE4Mjc2NywiZXhwIjoxNjQyMjY5MTY3fQ.NgP-NM09J0Lfd5NiTUXpc7kArJWtHKsiA8sAKwxpGzs\",\n        \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MWUxYjg2ZmU4MGM1MGYwNWQ4MTIyNTgiLCJpc0FjdGl2ZSI6dHJ1ZSwicGFzc3dvcmRFeHBpcmVkIjoiMjAyMy0wMS0xNFQxNzo1Mjo0Ny4xMjBaIiwicm9sZSI6eyJuYW1lIjoidXNlciIsInBlcm1pc3Npb25zIjpbXSwiaXNBY3RpdmUiOnRydWUsImlzQWRtaW4iOmZhbHNlfSwiZW1haWwiOiJhbmRyZUBtYWlsLmNvbSIsIm1vYmlsZU51bWJlciI6IjYyODEyMzEyMTExMSIsImxvZ2luRGF0ZSI6IjIwMjItMDEtMTRUMTc6NTI6NDcuMTYyWiIsInJlbWVtYmVyTWUiOmZhbHNlLCJsb2dpbkV4cGlyZWQiOiIyMDIyLTAxLTE0VDE3OjUyOjQ3LjE2MloiLCJpYXQiOjE2NDIxODI3NjcsIm5iZiI6MTY0MjI2OTE2NywiZXhwIjoxNjQyMzU1NTY3fQ.LBvZryyZBz1EWv45sHPoHzGP9Iiumpw64BOaYZ2fEx8\"\n    }\n}"
 				}
 			]
 		},
