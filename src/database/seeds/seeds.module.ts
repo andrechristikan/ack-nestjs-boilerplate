@@ -1,4 +1,4 @@
-import { DynamicModule, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { CommandModule } from 'nestjs-command';
 import { PermissionModule } from 'src/permission/permission.module';
 
@@ -8,30 +8,18 @@ import { RoleModule } from 'src/role/role.module';
 import { UserSeed } from './user.seed';
 import { UserModule } from 'src/user/user.module';
 import { AuthModule } from 'src/auth/auth.module';
+import { CoreModule } from 'src/core/core.module';
 
-@Module({})
-export class SeedsModule {
-    static register({ env }): DynamicModule {
-        if (env !== 'production') {
-            return {
-                module: SeedsModule,
-                imports: [
-                    CommandModule,
-                    PermissionModule,
-                    UserModule,
-                    AuthModule,
-                    RoleModule,
-                ],
-                providers: [PermissionSeed, RoleSeed, UserSeed],
-                exports: [],
-            };
-        }
-
-        return {
-            module: SeedsModule,
-            imports: [],
-            providers: [],
-            exports: [],
-        };
-    }
-}
+@Module({
+    imports: [
+        CoreModule,
+        CommandModule,
+        PermissionModule,
+        UserModule,
+        AuthModule,
+        RoleModule,
+    ],
+    providers: [PermissionSeed, RoleSeed, UserSeed],
+    exports: [],
+})
+export class SeedsModule {}

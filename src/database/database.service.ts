@@ -38,7 +38,7 @@ export class DatabaseService implements MongooseOptionsFactory {
             this.database
         }${this.options}`;
 
-        if (this.env !== 'production' && this.env !== 'testing') {
+        if (this.env !== 'production') {
             mongoose.set('debug', this.debug);
         }
 
