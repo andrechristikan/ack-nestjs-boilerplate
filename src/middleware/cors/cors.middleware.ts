@@ -13,7 +13,7 @@ export class CorsMiddleware implements NestMiddleware {
     constructor(private readonly configService: ConfigService) {}
 
     use(req: Request, res: Response, next: NextFunction): void {
-        const allowOrigin = this.configService.get<string[]>(
+        const allowOrigin = this.configService.get<string | boolean | string[]>(
             'middleware.cors.allowOrigin'
         );
         const allowMethod = this.configService.get<string[]>(
@@ -23,15 +23,23 @@ export class CorsMiddleware implements NestMiddleware {
             'middleware.cors.allowHeader'
         );
 
-        res.setHeader('Access-Control-Allow-Origin', req.hostname);
-        res.setHeader('Access-Control-Allow-Methods', allowMethod.join(','));
-        res.setHeader('Access-Control-Allow-Headers', allowHeader.join(','));
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        cors(
+            typeof allowOrigin === 'string' || typeof allowOrigin === 'boolean'
+                ? {
+                      origin: allowOrigin || DEFAULT_ORIGIN_CORS,
+                      methods: allowMethod || DEFAULT_METHOD_CORS,
+                      allowedHeaders: allowHeader || DEFAULT_HEADER_CORS,
+                      credentials: true,
+                  }
+                : function (request: Request, callback) {
+                      const whitelist = allowOrigin as string[];
+                      const corsOptions = { origin: false };
+                      if (whitelist.indexOf(request.headers['origin']) !== -1) {
+                          corsOptions.origin = true;
+                      }
 
-        cors({
-            origin: allowOrigin || DEFAULT_ORIGIN_CORS,
-            methods: allowMethod || DEFAULT_METHOD_CORS,
-            allowedHeaders: allowHeader || DEFAULT_HEADER_CORS,
-        })(req, res, next);
+                      callback(null, corsOptions);
+                  }
+        )(req, res, next);
     }
 }

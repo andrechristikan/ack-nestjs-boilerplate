@@ -4,16 +4,8 @@ export default registerAs(
     'middleware',
     (): Record<string, any> => ({
         cors: {
-            allowMethod: [
-                'GET',
-                'HEAD',
-                'OPTIONS',
-                'DELETE',
-                'PUT',
-                'PATCH',
-                'POST',
-            ],
-            allowOrigin: ['*'],
+            allowMethod: ['GET', 'DELETE', 'PUT', 'PATCH', 'POST'],
+            allowOrigin: false,
             allowHeader: [
                 'Accept',
                 'accept-language',
