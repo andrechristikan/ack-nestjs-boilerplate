@@ -1,6 +1,6 @@
-import { Injectable, NestMiddleware } from '@nestjs/common';
+import { HttpStatus, Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import cors from 'cors';
+import cors, { CorsOptions } from 'cors';
 import {
     DEFAULT_HEADER_CORS,
     DEFAULT_METHOD_CORS,
@@ -23,23 +23,27 @@ export class CorsMiddleware implements NestMiddleware {
             'middleware.cors.allowHeader'
         );
 
-        cors(
-            typeof allowOrigin === 'string' || typeof allowOrigin === 'boolean'
-                ? {
-                      origin: allowOrigin || DEFAULT_ORIGIN_CORS,
-                      methods: allowMethod || DEFAULT_METHOD_CORS,
-                      allowedHeaders: allowHeader || DEFAULT_HEADER_CORS,
-                      credentials: true,
-                  }
-                : function (request: Request, callback) {
-                      const whitelist = allowOrigin as string[];
-                      const corsOptions = { origin: false };
-                      if (whitelist.indexOf(request.headers['origin']) !== -1) {
-                          corsOptions.origin = true;
-                      }
+        const whitelist = allowOrigin as string[];
+        const corsOptions: CorsOptions = {
+            origin: DEFAULT_ORIGIN_CORS,
+            methods: allowMethod || DEFAULT_METHOD_CORS,
+            allowedHeaders: allowHeader || DEFAULT_HEADER_CORS,
+            preflightContinue: false,
+            credentials: true,
+            optionsSuccessStatus: HttpStatus.NO_CONTENT,
+        };
 
-                      callback(null, corsOptions);
-                  }
-        )(req, res, next);
+        if (Array.isArray(allowOrigin)) {
+            if (whitelist.indexOf(req.headers['origin']) !== -1) {
+                corsOptions.origin = true;
+            }
+        } else if (
+            typeof allowOrigin === 'string' ||
+            typeof allowOrigin === 'boolean'
+        ) {
+            corsOptions.origin = allowOrigin;
+        }
+
+        cors(corsOptions)(req, res, next);
     }
 }
