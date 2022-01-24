@@ -5,7 +5,7 @@ export default registerAs(
     (): Record<string, any> => ({
         cors: {
             allowMethod: ['GET', 'DELETE', 'PUT', 'PATCH', 'POST'],
-            allowOrigin: false,
+            allowOrigin: '*',
             allowHeader: [
                 'Accept',
                 'accept-language',
