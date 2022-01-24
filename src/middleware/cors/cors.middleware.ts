@@ -23,26 +23,14 @@ export class CorsMiddleware implements NestMiddleware {
             'middleware.cors.allowHeader'
         );
 
-        const whitelist = allowOrigin as string[];
         const corsOptions: CorsOptions = {
-            origin: DEFAULT_ORIGIN_CORS,
+            origin: allowOrigin || DEFAULT_ORIGIN_CORS,
             methods: allowMethod || DEFAULT_METHOD_CORS,
             allowedHeaders: allowHeader || DEFAULT_HEADER_CORS,
             preflightContinue: false,
             credentials: true,
             optionsSuccessStatus: HttpStatus.NO_CONTENT,
         };
-
-        if (Array.isArray(allowOrigin)) {
-            if (whitelist.indexOf(req.headers['origin']) !== -1) {
-                corsOptions.origin = true;
-            }
-        } else if (
-            typeof allowOrigin === 'string' ||
-            typeof allowOrigin === 'boolean'
-        ) {
-            corsOptions.origin = allowOrigin;
-        }
 
         cors(corsOptions)(req, res, next);
     }
