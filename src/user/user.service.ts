@@ -156,9 +156,11 @@ export class UserService {
     }
 
     async deleteOneById(_id: string): Promise<UserDocument> {
-        return this.userModel.findOneAndDelete({
-            _id: new Types.ObjectId(_id),
-        });
+        return this.userModel.findByIdAndDelete(_id);
+    }
+
+    async deleteOne(find: Record<string, any>): Promise<UserDocument> {
+        return this.userModel.findOneAndDelete(find);
     }
 
     async updateOneById(

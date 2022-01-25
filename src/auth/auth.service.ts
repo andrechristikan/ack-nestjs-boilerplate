@@ -78,11 +78,22 @@ export class AuthService {
         payload: Record<string, any>,
         test?: boolean
     ): Promise<string> {
-        return this.helperService.jwtCreateToken(payload, {
-            secretKey: this.refreshTokenSecretToken,
-            expiredIn: this.refreshTokenExpirationTime,
-            notBefore: test ? '0' : this.refreshTokenNotBeforeExpirationTime,
-        });
+        return this.helperService.jwtCreateToken(
+            {
+                _id: payload._id,
+                loginExpired: payload.loginExpired,
+                passwordExpired: payload.passwordExpired,
+                rememberMe: payload.rememberMe,
+                loginDate: payload.loginDate,
+            },
+            {
+                secretKey: this.refreshTokenSecretToken,
+                expiredIn: this.refreshTokenExpirationTime,
+                notBefore: test
+                    ? '0'
+                    : this.refreshTokenNotBeforeExpirationTime,
+            }
+        );
     }
 
     async validateRefreshToken(token: string): Promise<boolean> {

@@ -19,7 +19,6 @@ describe('E2E Public', () => {
         .toLowerCase()}${faker.random.alphaNumeric(5).toUpperCase()}`;
 
     let userData: Record<string, any>;
-    let userId: string;
 
     beforeAll(async () => {
         const modRef = await Test.createTestingModule({
@@ -71,7 +70,6 @@ describe('E2E Public', () => {
             .set('Content-Type', 'application/json')
             .send(userData);
 
-        userId = response.body.data._id;
         expect(response.status).toEqual(HttpStatus.CREATED);
         expect(response.body.statusCode).toEqual(HttpStatus.CREATED);
     });
@@ -120,7 +118,10 @@ describe('E2E Public', () => {
 
     afterAll(async () => {
         try {
-            await userService.deleteOneById(userId);
+            await userService.deleteOne({
+                email: userData.email,
+                mobileNumber: userData.mobileNumber,
+            });
         } catch (e) {
             console.error(e);
         }
