@@ -60,6 +60,13 @@ export class HelperService {
         return this.randomNumberInRange(min, max);
     }
 
+    async randomArray(array: Array<any>) {
+        return array
+            .map((value) => ({ value, sort: Math.random() }))
+            .sort((a, b) => a.sort - b.sort)
+            .map(({ value }) => value);
+    }
+
     async randomNumberInRange(min: number, max: number): Promise<number> {
         return faker.datatype.number({ min, max });
     }
