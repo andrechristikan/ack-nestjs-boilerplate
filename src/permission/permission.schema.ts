@@ -6,6 +6,7 @@ export class PermissionEntity {
     @Prop({
         required: true,
         index: true,
+        uppercase: true,
         unique: true,
         trim: true,
     })
@@ -13,6 +14,7 @@ export class PermissionEntity {
 
     @Prop({
         required: true,
+        lowercase: true,
     })
     name: string;
 
@@ -36,6 +38,6 @@ export type PermissionDocument = PermissionEntity & Document;
 // Hooks
 PermissionSchema.pre<PermissionDocument>('save', function (next) {
     this.code = this.code.toUpperCase();
-    this.name = this.code.toLowerCase();
+    this.name = this.name.toLowerCase();
     next();
 });

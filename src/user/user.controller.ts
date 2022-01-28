@@ -12,6 +12,7 @@ import {
     HttpStatus,
     UploadedFile,
     Patch,
+    NotFoundException,
 } from '@nestjs/common';
 import { UserService } from 'src/user/user.service';
 import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe';
@@ -38,13 +39,13 @@ import {
 } from './user.decorator';
 import { AwsService } from 'src/aws/aws.service';
 import { IAwsResponse } from 'src/aws/aws.interface';
-import { ConfigService } from '@nestjs/config';
 import { UserListTransformer } from './transformer/user.list.transformer';
 import { AuthAdminJwtGuard, AuthPublicJwtGuard } from 'src/auth/auth.decorator';
 import { AuthService } from 'src/auth/auth.service';
 import { UploadFileSingle } from 'src/file/file.decorator';
 import { ENUM_FILE_TYPE } from 'src/file/file.constant';
-import { LoggerService } from 'src/logger/logger.service';
+import { RoleService } from 'src/role/role.service';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
 
 @Controller({
     version: '1',
@@ -56,7 +57,7 @@ export class UserAdminController {
         private readonly authService: AuthService,
         private readonly paginationService: PaginationService,
         private readonly userService: UserService,
-        private readonly loggerService: LoggerService
+        private readonly roleService: RoleService
     ) {}
 
     @ResponsePaging('user.list')
@@ -165,6 +166,19 @@ export class UserAdminController {
             });
         }
 
+        const role = await this.roleService.findOneById(body.role);
+        if (!role) {
+            this.debuggerService.error('Role not found', {
+                class: 'UserController',
+                function: 'create',
+            });
+
+            throw new NotFoundException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
+                message: 'role.error.notFound',
+            });
+        }
+
         try {
             const password = await this.authService.createPassword(
                 body.password
@@ -227,10 +241,10 @@ export class UserAdminController {
     async update(
         @GetUser() user: IUserDocument,
         @Body(RequestValidationPipe)
-        data: UserUpdateValidation
+        body: UserUpdateValidation
     ): Promise<IResponse> {
         try {
-            await this.userService.updateOneById(user._id, data);
+            await this.userService.updateOneById(user._id, body);
         } catch (err: any) {
             this.debuggerService.error('update try catch', {
                 class: 'UserController',
@@ -239,6 +253,7 @@ export class UserAdminController {
                     ...err,
                 },
             });
+
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
@@ -253,7 +268,7 @@ export class UserAdminController {
     @Response('user.inactive')
     @UserUpdateInactiveGuard()
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
-    @Patch('/inactive/:user')
+    @Patch('/update/:user/inactive')
     async inactive(@GetUser() user: IUserDocument): Promise<void> {
         try {
             await this.userService.inactive(user._id);
@@ -276,7 +291,7 @@ export class UserAdminController {
     @Response('user.active')
     @UserUpdateActiveGuard()
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
-    @Patch('/active/:user')
+    @Patch('/update/:user/active')
     async active(@GetUser() user: IUserDocument): Promise<void> {
         try {
             await this.userService.active(user._id);
@@ -305,8 +320,7 @@ export class UserPublicController {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService,
         private readonly userService: UserService,
-        private readonly awsService: AwsService,
-        private readonly configService: ConfigService
+        private readonly awsService: AwsService
     ) {}
 
     @Response('user.profile')
@@ -333,15 +347,14 @@ export class UserPublicController {
             .substring(filename.lastIndexOf('.') + 1, filename.length)
             .toUpperCase();
 
-        const uploadPath: string =
-            this.configService.get<string>('user.uploadPath');
+        const path = await this.userService.createRandomFilename();
 
         try {
             const aws: IAwsResponse = await this.awsService.s3PutItemInBucket(
-                `${await this.userService.createRandomFilename()}.${mime}`,
+                `${path.filename}.${mime}`,
                 content,
                 {
-                    path: `${uploadPath}/${user._id}`,
+                    path: `${path.path}/${user._id}`,
                 }
             );
 

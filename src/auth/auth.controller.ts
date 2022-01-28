@@ -45,7 +45,6 @@ export class AuthController {
         @Debugger() private readonly debuggerService: DebuggerService,
         private readonly userService: UserService,
         private readonly authService: AuthService,
-        private readonly roleService: RoleService,
         private readonly loggerService: LoggerService
     ) {}
 
@@ -53,13 +52,13 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     @Post('/login')
     async login(
-        @Body(RequestValidationPipe) data: AuthLoginValidation
+        @Body(RequestValidationPipe) body: AuthLoginValidation
     ): Promise<IResponse> {
-        const rememberMe: boolean = data.rememberMe ? true : false;
+        const rememberMe: boolean = body.rememberMe ? true : false;
         const user: IUserDocument =
             await this.userService.findOne<IUserDocument>(
                 {
-                    email: data.email,
+                    email: body.email,
                 },
                 {
                     populate: {
@@ -78,6 +77,24 @@ export class AuthController {
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
                 message: 'user.error.notFound',
+            });
+        }
+
+        const validate: boolean = await this.authService.validateUser(
+            body.password,
+            user.password
+        );
+
+        if (!validate) {
+            this.debuggerService.error('Authorized error', {
+                class: 'AuthController',
+                function: 'login',
+            });
+
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR,
+                message: 'auth.error.passwordNotMatch',
             });
         } else if (!user.isActive) {
             this.debuggerService.error('Auth Block', {
@@ -101,30 +118,13 @@ export class AuthController {
             });
         }
 
-        const validate: boolean = await this.authService.validateUser(
-            data.password,
-            user.password
-        );
-
-        if (!validate) {
-            this.debuggerService.error('Authorized error', {
-                class: 'AuthController',
-                function: 'login',
-            });
-
-            throw new BadRequestException({
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR,
-                message: 'auth.error.passwordNotMatch',
-            });
-        }
-
         const safe: AuthLoginTransformer = await this.authService.mapLogin(
             user
         );
 
         const payload: Record<string, any> =
             await this.authService.createPayload(safe, rememberMe);
+
         const accessToken: string = await this.authService.createAccessToken(
             payload
         );
@@ -144,7 +144,7 @@ export class AuthController {
 
             throw new SuccessException({
                 statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR,
                 message: 'auth.error.passwordExpired',
                 data: {
                     accessToken,
@@ -225,7 +225,7 @@ export class AuthController {
 
             throw new ForbiddenException({
                 statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR,
                 message: 'auth.error.passwordExpired',
             });
         }
@@ -255,6 +255,100 @@ export class AuthController {
         };
     }
 
+    @Response('auth.changePassword')
+    @AuthJwtGuard()
+    @Patch('/change-password')
+    async changePassword(
+        @Body(RequestValidationPipe) body: AuthChangePasswordValidation,
+        @User('_id') _id: string
+    ): Promise<void> {
+        const user: UserDocument = await this.userService.findOneById(_id);
+        if (!user) {
+            this.debuggerService.error('User not found', {
+                class: 'AuthController',
+                function: 'changePassword',
+            });
+
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
+                message: 'user.error.notFound',
+            });
+        }
+
+        const matchPassword: boolean = await this.authService.validateUser(
+            body.oldPassword,
+            user.password
+        );
+        if (!matchPassword) {
+            this.debuggerService.error("Old password don't match", {
+                class: 'AuthController',
+                function: 'changePassword',
+            });
+
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR,
+                message: 'auth.error.passwordNotMatch',
+            });
+        }
+
+        const newMatchPassword: boolean = await this.authService.validateUser(
+            body.newPassword,
+            user.password
+        );
+        if (newMatchPassword) {
+            this.debuggerService.error(
+                "New password cant't same with old password",
+                {
+                    class: 'AuthController',
+                    function: 'changePassword',
+                }
+            );
+
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NEW_MUST_DIFFERENCE_ERROR,
+                message: 'auth.error.newPasswordMustDifference',
+            });
+        }
+
+        try {
+            const password = await this.authService.createPassword(
+                body.newPassword
+            );
+
+            await this.userService.updatePassword(user._id, password);
+        } catch (e) {
+            this.debuggerService.error(
+                'Change password error internal server error',
+                {
+                    class: 'AuthController',
+                    function: 'changePassword',
+                    error: { ...e },
+                }
+            );
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                message: 'http.serverError.internalServerError',
+            });
+        }
+
+        return;
+    }
+}
+
+@Controller({
+    version: '1',
+})
+export class AuthPublicController {
+    constructor(
+        @Debugger() private readonly debuggerService: DebuggerService,
+        private readonly userService: UserService,
+        private readonly authService: AuthService,
+        private readonly roleService: RoleService
+    ) {}
+
     @Response('auth.signUp')
     @Post('/sign-up')
     async signUp(
@@ -268,7 +362,7 @@ export class AuthController {
         );
         if (!role) {
             this.debuggerService.error('Role not found', {
-                class: 'UserPublicController',
+                class: 'AuthController',
                 function: 'signUp',
             });
 
@@ -357,7 +451,7 @@ export class AuthController {
             };
         } catch (err: any) {
             this.debuggerService.error('Signup try catch', {
-                class: 'UserPublicController',
+                class: 'AuthController',
                 function: 'signUp',
                 error: err,
             });
@@ -367,87 +461,5 @@ export class AuthController {
                 message: 'http.serverError.internalServerError',
             });
         }
-    }
-
-    @Response('auth.changePassword')
-    @AuthJwtGuard()
-    @Patch('/change-password')
-    async changePassword(
-        @Body(RequestValidationPipe) body: AuthChangePasswordValidation,
-        @User('_id') _id: string
-    ): Promise<void> {
-        const user: UserDocument = await this.userService.findOneById(_id);
-        if (!user) {
-            this.debuggerService.error('User not found', {
-                class: 'AuthController',
-                function: 'changePassword',
-            });
-
-            throw new NotFoundException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
-                message: 'user.error.notFound',
-            });
-        }
-
-        const matchPassword: boolean = await this.authService.validateUser(
-            body.oldPassword,
-            user.password
-        );
-        if (!matchPassword) {
-            this.debuggerService.error("Old password don't match", {
-                class: 'AuthController',
-                function: 'changePassword',
-            });
-
-            throw new BadRequestException({
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR,
-                message: 'auth.error.passwordNotMatch',
-            });
-        }
-
-        const newMatchPassword: boolean = await this.authService.validateUser(
-            body.newPassword,
-            user.password
-        );
-        if (newMatchPassword) {
-            this.debuggerService.error(
-                "New password cant't same with old password",
-                {
-                    class: 'AuthController',
-                    function: 'changePassword',
-                }
-            );
-
-            throw new BadRequestException({
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.USER_PASSWORD_NEW_MUST_DIFFERENCE_ERROR,
-                message: 'auth.error.newPasswordMustDifference',
-            });
-        }
-
-        try {
-            const password = await this.authService.createPassword(
-                body.newPassword
-            );
-
-            await this.userService.updatePassword(user._id, password);
-        } catch (e) {
-            this.debuggerService.error(
-                'Change password error internal server error',
-                {
-                    class: 'AuthController',
-                    function: 'changePassword',
-                    error: { ...e },
-                }
-            );
-
-            throw new InternalServerErrorException({
-                statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
-                message: 'http.serverError.internalServerError',
-            });
-        }
-
-        return;
     }
 }

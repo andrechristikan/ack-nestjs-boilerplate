@@ -1,10 +1,10 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { CommandModule, CommandService } from 'nestjs-command';
-import { AppModule } from 'src/app/app.module';
+import { SeedsModule } from './database/seeds/seeds.module';
 
 async function bootstrap() {
-    const app = await NestFactory.createApplicationContext(AppModule, {
+    const app = await NestFactory.createApplicationContext(SeedsModule, {
         logger: ['error'],
     });
 

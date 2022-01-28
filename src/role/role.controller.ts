@@ -80,14 +80,14 @@ export class RoleAdminController {
             sort,
         });
 
-        const data: RoleListTransformer[] = await this.roleService.mapList(
-            roles
-        );
-
         const totalData: number = await this.roleService.getTotal({});
         const totalPage: number = await this.paginationService.totalPage(
             totalData,
             perPage
+        );
+
+        const data: RoleListTransformer[] = await this.roleService.mapList(
+            roles
         );
 
         return {
@@ -101,14 +101,14 @@ export class RoleAdminController {
 
     @Response('role.get')
     @RoleGetGuard()
-    @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ)
+    @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ)
     @Get('get/:role')
     async get(@GetRole() role: IRoleDocument): Promise<IResponse> {
         return this.roleService.mapGet(role);
     }
 
     @Response('role.create')
-    @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_DELETE)
+    @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_CREATE)
     @Post('/create')
     async create(
         @Body(RequestValidationPipe)
@@ -257,7 +257,7 @@ export class RoleAdminController {
     @Response('role.inactive')
     @RoleUpdateInactiveGuard()
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_UPDATE)
-    @Patch('/inactive/:role')
+    @Patch('/update/:role/inactive')
     async inactive(@GetRole() role: IRoleDocument): Promise<void> {
         try {
             await this.roleService.inactive(role._id);
@@ -280,7 +280,7 @@ export class RoleAdminController {
     @Response('role.active')
     @RoleUpdateActiveGuard()
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_UPDATE)
-    @Patch('/active/:role')
+    @Patch('/update/:role/active')
     async active(@GetRole() role: IRoleDocument): Promise<void> {
         try {
             await this.roleService.active(role._id);

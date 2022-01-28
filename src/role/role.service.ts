@@ -39,7 +39,7 @@ export class RoleService {
     }
 
     async getTotal(find?: Record<string, any>): Promise<number> {
-        return this.roleModel.estimatedDocumentCount(find);
+        return this.roleModel.countDocuments(find);
     }
 
     async findOneById<T>(
@@ -126,9 +126,7 @@ export class RoleService {
     }
 
     async deleteOneById(_id: string): Promise<RoleDocument> {
-        return this.roleModel.findOneAndDelete({
-            _id: new Types.ObjectId(_id),
-        });
+        return this.roleModel.findByIdAndDelete(_id);
     }
 
     async mapGet(data: IRoleDocument): Promise<RoleGetTransformer> {
@@ -151,8 +149,8 @@ export class RoleBulkService {
         return await this.roleModel.deleteMany(find);
     }
 
-    async createMany(data: RoleCreateValidation[]): Promise<boolean> {
-        await this.roleModel.insertMany(
+    async createMany(data: RoleCreateValidation[]): Promise<RoleDocument[]> {
+        return this.roleModel.insertMany(
             data.map(({ name, permissions, isAdmin }) => ({
                 name,
                 isActive: true,
@@ -160,7 +158,5 @@ export class RoleBulkService {
                 permissions: permissions.map((val) => new Types.ObjectId(val)),
             }))
         );
-
-        return true;
     }
 }

@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from 'src/auth/auth.module';
-import { LoggerModule } from 'src/logger/logger.module';
 import { PaginationModule } from 'src/pagination/pagination.module';
 import { PermissionAdminController } from 'src/permission/permission.controller';
 import { PermissionModule } from 'src/permission/permission.module';
@@ -23,7 +22,6 @@ import { UserModule } from 'src/user/user.module';
         UserModule,
         PermissionModule,
         PaginationModule,
-        LoggerModule,
     ],
 })
 export class RouterAdminModule {}

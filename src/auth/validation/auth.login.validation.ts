@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
     IsNotEmpty,
     IsEmail,
@@ -5,6 +6,7 @@ import {
     IsBoolean,
     IsOptional,
     ValidateIf,
+    IsString,
 } from 'class-validator';
 
 export class AuthLoginValidation {
@@ -18,5 +20,8 @@ export class AuthLoginValidation {
     @ValidateIf((e) => e.rememberMe !== '')
     readonly rememberMe?: boolean;
 
+    @IsNotEmpty()
+    @Type(() => String)
+    @IsString()
     readonly password: string;
 }

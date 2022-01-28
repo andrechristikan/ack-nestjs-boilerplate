@@ -20,14 +20,20 @@ import { UserListTransformer } from './transformer/user.list.transformer';
 import { UserGetTransformer } from './transformer/user.get.transformer';
 import { IAuthPassword } from 'src/auth/auth.interface';
 import { DeleteResult } from 'mongodb';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserService {
+    private readonly uploadPath: string;
+
     constructor(
         @InjectModel(UserEntity.name)
         private readonly userModel: Model<UserDocument>,
-        @Helper() private readonly helperService: HelperService
-    ) {}
+        @Helper() private readonly helperService: HelperService,
+        private readonly configService: ConfigService
+    ) {
+        this.uploadPath = this.configService.get<string>('user.uploadPath');
+    }
 
     async findAll(
         find?: Record<string, any>,
@@ -54,7 +60,7 @@ export class UserService {
     }
 
     async getTotal(find?: Record<string, any>): Promise<number> {
-        return this.userModel.estimatedDocumentCount(find);
+        return this.userModel.countDocuments(find);
     }
 
     async mapProfile(data: IUserDocument): Promise<UserProfileTransformer> {
@@ -150,9 +156,11 @@ export class UserService {
     }
 
     async deleteOneById(_id: string): Promise<UserDocument> {
-        return this.userModel.findOneAndDelete({
-            _id: new Types.ObjectId(_id),
-        });
+        return this.userModel.findByIdAndDelete(_id);
+    }
+
+    async deleteOne(find: Record<string, any>): Promise<UserDocument> {
+        return this.userModel.findOneAndDelete(find);
     }
 
     async updateOneById(
@@ -198,8 +206,13 @@ export class UserService {
         return user.save();
     }
 
-    async createRandomFilename(): Promise<string> {
-        return this.helperService.randomString(20);
+    async createRandomFilename(): Promise<Record<string, any>> {
+        const filename: string = await this.helperService.randomString(20);
+
+        return {
+            path: this.uploadPath,
+            filename: filename,
+        };
     }
 
     async updatePassword(
@@ -215,10 +228,19 @@ export class UserService {
         return auth.save();
     }
 
+    async updatePasswordExpired(
+        _id: string,
+        passwordExpired: Date
+    ): Promise<UserDocument> {
+        const auth: UserDocument = await this.userModel.findById(_id);
+        auth.passwordExpired = passwordExpired;
+
+        return auth.save();
+    }
+
     async inactive(_id: string): Promise<UserDocument> {
         const user: UserDocument = await this.userModel.findById(_id);
 
-        console.log('user', user);
         user.isActive = false;
         return user.save();
     }

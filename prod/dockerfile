@@ -20,7 +20,7 @@ WORKDIR /app
 EXPOSE 3000
 
 COPY package.json yarn.lock ./
-RUN touch .env
+RUN touch .env .env.share
 
 RUN set -x && yarn --production=true
 

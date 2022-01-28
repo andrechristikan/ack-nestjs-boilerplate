@@ -1,7 +1,11 @@
-import { Injectable, NestMiddleware } from '@nestjs/common';
+import { HttpStatus, Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import cors from 'cors';
-import { DEFAULT_METHOD_CORS, DEFAULT_ORIGIN_CORS } from './cors.constant';
+import cors, { CorsOptions } from 'cors';
+import {
+    DEFAULT_HEADER_CORS,
+    DEFAULT_METHOD_CORS,
+    DEFAULT_ORIGIN_CORS,
+} from './cors.constant';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -9,16 +13,25 @@ export class CorsMiddleware implements NestMiddleware {
     constructor(private readonly configService: ConfigService) {}
 
     use(req: Request, res: Response, next: NextFunction): void {
-        const allowOrigin = this.configService.get<string[]>(
+        const allowOrigin = this.configService.get<string | boolean | string[]>(
             'middleware.cors.allowOrigin'
         );
         const allowMethod = this.configService.get<string[]>(
             'middleware.cors.allowMethod'
         );
+        const allowHeader = this.configService.get<string[]>(
+            'middleware.cors.allowHeader'
+        );
 
-        cors({
+        const corsOptions: CorsOptions = {
             origin: allowOrigin || DEFAULT_ORIGIN_CORS,
             methods: allowMethod || DEFAULT_METHOD_CORS,
-        })(req, res, next);
+            allowedHeaders: allowHeader || DEFAULT_HEADER_CORS,
+            preflightContinue: false,
+            credentials: true,
+            optionsSuccessStatus: HttpStatus.NO_CONTENT,
+        };
+
+        cors(corsOptions)(req, res, next);
     }
 }

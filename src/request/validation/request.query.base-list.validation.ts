@@ -52,7 +52,7 @@ export class RequestQueryBaseListValidation {
                 : !value
                 ? obj._perPage
                 : value && isNaN(value)
-                ? obj._page
+                ? obj._perPage
                 : parseInt(value),
         { toClassOnly: true }
     )

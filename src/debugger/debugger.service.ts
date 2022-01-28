@@ -49,9 +49,7 @@ export class DebuggerService {
         const transports = [];
         if (this.logger) {
             transports.push(configTransportError);
-
-            if (this.env !== 'production' && this.env !== 'testing')
-                transports.push(configTransportDefault);
+            transports.push(configTransportDefault);
         }
 
         transports.push(

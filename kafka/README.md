@@ -51,7 +51,7 @@ kafka-topics --version
     Replace the env file with env file root dir
 
     ```sh
-    yes | cp -rf .env.kafka .env
+    cp kafka/.env.example .env
     ```
 
     and then we need to adjust with our env
@@ -75,21 +75,9 @@ kafka-topics --version
     DATABASE_SSL=false
     DATABASE_OPTIONS=
 
-    AUTH_JWT_ACCESS_TOKEN_SECRET_KEY=123456
-
-    AUTH_JWT_REFRESH_TOKEN_SECRET_KEY=01001231
-
-    AUTH_BASIC_TOKEN_CLIENT_ID=asdzxc
-    AUTH_BASIC_TOKEN_CLIENT_SECRET=1234567890
-
     KAFKA_ACTIVE=true
     KAFKA_CONSUMER_GROUP=nestjs.ack
     KAFKA_BROKERS=localhost:9092
-
-    AWS_CREDENTIAL_KEY=awskey12345
-    AWS_CREDENTIAL_SECRET=awssecret12345
-    AWS_S3_REGION=us-east-2
-    AWS_S3_BUCKET=acks3
     ```
 
     As we mention in `Readme` at section `Features`, we can switch kafka on/of. We just need change value `KAFKA_ACTIVE` in `.env` file. This useful when you don't need kafka anymore after implementation and don't want to remove it.
@@ -106,14 +94,34 @@ kafka-topics --version
     KAFKA_CONSUMER_GROUP=nestjs.ack
     KAFKA_BROKERS=localhost:9092
 
-    AWS_CREDENTIAL_KEY=awskey12345
-
     ...
     ...
     ...
     ```
 
-3. In `src/main.ts`, Add This Code below `app.listen(port, host)`.
+3. Copy `.env.share`
+
+    ```sh
+    cp .env.share.example .env.share
+    ```
+
+    and then we need to adjust with our env
+
+    ```env
+    AUTH_JWT_ACCESS_TOKEN_SECRET_KEY=123456
+    AUTH_JWT_REFRESH_TOKEN_SECRET_KEY=01001231
+
+    AUTH_BASIC_TOKEN_CLIENT_ID=asdzxc
+    AUTH_BASIC_TOKEN_CLIENT_SECRET=1234567890
+
+    AWS_BUCKET_CREATE_FROM_INIT=false
+    AWS_CREDENTIAL_KEY=
+    AWS_CREDENTIAL_SECRET=
+    AWS_S3_REGION=us-east-2
+    AWS_S3_BUCKET=acks3
+    ```
+
+4. In `src/main.ts`, Add This Code below `app.listen(port, host)`.
 
     ```ts
     // src/main.ts
@@ -136,7 +144,7 @@ kafka-topics --version
 
     ```
 
-4. In `src/app/app.module.ts`, we need to import `RouterKafkaModule`, and `add RouterKafkaModule into RouterModule`.
+5. In `src/app/app.module.ts`, we need to import `RouterKafkaModule`, and `add RouterKafkaModule into RouterModule`.
 
     - `RouterKafkaModule` use to import all `Kafka**Module`.
         - `KafkaAdminModule` use to create custom kafka topics.
@@ -190,7 +198,7 @@ kafka-topics --version
 
         ```
 
-5. Configuration. `Partition default value is 3` or we can change value of Partition in config file `src/config/kafka.config.ts`, and `Replication Factor` default value is `count of our brokers`.
+6. Configuration. `Partition default value is 3` or we can change value of Partition in config file `src/config/kafka.config.ts`, and `Replication Factor` default value is `count of our brokers`.
 
     ```ts
     // src/config/kafka.config.ts
@@ -215,7 +223,7 @@ kafka-topics --version
 
     ```
 
-6. Make sure our topics was created or we can use auto create topics with `KafkaAdminModule`.
+7. Make sure our topics was created or we can use auto create topics with `KafkaAdminModule`.
 
     ```ts
     // src/kafka/kafka.constant.ts
@@ -227,7 +235,7 @@ kafka-topics --version
 
     ```
 
-7. After all configuration, we need to test manual hit `/api/kafka/producer` endpoint. [see this instruction](../README.md#endpoint).
+8. After all configuration, we need to test manual hit `/api/kafka/producer` endpoint. [see this instruction](../README.md#endpoint).
 
 ### Run project
 
@@ -295,24 +303,34 @@ This Instruction will little bit difference
     DATABASE_SSL=false
     DATABASE_OPTIONS=
 
-    AUTH_JWT_ACCESS_TOKEN_SECRET_KEY=123456
+    KAFKA_ACTIVE=true
+    KAFKA_CONSUMER_GROUP=nestjs.ack
+    KAFKA_BROKERS=kafka:9092-2
+    AWS_S3_BUCKET=acks3
+    ```
 
+4. Copy `.env.share`
+
+    ```sh
+    cp .env.share.example .env.share
+    ```
+
+    and then we need to adjust with our env
+
+    ```env
+    AUTH_JWT_ACCESS_TOKEN_SECRET_KEY=123456
     AUTH_JWT_REFRESH_TOKEN_SECRET_KEY=01001231
 
     AUTH_BASIC_TOKEN_CLIENT_ID=asdzxc
     AUTH_BASIC_TOKEN_CLIENT_SECRET=1234567890
 
-    KAFKA_ACTIVE=true
-    KAFKA_CONSUMER_GROUP=nestjs.ack
-    KAFKA_BROKERS=kafka:9092
-
-    AWS_CREDENTIAL_KEY=awskey12345
-    AWS_CREDENTIAL_SECRET=awssecret12345
+    AWS_BUCKET_CREATE_FROM_INIT=false
+    AWS_CREDENTIAL_KEY=
+    AWS_CREDENTIAL_SECRET=
     AWS_S3_REGION=us-east-2
     AWS_S3_BUCKET=acks3
-    ```
 
-4. Run docker compose
+5. Run docker compose
 
     ```sh
     docker-compose -f docker/docker-compose.kafka.yml up -d

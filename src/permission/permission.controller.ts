@@ -27,6 +27,7 @@ import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
 import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
 import { PermissionDocument } from './permission.schema';
+import { PermissionListTransformer } from './transformer/permission.list.transformer';
 
 @Controller({
     version: '1',
@@ -72,12 +73,15 @@ export class PermissionAdminController {
             perPage
         );
 
+        const data: PermissionListTransformer[] =
+            await this.permissionService.mapList(permissions);
+
         return {
             totalData,
             totalPage,
             currentPage: page,
             perPage,
-            data: permissions,
+            data,
         };
     }
 
@@ -128,7 +132,7 @@ export class PermissionAdminController {
         ENUM_PERMISSIONS.PERMISSION_READ,
         ENUM_PERMISSIONS.PERMISSION_UPDATE
     )
-    @Patch('/inactive/:permission')
+    @Patch('/update/:permission/inactive')
     async inactive(
         @GetPermission() permission: PermissionDocument
     ): Promise<void> {
@@ -159,7 +163,7 @@ export class PermissionAdminController {
         ENUM_PERMISSIONS.PERMISSION_READ,
         ENUM_PERMISSIONS.PERMISSION_UPDATE
     )
-    @Patch('/active/:permission')
+    @Patch('/update/:permission/active')
     async active(
         @GetPermission() permission: PermissionDocument
     ): Promise<void> {

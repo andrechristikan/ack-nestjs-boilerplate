@@ -25,7 +25,12 @@ export function PermissionGetGuard(): any {
 
 export function PermissionUpdateGuard(): any {
     return applyDecorators(
-        UseGuards(PermissionPutToRequestGuard, PermissionNotFoundGuard)
+        UseGuards(
+            PermissionPutToRequestGuard,
+            PermissionNotFoundGuard,
+            PermissionActiveGuard
+        ),
+        SetMetadata(PERMISSION_ACTIVE_META_KEY, [true])
     );
 }
 
