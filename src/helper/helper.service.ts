@@ -29,8 +29,13 @@ export class HelperService {
         return regex.test(email);
     }
 
+    async checkNumber(number: string): Promise<boolean> {
+        const regex = /^-?\d+$/;
+        return regex.test(number);
+    }
+
     async randomReference(length: number, prefix?: string): Promise<string> {
-        const timestamp = `${new Date().valueOf()}`;
+        const timestamp = `${await this.dateTimestamp()}`;
         const randomString: string = await this.randomString(length, {
             safe: true,
             upperCase: true,
@@ -69,6 +74,18 @@ export class HelperService {
 
     async randomNumberInRange(min: number, max: number): Promise<number> {
         return faker.datatype.number({ min, max });
+    }
+
+    async dateCheck(date: string): Promise<boolean> {
+        return moment(date).isValid();
+    }
+
+    async dateCreate(date?: string | Date): Promise<Date> {
+        return moment(date).toDate();
+    }
+
+    async dateTimestamp(date?: string | Date): Promise<number> {
+        return moment(date).valueOf();
     }
 
     async dateTimeToString(date: Date, format?: string): Promise<string> {

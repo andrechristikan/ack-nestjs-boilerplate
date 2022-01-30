@@ -131,7 +131,7 @@ export function IsStartWith(
     };
 }
 
-export function MinDateGreaterThan(
+export function MinGreaterThan(
     property: string,
     validationOptions?: ValidationOptions
 ) {
@@ -146,7 +146,73 @@ export function MinDateGreaterThan(
                 validate(value: any, args: ValidationArguments) {
                     const [relatedPropertyName] = args.constraints;
                     const relatedValue = args.object[relatedPropertyName];
-                    return new Date(value) > new Date(relatedValue);
+                    return value > relatedValue;
+                },
+            },
+        });
+    };
+}
+
+export function MaxGreaterThan(
+    property: string,
+    validationOptions?: ValidationOptions
+) {
+    return function (object: Record<string, any>, propertyName: string) {
+        registerDecorator({
+            name: 'MaxGreaterThan',
+            target: object.constructor,
+            propertyName: propertyName,
+            constraints: [property],
+            options: validationOptions,
+            validator: {
+                validate(value: any, args: ValidationArguments) {
+                    const [relatedPropertyName] = args.constraints;
+                    const relatedValue = args.object[relatedPropertyName];
+                    return value < relatedValue;
+                },
+            },
+        });
+    };
+}
+
+export function MinGreaterThanEqual(
+    property: string,
+    validationOptions?: ValidationOptions
+) {
+    return function (object: Record<string, any>, propertyName: string) {
+        registerDecorator({
+            name: 'MinGreaterThanEqual',
+            target: object.constructor,
+            propertyName: propertyName,
+            constraints: [property],
+            options: validationOptions,
+            validator: {
+                validate(value: any, args: ValidationArguments) {
+                    const [relatedPropertyName] = args.constraints;
+                    const relatedValue = args.object[relatedPropertyName];
+                    return value >= relatedValue;
+                },
+            },
+        });
+    };
+}
+
+export function MaxGreaterThanEqual(
+    property: string,
+    validationOptions?: ValidationOptions
+) {
+    return function (object: Record<string, any>, propertyName: string) {
+        registerDecorator({
+            name: 'MaxGreaterThanEqual',
+            target: object.constructor,
+            propertyName: propertyName,
+            constraints: [property],
+            options: validationOptions,
+            validator: {
+                validate(value: any, args: ValidationArguments) {
+                    const [relatedPropertyName] = args.constraints;
+                    const relatedValue = args.object[relatedPropertyName];
+                    return value <= relatedValue;
                 },
             },
         });
