@@ -85,7 +85,7 @@ The features will spill on this section
 
 ### Middleware
 
-- [x] Body Parser (JSON, Raw, Test, Multipart Form, and Urlencoded)
+- [x] Body Parser (JSON, Raw, Text, Multipart Form, and Urlencoded)
 - [x] Rate Limit
 - [x] Compression
 - [x] Helmet

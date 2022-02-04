@@ -76,16 +76,38 @@ export class HelperService {
         return faker.datatype.number({ min, max });
     }
 
+    async dateDiff(
+        dateOne: Date,
+        dateTwo: Date,
+        options?: string
+    ): Promise<number> {
+        const mDateOne = moment(dateOne);
+        const mDateTwo = moment(dateTwo);
+        const diff = moment.duration(mDateTwo.diff(mDateOne));
+
+        if (options === 'milis') {
+            return diff.asMilliseconds();
+        } else if (options === 'seconds') {
+            return diff.asSeconds();
+        } else if (options === 'hours') {
+            return diff.asHours();
+        } else if (options === 'days') {
+            return diff.asDays();
+        } else {
+            return diff.asMinutes();
+        }
+    }
+
     async dateCheck(date: string): Promise<boolean> {
-        return moment(date).isValid();
+        return moment(date, true).isValid();
     }
 
     async dateCreate(date?: string | Date): Promise<Date> {
-        return moment(date).toDate();
+        return moment(date, true).toDate();
     }
 
     async dateTimestamp(date?: string | Date): Promise<number> {
-        return moment(date).valueOf();
+        return moment(date, true).valueOf();
     }
 
     async dateTimeToString(date: Date, format?: string): Promise<string> {
