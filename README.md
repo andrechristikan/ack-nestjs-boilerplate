@@ -293,11 +293,9 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
         yarn migrate:rollback
         ```
 
-6.  **SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET**
+6.  SKIP THIS STEP E2E TEST DO NOT FINISH YET
 
-    Make sure we do the correct step. Go run `TestModule` and make sure all test passed with success status.
-
-    Run Unit Testing
+    Make sure we do the correct step. Run Unit Testing.
 
     ```sh
     yarn test
