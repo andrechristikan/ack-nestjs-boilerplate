@@ -3,22 +3,25 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import faker from '@faker-js/faker';
 import { UserService } from 'src/user/user.service';
-import { E2E_AUTH_REFRESH_URL } from './auth.constant.e2e';
+import { E2E_AUTH_LOGIN_URL } from './auth.constant';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/request/request.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
 import { UserDocument } from 'src/user/user.schema';
 import { RoleDocument } from 'src/role/role.schema';
 import { AuthService } from 'src/auth/auth.service';
 import { RoleService } from 'src/role/role.service';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
+import {
+    ENUM_AUTH_STATUS_CODE_ERROR,
+    ENUM_AUTH_STATUS_CODE_SUCCESS,
+} from 'src/auth/auth.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
 import { HelperService } from 'src/helper/helper.service';
-import { IUserDocument } from 'src/user/user.interface';
-import { Types } from 'mongoose';
 import { CoreModule } from 'src/core/core.module';
 import { RouterCommonModule } from 'src/router/router.common.module';
 import { RouterModule } from '@nestjs/core';
+import { connection } from 'mongoose';
 
-describe('E2E Refresh', () => {
+describe('E2E Login', () => {
     let app: INestApplication;
     let userService: UserService;
     let authService: AuthService;
@@ -30,11 +33,8 @@ describe('E2E Refresh', () => {
         .toLowerCase()}${faker.random.alphaNumeric(5).toUpperCase()}`;
 
     let user: UserDocument;
-    let passwordExpired: Date;
-    let passwordExpiredForward: Date;
 
-    let refreshToken: string;
-    let refreshTokenNotFound: string;
+    let passwordExpired: Date;
 
     beforeAll(async () => {
         const modRef = await Test.createTestingModule({
@@ -61,7 +61,6 @@ describe('E2E Refresh', () => {
         });
 
         passwordExpired = await helperService.dateTimeBackwardInDays(5);
-        passwordExpiredForward = await helperService.dateTimeForwardInDays(5);
 
         const passwordHash = await authService.createPassword(password);
 
@@ -76,92 +75,140 @@ describe('E2E Refresh', () => {
             role: `${role._id}`,
         });
 
-        const userPopulate = await userService.findOneById<IUserDocument>(
-            user._id,
-            {
-                populate: {
-                    role: true,
-                    permission: true,
-                },
-            }
-        );
-
-        const map = await authService.mapLogin(userPopulate);
-        const payload = await authService.createPayload(map, false);
-        const payloadNotFound = {
-            ...payload,
-            _id: `${new Types.ObjectId()}`,
-        };
-
-        refreshToken = await authService.createRefreshToken(payload, true);
-        refreshTokenNotFound = await authService.createRefreshToken(
-            payloadNotFound,
-            true
-        );
-
         await app.init();
     });
 
-    it(`POST ${E2E_AUTH_REFRESH_URL} Not Found`, async () => {
+    it(`POST ${E2E_AUTH_LOGIN_URL} Error Request`, async () => {
         const response = await request(app.getHttpServer())
-            .post(E2E_AUTH_REFRESH_URL)
-            .set('Authorization', `Bearer ${refreshTokenNotFound}`);
+            .post(E2E_AUTH_LOGIN_URL)
+            .set('Content-Type', 'application/json')
+            .send({
+                email: [1231],
+                password,
+                rememberMe: false,
+            });
+
+        expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
+        expect(response.body.statusCode).toEqual(
+            ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
+        );
+
+        return;
+    });
+
+    it(`POST ${E2E_AUTH_LOGIN_URL} Not Found`, async () => {
+        const response = await request(app.getHttpServer())
+            .post(E2E_AUTH_LOGIN_URL)
+            .set('Content-Type', 'application/json')
+            .send({
+                email: faker.internet.email(),
+                password,
+                rememberMe: false,
+            });
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
+
+        return;
     });
 
-    it(`POST ${E2E_AUTH_REFRESH_URL} Inactive`, async () => {
-        await userService.inactive(user._id);
+    it(`POST ${E2E_AUTH_LOGIN_URL} Password Not Match`, async () => {
         const response = await request(app.getHttpServer())
-            .post(E2E_AUTH_REFRESH_URL)
-            .set('Authorization', `Bearer ${refreshToken}`);
+            .post(E2E_AUTH_LOGIN_URL)
+            .set('Content-Type', 'application/json')
+            .send({
+                email: user.email,
+                password: 'asdaAA@@1231',
+                rememberMe: false,
+            });
+
+        expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
+        expect(response.body.statusCode).toEqual(
+            ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR
+        );
+
+        return;
+    });
+
+    it(`POST ${E2E_AUTH_LOGIN_URL} Inactive`, async () => {
+        await userService.inactive(user._id);
+
+        const response = await request(app.getHttpServer())
+            .post(E2E_AUTH_LOGIN_URL)
+            .set('Content-Type', 'application/json')
+            .send({
+                email: user.email,
+                password,
+                rememberMe: false,
+            });
 
         await userService.active(user._id);
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR
         );
+
+        return;
     });
 
-    it(`POST ${E2E_AUTH_REFRESH_URL} Role Inactive`, async () => {
+    it(`POST ${E2E_AUTH_LOGIN_URL} Role Inactive`, async () => {
         await roleService.inactive(`${user.role}`);
+
         const response = await request(app.getHttpServer())
-            .post(E2E_AUTH_REFRESH_URL)
-            .set('Authorization', `Bearer ${refreshToken}`);
+            .post(E2E_AUTH_LOGIN_URL)
+            .set('Content-Type', 'application/json')
+            .send({
+                email: user.email,
+                password,
+                rememberMe: false,
+            });
 
         await roleService.active(`${user.role}`);
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR
         );
+
+        return;
     });
 
-    it(`POST ${E2E_AUTH_REFRESH_URL} Password Expired`, async () => {
+    it(`POST ${E2E_AUTH_LOGIN_URL} Success`, async () => {
+        const response = await request(app.getHttpServer())
+            .post(E2E_AUTH_LOGIN_URL)
+            .set('Content-Type', 'application/json')
+            .send({
+                email: user.email,
+                password,
+                rememberMe: false,
+            });
+
+        expect(response.status).toEqual(HttpStatus.OK);
+        expect(response.body.statusCode).toEqual(
+            ENUM_AUTH_STATUS_CODE_SUCCESS.AUTH_LOGIN_SUCCESS
+        );
+
+        return;
+    });
+
+    it(`POST ${E2E_AUTH_LOGIN_URL} Password Expired`, async () => {
         await userService.updatePasswordExpired(user._id, passwordExpired);
         const response = await request(app.getHttpServer())
-            .post(E2E_AUTH_REFRESH_URL)
-            .set('Authorization', `Bearer ${refreshToken}`);
+            .post(E2E_AUTH_LOGIN_URL)
+            .set('Content-Type', 'application/json')
+            .send({
+                email: user.email,
+                password,
+                rememberMe: false,
+            });
 
-        await userService.updatePasswordExpired(
-            user._id,
-            passwordExpiredForward
-        );
-        expect(response.status).toEqual(HttpStatus.FORBIDDEN);
+        expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(
             ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR
         );
-    });
 
-    it(`POST ${E2E_AUTH_REFRESH_URL} Success`, async () => {
-        const response = await request(app.getHttpServer())
-            .post(E2E_AUTH_REFRESH_URL)
-            .set('Authorization', `Bearer ${refreshToken}`);
-
-        expect(response.status).toEqual(HttpStatus.OK);
-        expect(response.body.statusCode).toEqual(HttpStatus.OK);
+        return;
     });
 
     afterAll(async () => {
@@ -170,6 +217,8 @@ describe('E2E Refresh', () => {
         } catch (e) {
             console.error(e);
         }
+
+        connection.close();
         await app.close();
     });
 });

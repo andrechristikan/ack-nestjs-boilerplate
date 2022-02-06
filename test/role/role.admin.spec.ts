@@ -13,9 +13,9 @@ import {
     E2E_ROLE_ADMIN_LIST_URL,
     E2E_ROLE_ADMIN_UPDATE_URL,
     E2E_ROLE_PAYLOAD_TEST,
-} from './role.constant.e2e';
+} from './role.constant';
 import { RoleCreateValidation } from 'src/role/validation/role.create.validation';
-import { Types } from 'mongoose';
+import { connection, Types } from 'mongoose';
 import { PermissionDocument } from 'src/permission/permission.schema';
 import { RoleDocument } from 'src/role/role.schema';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/request/request.constant';
@@ -106,6 +106,8 @@ describe('E2E Role Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
+
+        return;
     });
 
     it(`GET ${E2E_ROLE_ADMIN_GET_BY_ID_URL} Get Not Found`, async () => {
@@ -122,6 +124,8 @@ describe('E2E Role Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR
         );
+
+        return;
     });
 
     it(`GET ${E2E_ROLE_ADMIN_GET_BY_ID_URL} Get Success`, async () => {
@@ -131,6 +135,8 @@ describe('E2E Role Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
+
+        return;
     });
 
     it(`POST ${E2E_ROLE_ADMIN_CREATE_URL} Create Error Request`, async () => {
@@ -145,6 +151,8 @@ describe('E2E Role Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
         );
+
+        return;
     });
 
     it(`POST ${E2E_ROLE_ADMIN_CREATE_URL} Create Exist`, async () => {
@@ -157,6 +165,8 @@ describe('E2E Role Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR
         );
+
+        return;
     });
 
     it(`POST ${E2E_ROLE_ADMIN_CREATE_URL} Create Success`, async () => {
@@ -167,6 +177,8 @@ describe('E2E Role Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.CREATED);
         expect(response.body.statusCode).toEqual(HttpStatus.CREATED);
+
+        return;
     });
 
     it(`PUT ${E2E_ROLE_ADMIN_UPDATE_URL} Update Error Request`, async () => {
@@ -181,6 +193,8 @@ describe('E2E Role Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
         );
+
+        return;
     });
 
     it(`PUT ${E2E_ROLE_ADMIN_UPDATE_URL} Update Not found`, async () => {
@@ -198,6 +212,8 @@ describe('E2E Role Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR
         );
+
+        return;
     });
 
     it(`PUT ${E2E_ROLE_ADMIN_UPDATE_URL} Update Exist`, async () => {
@@ -210,6 +226,8 @@ describe('E2E Role Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR
         );
+
+        return;
     });
 
     it(`PUT ${E2E_ROLE_ADMIN_UPDATE_URL} Update Success`, async () => {
@@ -220,6 +238,8 @@ describe('E2E Role Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
+
+        return;
     });
 
     it(`PATCH ${E2E_ROLE_ADMIN_INACTIVE_URL} Inactive, Not Found`, async () => {
@@ -236,6 +256,8 @@ describe('E2E Role Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR
         );
+
+        return;
     });
 
     it(`PATCH ${E2E_ROLE_ADMIN_INACTIVE_URL} Inactive, success`, async () => {
@@ -245,6 +267,8 @@ describe('E2E Role Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
+
+        return;
     });
 
     it(`PATCH ${E2E_ROLE_ADMIN_INACTIVE_URL} Inactive, already inactive`, async () => {
@@ -256,6 +280,8 @@ describe('E2E Role Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_ACTIVE_ERROR
         );
+
+        return;
     });
 
     it(`PATCH ${E2E_ROLE_ADMIN_ACTIVE_URL} Active, Not Found`, async () => {
@@ -272,6 +298,8 @@ describe('E2E Role Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR
         );
+
+        return;
     });
 
     it(`PATCH ${E2E_ROLE_ADMIN_ACTIVE_URL} Active, success`, async () => {
@@ -281,6 +309,8 @@ describe('E2E Role Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
+
+        return;
     });
 
     it(`PATCH ${E2E_ROLE_ADMIN_ACTIVE_URL} Active, already active`, async () => {
@@ -292,6 +322,8 @@ describe('E2E Role Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_ACTIVE_ERROR
         );
+
+        return;
     });
 
     it(`DELETE ${E2E_ROLE_ADMIN_DELETE_URL} Delete Not Found`, async () => {
@@ -308,6 +340,8 @@ describe('E2E Role Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR
         );
+
+        return;
     });
 
     it(`DELETE ${E2E_ROLE_ADMIN_DELETE_URL} Delete Success`, async () => {
@@ -317,6 +351,8 @@ describe('E2E Role Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
+
+        return;
     });
 
     afterAll(async () => {
@@ -332,6 +368,8 @@ describe('E2E Role Admin', () => {
         } catch (e) {
             console.error(e);
         }
+
+        connection.close();
         await app.close();
     });
 });

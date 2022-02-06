@@ -1,21 +1,21 @@
 {
-    "testTimeout": 1000,
+    "testTimeout": 5000,
     "verbose": true,
     "rootDir": "../",
     "modulePaths": [
         "./"
     ],
     "testEnvironment": "node",
-    "testRegex": "/test/.*\\.(spec).(ts|tsx)$",
+    "testRegex": "test/.*\\.(spec).(ts|tsx)$",
     "collectCoverage": true,
-    "collectCoverageFrom" : ["test/**/*.{tsx,ts}", "!**/e2e/**/*.{js,jsx,tsx,ts}", "!**/src/**/*.{js,jsx,tsx,ts}", "!**/dist/**", "!**/node_modules/**", "!**/vendor/**"],
+    "collectCoverageFrom" : ["test/**/*.{tsx,ts}", "!**/test/**/*.{js,jsx,tsx,ts}", "!**/src/**/*.{js,jsx,tsx,ts}", "!**/dist/**", "!**/node_modules/**", "!**/vendor/**"],
     "coveragePathIgnorePatterns": [
-        "./node_modules", 
-        "./vendor",
-        "./src"
+        "node_modules", 
+        "vendor",
+        "src"
     ],
     "coverageReporters": ["clover", "json", "lcov", "text"],
-    "coverageDirectory": "./coverage",
+    "coverageDirectory": "coverage",
     "moduleFileExtensions": [
         "js", 
         "jsx", 

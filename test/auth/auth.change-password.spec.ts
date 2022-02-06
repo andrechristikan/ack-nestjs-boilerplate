@@ -1,29 +1,34 @@
 import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { AuthService } from 'src/auth/auth.service';
-import { RoleService } from 'src/role/role.service';
 import request from 'supertest';
 import faker from '@faker-js/faker';
-import { RoleDocument } from 'src/role/role.schema';
-import { UserService } from 'src/user/user.service';
-import { IUserDocument } from 'src/user/user.interface';
-import {
-    E2E_USER_PUBLIC_PROFILE_UPLOAD_URL,
-    E2E_USER_PUBLIC_PROFILE_URL,
-} from './user.constant.e2e';
 import { UserDocument } from 'src/user/user.schema';
-import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/file/file.constant';
-import { Types } from 'mongoose';
+import { UserService } from 'src/user/user.service';
+import { RoleService } from 'src/role/role.service';
+import { AuthService } from 'src/auth/auth.service';
+import { RoleDocument } from 'src/role/role.schema';
+import { IUserDocument } from 'src/user/user.interface';
+import { E2E_AUTH_CHANGE_PASSWORD_URL } from './auth.constant';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/request/request.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
+import { Types, connection } from 'mongoose';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
 import { CoreModule } from 'src/core/core.module';
-import { RouterPublicModule } from 'src/router/router.public.module';
+import { RouterCommonModule } from 'src/router/router.common.module';
 import { RouterModule } from '@nestjs/core';
 
-describe('E2E User Public', () => {
+describe('E2E Change Password', () => {
     let app: INestApplication;
     let userService: UserService;
     let authService: AuthService;
     let roleService: RoleService;
+
+    const password = `@!${faker.random
+        .alphaNumeric(5)
+        .toLowerCase()}${faker.random.alphaNumeric(5).toUpperCase()}`;
+    const newPassword = `@!${faker.random
+        .alphaNumeric(5)
+        .toLowerCase()}${faker.random.alphaNumeric(5).toUpperCase()}`;
 
     let user: UserDocument;
 
@@ -34,11 +39,11 @@ describe('E2E User Public', () => {
         const modRef = await Test.createTestingModule({
             imports: [
                 CoreModule,
-                RouterPublicModule,
+                RouterCommonModule,
                 RouterModule.register([
                     {
-                        path: '/public',
-                        module: RouterPublicModule,
+                        path: '/',
+                        module: RouterCommonModule,
                     },
                 ]),
             ],
@@ -53,9 +58,7 @@ describe('E2E User Public', () => {
             name: 'user',
         });
 
-        const passwordHash = await authService.createPassword(
-            faker.random.alphaNumeric()
-        );
+        const passwordHash = await authService.createPassword(password);
 
         user = await userService.create({
             firstName: faker.name.firstName(),
@@ -89,81 +92,91 @@ describe('E2E User Public', () => {
         accessTokenNotFound = await authService.createAccessToken(
             payloadNotFound
         );
-
         await app.init();
     });
 
-    it(`GET ${E2E_USER_PUBLIC_PROFILE_URL} Profile Not Found`, async () => {
+    it(`PATCH ${E2E_AUTH_CHANGE_PASSWORD_URL} Error Request`, async () => {
         const response = await request(app.getHttpServer())
-            .get(E2E_USER_PUBLIC_PROFILE_URL)
+            .patch(E2E_AUTH_CHANGE_PASSWORD_URL)
+            .send({
+                oldPassword: '123123',
+                newPassword: '123',
+            })
+            .set('Authorization', `Bearer ${accessToken}`);
+
+        expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
+        expect(response.body.statusCode).toEqual(
+            ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
+        );
+
+        return;
+    });
+
+    it(`PATCH ${E2E_AUTH_CHANGE_PASSWORD_URL} Not Found`, async () => {
+        const response = await request(app.getHttpServer())
+            .patch(E2E_AUTH_CHANGE_PASSWORD_URL)
+            .send({
+                oldPassword: password,
+                newPassword,
+            })
             .set('Authorization', `Bearer ${accessTokenNotFound}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
+
+        return;
     });
 
-    it(`GET ${E2E_USER_PUBLIC_PROFILE_URL} Profile`, async () => {
+    it(`PATCH ${E2E_AUTH_CHANGE_PASSWORD_URL} Old Password Not Match`, async () => {
         const response = await request(app.getHttpServer())
-            .get(E2E_USER_PUBLIC_PROFILE_URL)
+            .patch(E2E_AUTH_CHANGE_PASSWORD_URL)
+            .send({
+                oldPassword: 'as1231dAA@@!',
+                newPassword,
+            })
+            .set('Authorization', `Bearer ${accessToken}`);
+
+        expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
+        expect(response.body.statusCode).toEqual(
+            ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR
+        );
+
+        return;
+    });
+
+    it(`PATCH ${E2E_AUTH_CHANGE_PASSWORD_URL} New Password must different with old password`, async () => {
+        const response = await request(app.getHttpServer())
+            .patch(E2E_AUTH_CHANGE_PASSWORD_URL)
+            .send({
+                oldPassword: password,
+                newPassword: password,
+            })
+            .set('Authorization', `Bearer ${accessToken}`);
+
+        expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
+        expect(response.body.statusCode).toEqual(
+            ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NEW_MUST_DIFFERENCE_ERROR
+        );
+
+        return;
+    });
+
+    it(`PATCH ${E2E_AUTH_CHANGE_PASSWORD_URL} Success`, async () => {
+        const response = await request(app.getHttpServer())
+            .patch(E2E_AUTH_CHANGE_PASSWORD_URL)
+            .send({
+                oldPassword: password,
+                newPassword,
+            })
             .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
+
+        return;
     });
-
-    it(`POST ${E2E_USER_PUBLIC_PROFILE_UPLOAD_URL} Profile Upload Error Request`, async () => {
-        const response = await request(app.getHttpServer())
-            .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
-            .attach('file', './e2e/user/files/test.txt')
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('Content-Type', 'multipart/form-data');
-
-        expect(response.status).toEqual(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
-        expect(response.body.statusCode).toEqual(
-            ENUM_FILE_STATUS_CODE_ERROR.FILE_EXTENSION_ERROR
-        );
-    });
-
-    it(`POST ${E2E_USER_PUBLIC_PROFILE_UPLOAD_URL} Profile Upload Not Found`, async () => {
-        const response = await request(app.getHttpServer())
-            .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
-            .attach('file', './e2e/user/files/test.txt')
-            .set('Authorization', `Bearer ${accessTokenNotFound}`)
-            .set('Content-Type', 'multipart/form-data');
-
-        expect(response.status).toEqual(HttpStatus.NOT_FOUND);
-        expect(response.body.statusCode).toEqual(
-            ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
-        );
-    });
-
-    it(`POST ${E2E_USER_PUBLIC_PROFILE_UPLOAD_URL} Profile Upload File Too Large`, async () => {
-        const response = await request(app.getHttpServer())
-            .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
-            .send()
-            .attach('file', './e2e/user/files/medium.jpg')
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('Content-Type', 'multipart/form-data');
-
-        expect(response.status).toEqual(HttpStatus.PAYLOAD_TOO_LARGE);
-        expect(response.body.statusCode).toEqual(
-            ENUM_FILE_STATUS_CODE_ERROR.FILE_MAX_SIZE_ERROR
-        );
-    });
-
-    it(`POST ${E2E_USER_PUBLIC_PROFILE_UPLOAD_URL} Profile Upload Success`, async () => {
-        const response = await request(app.getHttpServer())
-            .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
-            .send()
-            .attach('file', './e2e/user/files/small.jpg')
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('Content-Type', 'multipart/form-data');
-
-        expect(response.status).toEqual(HttpStatus.OK);
-        expect(response.body.statusCode).toEqual(HttpStatus.OK);
-    }, 5000);
 
     afterAll(async () => {
         try {
@@ -171,6 +184,8 @@ describe('E2E User Public', () => {
         } catch (e) {
             console.error(e);
         }
+
+        connection.close();
         await app.close();
     });
 });

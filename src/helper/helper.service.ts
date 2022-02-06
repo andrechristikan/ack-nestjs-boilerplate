@@ -20,6 +20,13 @@ export class HelperService {
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
+    async arrayShuffle(array: Array<any>) {
+        return array
+            .map((value) => ({ value, sort: Math.random() }))
+            .sort((a, b) => a.sort - b.sort)
+            .map(({ value }) => value);
+    }
+
     async calculateAge(dateOfBirth: Date): Promise<number> {
         return moment().diff(dateOfBirth, 'years');
     }
@@ -40,6 +47,7 @@ export class HelperService {
             safe: true,
             upperCase: true,
         });
+
         return prefix
             ? `${prefix}-${timestamp}${randomString}`
             : `${timestamp}${randomString}`;
@@ -63,13 +71,6 @@ export class HelperService {
         const min: number = parseInt(`1`.padEnd(length, '0'));
         const max: number = parseInt(`9`.padEnd(length, '9'));
         return this.randomNumberInRange(min, max);
-    }
-
-    async randomArray(array: Array<any>) {
-        return array
-            .map((value) => ({ value, sort: Math.random() }))
-            .sort((a, b) => a.sort - b.sort)
-            .map(({ value }) => value);
     }
 
     async randomNumberInRange(min: number, max: number): Promise<number> {
@@ -250,5 +251,12 @@ export class HelperService {
 
     async sha256Hash(string: string): Promise<string> {
         return createHash('sha256').update(string).digest('hex');
+    }
+
+    async sha256HashCompare(string: string, hash: string): Promise<boolean> {
+        const stringHash: string = createHash('sha256')
+            .update(string)
+            .digest('hex');
+        return stringHash === hash;
     }
 }

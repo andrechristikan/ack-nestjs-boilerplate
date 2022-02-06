@@ -133,7 +133,6 @@ All kafka features can switch on/off or remove, [read kafka section](#kafka-docu
 ### Todo
 
 - [x] Split Env File
-- [ ] Unit Test
 - [x] E2E Test
 - [ ] Production Ready (Setting Module), can manage from Database
 - [ ] Swagger Module
@@ -298,17 +297,12 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
 
     Make sure we do the correct step. Go run `TestModule` and make sure all test passed with success status.
 
-    - Run Unit Testing
+    Run Unit Testing
 
-        ```sh
-        yarn test
-        ```
+    ```sh
+    yarn test
+    ```
 
-    - Run E2E Testing
-
-        ```sh
-        yarn test:e2e
-        ```
 
 ### Run project
 
