@@ -137,7 +137,7 @@ export function MinGreaterThan(
 ) {
     return function (object: Record<string, any>, propertyName: string) {
         registerDecorator({
-            name: 'MinDateGreaterThan',
+            name: 'MinGreaterThan',
             target: object.constructor,
             propertyName: propertyName,
             constraints: [property],
