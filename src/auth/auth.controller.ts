@@ -19,7 +19,7 @@ import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe'
 import { AuthLoginValidation } from './validation/auth.login.validation';
 import { LoggerService } from 'src/logger/logger.service';
 import { ENUM_LOGGER_ACTION } from 'src/logger/logger.constant';
-import { AuthJwtGuard, AuthJwtRefreshGuard, User } from './auth.decorator';
+import { AuthJwtGuard, AuthRefreshJwtGuard, User } from './auth.decorator';
 import { Response } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
 import {
@@ -167,7 +167,7 @@ export class AuthController {
     }
 
     @Response('auth.refresh')
-    @AuthJwtRefreshGuard()
+    @AuthRefreshJwtGuard()
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
     async refresh(

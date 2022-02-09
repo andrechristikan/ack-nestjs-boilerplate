@@ -5,17 +5,17 @@ import {
     ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { Debugger } from 'src/debugger/debugger.decorator';
 import {
     ENUM_PERMISSIONS,
     ENUM_PERMISSION_STATUS_CODE_ERROR,
     PERMISSION_META_KEY,
-} from '../permission.constant';
-import { Debugger } from 'src/debugger/debugger.decorator';
+} from 'src/permission/permission.constant';
+import { IPermission } from 'src/permission/permission.interface';
 import { Logger as DebuggerService } from 'winston';
-import { IPermission } from '../permission.interface';
 
 @Injectable()
-export class PermissionDefaultGuard implements CanActivate {
+export class PermissionPayloadDefaultGuard implements CanActivate {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService,
         private reflector: Reflector

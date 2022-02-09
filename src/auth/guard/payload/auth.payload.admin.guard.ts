@@ -13,7 +13,7 @@ import {
 import { Reflector } from '@nestjs/core';
 
 @Injectable()
-export class AuthAdminGuard implements CanActivate {
+export class AuthPayloadAdminGuard implements CanActivate {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService,
         private reflector: Reflector

@@ -9,7 +9,7 @@ import { Logger as DebuggerService } from 'winston';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
 
 @Injectable()
-export class AuthDefaultGuard implements CanActivate {
+export class AuthPayloadDefaultGuard implements CanActivate {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService
     ) {}
