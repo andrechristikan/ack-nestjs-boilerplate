@@ -16,11 +16,11 @@ export class AuthPayloadPasswordExpiredGuard implements CanActivate {
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const { user } = context.switchToHttp().getRequest();
-        const { passwordExpired } = user;
+        const { passwordExpiredDate } = user;
         const today: Date = new Date();
-        const passwordExpiredDate = new Date(passwordExpired);
+        const dPasswordExpiredDate = new Date(passwordExpiredDate);
 
-        if (today > passwordExpiredDate) {
+        if (today > dPasswordExpiredDate) {
             this.debuggerService.error('Auth password expired', {
                 class: 'AuthPasswordExpiredGuard',
                 function: 'canActivate',
@@ -29,7 +29,7 @@ export class AuthPayloadPasswordExpiredGuard implements CanActivate {
             throw new ForbiddenException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GUARD_PASSWORD_EXPIRED_ERROR,
-                message: 'auth.error.passwordExpired',
+                message: 'auth.error.passwordExpiredDate',
             });
         }
 

@@ -55,7 +55,7 @@ describe('E2E Permission Admin', () => {
             ...E2E_PERMISSION_PAYLOAD_TEST,
             loginDate: new Date(),
             rememberMe: false,
-            loginExpired: await authService.loginExpired(false),
+            loginExpired: await authService.loginExpiredDate(false),
         });
 
         permission = await permissionService.create({

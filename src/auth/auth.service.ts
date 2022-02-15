@@ -4,7 +4,7 @@ import { plainToInstance } from 'class-transformer';
 import { Helper } from 'src/helper/helper.decorator';
 import { HelperService } from 'src/helper/helper.service';
 import { IUserDocument } from 'src/user/user.interface';
-import { IAuthPassword } from './auth.interface';
+import { IAuthPassword, IAuthPayloadOptions } from './auth.interface';
 import { AuthLoginTransformer } from './transformer/auth.login.transformer';
 
 @Injectable()
@@ -15,10 +15,8 @@ export class AuthService {
 
     private readonly refreshTokenSecretToken: string;
     private readonly refreshTokenExpirationTime: string;
+    private readonly refreshTokenExpirationTimeRememberMe: string;
     private readonly refreshTokenNotBeforeExpirationTime: string;
-
-    private readonly rememberMeNotChecked: number;
-    private readonly rememberMeChecked: number;
 
     constructor(
         @Helper() private readonly helperService: HelperService,
@@ -41,17 +39,14 @@ export class AuthService {
         this.refreshTokenExpirationTime = this.configService.get<string>(
             'auth.jwt.refreshToken.expirationTime'
         );
+        this.refreshTokenExpirationTimeRememberMe =
+            this.configService.get<string>(
+                'auth.jwt.refreshToken.expirationTimeRememberMe'
+            );
         this.refreshTokenNotBeforeExpirationTime =
             this.configService.get<string>(
                 'auth.jwt.refreshToken.notBeforeExpirationTime'
             );
-
-        this.rememberMeNotChecked = this.configService.get<number>(
-            'auth.rememberMe.notChecked'
-        );
-        this.rememberMeChecked = this.configService.get<number>(
-            'auth.rememberMe.checked'
-        );
     }
 
     async createAccessToken(payload: Record<string, any>): Promise<string> {
@@ -76,11 +71,14 @@ export class AuthService {
 
     async createRefreshToken(
         payload: Record<string, any>,
+        rememberMe: boolean,
         test?: boolean
     ): Promise<string> {
         return this.helperService.jwtCreateToken(payload, {
             secretKey: this.refreshTokenSecretToken,
-            expiredIn: this.refreshTokenExpirationTime,
+            expiredIn: rememberMe
+                ? this.refreshTokenExpirationTimeRememberMe
+                : this.refreshTokenExpirationTime,
             notBefore: test ? '0' : this.refreshTokenNotBeforeExpirationTime,
         });
     }
@@ -125,26 +123,45 @@ export class AuthService {
         );
     }
 
-    async loginExpired(rememberMe: boolean): Promise<Date> {
-        const expired: number = rememberMe
-            ? this.rememberMeChecked
-            : this.rememberMeNotChecked;
-        return this.helperService.dateTimeForwardInDays(expired);
+    async loginExpiredDate(rememberMe: boolean): Promise<Date> {
+        const expired: string = rememberMe
+            ? this.refreshTokenExpirationTimeRememberMe.replace('d', '')
+            : this.refreshTokenExpirationTime.replace('d', '');
+        return this.helperService.dateTimeForwardInDays(parseInt(expired));
     }
 
-    async createPayload(
+    async createPayloadAccessToken(
         data: AuthLoginTransformer,
         rememberMe: boolean,
-        loginDate?: Date, // for refresh token
-        loginExpired?: Date // for refresh token
+        options?: IAuthPayloadOptions
     ): Promise<Record<string, any>> {
-        const today = new Date();
-        const newLoginExpired = await this.loginExpired(rememberMe);
+        const login = new Date();
+        const loginExpiredDate = await this.loginExpiredDate(rememberMe);
         return {
             ...data,
-            loginDate: loginDate || today,
             rememberMe,
-            loginExpired: loginExpired || newLoginExpired,
+            loginDate: options && options.loginDate ? options.loginDate : login,
+            loginExpiredDate:
+                options && options.loginExpiredDate
+                    ? options.loginExpiredDate
+                    : loginExpiredDate,
+        };
+    }
+
+    async createPayloadRefreshToken(
+        { _id }: AuthLoginTransformer,
+        rememberMe: boolean,
+        options?: IAuthPayloadOptions
+    ): Promise<Record<string, any>> {
+        return {
+            _id,
+            rememberMe,
+            loginDate:
+                options && options.loginDate ? options.loginDate : undefined,
+            loginExpiredDate:
+                options && options.loginExpiredDate
+                    ? options.loginExpiredDate
+                    : undefined,
         };
     }
 
@@ -162,7 +179,7 @@ export class AuthService {
         const passwordExpiredInDays: number = this.configService.get<number>(
             'auth.password.expiredInDay'
         );
-        const passwordExpired: Date =
+        const passwordExpiredDate: Date =
             await this.helperService.dateTimeForwardInDays(
                 passwordExpiredInDays
             );
@@ -172,7 +189,7 @@ export class AuthService {
         );
         return {
             passwordHash,
-            passwordExpired,
+            passwordExpiredDate,
             salt,
         };
     }

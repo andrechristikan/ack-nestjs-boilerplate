@@ -23,8 +23,8 @@ export class AuthLoginTransformer {
     readonly email: string;
     readonly mobileNumber: string;
     readonly isActive: boolean;
-    readonly passwordExpired: Date;
-    readonly loginExpired: Date;
+    readonly passwordExpiredDate: Date;
+    readonly loginExpiredDate: Date;
     readonly loginDate: Date;
     readonly rememberMe: boolean;
 

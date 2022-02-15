@@ -80,7 +80,7 @@ describe('E2E User Admin', () => {
             firstName: faker.name.firstName(),
             lastName: faker.name.lastName(),
             password: passwordHash.passwordHash,
-            passwordExpired: passwordHash.passwordExpired,
+            passwordExpiredDate: passwordHash.passwordExpiredDate,
             salt: passwordHash.salt,
             email: faker.internet.email(),
             mobileNumber: faker.phone.phoneNumber('62812#########'),
@@ -100,7 +100,7 @@ describe('E2E User Admin', () => {
         );
 
         const map = await authService.mapLogin(user);
-        const payload = await authService.createPayload(map, false);
+        const payload = await authService.createPayloadAccessToken(map, false);
         accessToken = await authService.createAccessToken(payload);
 
         await app.init();

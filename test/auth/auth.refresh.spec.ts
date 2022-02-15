@@ -30,7 +30,7 @@ describe('E2E Refresh', () => {
         .toLowerCase()}${faker.random.alphaNumeric(5).toUpperCase()}`;
 
     let user: UserDocument;
-    let passwordExpired: Date;
+    let passwordExpiredDate: Date;
     let passwordExpiredForward: Date;
 
     let refreshToken: string;
@@ -60,7 +60,7 @@ describe('E2E Refresh', () => {
             name: 'user',
         });
 
-        passwordExpired = await helperService.dateTimeBackwardInDays(5);
+        passwordExpiredDate = await helperService.dateTimeBackwardInDays(5);
         passwordExpiredForward = await helperService.dateTimeForwardInDays(5);
 
         const passwordHash = await authService.createPassword(password);
@@ -69,7 +69,7 @@ describe('E2E Refresh', () => {
             firstName: faker.name.firstName(),
             lastName: faker.name.lastName(),
             password: passwordHash.passwordHash,
-            passwordExpired: passwordHash.passwordExpired,
+            passwordExpiredDate: passwordHash.passwordExpiredDate,
             salt: passwordHash.salt,
             email: faker.internet.email(),
             mobileNumber: faker.phone.phoneNumber('62812#########'),
@@ -87,15 +87,20 @@ describe('E2E Refresh', () => {
         );
 
         const map = await authService.mapLogin(userPopulate);
-        const payload = await authService.createPayload(map, false);
+        const payload = await authService.createPayloadRefreshToken(map, false);
         const payloadNotFound = {
             ...payload,
             _id: `${new Types.ObjectId()}`,
         };
 
-        refreshToken = await authService.createRefreshToken(payload, true);
+        refreshToken = await authService.createRefreshToken(
+            payload,
+            false,
+            true
+        );
         refreshTokenNotFound = await authService.createRefreshToken(
             payloadNotFound,
+            false,
             true
         );
 
@@ -146,7 +151,7 @@ describe('E2E Refresh', () => {
     });
 
     it(`POST ${E2E_AUTH_REFRESH_URL} Password Expired`, async () => {
-        await userService.updatePasswordExpired(user._id, passwordExpired);
+        await userService.updatePasswordExpired(user._id, passwordExpiredDate);
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`);

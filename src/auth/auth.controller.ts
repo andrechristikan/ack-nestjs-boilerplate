@@ -19,7 +19,12 @@ import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe'
 import { AuthLoginValidation } from './validation/auth.login.validation';
 import { LoggerService } from 'src/logger/logger.service';
 import { ENUM_LOGGER_ACTION } from 'src/logger/logger.constant';
-import { AuthJwtGuard, AuthRefreshJwtGuard, User } from './auth.decorator';
+import {
+    AuthJwtGuard,
+    AuthRefreshJwtGuard,
+    Token,
+    User,
+} from './auth.decorator';
 import { Response } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
 import {
@@ -122,21 +127,27 @@ export class AuthController {
             user
         );
 
-        const payload: Record<string, any> =
-            await this.authService.createPayload(safe, rememberMe);
+        const payloadAccessToken: Record<string, any> =
+            await this.authService.createPayloadAccessToken(safe, rememberMe);
+        const payloadRefreshToken: Record<string, any> =
+            await this.authService.createPayloadRefreshToken(safe, rememberMe, {
+                loginDate: payloadAccessToken.loginDate,
+                loginExpiredDate: payloadAccessToken.loginExpiredDate,
+            });
 
         const accessToken: string = await this.authService.createAccessToken(
-            payload
+            payloadAccessToken
         );
 
         const refreshToken: string = await this.authService.createRefreshToken(
-            payload
+            payloadRefreshToken,
+            rememberMe
         );
 
         const today: Date = new Date();
-        const passwordExpired: Date = new Date(user.passwordExpired);
+        const passwordExpiredDate: Date = new Date(user.passwordExpiredDate);
 
-        if (today > passwordExpired) {
+        if (today > passwordExpiredDate) {
             this.debuggerService.error('Password expired', {
                 class: 'AuthController',
                 function: 'login',
@@ -145,7 +156,7 @@ export class AuthController {
             throw new SuccessException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR,
-                message: 'auth.error.passwordExpired',
+                message: 'auth.error.passwordExpiredDate',
                 data: {
                     accessToken,
                     refreshToken,
@@ -172,7 +183,8 @@ export class AuthController {
     @Post('/refresh')
     async refresh(
         @User()
-        { _id, rememberMe, loginDate, loginExpired }: Record<string, any>
+        { _id, rememberMe, loginDate, loginExpiredDate }: Record<string, any>,
+        @Token() refreshToken: string
     ): Promise<IResponse> {
         const user: IUserDocument =
             await this.userService.findOneById<IUserDocument>(_id, {
@@ -215,9 +227,9 @@ export class AuthController {
         }
 
         const today: Date = new Date();
-        const passwordExpired: Date = new Date(user.passwordExpired);
+        const passwordExpiredDate: Date = new Date(user.passwordExpiredDate);
 
-        if (today > passwordExpired) {
+        if (today > passwordExpiredDate) {
             this.debuggerService.error('Password expired', {
                 class: 'AuthController',
                 function: 'refresh',
@@ -226,27 +238,21 @@ export class AuthController {
             throw new ForbiddenException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR,
-                message: 'auth.error.passwordExpired',
+                message: 'auth.error.passwordExpiredDate',
             });
         }
 
         const safe: AuthLoginTransformer = await this.authService.mapLogin(
             user
         );
-        const payload: Record<string, any> =
-            await this.authService.createPayload(
-                safe,
-                rememberMe,
+        const payloadAccessToken: Record<string, any> =
+            await this.authService.createPayloadAccessToken(safe, rememberMe, {
                 loginDate,
-                loginExpired
-            );
+                loginExpiredDate,
+            });
 
         const accessToken: string = await this.authService.createAccessToken(
-            payload
-        );
-
-        const refreshToken: string = await this.authService.createRefreshToken(
-            payload
+            payloadAccessToken
         );
 
         return {
@@ -422,7 +428,7 @@ export class AuthPublicController {
                 mobileNumber,
                 role: role._id,
                 password: password.passwordHash,
-                passwordExpired: password.passwordExpired,
+                passwordExpiredDate: password.passwordExpiredDate,
                 salt: password.salt,
             });
 
@@ -436,14 +442,23 @@ export class AuthPublicController {
             const safe: AuthLoginTransformer = await this.authService.mapLogin(
                 user
             );
-            const payload: Record<string, any> =
-                await this.authService.createPayload(safe, false);
+
+            const payloadAccessToken: Record<string, any> =
+                await this.authService.createPayloadAccessToken(safe, false);
+            const payloadRefreshToken: Record<string, any> =
+                await this.authService.createPayloadRefreshToken(safe, false, {
+                    loginDate: payloadAccessToken.loginDate,
+                    loginExpiredDate: payloadAccessToken.loginExpiredDate,
+                });
 
             const accessToken: string =
-                await this.authService.createAccessToken(payload);
+                await this.authService.createAccessToken(payloadAccessToken);
 
             const refreshToken: string =
-                await this.authService.createRefreshToken(payload);
+                await this.authService.createRefreshToken(
+                    payloadRefreshToken,
+                    false
+                );
 
             return {
                 accessToken,

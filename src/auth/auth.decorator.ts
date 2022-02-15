@@ -16,24 +16,16 @@ import { JwtRefreshGuard } from './guard/jwt-refresh/auth.jwt-refresh.guard';
 import { JwtGuard } from './guard/jwt/auth.jwt.guard';
 import { AuthPayloadAdminGuard } from './guard/payload/auth.payload.admin.guard';
 import { AuthPayloadDefaultGuard } from './guard/payload/auth.payload.default.guard';
-import { AuthPayloadLoginExpiredGuard } from './guard/payload/auth.payload.login-expired.guard';
 import { AuthPayloadPasswordExpiredGuard } from './guard/payload/auth.payload.password-expired.guard';
 
 export function AuthJwtGuard(): any {
-    return applyDecorators(
-        UseGuards(
-            JwtGuard,
-            AuthPayloadLoginExpiredGuard,
-            AuthPayloadDefaultGuard
-        )
-    );
+    return applyDecorators(UseGuards(JwtGuard, AuthPayloadDefaultGuard));
 }
 
 export function AuthPublicJwtGuard(): any {
     return applyDecorators(
         UseGuards(
             JwtGuard,
-            AuthPayloadLoginExpiredGuard,
             AuthPayloadDefaultGuard,
             AuthPayloadPasswordExpiredGuard,
             AuthPayloadAdminGuard
@@ -46,7 +38,6 @@ export function AuthAdminJwtGuard(...permissions: ENUM_PERMISSIONS[]) {
     return applyDecorators(
         UseGuards(
             JwtGuard,
-            AuthPayloadLoginExpiredGuard,
             AuthPayloadDefaultGuard,
             AuthPayloadPasswordExpiredGuard,
             AuthPayloadAdminGuard,
@@ -62,13 +53,7 @@ export function AuthBasicGuard(): any {
 }
 
 export function AuthRefreshJwtGuard(): any {
-    return applyDecorators(
-        UseGuards(
-            JwtRefreshGuard,
-            AuthPayloadLoginExpiredGuard,
-            AuthPayloadPasswordExpiredGuard
-        )
-    );
+    return applyDecorators(UseGuards(JwtRefreshGuard));
 }
 
 export const User = createParamDecorator(

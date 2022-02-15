@@ -5,8 +5,7 @@ export default {
     changePassword: 'Change Password Success',
     error: {
         blocked: 'Blocked',
-        loginExpired: 'Login expired',
-        passwordExpired:
+        passwordExpiredDate:
             'Password expired, you need to change your password asap',
         admin: 'Admin invalid',
         passwordNotMatch: 'Password not match',
