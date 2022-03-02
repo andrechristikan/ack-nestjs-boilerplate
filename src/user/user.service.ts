@@ -133,7 +133,7 @@ export class UserService {
         firstName,
         lastName,
         password,
-        passwordExpired,
+        passwordExpiredDate,
         salt,
         email,
         mobileNumber,
@@ -148,7 +148,7 @@ export class UserService {
             isActive: true,
             lastName: lastName || undefined,
             salt,
-            passwordExpired,
+            passwordExpiredDate,
         };
 
         const create: UserDocument = new this.userModel(user);
@@ -217,12 +217,12 @@ export class UserService {
 
     async updatePassword(
         _id: string,
-        { salt, passwordHash, passwordExpired }: IAuthPassword
+        { salt, passwordHash, passwordExpiredDate }: IAuthPassword
     ): Promise<UserDocument> {
         const auth: UserDocument = await this.userModel.findById(_id);
 
         auth.password = passwordHash;
-        auth.passwordExpired = passwordExpired;
+        auth.passwordExpiredDate = passwordExpiredDate;
         auth.salt = salt;
 
         return auth.save();
@@ -230,10 +230,10 @@ export class UserService {
 
     async updatePasswordExpired(
         _id: string,
-        passwordExpired: Date
+        passwordExpiredDate: Date
     ): Promise<UserDocument> {
         const auth: UserDocument = await this.userModel.findById(_id);
-        auth.passwordExpired = passwordExpired;
+        auth.passwordExpiredDate = passwordExpiredDate;
 
         return auth.save();
     }

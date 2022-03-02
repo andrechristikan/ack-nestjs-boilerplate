@@ -79,13 +79,12 @@ The features will spill on this section
 - [x] Password Expired Guard
 - [x] Block User Guard
 - [x] Block Role Guard
-- [x] Login Expired Guard
 - [x] Role and Permission Management
 - [x] Hash Password with Bcrypt
 
 ### Middleware
 
-- [x] Body Parser (JSON, Raw, Test, Multipart Form, and Urlencoded)
+- [x] Body Parser (JSON, Raw, Text, Multipart Form, and Urlencoded)
 - [x] Rate Limit
 - [x] Compression
 - [x] Helmet
@@ -133,10 +132,8 @@ All kafka features can switch on/off or remove, [read kafka section](#kafka-docu
 ### Todo
 
 - [x] Split Env File
-- [ ] Unit Test
 - [x] E2E Test
-- [ ] Production Ready (Setting Module), can manage from Database
-- [ ] Swagger Module
+- [ ] Setting Module, can manage from Database
 - [ ] Update Usage Documentation
 - [ ] Update Performance
 
@@ -294,21 +291,14 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
         yarn migrate:rollback
         ```
 
-6.  **SKIP THIS STEP, UNIT TEST, AND E2E TEST DO NOT FINISH YET**
+6.  SKIP THIS STEP E2E TEST DO NOT FINISH YET
 
-    Make sure we do the correct step. Go run `TestModule` and make sure all test passed with success status.
+    Make sure we do the correct step. Run Unit Testing.
 
-    - Run Unit Testing
+    ```sh
+    yarn test
+    ```
 
-        ```sh
-        yarn test
-        ```
-
-    - Run E2E Testing
-
-        ```sh
-        yarn test:e2e
-        ```
 
 ### Run project
 

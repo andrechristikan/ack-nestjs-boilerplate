@@ -8,10 +8,10 @@ import { RoleService } from 'src/role/role.service';
 import { AuthService } from 'src/auth/auth.service';
 import { RoleDocument } from 'src/role/role.schema';
 import { IUserDocument } from 'src/user/user.interface';
-import { E2E_AUTH_CHANGE_PASSWORD_URL } from './auth.constant.e2e';
+import { E2E_AUTH_CHANGE_PASSWORD_URL } from './auth.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/request/request.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
-import { Types } from 'mongoose';
+import { Types, connection } from 'mongoose';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
 import { CoreModule } from 'src/core/core.module';
 import { RouterCommonModule } from 'src/router/router.common.module';
@@ -64,7 +64,7 @@ describe('E2E Change Password', () => {
             firstName: faker.name.firstName(),
             lastName: faker.name.lastName(),
             password: passwordHash.passwordHash,
-            passwordExpired: passwordHash.passwordExpired,
+            passwordExpiredDate: passwordHash.passwordExpiredDate,
             salt: passwordHash.salt,
             email: faker.internet.email(),
             mobileNumber: faker.phone.phoneNumber('62812#########'),
@@ -82,7 +82,7 @@ describe('E2E Change Password', () => {
         );
 
         const map = await authService.mapLogin(userPopulate);
-        const payload = await authService.createPayload(map, false);
+        const payload = await authService.createPayloadAccessToken(map, false);
         const payloadNotFound = {
             ...payload,
             _id: `${new Types.ObjectId()}`,
@@ -108,6 +108,8 @@ describe('E2E Change Password', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
         );
+
+        return;
     });
 
     it(`PATCH ${E2E_AUTH_CHANGE_PASSWORD_URL} Not Found`, async () => {
@@ -123,6 +125,8 @@ describe('E2E Change Password', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
+
+        return;
     });
 
     it(`PATCH ${E2E_AUTH_CHANGE_PASSWORD_URL} Old Password Not Match`, async () => {
@@ -138,6 +142,8 @@ describe('E2E Change Password', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR
         );
+
+        return;
     });
 
     it(`PATCH ${E2E_AUTH_CHANGE_PASSWORD_URL} New Password must different with old password`, async () => {
@@ -153,6 +159,8 @@ describe('E2E Change Password', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NEW_MUST_DIFFERENCE_ERROR
         );
+
+        return;
     });
 
     it(`PATCH ${E2E_AUTH_CHANGE_PASSWORD_URL} Success`, async () => {
@@ -166,6 +174,8 @@ describe('E2E Change Password', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
+
+        return;
     });
 
     afterAll(async () => {
@@ -174,6 +184,8 @@ describe('E2E Change Password', () => {
         } catch (e) {
             console.error(e);
         }
+
+        connection.close();
         await app.close();
     });
 });

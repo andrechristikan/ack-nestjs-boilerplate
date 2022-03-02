@@ -9,27 +9,24 @@ import { Logger as DebuggerService } from 'winston';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
 
 @Injectable()
-export class AuthPasswordExpiredGuard implements CanActivate {
+export class AuthPayloadDefaultGuard implements CanActivate {
     constructor(
         @Debugger() private readonly debuggerService: DebuggerService
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const { user } = context.switchToHttp().getRequest();
-        const { passwordExpired } = user;
-        const today: Date = new Date();
-        const passwordExpiredDate = new Date(passwordExpired);
 
-        if (today > passwordExpiredDate) {
-            this.debuggerService.error('Auth password expired', {
-                class: 'AuthPasswordExpiredGuard',
+        if (!user.isActive || !user.role.isActive) {
+            this.debuggerService.error('UserGuard Inactive', {
+                class: 'AuthDefaultGuard',
                 function: 'canActivate',
             });
 
             throw new ForbiddenException({
                 statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GUARD_PASSWORD_EXPIRED_ERROR,
-                message: 'auth.error.passwordExpired',
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GUARD_JWT_ACCESS_TOKEN_ERROR,
+                message: 'auth.error.blocked',
             });
         }
 

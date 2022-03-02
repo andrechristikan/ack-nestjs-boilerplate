@@ -5,34 +5,30 @@ import {
     applyDecorators,
     SetMetadata,
 } from '@nestjs/common';
-import { PermissionDefaultGuard } from 'src/permission/guard/permission.default.guard';
+import { PermissionPayloadDefaultGuard } from 'src/permission/guard/payload/permission.default.guard';
 import {
     ENUM_PERMISSIONS,
     PERMISSION_META_KEY,
 } from 'src/permission/permission.constant';
 import { AUTH_ADMIN_META_KEY } from './auth.constant';
 import { BasicGuard } from './guard/basic/auth.basic.guard';
-import { AuthAdminGuard } from './guard/default/auth.admin.guard';
-import { AuthDefaultGuard } from './guard/default/auth.default.guard';
-import { AuthLoginExpiredGuard } from './guard/default/auth.login-expired.guard';
-import { AuthPasswordExpiredGuard } from './guard/default/auth.password-expired.guard';
 import { JwtRefreshGuard } from './guard/jwt-refresh/auth.jwt-refresh.guard';
 import { JwtGuard } from './guard/jwt/auth.jwt.guard';
+import { AuthPayloadAdminGuard } from './guard/payload/auth.payload.admin.guard';
+import { AuthPayloadDefaultGuard } from './guard/payload/auth.payload.default.guard';
+import { AuthPayloadPasswordExpiredGuard } from './guard/payload/auth.payload.password-expired.guard';
 
 export function AuthJwtGuard(): any {
-    return applyDecorators(
-        UseGuards(JwtGuard, AuthLoginExpiredGuard, AuthDefaultGuard)
-    );
+    return applyDecorators(UseGuards(JwtGuard, AuthPayloadDefaultGuard));
 }
 
 export function AuthPublicJwtGuard(): any {
     return applyDecorators(
         UseGuards(
             JwtGuard,
-            AuthLoginExpiredGuard,
-            AuthDefaultGuard,
-            AuthPasswordExpiredGuard,
-            AuthAdminGuard
+            AuthPayloadDefaultGuard,
+            AuthPayloadPasswordExpiredGuard,
+            AuthPayloadAdminGuard
         ),
         SetMetadata(AUTH_ADMIN_META_KEY, [false])
     );
@@ -42,11 +38,10 @@ export function AuthAdminJwtGuard(...permissions: ENUM_PERMISSIONS[]) {
     return applyDecorators(
         UseGuards(
             JwtGuard,
-            AuthLoginExpiredGuard,
-            AuthDefaultGuard,
-            AuthPasswordExpiredGuard,
-            AuthAdminGuard,
-            PermissionDefaultGuard
+            AuthPayloadDefaultGuard,
+            AuthPayloadPasswordExpiredGuard,
+            AuthPayloadAdminGuard,
+            PermissionPayloadDefaultGuard
         ),
         SetMetadata(PERMISSION_META_KEY, permissions),
         SetMetadata(AUTH_ADMIN_META_KEY, [true])
@@ -57,14 +52,8 @@ export function AuthBasicGuard(): any {
     return applyDecorators(UseGuards(BasicGuard));
 }
 
-export function AuthJwtRefreshGuard(): any {
-    return applyDecorators(
-        UseGuards(
-            JwtRefreshGuard,
-            AuthLoginExpiredGuard,
-            AuthPasswordExpiredGuard
-        )
-    );
+export function AuthRefreshJwtGuard(): any {
+    return applyDecorators(UseGuards(JwtRefreshGuard));
 }
 
 export const User = createParamDecorator(

@@ -10,10 +10,10 @@ import { IUserDocument } from 'src/user/user.interface';
 import {
     E2E_USER_PUBLIC_PROFILE_UPLOAD_URL,
     E2E_USER_PUBLIC_PROFILE_URL,
-} from './user.constant.e2e';
+} from './user.constant';
 import { UserDocument } from 'src/user/user.schema';
 import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/file/file.constant';
-import { Types } from 'mongoose';
+import { Types, connection } from 'mongoose';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
 import { CoreModule } from 'src/core/core.module';
 import { RouterPublicModule } from 'src/router/router.public.module';
@@ -61,7 +61,7 @@ describe('E2E User Public', () => {
             firstName: faker.name.firstName(),
             lastName: faker.name.lastName(),
             password: passwordHash.passwordHash,
-            passwordExpired: passwordHash.passwordExpired,
+            passwordExpiredDate: passwordHash.passwordExpiredDate,
             salt: passwordHash.salt,
             email: faker.internet.email(),
             mobileNumber: faker.phone.phoneNumber('62812#########'),
@@ -79,7 +79,7 @@ describe('E2E User Public', () => {
         );
 
         const map = await authService.mapLogin(userPopulate);
-        const payload = await authService.createPayload(map, false);
+        const payload = await authService.createPayloadAccessToken(map, false);
         const payloadNotFound = {
             ...payload,
             _id: `${new Types.ObjectId()}`,
@@ -102,6 +102,8 @@ describe('E2E User Public', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
+
+        return;
     });
 
     it(`GET ${E2E_USER_PUBLIC_PROFILE_URL} Profile`, async () => {
@@ -111,12 +113,14 @@ describe('E2E User Public', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
+
+        return;
     });
 
     it(`POST ${E2E_USER_PUBLIC_PROFILE_UPLOAD_URL} Profile Upload Error Request`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
-            .attach('file', './e2e/user/files/test.txt')
+            .attach('file', './test/user/files/test.txt')
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data');
 
@@ -124,12 +128,14 @@ describe('E2E User Public', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_FILE_STATUS_CODE_ERROR.FILE_EXTENSION_ERROR
         );
+
+        return;
     });
 
     it(`POST ${E2E_USER_PUBLIC_PROFILE_UPLOAD_URL} Profile Upload Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
-            .attach('file', './e2e/user/files/test.txt')
+            .attach('file', './test/user/files/test.txt')
             .set('Authorization', `Bearer ${accessTokenNotFound}`)
             .set('Content-Type', 'multipart/form-data');
 
@@ -137,13 +143,15 @@ describe('E2E User Public', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
+
+        return;
     });
 
     it(`POST ${E2E_USER_PUBLIC_PROFILE_UPLOAD_URL} Profile Upload File Too Large`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
             .send()
-            .attach('file', './e2e/user/files/medium.jpg')
+            .attach('file', './test/user/files/medium.jpg')
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data');
 
@@ -151,18 +159,22 @@ describe('E2E User Public', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_FILE_STATUS_CODE_ERROR.FILE_MAX_SIZE_ERROR
         );
+
+        return;
     });
 
     it(`POST ${E2E_USER_PUBLIC_PROFILE_UPLOAD_URL} Profile Upload Success`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
             .send()
-            .attach('file', './e2e/user/files/small.jpg')
+            .attach('file', './test/user/files/small.jpg')
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data');
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
+
+        return;
     }, 5000);
 
     afterAll(async () => {
@@ -171,6 +183,8 @@ describe('E2E User Public', () => {
         } catch (e) {
             console.error(e);
         }
+
+        connection.close();
         await app.close();
     });
 });

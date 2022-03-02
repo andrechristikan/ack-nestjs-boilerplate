@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import faker from '@faker-js/faker';
 import { UserService } from 'src/user/user.service';
-import { E2E_AUTH_LOGIN_URL } from './auth.constant.e2e';
+import { E2E_AUTH_LOGIN_URL } from './auth.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/request/request.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
 import { UserDocument } from 'src/user/user.schema';
@@ -19,6 +19,7 @@ import { HelperService } from 'src/helper/helper.service';
 import { CoreModule } from 'src/core/core.module';
 import { RouterCommonModule } from 'src/router/router.common.module';
 import { RouterModule } from '@nestjs/core';
+import { connection } from 'mongoose';
 
 describe('E2E Login', () => {
     let app: INestApplication;
@@ -33,7 +34,7 @@ describe('E2E Login', () => {
 
     let user: UserDocument;
 
-    let passwordExpired: Date;
+    let passwordExpiredDate: Date;
 
     beforeAll(async () => {
         const modRef = await Test.createTestingModule({
@@ -59,7 +60,7 @@ describe('E2E Login', () => {
             name: 'user',
         });
 
-        passwordExpired = await helperService.dateTimeBackwardInDays(5);
+        passwordExpiredDate = await helperService.dateTimeBackwardInDays(5);
 
         const passwordHash = await authService.createPassword(password);
 
@@ -67,7 +68,7 @@ describe('E2E Login', () => {
             firstName: faker.name.firstName(),
             lastName: faker.name.lastName(),
             password: passwordHash.passwordHash,
-            passwordExpired: passwordHash.passwordExpired,
+            passwordExpiredDate: passwordHash.passwordExpiredDate,
             salt: passwordHash.salt,
             email: faker.internet.email(),
             mobileNumber: faker.phone.phoneNumber('62812#########'),
@@ -91,6 +92,8 @@ describe('E2E Login', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
         );
+
+        return;
     });
 
     it(`POST ${E2E_AUTH_LOGIN_URL} Not Found`, async () => {
@@ -107,6 +110,8 @@ describe('E2E Login', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
+
+        return;
     });
 
     it(`POST ${E2E_AUTH_LOGIN_URL} Password Not Match`, async () => {
@@ -123,6 +128,8 @@ describe('E2E Login', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR
         );
+
+        return;
     });
 
     it(`POST ${E2E_AUTH_LOGIN_URL} Inactive`, async () => {
@@ -142,6 +149,8 @@ describe('E2E Login', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR
         );
+
+        return;
     });
 
     it(`POST ${E2E_AUTH_LOGIN_URL} Role Inactive`, async () => {
@@ -161,6 +170,8 @@ describe('E2E Login', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR
         );
+
+        return;
     });
 
     it(`POST ${E2E_AUTH_LOGIN_URL} Success`, async () => {
@@ -177,10 +188,12 @@ describe('E2E Login', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_AUTH_STATUS_CODE_SUCCESS.AUTH_LOGIN_SUCCESS
         );
+
+        return;
     });
 
     it(`POST ${E2E_AUTH_LOGIN_URL} Password Expired`, async () => {
-        await userService.updatePasswordExpired(user._id, passwordExpired);
+        await userService.updatePasswordExpired(user._id, passwordExpiredDate);
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
@@ -194,6 +207,8 @@ describe('E2E Login', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR
         );
+
+        return;
     });
 
     afterAll(async () => {
@@ -202,6 +217,8 @@ describe('E2E Login', () => {
         } catch (e) {
             console.error(e);
         }
+
+        connection.close();
         await app.close();
     });
 });

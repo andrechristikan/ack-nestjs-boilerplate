@@ -22,7 +22,7 @@ export class UserListTransformer {
     readonly password: string;
 
     @Exclude()
-    readonly passwordExpired: Date;
+    readonly passwordExpiredDate: Date;
 
     @Exclude()
     readonly salt: string;

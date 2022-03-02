@@ -20,6 +20,13 @@ export class HelperService {
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
+    async arrayShuffle(array: Array<any>) {
+        return array
+            .map((value) => ({ value, sort: Math.random() }))
+            .sort((a, b) => a.sort - b.sort)
+            .map(({ value }) => value);
+    }
+
     async calculateAge(dateOfBirth: Date): Promise<number> {
         return moment().diff(dateOfBirth, 'years');
     }
@@ -29,12 +36,18 @@ export class HelperService {
         return regex.test(email);
     }
 
+    async checkNumber(number: string): Promise<boolean> {
+        const regex = /^-?\d+$/;
+        return regex.test(number);
+    }
+
     async randomReference(length: number, prefix?: string): Promise<string> {
-        const timestamp = `${new Date().valueOf()}`;
+        const timestamp = `${await this.dateTimestamp()}`;
         const randomString: string = await this.randomString(length, {
             safe: true,
             upperCase: true,
         });
+
         return prefix
             ? `${prefix}-${timestamp}${randomString}`
             : `${timestamp}${randomString}`;
@@ -60,15 +73,42 @@ export class HelperService {
         return this.randomNumberInRange(min, max);
     }
 
-    async randomArray(array: Array<any>) {
-        return array
-            .map((value) => ({ value, sort: Math.random() }))
-            .sort((a, b) => a.sort - b.sort)
-            .map(({ value }) => value);
-    }
-
     async randomNumberInRange(min: number, max: number): Promise<number> {
         return faker.datatype.number({ min, max });
+    }
+
+    async dateDiff(
+        dateOne: Date,
+        dateTwo: Date,
+        options?: string
+    ): Promise<number> {
+        const mDateOne = moment(dateOne);
+        const mDateTwo = moment(dateTwo);
+        const diff = moment.duration(mDateTwo.diff(mDateOne));
+
+        if (options === 'milis') {
+            return diff.asMilliseconds();
+        } else if (options === 'seconds') {
+            return diff.asSeconds();
+        } else if (options === 'hours') {
+            return diff.asHours();
+        } else if (options === 'days') {
+            return diff.asDays();
+        } else {
+            return diff.asMinutes();
+        }
+    }
+
+    async dateCheck(date: string): Promise<boolean> {
+        return moment(date, true).isValid();
+    }
+
+    async dateCreate(date?: string | Date): Promise<Date> {
+        return moment(date, true).toDate();
+    }
+
+    async dateTimestamp(date?: string | Date): Promise<number> {
+        return moment(date, true).valueOf();
     }
 
     async dateTimeToString(date: Date, format?: string): Promise<string> {
@@ -211,5 +251,12 @@ export class HelperService {
 
     async sha256Hash(string: string): Promise<string> {
         return createHash('sha256').update(string).digest('hex');
+    }
+
+    async sha256HashCompare(string: string, hash: string): Promise<boolean> {
+        const stringHash: string = createHash('sha256')
+            .update(string)
+            .digest('hex');
+        return stringHash === hash;
     }
 }
