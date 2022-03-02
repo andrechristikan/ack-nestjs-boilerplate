@@ -31,9 +31,9 @@ describe('E2E User Admin', () => {
     let authService: AuthService;
     let roleService: RoleService;
 
-    const password = `@!${faker.random
-        .alphaNumeric(5)
-        .toLowerCase()}${faker.random.alphaNumeric(5).toUpperCase()}`;
+    const password = `@!${faker.random.alpha(5).toLowerCase()}${faker.random
+        .alpha(5)
+        .toUpperCase()}${faker.datatype.number({ min: 1, max: 99 })}`;
 
     let userData: Record<string, any>;
     let userExist: UserDocument;

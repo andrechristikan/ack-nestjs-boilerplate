@@ -3473,28 +3473,6 @@
 					"body": "{\n    \"statusCode\": 5400,\n    \"message\": \"User not found.\"\n}"
 				},
 				{
-					"name": "login expired",
-					"originalRequest": {
-						"method": "POST",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/refresh",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"refresh"
-							]
-						}
-					},
-					"status": "Forbidden",
-					"code": 403,
-					"_postman_previewlanguage": "json",
-					"header": null,
-					"cookie": [],
-					"body": "{\n    \"statusCode\": 5105,\n    \"message\": \"Login expired\"\n}"
-				},
-				{
 					"name": "user inactive",
 					"originalRequest": {
 						"method": "POST",

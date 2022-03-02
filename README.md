@@ -79,7 +79,6 @@ The features will spill on this section
 - [x] Password Expired Guard
 - [x] Block User Guard
 - [x] Block Role Guard
-- [x] Login Expired Guard
 - [x] Role and Permission Management
 - [x] Hash Password with Bcrypt
 
@@ -134,8 +133,7 @@ All kafka features can switch on/off or remove, [read kafka section](#kafka-docu
 
 - [x] Split Env File
 - [x] E2E Test
-- [ ] Production Ready (Setting Module), can manage from Database
-- [ ] Swagger Module
+- [ ] Setting Module, can manage from Database
 - [ ] Update Usage Documentation
 - [ ] Update Performance
 
