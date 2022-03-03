@@ -58,29 +58,20 @@ The features will spill on this section
 - [x] Centralize Configuration
 - [x] Centralize Exception
 - [x] Centralize Response
+    - Custom Response Status Code
+- [x] Centralize Router
+- [x] Centralize Language and Message
+    - Multi Language
 - [x] Versioning, can on/off
-- [x] Admin, Public, Common, Callback, and Test RouterModule
-- [x] Validation All Incoming Request
-- [x] Support Multi Language, control from header
-- [x] Custom Status Code for Each Error and Success Response
+- [x] Validation Incoming Request
 
-### Mongoose
+### Database
 
 - [x] Mongoose Integration
 - [x] Mongoose Populate and Deep Populate
 - [x] Mongoose Transaction, `Need MongoDB as Replication Instance to use this feature`
 - [x] Multi Database Connection
 - [x] Database Migration with Nestjs/Command
-
-### Security
-
-- [x] Json Web Token Guard, Access Token and Refresh Token (OAuth2)
-- [x] Basic Auth Guard
-- [x] Password Expired Guard
-- [x] Block User Guard
-- [x] Block Role Guard
-- [x] Role and Permission Management
-- [x] Hash Password with Bcrypt
 
 ### Middleware
 
@@ -90,32 +81,42 @@ The features will spill on this section
 - [x] Helmet
 - [x] Cors
 
+### Guard
+
+- [x] Default Auth Guard. Block User, and Block User.
+- [x] Basic Auth Guard
+- [x] Json Web Token Guard, Access Token and Refresh Token (OAuth2)
+- [x] Password Expired Guard
+- [x] Role and Permission Management
+
+
 ### Logger
 
-- [x] Logger Module, insert into Database
-- [x] Debugger Module, can write into file log
-- [x] Http Debugger Module, catch http incoming request and write into file log
+- [x] Database Logger, insert into Database
+- [x] File Logger, can write into file log
+- [x] Http Logger, catch http incoming request and write into file log
 
-### Kafka Modules
+### Kafka
 
 All kafka features can switch on/off or remove, [read kafka section](#kafka-document)
 
 - [x] Kafka Admin Module, Create Topics with custom partition, and custom replication
 - [x] Kafka Producer Module, Store Message to consumer
 
-### Helper Module
+### Helper
 
 - [x] Manipulation Datetime
 - [x] Random string, Random String Length, Random String Prefix
 - [x] Random number, Random Number Between, Random OTP
-- [x] JWT signature
-- [x] Hashing
+- [x] JWT
+- [x] Hash
 - [x] Encryption and Decryption
 
 ### Others
 
 - [x] Husky Git pre-commit hooks for better code
 - [x] Support Docker Installation
+- [x] Hash Password with Bcrypt
 
 ### Example
 
@@ -291,14 +292,11 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
         yarn migrate:rollback
         ```
 
-6.  SKIP THIS STEP E2E TEST DO NOT FINISH YET
-
-    Make sure we do the correct step. Run Unit Testing.
+6.  Make sure we do the correct step. Run E2e Testing.
 
     ```sh
     yarn test
     ```
-
 
 ### Run project
 

@@ -11,25 +11,6 @@ services:
     volumes:
       - .env:/app/.env
       - .env.share:/app/.env.share
-    depends_on:
-      - mongodb
-    links:
-      - mongodb
-  mongodb:
-    image: mongo:latest
-    container_name: mongodb
-    hostname: mongodb
-    networks:
-      - app-network
-    ports:
-      - 27017:27017
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: 123456
-      MONGO_INITDB_DATABASE: ack
-    volumes:
-      - mongodb-data:/data/db
-    restart: unless-stopped
 networks:
   app-network:
     name: app-network

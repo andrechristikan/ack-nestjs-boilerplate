@@ -22,14 +22,16 @@ export function AuthJwtGuard(): any {
     return applyDecorators(UseGuards(JwtGuard, AuthPayloadDefaultGuard));
 }
 
-export function AuthPublicJwtGuard(): any {
+export function AuthPublicJwtGuard(...permissions: ENUM_PERMISSIONS[]): any {
     return applyDecorators(
         UseGuards(
             JwtGuard,
             AuthPayloadDefaultGuard,
             AuthPayloadPasswordExpiredGuard,
-            AuthPayloadAdminGuard
+            AuthPayloadAdminGuard,
+            PermissionPayloadDefaultGuard
         ),
+        SetMetadata(PERMISSION_META_KEY, permissions),
         SetMetadata(AUTH_ADMIN_META_KEY, [false])
     );
 }
