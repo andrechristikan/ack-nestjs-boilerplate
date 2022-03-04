@@ -8,7 +8,6 @@ import role from './role.language';
 import message from './message.language';
 import permission from './permission.language';
 import file from './file.language';
-import kafka from './kafka.language';
 
 export default {
     role,
@@ -21,5 +20,4 @@ export default {
     message,
     permission,
     file,
-    kafka,
 };

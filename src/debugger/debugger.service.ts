@@ -7,13 +7,13 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class DebuggerService {
-    private readonly env: string;
+    private readonly debug: boolean;
     private readonly logger: boolean;
     private readonly maxSize: string;
     private readonly maxFiles: string;
 
     constructor(private configService: ConfigService) {
-        this.env = this.configService.get<string>('app.env');
+        this.debug = this.configService.get<boolean>('app.debug');
         this.logger =
             this.configService.get<boolean>('app.debug') &&
             this.configService.get<boolean>('app.debugger.system.active');
@@ -47,7 +47,7 @@ export class DebuggerService {
         });
 
         const transports = [];
-        if (this.logger) {
+        if (this.logger || this.debug) {
             transports.push(configTransportError);
             transports.push(configTransportDefault);
         }

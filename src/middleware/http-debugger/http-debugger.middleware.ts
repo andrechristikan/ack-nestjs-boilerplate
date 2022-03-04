@@ -16,7 +16,23 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class HttpDebuggerMiddleware implements NestMiddleware {
-    constructor(private readonly configService: ConfigService) {}
+    private readonly debug: boolean;
+    private readonly logger: boolean;
+    private readonly maxSize: string;
+    private readonly maxFiles: number;
+
+    constructor(private readonly configService: ConfigService) {
+        this.debug = this.configService.get<boolean>('app.debug');
+        this.logger = this.configService.get<boolean>(
+            'app.debugger.http.active'
+        );
+        this.maxSize = this.configService.get<string>(
+            'app.debugger.http.maxSize'
+        );
+        this.maxFiles = this.configService.get<number>(
+            'app.debugger.http.maxFiles'
+        );
+    }
 
     private customToken(): void {
         morgan.token('req-params', (req: Request) =>
@@ -40,12 +56,8 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
         const HttpDebuggerOptions: IHttpDebuggerConfigOptions = {
             stream: createStream(`${date}.log`, {
                 path: `./logs/${DEBUGGER_HTTP_NAME}/`,
-                maxSize: this.configService.get<string>(
-                    'app.debugger.http.maxSize'
-                ),
-                maxFiles: this.configService.get<number>(
-                    'app.debugger.http.maxFiles'
-                ),
+                maxSize: this.maxSize,
+                maxFiles: this.maxFiles,
                 compress: true,
                 interval: '1d',
             }),
@@ -58,10 +70,7 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
     }
 
     use(req: Request, res: Response, next: NextFunction): void {
-        if (
-            this.configService.get<boolean>('app.debug') &&
-            this.configService.get<boolean>('app.debugger.http.active')
-        ) {
+        if (this.debug || this.logger) {
             const config: IHttpDebuggerConfig = this.httpLogger();
             this.customToken();
             morgan(config.debuggerHttpFormat, config.HttpDebuggerOptions)(
@@ -77,18 +86,30 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
 
 @Injectable()
 export class HttpDebuggerResponseMiddleware implements NestMiddleware {
-    use(req: Request, res: Response, next: NextFunction): void {
-        const send: any = res.send;
-        const resOld: any = res;
+    private readonly debug: boolean;
+    private readonly logger: boolean;
 
-        // Add response data to response
-        // this is for morgan
-        resOld.send = (body: any) => {
-            resOld.body = body;
-            resOld.send = send;
-            resOld.send(body);
-            res = resOld as Response;
-        };
+    constructor(private readonly configService: ConfigService) {
+        this.debug = this.configService.get<boolean>('app.debug');
+        this.logger = this.configService.get<boolean>(
+            'app.debugger.http.active'
+        );
+    }
+
+    use(req: Request, res: Response, next: NextFunction): void {
+        if (this.debug || this.logger) {
+            const send: any = res.send;
+            const resOld: any = res;
+
+            // Add response data to response
+            // this is for morgan
+            resOld.send = (body: any) => {
+                resOld.body = body;
+                resOld.send = send;
+                resOld.send(body);
+                res = resOld as Response;
+            };
+        }
 
         next();
     }

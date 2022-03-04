@@ -27,6 +27,4 @@ dockerfile
 docker-compose.yml
 cspell.json
 README.md
-USAGE.md
-KAFKA.md
 nodemon.json
