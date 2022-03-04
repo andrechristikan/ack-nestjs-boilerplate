@@ -1,3 +1,0 @@
-export enum ENUM_KAFKA_ERROR_STATUS_CODE {
-    TEST_KAFKA_ERROR = 5991,
-}

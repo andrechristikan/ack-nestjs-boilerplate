@@ -3070,97 +3070,6 @@
 			]
 		},
 		{
-			"name": "kafka",
-			"item": [
-				{
-					"name": "producer",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/kafka/producer",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"kafka",
-								"producer"
-							]
-						}
-					},
-					"response": [
-						{
-							"name": "success",
-							"originalRequest": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{baseUrl}}/kafka/producer",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"kafka",
-										"producer"
-									]
-								}
-							},
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": null,
-							"cookie": [],
-							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"produce kafka succeed\"\n}"
-						}
-					]
-				},
-				{
-					"name": "producer error",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/kafka/producer/error",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"kafka",
-								"producer",
-								"error"
-							]
-						}
-					},
-					"response": [
-						{
-							"name": "error",
-							"originalRequest": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{baseUrl}}/kafka/producer/error",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"kafka",
-										"producer",
-										"error"
-									]
-								}
-							},
-							"status": "Internal Server Error",
-							"code": 500,
-							"_postman_previewlanguage": "json",
-							"header": null,
-							"cookie": [],
-							"body": "{\n    \"statusCode\": 5991,\n    \"message\": \"produce kafka error\"\n}"
-						}
-					]
-				}
-			]
-		},
-		{
 			"name": "login",
 			"request": {
 				"method": "POST",
@@ -3471,6 +3380,28 @@
 					"header": null,
 					"cookie": [],
 					"body": "{\n    \"statusCode\": 5400,\n    \"message\": \"User not found.\"\n}"
+				},
+				{
+					"name": "login expired",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/refresh",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"refresh"
+							]
+						}
+					},
+					"status": "Forbidden",
+					"code": 403,
+					"_postman_previewlanguage": "json",
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 5105,\n    \"message\": \"Login expired\"\n}"
 				},
 				{
 					"name": "user inactive",

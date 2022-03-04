@@ -5,7 +5,6 @@ import HelperConfig from 'src/config/helper.config';
 import AwsConfig from 'src/config/aws.config';
 import UserConfig from './user.config';
 import FileConfig from './file.config';
-import KafkaConfig from './kafka.config';
 import MiddlewareConfig from './middleware.config';
 
 export default [
@@ -15,7 +14,6 @@ export default [
     HelperConfig,
     AwsConfig,
     UserConfig,
-    FileConfig,
-    KafkaConfig,
     MiddlewareConfig,
+    FileConfig,
 ];
