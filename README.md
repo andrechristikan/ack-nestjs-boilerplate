@@ -15,13 +15,13 @@
 
 # ACK NestJs Boilerplate 🔥 🚀
 
-> Best uses for build an API Project or Microservice Project.
+> Best uses for build an API Project or Microservice Project
 
-ack-nestjs-mongoose is a [NestJs](ref-nestjs) Boilerplate with [Mongoose](ref-mongoose) and [MongoDB](ref-mongodb) as Database.
-Made with following [nodejs-best-practice](ref-nodejs-best-practice) and NestJs Habit as benchmark.
+ack-nestjs-mongoose is a [NestJs][ref-nestjs] Boilerplate with [Mongoose][ref-mongoose] and [MongoDB][ref-mongodb] as Database.
+Made with following [nodejs-best-practice][ref-nodejs-best-practice] and NestJs Habit as benchmark.
 ack-nestjs-mongoose also want to keep boilerplate keep simple.
 
-*You can [Request Feature](ack-issues) or [Report Bug](ack-issues) with following this link*
+*You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
 
 ## Objective
 
@@ -38,20 +38,20 @@ Also ack-nestjs-mongoose have some objective
 
 Documentation will write with gitbook
 
-- [Setup Documentation](ack-gitbook-setup)
-- [Usage Documentation](ack-gitbook-usage)
+- [Setup Documentation][ack-gitbook-setup]
+- [Usage Documentation][ack-gitbook-usage]
 
 ## Kafka
 
-Nestjs microservice or Kafka integration will put in separate repo [ack-microservice-nestjs-mongoose](ack-microservice-repo)
+Nestjs microservice or Kafka integration will put in separate repo [ack-microservice-nestjs-mongoose][ack-microservice-repo]
 
 ## License
 
-Distributed under [MIT licensed](ack-license).
+Distributed under [MIT licensed][ack-license].
 
 ## Contact
 
-[Andre Christi kan](author-email)
+[Andre Christi kan][author-email]
 
 [![Github][github-shield]][author-github]
 [![LinkedIn][linkedin-shield]][author-linkedin]
@@ -97,7 +97,7 @@ Distributed under [MIT licensed](ack-license).
 
 <!-- Documents -->
 [ack-gitbook-setup]: https://acks.gitbook.io/ack-nestjs-mongoose
-[ack-gitbook-usage]: https://acks.gitbook.io/ack-nestjs-mongoose
+[ack-gitbook-usage]: https://acks.gitbook.io/ack-nestjs-mongoose/v/usage-documentation/
 
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com
