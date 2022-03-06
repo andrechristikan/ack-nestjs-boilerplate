@@ -13,12 +13,11 @@
 [![Yarn][yarn-shield]][ref-yarn]
 [![Docker][docker-shield]][ref-docker]
 
-# ACK NestJs Boilerplate 🔥 🚀
+# ACK NestJs Mongoose Boilerplate 🔥 🚀
 
-> Usage Document still ongoing
+> Usage Document still ongoing, last update on 7 March 2022
 
-ack-nestjs-mongoose is a [NestJs][ref-nestjs] Boilerplate with [Mongoose][ref-mongoose] and [MongoDB][ref-mongodb] as Database. Best uses for build an API Project or Microservice Project
-Made with following [nodejs-best-practice][ref-nodejs-best-practice] and NestJs Habit as benchmark.
+ack-nestjs-mongoose is a [NestJs][ref-nestjs] Boilerplate with [Mongoose][ref-mongoose] and [MongoDB][ref-mongodb] as Database. Best uses for build an API Project. Made with following [nodejs-best-practice][ref-nodejs-best-practice] and NestJs Habit as benchmark.
 ack-nestjs-mongoose also want to keep boilerplate keep simple.
 
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
