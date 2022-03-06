@@ -4,27 +4,25 @@ pipeline {
         skipDefaultCheckout true
     }
     environment {
-        BASE_IMAGE='node:lts-alpine'
+        BASE_IMAGE='node:lts-alpine' // change this with same version of container image
 
-        APP_NAME = 'ack'
-        APP_NETWORK = 'app-network'
-        APP_PORT = 3000
+        APP_NAME = 'ack' // this will be container name
+        APP_NETWORK = 'app-network' // this network name
+        APP_PORT = 3000 // this project will serve in port 0.0.0.0:3000
         
-        NODE_JS = 'lts'
+        NODE_JS = 'lts' // depends with our jenkins setting 
 
-        HOST_IP = 'xx.xx.xx.xx'
-        HOST_CREDENTIAL = '2637b88f-8dc8-4395-bd6b-0c6127720a89'
+        HOST_IP = 'xx.xx.xx.xx' // this server ip for your production server
+        HOST_CREDENTIAL = '2637b88f-8dc8-4395-bd6b-0c6127720a89' // depends with our credentials jenkins
         
-        DOCKER_CREDENTIAL = 'ef108994-1241-4614-aab5-2aadd7a72284'
-        DOCKER_FILE= './docker/dockerfile.prod'
-        DOCKER_USERNAME = 'ack'
+        DOCKER_CREDENTIAL = 'ef108994-1241-4614-aab5-2aadd7a72284' // depends with our credentials jenkins
+        DOCKER_FILE= './prod/dockerfile'
+        DOCKER_USERNAME = 'ack' // docker hub username
         DOCKER_REGISTRY = 'https://index.docker.io/v1/' 
 
-        GIT = 'Default'
-        GIT_BRANCH = 'main'
-        GIT_CREDENTIAL = '86535ad6-5d74-48c0-9852-bddbe1fbaff6'
-        GIT_URL = 'https://github.com/andrechristikan/ack-nestjs-mongoose.git'
-        
+        GIT = 'Default' // depends with our jenkins setting
+        GIT_BRANCH = 'main' // git branch
+        GIT_CREDENTIAL = '86535ad6-5d74-48c0-9852-bddbe1fbaff6' // depends with our credentials jenkins 
     }
     tools {
         nodejs NODE_JS

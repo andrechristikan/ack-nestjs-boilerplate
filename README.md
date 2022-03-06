@@ -15,9 +15,9 @@
 
 # ACK NestJs Boilerplate 🔥 🚀
 
-> Best uses for build an API Project or Microservice Project
+> Usage Document still ongoing
 
-ack-nestjs-mongoose is a [NestJs][ref-nestjs] Boilerplate with [Mongoose][ref-mongoose] and [MongoDB][ref-mongodb] as Database.
+ack-nestjs-mongoose is a [NestJs][ref-nestjs] Boilerplate with [Mongoose][ref-mongoose] and [MongoDB][ref-mongodb] as Database. Best uses for build an API Project or Microservice Project
 Made with following [nodejs-best-practice][ref-nodejs-best-practice] and NestJs Habit as benchmark.
 ack-nestjs-mongoose also want to keep boilerplate keep simple.
 

@@ -14,13 +14,13 @@ import { Types } from 'mongoose';
 import { UserProfileTransformer } from './transformer/user.profile.transformer';
 import { plainToInstance } from 'class-transformer';
 import { Helper } from 'src/helper/helper.decorator';
-import { HelperService } from 'src/helper/helper.service';
 import { IAwsResponse } from 'src/aws/aws.interface';
 import { UserListTransformer } from './transformer/user.list.transformer';
 import { UserGetTransformer } from './transformer/user.get.transformer';
 import { IAuthPassword } from 'src/auth/auth.interface';
 import { DeleteResult } from 'mongodb';
 import { ConfigService } from '@nestjs/config';
+import { HelperService } from 'src/helper/helper.service';
 
 @Injectable()
 export class UserService {
@@ -207,7 +207,7 @@ export class UserService {
     }
 
     async createRandomFilename(): Promise<Record<string, any>> {
-        const filename: string = await this.helperService.randomString(20);
+        const filename: string = await this.helperService.stringRandom(20);
 
         return {
             path: this.uploadPath,

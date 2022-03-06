@@ -1,4 +1,5 @@
 export type IResponse = Record<string, any>;
+
 export interface IResponsePaging {
     totalData: number;
     totalPage: number;
