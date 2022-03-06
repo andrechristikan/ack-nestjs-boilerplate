@@ -3,7 +3,6 @@ import {
     Catch,
     ArgumentsHost,
     HttpException,
-    HttpStatus,
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Message } from 'src/message/message.decorator';
@@ -70,22 +69,5 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 message: rMessage,
             });
         }
-    }
-}
-
-// in case we want to return 2 success end point, with custom status code for both
-export class SuccessException extends HttpException {
-    constructor(
-        data: Record<string, any> | string,
-        httpCode?:
-            | HttpStatus.OK
-            | HttpStatus.CREATED
-            | HttpStatus.ACCEPTED
-            | HttpStatus.NON_AUTHORITATIVE_INFORMATION
-            | HttpStatus.NO_CONTENT
-            | HttpStatus.RESET_CONTENT
-            | HttpStatus.PARTIAL_CONTENT
-    ) {
-        super(data, httpCode || HttpStatus.OK);
     }
 }

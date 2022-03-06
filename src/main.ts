@@ -1,5 +1,5 @@
 import { NestApplication, NestFactory } from '@nestjs/core';
-import { Logger, VersioningType } from '@nestjs/common';
+import { Logger, VersioningType, VERSION_NEUTRAL } from '@nestjs/common';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
 
@@ -23,6 +23,7 @@ async function bootstrap() {
     if (versioning) {
         app.enableVersioning({
             type: VersioningType.URI,
+            defaultVersion: VERSION_NEUTRAL,
         });
     }
 

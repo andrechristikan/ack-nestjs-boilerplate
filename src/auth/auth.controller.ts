@@ -37,10 +37,10 @@ import { AuthSignUpValidation } from './validation/auth.sign-up.validation';
 import { ENUM_STATUS_CODE_ERROR } from 'src/error/error.constant';
 import { RoleService } from 'src/role/role.service';
 import { AuthLoginTransformer } from './transformer/auth.login.transformer';
-import { SuccessException } from 'src/error/error.http.filter';
 import { AuthChangePasswordValidation } from './validation/auth.change-password.validation';
 import { RoleDocument } from 'src/role/role.schema';
 import { UserDocument } from 'src/user/user.schema';
+import { SuccessException } from 'src/error/error.exception';
 
 @Controller({
     version: '1',

@@ -19,7 +19,8 @@ export class AuthService {
     private readonly refreshTokenNotBeforeExpirationTime: string;
 
     constructor(
-        @Helper() private readonly helperService: HelperService,
+        @Helper()
+        private readonly helperService: HelperService,
         private readonly configService: ConfigService
     ) {
         this.accessTokenSecretToken = this.configService.get<string>(
@@ -50,7 +51,7 @@ export class AuthService {
     }
 
     async createAccessToken(payload: Record<string, any>): Promise<string> {
-        return this.helperService.jwtCreateToken(payload, {
+        return this.helperService.encryptionJWTEncrypt(payload, {
             secretKey: this.accessTokenSecretToken,
             expiredIn: this.accessTokenExpirationTime,
             notBefore: this.accessTokenNotBeforeExpirationTime,
@@ -58,13 +59,13 @@ export class AuthService {
     }
 
     async validateAccessToken(token: string): Promise<boolean> {
-        return this.helperService.jwtVerify(token, {
+        return this.helperService.encryptionJwtVerify(token, {
             secretKey: this.accessTokenSecretToken,
         });
     }
 
     async payloadAccessToken(token: string): Promise<Record<string, any>> {
-        return this.helperService.jwtPayload(token, {
+        return this.helperService.encryptionJWTDecrypt(token, {
             secretKey: this.accessTokenSecretToken,
         });
     }
@@ -74,7 +75,7 @@ export class AuthService {
         rememberMe: boolean,
         test?: boolean
     ): Promise<string> {
-        return this.helperService.jwtCreateToken(payload, {
+        return this.helperService.encryptionJWTEncrypt(payload, {
             secretKey: this.refreshTokenSecretToken,
             expiredIn: rememberMe
                 ? this.refreshTokenExpirationTimeRememberMe
@@ -84,13 +85,13 @@ export class AuthService {
     }
 
     async validateRefreshToken(token: string): Promise<boolean> {
-        return this.helperService.jwtVerify(token, {
+        return this.helperService.encryptionJwtVerify(token, {
             secretKey: this.refreshTokenSecretToken,
         });
     }
 
     async payloadRefreshToken(token: string): Promise<Record<string, any>> {
-        return this.helperService.jwtPayload(token, {
+        return this.helperService.encryptionJWTDecrypt(token, {
             secretKey: this.refreshTokenSecretToken,
         });
     }
@@ -100,7 +101,7 @@ export class AuthService {
         clientSecret: string
     ): Promise<string> {
         const token = `${clientId}:${clientSecret}`;
-        return this.helperService.base64Encrypt(token);
+        return this.helperService.encryptionBase64Decrypt(token);
     }
 
     async validateBasicToken(
@@ -117,7 +118,7 @@ export class AuthService {
         passwordString: string,
         passwordHash: string
     ): Promise<boolean> {
-        return this.helperService.bcryptComparePassword(
+        return this.helperService.hashingBcryptCompare(
             passwordString,
             passwordHash
         );
@@ -174,7 +175,9 @@ export class AuthService {
             'auth.password.saltLength'
         );
 
-        const salt: string = await this.helperService.randomSalt(saltLength);
+        const salt: string = await this.helperService.hashingRandomSalt(
+            saltLength
+        );
 
         const passwordExpiredInDays: number = this.configService.get<number>(
             'auth.password.expiredInDay'
@@ -183,7 +186,7 @@ export class AuthService {
             await this.helperService.dateTimeForwardInDays(
                 passwordExpiredInDays
             );
-        const passwordHash = await this.helperService.bcryptHashPassword(
+        const passwordHash = await this.helperService.hashingBcrypt(
             password,
             salt
         );
