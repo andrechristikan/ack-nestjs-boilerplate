@@ -39,6 +39,9 @@ Documentation will write with gitbook
 
 - [Setup Documentation][ack-gitbook-setup]
 - [Usage Documentation][ack-gitbook-usage]
+- [Kafka Documentation][ack-gitbook-kafka]
+- [Tips][ack-gitbook-tips]
+- [Reference][ack-gitbook-reference]
 
 ## Endpoints
 
@@ -117,6 +120,8 @@ Distributed under [MIT licensed][license].
 [ack-gitbook-setup]: https://acks.gitbook.io/ack-nestjs-mongoose
 [ack-gitbook-usage]: https://acks.gitbook.io/ack-nestjs-mongoose/v/usage-documentation/
 [ack-gitbook-kafka]: https://acks.gitbook.io/ack-nestjs-mongoose/v/kafka-documentation/
+[ack-gitbook-tips]: https://acks.gitbook.io/ack-nestjs-mongoose/v/tips/
+[ack-gitbook-refernce]: https://acks.gitbook.io/ack-nestjs-mongoose/v/reference/
 
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com
