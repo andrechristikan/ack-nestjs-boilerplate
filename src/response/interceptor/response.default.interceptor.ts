@@ -43,10 +43,11 @@ export function ResponseDefaultInterceptor(
                     const statusCode: number =
                         customStatusCode || responseExpress.statusCode;
                     const data: Record<string, any> = await response;
-                    const message: string | IMessage[] =
-                        this.messageService.get(messagePath, {
+                    const message: string | IMessage =
+                        (await this.messageService.get(messagePath, {
                             appLanguages,
-                        }) || this.messageService.get('response.default');
+                        })) ||
+                        (await this.messageService.get('response.default'));
 
                     return {
                         statusCode,

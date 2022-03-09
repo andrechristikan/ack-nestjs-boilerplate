@@ -1,12 +1,8 @@
-export interface IMessage {
-    readonly language: string;
-    readonly message: string;
-}
+export type IMessage = Record<string, string>;
 
 export interface IMessageOptions {
     readonly appLanguages?: string[];
-    readonly property?: string;
-    readonly propertyValue?: string;
+    readonly properties?: Record<string, any>;
 }
 
 export type IMessageSetOptions = Omit<IMessageOptions, 'appLanguages'>;

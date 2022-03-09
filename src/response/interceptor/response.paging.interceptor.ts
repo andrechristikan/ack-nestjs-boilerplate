@@ -45,10 +45,11 @@ export function ResponsePagingInterceptor(
                     const { totalData, totalPage, currentPage, perPage, data } =
                         responseData;
 
-                    const message: string | IMessage[] =
-                        this.messageService.get(messagePath, {
+                    const message: string | IMessage =
+                        (await this.messageService.get(messagePath, {
                             appLanguages,
-                        }) || this.messageService.get('response.default');
+                        })) ||
+                        (await this.messageService.get('response.default'));
 
                     return {
                         statusCode,

@@ -15,7 +15,7 @@ import { IMessage } from 'src/message/message.interface';
 export class ErrorHttpFilter implements ExceptionFilter {
     constructor(@Message() private readonly messageService: MessageService) {}
 
-    catch(exception: HttpException, host: ArgumentsHost): void {
+    async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
         const ctx: HttpArgumentsHost = host.switchToHttp();
         const statusHttp: number = exception.getStatus();
         const responseHttp: any = ctx.getResponse<Response>();
@@ -23,32 +23,21 @@ export class ErrorHttpFilter implements ExceptionFilter {
         const request: Request = ctx.getRequest<Request>();
         const { headers } = request;
         const appLanguages: string[] = headers['accept-language']
-            ? (headers['accept-language'] as string).split(',')
+            ? ctx.getRequest().i18nLang.split(',')
             : undefined;
 
         // Restructure
         const response = exception.getResponse() as IErrorHttpException;
 
-        if (typeof response === 'string') {
-            const rMessage: string | IMessage[] = this.messageService.get(
-                response,
-                {
-                    appLanguages,
-                }
-            );
-            responseHttp.status(statusHttp).json({
-                statusCode: statusHttp,
-                message: rMessage,
-            });
-        } else if (typeof response === 'object') {
+        if (typeof response === 'object') {
             const { statusCode, message, errors, data } = response;
             const rErrors = errors
-                ? this.messageService.getRequestErrorsMessage(
+                ? await this.messageService.getRequestErrorsMessage(
                       errors,
                       appLanguages
                   )
                 : undefined;
-            const rMessage: string | IMessage[] = this.messageService.get(
+            const rMessage: string | IMessage = await this.messageService.get(
                 message,
                 { appLanguages }
             );
@@ -60,7 +49,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 data,
             });
         } else {
-            const rMessage: string | IMessage[] = this.messageService.get(
+            const rMessage: string | IMessage = await this.messageService.get(
                 'response.error.structure',
                 { appLanguages }
             );
