@@ -13,7 +13,7 @@
 [![Yarn][yarn-shield]][ref-yarn]
 [![Docker][docker-shield]][ref-docker]
 
-# ACK NestJs Mongoose Boilerplate 🔥 🚀
+# ACK NestJs Boilerplate Mongoose  🔥 🚀
 
 > Usage Document still ongoing, last update on 7 March 2022
 
