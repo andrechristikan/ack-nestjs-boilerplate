@@ -2448,6 +2448,35 @@
 							"header": null,
 							"cookie": [],
 							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"This is test endpoint.\"\n}"
+						},
+						{
+							"name": "sucecss with language",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-custom-lang",
+										"value": "en",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/test/hello",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"test",
+										"hello"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"This is test endpoint.\"\n}"
 						}
 					]
 				},
@@ -2460,7 +2489,7 @@
 						"method": "GET",
 						"header": [
 							{
-								"key": "Accept-Language",
+								"key": "x-custom-lang",
 								"value": "en,id",
 								"type": "default"
 							}
@@ -2492,7 +2521,7 @@
 								"method": "GET",
 								"header": [
 									{
-										"key": "Accept-Language",
+										"key": "x-custom-lang",
 										"value": "en,id",
 										"type": "default"
 									}
@@ -2522,7 +2551,7 @@
 							"_postman_previewlanguage": "json",
 							"header": null,
 							"cookie": [],
-							"body": "{\n    \"statusCode\": 200,\n    \"message\": [\n        {\n            \"language\": \"EN\",\n            \"message\": \"This is test endpoint.\"\n        },\n        {\n            \"language\": \"ID\",\n            \"message\": \"Ini adalah test endpoint\"\n        }\n    ]\n}"
+							"body": "{\n    \"statusCode\": 200,\n    \"message\": {\n        \"en\": \"This is test endpoint.\",\n        \"id\": \"Ini adalah endpoint test\"\n    }\n}"
 						}
 					]
 				}

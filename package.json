@@ -1,10 +1,10 @@
 {
-  "name": "ack-nestjs-boilerplate",
+  "name": "ack-nestjs-boilerplate-mongoose",
   "version": "0.2.0",
-  "description": "NestJs BoilerPlate With Mongoose",
+  "description": "Ack NestJs BoilerPlate Mongoose",
   "repository": {
     "type": "git",
-    "url": "https://github.com/andrechristikan/ack-nestjs-mongoose.git"
+    "url": "https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose.git"
   },
   "author": {
     "name": "andrechristikan",
