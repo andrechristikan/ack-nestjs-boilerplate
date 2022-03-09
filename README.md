@@ -120,7 +120,7 @@ Distributed under [MIT licensed][license].
 [ack-gitbook-usage]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/usage-documentation/
 [ack-gitbook-kafka]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/kafka-documentation/
 [ack-gitbook-tips]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/tips/
-[ack-gitbook-refernce]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/reference/
+[ack-gitbook-reference]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/reference/
 
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com
