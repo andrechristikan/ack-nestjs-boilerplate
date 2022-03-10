@@ -2,12 +2,11 @@
 
 # Build dependencies
 node_modules/
-e2e-coverage/
-test-coverage/
 coverage/
 dist/
 .husky/
-docker/
+.github/
+prod/
 
 # Logs
 logs/

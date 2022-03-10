@@ -24,7 +24,7 @@ import { AuthModule } from 'src/auth/auth.module';
             ignoreEnvFile: false,
             isGlobal: true,
             cache: true,
-            envFilePath: ['.env', '.env.share'],
+            envFilePath: ['.env'],
         }),
         WinstonModule.forRootAsync({
             inject: [DebuggerService],
