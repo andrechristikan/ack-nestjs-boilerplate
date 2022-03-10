@@ -10,7 +10,6 @@ services:
       - app-network
     volumes:
       - .env:/app/.env
-      - .env.share:/app/.env.share
 networks:
   app-network:
     name: app-network

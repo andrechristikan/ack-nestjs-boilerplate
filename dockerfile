@@ -6,7 +6,7 @@ EXPOSE 3000
 
 COPY package.json .
 COPY yarn.lock .
-RUN touch .env .env.share
+RUN touch .env
 
 RUN set -x && yarn
 
