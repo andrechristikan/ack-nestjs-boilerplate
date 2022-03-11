@@ -160,6 +160,9 @@ pipeline {
 
                         try{
                             sshCommand remote: remote, command: "docker rmi \$(docker images **/${APP_NAME} -q) -f"
+                        }catch(e){}
+
+                        try{
                             sshCommand remote: remote, command: "docker rmi \$(docker images **/${APP_NAME}-** -q) -f"
                         }catch(e){}
                     }
@@ -170,6 +173,9 @@ pipeline {
 
                     try{
                         sh "docker rmi \$(docker images **/${APP_NAME} -q) -f"
+                    }catch(e){}
+                    
+                    try{
                         sh "docker rmi \$(docker images **/${APP_NAME}-** -q) -f"
                     }catch(e){}
                 }
