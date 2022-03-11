@@ -17,7 +17,9 @@
 
 > Usage Document still ongoing, last update on 7 March 2022
 
-ack-nestjs-boilerplate-mongoose is a [NestJs][ref-nestjs] Boilerplate with [Mongoose][ref-mongoose] and [MongoDB][ref-mongodb] as Database. Best uses for build an API Project and Microservice Project. Made with following [nodejs-best-practice][ref-nodejs-best-practice] and NestJs Habit as benchmark.
+ack-nestjs-boilerplate-mongoose is a [NestJs][ref-nestjs] Boilerplate with [Mongoose][ref-mongoose] and [MongoDB][ref-mongodb] as Database.
+Best uses for build an API Project or Microservice Project.
+Made with following [nodejs-best-practice][ref-nodejs-best-practice] and NestJs Habit as benchmark.
 
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
 
@@ -34,7 +36,7 @@ ack-nestjs-boilerplate-mongoose have some objective.
 
 ## Features
 
-Cool features, [see this for more informations][ack-gitbook-setup-features] 😎.
+Cool features, [see this for more informations][ack-docs-setup-features] 😎.
 
 - Centralize Configuration
 - OAuth2 as Authorization
@@ -47,11 +49,11 @@ Cool features, [see this for more informations][ack-gitbook-setup-features] 😎
 
 Documentation will write with gitbook.
 
-- [Setup Documentation][ack-gitbook-setup]
-- [Usage Documentation][ack-gitbook-usage]
-- [Kafka Documentation][ack-gitbook-kafka]
-- [Tips][ack-gitbook-tips]
-- [Reference][ack-gitbook-reference]
+- [Setup Documentation][ack-docs-setup]
+- [Usage Documentation][ack-docs-usage]
+- [Kafka Documentation][ack-docs-kafka]
+- [Tips][ack-docs-tips]
+- [Reference][ack-docs-reference]
 
 ## Endpoints
 
@@ -127,12 +129,12 @@ Distributed under [MIT licensed][license].
 [endpoints]: endpoints.json
 
 <!-- Documents -->
-[ack-gitbook-setup]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose
-[ack-gitbook-setup-features]: https://acks.gitbook.io/ack-nestjs-mongoose/features
-[ack-gitbook-usage]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/usage-documentation/
-[ack-gitbook-kafka]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/kafka-documentation/
-[ack-gitbook-tips]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/tips/
-[ack-gitbook-reference]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/reference/
+[ack-docs-setup]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose
+[ack-docs-setup-features]: https://acks.gitbook.io/ack-nestjs-mongoose/features
+[ack-docs-usage]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/usage-documentation/
+[ack-docs-kafka]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/kafka-documentation/
+[ack-docs-tips]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/tips/
+[ack-docs-reference]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/reference/
 
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com
