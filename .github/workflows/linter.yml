@@ -20,9 +20,9 @@ jobs:
       - name: Check out Git repository
         uses: actions/checkout@v2
 
-      - uses: borales/actions-yarn@v2.3.0
+      - uses: Install dependencies
         with:
           cmd: install --frozen-lockfile
-      - uses: borales/actions-yarn@v2.3.0
+      - uses: Linter
         with:
           cmd: lint
