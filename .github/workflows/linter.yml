@@ -20,17 +20,9 @@ jobs:
       - name: Check out Git repository
         uses: actions/checkout@v2
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v1
+      - uses: borales/actions-yarn@v2.3.0
         with:
-          node-version: 16
-
-      # ESLint and Prettier must be in `package.json`
-      - name: Install Node.js dependencies
-        run: npm ci
-
-      - name: Run linters
-        uses: wearerequired/lint-action@v1
+          cmd: install --frozen-lockfile
+      - uses: borales/actions-yarn@v2.3.0
         with:
-          eslint: true
-          prettier: true
+          cmd: lint
