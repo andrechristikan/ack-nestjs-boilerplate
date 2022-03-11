@@ -17,13 +17,13 @@
 
 > Usage Document still ongoing, last update on 7 March 2022
 
-ack-nestjs-boilerplate-mongoose is a [NestJs][ref-nestjs] Boilerplate with [Mongoose][ref-mongoose] and [MongoDB][ref-mongodb] as Database. Best uses for build an API Project. Made with following [nodejs-best-practice][ref-nodejs-best-practice] and NestJs Habit as benchmark.
+ack-nestjs-boilerplate-mongoose is a [NestJs][ref-nestjs] Boilerplate with [Mongoose][ref-mongoose] and [MongoDB][ref-mongodb] as Database. Best uses for build an API Project and Microservice Project. Made with following [nodejs-best-practice][ref-nodejs-best-practice] and NestJs Habit as benchmark.
 
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
 
 ## Objective
 
-Also ack-nestjs-boilerplate-mongoose have some objective
+ack-nestjs-boilerplate-mongoose have some objective.
 
 - It's essential to keep things simple
 - Component-based folder structure
@@ -32,9 +32,20 @@ Also ack-nestjs-boilerplate-mongoose have some objective
 - Easy to maintenance
 - Secure
 
+## Features
+
+Cool features, [see this for more informations][ack-gitbook-setup-features] 😎.
+
+- Centralize Configuration
+- OAuth2 as Authorization
+- User, Role and Permission Management
+- Advance Validate Income Request
+- Advance Mongoose Implementation
+- Catch Every Activity
+
 ## Documentation
 
-Documentation will write with gitbook
+Documentation will write with gitbook.
 
 - [Setup Documentation][ack-gitbook-setup]
 - [Usage Documentation][ack-gitbook-usage]
@@ -44,11 +55,11 @@ Documentation will write with gitbook
 
 ## Endpoints
 
-All endpoints in [endpoints.json][endpoints] and need import to PostMan. [Follow this step for import into Postman][ref-postman-import-export]
+All endpoints in [endpoints.json][endpoints] and need import to PostMan. [Follow this step for import into Postman][ref-postman-import-export].
 
 ## Kafka
 
-Nestjs microservice or Kafka integration will put in separate repo [ack-microservice-nestjs-mongoose][ack-microservice-repo]
+Nestjs microservice or Kafka integration will put in separate repo [ack-microservice-nestjs-boilerplate-mongoose][ack-microservice-repo].
 
 ## License
 
@@ -117,6 +128,7 @@ Distributed under [MIT licensed][license].
 
 <!-- Documents -->
 [ack-gitbook-setup]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose
+[ack-gitbook-setup-features]: https://acks.gitbook.io/ack-nestjs-mongoose/features
 [ack-gitbook-usage]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/usage-documentation/
 [ack-gitbook-kafka]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/kafka-documentation/
 [ack-gitbook-tips]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/tips/
