@@ -1,0 +1,28 @@
+name: Linter
+
+on:
+  push:
+    branches: 
+    - main
+    - development
+  pull_request:
+    branches: 
+    - main
+    - development
+
+jobs:
+
+  run-linters:
+    name: Run linters
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v2
+
+      - uses: borales/actions-yarn@v2.3.0
+        with:
+          cmd: install --frozen-lockfile
+      - uses: borales/actions-yarn@v2.3.0
+        with:
+          cmd: lint
