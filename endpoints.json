@@ -3695,6 +3695,44 @@
 					"body": "{\n    \"statusCode\": 5950,\n    \"message\": \"Unprocessable Entity\",\n    \"errors\": [\n        {\n            \"property\": \"newPassword\",\n            \"message\": \"en.request.IsPasswordStrong\"\n        }\n    ]\n}"
 				}
 			]
+		},
+		{
+			"name": "health",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/health",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"health"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "success",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"health"
+							]
+						}
+					},
+					"_postman_previewlanguage": null,
+					"header": null,
+					"cookie": [],
+					"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Healthy\",\n    \"data\": {\n        \"status\": \"ok\",\n        \"info\": {\n            \"aws bucket\": {\n                \"status\": \"up\"\n            },\n            \"memory heap\": {\n                \"status\": \"up\"\n            },\n            \"memory RSS\": {\n                \"status\": \"up\"\n            },\n            \"disk health\": {\n                \"status\": \"up\"\n            },\n            \"database\": {\n                \"status\": \"up\"\n            }\n        },\n        \"error\": {},\n        \"details\": {\n            \"aws bucket\": {\n                \"status\": \"up\"\n            },\n            \"memory heap\": {\n                \"status\": \"up\"\n            },\n            \"memory RSS\": {\n                \"status\": \"up\"\n            },\n            \"disk health\": {\n                \"status\": \"up\"\n            },\n            \"database\": {\n                \"status\": \"up\"\n            }\n        }\n    }\n}"
+				}
+			]
 		}
 	]
 }
