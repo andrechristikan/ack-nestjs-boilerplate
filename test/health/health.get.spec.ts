@@ -6,7 +6,7 @@ import { CoreModule } from 'src/core/core.module';
 import { RouterCommonModule } from 'src/router/router.common.module';
 import { E2E_HEALTH_URL } from './health.constant';
 import request from 'supertest';
-import { ENUM_HEALTH_STATUS_CODE_ERROR } from 'src/health/health.contant';
+import { ENUM_HEALTH_STATUS_CODE_ERROR } from 'src/health/health.constant';
 
 describe('E2E Health', () => {
     let app: INestApplication;
