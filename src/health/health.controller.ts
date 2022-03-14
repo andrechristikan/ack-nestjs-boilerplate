@@ -13,7 +13,7 @@ import { IResponse } from 'src/response/response.interface';
 import { AwsHealthIndicator } from './indicator/health.aws.indicator';
 import { Logger as DebuggerService } from 'winston';
 import { Debugger } from 'src/debugger/debugger.decorator';
-import { ENUM_HEALTH_STATUS_CODE_ERROR } from './health.contant';
+import { ENUM_HEALTH_STATUS_CODE_ERROR } from './health.constant';
 import { SuccessException } from 'src/error/error.exception';
 @Controller({
     version: VERSION_NEUTRAL,
