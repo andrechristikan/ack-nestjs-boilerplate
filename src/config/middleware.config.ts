@@ -20,6 +20,7 @@ export default registerAs(
                 'Referer',
                 'Host',
                 'X-Requested-With',
+                'x-custom-lang',
             ],
         },
         rateLimit: {

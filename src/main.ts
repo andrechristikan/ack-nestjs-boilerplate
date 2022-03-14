@@ -19,6 +19,9 @@ async function bootstrap() {
     // Global Prefix
     app.setGlobalPrefix('/api');
 
+    // Starts listening for shutdown hooks
+    app.enableShutdownHooks();
+
     // Versioning
     if (versioning) {
         app.enableVersioning({

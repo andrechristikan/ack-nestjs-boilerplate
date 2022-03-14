@@ -16,4 +16,5 @@ export const DEFAULT_HEADER_CORS = [
     'Referer',
     'Host',
     'X-Requested-With',
+    'x-custom-lang',
 ];
