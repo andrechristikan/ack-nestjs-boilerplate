@@ -34,8 +34,9 @@ export function ResponseDefaultInterceptor(
 
             const request: Request = ctx.getRequest<Request>();
             const { headers } = request;
-            const appLanguages: string[] = headers['accept-language']
-                ? (headers['accept-language'] as string).split(',')
+
+            const appLanguages: string[] = headers['x-custom-lang']
+                ? ctx.getRequest().i18nLang.split(',')
                 : undefined;
 
             return next.handle().pipe(
