@@ -5,11 +5,8 @@ export default registerAs(
     (): Record<string, any> => ({
         cors: {
             allowMethod: ['GET', 'DELETE', 'PUT', 'PATCH', 'POST'],
-            allowOrigin: process.env.CORS_ORIGIN
-                ? process.env.CORS_ORIGIN.split(',').map(
-                      (val) => new RegExp(`${val}$`, 'i')
-                  )
-                : '*',
+            allowOrigin: '*',
+            // allowOrigin: [ /example\.com$/ ],
             allowHeader: [
                 'Accept',
                 'Accept-Language',
