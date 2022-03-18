@@ -13,16 +13,6 @@ import {
     TextBodyParserMiddleware,
     UrlencodedBodyParserMiddleware,
 } from './body-parser/body-parser.middleware';
-import {
-    UserAdminController,
-    UserPublicController,
-} from 'src/user/user.controller';
-import { AuthController, AuthPublicController } from 'src/auth/auth.controller';
-import { RoleAdminController } from 'src/role/role.controller';
-import { PermissionAdminController } from 'src/permission/permission.controller';
-import { HealthController } from 'src/health/health.controller';
-import { MessageEnumController } from 'src/message/message.controller';
-import { TestingController } from 'src/testing/testing.controller';
 
 @Module({})
 export class MiddlewareModule implements NestModule {
@@ -40,16 +30,6 @@ export class MiddlewareModule implements NestModule {
                 HelmetMiddleware,
                 RateLimitMiddleware
             )
-            .forRoutes(
-                UserPublicController,
-                AuthPublicController,
-                RoleAdminController,
-                UserAdminController,
-                PermissionAdminController,
-                AuthController,
-                HealthController,
-                MessageEnumController,
-                TestingController
-            );
+            .forRoutes('*');
     }
 }
