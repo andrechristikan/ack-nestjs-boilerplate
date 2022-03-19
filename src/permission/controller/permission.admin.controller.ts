@@ -9,10 +9,9 @@ import {
 } from '@nestjs/common';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
-import { DebuggerService } from 'src/debugger/debugger.service';
+import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { PermissionService } from '../service/permission.service';
 import PermissionListValidation from '../validation/permission.list.validation';
-import { PermissionDocument } from '../permission.schema';
 import { PermissionListTransformer } from '../transformer/permission.list.transformer';
 import {
     GetPermission,
@@ -33,6 +32,7 @@ import {
 } from 'src/utils/response/response.interface';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
 import { PaginationService } from 'src/utils/pagination/service/pagination.service';
+import { PermissionDocument } from '../schema/permission.schema';
 
 @Controller({
     version: '1',

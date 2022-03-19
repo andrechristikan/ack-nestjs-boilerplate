@@ -1,11 +1,10 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
-import { PermissionDocument } from 'src/permission/permission.schema';
-import { DebuggerService } from 'src/debugger/debugger.service';
 import { PermissionService } from 'src/permission/service/permission.service';
 import { RoleBulkService } from 'src/role/service/role.bulk.service';
+import { DebuggerService } from 'src/debugger/service/debugger.service';
+import { PermissionDocument } from 'src/permission/schema/permission.schema';
 
 @Injectable()
 export class RoleSeed {

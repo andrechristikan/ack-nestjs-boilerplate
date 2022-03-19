@@ -9,7 +9,7 @@ import { validate } from 'class-validator';
 import AuthChangePasswordValidation from 'src/auth/validation/auth.change-password.validation';
 import AuthLoginValidation from 'src/auth/validation/auth.login.validation';
 import AuthSignUpValidation from 'src/auth/validation/auth.sign-up.validation';
-import { DebuggerService } from 'src/debugger/debugger.service';
+import { DebuggerService } from 'src/debugger/service/debugger.service';
 import PermissionListValidation from 'src/permission/validation/permission.list.validation';
 import PermissionUpdateValidation from 'src/permission/validation/permission.update.validation';
 import RoleCreateValidation from 'src/role/validation/role.create.validation';

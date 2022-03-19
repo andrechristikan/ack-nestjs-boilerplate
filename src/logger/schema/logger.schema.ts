@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
-import { ENUM_LOGGER_ACTION, ENUM_LOGGER_LEVEL } from './logger.constant';
+import { ENUM_LOGGER_ACTION, ENUM_LOGGER_LEVEL } from '../logger.constant';
 
 @Schema({ timestamps: true, versionKey: false })
 export class LoggerEntity {
@@ -42,3 +42,5 @@ export class LoggerEntity {
 
 export const LoggerDatabaseName = 'loggers';
 export const LoggerSchema = SchemaFactory.createForClass(LoggerEntity);
+
+export type LoggerDocument = LoggerEntity & Document;

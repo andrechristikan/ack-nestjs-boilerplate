@@ -6,9 +6,9 @@ import {
     NotFoundException,
     Post,
 } from '@nestjs/common';
-import { DebuggerService } from 'src/debugger/debugger.service';
+import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
-import { RoleDocument } from 'src/role/role.schema';
+import { RoleDocument } from 'src/role/schema/role.schema';
 import { RoleService } from 'src/role/service/role.service';
 import { UserService } from 'src/user/service/user.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';

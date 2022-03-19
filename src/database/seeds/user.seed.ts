@@ -1,12 +1,11 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-
-import { RoleDocument } from 'src/role/role.schema';
-import { DebuggerService } from 'src/debugger/debugger.service';
 import { UserService } from 'src/user/service/user.service';
 import { UserBulkService } from 'src/user/service/user.bulk.service';
 import { RoleService } from 'src/role/service/role.service';
 import { AuthService } from 'src/auth/service/auth.service';
+import { RoleDocument } from 'src/role/schema/role.schema';
+import { DebuggerService } from 'src/debugger/service/debugger.service';
 
 @Injectable()
 export class UserSeed {

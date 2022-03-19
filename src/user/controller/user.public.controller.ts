@@ -8,9 +8,9 @@ import {
     UploadedFile,
 } from '@nestjs/common';
 import { AuthPublicJwtGuard } from 'src/auth/auth.decorator';
-import { IAwsResponse } from 'src/aws/aws.interface';
-import { AwsService } from 'src/aws/aws.service';
-import { DebuggerService } from 'src/debugger/debugger.service';
+import { IAwsS3Response } from 'src/aws/aws.interface';
+import { AwsS3Service } from 'src/aws/service/aws.s3.service';
+import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
 import { ENUM_FILE_TYPE } from 'src/utils/file/file.constant';
 import { UploadFileSingle } from 'src/utils/file/file.decorator';
@@ -28,7 +28,7 @@ export class UserPublicController {
     constructor(
         private readonly debuggerService: DebuggerService,
         private readonly userService: UserService,
-        private readonly awsService: AwsService
+        private readonly awsService: AwsS3Service
     ) {}
 
     @Response('user.profile')
@@ -58,7 +58,7 @@ export class UserPublicController {
         const path = await this.userService.createRandomFilename();
 
         try {
-            const aws: IAwsResponse = await this.awsService.s3PutItemInBucket(
+            const aws: IAwsS3Response = await this.awsService.s3PutItemInBucket(
                 `${path.filename}.${mime}`,
                 content,
                 {

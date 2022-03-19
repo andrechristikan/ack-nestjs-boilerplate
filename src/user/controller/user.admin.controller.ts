@@ -24,7 +24,6 @@ import {
 } from '../user.decorator';
 import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
-import { DebuggerService } from 'src/debugger/debugger.service';
 import { UserService } from '../service/user.service';
 import { RoleService } from 'src/role/service/role.service';
 import UserListValidation from '../validation/user.list.validation';
@@ -43,6 +42,7 @@ import {
     IResponsePaging,
 } from 'src/utils/response/response.interface';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
+import { DebuggerService } from 'src/debugger/service/debugger.service';
 
 @Controller({
     version: '1',

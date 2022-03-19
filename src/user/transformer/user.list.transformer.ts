@@ -1,6 +1,6 @@
 import { Exclude, Type } from 'class-transformer';
 import { Types } from 'mongoose';
-import { IAwsResponse } from 'src/aws/aws.interface';
+import { IAwsS3Response } from 'src/aws/aws.interface';
 
 export class UserListTransformer {
     @Type(() => String)
@@ -16,7 +16,7 @@ export class UserListTransformer {
     readonly lastName: string;
 
     @Exclude()
-    readonly photo?: IAwsResponse;
+    readonly photo?: IAwsS3Response;
 
     @Exclude()
     readonly password: string;

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/database/database.constant';
-import { RoleDatabaseName, RoleEntity, RoleSchema } from './role.schema';
+import { RoleDatabaseName, RoleEntity, RoleSchema } from './schema/role.schema';
 import { RoleBulkService } from './service/role.bulk.service';
 import { RoleService } from './service/role.service';
 

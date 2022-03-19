@@ -3,7 +3,6 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import faker from '@faker-js/faker';
 import { Types, connection } from 'mongoose';
-import { RoleDocument } from 'src/role/role.schema';
 import { IUserDocument } from 'src/user/user.interface';
 import {
     E2E_USER_ADMIN_ACTIVE_URL,
@@ -15,7 +14,6 @@ import {
     E2E_USER_ADMIN_UPDATE_URL,
 } from './user.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
-import { UserDocument } from 'src/user/user.schema';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
 import { RouterModule } from '@nestjs/core';
 import { CoreModule } from 'src/core/core.module';
@@ -24,6 +22,8 @@ import { AuthService } from 'src/auth/service/auth.service';
 import { RoleService } from 'src/role/service/role.service';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/utils/request/request.constant';
 import { RouterAdminModule } from 'src/router/router.admin.module';
+import { UserDocument } from 'src/user/schema/user.schema';
+import { RoleDocument } from 'src/role/schema/role.schema';
 
 describe('E2E User Admin', () => {
     let app: INestApplication;

@@ -5,7 +5,7 @@ import {
     ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { DebuggerService } from 'src/debugger/debugger.service';
+import { DebuggerService } from 'src/debugger/service/debugger.service';
 import {
     ENUM_PERMISSIONS,
     ENUM_PERMISSION_STATUS_CODE_ERROR,

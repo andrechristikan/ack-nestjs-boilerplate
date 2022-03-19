@@ -2,8 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { DatabaseEntity } from 'src/database/database.decorator';
 import { IPermission } from '../permission.interface';
-import { PermissionDocument, PermissionEntity } from '../permission.schema';
 import { DeleteResult } from 'mongodb';
+import {
+    PermissionDocument,
+    PermissionEntity,
+} from '../schema/permission.schema';
 
 @Injectable()
 export class PermissionBulkService {

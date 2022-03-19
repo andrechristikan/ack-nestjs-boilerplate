@@ -1,9 +1,9 @@
 import { Module, Global } from '@nestjs/common';
-import { MessageService } from 'src/message/message.service';
 import * as path from 'path';
 import { I18nModule, I18nJsonParser, HeaderResolver } from 'nestjs-i18n';
 import { ConfigService } from '@nestjs/config';
 import { ENUM_MESSAGE_LANGUAGE } from './message.constant';
+import { MessageService } from './service/message.service';
 
 @Global()
 @Module({

@@ -9,9 +9,8 @@ import {
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
-import { Message } from 'src/message/message.decorator';
-import { MessageService } from 'src/message/message.service';
 import { IMessage } from 'src/message/message.interface';
+import { MessageService } from 'src/message/service/message.service';
 
 export function ResponseDefaultInterceptor(
     messagePath: string,
@@ -21,9 +20,7 @@ export function ResponseDefaultInterceptor(
     class MixinResponseDefaultInterceptor
         implements NestInterceptor<Promise<any>>
     {
-        constructor(
-            @Message() private readonly messageService: MessageService
-        ) {}
+        constructor(private readonly messageService: MessageService) {}
 
         async intercept(
             context: ExecutionContext,

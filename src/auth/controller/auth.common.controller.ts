@@ -12,11 +12,8 @@ import {
 } from '@nestjs/common';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
-import { UserDocument } from 'src/user/user.schema';
-import { DebuggerService } from 'src/debugger/debugger.service';
 import { UserService } from 'src/user/service/user.service';
 import { AuthService } from '../service/auth.service';
-import { LoggerService } from 'src/logger/logger.service';
 import {
     ENUM_AUTH_STATUS_CODE_ERROR,
     ENUM_AUTH_STATUS_CODE_SUCCESS,
@@ -37,6 +34,9 @@ import {
 } from '../auth.decorator';
 import AuthChangePasswordValidation from '../validation/auth.change-password.validation';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
+import { DebuggerService } from 'src/debugger/service/debugger.service';
+import { LoggerService } from 'src/logger/service/logger.service';
+import { UserDocument } from 'src/user/schema/user.schema';
 
 @Controller({
     version: '1',

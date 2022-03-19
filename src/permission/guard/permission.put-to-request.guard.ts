@@ -1,5 +1,5 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import { PermissionDocument } from '../permission.schema';
+import { PermissionDocument } from '../schema/permission.schema';
 import { PermissionService } from '../service/permission.service';
 
 @Injectable()

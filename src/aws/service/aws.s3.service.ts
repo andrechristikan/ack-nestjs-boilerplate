@@ -13,10 +13,10 @@ import {
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Readable } from 'stream';
-import { IAwsResponse } from './aws.interface';
+import { IAwsS3Response } from '../aws.interface';
 
 @Injectable()
-export class AwsService implements OnModuleInit {
+export class AwsS3Service implements OnModuleInit {
     private readonly s3Client: S3Client;
     private readonly bucket: string;
     private readonly baseUrl: string;
@@ -57,7 +57,7 @@ export class AwsService implements OnModuleInit {
         return listBucket.Buckets.map((val: Record<string, any>) => val.Name);
     }
 
-    async s3ListItemInBucket(prefix?: string): Promise<IAwsResponse[]> {
+    async s3ListItemInBucket(prefix?: string): Promise<IAwsS3Response[]> {
         const command: ListObjectsV2Command = new ListObjectsV2Command({
             Bucket: this.bucket,
             Prefix: prefix,
@@ -116,7 +116,7 @@ export class AwsService implements OnModuleInit {
             | ReadableStream
             | Blob,
         options?: Record<string, any>
-    ): Promise<IAwsResponse> {
+    ): Promise<IAwsS3Response> {
         let path: string = options && options.path ? options.path : undefined;
         const acl: string =
             options && options.acl ? options.acl : 'public-read';

@@ -1,17 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { UserDocument, UserEntity } from 'src/user/user.schema';
 import {
     IUserDocument,
     IUserCreate,
     IUserUpdate,
     IUserCheckExist,
 } from 'src/user/user.interface';
-import { RoleEntity } from 'src/role/role.schema';
-import { PermissionEntity } from 'src/permission/permission.schema';
 import { Types } from 'mongoose';
 import { plainToInstance } from 'class-transformer';
-import { IAwsResponse } from 'src/aws/aws.interface';
+import { IAwsS3Response } from 'src/aws/aws.interface';
 import { IAuthPassword } from 'src/auth/auth.interface';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseEntity } from 'src/database/database.decorator';
@@ -19,6 +16,9 @@ import { UserProfileTransformer } from '../transformer/user.profile.transformer'
 import { UserGetTransformer } from '../transformer/user.get.transformer';
 import { UserListTransformer } from '../transformer/user.list.transformer';
 import { HelperStringService } from 'src/utils/helper/service/helper.string.service';
+import { UserDocument, UserEntity } from '../schema/user.schema';
+import { RoleEntity } from 'src/role/schema/role.schema';
+import { PermissionEntity } from 'src/permission/schema/permission.schema';
 
 @Injectable()
 export class UserService {
@@ -197,7 +197,7 @@ export class UserService {
         };
     }
 
-    async updatePhoto(_id: string, aws: IAwsResponse): Promise<UserDocument> {
+    async updatePhoto(_id: string, aws: IAwsS3Response): Promise<UserDocument> {
         const user: UserDocument = await this.userModel.findById(_id);
         user.photo = aws;
 

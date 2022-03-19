@@ -1,9 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
-import DailyRotateFile from 'winston-daily-rotate-file';
-import winston, { Logger, LoggerOptions } from 'winston';
-import { DEBUGGER_NAME } from 'src/debugger/debugger.constant';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { LoggerOptions } from 'winston';
+import winston from 'winston';
+import { DEBUGGER_NAME } from '../debugger.constant';
+import DailyRotateFile from 'winston-daily-rotate-file';
 
 @Injectable()
 export class DebuggerOptionService {
@@ -74,51 +74,5 @@ export class DebuggerOptionService {
             transports,
         };
         return loggerOptions;
-    }
-}
-
-@Injectable()
-export class DebuggerService {
-    constructor(
-        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
-    ) {}
-
-    info(
-        description: string,
-        sClass: string,
-        sFunction: string,
-        data?: any
-    ): void {
-        this.logger.info(description, {
-            class: sClass,
-            function: sFunction,
-            data,
-        });
-    }
-
-    debug(
-        description: string,
-        sClass: string,
-        sFunction: string,
-        data?: any
-    ): void {
-        this.logger.debug(description, {
-            class: sClass,
-            function: sFunction,
-            data,
-        });
-    }
-
-    error(
-        description: string,
-        sClass: string,
-        sFunction: string,
-        error?: any
-    ): void {
-        this.logger.error(description, {
-            class: sClass,
-            function: sFunction,
-            error,
-        });
     }
 }

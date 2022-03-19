@@ -3,7 +3,10 @@ import { plainToInstance } from 'class-transformer';
 import { Model } from 'mongoose';
 import { DatabaseEntity } from 'src/database/database.decorator';
 import { IPermission } from '../permission.interface';
-import { PermissionDocument, PermissionEntity } from '../permission.schema';
+import {
+    PermissionDocument,
+    PermissionEntity,
+} from '../schema/permission.schema';
 import { PermissionGetTransformer } from '../transformer/permission.get.transformer';
 import { PermissionListTransformer } from '../transformer/permission.list.transformer';
 import PermissionUpdateValidation from '../validation/permission.update.validation';

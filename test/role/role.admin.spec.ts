@@ -12,8 +12,6 @@ import {
     E2E_ROLE_PAYLOAD_TEST,
 } from './role.constant';
 import { connection, Types } from 'mongoose';
-import { PermissionDocument } from 'src/permission/permission.schema';
-import { RoleDocument } from 'src/role/role.schema';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
 import { RouterModule } from '@nestjs/core';
 import { CoreModule } from 'src/core/core.module';
@@ -24,6 +22,8 @@ import { RoleBulkService } from 'src/role/service/role.bulk.service';
 import RoleCreateValidation from 'src/role/validation/role.create.validation';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/utils/request/request.constant';
 import { RouterAdminModule } from 'src/router/router.admin.module';
+import { RoleDocument } from 'src/role/schema/role.schema';
+import { PermissionDocument } from 'src/permission/schema/permission.schema';
 
 describe('E2E Role Admin', () => {
     let app: INestApplication;

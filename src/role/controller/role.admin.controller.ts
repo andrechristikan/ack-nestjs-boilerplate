@@ -16,12 +16,9 @@ import {
     ENUM_PERMISSION_STATUS_CODE_ERROR,
 } from 'src/permission/permission.constant';
 import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
-import { PermissionDocument } from 'src/permission/permission.schema';
-import { DebuggerService } from 'src/debugger/debugger.service';
 import { PermissionService } from 'src/permission/service/permission.service';
 import { RoleService } from '../service/role.service';
 import RoleListValidation from '../validation/role.list.validation';
-import { RoleDocument } from '../role.schema';
 import { RoleListTransformer } from '../transformer/role.list.transformer';
 import {
     GetRole,
@@ -46,6 +43,9 @@ import {
 } from 'src/utils/response/response.interface';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
 import { PaginationService } from 'src/utils/pagination/service/pagination.service';
+import { DebuggerService } from 'src/debugger/service/debugger.service';
+import { RoleDocument } from '../schema/role.schema';
+import { PermissionDocument } from 'src/permission/schema/permission.schema';
 
 @Controller({
     version: '1',

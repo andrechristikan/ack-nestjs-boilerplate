@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
-import { PermissionEntity } from 'src/permission/permission.schema';
 import { plainToInstance } from 'class-transformer';
 import { DatabaseEntity } from 'src/database/database.decorator';
-import { RoleDocument, RoleEntity } from '../role.schema';
 import RoleCreateValidation from '../validation/role.create.validation';
 import RoleUpdateValidation from '../validation/role.update.validation';
 import { RoleGetTransformer } from '../transformer/role.get.transformer';
 import { IRoleDocument } from '../role.interface';
 import { RoleListTransformer } from '../transformer/role.list.transformer';
+import { RoleDocument, RoleEntity } from '../schema/role.schema';
+import { PermissionEntity } from 'src/permission/schema/permission.schema';
 
 @Injectable()
 export class RoleService {

@@ -8,12 +8,12 @@ import {
 } from '@nestjs/terminus';
 import { Connection } from 'mongoose';
 import { DatabaseConnection } from 'src/database/database.decorator';
-import { DebuggerService } from 'src/debugger/debugger.service';
 import { AwsHealthIndicator } from '../indicator/health.aws.indicator';
 import { ENUM_HEALTH_STATUS_CODE_ERROR } from '../health.constant';
 import { IResponse } from 'src/utils/response/response.interface';
 import { Response } from 'src/utils/response/response.decorator';
 import { SuccessException } from 'src/utils/error/error.exception';
+import { DebuggerService } from 'src/debugger/service/debugger.service';
 @Controller({
     version: VERSION_NEUTRAL,
     path: 'health',

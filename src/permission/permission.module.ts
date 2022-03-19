@@ -5,7 +5,7 @@ import {
     PermissionDatabaseName,
     PermissionEntity,
     PermissionSchema,
-} from './permission.schema';
+} from './schema/permission.schema';
 import { PermissionBulkService } from './service/permission.bulk.service';
 import { PermissionService } from './service/permission.service';
 

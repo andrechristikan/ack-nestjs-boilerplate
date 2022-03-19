@@ -1,9 +1,8 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
-import { DebuggerService } from 'src/debugger/debugger.service';
 import { PermissionBulkService } from 'src/permission/service/permission.bulk.service';
+import { DebuggerService } from 'src/debugger/service/debugger.service';
 
 @Injectable()
 export class PermissionSeed {
