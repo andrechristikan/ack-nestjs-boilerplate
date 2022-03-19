@@ -30,4 +30,16 @@ export class HelperStringService {
             ? faker.random.alphaNumeric(length).toUpperCase()
             : faker.random.alphaNumeric(length);
     }
+
+    censor(value: string) {
+        const length = value.length;
+        if (length === 1) {
+            return value;
+        }
+
+        const end = length > 10 ? 6 : length > 5 ? length - 2 : length - 1;
+        const censorString = '*'.repeat(end);
+        const visibleString = value.substring(end, length > 10 ? 15 : length);
+        return `${censorString}${visibleString}`;
+    }
 }
