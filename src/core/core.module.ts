@@ -13,6 +13,7 @@ import { HelperModule } from 'src/utils/helper/helper.module';
 import { MiddlewareModule } from 'src/utils/middleware/middleware.module';
 import { DebuggerOptionService } from 'src/debugger/service/debugger.option.service';
 import { DatabaseService } from 'src/database/service/database.service';
+import { LoggerModule } from 'src/logger/logger.module';
 
 @Module({
     controllers: [],
@@ -44,6 +45,7 @@ import { DatabaseService } from 'src/database/service/database.service';
         DebuggerModule,
         HelperModule,
         AuthModule,
+        LoggerModule,
     ],
 })
 export class CoreModule {}

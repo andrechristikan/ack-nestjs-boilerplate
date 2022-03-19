@@ -5,7 +5,6 @@ import { AuthModule } from 'src/auth/auth.module';
 import { AuthCommonController } from 'src/auth/controller/auth.common.controller';
 import { HealthCommonController } from 'src/health/controller/health.common.controller';
 import { HealthModule } from 'src/health/health.module';
-import { LoggerModule } from 'src/logger/logger.module';
 import { PermissionModule } from 'src/permission/permission.module';
 import { RoleModule } from 'src/role/role.module';
 import { UserModule } from 'src/user/user.module';
@@ -18,7 +17,6 @@ import { UserModule } from 'src/user/user.module';
         UserModule,
         AuthModule,
         RoleModule,
-        LoggerModule,
         PermissionModule,
         TerminusModule,
         HttpModule,
