@@ -6,7 +6,8 @@ import {
     PermissionEntity,
     PermissionSchema,
 } from './permission.schema';
-import { PermissionBulkService, PermissionService } from './permission.service';
+import { PermissionBulkService } from './service/permission.bulk.service';
+import { PermissionService } from './service/permission.service';
 
 @Module({
     controllers: [],

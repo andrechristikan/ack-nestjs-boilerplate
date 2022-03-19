@@ -1,4 +1,0 @@
-export enum ENUM_STATUS_CODE_ERROR {
-    TEST_ERROR = 5990,
-    UNKNOWN_ERROR = 5999,
-}

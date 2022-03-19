@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { IErrors } from 'src/error/error.interface';
 import { ENUM_MESSAGE_LANGUAGE } from 'src/message/message.constant';
 import {
     IMessage,
@@ -9,6 +8,7 @@ import {
 } from './message.interface';
 import { isArray } from 'class-validator';
 import { I18nService } from 'nestjs-i18n';
+import { IErrors } from 'src/utils/error/error.interface';
 
 @Injectable()
 export class MessageService {

@@ -1,0 +1,3 @@
+export enum ENUM_STATUS_CODE_ERROR {
+    UNKNOWN_ERROR = 5990,
+}

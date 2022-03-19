@@ -1,11 +1,11 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 
-import { PermissionService } from 'src/permission/permission.service';
-import { RoleBulkService } from 'src/role/role.service';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { PermissionDocument } from 'src/permission/permission.schema';
 import { DebuggerService } from 'src/debugger/debugger.service';
+import { PermissionService } from 'src/permission/service/permission.service';
+import { RoleBulkService } from 'src/role/service/role.bulk.service';
 
 @Injectable()
 export class RoleSeed {
@@ -40,7 +40,7 @@ export class RoleSeed {
                 },
             ]);
 
-            this.debuggerService.info(
+            this.debuggerService.debug(
                 'Insert Role Succeed',
                 'RoleSeed',
                 'insert'
@@ -58,7 +58,7 @@ export class RoleSeed {
         try {
             await this.roleBulkService.deleteMany({});
 
-            this.debuggerService.info(
+            this.debuggerService.debug(
                 'Remove Role Succeed',
                 'RoleSeed',
                 'remove'

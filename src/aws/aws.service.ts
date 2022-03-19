@@ -38,10 +38,9 @@ export class AwsService implements OnModuleInit {
     }
 
     async onModuleInit(): Promise<void> {
-        const bucketCreateFromInit: boolean = this.configService.get<boolean>(
-            'aws.bucketCreateFromInit'
-        );
-        if (bucketCreateFromInit) {
+        const bucketCreate: boolean =
+            this.configService.get<boolean>('aws.bucketCreate');
+        if (bucketCreate) {
             this.s3ListBucket().then((list: string[]) => {
                 if (!list.includes(this.bucket)) {
                     this.s3CreateBucket();

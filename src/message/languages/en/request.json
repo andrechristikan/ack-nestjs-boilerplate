@@ -15,7 +15,7 @@
     "isNumber": "{property} should be a number $value.",
     "isMongoId": "{property} should reference with mongo object id.",
     "isBoolean": "{property} should be a boolean",
-    "isStartWith": "{property} should start with $value",
+    "isStart": "{property} should start with $value",
     "isEnum": "{property} don't match with enum",
     "isObject": "{property} should be a object",
     "isArray": "{property} should be a array",

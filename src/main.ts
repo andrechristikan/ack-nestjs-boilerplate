@@ -51,6 +51,7 @@ async function bootstrap() {
     );
 
     logger.log(`==========================================================`);
+
     logger.log(
         `Database running on ${configService.get<string>(
             'database.host'
@@ -58,6 +59,7 @@ async function bootstrap() {
         'NestApplication'
     );
     logger.log(`Server running on ${await app.getUrl()}`, 'NestApplication');
+
     logger.log(`==========================================================`);
 }
 bootstrap();

@@ -2,14 +2,14 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import faker from '@faker-js/faker';
-import { UserService } from 'src/user/user.service';
 import { E2E_AUTH_PUBLIC_SIGN_UP_URL } from './auth.constant';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/request/request.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
 import { CoreModule } from 'src/core/core.module';
-import { RouterPublicModule } from 'src/router/router.public.module';
 import { RouterModule } from '@nestjs/core';
 import { connection } from 'mongoose';
+import { UserService } from 'src/user/service/user.service';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/utils/request/request.constant';
+import { RouterPublicModule } from 'src/router/router.public.module';
 
 describe('E2E Public', () => {
     let app: INestApplication;

@@ -1,11 +1,12 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 
-import { RoleService } from 'src/role/role.service';
-import { UserBulkService, UserService } from 'src/user/user.service';
-import { AuthService } from 'src/auth/auth.service';
 import { RoleDocument } from 'src/role/role.schema';
 import { DebuggerService } from 'src/debugger/debugger.service';
+import { UserService } from 'src/user/service/user.service';
+import { UserBulkService } from 'src/user/service/user.bulk.service';
+import { RoleService } from 'src/role/service/role.service';
+import { AuthService } from 'src/auth/service/auth.service';
 
 @Injectable()
 export class UserSeed {
@@ -44,7 +45,7 @@ export class UserSeed {
                 salt: password.salt,
             });
 
-            this.debuggerService.info(
+            this.debuggerService.debug(
                 'Insert User Succeed',
                 'UserSeed',
                 'insert'
@@ -62,7 +63,7 @@ export class UserSeed {
         try {
             await this.userBulkService.deleteMany({});
 
-            this.debuggerService.info(
+            this.debuggerService.debug(
                 'Remove User Succeed',
                 'UserSeed',
                 'remove'

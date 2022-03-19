@@ -1,8 +1,6 @@
 import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { AuthService } from 'src/auth/auth.service';
-import { PermissionService } from 'src/permission/permission.service';
 import {
     E2E_PERMISSION_ADMIN_ACTIVE_URL,
     E2E_PERMISSION_ADMIN_GET_URL,
@@ -14,11 +12,13 @@ import {
 import { Types, connection } from 'mongoose';
 import { PermissionDocument } from 'src/permission/permission.schema';
 import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/permission/permission.constant';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/request/request.constant';
-import { PermissionUpdateValidation } from 'src/permission/validation/permission.update.validation';
 import { CoreModule } from 'src/core/core.module';
-import { RouterAdminModule } from 'src/router/router.admin.module';
 import { RouterModule } from '@nestjs/core';
+import { PermissionService } from 'src/permission/service/permission.service';
+import { AuthService } from 'src/auth/service/auth.service';
+import PermissionUpdateValidation from 'src/permission/validation/permission.update.validation';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/utils/request/request.constant';
+import { RouterAdminModule } from 'src/router/router.admin.module';
 
 describe('E2E Permission Admin', () => {
     let app: INestApplication;

@@ -1,6 +1,6 @@
 import { IsString, IsNotEmpty, IsOptional, ValidateIf } from 'class-validator';
 
-export class PermissionUpdateValidation {
+export default class PermissionUpdateValidation {
     @IsString()
     @IsNotEmpty()
     readonly name: string;

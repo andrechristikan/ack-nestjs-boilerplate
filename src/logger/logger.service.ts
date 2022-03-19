@@ -1,17 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ENUM_LOGGER_LEVEL } from './logger.constant';
 import { LoggerEntity } from './logger.schema';
 import { ILogger, LoggerDocument } from './logger.interface';
 import { ConfigService } from '@nestjs/config';
+import { DatabaseEntity } from 'src/database/database.decorator';
 
 @Injectable()
 export class LoggerService {
     private readonly testMode: boolean;
 
     constructor(
-        @InjectModel(LoggerEntity.name)
+        @DatabaseEntity(LoggerEntity.name)
         private readonly loggerModel: Model<LoggerDocument>,
         private readonly configService: ConfigService
     ) {

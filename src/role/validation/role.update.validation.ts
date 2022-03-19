@@ -1,3 +1,3 @@
-import { RoleCreateValidation } from './role.create.validation';
+import RoleCreateValidation from './role.create.validation';
 
-export class RoleUpdateValidation extends RoleCreateValidation {}
+export default class RoleUpdateValidation extends RoleCreateValidation {}

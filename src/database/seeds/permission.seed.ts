@@ -1,9 +1,9 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 
-import { PermissionBulkService } from 'src/permission/permission.service';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { DebuggerService } from 'src/debugger/debugger.service';
+import { PermissionBulkService } from 'src/permission/service/permission.bulk.service';
 
 @Injectable()
 export class PermissionSeed {
@@ -25,7 +25,7 @@ export class PermissionSeed {
 
             await this.permissionBulkService.createMany(permissions);
 
-            this.debuggerService.info(
+            this.debuggerService.debug(
                 'Insert Permission Succeed',
                 'PermissionSeed',
                 'insert'
@@ -43,7 +43,7 @@ export class PermissionSeed {
         try {
             await this.permissionBulkService.deleteMany({});
 
-            this.debuggerService.info(
+            this.debuggerService.debug(
                 'Remove Permission Succeed',
                 'PermissionSeed',
                 'remove'

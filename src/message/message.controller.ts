@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
-import { Response } from 'src/response/response.decorator';
-import { IResponse } from 'src/response/response.interface';
+import { Response } from 'src/utils/response/response.decorator';
+import { IResponse } from 'src/utils/response/response.interface';
 import { MessageService } from './message.service';
 
 @Controller({

@@ -6,9 +6,9 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
-import { AuthService } from 'src/auth/auth.service';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
 import { DebuggerService } from 'src/debugger/debugger.service';
+import { AuthService } from 'src/auth/service/auth.service';
 
 @Injectable()
 export class BasicGuard implements CanActivate {

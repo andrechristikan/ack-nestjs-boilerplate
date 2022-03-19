@@ -1,11 +1,10 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from 'src/auth/auth.module';
-import { PaginationModule } from 'src/pagination/pagination.module';
-import { PermissionAdminController } from 'src/permission/permission.controller';
+import { PermissionAdminController } from 'src/permission/controller/permission.admin.controller';
 import { PermissionModule } from 'src/permission/permission.module';
-import { RoleAdminController } from 'src/role/role.controller';
+import { RoleAdminController } from 'src/role/controller/role.admin.controller';
 import { RoleModule } from 'src/role/role.module';
-import { UserAdminController } from 'src/user/user.controller';
+import { UserAdminController } from 'src/user/controller/user.admin.controller';
 import { UserModule } from 'src/user/user.module';
 
 @Module({
@@ -16,12 +15,6 @@ import { UserModule } from 'src/user/user.module';
     ],
     providers: [],
     exports: [],
-    imports: [
-        AuthModule,
-        RoleModule,
-        UserModule,
-        PermissionModule,
-        PaginationModule,
-    ],
+    imports: [AuthModule, RoleModule, UserModule, PermissionModule],
 })
 export class RouterAdminModule {}

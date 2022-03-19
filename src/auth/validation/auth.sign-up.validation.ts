@@ -8,9 +8,9 @@ import {
     IsOptional,
     ValidateIf,
 } from 'class-validator';
-import { IsPasswordStrong, IsStartWith } from 'src/request/request.decorator';
+import { IsPasswordStrong, IsStart } from 'src/utils/request/request.decorator';
 
-export class AuthSignUpValidation {
+export default class AuthSignUpValidation {
     @IsEmail()
     @IsNotEmpty()
     @MaxLength(100)
@@ -37,7 +37,7 @@ export class AuthSignUpValidation {
     @MinLength(10)
     @MaxLength(14)
     @Type(() => String)
-    @IsStartWith(['628'])
+    @IsStart(['628'])
     readonly mobileNumber: string;
 
     @IsNotEmpty()
