@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
 import { DatabaseEntity } from 'src/database/database.decorator';
 import { DeleteResult } from 'mongodb';
-import RoleCreateValidation from '../validation/role.create.validation';
+import { RoleCreateValidation } from '../validation/role.create.validation';
 import { RoleDocument, RoleEntity } from '../schema/role.schema';
 
 @Injectable()

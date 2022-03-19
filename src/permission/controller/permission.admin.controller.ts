@@ -11,7 +11,7 @@ import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { PermissionService } from '../service/permission.service';
-import PermissionListValidation from '../validation/permission.list.validation';
+import { PermissionListValidation } from '../validation/permission.list.validation';
 import { PermissionListTransformer } from '../transformer/permission.list.transformer';
 import {
     GetPermission,
@@ -20,7 +20,7 @@ import {
     PermissionUpdateGuard,
     PermissionUpdateInactiveGuard,
 } from '../permission.decorator';
-import PermissionUpdateValidation from '../validation/permission.update.validation';
+import { PermissionUpdateValidation } from '../validation/permission.update.validation';
 import { RequestValidationPipe } from 'src/utils/request/pipe/request.validation.pipe';
 import {
     Response,

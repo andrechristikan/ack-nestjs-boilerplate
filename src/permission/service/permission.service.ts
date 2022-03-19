@@ -9,7 +9,7 @@ import {
 } from '../schema/permission.schema';
 import { PermissionGetTransformer } from '../transformer/permission.get.transformer';
 import { PermissionListTransformer } from '../transformer/permission.list.transformer';
-import PermissionUpdateValidation from '../validation/permission.update.validation';
+import { PermissionUpdateValidation } from '../validation/permission.update.validation';
 
 @Injectable()
 export class PermissionService {

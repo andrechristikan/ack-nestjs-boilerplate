@@ -19,7 +19,7 @@ import { AuthService } from 'src/auth/service/auth.service';
 import { RoleService } from 'src/role/service/role.service';
 import { PermissionService } from 'src/permission/service/permission.service';
 import { RoleBulkService } from 'src/role/service/role.bulk.service';
-import RoleCreateValidation from 'src/role/validation/role.create.validation';
+import { RoleCreateValidation } from 'src/role/validation/role.create.validation';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/utils/request/request.constant';
 import { RouterAdminModule } from 'src/router/router.admin.module';
 import { RoleDocument } from 'src/role/schema/role.schema';

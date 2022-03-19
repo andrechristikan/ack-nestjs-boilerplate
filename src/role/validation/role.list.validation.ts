@@ -5,7 +5,7 @@ import {
     ROLE_DEFAULT_SORT,
 } from '../role.constant';
 
-export default class RoleListValidation extends RequestQueryBaseListValidation {
+export class RoleListValidation extends RequestQueryBaseListValidation {
     constructor() {
         super(ROLE_DEFAULT_SORT, ROLE_DEFAULT_PAGE, ROLE_DEFAULT_PER_PAGE);
     }

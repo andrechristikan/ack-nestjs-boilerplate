@@ -15,7 +15,7 @@ import { CoreModule } from 'src/core/core.module';
 import { RouterModule } from '@nestjs/core';
 import { PermissionService } from 'src/permission/service/permission.service';
 import { AuthService } from 'src/auth/service/auth.service';
-import PermissionUpdateValidation from 'src/permission/validation/permission.update.validation';
+import { PermissionUpdateValidation } from 'src/permission/validation/permission.update.validation';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/utils/request/request.constant';
 import { RouterAdminModule } from 'src/router/router.admin.module';
 import { PermissionDocument } from 'src/permission/schema/permission.schema';

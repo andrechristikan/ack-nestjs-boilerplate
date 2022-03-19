@@ -18,7 +18,7 @@ import {
 import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
 import { PermissionService } from 'src/permission/service/permission.service';
 import { RoleService } from '../service/role.service';
-import RoleListValidation from '../validation/role.list.validation';
+import { RoleListValidation } from '../validation/role.list.validation';
 import { RoleListTransformer } from '../transformer/role.list.transformer';
 import {
     GetRole,
@@ -29,9 +29,9 @@ import {
     RoleUpdateInactiveGuard,
 } from '../role.decorator';
 import { IRoleDocument } from '../role.interface';
-import RoleCreateValidation from '../validation/role.create.validation';
+import { RoleCreateValidation } from '../validation/role.create.validation';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '../role.constant';
-import RoleUpdateValidation from '../validation/role.update.validation';
+import { RoleUpdateValidation } from '../validation/role.update.validation';
 import {
     Response,
     ResponsePaging,

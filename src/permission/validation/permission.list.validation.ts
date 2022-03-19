@@ -5,7 +5,7 @@ import {
     PERMISSION_DEFAULT_SORT,
 } from '../permission.constant';
 
-export default class PermissionListValidation extends RequestQueryBaseListValidation {
+export class PermissionListValidation extends RequestQueryBaseListValidation {
     constructor() {
         super(
             PERMISSION_DEFAULT_SORT,

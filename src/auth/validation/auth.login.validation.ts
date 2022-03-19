@@ -9,7 +9,7 @@ import {
     IsString,
 } from 'class-validator';
 
-export default class AuthLoginValidation {
+export class AuthLoginValidation {
     @IsEmail()
     @IsNotEmpty()
     @MaxLength(100)

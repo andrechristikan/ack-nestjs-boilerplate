@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 import { IsPasswordStrong, IsStart } from 'src/utils/request/request.decorator';
 
-export default class UserCreateValidation {
+export class UserCreateValidation {
     @IsEmail()
     @IsNotEmpty()
     @MaxLength(100)

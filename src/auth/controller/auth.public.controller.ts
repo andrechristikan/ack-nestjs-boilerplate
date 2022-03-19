@@ -19,7 +19,7 @@ import { Response } from 'src/utils/response/response.decorator';
 import { IResponse } from 'src/utils/response/response.interface';
 import { AuthService } from '../service/auth.service';
 import { AuthLoginTransformer } from '../transformer/auth.login.transformer';
-import AuthSignUpValidation from '../validation/auth.sign-up.validation';
+import { AuthSignUpValidation } from '../validation/auth.sign-up.validation';
 
 @Controller({
     version: '1',

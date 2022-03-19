@@ -7,7 +7,7 @@ import {
     ValidateIf,
 } from 'class-validator';
 
-export default class UserUpdateValidation {
+export class UserUpdateValidation {
     @IsString()
     @IsNotEmpty()
     @MaxLength(30)

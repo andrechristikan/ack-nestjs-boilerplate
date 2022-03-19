@@ -8,7 +8,7 @@ import {
     IsBoolean,
 } from 'class-validator';
 
-export default class RoleCreateValidation {
+export class RoleCreateValidation {
     @IsString()
     @IsNotEmpty()
     @MinLength(3)

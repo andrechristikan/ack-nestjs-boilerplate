@@ -21,7 +21,7 @@ import {
 import { Response } from 'src/utils/response/response.decorator';
 import { IResponse } from 'src/utils/response/response.interface';
 import { RequestValidationPipe } from 'src/utils/request/pipe/request.validation.pipe';
-import AuthLoginValidation from '../validation/auth.login.validation';
+import { AuthLoginValidation } from '../validation/auth.login.validation';
 import { IUserDocument } from 'src/user/user.interface';
 import { AuthLoginTransformer } from '../transformer/auth.login.transformer';
 import { SuccessException } from 'src/utils/error/error.exception';
@@ -32,7 +32,7 @@ import {
     Token,
     User,
 } from '../auth.decorator';
-import AuthChangePasswordValidation from '../validation/auth.change-password.validation';
+import { AuthChangePasswordValidation } from '../validation/auth.change-password.validation';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { LoggerService } from 'src/logger/service/logger.service';

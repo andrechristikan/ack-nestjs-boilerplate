@@ -11,8 +11,8 @@ import {
     Patch,
     NotFoundException,
 } from '@nestjs/common';
-import UserCreateValidation from 'src/user/validation/user.create.validation';
-import UserUpdateValidation from 'src/user/validation/user.update.validation';
+import { UserCreateValidation } from 'src/user/validation/user.create.validation';
+import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import {
     GetUser,
@@ -26,7 +26,7 @@ import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
 import { UserService } from '../service/user.service';
 import { RoleService } from 'src/role/service/role.service';
-import UserListValidation from '../validation/user.list.validation';
+import { UserListValidation } from '../validation/user.list.validation';
 import { IUserCheckExist, IUserDocument } from '../user.interface';
 import { UserListTransformer } from '../transformer/user.list.transformer';
 import { ENUM_USER_STATUS_CODE_ERROR } from '../user.constant';
