@@ -2,10 +2,9 @@ import {
     PipeTransform,
     ArgumentMetadata,
     UnprocessableEntityException,
+    Injectable,
 } from '@nestjs/common';
 import { validate } from 'class-validator';
-import { Debugger } from 'src/debugger/debugger.decorator';
-import { Logger as DebuggerService } from 'winston';
 import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
 import { plainToInstance } from 'class-transformer';
@@ -19,11 +18,11 @@ import { RoleCreateValidation } from 'src/role/validation/role.create.validation
 import { PermissionUpdateValidation } from 'src/permission/validation/permission.update.validation';
 import { RoleUpdateValidation } from 'src/role/validation/role.update.validation';
 import { AuthChangePasswordValidation } from 'src/auth/validation/auth.change-password.validation';
+import { DebuggerService } from 'src/debugger/debugger.service';
 
+@Injectable()
 export class RequestValidationPipe implements PipeTransform {
-    constructor(
-        @Debugger() private readonly debuggerService: DebuggerService
-    ) {}
+    constructor(private readonly debuggerService: DebuggerService) {}
 
     async transform(
         value: Record<string, any>,
@@ -38,19 +37,21 @@ export class RequestValidationPipe implements PipeTransform {
             ...classTransformer,
             ...value,
         });
-        this.debuggerService.info('Request Data', {
-            class: 'RequestValidationPipe',
-            function: 'transform',
-            request: request,
-        });
+        this.debuggerService.info(
+            'Request Data',
+            'RequestValidationPipe',
+            'transform',
+            request
+        );
 
         const rawErrors: Record<string, any>[] = await validate(request);
         if (rawErrors.length > 0) {
-            this.debuggerService.error('Request Errors', {
-                class: 'RequestValidationPipe',
-                function: 'transform',
-                errors: rawErrors,
-            });
+            this.debuggerService.error(
+                'Request Errors',
+                'RequestValidationPipe',
+                'transform',
+                rawErrors
+            );
 
             throw new UnprocessableEntityException({
                 statusCode:

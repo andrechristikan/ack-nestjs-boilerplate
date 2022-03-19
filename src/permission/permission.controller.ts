@@ -23,11 +23,10 @@ import {
 } from './permission.decorator';
 import { PermissionUpdateValidation } from './validation/permission.update.validation';
 import { ENUM_STATUS_CODE_ERROR } from 'src/error/error.constant';
-import { Logger as DebuggerService } from 'winston';
-import { Debugger } from 'src/debugger/debugger.decorator';
 import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
 import { PermissionDocument } from './permission.schema';
 import { PermissionListTransformer } from './transformer/permission.list.transformer';
+import { DebuggerService } from 'src/debugger/debugger.service';
 
 @Controller({
     version: '1',
@@ -35,7 +34,7 @@ import { PermissionListTransformer } from './transformer/permission.list.transfo
 })
 export class PermissionAdminController {
     constructor(
-        @Debugger() private readonly debuggerService: DebuggerService,
+        private readonly debuggerService: DebuggerService,
         private readonly paginationService: PaginationService,
         private readonly permissionService: PermissionService
     ) {}
@@ -109,11 +108,12 @@ export class PermissionAdminController {
         try {
             await this.permissionService.update(permission._id, body);
         } catch (e) {
-            this.debuggerService.error('Auth active server internal error', {
-                class: 'AuthAdminController',
-                function: 'updateActive',
-                error: { ...e },
-            });
+            this.debuggerService.error(
+                'Auth active server internal error',
+                'AuthAdminController',
+                'updateActive',
+                e
+            );
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
@@ -141,11 +141,10 @@ export class PermissionAdminController {
         } catch (e) {
             this.debuggerService.error(
                 'Permission inactive server internal error',
-                {
-                    class: 'PermissionController',
-                    function: 'inactive',
-                    error: { ...e },
-                }
+
+                'PermissionController',
+                'inactive',
+                e
             );
 
             throw new InternalServerErrorException({
@@ -172,11 +171,9 @@ export class PermissionAdminController {
         } catch (e) {
             this.debuggerService.error(
                 'Permission active server internal error',
-                {
-                    class: 'PermissionController',
-                    function: 'active',
-                    error: { ...e },
-                }
+                'PermissionController',
+                'active',
+                e
             );
 
             throw new InternalServerErrorException({

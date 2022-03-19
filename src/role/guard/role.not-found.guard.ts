@@ -4,24 +4,22 @@ import {
     ExecutionContext,
     NotFoundException,
 } from '@nestjs/common';
-import { Debugger } from 'src/debugger/debugger.decorator';
-import { Logger as DebuggerService } from 'winston';
+import { DebuggerService } from 'src/debugger/debugger.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '../role.constant';
 
 @Injectable()
 export class RoleNotFoundGuard implements CanActivate {
-    constructor(
-        @Debugger() private readonly debuggerService: DebuggerService
-    ) {}
+    constructor(private readonly debuggerService: DebuggerService) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const { __role } = context.switchToHttp().getRequest();
 
         if (!__role) {
-            this.debuggerService.error('Role not found', {
-                class: 'RoleNotFoundGuard',
-                function: 'canActivate',
-            });
+            this.debuggerService.error(
+                'Role not found',
+                'RoleNotFoundGuard',
+                'canActivate'
+            );
 
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,

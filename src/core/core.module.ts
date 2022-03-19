@@ -5,7 +5,7 @@ import { DatabaseModule } from 'src/database/database.module';
 import { MessageModule } from 'src/message/message.module';
 import { ConfigModule } from '@nestjs/config';
 import { WinstonModule } from 'nest-winston';
-import { DebuggerService } from 'src/debugger/debugger.service';
+import { DebuggerOptionService } from 'src/debugger/debugger.service';
 import { DebuggerModule } from 'src/debugger/debugger.module';
 import { PaginationModule } from 'src/pagination/pagination.module';
 import Configs from 'src/config/index';
@@ -27,9 +27,9 @@ import { AuthModule } from 'src/auth/auth.module';
             envFilePath: ['.env'],
         }),
         WinstonModule.forRootAsync({
-            inject: [DebuggerService],
+            inject: [DebuggerOptionService],
             imports: [DebuggerModule],
-            useFactory: (loggerService: DebuggerService) =>
+            useFactory: (loggerService: DebuggerOptionService) =>
                 loggerService.createLogger(),
         }),
         MongooseModule.forRootAsync({

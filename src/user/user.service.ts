@@ -13,7 +13,6 @@ import { PermissionEntity } from 'src/permission/permission.schema';
 import { Types } from 'mongoose';
 import { UserProfileTransformer } from './transformer/user.profile.transformer';
 import { plainToInstance } from 'class-transformer';
-import { Helper } from 'src/helper/helper.decorator';
 import { IAwsResponse } from 'src/aws/aws.interface';
 import { UserListTransformer } from './transformer/user.list.transformer';
 import { UserGetTransformer } from './transformer/user.get.transformer';
@@ -29,7 +28,7 @@ export class UserService {
     constructor(
         @InjectModel(UserEntity.name)
         private readonly userModel: Model<UserDocument>,
-        @Helper() private readonly helperService: HelperService,
+        private readonly helperService: HelperService,
         private readonly configService: ConfigService
     ) {
         this.uploadPath = this.configService.get<string>('user.uploadPath');

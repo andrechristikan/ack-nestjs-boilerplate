@@ -23,8 +23,6 @@ import { IResponse, IResponsePaging } from 'src/response/response.interface';
 import { RoleListValidation } from './validation/role.list.validation';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from './role.constant';
 import { ENUM_STATUS_CODE_ERROR } from 'src/error/error.constant';
-import { Logger as DebuggerService } from 'winston';
-import { Debugger } from 'src/debugger/debugger.decorator';
 import { RoleCreateValidation } from './validation/role.create.validation';
 import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe';
 import {
@@ -41,6 +39,7 @@ import { RoleUpdateValidation } from './validation/role.update.validation';
 import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
 import { RoleDocument } from './role.schema';
 import { PermissionDocument } from 'src/permission/permission.schema';
+import { DebuggerService } from 'src/debugger/debugger.service';
 
 @Controller({
     version: '1',
@@ -48,7 +47,7 @@ import { PermissionDocument } from 'src/permission/permission.schema';
 })
 export class RoleAdminController {
     constructor(
-        @Debugger() private readonly debuggerService: DebuggerService,
+        private readonly debuggerService: DebuggerService,
         private readonly paginationService: PaginationService,
         private readonly roleService: RoleService,
         private readonly permissionService: PermissionService
@@ -116,10 +115,11 @@ export class RoleAdminController {
     ): Promise<IResponse> {
         const exist: boolean = await this.roleService.exists(name);
         if (exist) {
-            this.debuggerService.error('Role Error', {
-                class: 'RoleController',
-                function: 'create',
-            });
+            this.debuggerService.error(
+                'Role Error',
+                'RoleController',
+                'create'
+            );
 
             throw new BadRequestException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR,
@@ -132,10 +132,11 @@ export class RoleAdminController {
                 await this.permissionService.findOneById(permission);
 
             if (!checkPermission) {
-                this.debuggerService.error('Permission not found', {
-                    class: 'RoleController',
-                    function: 'create',
-                });
+                this.debuggerService.error(
+                    'Permission not found',
+                    'RoleController',
+                    'create'
+                );
 
                 throw new NotFoundException({
                     statusCode:
@@ -156,11 +157,12 @@ export class RoleAdminController {
                 _id: create._id,
             };
         } catch (err: any) {
-            this.debuggerService.error('create try catch', {
-                class: 'RoleController',
-                function: 'create',
-                error: err,
-            });
+            this.debuggerService.error(
+                'create try catch',
+                'RoleController',
+                'create',
+                err
+            );
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
@@ -180,10 +182,11 @@ export class RoleAdminController {
     ): Promise<IResponse> {
         const check: boolean = await this.roleService.exists(name, role._id);
         if (check) {
-            this.debuggerService.error('Role Exist Error', {
-                class: 'RoleController',
-                function: 'update',
-            });
+            this.debuggerService.error(
+                'Role Exist Error',
+                'RoleController',
+                'update'
+            );
 
             throw new BadRequestException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR,
@@ -196,10 +199,11 @@ export class RoleAdminController {
                 await this.permissionService.findOneById(permission);
 
             if (!checkPermission) {
-                this.debuggerService.error('Permission not found', {
-                    class: 'RoleController',
-                    function: 'update',
-                });
+                this.debuggerService.error(
+                    'Permission not found',
+                    'RoleController',
+                    'update'
+                );
 
                 throw new NotFoundException({
                     statusCode:
@@ -216,11 +220,12 @@ export class RoleAdminController {
                 isAdmin,
             });
         } catch (e) {
-            this.debuggerService.error('Project server internal error', {
-                class: 'SurveyAdminController',
-                function: 'update',
-                error: { ...e },
-            });
+            this.debuggerService.error(
+                'Project server internal error',
+                'SurveyAdminController',
+                'update',
+                e
+            );
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
@@ -241,11 +246,12 @@ export class RoleAdminController {
         try {
             await this.roleService.deleteOneById(role._id);
         } catch (err) {
-            this.debuggerService.error('delete try catch', {
-                class: 'RoleController',
-                function: 'delete',
-                error: err,
-            });
+            this.debuggerService.error(
+                'delete try catch',
+                'RoleController',
+                'delete',
+                err
+            );
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
@@ -262,11 +268,12 @@ export class RoleAdminController {
         try {
             await this.roleService.inactive(role._id);
         } catch (e) {
-            this.debuggerService.error('Role inactive server internal error', {
-                class: 'RoleController',
-                function: 'inactive',
-                error: { ...e },
-            });
+            this.debuggerService.error(
+                'Role inactive server internal error',
+                'RoleController',
+                'inactive',
+                e
+            );
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
@@ -285,11 +292,12 @@ export class RoleAdminController {
         try {
             await this.roleService.active(role._id);
         } catch (e) {
-            this.debuggerService.error('Role active server internal error', {
-                class: 'RoleController',
-                function: 'active',
-                error: { ...e },
-            });
+            this.debuggerService.error(
+                'Role active server internal error',
+                'RoleController',
+                'active',
+                e
+            );
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,

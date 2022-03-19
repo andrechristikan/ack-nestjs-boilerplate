@@ -4,24 +4,22 @@ import {
     ExecutionContext,
     NotFoundException,
 } from '@nestjs/common';
-import { Debugger } from 'src/debugger/debugger.decorator';
-import { Logger as DebuggerService } from 'winston';
+import { DebuggerService } from 'src/debugger/debugger.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from '../user.constant';
 
 @Injectable()
 export class UserNotFoundGuard implements CanActivate {
-    constructor(
-        @Debugger() private readonly debuggerService: DebuggerService
-    ) {}
+    constructor(private readonly debuggerService: DebuggerService) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const { __user } = context.switchToHttp().getRequest();
 
         if (!__user) {
-            this.debuggerService.error('User not found', {
-                class: 'UserNotFoundGuard',
-                function: 'canActivate',
-            });
+            this.debuggerService.error(
+                'User not found',
+                'UserNotFoundGuard',
+                'canActivate'
+            );
 
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,

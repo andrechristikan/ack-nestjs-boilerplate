@@ -1,12 +1,11 @@
 import { AuthGuard } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { Logger as DebuggerService } from 'winston';
-import { Debugger } from 'src/debugger/debugger.decorator';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
+import { DebuggerService } from 'src/debugger/debugger.service';
 
 @Injectable()
 export class JwtGuard extends AuthGuard('jwt') {
-    constructor(@Debugger() private readonly debuggerService: DebuggerService) {
+    constructor(private readonly debuggerService: DebuggerService) {
         super();
     }
 
@@ -16,12 +15,7 @@ export class JwtGuard extends AuthGuard('jwt') {
         info: string
     ): TUser {
         if (err || !user) {
-            this.debuggerService.error('AuthJwtGuardError', {
-                class: 'JwtGuard',
-                function: 'handleRequest',
-                description: info,
-                error: { ...err },
-            });
+            this.debuggerService.error(info, 'JwtGuard', 'handleRequest', err);
 
             throw new UnauthorizedException({
                 statusCode:

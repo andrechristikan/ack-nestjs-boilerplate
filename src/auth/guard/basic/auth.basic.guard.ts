@@ -5,11 +5,10 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { Logger as DebuggerService } from 'winston';
-import { Debugger } from 'src/debugger/debugger.decorator';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from 'src/auth/auth.service';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
+import { DebuggerService } from 'src/debugger/debugger.service';
 
 @Injectable()
 export class BasicGuard implements CanActivate {
@@ -17,7 +16,7 @@ export class BasicGuard implements CanActivate {
     private readonly clientSecret: string;
 
     constructor(
-        @Debugger() private readonly debuggerService: DebuggerService,
+        private readonly debuggerService: DebuggerService,
         private readonly configService: ConfigService,
         private readonly authService: AuthService
     ) {
@@ -35,10 +34,11 @@ export class BasicGuard implements CanActivate {
         const authorization: string = request.headers.authorization;
 
         if (!authorization) {
-            this.debuggerService.error('AuthBasicGuardError', {
-                class: 'BasicGuard',
-                function: 'canActivate',
-            });
+            this.debuggerService.error(
+                'AuthBasicGuardError',
+                'BasicGuard',
+                'canActivate'
+            );
 
             throw new UnauthorizedException({
                 statusCode:
@@ -62,10 +62,8 @@ export class BasicGuard implements CanActivate {
         if (!validateBasicToken) {
             this.debuggerService.error(
                 'AuthBasicGuardError Validate Basic Token',
-                {
-                    class: 'BasicGuard',
-                    function: 'canActivate',
-                }
+                'BasicGuard',
+                'canActivate'
             );
 
             throw new UnauthorizedException({

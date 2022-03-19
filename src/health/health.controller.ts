@@ -11,17 +11,16 @@ import { DatabaseConnection } from 'src/database/database.decorator';
 import { Response } from 'src/response/response.decorator';
 import { IResponse } from 'src/response/response.interface';
 import { AwsHealthIndicator } from './indicator/health.aws.indicator';
-import { Logger as DebuggerService } from 'winston';
-import { Debugger } from 'src/debugger/debugger.decorator';
 import { ENUM_HEALTH_STATUS_CODE_ERROR } from './health.constant';
 import { SuccessException } from 'src/error/error.exception';
+import { DebuggerService } from 'src/debugger/debugger.service';
 @Controller({
     version: VERSION_NEUTRAL,
     path: 'health',
 })
 export class HealthController {
     constructor(
-        @Debugger() private readonly debuggerService: DebuggerService,
+        private readonly debuggerService: DebuggerService,
         @DatabaseConnection() private readonly databaseConnection: Connection,
         private readonly health: HealthCheckService,
         private readonly memoryHealthIndicator: MemoryHealthIndicator,
@@ -63,11 +62,12 @@ export class HealthController {
 
             return health;
         } catch (err) {
-            this.debuggerService.error('Health try catch', {
-                class: 'HealthController',
-                function: 'check',
-                error: err,
-            });
+            this.debuggerService.error(
+                'Health try catch',
+                'HealthController',
+                'check',
+                err
+            );
 
             throw new SuccessException({
                 statusCode:

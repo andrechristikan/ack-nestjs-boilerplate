@@ -70,7 +70,7 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
     }
 
     use(req: Request, res: Response, next: NextFunction): void {
-        if (this.debug || this.logger) {
+        if (this.debug || (this.debug && this.logger)) {
             const config: IHttpDebuggerConfig = this.httpLogger();
             this.customToken();
             morgan(config.debuggerHttpFormat, config.HttpDebuggerOptions)(

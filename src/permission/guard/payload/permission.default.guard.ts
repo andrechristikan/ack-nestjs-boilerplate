@@ -5,19 +5,18 @@ import {
     ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Debugger } from 'src/debugger/debugger.decorator';
+import { DebuggerService } from 'src/debugger/debugger.service';
 import {
     ENUM_PERMISSIONS,
     ENUM_PERMISSION_STATUS_CODE_ERROR,
     PERMISSION_META_KEY,
 } from 'src/permission/permission.constant';
 import { IPermission } from 'src/permission/permission.interface';
-import { Logger as DebuggerService } from 'winston';
 
 @Injectable()
 export class PermissionPayloadDefaultGuard implements CanActivate {
     constructor(
-        @Debugger() private readonly debuggerService: DebuggerService,
+        private readonly debuggerService: DebuggerService,
         private reflector: Reflector
     ) {}
 
@@ -41,10 +40,11 @@ export class PermissionPayloadDefaultGuard implements CanActivate {
         );
 
         if (!hasPermission) {
-            this.debuggerService.error('Permission not has permission', {
-                class: 'PermissionDefaultGuard',
-                function: 'canActivate',
-            });
+            this.debuggerService.error(
+                'Permission not has permission',
+                'PermissionDefaultGuard',
+                'canActivate'
+            );
 
             throw new ForbiddenException({
                 statusCode:

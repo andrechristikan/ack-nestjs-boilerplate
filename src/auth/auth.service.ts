@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
-import { Helper } from 'src/helper/helper.decorator';
 import { HelperService } from 'src/helper/helper.service';
 import { IUserDocument } from 'src/user/user.interface';
 import { IAuthPassword, IAuthPayloadOptions } from './auth.interface';
@@ -19,7 +18,6 @@ export class AuthService {
     private readonly refreshTokenNotBeforeExpirationTime: string;
 
     constructor(
-        @Helper()
         private readonly helperService: HelperService,
         private readonly configService: ConfigService
     ) {

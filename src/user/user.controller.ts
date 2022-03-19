@@ -19,8 +19,6 @@ import { RequestValidationPipe } from 'src/request/pipe/request.validation.pipe'
 import { UserCreateValidation } from 'src/user/validation/user.create.validation';
 import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
 import { PaginationService } from 'src/pagination/pagination.service';
-import { Logger as DebuggerService } from 'winston';
-import { Debugger } from 'src/debugger/debugger.decorator';
 import { IUserCheckExist, IUserDocument } from './user.interface';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { IResponse, IResponsePaging } from 'src/response/response.interface';
@@ -46,6 +44,7 @@ import { UploadFileSingle } from 'src/file/file.decorator';
 import { ENUM_FILE_TYPE } from 'src/file/file.constant';
 import { RoleService } from 'src/role/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
+import { DebuggerService } from 'src/debugger/debugger.service';
 
 @Controller({
     version: '1',
@@ -53,7 +52,7 @@ import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
 })
 export class UserAdminController {
     constructor(
-        @Debugger() private readonly debuggerService: DebuggerService,
+        private readonly debuggerService: DebuggerService,
         private readonly authService: AuthService,
         private readonly paginationService: PaginationService,
         private readonly userService: UserService,
@@ -134,30 +133,33 @@ export class UserAdminController {
         );
 
         if (checkExist.email && checkExist.mobileNumber) {
-            this.debuggerService.error('create user exist', {
-                class: 'UserController',
-                function: 'create',
-            });
+            this.debuggerService.error(
+                'create user exist',
+                'UserController',
+                'create'
+            );
 
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EXISTS_ERROR,
                 message: 'user.error.exist',
             });
         } else if (checkExist.email) {
-            this.debuggerService.error('create user exist', {
-                class: 'UserController',
-                function: 'create',
-            });
+            this.debuggerService.error(
+                'create user exist',
+                'UserController',
+                'create'
+            );
 
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
                 message: 'user.error.emailExist',
             });
         } else if (checkExist.mobileNumber) {
-            this.debuggerService.error('create user exist', {
-                class: 'UserController',
-                function: 'create',
-            });
+            this.debuggerService.error(
+                'create user exist',
+                'UserController',
+                'create'
+            );
 
             throw new BadRequestException({
                 statusCode:
@@ -168,10 +170,11 @@ export class UserAdminController {
 
         const role = await this.roleService.findOneById(body.role);
         if (!role) {
-            this.debuggerService.error('Role not found', {
-                class: 'UserController',
-                function: 'create',
-            });
+            this.debuggerService.error(
+                'Role not found',
+                'UserController',
+                'create'
+            );
 
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
@@ -199,11 +202,12 @@ export class UserAdminController {
                 _id: create._id,
             };
         } catch (err: any) {
-            this.debuggerService.error('create try catch', {
-                class: 'UserController',
-                function: 'create',
-                error: err,
-            });
+            this.debuggerService.error(
+                'create try catch',
+                'UserController',
+                'create',
+                err
+            );
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
@@ -220,11 +224,12 @@ export class UserAdminController {
         try {
             await this.userService.deleteOneById(user._id);
         } catch (err) {
-            this.debuggerService.error('delete try catch', {
-                class: 'UserController',
-                function: 'create',
-                error: err,
-            });
+            this.debuggerService.error(
+                'delete try catch',
+                'UserController',
+                'create',
+                err
+            );
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
@@ -246,13 +251,12 @@ export class UserAdminController {
         try {
             await this.userService.updateOneById(user._id, body);
         } catch (err: any) {
-            this.debuggerService.error('update try catch', {
-                class: 'UserController',
-                function: 'update',
-                error: {
-                    ...err,
-                },
-            });
+            this.debuggerService.error(
+                'update try catch',
+                'UserController',
+                'update',
+                err
+            );
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
@@ -273,11 +277,12 @@ export class UserAdminController {
         try {
             await this.userService.inactive(user._id);
         } catch (e) {
-            this.debuggerService.error('User inactive server internal error', {
-                class: 'UserController',
-                function: 'inactive',
-                error: { ...e },
-            });
+            this.debuggerService.error(
+                'User inactive server internal error',
+                'UserController',
+                'inactive',
+                e
+            );
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
@@ -296,11 +301,12 @@ export class UserAdminController {
         try {
             await this.userService.active(user._id);
         } catch (e) {
-            this.debuggerService.error('User active server internal error', {
-                class: 'UserController',
-                function: 'active',
-                error: { ...e },
-            });
+            this.debuggerService.error(
+                'User active server internal error',
+                'UserController',
+                'active',
+                e
+            );
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
@@ -318,7 +324,7 @@ export class UserAdminController {
 })
 export class UserPublicController {
     constructor(
-        @Debugger() private readonly debuggerService: DebuggerService,
+        private readonly debuggerService: DebuggerService,
         private readonly userService: UserService,
         private readonly awsService: AwsService
     ) {}
@@ -360,11 +366,12 @@ export class UserPublicController {
 
             await this.userService.updatePhoto(user._id, aws);
         } catch (err) {
-            this.debuggerService.error('Store photo user', {
-                class: 'UserPublicController',
-                function: 'upload',
-                error: err,
-            });
+            this.debuggerService.error(
+                'Store photo user',
+                'UserPublicController',
+                'upload',
+                err
+            );
 
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
