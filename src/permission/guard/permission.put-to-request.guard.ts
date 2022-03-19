@@ -1,6 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import { PermissionDocument } from '../permission.schema';
-import { PermissionService } from '../permission.service';
+import { PermissionDocument } from '../schema/permission.schema';
+import { PermissionService } from '../service/permission.service';
 
 @Injectable()
 export class PermissionPutToRequestGuard implements CanActivate {

@@ -1,5 +1,5 @@
 import { Exclude, Transform, Type } from 'class-transformer';
-import { IAwsResponse } from 'src/aws/aws.interface';
+import { IAwsS3Response } from 'src/aws/aws.interface';
 import { IRoleDocument } from 'src/role/role.interface';
 
 export class UserProfileTransformer {
@@ -23,7 +23,7 @@ export class UserProfileTransformer {
     readonly lastName: string;
     readonly email: string;
     readonly mobileNumber: string;
-    readonly photo?: IAwsResponse;
+    readonly photo?: IAwsS3Response;
 
     @Exclude()
     readonly password: string;

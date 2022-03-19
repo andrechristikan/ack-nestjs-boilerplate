@@ -6,6 +6,7 @@ export default registerAs(
         cors: {
             allowMethod: ['GET', 'DELETE', 'PUT', 'PATCH', 'POST'],
             allowOrigin: '*',
+            // allowOrigin: [ /example\.com$/ ],
             allowHeader: [
                 'Accept',
                 'Accept-Language',

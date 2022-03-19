@@ -4,24 +4,22 @@ import {
     ExecutionContext,
     ForbiddenException,
 } from '@nestjs/common';
-import { Debugger } from 'src/debugger/debugger.decorator';
-import { Logger as DebuggerService } from 'winston';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
+import { DebuggerService } from 'src/debugger/service/debugger.service';
 
 @Injectable()
 export class AuthPayloadDefaultGuard implements CanActivate {
-    constructor(
-        @Debugger() private readonly debuggerService: DebuggerService
-    ) {}
+    constructor(private readonly debuggerService: DebuggerService) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const { user } = context.switchToHttp().getRequest();
 
         if (!user.isActive || !user.role.isActive) {
-            this.debuggerService.error('UserGuard Inactive', {
-                class: 'AuthDefaultGuard',
-                function: 'canActivate',
-            });
+            this.debuggerService.error(
+                'UserGuard Inactive',
+                'AuthDefaultGuard',
+                'canActivate'
+            );
 
             throw new ForbiddenException({
                 statusCode:

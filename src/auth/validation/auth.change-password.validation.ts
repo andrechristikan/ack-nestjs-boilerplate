@@ -1,5 +1,5 @@
 import { IsString, IsNotEmpty } from 'class-validator';
-import { IsPasswordStrong } from 'src/request/request.decorator';
+import { IsPasswordStrong } from 'src/utils/request/request.decorator';
 
 export class AuthChangePasswordValidation {
     @IsPasswordStrong()

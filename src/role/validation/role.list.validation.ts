@@ -1,4 +1,4 @@
-import { RequestQueryBaseListValidation } from 'src/request/validation/request.query.base-list.validation';
+import { RequestQueryBaseListValidation } from 'src/utils/request/validation/request.query.base-list.validation';
 import {
     ROLE_DEFAULT_PAGE,
     ROLE_DEFAULT_PER_PAGE,

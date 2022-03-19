@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { UserEntity, UserDatabaseName, UserSchema } from 'src/user/user.schema';
-import { UserBulkService, UserService } from 'src/user/user.service';
 import { DATABASE_CONNECTION_NAME } from 'src/database/database.constant';
+import { UserService } from './service/user.service';
+import { UserBulkService } from './service/user.bulk.service';
+import { UserDatabaseName, UserEntity, UserSchema } from './schema/user.schema';
 
 @Module({
     imports: [

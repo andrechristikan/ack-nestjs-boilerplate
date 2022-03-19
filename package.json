@@ -1,6 +1,6 @@
 {
   "name": "ack-nestjs-boilerplate-mongoose",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Ack NestJs BoilerPlate Mongoose",
   "repository": {
     "type": "git",
@@ -8,7 +8,7 @@
   },
   "author": {
     "name": "andrechristikan",
-    "email": "ack@baibay.com"
+    "email": "ack@baibay.id"
   },
   "private": true,
   "license": "MIT",
@@ -78,6 +78,7 @@
     "@types/express": "^4.17.13",
     "@types/express-rate-limit": "^6.0.0",
     "@types/jest": "^27.4.0",
+    "@types/lodash": "^4.14.180",
     "@types/morgan": "^1.9.3",
     "@types/multer": "^1.4.7",
     "@types/node": "^17.0.8",

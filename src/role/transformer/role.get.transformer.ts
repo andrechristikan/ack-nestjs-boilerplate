@@ -1,5 +1,5 @@
 import { Exclude, Transform, Type } from 'class-transformer';
-import { PermissionDocument } from 'src/permission/permission.schema';
+import { PermissionDocument } from 'src/permission/schema/permission.schema';
 
 export class RoleGetTransformer {
     @Type(() => String)

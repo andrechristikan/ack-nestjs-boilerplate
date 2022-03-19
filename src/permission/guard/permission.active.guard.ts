@@ -5,8 +5,7 @@ import {
     BadRequestException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Debugger } from 'src/debugger/debugger.decorator';
-import { Logger as DebuggerService } from 'winston';
+import { DebuggerService } from 'src/debugger/service/debugger.service';
 import {
     ENUM_PERMISSION_STATUS_CODE_ERROR,
     PERMISSION_ACTIVE_META_KEY,
@@ -15,7 +14,7 @@ import {
 @Injectable()
 export class PermissionActiveGuard implements CanActivate {
     constructor(
-        @Debugger() private readonly debuggerService: DebuggerService,
+        private readonly debuggerService: DebuggerService,
         private reflector: Reflector
     ) {}
 
@@ -32,10 +31,11 @@ export class PermissionActiveGuard implements CanActivate {
         const { __permission } = context.switchToHttp().getRequest();
 
         if (!required.includes(__permission.isActive)) {
-            this.debuggerService.error('Permission active error', {
-                class: 'PermissionActiveGuard',
-                function: 'canActivate',
-            });
+            this.debuggerService.error(
+                'Permission active error',
+                'PermissionActiveGuard',
+                'canActivate'
+            );
 
             throw new BadRequestException({
                 statusCode:

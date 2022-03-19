@@ -1,23 +1,23 @@
 import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { AuthService } from 'src/auth/auth.service';
-import { RoleService } from 'src/role/role.service';
 import request from 'supertest';
 import faker from '@faker-js/faker';
-import { RoleDocument } from 'src/role/role.schema';
-import { UserService } from 'src/user/user.service';
 import { IUserDocument } from 'src/user/user.interface';
 import {
     E2E_USER_PUBLIC_PROFILE_UPLOAD_URL,
     E2E_USER_PUBLIC_PROFILE_URL,
 } from './user.constant';
-import { UserDocument } from 'src/user/user.schema';
-import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/file/file.constant';
 import { Types, connection } from 'mongoose';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
 import { CoreModule } from 'src/core/core.module';
-import { RouterPublicModule } from 'src/router/router.public.module';
 import { RouterModule } from '@nestjs/core';
+import { UserService } from 'src/user/service/user.service';
+import { AuthService } from 'src/auth/service/auth.service';
+import { RoleService } from 'src/role/service/role.service';
+import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/utils/file/file.constant';
+import { RouterPublicModule } from 'src/router/router.public.module';
+import { RoleDocument } from 'src/role/schema/role.schema';
+import { UserDocument } from 'src/user/schema/user.schema';
 
 describe('E2E User Public', () => {
     let app: INestApplication;

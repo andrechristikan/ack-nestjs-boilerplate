@@ -2,28 +2,28 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import faker from '@faker-js/faker';
-import { UserService } from 'src/user/user.service';
 import { E2E_AUTH_REFRESH_URL } from './auth.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
-import { UserDocument } from 'src/user/user.schema';
-import { RoleDocument } from 'src/role/role.schema';
-import { AuthService } from 'src/auth/auth.service';
-import { RoleService } from 'src/role/role.service';
+import { UserDocument } from 'src/user/schema/user.schema';
+import { RoleDocument } from 'src/role/schema/role.schema';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
-import { HelperService } from 'src/helper/helper.service';
 import { IUserDocument } from 'src/user/user.interface';
 import { Types, connection } from 'mongoose';
 import { CoreModule } from 'src/core/core.module';
-import { RouterCommonModule } from 'src/router/router.common.module';
 import { RouterModule } from '@nestjs/core';
+import { UserService } from 'src/user/service/user.service';
+import { AuthService } from 'src/auth/service/auth.service';
+import { RoleService } from 'src/role/service/role.service';
+import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
+import { RouterCommonModule } from 'src/router/router.common.module';
 
 describe('E2E Refresh', () => {
     let app: INestApplication;
     let userService: UserService;
     let authService: AuthService;
     let roleService: RoleService;
-    let helperService: HelperService;
+    let helperDateService: HelperDateService;
 
     const password = `@!${faker.random
         .alphaNumeric(5)
@@ -54,14 +54,14 @@ describe('E2E Refresh', () => {
         userService = app.get(UserService);
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
-        helperService = app.get(HelperService);
+        helperDateService = app.get(HelperDateService);
 
         const role: RoleDocument = await roleService.findOne({
             name: 'user',
         });
 
-        passwordExpiredDate = await helperService.dateTimeBackwardInDays(5);
-        passwordExpiredForward = await helperService.dateTimeForwardInDays(5);
+        passwordExpiredDate = helperDateService.backwardInDays(5);
+        passwordExpiredForward = helperDateService.forwardInDays(5);
 
         const passwordHash = await authService.createPassword(password);
 

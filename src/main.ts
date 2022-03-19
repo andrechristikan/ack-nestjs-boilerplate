@@ -19,9 +19,6 @@ async function bootstrap() {
     // Global Prefix
     app.setGlobalPrefix('/api');
 
-    // Starts listening for shutdown hooks
-    app.enableShutdownHooks();
-
     // Versioning
     if (versioning) {
         app.enableVersioning({
@@ -54,6 +51,7 @@ async function bootstrap() {
     );
 
     logger.log(`==========================================================`);
+
     logger.log(
         `Database running on ${configService.get<string>(
             'database.host'
@@ -61,6 +59,7 @@ async function bootstrap() {
         'NestApplication'
     );
     logger.log(`Server running on ${await app.getUrl()}`, 'NestApplication');
+
     logger.log(`==========================================================`);
 }
 bootstrap();

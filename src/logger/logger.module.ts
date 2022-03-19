@@ -1,13 +1,14 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/database/database.constant';
-import { LoggerService } from 'src/logger/logger.service';
 import {
     LoggerDatabaseName,
     LoggerEntity,
     LoggerSchema,
-} from './logger.schema';
+} from './schema/logger.schema';
+import { LoggerService } from './service/logger.service';
 
+@Global()
 @Module({
     providers: [LoggerService],
     exports: [LoggerService],

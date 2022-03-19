@@ -4,11 +4,11 @@ import {
     HealthIndicator,
     HealthIndicatorResult,
 } from '@nestjs/terminus';
-import { AwsService } from 'src/aws/aws.service';
+import { AwsS3Service } from 'src/aws/service/aws.s3.service';
 
 @Injectable()
 export class AwsHealthIndicator extends HealthIndicator {
-    constructor(private readonly awsService: AwsService) {
+    constructor(private readonly awsService: AwsS3Service) {
         super();
     }
 

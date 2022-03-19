@@ -1,17 +1,15 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { Logger as DebuggerService } from 'winston';
-import { Debugger } from 'src/debugger/debugger.decorator';
-
-import { PermissionService } from 'src/permission/permission.service';
-import { RoleBulkService } from 'src/role/role.service';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
-import { PermissionDocument } from 'src/permission/permission.schema';
+import { PermissionService } from 'src/permission/service/permission.service';
+import { RoleBulkService } from 'src/role/service/role.bulk.service';
+import { DebuggerService } from 'src/debugger/service/debugger.service';
+import { PermissionDocument } from 'src/permission/schema/permission.schema';
 
 @Injectable()
 export class RoleSeed {
     constructor(
-        @Debugger() private readonly debuggerService: DebuggerService,
+        private readonly debuggerService: DebuggerService,
         private readonly permissionService: PermissionService,
         private readonly roleBulkService: RoleBulkService
     ) {}
@@ -41,15 +39,13 @@ export class RoleSeed {
                 },
             ]);
 
-            this.debuggerService.info('Insert Role Succeed', {
-                class: 'RoleSeed',
-                function: 'insert',
-            });
+            this.debuggerService.debug(
+                'Insert Role Succeed',
+                'RoleSeed',
+                'insert'
+            );
         } catch (e) {
-            this.debuggerService.error(e.message, {
-                class: 'RoleSeed',
-                function: 'insert',
-            });
+            this.debuggerService.error(e.message, 'RoleSeed', 'insert');
         }
     }
 
@@ -61,15 +57,13 @@ export class RoleSeed {
         try {
             await this.roleBulkService.deleteMany({});
 
-            this.debuggerService.info('Remove Role Succeed', {
-                class: 'RoleSeed',
-                function: 'remove',
-            });
+            this.debuggerService.debug(
+                'Remove Role Succeed',
+                'RoleSeed',
+                'remove'
+            );
         } catch (e) {
-            this.debuggerService.error(e.message, {
-                class: 'RoleSeed',
-                function: 'remove',
-            });
+            this.debuggerService.error(e.message, 'RoleSeed', 'remove');
         }
     }
 }

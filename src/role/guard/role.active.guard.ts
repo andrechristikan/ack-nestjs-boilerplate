@@ -5,8 +5,7 @@ import {
     BadRequestException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Debugger } from 'src/debugger/debugger.decorator';
-import { Logger as DebuggerService } from 'winston';
+import { DebuggerService } from 'src/debugger/service/debugger.service';
 import {
     ENUM_ROLE_STATUS_CODE_ERROR,
     ROLE_ACTIVE_META_KEY,
@@ -15,7 +14,7 @@ import {
 @Injectable()
 export class RoleActiveGuard implements CanActivate {
     constructor(
-        @Debugger() private readonly debuggerService: DebuggerService,
+        private readonly debuggerService: DebuggerService,
         private reflector: Reflector
     ) {}
 
@@ -32,10 +31,11 @@ export class RoleActiveGuard implements CanActivate {
         const { __role } = context.switchToHttp().getRequest();
 
         if (!required.includes(__role.isActive)) {
-            this.debuggerService.error('Role active error', {
-                class: 'RoleActiveGuard',
-                function: 'canActivate',
-            });
+            this.debuggerService.error(
+                'Role active error',
+                'RoleActiveGuard',
+                'canActivate'
+            );
 
             throw new BadRequestException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_ACTIVE_ERROR,
