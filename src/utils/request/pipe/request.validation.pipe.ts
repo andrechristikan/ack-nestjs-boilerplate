@@ -37,7 +37,7 @@ export class RequestValidationPipe implements PipeTransform {
             ...classTransformer,
             ...value,
         });
-        this.debuggerService.info(
+        this.debuggerService.debug(
             'Request Data',
             'RequestValidationPipe',
             'transform',
