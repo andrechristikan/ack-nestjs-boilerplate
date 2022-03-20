@@ -29,7 +29,7 @@ export class DebuggerOptionService {
 
     createLogger(): LoggerOptions {
         const transports = [];
-        if (this.debug || (this.env !== 'production' && this.logger)) {
+        if (this.debug || this.logger) {
             transports.push(
                 new DailyRotateFile({
                     filename: `%DATE%.log`,
@@ -63,7 +63,10 @@ export class DebuggerOptionService {
                     level: 'debug',
                 })
             );
-            transports.push(new winston.transports.Console());
+
+            if (this.env !== 'production') {
+                transports.push(new winston.transports.Console());
+            }
         }
 
         const loggerOptions: LoggerOptions = {
