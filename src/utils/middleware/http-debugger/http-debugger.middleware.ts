@@ -16,8 +16,6 @@ import {
 
 @Injectable()
 export class HttpDebuggerMiddleware implements NestMiddleware {
-    private readonly debug: boolean;
-    private readonly logger: boolean;
     private readonly maxSize: string;
     private readonly maxFiles: number;
 
@@ -25,10 +23,6 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
     ) {
-        this.debug = this.configService.get<boolean>('app.debug');
-        this.logger = this.configService.get<boolean>(
-            'app.debugger.http.active'
-        );
         this.maxSize = this.configService.get<string>(
             'app.debugger.http.maxSize'
         );
@@ -75,46 +69,30 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
     }
 
     use(req: Request, res: Response, next: NextFunction): void {
-        if (this.debug || this.logger) {
-            const config: IHttpDebuggerConfig = this.httpLogger();
-            this.customToken();
-            morgan(config.debuggerHttpFormat, config.HttpDebuggerOptions)(
-                req,
-                res,
-                next
-            );
-        } else {
-            next();
-        }
+        const config: IHttpDebuggerConfig = this.httpLogger();
+        this.customToken();
+        morgan(config.debuggerHttpFormat, config.HttpDebuggerOptions)(
+            req,
+            res,
+            next
+        );
     }
 }
 
 @Injectable()
 export class HttpDebuggerResponseMiddleware implements NestMiddleware {
-    private readonly debug: boolean;
-    private readonly logger: boolean;
-
-    constructor(private readonly configService: ConfigService) {
-        this.debug = this.configService.get<boolean>('app.debug');
-        this.logger = this.configService.get<boolean>(
-            'app.debugger.http.active'
-        );
-    }
-
     use(req: Request, res: Response, next: NextFunction): void {
-        if (this.debug || this.logger) {
-            const send: any = res.send;
-            const resOld: any = res;
+        const send: any = res.send;
+        const resOld: any = res;
 
-            // Add response data to response
-            // this is for morgan
-            resOld.send = (body: any) => {
-                resOld.body = body;
-                resOld.send = send;
-                resOld.send(body);
-                res = resOld as Response;
-            };
-        }
+        // Add response data to response
+        // this is for morgan
+        resOld.send = (body: any) => {
+            resOld.body = body;
+            resOld.send = send;
+            resOld.send(body);
+            res = resOld as Response;
+        };
 
         next();
     }

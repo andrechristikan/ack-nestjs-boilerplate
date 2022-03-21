@@ -29,44 +29,43 @@ export class DebuggerOptionService {
 
     createLogger(): LoggerOptions {
         const transports = [];
-        if (this.debug || this.logger) {
-            transports.push(
-                new DailyRotateFile({
-                    filename: `%DATE%.log`,
-                    dirname: `logs/${DEBUGGER_NAME}/error`,
-                    datePattern: 'YYYY-MM-DD',
-                    zippedArchive: true,
-                    maxSize: this.maxSize,
-                    maxFiles: this.maxFiles,
-                    level: 'error',
-                })
-            );
-            transports.push(
-                new DailyRotateFile({
-                    filename: `%DATE%.log`,
-                    dirname: `logs/${DEBUGGER_NAME}/default`,
-                    datePattern: 'YYYY-MM-DD',
-                    zippedArchive: true,
-                    maxSize: this.maxSize,
-                    maxFiles: this.maxFiles,
-                    level: 'info',
-                })
-            );
-            transports.push(
-                new DailyRotateFile({
-                    filename: `%DATE%.log`,
-                    dirname: `logs/${DEBUGGER_NAME}/debug`,
-                    datePattern: 'YYYY-MM-DD',
-                    zippedArchive: true,
-                    maxSize: this.maxSize,
-                    maxFiles: this.maxFiles,
-                    level: 'debug',
-                })
-            );
 
-            if (this.env !== 'production') {
-                transports.push(new winston.transports.Console());
-            }
+        transports.push(
+            new DailyRotateFile({
+                filename: `%DATE%.log`,
+                dirname: `logs/${DEBUGGER_NAME}/error`,
+                datePattern: 'YYYY-MM-DD',
+                zippedArchive: true,
+                maxSize: this.maxSize,
+                maxFiles: this.maxFiles,
+                level: 'error',
+            })
+        );
+        transports.push(
+            new DailyRotateFile({
+                filename: `%DATE%.log`,
+                dirname: `logs/${DEBUGGER_NAME}/default`,
+                datePattern: 'YYYY-MM-DD',
+                zippedArchive: true,
+                maxSize: this.maxSize,
+                maxFiles: this.maxFiles,
+                level: 'info',
+            })
+        );
+        transports.push(
+            new DailyRotateFile({
+                filename: `%DATE%.log`,
+                dirname: `logs/${DEBUGGER_NAME}/debug`,
+                datePattern: 'YYYY-MM-DD',
+                zippedArchive: true,
+                maxSize: this.maxSize,
+                maxFiles: this.maxFiles,
+                level: 'debug',
+            })
+        );
+
+        if (this.debug || (this.logger && this.env !== 'production')) {
+            transports.push(new winston.transports.Console());
         }
 
         const loggerOptions: LoggerOptions = {
