@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { MessageEnumController } from 'src/message/controller/message.controller';
+import { MessageEnumController } from 'src/message/controller/message.enum.controller';
 import { MessageModule } from 'src/message/message.module';
 
 @Module({
