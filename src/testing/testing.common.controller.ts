@@ -4,7 +4,7 @@ import { Response } from 'src/utils/response/response.decorator';
 @Controller({
     version: VERSION_NEUTRAL,
 })
-export class TestingController {
+export class TestingCommonController {
     @Response('test.hello')
     @Get('/hello')
     async hello(): Promise<void> {
