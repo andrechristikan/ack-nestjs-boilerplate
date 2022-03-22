@@ -14,7 +14,3 @@ networks:
   app-network:
     name: app-network
     driver: bridge
-volumes:
-  mongodb-data:
-    driver: local
-    
