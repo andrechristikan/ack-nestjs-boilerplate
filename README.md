@@ -43,6 +43,7 @@ Cool features, [see this for more information][ack-docs-setup-features] 😎.
 - Advance Validate Income Request
 - Advance Mongoose Implementation
 - Catch Every Activity
+- Etc.
 
 ## Documentation
 
@@ -53,6 +54,13 @@ Documentation will write with gitbook.
 - [Kafka Documentation][ack-docs-kafka]
 - [Tips][ack-docs-tips]
 - [Reference][ack-docs-reference]
+
+## Todo
+
+Next development
+
+- [ ] Documentation **_(Ongoing)_**
+- [ ] Swagger
 
 ## Endpoints
 
