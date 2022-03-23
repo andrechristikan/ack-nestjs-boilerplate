@@ -94,7 +94,6 @@ describe('E2E Role Admin', () => {
             ...E2E_ROLE_PAYLOAD_TEST,
             loginDate: new Date(),
             rememberMe: false,
-            loginExpired: await authService.loginExpiredDate(false),
         });
 
         await app.init();
