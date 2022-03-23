@@ -20,8 +20,8 @@ import { DebuggerService } from 'src/debugger/service/debugger.service';
 })
 export class HealthCommonController {
     constructor(
-        private readonly debuggerService: DebuggerService,
         @DatabaseConnection() private readonly databaseConnection: Connection,
+        private readonly debuggerService: DebuggerService,
         private readonly health: HealthCheckService,
         private readonly memoryHealthIndicator: MemoryHealthIndicator,
         private readonly diskHealthIndicator: DiskHealthIndicator,
