@@ -47,13 +47,10 @@ Cool features, [see this for more information][ack-docs-setup-features] 😎.
 
 ## Documentation
 
-Documentation will write with gitbook.
-
-- [Setup Documentation][ack-docs-setup]
-- [Usage Documentation][ack-docs-usage]
-- [Kafka Documentation][ack-docs-kafka]
+- [Documentation][ack-docs]
+- [Usage][ack-docs-usage]
+- [Example][ack-docs-example]
 - [Tips][ack-docs-tips]
-- [Reference][ack-docs-reference]
 
 ## Todo
 
@@ -136,12 +133,10 @@ Distributed under [MIT licensed][license].
 [endpoints]: endpoints.json
 
 <!-- Documents -->
-[ack-docs-setup]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose
-[ack-docs-setup-features]: https://acks.gitbook.io/ack-nestjs-mongoose/features
-[ack-docs-usage]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/usage-documentation/
-[ack-docs-kafka]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/kafka-documentation/
-[ack-docs-tips]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/tips/
-[ack-docs-reference]: https://acks.gitbook.io/ack-nestjs-boilerplate-mongoose/v/reference/
+[ack-docs]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/
+[ack-docs-usage]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/usage/readme
+[ack-docs-example]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/example
+[ack-docs-tips]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/tips/readme
 
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com

@@ -124,7 +124,6 @@ export class AuthCommonController {
         const payloadRefreshToken: Record<string, any> =
             await this.authService.createPayloadRefreshToken(safe, rememberMe, {
                 loginDate: payloadAccessToken.loginDate,
-                loginExpiredDate: payloadAccessToken.loginExpiredDate,
             });
 
         const accessToken: string = await this.authService.createAccessToken(
@@ -176,7 +175,7 @@ export class AuthCommonController {
     @Post('/refresh')
     async refresh(
         @User()
-        { _id, rememberMe, loginDate, loginExpiredDate }: Record<string, any>,
+        { _id, rememberMe, loginDate }: Record<string, any>,
         @Token() refreshToken: string
     ): Promise<IResponse> {
         const user: IUserDocument =
@@ -245,7 +244,6 @@ export class AuthCommonController {
         const payloadAccessToken: Record<string, any> =
             await this.authService.createPayloadAccessToken(safe, rememberMe, {
                 loginDate,
-                loginExpiredDate,
             });
 
         const accessToken: string = await this.authService.createAccessToken(

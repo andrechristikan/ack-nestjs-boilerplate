@@ -24,7 +24,6 @@ export class AuthLoginTransformer {
     readonly mobileNumber: string;
     readonly isActive: boolean;
     readonly passwordExpiredDate: Date;
-    readonly loginExpiredDate: Date;
     readonly loginDate: Date;
     readonly rememberMe: boolean;
 

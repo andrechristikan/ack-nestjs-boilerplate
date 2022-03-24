@@ -126,28 +126,16 @@ export class AuthService {
         );
     }
 
-    async loginExpiredDate(rememberMe: boolean): Promise<Date> {
-        const expired: string = rememberMe
-            ? this.refreshTokenExpirationTimeRememberMe.replace('d', '')
-            : this.refreshTokenExpirationTime.replace('d', '');
-        return this.helperDateService.forwardInDays(parseInt(expired));
-    }
-
     async createPayloadAccessToken(
         data: AuthLoginTransformer,
         rememberMe: boolean,
         options?: IAuthPayloadOptions
     ): Promise<Record<string, any>> {
         const login = new Date();
-        const loginExpiredDate = await this.loginExpiredDate(rememberMe);
         return {
             ...data,
             rememberMe,
             loginDate: options && options.loginDate ? options.loginDate : login,
-            loginExpiredDate:
-                options && options.loginExpiredDate
-                    ? options.loginExpiredDate
-                    : loginExpiredDate,
         };
     }
 
@@ -161,10 +149,6 @@ export class AuthService {
             rememberMe,
             loginDate:
                 options && options.loginDate ? options.loginDate : undefined,
-            loginExpiredDate:
-                options && options.loginExpiredDate
-                    ? options.loginExpiredDate
-                    : undefined,
         };
     }
 

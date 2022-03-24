@@ -129,7 +129,6 @@ export class AuthPublicController {
             const payloadRefreshToken: Record<string, any> =
                 await this.authService.createPayloadRefreshToken(safe, false, {
                     loginDate: payloadAccessToken.loginDate,
-                    loginExpiredDate: payloadAccessToken.loginExpiredDate,
                 });
 
             const accessToken: string =

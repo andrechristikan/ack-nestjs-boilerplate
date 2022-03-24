@@ -6,5 +6,4 @@ export interface IAuthPassword {
 
 export interface IAuthPayloadOptions {
     loginDate: Date;
-    loginExpiredDate: Date;
 }
