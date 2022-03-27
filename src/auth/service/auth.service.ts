@@ -131,11 +131,11 @@ export class AuthService {
         rememberMe: boolean,
         options?: IAuthPayloadOptions
     ): Promise<Record<string, any>> {
-        const login = new Date();
         return {
             ...data,
             rememberMe,
-            loginDate: options && options.loginDate ? options.loginDate : login,
+            loginDate:
+                options && options.loginDate ? options.loginDate : new Date(),
         };
     }
 

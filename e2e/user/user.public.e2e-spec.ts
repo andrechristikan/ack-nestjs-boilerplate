@@ -18,10 +18,12 @@ import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/utils/file/file.constant';
 import { RouterPublicModule } from 'src/router/router.public.module';
 import { RoleDocument } from 'src/role/schema/role.schema';
 import { UserDocument } from 'src/user/schema/user.schema';
+import { AwsS3Service } from 'src/aws/service/aws.s3.service';
 
 describe('E2E User Public', () => {
     let app: INestApplication;
     let userService: UserService;
+    let awsS3Service: AwsS3Service;
     let authService: AuthService;
     let roleService: RoleService;
 
@@ -46,6 +48,7 @@ describe('E2E User Public', () => {
 
         app = modRef.createNestApplication();
         userService = app.get(UserService);
+        awsS3Service = app.get(AwsS3Service);
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
 
@@ -120,7 +123,7 @@ describe('E2E User Public', () => {
     it(`POST ${E2E_USER_PUBLIC_PROFILE_UPLOAD_URL} Profile Upload Error Request`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
-            .attach('file', './test/user/files/test.txt')
+            .attach('file', './e2e/user/files/test.txt')
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data');
 
@@ -135,7 +138,7 @@ describe('E2E User Public', () => {
     it(`POST ${E2E_USER_PUBLIC_PROFILE_UPLOAD_URL} Profile Upload Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
-            .attach('file', './test/user/files/test.txt')
+            .attach('file', './e2e/user/files/test.txt')
             .set('Authorization', `Bearer ${accessTokenNotFound}`)
             .set('Content-Type', 'multipart/form-data');
 
@@ -151,7 +154,7 @@ describe('E2E User Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
             .send()
-            .attach('file', './test/user/files/medium.jpg')
+            .attach('file', './e2e/user/files/medium.jpg')
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data');
 
@@ -167,7 +170,7 @@ describe('E2E User Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
             .send()
-            .attach('file', './test/user/files/small.jpg')
+            .attach('file', './e2e/user/files/small.jpg')
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data');
 
@@ -179,6 +182,11 @@ describe('E2E User Public', () => {
 
     afterAll(async () => {
         try {
+            user = await userService.findOneById<UserDocument>(user._id);
+
+            await awsS3Service.s3DeleteItemInBucket(
+                user.photo.pathWithFilename
+            );
             await userService.deleteOneById(user._id);
         } catch (e) {
             console.error(e);

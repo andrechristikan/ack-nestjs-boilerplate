@@ -7,7 +7,7 @@
     ],
     "testEnvironment": "node",
     "testMatch": [
-        "<rootDir>/test/**/*spec.ts"
+        "<rootDir>/e2e/**/*e2e-spec.ts"
     ],
     "collectCoverage": true,
     "coveragePathIgnorePatterns": [
@@ -15,7 +15,7 @@
         "vendor",
         "src",
         "prod",
-        "e2e"
+        "test"
     ],
     "coverageReporters": [
         "clover", 
@@ -23,7 +23,7 @@
         "lcov", 
         "text"
     ],
-    "coverageDirectory": "coverage",
+    "coverageDirectory": "e2e-coverage",
     "moduleFileExtensions": [
         "js", 
         "ts", 

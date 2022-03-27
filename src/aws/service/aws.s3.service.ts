@@ -5,18 +5,16 @@ import {
     ListObjectsV2Command,
     PutObjectCommand,
     DeleteObjectCommand,
-    DeleteBucketCommand,
-    CreateBucketCommand,
     DeleteObjectsCommand,
     ObjectIdentifier,
 } from '@aws-sdk/client-s3';
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Readable } from 'stream';
 import { IAwsS3Response } from '../aws.interface';
 
 @Injectable()
-export class AwsS3Service implements OnModuleInit {
+export class AwsS3Service {
     private readonly s3Client: S3Client;
     private readonly bucket: string;
     private readonly baseUrl: string;
@@ -35,18 +33,6 @@ export class AwsS3Service implements OnModuleInit {
 
         this.bucket = this.configService.get<string>('aws.s3.bucket');
         this.baseUrl = this.configService.get<string>('aws.s3.baseUrl');
-    }
-
-    async onModuleInit(): Promise<void> {
-        const bucketCreate: boolean =
-            this.configService.get<boolean>('aws.bucketCreate');
-        if (bucketCreate) {
-            this.s3ListBucket().then((list: string[]) => {
-                if (!list.includes(this.bucket)) {
-                    this.s3CreateBucket();
-                }
-            });
-        }
     }
 
     async s3ListBucket(): Promise<string[]> {
@@ -180,26 +166,33 @@ export class AwsS3Service implements OnModuleInit {
         }
     }
 
-    async s3DeleteBucket(): Promise<boolean> {
-        const command: DeleteBucketCommand = new DeleteBucketCommand({
+    async s3DeleteFolder(dir: string): Promise<boolean> {
+        const commandList: ListObjectsV2Command = new ListObjectsV2Command({
             Bucket: this.bucket,
+            Prefix: dir,
         });
+        const lists = await this.s3Client.send(commandList);
 
         try {
-            await this.s3Client.send(command);
-            return true;
-        } catch (e) {
-            return false;
-        }
-    }
+            const listItems = lists.Contents.map((val) => ({
+                Key: val.Key,
+            }));
+            const commandDeleteItems: DeleteObjectsCommand =
+                new DeleteObjectsCommand({
+                    Bucket: this.bucket,
+                    Delete: {
+                        Objects: listItems,
+                    },
+                });
 
-    async s3CreateBucket(): Promise<boolean> {
-        const command: CreateBucketCommand = new CreateBucketCommand({
-            Bucket: this.bucket,
-        });
+            await this.s3Client.send(commandDeleteItems);
 
-        try {
-            await this.s3Client.send(command);
+            const commandDelete: DeleteObjectCommand = new DeleteObjectCommand({
+                Bucket: this.bucket,
+                Key: dir,
+            });
+            await this.s3Client.send(commandDelete);
+
             return true;
         } catch (e) {
             return false;

@@ -15,11 +15,9 @@
 
 # ACK NestJs Boilerplate Mongoose  🔥 🚀
 
-> Usage Document still ongoing, last update on 7 March 2022
+> Usage Document still ongoing, last update on 27 March 2022
 
-ack-nestjs-boilerplate-mongoose is a [NestJs][ref-nestjs] Boilerplate with [Mongoose][ref-mongoose] and [MongoDB][ref-mongodb] as Database.
-Best uses for build an API Project or Microservice Project.
-Made with following [nodejs-best-practice][ref-nodejs-best-practice] and NestJs Habit as benchmark.
+ack-nestjs-boilerplate-mongoose is a [NestJs](http://nestjs.com) Boilerplate with [Mongoose](https://mongoosejs.com) and [MongoDB](https://docs.mongodb.com) as Database. Made with following [nodejs-best-practice](https://github.com/goldbergyoni/nodebestpractices) and NestJs Habit as benchmark.
 
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
 
@@ -35,20 +33,11 @@ ack-nestjs-boilerplate-mongoose have some objective.
 
 ## Features
 
-Cool features, [see this for more information][ack-docs-setup-features] 😎.
-
-- Centralize Configuration
-- OAuth2 as Authorization
-- User, Role and Permission Management
-- Advance Validate Income Request
-- Advance Mongoose Implementation
-- Catch Every Activity
-- Etc.
+Cool features, [see this for more information][ack-docs-features] 😎.
 
 ## Documentation
 
 - [Documentation][ack-docs]
-- [Usage][ack-docs-usage]
 - [Example][ack-docs-example]
 - [Tips][ack-docs-tips]
 
@@ -57,6 +46,7 @@ Cool features, [see this for more information][ack-docs-setup-features] 😎.
 Next development
 
 - [ ] Documentation **_(Ongoing)_**
+- [ ] Unit Testing **_(Ongoing)_**
 - [ ] Swagger
 
 ## Endpoints
@@ -134,7 +124,7 @@ Distributed under [MIT licensed][license].
 
 <!-- Documents -->
 [ack-docs]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/
-[ack-docs-usage]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/usage/readme
+[ack-docs-features]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/features/readme
 [ack-docs-example]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/example
 [ack-docs-tips]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/tips/readme
 
