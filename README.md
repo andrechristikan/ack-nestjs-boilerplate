@@ -21,6 +21,12 @@ ack-nestjs-boilerplate-mongoose is a [NestJs](http://nestjs.com) Boilerplate wit
 
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
 
+## Version
+
+- NestJs v8.x
+- Mongoose v6.x
+- MongoDB v5.x
+
 ## Objective
 
 ack-nestjs-boilerplate-mongoose have some objective.
@@ -45,9 +51,9 @@ Cool features, [click this for more information][ack-docs-features] 😎.
 
 Next development
 
-- [ ] Documentation **_(Ongoing)_**
-- [ ] Unit Testing **_(Ongoing)_**
-- [ ] Swagger
+- [x] Documentation
+- [x] Unit Testing
+- [ ] Swagger **_(Ongoing)_**
 
 ## Endpoints
 

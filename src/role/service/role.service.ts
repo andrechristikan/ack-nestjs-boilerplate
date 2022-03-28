@@ -74,13 +74,15 @@ export class RoleService {
     }
 
     async exists(name: string, _id?: string): Promise<boolean> {
-        return this.roleModel.exists({
+        const exist = await this.roleModel.exists({
             name: {
                 $regex: new RegExp(name),
                 $options: 'i',
             },
             _id: { $nin: new Types.ObjectId(_id) },
         });
+
+        return exist ? true : false;
     }
 
     async create({
