@@ -25,7 +25,7 @@ export class MessageService {
         key: string,
         options?: IMessageOptions
     ): Promise<string | IMessage> {
-        const { properties, appLanguages } = options;
+        const { properties, appLanguages } = options || {};
 
         if (appLanguages && isArray(appLanguages) && appLanguages.length > 0) {
             const messages: IMessage = {};
@@ -46,9 +46,15 @@ export class MessageService {
             return messages;
         }
 
-        return this.setMessage(this.defaultLanguage, key, {
-            properties,
-        });
+        return this.setMessage(
+            this.defaultLanguage,
+            key,
+            properties
+                ? {
+                      properties,
+                  }
+                : undefined
+        );
     }
 
     async getRequestErrorsMessage(

@@ -34,7 +34,7 @@ describe('AuthService', () => {
         );
     });
 
-    it('should be defined', () => {
+    it('should be defined', async () => {
         expect(authService).toBeDefined();
     });
 

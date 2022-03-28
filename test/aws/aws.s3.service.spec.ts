@@ -19,7 +19,7 @@ describe('AwsS3Service', () => {
         awsS3Service = moduleRef.get<AwsS3Service>(AwsS3Service);
     });
 
-    it('should be defined', () => {
+    it('should be defined', async () => {
         expect(awsS3Service).toBeDefined();
     });
 

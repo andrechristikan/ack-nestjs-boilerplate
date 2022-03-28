@@ -33,7 +33,7 @@ ack-nestjs-boilerplate-mongoose have some objective.
 
 ## Features
 
-Cool features, [see this for more information][ack-docs-features] 😎.
+Cool features, [click this for more information][ack-docs-features] 😎.
 
 ## Documentation
 
@@ -50,6 +50,8 @@ Next development
 - [ ] Swagger
 
 ## Endpoints
+
+> will replace with swagger
 
 All endpoints in [endpoints.json][endpoints] and need import to PostMan. [Follow this step for import into Postman][ref-postman-import-export].
 
