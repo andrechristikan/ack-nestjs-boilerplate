@@ -6,7 +6,7 @@ import { CoreModule } from 'src/core/core.module';
 describe('AwsS3Service', () => {
     let awsS3Service: AwsS3Service;
 
-    const image = readFileSync('./e2e/user/files/small.jpg');
+    const image = readFileSync('./test/aws/files/small.jpg');
     const dirname = '/test/testack.jpg';
     const dir = '/test';
 

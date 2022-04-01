@@ -67,7 +67,7 @@ pipeline {
                 }
             }
         }
-        stage('Test') {
+        stage('Unit Test') {
             steps {
                 script{
                     def commit_id = readFile('.git/commit-id').trim()
@@ -82,13 +82,35 @@ pipeline {
                         sh "docker network create ${APP_NETWORK} --driver=bridge"
                     }catch(e){}
 
+                    sh "docker run --rm --network ${APP_NETWORK} \
+                        -v /app/${APP_NAME}/.env:/app/.env \
+                        --name ${container_testing} \
+                        ${app_image} \
+                        sh -c 'yarn test'"
+                }
+                
+            }
+        }
+        stage('E2E Test') {
+            steps {
+                script{
+                    def commit_id = readFile('.git/commit-id').trim()
+                    def app_image = "${DOCKER_USERNAME}/${APP_NAME}-builder:${commit_id}"
+                    def container_testing = "${APP_NAME}-testing"
+
                     try{
-                        sh "docker run --rm --network ${APP_NETWORK} \
-                            -v /app/${APP_NAME}/.env:/app/.env \
-                            --name ${container_testing} \
-                            ${app_image} \
-                            sh -c 'yarn test'"     
+                        sh "docker stop ${container_testing} && docker rm ${container_testing}"
                     }catch(e){}
+
+                    try{
+                        sh "docker network create ${APP_NETWORK} --driver=bridge"
+                    }catch(e){}
+
+                    sh "docker run --rm --network ${APP_NETWORK} \
+                        -v /app/${APP_NAME}/.env:/app/.env \
+                        --name ${container_testing} \
+                        ${app_image} \
+                        sh -c 'yarn test:e2e'"
                 }
                 
             }
