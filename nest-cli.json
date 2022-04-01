@@ -2,6 +2,8 @@
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
   "compilerOptions": {
-    "assets": ["message/languages/**/*"]
+    "assets": [
+      { "include": "message/languages/**/*", "watchAssets": true }
+    ]
   }
 }
