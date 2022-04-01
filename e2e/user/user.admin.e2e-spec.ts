@@ -280,7 +280,7 @@ describe('E2E User Admin', () => {
             .set('Authorization', `Bearer ${accessToken}`)
             .send({
                 firstName: faker.name.firstName(),
-                lastName: faker.name.lastName('62812#########'),
+                lastName: faker.name.lastName(),
             })
             .expect(404);
 
@@ -298,7 +298,7 @@ describe('E2E User Admin', () => {
             .set('Authorization', `Bearer ${accessToken}`)
             .send({
                 firstName: faker.name.firstName(),
-                lastName: faker.name.lastName('62812#########'),
+                lastName: faker.name.lastName(),
             })
             .expect(200);
 

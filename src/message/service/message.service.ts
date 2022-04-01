@@ -21,42 +21,6 @@ export class MessageService {
         this.defaultLanguage = this.configService.get<string>('app.language');
     }
 
-    async get(
-        key: string,
-        options?: IMessageOptions
-    ): Promise<string | IMessage> {
-        const { properties, appLanguages } = options || {};
-
-        if (appLanguages && isArray(appLanguages) && appLanguages.length > 0) {
-            const messages: IMessage = {};
-            for (const appLanguage of appLanguages) {
-                messages[appLanguage] = await this.setMessage(
-                    appLanguage,
-                    key,
-                    {
-                        properties,
-                    }
-                );
-            }
-
-            if (Object.keys(messages).length === 1) {
-                return messages[appLanguages[0]];
-            }
-
-            return messages;
-        }
-
-        return this.setMessage(
-            this.defaultLanguage,
-            key,
-            properties
-                ? {
-                      properties,
-                  }
-                : undefined
-        );
-    }
-
     async getRequestErrorsMessage(
         requestErrors: Record<string, any>[],
         appLanguages?: string[]
@@ -96,7 +60,8 @@ export class MessageService {
                     message: (await this.get(`request.${constraint}`, {
                         appLanguages,
                         properties: {
-                            [property]: propertyValue,
+                            property,
+                            value: propertyValue,
                         },
                     })) as string,
                 });
@@ -108,6 +73,38 @@ export class MessageService {
         return messages.flat(1) as IErrors[];
     }
 
+    async get(
+        key: string,
+        options?: IMessageOptions
+    ): Promise<string | IMessage> {
+        const { properties, appLanguages } = options
+            ? options
+            : { properties: undefined, appLanguages: undefined };
+
+        if (appLanguages && isArray(appLanguages) && appLanguages.length > 0) {
+            const messages: IMessage = {};
+            for (const appLanguage of appLanguages) {
+                messages[appLanguage] = await this.setMessage(
+                    appLanguage,
+                    key,
+                    {
+                        properties,
+                    }
+                );
+            }
+
+            if (Object.keys(messages).length === 1) {
+                return messages[appLanguages[0]];
+            }
+
+            return messages;
+        }
+
+        return this.setMessage(this.defaultLanguage, key, {
+            properties,
+        });
+    }
+
     private setMessage(
         lang: string,
         key: string,
@@ -115,7 +112,8 @@ export class MessageService {
     ): any {
         return this.i18n.translate(key, {
             lang: lang,
-            args: options && options.properties ? options : undefined,
+            args:
+                options && options.properties ? options.properties : undefined,
         });
     }
 

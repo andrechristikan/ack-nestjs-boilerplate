@@ -53,6 +53,7 @@ Next development
 
 - [x] Documentation
 - [x] Unit Testing
+- [ ] Docker compose file mongodb replication set  **_(Ongoing)_**
 - [ ] Swagger **_(Ongoing)_**
 
 ## Endpoints

@@ -5,7 +5,7 @@ import {
     HttpException,
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { IErrorHttpException } from './error.interface';
 import { IMessage } from 'src/message/message.interface';
 import { MessageService } from 'src/message/service/message.service';
@@ -19,9 +19,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
         const statusHttp: number = exception.getStatus();
         const responseHttp: any = ctx.getResponse<Response>();
 
-        const request: Request = ctx.getRequest<Request>();
-        const { headers } = request;
-        const appLanguages: string[] = headers['x-custom-lang']
+        const appLanguages: string[] = ctx.getRequest().i18nLang
             ? ctx.getRequest().i18nLang.split(',')
             : undefined;
 
@@ -36,10 +34,27 @@ export class ErrorHttpFilter implements ExceptionFilter {
                       appLanguages
                   )
                 : undefined;
-            const rMessage: string | IMessage = await this.messageService.get(
-                message,
+
+            let rMessage: string | IMessage = await this.messageService.get(
+                'response.default',
                 { appLanguages }
             );
+
+            if (typeof message === 'object') {
+                rMessage = await this.messageService.get(message.path, {
+                    appLanguages,
+                    properties: message.properties
+                        ? {
+                              property: message.properties.property,
+                              value: message.properties.value,
+                          }
+                        : undefined,
+                });
+            } else {
+                rMessage = await this.messageService.get(message, {
+                    appLanguages,
+                });
+            }
 
             responseHttp.status(statusHttp).json({
                 statusCode,

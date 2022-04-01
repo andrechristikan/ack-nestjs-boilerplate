@@ -1,3 +1,5 @@
+import { IMessageProperties } from 'src/message/message.interface';
+
 export interface IErrors {
     readonly message: string;
     readonly property: string;
@@ -5,7 +7,7 @@ export interface IErrors {
 
 export interface IErrorHttpException {
     statusCode: number;
-    message: string;
+    message: string | IMessageProperties;
     errors?: IErrors[];
     data?: Record<string, any>;
 }
