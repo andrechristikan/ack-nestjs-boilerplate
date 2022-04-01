@@ -2,36 +2,41 @@ import faker from '@faker-js/faker';
 import { Test } from '@nestjs/testing';
 import { AuthService } from 'src/auth/service/auth.service';
 import { CoreModule } from 'src/core/core.module';
-import { PermissionModule } from 'src/permission/permission.module';
-import { RoleModule } from 'src/role/role.module';
-import { UserService } from 'src/user/service/user.service';
+import { IRoleDocument } from 'src/role/role.interface';
 import { IUserDocument } from 'src/user/user.interface';
-import { UserModule } from 'src/user/user.module';
 
 describe('AuthService', () => {
     let authService: AuthService;
-    let userService: UserService;
 
     const rememberMe = false;
-    const email = 'admin@mail.com';
 
-    let user: IUserDocument;
+    const user: IUserDocument = {
+        _id: '623cb7fd37a861a10bac2c91',
+        isActive: true,
+        salt: '$2b$08$GZfqgaDMPpWQ3lJEGQ8Ueu',
+        passwordExpiredDate: new Date('2023-03-24T18:27:09.500Z'),
+        password:
+            '$2b$08$GZfqgaDMPpWQ3lJEGQ8Ueu1vJ3C6G3stnkS/5e61bK/4f1.Fuw2Eq',
+        role: {
+            _id: '623cb7f7965a74bf7a0e9e53',
+            isAdmin: true,
+            isActive: true,
+            permissions: [],
+            name: 'admin',
+        } as IRoleDocument,
+        email: 'admin@mail.com',
+        mobileNumber: '08111111111',
+        lastName: 'test',
+        firstName: 'admin@mail.com',
+    } as IUserDocument;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule, UserModule, RoleModule, PermissionModule],
+            imports: [CoreModule],
             providers: [AuthService],
         }).compile();
 
         authService = moduleRef.get<AuthService>(AuthService);
-        userService = moduleRef.get<UserService>(UserService);
-
-        user = await userService.findOne<IUserDocument>(
-            {
-                email,
-            },
-            { populate: { permission: true, role: true } }
-        );
     });
 
     it('should be defined', async () => {
