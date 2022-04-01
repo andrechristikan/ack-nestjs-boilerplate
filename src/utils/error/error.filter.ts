@@ -44,10 +44,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 rMessage = await this.messageService.get(message.path, {
                     appLanguages,
                     properties: message.properties
-                        ? {
-                              property: message.properties.property,
-                              value: message.properties.value,
-                          }
+                        ? message.properties
                         : undefined,
                 });
             } else {
