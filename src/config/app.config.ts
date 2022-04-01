@@ -18,7 +18,7 @@ export default registerAs(
                 maxSize: '2M',
             },
             system: {
-                active: true,
+                active: false,
                 maxFiles: '7d',
                 maxSize: '2m',
             },

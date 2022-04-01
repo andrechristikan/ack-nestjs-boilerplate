@@ -37,7 +37,7 @@ export class HelperDateService {
         return moment(date, true).valueOf();
     }
 
-    toString(date: Date, format?: string): string {
+    format(date: Date, format?: string): string {
         return moment(date).format(format || 'YYYY-MM-DD');
     }
 

@@ -1,12 +1,12 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "declaration": true,
+    "declaration": false,
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
-    "target": "ES2019",
+    "target": "ESNext",
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
@@ -18,7 +18,13 @@
     "resolveJsonModule": true
   },
   "include": [
-    "src/**/*",
-    "test/**/*"
+    "src",
+    "test",
+    "e2e"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist", 
+    "prod"
   ]
 }

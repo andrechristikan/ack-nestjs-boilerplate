@@ -178,7 +178,7 @@ export class UserService {
         mobileNumber: string,
         _id?: string
     ): Promise<IUserCheckExist> {
-        const existEmail: boolean = await this.userModel.exists({
+        const existEmail: Record<string, any> = await this.userModel.exists({
             email: {
                 $regex: new RegExp(email),
                 $options: 'i',
@@ -186,14 +186,15 @@ export class UserService {
             _id: { $nin: [new Types.ObjectId(_id)] },
         });
 
-        const existMobileNumber: boolean = await this.userModel.exists({
-            mobileNumber,
-            _id: { $nin: [new Types.ObjectId(_id)] },
-        });
+        const existMobileNumber: Record<string, any> =
+            await this.userModel.exists({
+                mobileNumber,
+                _id: { $nin: [new Types.ObjectId(_id)] },
+            });
 
         return {
-            email: existEmail,
-            mobileNumber: existMobileNumber,
+            email: existEmail ? true : false,
+            mobileNumber: existMobileNumber ? true : false,
         };
     }
 

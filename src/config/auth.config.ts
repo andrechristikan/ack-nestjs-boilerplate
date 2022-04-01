@@ -15,8 +15,8 @@ export default registerAs(
                 secretKey:
                     process.env.AUTH_JWT_REFRESH_TOKEN_SECRET_KEY ||
                     '123456000',
-                expirationTime: '7d', // recommendation for production is 200d
-                expirationTimeRememberMe: '200d', // recommendation for production is 200d
+                expirationTime: '7d', // recommendation for production is 7d
+                expirationTimeRememberMe: '30d', // recommendation for production is 30d
                 notBeforeExpirationTime: '30m', // recommendation for production is 30m
             },
         },

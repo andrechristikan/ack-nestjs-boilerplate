@@ -49,7 +49,7 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
     }
 
     private httpLogger(): IHttpDebuggerConfig {
-        const date: string = this.helperDateService.toString(
+        const date: string = this.helperDateService.format(
             this.helperDateService.create()
         );
         const HttpDebuggerOptions: IHttpDebuggerConfigOptions = {

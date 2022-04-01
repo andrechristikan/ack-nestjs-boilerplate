@@ -65,16 +65,21 @@ export class HelperEncryptionService {
     ): Promise<string> {
         return this.jwtService.sign(payload, {
             secret:
-                options.secretKey ||
-                this.configService.get<string>('helper.jwt.secretKey'),
+                options && options.secretKey
+                    ? options.secretKey
+                    : this.configService.get<string>('helper.jwt.secretKey'),
             expiresIn:
-                options.expiredIn ||
-                this.configService.get<string>('helper.jwt.expirationTime'),
+                options && options.expiredIn
+                    ? options.expiredIn
+                    : this.configService.get<string>(
+                          'helper.jwt.expirationTime'
+                      ),
             notBefore:
-                options.notBefore ||
-                this.configService.get<string>(
-                    'helper.jwt.notBeforeExpirationTime'
-                ),
+                options && options.notBefore
+                    ? options.notBefore
+                    : this.configService.get<string>(
+                          'helper.jwt.notBeforeExpirationTime'
+                      ),
         });
     }
 
@@ -84,8 +89,9 @@ export class HelperEncryptionService {
     ): Promise<Record<string, any>> {
         return this.jwtService.verify(token, {
             secret:
-                options.secretKey ||
-                this.configService.get<string>('helper.jwt.secretKey'),
+                options && options.secretKey
+                    ? options.secretKey
+                    : this.configService.get<string>('helper.jwt.secretKey'),
         });
     }
 
@@ -95,8 +101,9 @@ export class HelperEncryptionService {
     ): Promise<boolean> {
         const payload: Record<string, any> = this.jwtService.verify(token, {
             secret:
-                options.secretKey ||
-                this.configService.get<string>('helper.jwt.secretKey'),
+                options && options.secretKey
+                    ? options.secretKey
+                    : this.configService.get<string>('helper.jwt.secretKey'),
         });
 
         return payload ? true : false;
