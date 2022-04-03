@@ -27,7 +27,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
         const response = exception.getResponse() as IErrorHttpException;
 
         if (typeof response === 'object') {
-            const { statusCode, message, errors, data } = response;
+            const { statusCode, message, errors, data, properties } = response;
             const rErrors = errors
                 ? await this.messageService.getRequestErrorsMessage(
                       errors,
@@ -36,20 +36,14 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 : undefined;
 
             let rMessage: string | IMessage = await this.messageService.get(
-                'response.default',
+                message,
                 { appLanguages }
             );
 
-            if (typeof message === 'object') {
-                rMessage = await this.messageService.get(message.path, {
-                    appLanguages,
-                    properties: message.properties
-                        ? message.properties
-                        : undefined,
-                });
-            } else {
+            if (properties) {
                 rMessage = await this.messageService.get(message, {
                     appLanguages,
+                    properties,
                 });
             }
 
