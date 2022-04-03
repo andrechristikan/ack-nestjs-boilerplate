@@ -7,7 +7,7 @@
     ],
     "testEnvironment": "node",
     "testMatch": [
-        "<rootDir>/test/**/*spec.ts"
+        "<rootDir>/test/**/*.spec.ts"
     ],
     "collectCoverage": true,
     "coveragePathIgnorePatterns": [

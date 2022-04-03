@@ -7,7 +7,7 @@
     ],
     "testEnvironment": "node",
     "testMatch": [
-        "<rootDir>/e2e/**/*e2e-spec.ts"
+        "<rootDir>/e2e/**/*.e2e-spec.ts"
     ],
     "collectCoverage": true,
     "coveragePathIgnorePatterns": [
