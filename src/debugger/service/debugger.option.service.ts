@@ -64,7 +64,7 @@ export class DebuggerOptionService {
             })
         );
 
-        if (this.debug || (this.logger && this.env !== 'production')) {
+        if ((this.debug || this.logger) && this.env !== 'production') {
             transports.push(new winston.transports.Console());
         }
 
