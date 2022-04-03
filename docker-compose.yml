@@ -9,8 +9,28 @@ services:
     networks:
       - app-network
     volumes:
-      - .env:/app/.env
+      - ./src/:/app/src/
+      - .env/:/app/.env
+    depends_on: 
+      - mongodb
+  mongodb:
+    image: mongo:latest
+    container_name: mongo
+    hostname: mongo
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: 123456
+      MONGO_INITDB_DATABASE: ack
+    volumes:
+      - dbdata:/data/db
+    restart: unless-stopped
+    networks:
+      - app-network
 networks:
   app-network:
     name: app-network
     driver: bridge
+volumes:
+  dbdata:

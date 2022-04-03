@@ -4,14 +4,12 @@ LABEL maintainer "ack@baibay.id"
 WORKDIR /app
 EXPOSE 3000
 
-COPY package.json .
-COPY yarn.lock .
+COPY package.json yarn.lock ./
 RUN touch .env
 
 RUN set -x && yarn
+RUN yarn global add @nestjs/cli
 
 COPY . .
 
-RUN yarn build
-
-CMD [ "yarn", "start:prod" ]
+CMD [ "yarn", "start:dev" ]
