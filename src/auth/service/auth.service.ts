@@ -67,9 +67,7 @@ export class AuthService {
     }
 
     async payloadAccessToken(token: string): Promise<Record<string, any>> {
-        return this.helperEncryptionService.jwtDecrypt(token, {
-            secretKey: this.accessTokenSecretToken,
-        });
+        return this.helperEncryptionService.jwtDecrypt(token);
     }
 
     async createRefreshToken(
@@ -93,9 +91,7 @@ export class AuthService {
     }
 
     async payloadRefreshToken(token: string): Promise<Record<string, any>> {
-        return this.helperEncryptionService.jwtDecrypt(token, {
-            secretKey: this.refreshTokenSecretToken,
-        });
+        return this.helperEncryptionService.jwtDecrypt(token);
     }
 
     async createBasicToken(

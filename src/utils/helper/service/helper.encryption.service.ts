@@ -83,16 +83,8 @@ export class HelperEncryptionService {
         });
     }
 
-    async jwtDecrypt(
-        token: string,
-        options?: IHelperJwtOptions
-    ): Promise<Record<string, any>> {
-        return this.jwtService.verify(token, {
-            secret:
-                options && options.secretKey
-                    ? options.secretKey
-                    : this.configService.get<string>('helper.jwt.secretKey'),
-        });
+    async jwtDecrypt(token: string): Promise<Record<string, any>> {
+        return this.jwtService.decode(token) as Record<string, any>;
     }
 
     async jwtVerify(
