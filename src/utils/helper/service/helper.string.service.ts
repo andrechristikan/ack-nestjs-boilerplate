@@ -37,9 +37,9 @@ export class HelperStringService {
             return value;
         }
 
-        const end = length > 10 ? 6 : length > 5 ? length - 2 : length - 1;
-        const censorString = '*'.repeat(end);
-        const visibleString = value.substring(end, length > 10 ? 15 : length);
+        const end = length > 4 ? length - 4 : 1;
+        const censorString = '*'.repeat(end > 10 ? 10 : end);
+        const visibleString = value.substring(end, length);
         return `${censorString}${visibleString}`;
     }
 }
