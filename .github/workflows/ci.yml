@@ -16,7 +16,7 @@ jobs:
         node-version: ['17.3.0']
 
     services:
-      mongo:
+      mongodb:
         image: mongo:latest
         env:
           MONGO_INITDB_ROOT_USERNAME: ${{env.DATABASE_USER}}
