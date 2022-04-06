@@ -46,6 +46,11 @@ jobs:
           
       - name: Migrate
         uses: borales/actions-yarn@v2.3.0
+        env:
+          DATABASE_NAME: ${{ env.DATABASE_NAME }}
+          DATABASE_PASSWORD: ${{ env.DATABASE_PASSWORD }}
+          DATABASE_USER: ${{ env.DATABASE_USER }}
+          DATABASE_HOST: ${{ env.DATABASE_HOST }}
         with:
           cmd: migrate
           
@@ -56,5 +61,14 @@ jobs:
 
       - name: E2E Test
         uses: borales/actions-yarn@v2.3.0
+        env:
+          AWS_CREDENTIAL_KEY: ${{ env.AWS_CREDENTIAL_KEY }}
+          AWS_CREDENTIAL_SECRET: ${{ env.AWS_CREDENTIAL_SECRET }}
+          AWS_S3_BUCKET: ${{ env.AWS_S3_BUCKET }}
+          AWS_S3_REGION: ${{ env.AWS_S3_REGION }}
+          DATABASE_NAME: ${{ env.DATABASE_NAME }}
+          DATABASE_PASSWORD: ${{ env.DATABASE_PASSWORD }}
+          DATABASE_USER: ${{ env.DATABASE_USER }}
+          DATABASE_HOST: ${{ env.DATABASE_HOST }}
         with:
           cmd: test:e2e
