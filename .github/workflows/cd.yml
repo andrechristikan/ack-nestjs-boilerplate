@@ -18,13 +18,11 @@ on:
         description: 'Run Unit Testing'
         required: false 
         type: boolean
-        default: true
 
       e2eTest:
         description: 'Run E2E Testing'
         required: false 
         type: boolean
-        default: true
 
       environment:
         description: 'Environment to run tests against'

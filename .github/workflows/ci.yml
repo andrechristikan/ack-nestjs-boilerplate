@@ -39,16 +39,14 @@ jobs:
       - name: Install dependencies
         run: yarn --frozen-lockfile
 
-      - name: Install dependencies
+      - name: Migration
         run: yarn migrate
           
       - name: Unit Test
         run: yarn test
 
       - name: E2E Test
-        run: |
-          echo "S3 Bucket: $AWS_S3_REGION"
-          yarn test:e2e
+        run: yarn test:e2e
         env:
           AWS_CREDENTIAL_KEY: ${{ env.AWS_CREDENTIAL_KEY }}
           AWS_CREDENTIAL_SECRET: ${{ env.AWS_CREDENTIAL_SECRET }}
