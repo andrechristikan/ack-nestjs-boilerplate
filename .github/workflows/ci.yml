@@ -4,7 +4,6 @@ on:
   push:
     branches: 
     - main
-    - development
 
 jobs:
 
@@ -19,9 +18,9 @@ jobs:
       mongo:
         image: mongo:latest
         env:
-          MONGO_INITDB_ROOT_USERNAME: root
-          MONGO_INITDB_ROOT_PASSWORD: 123456
-          MONGO_INITDB_DATABASE: ack
+          MONGO_INITDB_ROOT_USERNAME: ${{secret.DATABASE_USER}}
+          MONGO_INITDB_ROOT_PASSWORD: ${{secret.DATABASE_PASSWORD}}
+          MONGO_INITDB_DATABASE: ${{secret.DATABASE_NAME}}
         options: >-
           --health-cmd mongo
           --health-interval 10s
@@ -43,6 +42,11 @@ jobs:
         uses: borales/actions-yarn@v2.3.0
         with:
           cmd: install --frozen-lockfile
+          
+      - name: Migrate
+        uses: borales/actions-yarn@v2.3.0
+        with:
+          cmd: migrate
           
       - name: Unit Test
         uses: borales/actions-yarn@v2.3.0
