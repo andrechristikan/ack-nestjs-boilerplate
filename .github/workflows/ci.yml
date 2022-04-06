@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: 
+    branches:
     - main
     - development
 
