@@ -1,0 +1,48 @@
+name: cd
+
+on:
+  workflow_dispatch:
+
+    inputs:
+      logLevel:
+        description: 'Log level'     
+        required: true
+        default: 'warning' 
+        type: choice
+        options:
+        - info
+        - warning
+        - debug 
+
+      unitTest:
+        description: 'Run Unit Testing'
+        required: false 
+        type: boolean
+        default: true
+
+      e2eTest:
+        description: 'Run E2E Testing'
+        required: false 
+        type: boolean
+        default: true
+
+      environment:
+        description: 'Environment to run tests against'
+        type: environment
+        required: true 
+
+jobs:
+  log-the-inputs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - run: |
+          echo "Log level: $LEVEL"
+          echo "Unit Testing: $UNIT_TESTING"
+          echo "E2E Testing: $E2E_TESTING"
+          echo "Environment: $ENVIRONMENT"
+        env:
+          LEVEL: ${{ github.event.inputs.logLevel }}
+          UNIT_TESTING: ${{ github.event.inputs.unitTest }}
+          E2E_TESTING: ${{ github.event.inputs.e2eTest }}
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
