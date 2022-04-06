@@ -43,14 +43,24 @@ jobs:
         uses: borales/actions-yarn@v2.3.0
         with:
           cmd: install --frozen-lockfile
-          
+
+      - name: Make envfile
+        uses: SpicyPizza/create-envfile@v1.3
+        with:
+          envkey_AWS_CREDENTIAL_KEY: ${{ env.AWS_CREDENTIAL_KEY }}
+          envkey_AWS_CREDENTIAL_SECRET: ${{ env.AWS_CREDENTIAL_SECRET }}
+          envkey_AWS_S3_BUCKET: ${{ env.AWS_S3_BUCKET }}
+          envkey_AWS_S3_REGION: ${{ env.AWS_S3_REGION }}
+          envkey_DATABASE_NAME: ${{ env.DATABASE_NAME }}
+          envkey_DATABASE_PASSWORD: ${{ env.DATABASE_PASSWORD }}
+          envkey_DATABASE_USER: ${{ env.DATABASE_USER }}
+          envkey_DATABASE_HOST: ${{ env.DATABASE_HOST }}
+          directory: <directory_name>
+          file_name: .env
+          fail_on_empty: false
+
       - name: Migrate
         uses: borales/actions-yarn@v2.3.0
-        env:
-          DATABASE_NAME: ${{ env.DATABASE_NAME }}
-          DATABASE_PASSWORD: ${{ env.DATABASE_PASSWORD }}
-          DATABASE_USER: ${{ env.DATABASE_USER }}
-          DATABASE_HOST: ${{ env.DATABASE_HOST }}
         with:
           cmd: migrate
           
@@ -61,14 +71,5 @@ jobs:
 
       - name: E2E Test
         uses: borales/actions-yarn@v2.3.0
-        env:
-          AWS_CREDENTIAL_KEY: ${{ env.AWS_CREDENTIAL_KEY }}
-          AWS_CREDENTIAL_SECRET: ${{ env.AWS_CREDENTIAL_SECRET }}
-          AWS_S3_BUCKET: ${{ env.AWS_S3_BUCKET }}
-          AWS_S3_REGION: ${{ env.AWS_S3_REGION }}
-          DATABASE_NAME: ${{ env.DATABASE_NAME }}
-          DATABASE_PASSWORD: ${{ env.DATABASE_PASSWORD }}
-          DATABASE_USER: ${{ env.DATABASE_USER }}
-          DATABASE_HOST: ${{ env.DATABASE_HOST }}
         with:
           cmd: test:e2e
