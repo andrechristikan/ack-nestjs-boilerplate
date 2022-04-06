@@ -55,7 +55,7 @@ jobs:
           envkey_DATABASE_PASSWORD: ${{ env.DATABASE_PASSWORD }}
           envkey_DATABASE_USER: ${{ env.DATABASE_USER }}
           envkey_DATABASE_HOST: ${{ env.DATABASE_HOST }}
-          directory: <directory_name>
+          directory: ./
           file_name: .env
           fail_on_empty: false
 
