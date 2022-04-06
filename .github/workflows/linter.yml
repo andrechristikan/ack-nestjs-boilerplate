@@ -12,19 +12,24 @@ jobs:
 
   run-linter:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['17.3.0']
 
     steps:
-      - name: Check out Git repository
+      - name: Git checkout
         uses: actions/checkout@v2
-      - name: Setup node version
+
+      - name: Setup node version ${{ matrix.node-version }}
         uses: actions/setup-node@v2
         with:
-          node-version: '17.3.0'
+          node-version: ${{ matrix.node-version }}
 
       - name: Install dependencies
         uses: borales/actions-yarn@v2.3.0
         with:
           cmd: install --frozen-lockfile
+          
       - name: Linter
         uses: borales/actions-yarn@v2.3.0
         with:
