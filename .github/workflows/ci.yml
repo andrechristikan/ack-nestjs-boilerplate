@@ -10,11 +10,25 @@ jobs:
 
   run-ci:
     runs-on: ubuntu-latest
-    environment: production
+    environment: main
     strategy:
       matrix:
         node-version: ['17.3.0']
-        mongodb-version: [ '5.0']
+
+    services:
+      mongo:
+        image: mongo:latest
+        env:
+          MONGO_INITDB_ROOT_USERNAME: root
+          MONGO_INITDB_ROOT_PASSWORD: 123456
+          MONGO_INITDB_DATABASE: ack
+        options: >-
+          --health-cmd mongo
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 27017:27017
 
     steps:
       - name: Git checkout
@@ -24,13 +38,6 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
-
-      - name: Start mongodb version ${{ matrix.mongodb-version }}
-        uses: supercharge/mongodb-github-action@1.7.0
-        with:
-          mongodb-version: ${{ matrix.mongodb-version }}
-          mongodb-replica-set: test-rs
-          mongodb-port: 27017
 
       - name: Install dependencies
         uses: borales/actions-yarn@v2.3.0
