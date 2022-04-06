@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { CoreModule } from 'src/core/core.module';
+import { BaseModule } from 'src/core/core.module';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 
 describe('HelperDateService', () => {
@@ -9,7 +9,7 @@ describe('HelperDateService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule],
+            imports: [BaseModule],
         }).compile();
 
         helperDateService = moduleRef.get<HelperDateService>(HelperDateService);

@@ -1,16 +1,14 @@
-name: Linter
+name: ci
 
 on:
   push:
     branches: 
     - main
-  pull_request:
-    branches: 
-    - main
+    - development
 
 jobs:
 
-  run-linter:
+  run-ci:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,7 +23,7 @@ jobs:
         uses: borales/actions-yarn@v2.3.0
         with:
           cmd: install --frozen-lockfile
-      - name: Linter
+      - name: Test
         uses: borales/actions-yarn@v2.3.0
         with:
-          cmd: lint
+          cmd: test
