@@ -58,7 +58,7 @@ export class UserPublicController {
         const path = await this.userService.createRandomFilename();
 
         try {
-            const aws: IAwsS3Response = await this.awsService.s3PutItemInBucket(
+            const aws: IAwsS3Response = await this.awsService.putItemInBucket(
                 `${path.filename}.${mime}`,
                 content,
                 {
