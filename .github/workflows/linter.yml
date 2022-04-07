@@ -21,6 +21,7 @@ jobs:
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
+        run: echo ${{ steps.vars.outputs.sha_short }}
 
       - name: Setup node version ${{ matrix.node-version }}
         uses: actions/setup-node@v3
