@@ -1,11 +1,6 @@
 name: ci
 
 on:
-  push:
-    branches:
-    - main
-    - staging
-    - development
   pull_request:
     branches: 
     - main

@@ -1,29 +1,18 @@
 name: cd
 
 on:
-  # workflow_dispatch:
-  #   inputs:
-  #     environment:
-  #       description: 'Environment to run tests against'
-  #       type: environment
-  #       required: true 
-
-  push:
-    branches:
-    - main
-    - staging
-    - development
-  pull_request:
-    branches: 
-    - main
-    - staging
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to run tests against'
+        type: environment
+        required: true
 
 jobs:
 
   run-cd:
     runs-on: ubuntu-latest
-    environment: main
-    # environment: github.event.inputs.environment
+    environment: github.event.inputs.environment
 
     strategy:
       matrix:
@@ -75,7 +64,7 @@ jobs:
           file: ./prod/dockerfile
           target: builder
 
-      - name: Build against main
+      - name: Build against main and push
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.main.outputs.name }}
@@ -85,3 +74,8 @@ jobs:
             baibay/ack-nestjs-boilerplate-mongoose:latest
             baibay/ack-nestjs-boilerplate-mongoose:${{ steps.short-sha.outputs.sha }}
           push: true
+      
+      # - name: Deploy
+
+
+
