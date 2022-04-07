@@ -174,7 +174,6 @@ describe('E2E User Public', () => {
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data');
 
-        console.log('response', response.body);
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
 
