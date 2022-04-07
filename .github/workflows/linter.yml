@@ -2,12 +2,14 @@ name: Linter
 
 on:
   push:
-    branches: 
+    branches:
     - main
+    - staging
     - development
   pull_request:
     branches: 
     - main
+    - staging
 
 jobs:
 
