@@ -19,11 +19,13 @@ jobs:
 
     steps:
       - name: Git checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+
+      - name: Git sort sha
         run: echo ${{ steps.vars.outputs.sha_short }}
 
       - name: Setup node version ${{ matrix.node-version }}
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
 
@@ -54,11 +56,13 @@ jobs:
 
     steps:
       - name: Git checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+
+      - name: Git sort sha
         run: echo ${{ steps.vars.outputs.sha_short }}
 
       - name: Setup node version ${{ matrix.node-version }}
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
 
@@ -100,7 +104,9 @@ jobs:
 
     steps:
       - name: Git checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+
+      - name: Git sort sha
         run: echo ${{ steps.vars.outputs.sha_short }}
 
       - uses: docker/setup-buildx-action@v1
