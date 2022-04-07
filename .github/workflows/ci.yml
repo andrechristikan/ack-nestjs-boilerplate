@@ -45,10 +45,19 @@ jobs:
       - name: Unit Test
         run: yarn test
 
-      - name: E2E Test
-        run: yarn test:e2e
+      - name: Create env file
+        run: |
+          touch .env
+          echo AWS_CREDENTIAL_KEY="$AWS_CREDENTIAL_KEY" >> .env
+          echo AWS_CREDENTIAL_SECRET="$AWS_CREDENTIAL_SECRET" >> .env
+          echo AWS_S3_BUCKET="$AWS_S3_BUCKET" >> .env
+          echo AWS_S3_REGION="$AWS_S3_REGION" >> .env
+          cat .env
         env:
           AWS_CREDENTIAL_KEY: ${{ env.AWS_CREDENTIAL_KEY }}
           AWS_CREDENTIAL_SECRET: ${{ env.AWS_CREDENTIAL_SECRET }}
           AWS_S3_BUCKET: ${{ env.AWS_S3_BUCKET }}
           AWS_S3_REGION: ${{ env.AWS_S3_REGION }}
+
+      - name: E2E Test
+        run: yarn test:e2e

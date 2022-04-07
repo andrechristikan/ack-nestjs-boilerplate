@@ -28,7 +28,15 @@ export class DatabaseService implements MongooseOptionsFactory {
     }
 
     createMongooseOptions(): MongooseModuleOptions {
-        const uri = `${this.host}/${this.database}${this.options}`;
+        let uri = `${this.host}`;
+
+        if (this.database) {
+            uri = `${uri}/${this.database}`;
+        }
+
+        if (this.options) {
+            uri = `${uri}${this.options}`;
+        }
 
         if (this.env !== 'production') {
             mongoose.set('debug', this.debug);
@@ -38,6 +46,7 @@ export class DatabaseService implements MongooseOptionsFactory {
             uri,
             useNewUrlParser: true,
             useUnifiedTopology: true,
+            serverSelectionTimeoutMS: 5000,
             // useMongoClient: true
         };
 
