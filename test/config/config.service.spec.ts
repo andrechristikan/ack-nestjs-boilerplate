@@ -1,13 +1,13 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { CoreModule } from 'src/core/core.module';
+import { BaseModule } from 'src/core/core.module';
 
 describe('ConfigService', () => {
     let configService: ConfigService;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule],
+            imports: [BaseModule],
         }).compile();
 
         configService = moduleRef.get<ConfigService>(ConfigService);

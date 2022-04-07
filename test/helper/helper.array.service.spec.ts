@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { CoreModule } from 'src/core/core.module';
+import { BaseModule } from 'src/core/core.module';
 import { HelperArrayService } from 'src/utils/helper/service/helper.array.service';
 
 describe('HelperArrayService', () => {
@@ -8,7 +8,7 @@ describe('HelperArrayService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule],
+            imports: [BaseModule],
         }).compile();
 
         helperArrayService =

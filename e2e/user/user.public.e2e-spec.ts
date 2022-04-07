@@ -184,9 +184,7 @@ describe('E2E User Public', () => {
         try {
             user = await userService.findOneById<UserDocument>(user._id);
 
-            await awsS3Service.s3DeleteItemInBucket(
-                user.photo.pathWithFilename
-            );
+            await awsS3Service.deleteItemInBucket(user.photo.pathWithFilename);
             await userService.deleteOneById(user._id);
         } catch (e) {
             console.error(e);

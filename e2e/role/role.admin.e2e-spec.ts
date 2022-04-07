@@ -175,7 +175,6 @@ describe('E2E Role Admin', () => {
             .send(successData)
             .set('Authorization', `Bearer ${accessToken}`);
 
-        console.log('aaa', response.body);
         expect(response.status).toEqual(HttpStatus.CREATED);
         expect(response.body.statusCode).toEqual(HttpStatus.CREATED);
 
@@ -237,7 +236,6 @@ describe('E2E Role Admin', () => {
             .send(updateData)
             .set('Authorization', `Bearer ${accessToken}`);
 
-        console.log('bbb', response.body);
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
 

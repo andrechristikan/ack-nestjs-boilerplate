@@ -24,53 +24,53 @@ describe('AwsS3Service', () => {
     });
 
     it('should get list of aws s3 bucket', async () => {
-        const bucket = await awsS3Service.s3ListBucket();
+        const bucket = await awsS3Service.listBucket();
 
-        jest.spyOn(awsS3Service, 's3ListBucket').mockImplementation(
+        jest.spyOn(awsS3Service, 'listBucket').mockImplementation(
             async () => bucket
         );
 
-        expect(await awsS3Service.s3ListBucket()).toBe(bucket);
+        expect(await awsS3Service.listBucket()).toBe(bucket);
     });
 
     it('should put item into aws s3', async () => {
-        const item = await awsS3Service.s3PutItemInBucket(dirname, image);
+        const item = await awsS3Service.putItemInBucket(dirname, image);
 
-        jest.spyOn(awsS3Service, 's3PutItemInBucket').mockImplementation(
+        jest.spyOn(awsS3Service, 'putItemInBucket').mockImplementation(
             async () => item
         );
 
-        expect(await awsS3Service.s3PutItemInBucket(dirname, image)).toBe(item);
+        expect(await awsS3Service.putItemInBucket(dirname, image)).toBe(item);
     });
 
     it('should get list of aws s3 item', async () => {
-        const items = await awsS3Service.s3ListItemInBucket();
+        const items = await awsS3Service.listItemInBucket();
 
-        jest.spyOn(awsS3Service, 's3ListItemInBucket').mockImplementation(
+        jest.spyOn(awsS3Service, 'listItemInBucket').mockImplementation(
             async () => items
         );
 
-        expect(await awsS3Service.s3ListItemInBucket()).toBe(items);
+        expect(await awsS3Service.listItemInBucket()).toBe(items);
     });
 
     it('should delete item in aws s3', async () => {
-        const del = await awsS3Service.s3DeleteItemInBucket(dirname);
+        const del = await awsS3Service.deleteItemInBucket(dirname);
 
-        jest.spyOn(awsS3Service, 's3DeleteItemInBucket').mockImplementation(
+        jest.spyOn(awsS3Service, 'deleteItemInBucket').mockImplementation(
             async () => del
         );
 
-        expect(await awsS3Service.s3DeleteItemInBucket(dirname)).toBe(del);
+        expect(await awsS3Service.deleteItemInBucket(dirname)).toBe(del);
     });
 
     it('should delete items in aws s3', async () => {
-        const del = await awsS3Service.s3DeleteItemsInBucket([dirname, dir]);
+        const del = await awsS3Service.deleteItemsInBucket([dirname, dir]);
 
-        jest.spyOn(awsS3Service, 's3DeleteItemsInBucket').mockImplementation(
+        jest.spyOn(awsS3Service, 'deleteItemsInBucket').mockImplementation(
             async () => del
         );
 
-        expect(await awsS3Service.s3DeleteItemsInBucket([dirname, dir])).toBe(
+        expect(await awsS3Service.deleteItemsInBucket([dirname, dir])).toBe(
             del
         );
     });

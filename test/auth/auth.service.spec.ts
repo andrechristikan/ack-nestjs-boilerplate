@@ -1,7 +1,7 @@
 import faker from '@faker-js/faker';
 import { Test } from '@nestjs/testing';
 import { AuthService } from 'src/auth/service/auth.service';
-import { CoreModule } from 'src/core/core.module';
+import { BaseModule } from 'src/core/core.module';
 import { IRoleDocument } from 'src/role/role.interface';
 import { IUserDocument } from 'src/user/user.interface';
 
@@ -32,7 +32,7 @@ describe('AuthService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule],
+            imports: [BaseModule],
             providers: [AuthService],
         }).compile();
 

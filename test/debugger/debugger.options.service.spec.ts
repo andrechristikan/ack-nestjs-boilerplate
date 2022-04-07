@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { CoreModule } from 'src/core/core.module';
+import { BaseModule } from 'src/core/core.module';
 import { DebuggerOptionService } from 'src/debugger/service/debugger.option.service';
 
 describe('DebuggerOptionService', () => {
@@ -7,7 +7,7 @@ describe('DebuggerOptionService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule],
+            imports: [BaseModule],
         }).compile();
 
         debuggerOptionService = moduleRef.get<DebuggerOptionService>(

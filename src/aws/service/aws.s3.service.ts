@@ -35,7 +35,7 @@ export class AwsS3Service {
         this.baseUrl = this.configService.get<string>('aws.s3.baseUrl');
     }
 
-    async s3ListBucket(): Promise<string[]> {
+    async listBucket(): Promise<string[]> {
         const command: ListBucketsCommand = new ListBucketsCommand({});
         const listBucket: Record<string, any> = await this.s3Client.send(
             command
@@ -43,7 +43,7 @@ export class AwsS3Service {
         return listBucket.Buckets.map((val: Record<string, any>) => val.Name);
     }
 
-    async s3ListItemInBucket(prefix?: string): Promise<IAwsS3Response[]> {
+    async listItemInBucket(prefix?: string): Promise<IAwsS3Response[]> {
         const command: ListObjectsV2Command = new ListObjectsV2Command({
             Bucket: this.bucket,
             Prefix: prefix,
@@ -74,7 +74,7 @@ export class AwsS3Service {
         });
     }
 
-    async s3GetItemInBucket(
+    async getItemInBucket(
         filename: string,
         path?: string
     ): Promise<Record<string, any>> {
@@ -92,7 +92,7 @@ export class AwsS3Service {
         return item.Body;
     }
 
-    async s3PutItemInBucket(
+    async putItemInBucket(
         filename: string,
         content:
             | string
@@ -133,7 +133,7 @@ export class AwsS3Service {
         };
     }
 
-    async s3DeleteItemInBucket(filename: string): Promise<boolean> {
+    async deleteItemInBucket(filename: string): Promise<boolean> {
         const command: DeleteObjectCommand = new DeleteObjectCommand({
             Bucket: this.bucket,
             Key: filename,
@@ -147,7 +147,7 @@ export class AwsS3Service {
         }
     }
 
-    async s3DeleteItemsInBucket(filenames: string[]): Promise<boolean> {
+    async deleteItemsInBucket(filenames: string[]): Promise<boolean> {
         const keys: ObjectIdentifier[] = filenames.map((val) => ({
             Key: val,
         }));
@@ -166,7 +166,7 @@ export class AwsS3Service {
         }
     }
 
-    async s3DeleteFolder(dir: string): Promise<boolean> {
+    async deleteFolder(dir: string): Promise<boolean> {
         const commandList: ListObjectsV2Command = new ListObjectsV2Command({
             Bucket: this.bucket,
             Prefix: dir,
