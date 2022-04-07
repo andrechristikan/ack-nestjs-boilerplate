@@ -1,46 +1,87 @@
 name: cd
 
 on:
-  workflow_dispatch:
+  # workflow_dispatch:
+  #   inputs:
+  #     environment:
+  #       description: 'Environment to run tests against'
+  #       type: environment
+  #       required: true 
 
-    inputs:
-      logLevel:
-        description: 'Log level'     
-        required: true
-        default: 'warning' 
-        type: choice
-        options:
-        - info
-        - warning
-        - debug 
-
-      unitTest:
-        description: 'Run Unit Testing'
-        required: false 
-        type: boolean
-
-      e2eTest:
-        description: 'Run E2E Testing'
-        required: false 
-        type: boolean
-
-      environment:
-        description: 'Environment to run tests against'
-        type: environment
-        required: true 
+  push:
+    branches:
+    - main
+    - staging
+    - development
+  pull_request:
+    branches: 
+    - main
+    - staging
 
 jobs:
-  log-the-inputs:
+
+  run-cd:
     runs-on: ubuntu-latest
+    environment: main
+    # environment: github.event.inputs.environment
+
+    strategy:
+      matrix:
+        node-version: ['17.x']
 
     steps:
-      - run: |
-          echo "Log level: $LEVEL"
-          echo "Unit Testing: $UNIT_TESTING"
-          echo "E2E Testing: $E2E_TESTING"
-          echo "Environment: $ENVIRONMENT"
-        env:
-          LEVEL: ${{ github.event.inputs.logLevel }}
-          UNIT_TESTING: ${{ github.event.inputs.unitTest }}
-          E2E_TESTING: ${{ github.event.inputs.e2eTest }}
-          ENVIRONMENT: ${{ github.event.inputs.environment }}
+      - name: Git checkout
+        uses: actions/checkout@v3
+
+      - name: Put git short sha
+        uses: benjlevesque/short-sha@v1.2
+        id: short-sha
+        with:
+          length: 7
+
+      - name: Git short sha
+        run: echo $SHA
+        env: 
+          SHA: ${{ steps.short-sha.outputs.sha }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - uses: docker/setup-buildx-action@v1
+        id: builder
+
+      - uses: docker/setup-buildx-action@v1
+        id: main
+
+      - name: Builder name
+        run: echo ${{ steps.builder.outputs.name }}
+
+      - name: Main builder name
+        run: echo ${{ steps.main.outputs.name }}
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1 
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build against builder
+        uses: docker/build-push-action@v2
+        with:
+          builder: ${{ steps.builder.outputs.name }}
+          file: ./prod/dockerfile
+          target: builder
+
+      - name: Build against main
+        uses: docker/build-push-action@v2
+        with:
+          builder: ${{ steps.main.outputs.name }}
+          file: ./prod/dockerfile
+          target: main
+          tags: |
+            baibay/ack-nestjs-boilerplate-mongoose:latest
+            baibay/ack-nestjs-boilerplate-mongoose:${{ steps.short-sha.outputs.sha }}
+          push: true
