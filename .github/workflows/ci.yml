@@ -54,7 +54,7 @@ jobs:
           echo AWS_S3_REGION="$AWS_S3_REGION" >> .env
           cat .env
         env:
-          AWS_CREDENTIAL_KEY: ${{ AWS_CREDENTIAL_KEY }}
+          AWS_CREDENTIAL_KEY: ${{ github.AWS_CREDENTIAL_KEY }}
           AWS_CREDENTIAL_SECRET: ${{ env.AWS_CREDENTIAL_SECRET }}
           AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
 
