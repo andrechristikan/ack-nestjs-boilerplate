@@ -8,11 +8,23 @@ on:
 
 jobs:
 
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+  
+    steps:
+      - uses: actions/checkout@v3
+      - uses: benjlevesque/short-sha@v1.2
+        id: short-sha
+        with:
+          length: 7
+      - run: echo $SHA
+        env: 
+          SHA: ${{ steps.short-sha.outputs.sha }}
+
   run-linter: 
     runs-on: ubuntu-latest
     environment: main
-    env:
-      GITHUB_SHORT_SHA: ${GITHUB_SHA::8}
 
     strategy:
       matrix:
@@ -21,9 +33,6 @@ jobs:
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
-
-      - name: Git short sha
-        run: echo ${{ env.GITHUB_SHORT_SHA }}
 
       - name: Setup node version ${{ matrix.node-version }}
         uses: actions/setup-node@v3
@@ -58,9 +67,6 @@ jobs:
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
-
-      - name: Git short sha
-        run: echo ${{ env.GITHUB_SHORT_SHA }}
 
       - name: Setup node version ${{ matrix.node-version }}
         uses: actions/setup-node@v3
@@ -107,9 +113,6 @@ jobs:
       - name: Git checkout
         uses: actions/checkout@v3
 
-      - name: Git short sha
-        run: echo ${{ env.GITHUB_SHORT_SHA }}
-
       - uses: docker/setup-buildx-action@v1
         id: builder
 
@@ -143,4 +146,4 @@ jobs:
           target: main
           tags: |
             baibay/ack-nestjs-boilerplate-mongoose:latest
-            baibay/ack-nestjs-boilerplate-mongoose:${{ env.GITHUB_SHORT_SHA }}
+            baibay/ack-nestjs-boilerplate-mongoose:${{ steps.short-sha.outputs.sha }}
