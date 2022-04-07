@@ -23,14 +23,8 @@ describe('E2E Change Password', () => {
     let authService: AuthService;
     let roleService: RoleService;
 
-    const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
-        .lastName()
-        .toUpperCase()}${faker.finance.amount(1000, 2000)}`;
-    const newPassword = `${faker.name
-        .lastName()
-        .toLowerCase()}${faker.finance.amount(1000, 2000)}${faker.name
-        .firstName()
-        .toUpperCase()}@!`;
+    const password = `aaAA@!123`;
+    const newPassword = `bbBB@!456`;
 
     let user: UserDocument;
 
