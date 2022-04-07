@@ -18,10 +18,12 @@ import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/utils/file/file.constant';
 import { RouterPublicModule } from 'src/router/router.public.module';
 import { RoleDocument } from 'src/role/schema/role.schema';
 import { UserDocument } from 'src/user/schema/user.schema';
+import { AwsS3Service } from 'src/aws/service/aws.s3.service';
 
 describe('E2E User Public', () => {
     let app: INestApplication;
     let userService: UserService;
+    let awsS3Service: AwsS3Service;
     let authService: AuthService;
     let roleService: RoleService;
 
@@ -46,6 +48,7 @@ describe('E2E User Public', () => {
 
         app = modRef.createNestApplication();
         userService = app.get(UserService);
+        awsS3Service = app.get(AwsS3Service);
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
 
@@ -171,6 +174,7 @@ describe('E2E User Public', () => {
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data');
 
+        console.log('response', response.body);
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
 
@@ -181,6 +185,7 @@ describe('E2E User Public', () => {
         try {
             user = await userService.findOneById<UserDocument>(user._id);
 
+            await awsS3Service.deleteItemInBucket(user.photo.pathWithFilename);
             await userService.deleteOneById(user._id);
         } catch (e) {
             console.error(e);
