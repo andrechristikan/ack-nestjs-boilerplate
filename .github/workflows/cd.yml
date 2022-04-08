@@ -69,7 +69,7 @@ jobs:
           command: |
             docker stop ${{ secrets.APP_NAME }} && docker rm ${{ secrets.APP_NAME }}
             docker network create ${{ secrets.APP_NETWORK }} --driver=bridge
-            docker run run -itd \
+            docker run -itd \
               --hostname ${{ secrets.APP_NAME }} \
               --publish ${{ secrets.APP_PORT }}:${{ secrets.APP_PORT }} \
               --network ${{ secrets.APP_NETWORK }} \
