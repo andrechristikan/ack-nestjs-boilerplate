@@ -1,5 +1,5 @@
 {
-    "testTimeout": 2000,
+    "testTimeout": 5000,
     "verbose": true,
     "rootDir": "..",
     "modulePaths": [

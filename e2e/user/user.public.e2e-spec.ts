@@ -178,7 +178,7 @@ describe('E2E User Public', () => {
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
 
         return;
-    }, 5000);
+    }, 10000);
 
     afterAll(async () => {
         try {

@@ -21,7 +21,7 @@ describe('AwsS3Service', () => {
 
     it('should be defined', async () => {
         expect(awsS3Service).toBeDefined();
-    });
+    }, 5000);
 
     it('should get list of aws s3 bucket', async () => {
         const bucket = await awsS3Service.listBucket();
@@ -31,7 +31,7 @@ describe('AwsS3Service', () => {
         );
 
         expect(await awsS3Service.listBucket()).toBe(bucket);
-    });
+    }, 5000);
 
     it('should put item into aws s3', async () => {
         const item = await awsS3Service.putItemInBucket(dirname, image);
@@ -41,7 +41,7 @@ describe('AwsS3Service', () => {
         );
 
         expect(await awsS3Service.putItemInBucket(dirname, image)).toBe(item);
-    });
+    }, 5000);
 
     it('should get list of aws s3 item', async () => {
         const items = await awsS3Service.listItemInBucket();
@@ -51,7 +51,7 @@ describe('AwsS3Service', () => {
         );
 
         expect(await awsS3Service.listItemInBucket()).toBe(items);
-    });
+    }, 5000);
 
     it('should delete item in aws s3', async () => {
         const del = await awsS3Service.deleteItemInBucket(dirname);
@@ -61,7 +61,7 @@ describe('AwsS3Service', () => {
         );
 
         expect(await awsS3Service.deleteItemInBucket(dirname)).toBe(del);
-    });
+    }, 5000);
 
     it('should delete items in aws s3', async () => {
         const del = await awsS3Service.deleteItemsInBucket([dirname, dir]);
@@ -73,5 +73,5 @@ describe('AwsS3Service', () => {
         expect(await awsS3Service.deleteItemsInBucket([dirname, dir])).toBe(
             del
         );
-    });
+    }, 5000);
 });

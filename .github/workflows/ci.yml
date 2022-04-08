@@ -1,25 +1,17 @@
 name: CI
 
 on:
-
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to run action'
-        type: environment
-        required: true
-        
-  # pull_request:
-  #   branches: 
-  #   - main
-  #   - staging
-
+  push:
+    branches: 
+    - main
+  pull_request:
+    branches: 
+    - main
+    
 jobs:
-
   run-ci:
     runs-on: ubuntu-latest
-    environment: github.event.inputs.environment
-    # environment: main
+    environment: baibay
 
     strategy:
       matrix:

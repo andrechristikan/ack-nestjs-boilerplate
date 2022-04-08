@@ -9,6 +9,10 @@
         "Insync",
         "acks",
         "microservices",
-        "globby"
+        "globby",
+        "dockerhub",
+        "fifsky",
+        "buildx",
+        "baibay"
     ]
 }

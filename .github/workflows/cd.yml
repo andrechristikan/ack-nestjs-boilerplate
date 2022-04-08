@@ -7,21 +7,11 @@ on:
         description: 'Environment to run action'
         type: environment
         required: true
-  # push:
-  #   branches:
-  #   - main
 
 jobs:
-
   run-cd:
     runs-on: ubuntu-latest
     environment: github.event.inputs.environment
-    # environment: main
-    env: 
-      APP_NAME: ack-nestjs-boilerplate-mongoose
-      APP_NETWORK: app-network
-      APP_PORT: 3000
-
 
     strategy:
       matrix:
@@ -34,9 +24,6 @@ jobs:
       - name: Prepare
         run: |
           echo '::set-output name=github_short_sha::$(git rev-parse --short HEAD)'
-          echo '::set-output name=app_name::${APP_NAME}'
-          echo '::set-output name=app_network::${APP_NETWORK}'
-          echo '::set-output name=app_port::${APP_PORT}'
         id: prepare
 
       - name: Set up QEMU
@@ -77,23 +64,23 @@ jobs:
           file: ./prod/dockerfile
           target: main
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.prepare.outputs.app_name }}:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.prepare.outputs.app_name }}:${{ steps.prepare.outputs.github_short_sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.prepare.outputs.github_short_sha }}
           push: true
       
       - name: Deploy
         uses: fifsky/ssh-action@master
         with:
           command: |
-            docker stop ${{ steps.prepare.outputs.app_name }} && docker rm ${{ steps.prepare.outputs.app_name }}
-            docker network create ${{ steps.prepare.outputs.app_network }} --driver=bridge
+            docker stop ${{ secrets.APP_NAME }} && docker rm ${{ secrets.APP_NAME }}
+            docker network create ${{ secrets.APP_NETWORK }} --driver=bridge
             docker run run -itd \
-              --hostname ${{ steps.prepare.outputs.app_name }} \
-              --publish ${{ steps.prepare.outputs.app_port }}:${{ steps.prepare.outputs.app_port }} \
-              --network ${{ steps.prepare.outputs.app_network }} \
-              --volume /app/${{ steps.prepare.outputs.app_name }}/logs/:/app/logs/ \
-              --volume /app/${{ steps.prepare.outputs.app_name }}/.env:/app/.env \
-              --name ${{ steps.prepare.outputs.app_name }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.prepare.outputs.app_name }}:${{ steps.prepare.outputs.github_short_sha }}
+              --hostname ${{ secrets.APP_NAME }} \
+              --publish ${{ secrets.APP_PORT }}:${{ secrets.APP_PORT }} \
+              --network ${{ secrets.APP_NETWORK }} \
+              --volume /app/${{ secrets.APP_NAME }}/logs/:/app/logs/ \
+              --volume /app/${{ secrets.APP_NAME }}/.env:/app/.env \
+              --name ${{ secrets.APP_NAME }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.prepare.outputs.github_short_sha }}
             docker ps -a
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
