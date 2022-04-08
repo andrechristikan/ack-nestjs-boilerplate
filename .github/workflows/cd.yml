@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to run tests against'
+        description: 'Environment to run action'
         type: environment
         required: true
   # push:
