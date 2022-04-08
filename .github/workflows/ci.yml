@@ -37,9 +37,6 @@ jobs:
       - name: Install dependencies
         run: yarn --frozen-lockfile
 
-      - name: Linter
-        run: yarn lint
-
       - name: Migration
         run: yarn migrate
 
