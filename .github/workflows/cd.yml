@@ -13,10 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: github.event.inputs.environment
 
-    strategy:
-      matrix:
-        node-version: ['17.x']
-
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
