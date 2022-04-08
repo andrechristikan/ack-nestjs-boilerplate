@@ -9,11 +9,9 @@ on:
         required: true
 
 jobs:
-
   run-cd:
     runs-on: ubuntu-latest
     environment: github.event.inputs.environment
-
 
     strategy:
       matrix:

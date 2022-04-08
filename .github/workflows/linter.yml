@@ -10,7 +10,6 @@ on:
     - main
 
 jobs:
-
   run-linter:
     runs-on: ubuntu-latest
     
