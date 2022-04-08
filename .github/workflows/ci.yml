@@ -1,16 +1,25 @@
 name: ci
 
 on:
-  pull_request:
-    branches: 
-    - main
-    - staging
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to run action'
+        type: environment
+        required: true
+        
+  # pull_request:
+  #   branches: 
+  #   - main
+  #   - staging
 
 jobs:
 
   run-ci:
     runs-on: ubuntu-latest
-    environment: main
+    environment: github.event.inputs.environment
+    # environment: main
 
     strategy:
       matrix:
