@@ -1,4 +1,4 @@
-name: cd
+name: CD
 
 on:
   workflow_dispatch:
@@ -21,7 +21,6 @@ jobs:
       APP_NAME: ack-nestjs-boilerplate-mongoose
       APP_NETWORK: app-network
       APP_PORT: 3000
-      DOCKER: baibay
 
 
     strategy:
@@ -38,7 +37,6 @@ jobs:
           echo '::set-output name=app_name::${APP_NAME}'
           echo '::set-output name=app_network::${APP_NETWORK}'
           echo '::set-output name=app_port::${APP_PORT}'
-          echo '::set-output name=docker::${DOCKER}'
         id: prepare
 
       - name: Set up QEMU
@@ -79,8 +77,8 @@ jobs:
           file: ./prod/dockerfile
           target: main
           tags: |
-            ${{ steps.prepare.outputs.docker }}/${{ steps.prepare.outputs.app_name }}:latest
-            ${{ steps.prepare.outputs.docker }}/${{ steps.prepare.outputs.app_name }}:${{ steps.prepare.outputs.github_short_sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.prepare.outputs.app_name }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.prepare.outputs.app_name }}:${{ steps.prepare.outputs.github_short_sha }}
           push: true
       
       - name: Deploy
@@ -95,7 +93,7 @@ jobs:
               --network ${{ steps.prepare.outputs.app_network }} \
               --volume /app/${{ steps.prepare.outputs.app_name }}/logs/:/app/logs/ \
               --volume /app/${{ steps.prepare.outputs.app_name }}/.env:/app/.env \
-              --name ${{ steps.prepare.outputs.app_name }} ${{ steps.prepare.outputs.docker }}/${{ steps.prepare.outputs.app_name }}:${{ steps.prepare.outputs.github_short_sha }}
+              --name ${{ steps.prepare.outputs.app_name }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ steps.prepare.outputs.app_name }}:${{ steps.prepare.outputs.github_short_sha }}
             docker ps -a
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
