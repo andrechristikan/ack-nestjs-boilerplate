@@ -12,6 +12,7 @@
         "globby",
         "dockerhub",
         "fifsky",
-        "buildx"
+        "buildx",
+        "baibay"
     ]
 }
