@@ -11,6 +11,7 @@ services:
     volumes:
       - ./src/:/app/src/
       - .env/:/app/.env
+    restart: unless-stopped
     depends_on: 
       - mongodb
   mongodb:

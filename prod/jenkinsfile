@@ -159,6 +159,7 @@ pipeline {
                             --network ${APP_NETWORK} \
                             -v /app/${APP_NAME}/logs/:/app/logs/ \
                             -v /app/${APP_NAME}/.env:/app/.env \
+                            --restart unless-stopped \
                             --name ${APP_NAME} ${app_image}"
                     }
                 }
