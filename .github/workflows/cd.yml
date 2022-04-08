@@ -71,8 +71,8 @@ jobs:
         uses: fifsky/ssh-action@master
         with:
           command: |
-            docker stop ${{ secrets.APP_NAME }} && docker rm ${{ secrets.APP_NAME }} || :
-            docker network create ${{ secrets.APP_NETWORK }} --driver=bridge || :
+            docker stop ${{ secrets.APP_NAME }} && docker rm ${{ secrets.APP_NAME }}
+            docker network create ${{ secrets.APP_NETWORK }} --driver=bridge
             docker run run -itd \
               --hostname ${{ secrets.APP_NAME }} \
               --publish ${{ secrets.APP_PORT }}:${{ secrets.APP_PORT }} \
