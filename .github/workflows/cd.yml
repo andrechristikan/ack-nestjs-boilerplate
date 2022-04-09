@@ -76,12 +76,19 @@ jobs:
               --volume /app/${{ secrets.APP_NAME }}/logs/:/app/logs/ \
               --volume /app/${{ secrets.APP_NAME }}/.env:/app/.env \
               --restart unless-stopped \
-              --name ${{ secrets.APP_NAME }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:latest
+              --name ${{ secrets.APP_NAME }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.prepare.outputs.github_short_sha }}
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
           user: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY}}
 
-
-
-
+      - name: Clean
+        uses: fifsky/ssh-action@master
+        with:
+          command: |
+            docker container prune -f
+            docker rmi $(docker images **/${{ secrets.APP_NAME }} -q) -f
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          user: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY}}
