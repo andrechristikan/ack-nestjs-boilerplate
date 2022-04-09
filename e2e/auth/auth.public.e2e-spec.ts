@@ -15,9 +15,7 @@ describe('E2E Public', () => {
     let app: INestApplication;
     let userService: UserService;
 
-    const password = `@!${faker.random
-        .alphaNumeric(5)
-        .toLowerCase()}${faker.random.alphaNumeric(5).toUpperCase()}`;
+    const password = `@!aaAA@123`;
 
     let userData: Record<string, any>;
 
