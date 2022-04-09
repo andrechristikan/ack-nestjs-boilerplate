@@ -84,10 +84,11 @@ jobs:
 
       - name: Clean
         uses: fifsky/ssh-action@master
+        continue-on-error: true
         with:
           command: |
             docker container prune -f
-            docker image prune -f
+            docker rmi $(docker images **/${{ secrets.APP_NAME }} -q) -f
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
           user: ${{ secrets.SSH_USER }}
