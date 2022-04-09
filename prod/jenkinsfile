@@ -83,7 +83,7 @@ pipeline {
                     }catch(e){}
 
                     sh "docker run --rm --network ${APP_NETWORK} \
-                        -v /app/${APP_NAME}/.env:/app/.env \
+                        --volume /app/${APP_NAME}/.env:/app/.env \
                         --name ${container_testing} \
                         ${app_image} \
                         sh -c 'yarn test'"
@@ -107,7 +107,7 @@ pipeline {
                     }catch(e){}
 
                     sh "docker run --rm --network ${APP_NETWORK} \
-                        -v /app/${APP_NAME}/.env:/app/.env \
+                        --volume /app/${APP_NAME}/.env:/app/.env \
                         --name ${container_testing} \
                         ${app_image} \
                         sh -c 'yarn test:e2e'"
@@ -155,10 +155,10 @@ pipeline {
 
                         sshCommand remote: remote, command: "docker run -itd  \
                             --hostname ${APP_NAME} \
-                            -p ${APP_PORT}:${APP_PORT} \
+                            --publis ${APP_PORT}:${APP_PORT} \
                             --network ${APP_NETWORK} \
-                            -v /app/${APP_NAME}/logs/:/app/logs/ \
-                            -v /app/${APP_NAME}/.env:/app/.env \
+                            --volume /app/${APP_NAME}/logs/:/app/logs/ \
+                            --volume /app/${APP_NAME}/.env:/app/.env \
                             --restart unless-stopped \
                             --name ${APP_NAME} ${app_image}"
                     }
@@ -178,20 +178,20 @@ pipeline {
                         remote.identityFile = IDENTITY
 
                         try{
-                            sshCommand remote: remote, command: "docker container prune -f"
+                            sshCommand remote: remote, command: "docker container prune --force"
                         }catch(e){}
 
                         try{
-                            sshCommand remote: remote, command: "docker image prune -f"
+                            sshCommand remote: remote, command: "docker rmi \$(docker images **/${APP_NAME} -q) --force"
                         }catch(e){}
                     }
 
                     try{
-                        sh "docker container prune -f"
+                        sh "docker container prune --force"
                     }catch(e){}
 
                     try{
-                        sh "docker image prune -f"
+                        sh "docker rmi \$(docker images **/${APP_NAME} -q) --force"
                     }catch(e){}
                     
                 }
