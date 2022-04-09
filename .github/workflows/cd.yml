@@ -87,7 +87,7 @@ jobs:
         with:
           command: |
             docker container prune -f
-            docker rmi $(docker images **/${{ secrets.APP_NAME }} -q) -f
+            docker image prune -f
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
           user: ${{ secrets.SSH_USER }}
