@@ -67,6 +67,7 @@ jobs:
         uses: fifsky/ssh-action@master
         with:
           command: |
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.prepare.outputs.github_short_sha }}
             docker stop ${{ secrets.APP_NAME }} && docker rm ${{ secrets.APP_NAME }}
             docker network create ${{ secrets.APP_NETWORK }} --driver=bridge
             docker run -itd \
