@@ -1,6 +1,6 @@
 name: CI
 on:
-  pull_request:
+  push:
     branches: 
     - main
 
@@ -9,14 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Wait for tests to succeed
-        uses: lewagon/wait-on-check-action@v1.0.0
-        with:
-          ref: ${{ github.ref }}
-          check-name: 'Test'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 10
-
       - name: Git checkout
         uses: actions/checkout@v3
 
@@ -68,3 +60,6 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.get_version.outputs.version-without-v }}
           push: true
+
+
+
