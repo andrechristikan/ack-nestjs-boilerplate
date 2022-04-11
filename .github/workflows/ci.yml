@@ -1,60 +1,66 @@
 name: CI
 
 on:
-  pull_request:
-    branches: 
-    - main
-    
+  workflow_run:
+    workflows: ["test"]
+    branches: [main]
+    types:
+      - completed
+
 jobs:
-  run-ci:
+  build:
     runs-on: ubuntu-latest
-    environment: baibay
-
-    strategy:
-      matrix:
-        node-version: ['17.x']
-
-    services:
-      mongodb:
-        image: mongo:latest
-        options: >-
-          --health-cmd mongo
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 27017:27017
+    environment: github.event.inputs.environment
 
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
 
-      - name: Setup node version ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+      - name: Prepare
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@master
         with:
-          node-version: ${{ matrix.node-version }}
+          path: ./package.json
 
-      - name: Install dependencies
-        run: yarn --frozen-lockfile
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
 
-      - name: Migration
-        run: yarn migrate
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
 
-      - name: Create env file
-        run: |
-          touch .env
-          echo AWS_CREDENTIAL_KEY="$AWS_CREDENTIAL_KEY" >> .env
-          echo AWS_CREDENTIAL_SECRET="$AWS_CREDENTIAL_SECRET" >> .env
-          echo AWS_S3_BUCKET="$AWS_S3_BUCKET" >> .env
-          echo AWS_S3_REGION="$AWS_S3_REGION" >> .env
-        env:
-          AWS_CREDENTIAL_KEY: ${{ secrets.AWS_CREDENTIAL_KEY }}
-          AWS_CREDENTIAL_SECRET: ${{ secrets.AWS_CREDENTIAL_SECRET }}
-          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
-          AWS_S3_REGION: ${{ secrets.AWS_S3_REGION }}
-          
-      - name: Unit Test
-        run: yarn test
+      - uses: docker/setup-buildx-action@v1
+        id: builder
 
-      - name: E2E Test
-        run: yarn test:e2e
+      - uses: docker/setup-buildx-action@v1
+        id: main
+
+      - name: Builder name
+        run: echo ${{ steps.builder.outputs.name }}
+
+      - name: Main builder name
+        run: echo ${{ steps.main.outputs.name }}
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1 
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build against builder
+        uses: docker/build-push-action@v2
+        with:
+          builder: ${{ steps.builder.outputs.name }}
+          file: ./prod/dockerfile
+          target: builder
+
+      - name: Build against main and push
+        uses: docker/build-push-action@v2
+        with:
+          builder: ${{ steps.main.outputs.name }}
+          file: ./prod/dockerfile
+          target: main
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.package-version.outputs.current-version}}
+          push: true
+

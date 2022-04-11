@@ -6,7 +6,7 @@ on:
     - main
 
 jobs:
-  run-linter:
+  linter:
     runs-on: ubuntu-latest
     
     strategy:
