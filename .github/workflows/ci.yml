@@ -12,7 +12,22 @@ jobs:
       - name: Git checkout
         uses: actions/checkout@v3
 
-      - name: Prepare
+      - name: Check version changes
+        uses: EndBug/version-check@v1
+        id: check
+        
+      - name: "Print result 1"
+        run: |
+          echo "version: ${{ steps.check.outputs.version }}"
+          echo "type: ${{ steps.check.outputs.type }}"
+          echo "changed: ${{ steps.check.outputs.changed }}"
+          echo "commit: ${{ steps.check.outputs.commit }}"
+
+      - name: Version update detected
+        if: steps.check.outputs.changed == 'true'
+        run: 'echo "Version change found! New version: ${{ steps.check.outputs.version }} (${{ steps.check.outputs.type }})"'
+
+      - name: Get commit
         id: prepare
         run: echo "::set-output name=github_short_sha::$(git rev-parse --short HEAD)"
 
@@ -24,7 +39,7 @@ jobs:
           exclude_types: "release"
           view_top: 1
 
-      - name: "Print result 1"
+      - name: "Print result 2"
         run: |
           echo "id: ${{ steps.last_release.outputs.id }}"
           echo "name: ${{ steps.last_release.outputs.name }}"
@@ -32,19 +47,6 @@ jobs:
           echo "created_at: ${{ steps.last_release.outputs.created_atd }}"
           echo "draft: ${{ steps.last_release.outputs.draft }}"
           echo "prerelease: ${{ steps.last_release.outputs.prerelease }}"
-
-      - name: Get latest release of NodeJS
-        uses: rez0n/actions-github-release@main
-        id: node_release
-        env:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          repository: "nodejs/node"
-          type: "stable"
-
-      - name: "Print result 2"
-        run: |
-          echo "id: ${{ steps.node_release.outputs.release }}"
-          echo "name: ${{ steps.node_release.outputs.release_id }}"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -86,8 +88,8 @@ jobs:
           target: main
           tags: |
             latest
-            v${{ steps.last_release.outputs.tag_name }}
-            v${{ steps.last_release.outputs.tag_name }}_sha-${{ steps.prepare.outputs.github_short_sha }}
+            ${{ steps.last_release.outputs.tag_name }}
+            ${{ steps.last_release.outputs.tag_name }}_sha-${{ steps.prepare.outputs.github_short_sha }}
           push: true
 
 
