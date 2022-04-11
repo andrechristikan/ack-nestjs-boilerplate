@@ -17,7 +17,12 @@
 
 > Best uses for API or Microservice Project
 
-ack-nestjs-boilerplate-mongoose is a [NestJs](http://nestjs.com) Boilerplate with [Mongoose](https://mongoosejs.com) and [MongoDB](https://docs.mongodb.com) as Database. Made with following [nodejs-best-practice](https://github.com/goldbergyoni/nodebestpractices) and NestJs Habit as benchmark.
+ack-nestjs-boilerplate-mongoose is a [NestJs](http://nestjs.com) Boilerplate with [Mongoose](https://mongoosejs.com) and [MongoDB](https://docs.mongodb.com) as Database.
+
+Made with following
+- [nodejs-best-practice](https://github.com/goldbergyoni/nodebestpractices) 
+- [The Twelve-Factor App](https://12factor.net)
+- NestJs Habit as benchmark.
 
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
 

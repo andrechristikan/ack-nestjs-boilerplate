@@ -1,6 +1,9 @@
 name: CD
 
 on:
+  # push:
+  #   branches: 
+  #   - main
   workflow_dispatch:
     inputs:
       environment:
@@ -9,7 +12,7 @@ on:
         required: true
 
 jobs:
-  run-cd:
+  release:
     runs-on: ubuntu-latest
     environment: github.event.inputs.environment
 

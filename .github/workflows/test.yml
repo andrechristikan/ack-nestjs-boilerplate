@@ -1,0 +1,60 @@
+name: Test
+
+on:
+  pull_request:
+    branches: 
+    - main
+    
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    environment: baibay
+
+    strategy:
+      matrix:
+        node-version: ['17.x']
+
+    services:
+      mongodb:
+        image: mongo:latest
+        options: >-
+          --health-cmd mongo
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 27017:27017
+
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v3
+
+      - name: Setup node version ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: yarn --frozen-lockfile
+
+      - name: Migration
+        run: yarn migrate
+
+      - name: Create env file
+        run: |
+          touch .env
+          echo AWS_CREDENTIAL_KEY="$AWS_CREDENTIAL_KEY" >> .env
+          echo AWS_CREDENTIAL_SECRET="$AWS_CREDENTIAL_SECRET" >> .env
+          echo AWS_S3_BUCKET="$AWS_S3_BUCKET" >> .env
+          echo AWS_S3_REGION="$AWS_S3_REGION" >> .env
+        env:
+          AWS_CREDENTIAL_KEY: ${{ secrets.AWS_CREDENTIAL_KEY }}
+          AWS_CREDENTIAL_SECRET: ${{ secrets.AWS_CREDENTIAL_SECRET }}
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+          AWS_S3_REGION: ${{ secrets.AWS_S3_REGION }}
+          
+      - name: Unit Test
+        run: yarn test
+
+      - name: E2E Test
+        run: yarn test:e2e
