@@ -11,27 +11,23 @@ jobs:
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
-
-      - name: Git Fetch all tags
-        run: git fetch --all --tags
+        with:
+          fetch-depth: 0
 
       - name: Get commit
         id: prepare
         run: echo "::set-output name=github_short_sha::$(git rev-parse --short HEAD)"
 
-      - name: Check Release Version
-        uses: thebongy/version-check@v1
+      - name: Get latest version
+        uses: avides/actions-project-version-check@latest
+        id: actions_project_version_check
         with:
-          file: package.json
-          tagFormat: v${version}
-        id: version_check_staging
+          token: ${{ secrets.GITHUB_TOKEN }}
+          file-to-check: package.json
 
       - name: Version
         run: |
-          echo "releaseVersion ${{steps.version_check_staging.outputs.releaseVersion}}"
-          echo "rawVersion ${{steps.version_check_staging.outputs.rawVersion}}"
-          echo "versionChanged ${{steps.version_check_staging.outputs.versionChanged}}"
-          echo "releaseTags ${{steps.version_check_staging.outputs.releaseTags}}"
+          echo "New version is: " ${{ steps.actions_project_version_check.outputs.version }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
