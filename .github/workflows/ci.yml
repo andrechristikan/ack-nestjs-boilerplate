@@ -12,41 +12,26 @@ jobs:
       - name: Git checkout
         uses: actions/checkout@v3
 
-      - name: Check version changes
-        uses: EndBug/version-check@v1
-        id: check
-        
-      - name: "Print result 1"
-        run: |
-          echo "version: ${{ steps.check.outputs.version }}"
-          echo "type: ${{ steps.check.outputs.type }}"
-          echo "changed: ${{ steps.check.outputs.changed }}"
-          echo "commit: ${{ steps.check.outputs.commit }}"
-
-      - name: Version update detected
-        if: steps.check.outputs.changed == 'true'
-        run: 'echo "Version change found! New version: ${{ steps.check.outputs.version }} (${{ steps.check.outputs.type }})"'
+      - name: Git Fetch all tags
+        run: git fetch --all --tags
 
       - name: Get commit
         id: prepare
         run: echo "::set-output name=github_short_sha::$(git rev-parse --short HEAD)"
 
-      - name: "Get latest version"
-        id: last_release
-        uses: InsonusK/get-latest-release@v1.0.1
+      - name: Check Release Version
+        uses: thebongy/version-check@v1
         with:
-          myToken: ${{ secrets.GITHUB_TOKEN }}
-          exclude_types: "release"
-          view_top: 1
+          file: package.json
+          tagFormat: v${version}
+        id: version_check_staging
 
-      - name: "Print result 2"
+      - name: Version
         run: |
-          echo "id: ${{ steps.last_release.outputs.id }}"
-          echo "name: ${{ steps.last_release.outputs.name }}"
-          echo "tag_name: ${{ steps.last_release.outputs.tag_name }}"
-          echo "created_at: ${{ steps.last_release.outputs.created_atd }}"
-          echo "draft: ${{ steps.last_release.outputs.draft }}"
-          echo "prerelease: ${{ steps.last_release.outputs.prerelease }}"
+          echo "releaseVersion ${{steps.version_check_staging.outputs.releaseVersion}}"
+          echo "rawVersion ${{steps.version_check_staging.outputs.rawVersion}}"
+          echo "versionChanged ${{steps.version_check_staging.outputs.versionChanged}}"
+          echo "releaseTags ${{steps.version_check_staging.outputs.releaseTags}}"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
