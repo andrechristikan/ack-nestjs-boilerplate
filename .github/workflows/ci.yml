@@ -2,7 +2,7 @@ name: CI
 on:
   push:
     branches: 
-    - main
+    - development
 
 jobs:
   build:
@@ -12,13 +12,39 @@ jobs:
       - name: Git checkout
         uses: actions/checkout@v3
 
-      - name: Perpare
-        uses: EndBug/version-check@v1
-        id: check
+      - name: Prepare
+        id: prepare
+        run: echo "::set-output name=github_short_sha::$(git rev-parse --short HEAD)"
 
-      - name: Version update detected
-        if: steps.check.outputs.changed == 'true'
-        run: 'echo "Version change found! New version: ${{ steps.check.outputs.version }} (${{ steps.check.outputs.type }})"'
+      - name: "Get latest version"
+        id: last_release
+        uses: InsonusK/get-latest-release@v1.0.1
+        with:
+          myToken: ${{ secrets.GITHUB_TOKEN }}
+          exclude_types: "release"
+          view_top: 1
+
+      - name: "Print result 1"
+        run: |
+          echo "id: ${{ steps.last_release.outputs.id }}"
+          echo "name: ${{ steps.last_release.outputs.name }}"
+          echo "tag_name: ${{ steps.last_release.outputs.tag_name }}"
+          echo "created_at: ${{ steps.last_release.outputs.created_atd }}"
+          echo "draft: ${{ steps.last_release.outputs.draft }}"
+          echo "prerelease: ${{ steps.last_release.outputs.prerelease }}"
+
+      - name: Get latest release of NodeJS
+        uses: rez0n/actions-github-release@main
+        id: node_release
+        env:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: "nodejs/node"
+          type: "stable"
+
+      - name: "Print result 2"
+        run: |
+          echo "id: ${{ steps.node_release.outputs.release }}"
+          echo "name: ${{ steps.node_release.outputs.release_id }}"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -55,11 +81,13 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.main.outputs.name }}
-          file: ./prod/dockerfile
+          dockerfile: ./prod/dockerfile
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/ack-nestjs-boilerplate-mongoose
           target: main
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/ack-nestjs-boilerplate-mongoose:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.check.outputs.version }}
+            latest
+            v${{ steps.last_release.outputs.tag_name }}
+            v${{ steps.last_release.outputs.tag_name }}_sha-${{ steps.prepare.outputs.github_short_sha }}
           push: true
 
 
