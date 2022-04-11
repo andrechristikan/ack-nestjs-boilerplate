@@ -70,7 +70,7 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^8.2.4",
-    "@nestjs/schematics": "^8.0.9",
+    "@nestjs/schematics": "^8.0.10",
     "@nestjs/testing": "^8.4.3",
     "@types/bcrypt": "^5.0.0",
     "@types/compression": "^1.7.2",
