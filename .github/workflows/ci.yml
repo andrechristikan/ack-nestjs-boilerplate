@@ -7,24 +7,34 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      APP_NAME: ack-nestjs-boilerplate-mongoose
+      DOCKERFILE: ./prod/docker
     
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
 
-      - name: Get commit
-        id: prepare
-        run: echo "::set-output name=github_short_sha::$(git rev-parse --short HEAD)"
-
+      - name: Get commit and git branch name
+        id: git
+        run: |
+          echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
+          echo "::set-output name=branch_name::${GITHUB_REF##*/}"
+      
       - name: Get latest version
-        id: package-version
+        id: version
         uses: martinbeentjes/npm-get-version-action@master
 
-      - name: Version
+      - name: Git
         run: |
-          echo New version is: ${{ steps.package-version.outputs.current-version}}
+          echo Branch name is: ${{ steps.git.outputs.current-version}}
+          echo Short sha: ${{ steps.git.outputs.branch_name}}
+          echo Version is: ${{ steps.version.outputs.current-version}}
+
+      - name: Environment
+        run: |
+          echo APP_NAME is: ${{ env.APP_NAME}}
+          echo DOCKERFILE is: ${{ env.DOCKERFILE}}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -61,13 +71,13 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.main.outputs.name }}
-          dockerfile: ./prod/dockerfile
-          repository: ${{ secrets.DOCKERHUB_USERNAME }}/ack-nestjs-boilerplate-mongoose
-          target: main
+          dockerfile: ${{ env.DOCKERFILE }}
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}
+          target: ${{ steps.git.outputs.branch_name}}
           tags: |
             latest
-            ${{ steps.last_release.outputs.tag_name }}
-            ${{ steps.last_release.outputs.tag_name }}_sha-${{ steps.prepare.outputs.github_short_sha }}
+            v${{ steps.version.outputs.current-version}}
+            v${{ steps.version.outputs.current-version}}_sha-${{ steps.git.outputs.short_sha }}
           push: true
 
 
