@@ -21,8 +21,10 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Prepare
-        id: prepare
-        run: echo "::set-output name=github_short_sha::$(git rev-parse --short HEAD)"
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@master
+        with:
+          path: ./package.json
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -63,7 +65,7 @@ jobs:
           target: main
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.prepare.outputs.github_short_sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.package-version.outputs.current-version}}
           push: true
       
       - name: Deploy
@@ -80,7 +82,7 @@ jobs:
               --volume /app/${{ secrets.APP_NAME }}/logs/:/app/logs/ \
               --volume /app/${{ secrets.APP_NAME }}/.env:/app/.env \
               --restart unless-stopped \
-              --name ${{ secrets.APP_NAME }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.prepare.outputs.github_short_sha }}
+              --name ${{ secrets.APP_NAME }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.package-version.outputs.current-version}}
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
           user: ${{ secrets.SSH_USER }}
