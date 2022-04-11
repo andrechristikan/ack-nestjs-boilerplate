@@ -19,7 +19,7 @@ jobs:
         run: echo "::set-output name=github_short_sha::$(git rev-parse --short HEAD)"
 
       - name: Get latest version
-        uses: avides/actions-project-version-check@latest
+        uses: avides/actions-project-version-check@v1.2.1
         id: actions_project_version_check
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
