@@ -15,8 +15,6 @@ jobs:
       - name: Prepare
         id: package-version
         uses: martinbeentjes/npm-get-version-action@master
-        with:
-          path: ./
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
