@@ -19,7 +19,6 @@ jobs:
         id: git
         run: |
           echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
-          echo "::set-output name=branch_name::${GITHUB_REF##*/}"
       
       - name: Get latest version
         id: version
@@ -27,8 +26,8 @@ jobs:
 
       - name: Git
         run: |
-          echo Branch name is: ${{ steps.git.outputs.current-version}}
-          echo Short sha: ${{ steps.git.outputs.branch_name}}
+          echo Branch name is: ${{ github.ref_name }}
+          echo Short sha: ${{ steps.git.outputs.short_sha}}
           echo Version is: ${{ steps.version.outputs.current-version}}
 
       - name: Environment
@@ -73,7 +72,7 @@ jobs:
           builder: ${{ steps.main.outputs.name }}
           dockerfile: ${{ env.DOCKERFILE }}
           repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}
-          target: ${{ steps.git.outputs.branch_name}}
+          target: ${{ github.ref_name }}
           tags: |
             latest
             v${{ steps.version.outputs.current-version}}
