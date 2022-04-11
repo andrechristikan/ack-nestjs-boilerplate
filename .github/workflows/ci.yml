@@ -74,9 +74,9 @@ jobs:
           target: main
           repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}
           tags: |
-            latest
-            v${{ steps.version.outputs.current-version}}
-            v${{ steps.version.outputs.current-version}}_sha-${{ steps.git.outputs.short_sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}:v${{ steps.version.outputs.current-version}}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}:v${{ steps.version.outputs.current-version}}_sha-${{ steps.git.outputs.short_sha }}
           push: true
 
 
