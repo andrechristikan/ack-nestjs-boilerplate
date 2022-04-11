@@ -2,8 +2,7 @@ name: CI
 
 on:
   workflow_run:
-    workflows: ["Test"]
-    branches: [main]
+    workflows: [Test]
     types:
       - completed
 
