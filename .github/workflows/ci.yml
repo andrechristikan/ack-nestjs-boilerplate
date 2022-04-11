@@ -12,9 +12,13 @@ jobs:
       - name: Git checkout
         uses: actions/checkout@v3
 
-      - name: Prepare
-        id: package-version
-        uses: martinbeentjes/npm-get-version-action@master
+      - name: Perpare
+        uses: EndBug/version-check@v1
+        id: check
+
+      - name: Version update detected
+        if: steps.check.outputs.changed == 'true'
+        run: 'echo "Version change found! New version: ${{ steps.check.outputs.version }} (${{ steps.check.outputs.type }})"'
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -55,7 +59,7 @@ jobs:
           target: main
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.package-version.outputs.current-version}}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.check.outputs.version }}
           push: true
 
 
