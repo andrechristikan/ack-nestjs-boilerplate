@@ -16,13 +16,6 @@ jobs:
       APP_NETWORK: app-network
 
     steps:
-      - name: Wait for tests to succeed
-        uses: lewagon/wait-on-check-action@v1.0.0
-        with:
-          ref: ${{ github.ref }}
-          check-name: 'Test'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 60
 
       - name: Git checkout
         uses: actions/checkout@v3
@@ -45,7 +38,8 @@ jobs:
       - name: Environment
         run: |
           echo APP_NAME is: ${{ env.APP_NAME}}
-          echo DOCKERFILE is: ${{ env.DOCKERFILE}}
+          echo APP_PORT is: ${{ env.APP_PORT}}
+          echo APP_NETWORK is: ${{ env.APP_NETWORK}}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -91,6 +85,15 @@ jobs:
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
+      
+      - name: Get latest version
+        id: version
+        uses: martinbeentjes/npm-get-version-action@master
+
+      - name: Git
+        run: |
+          echo Branch name is: ${{ github.ref_name }}
+          echo Version is: ${{ steps.version.outputs.current-version}}
 
       - name: Changelog
         uses: scottbrenner/generate-changelog-action@master
@@ -104,8 +107,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: v${{ steps.version.outputs.current-version}}
+          release_name: Release v${{ steps.version.outputs.current-version}}
           body: |
             ${{ steps.Changelog.outputs.changelog }}
           draft: false
