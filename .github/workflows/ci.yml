@@ -9,14 +9,23 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Wait for tests to succeed
+        uses: lewagon/wait-on-check-action@v1.0.0
+        with:
+          ref: ${{ github.ref }}
+          check-name: 'Test'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
       - name: Git checkout
         uses: actions/checkout@v3
 
       - name: Prepare
-        id: package-version
-        uses: martinbeentjes/npm-get-version-action@master
-        with:
-          path: ./package.json
+        id: get_version
+        uses: battila7/get-version-action@v2
+
+      - name: Version
+        run: echo ${{ steps.get_version.outputs.version-without-v }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -57,8 +66,5 @@ jobs:
           target: main
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.package-version.outputs.current-version}}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.get_version.outputs.version-without-v }}
           push: true
-
-
-
