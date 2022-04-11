@@ -19,15 +19,12 @@ jobs:
         run: echo "::set-output name=github_short_sha::$(git rev-parse --short HEAD)"
 
       - name: Get latest version
-        uses: avides/actions-project-version-check@v1.2.1
-        id: actions_project_version_check
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          file-to-check: package.json
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@master
 
       - name: Version
         run: |
-          echo "New version is: " ${{ steps.actions_project_version_check.outputs.version }}
+          echo New version is: ${{ steps.package-version.outputs.current-version}}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
