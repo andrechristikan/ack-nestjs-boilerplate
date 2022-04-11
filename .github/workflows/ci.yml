@@ -72,7 +72,6 @@ jobs:
           builder: ${{ steps.main.outputs.name }}
           file: ${{ env.DOCKERFILE }}
           target: main
-          repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}:v${{ steps.version.outputs.current-version}}
