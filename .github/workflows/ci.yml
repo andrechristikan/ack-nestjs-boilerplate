@@ -1,22 +1,39 @@
 name: CI
 on:
-  pull_request:
+  push:
     branches: 
-    - main
+    - development
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      APP_NAME: ack-nestjs-boilerplate-mongoose
+      DOCKERFILE: ./prod/docker
     
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
 
-      - name: Prepare
-        id: package-version
+      - name: Get commit
+        id: git
+        run: |
+          echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
+      
+      - name: Get latest version
+        id: version
         uses: martinbeentjes/npm-get-version-action@master
-        with:
-          path: ./package.json
+
+      - name: Git
+        run: |
+          echo Branch name is: ${{ github.ref_name }}
+          echo Short sha: ${{ steps.git.outputs.short_sha}}
+          echo Version is: ${{ steps.version.outputs.current-version}}
+
+      - name: Environment
+        run: |
+          echo APP_NAME is: ${{ env.APP_NAME}}
+          echo DOCKERFILE is: ${{ env.DOCKERFILE}}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -53,11 +70,13 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.main.outputs.name }}
-          file: ./prod/dockerfile
+          dockerfile: ${{ env.DOCKERFILE }}
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}
           target: main
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.package-version.outputs.current-version}}
+            latest
+            v${{ steps.version.outputs.current-version}}
+            v${{ steps.version.outputs.current-version}}_sha-${{ steps.git.outputs.short_sha }}
           push: true
 
 
