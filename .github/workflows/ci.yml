@@ -58,7 +58,7 @@ jobs:
           file: ./prod/dockerfile
           target: main
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ack-nestjs-boilerplate-mongoose:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.check.outputs.version }}
           push: true
 
