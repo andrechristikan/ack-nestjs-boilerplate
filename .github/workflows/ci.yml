@@ -7,18 +7,33 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      APP_NAME: ack-nestjs-boilerplate-mongoose
+      DOCKERFILE: ./prod/dockerfile
     
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
 
-      - name: Perpare
-        uses: EndBug/version-check@v1
-        id: check
+      - name: Get commit
+        id: git
+        run: |
+          echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
+      
+      - name: Get latest version
+        id: version
+        uses: martinbeentjes/npm-get-version-action@master
 
-      - name: Version update detected
-        if: steps.check.outputs.changed == 'true'
-        run: 'echo "Version change found! New version: ${{ steps.check.outputs.version }} (${{ steps.check.outputs.type }})"'
+      - name: Git
+        run: |
+          echo Branch name is: ${{ github.ref_name }}
+          echo Short sha: ${{ steps.git.outputs.short_sha}}
+          echo Version is: ${{ steps.version.outputs.current-version}}
+
+      - name: Environment
+        run: |
+          echo APP_NAME is: ${{ env.APP_NAME}}
+          echo DOCKERFILE is: ${{ env.DOCKERFILE}}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -48,18 +63,19 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.builder.outputs.name }}
-          file: ./prod/dockerfile
+          file: ${{ env.DOCKERFILE }}
           target: builder
 
       - name: Build against main and push
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.main.outputs.name }}
-          file: ./prod/dockerfile
+          file: ${{ env.DOCKERFILE }}
           target: main
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/ack-nestjs-boilerplate-mongoose:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.check.outputs.version }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}:v${{ steps.version.outputs.current-version}}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}:v${{ steps.version.outputs.current-version}}_sha-${{ steps.git.outputs.short_sha }}
           push: true
 
 

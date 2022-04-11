@@ -1,5 +1,4 @@
 name: Linter
-
 on:
   pull_request:
     branches: 

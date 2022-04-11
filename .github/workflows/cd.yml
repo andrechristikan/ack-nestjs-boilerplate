@@ -1,39 +1,45 @@
 name: CD
 
 on:
-  # push:
-  #   branches: 
-  #   - main
+  # workflow_run:
+  #   workflows: ['CI']
+  #   types:
+  #     - completed
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to run action'
-        type: environment
-        required: true
 
 jobs:
-  release:
+  deploy:
     runs-on: ubuntu-latest
-    environment: github.event.inputs.environment
+    env: 
+      APP_NAME: ack-nestjs-boilerplate-mongoose
+      APP_PORT: 3000
+      APP_NETWORK: app-network
 
     steps:
-      - name: Wait for tests to succeed
-        uses: lewagon/wait-on-check-action@v1.0.0
-        with:
-          ref: ${{ github.ref }}
-          check-name: 'Test'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 60
 
       - name: Git checkout
         uses: actions/checkout@v3
 
-      - name: Prepare
-        id: get_version
-        uses: battila7/get-version-action@v2
+      - name: Get commit
+        id: git
+        run: |
+          echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
+      
+      - name: Get latest version
+        id: version
+        uses: martinbeentjes/npm-get-version-action@master
 
-      - name: Version
-        run: echo ${{ steps.get_version.outputs.version-without-v }}
+      - name: Git
+        run: |
+          echo Branch name is: ${{ github.ref_name }}
+          echo Short sha: ${{ steps.git.outputs.short_sha}}
+          echo Version is: ${{ steps.version.outputs.current-version}}
+
+      - name: Environment
+        run: |
+          echo APP_NAME is: ${{ env.APP_NAME}}
+          echo APP_PORT is: ${{ env.APP_PORT}}
+          echo APP_NETWORK is: ${{ env.APP_NETWORK}}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -41,57 +47,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
-      - uses: docker/setup-buildx-action@v1
-        id: builder
-
-      - uses: docker/setup-buildx-action@v1
-        id: main
-
-      - name: Builder name
-        run: echo ${{ steps.builder.outputs.name }}
-
-      - name: Main builder name
-        run: echo ${{ steps.main.outputs.name }}
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v1 
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build against builder
-        uses: docker/build-push-action@v2
-        with:
-          builder: ${{ steps.builder.outputs.name }}
-          file: ./prod/dockerfile
-          target: builder
-
-      - name: Build against main and push
-        uses: docker/build-push-action@v2
-        with:
-          builder: ${{ steps.main.outputs.name }}
-          file: ./prod/dockerfile
-          target: main
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.get_version.outputs.version-without-v }}
-          push: true
-      
       - name: Deploy
         uses: fifsky/ssh-action@master
         with:
           command: |
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.prepare.outputs.github_short_sha }}
-            docker stop ${{ secrets.APP_NAME }} && docker rm ${{ secrets.APP_NAME }}
-            docker network create ${{ secrets.APP_NETWORK }} --driver=bridge
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME}}:${{ steps.git.outputs.short_sha }}
+            docker stop ${{ env.APP_NAME}} && docker rm ${{ env.APP_NAME}}
+            docker network create ${{ env.APP_NETWORK }} --driver=bridge
             docker run -itd \
-              --hostname ${{ secrets.APP_NAME }} \
-              --publish ${{ secrets.APP_PORT }}:${{ secrets.APP_PORT }} \
-              --network ${{ secrets.APP_NETWORK }} \
-              --volume /app/${{ secrets.APP_NAME }}/logs/:/app/logs/ \
-              --volume /app/${{ secrets.APP_NAME }}/.env:/app/.env \
+              --hostname ${{ env.APP_NAME}} \
+              --publish ${{ env.APP_PORT }}:${{ env.APP_PORT }} \
+              --network ${{ env.APP_NETWORK }} \
+              --volume /app/${{ env.APP_NAME}}/logs/:/app/logs/ \
+              --volume /app/${{ env.APP_NAME}}/.env:/app/.env \
               --restart unless-stopped \
-              --name ${{ secrets.APP_NAME }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.get_version.outputs.version-without-v }}
+              --name ${{ env.APP_NAME}} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME}}:v${{ steps.version.outputs.current-version}}
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
           user: ${{ secrets.SSH_USER }}
@@ -108,3 +78,38 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           user: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY}}
+
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v3
+      
+      - name: Get latest version
+        id: version
+        uses: martinbeentjes/npm-get-version-action@master
+
+      - name: Git
+        run: |
+          echo Branch name is: ${{ github.ref_name }}
+          echo Version is: ${{ steps.version.outputs.current-version}}
+
+      - name: Changelog
+        uses: scottbrenner/generate-changelog-action@master
+        id: Changelog
+        env:
+          REPO: ${{ github.repository }}
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.version.outputs.current-version}}
+          release_name: Release v${{ steps.version.outputs.current-version}}
+          body: |
+            ${{ steps.Changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
