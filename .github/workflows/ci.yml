@@ -1,15 +1,12 @@
 name: CI
-
 on:
-  workflow_run:
-    workflows: [Test]
-    types:
-      - completed
+  pull_request:
+    branches: 
+    - main
 
 jobs:
-  on-success-test:
+  build:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     
     steps:
       - name: Git checkout
@@ -62,12 +59,6 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.APP_NAME }}:${{ steps.package-version.outputs.current-version}}
           push: true
-          
-  on-failure-test:
-    runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
-    steps:
-      - run: echo 'The triggering workflow failed'
 
 
 
