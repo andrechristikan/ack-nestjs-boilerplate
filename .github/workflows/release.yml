@@ -23,11 +23,11 @@ jobs:
           echo Branch name is: ${{ github.ref_name }}
           echo Version is: ${{ steps.version.outputs.current-version}}
 
-      - name: Changelog
-        uses: scottbrenner/generate-changelog-action@master
-        id: Changelog
+      - name: Build changelog
+        id: github_release
+        uses: mikepenz/release-changelog-builder-action@v1
         env:
-          REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Release
         id: create_release
@@ -36,8 +36,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ steps.version.outputs.current-version}}
-          release_name: Release v${{ steps.version.outputs.current-version}}
+          release_name: v${{ steps.version.outputs.current-version}}
           body: |
-            ${{ steps.Changelog.outputs.changelog }}
+            ${{ steps.github_release.outputs.changelog }}
           draft: false
           prerelease: false
