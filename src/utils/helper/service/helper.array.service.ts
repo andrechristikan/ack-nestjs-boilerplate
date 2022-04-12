@@ -94,10 +94,10 @@ export class HelperArrayService {
     }
 
     in<T>(a: T[], b: T[]): boolean {
-        return _.some(a, b);
+        return _.intersection(a, b).length > 0;
     }
 
     notIn<T>(a: T[], b: T[]): boolean {
-        return !_.some(a, b);
+        return _.xor(a, b).length > 0;
     }
 }
