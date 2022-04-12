@@ -13,8 +13,11 @@ jobs:
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+
+      - name: Get commit
+        id: git
+        run: |
+          echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
       
       - name: Get latest version
         id: version
@@ -23,29 +26,16 @@ jobs:
       - name: Git
         run: |
           echo Branch name is: ${{ github.ref_name }}
+          echo Short sha: ${{ steps.git.outputs.short_sha}}
           echo Version is: ${{ steps.version.outputs.current-version}}
 
-      - name: Build changelog
-        id: github_release
-        uses: mikepenz/release-changelog-builder-action@v2
-        with:
-          configuration: ".github/release-configuration.json"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Changelog
-        env:
-          CHANGELOG: ${{ steps.github_release.outputs.changelog }}
-        run: echo "CHANGELOG"
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
+      - name: Release
+        uses: softprops/action-gh-release@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ steps.version.outputs.current-version}}
           name: v${{ steps.version.outputs.current-version}}
-          body: |
-            ${{ steps.github_release.outputs.changelog }}
+          generate_release_notes: true
           draft: false
           prerelease: false
