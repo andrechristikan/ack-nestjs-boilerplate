@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       
       - name: Get latest version
         id: version
@@ -29,8 +31,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Changelog
+        env:
+          CHANGELOG: ${{ steps.github_release.outputs.changelog }}
+        run: echo "CHANGELOG"
+
       - name: Create Release
-        id: create_release
         uses: actions/create-release@latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

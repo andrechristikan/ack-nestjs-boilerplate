@@ -73,6 +73,7 @@ jobs:
         with:
           command: |
             docker container prune --force
+            docker image prune --force
             docker rmi $(docker images **/${{ secrets.APP_NAME }} -q) --force
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
