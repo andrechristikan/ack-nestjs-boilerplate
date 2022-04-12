@@ -1,15 +1,5 @@
 version: 2
 updates:
-  # Maintain dependencies for GitHub Actions
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "daily"
-      time: "01:00"
-    open-pull-requests-limit: 5
-    commit-message:
-      # Prefix all commit messages with "npm"
-      prefix: "github"
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -17,5 +7,4 @@ updates:
       time: "01:00"
     open-pull-requests-limit: 5
     commit-message:
-      # Prefix all commit messages with "npm"
       prefix: "npm"

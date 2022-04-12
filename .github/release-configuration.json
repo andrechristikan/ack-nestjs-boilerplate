@@ -10,20 +10,34 @@
     },
     {
       "title": "## 🐛 Fixes",
-      "labels": ["fix"]
+      "labels": [
+        "fix"
+      ]
     },
     {
       "title": "## 🧪 Tests",
-      "labels": ["test"]
+      "labels": [
+        "test"
+      ]
+    },
+    {
+      "title": "## 📦 Dependencies",
+      "labels": [
+        "javascript" ,
+        "github_actions",
+        "dependencies"
+      ]
     },
     {
       "title": "## 📝 Other",
-      "labels": "*",
+      "labels": ["*"],
       "exclude_labels": [ 
         "test" ,
         "fix", 
         "feature", 
-        "breaking-change"
+        "breaking-change",
+        "javascript" ,
+        "github_actions"
       ],
       "exhaustive": true
     }
@@ -40,9 +54,9 @@
   "empty_template": "- no changes",
   "label_extractor": [
     {
-      "pattern": "(.) (.+)",
-      "target": "$1",
-      "flags": "gu"
+      "pattern": ".*(\\[Feature\\]).*",
+      "on_property": "title",
+      "method": "match"
     },
     {
       "pattern": "\\[Issue\\]",
@@ -50,21 +64,10 @@
       "method": "match"
     }
   ],
-  "duplicate_filter": {
-    "pattern": "\\[ABC-....\\]",
-    "on_property": "title",
-    "method": "match"
-  },
-  "transformers": [
-    {
-      "pattern": "[\\-\\*] (\\[(...|TEST|CI|SKIP)\\])( )?(.+?)\n(.+?[\\-\\*] )(.+)",
-      "target": "- $4\n  - $6"
-    }
-  ],
-  "max_tags_to_fetch": 200,
-  "max_pull_requests": 200,
+  "max_tags_to_fetch": 100,
+  "max_pull_requests": 100,
   "max_back_track_time_days": 365,
   "base_branches": [
-    "development"
+    "main"
   ]
 }
