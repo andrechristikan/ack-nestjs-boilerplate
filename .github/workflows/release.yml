@@ -39,12 +39,12 @@ jobs:
         run: echo "CHANGELOG"
 
       - name: Create Release
-        uses: actions/create-release@latest
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ steps.version.outputs.current-version}}
-          release_name: v${{ steps.version.outputs.current-version}}
+          name: v${{ steps.version.outputs.current-version}}
           body: |
             ${{ steps.github_release.outputs.changelog }}
           draft: false
