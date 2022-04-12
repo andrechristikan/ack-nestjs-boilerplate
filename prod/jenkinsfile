@@ -155,7 +155,7 @@ pipeline {
 
                         sshCommand remote: remote, command: "docker run -itd  \
                             --hostname ${APP_NAME} \
-                            --publis ${APP_PORT}:${APP_PORT} \
+                            --publish ${APP_PORT}:${APP_PORT} \
                             --network ${APP_NETWORK} \
                             --volume /app/${APP_NAME}/logs/:/app/logs/ \
                             --volume /app/${APP_NAME}/.env:/app/.env \
