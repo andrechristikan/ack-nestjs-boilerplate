@@ -182,12 +182,20 @@ pipeline {
                         }catch(e){}
 
                         try{
+                            sshCommand remote: remote, command: "docker image prune --force"
+                        }catch(e){}
+
+                        try{
                             sshCommand remote: remote, command: "docker rmi \$(docker images **/${APP_NAME} -q) --force"
                         }catch(e){}
                     }
 
                     try{
                         sh "docker container prune --force"
+                    }catch(e){}
+
+                    try{
+                        sshCommand remote: remote, command: "docker image prune --force"
                     }catch(e){}
 
                     try{
