@@ -23,7 +23,6 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
 } from 'src/database/database.interface';
-import { IVersionOptions } from 'src/utils/version/version.interface';
 
 @Injectable()
 export class UserService {
@@ -66,25 +65,16 @@ export class UserService {
         return this.userModel.countDocuments(find);
     }
 
-    async mapProfile(
-        data: IUserDocument,
-        { version }: IVersionOptions
-    ): Promise<UserProfileTransformer> {
-        return plainToInstance(UserProfileTransformer, data, { version });
+    async mapProfile(data: IUserDocument): Promise<UserProfileTransformer> {
+        return plainToInstance(UserProfileTransformer, data);
     }
 
-    async mapList(
-        data: IUserDocument[],
-        { version }: IVersionOptions
-    ): Promise<UserListTransformer[]> {
-        return plainToInstance(UserListTransformer, data, { version });
+    async mapList(data: IUserDocument[]): Promise<UserListTransformer[]> {
+        return plainToInstance(UserListTransformer, data);
     }
 
-    async mapGet(
-        data: IUserDocument,
-        { version }: IVersionOptions
-    ): Promise<UserGetTransformer> {
-        return plainToInstance(UserGetTransformer, data, { version });
+    async mapGet(data: IUserDocument): Promise<UserGetTransformer> {
+        return plainToInstance(UserGetTransformer, data);
     }
 
     async findOneById<T>(

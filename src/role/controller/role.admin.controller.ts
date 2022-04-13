@@ -83,7 +83,6 @@ export class RoleAdminController {
             skip: skip,
             limit: perPage,
             sort,
-            version: 1,
         });
 
         const totalData: number = await this.roleService.getTotal({});
@@ -93,8 +92,7 @@ export class RoleAdminController {
         );
 
         const data: RoleListTransformer[] = await this.roleService.mapList(
-            roles,
-            { version: 1 }
+            roles
         );
 
         return {
@@ -111,7 +109,7 @@ export class RoleAdminController {
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ)
     @Get('get/:role')
     async get(@GetRole() role: IRoleDocument): Promise<IResponse> {
-        return this.roleService.mapGet(role, { version: 1 });
+        return this.roleService.mapGet(role);
     }
 
     @Response('role.create')

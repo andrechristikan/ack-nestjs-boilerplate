@@ -16,7 +16,6 @@ export class RolePutToRequestGuard implements CanActivate {
                 populate: {
                     permission: true,
                 },
-                version: 1,
             });
         request.__role = check;
 
