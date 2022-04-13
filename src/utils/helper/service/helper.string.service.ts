@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import faker from '@faker-js/faker';
+import { IHelperStringRandomOptions } from '../helper.interface';
 
 @Injectable()
 export class HelperStringService {
@@ -20,7 +21,7 @@ export class HelperStringService {
             : `${timestamp}${randomString}`;
     }
 
-    random(length: number, options?: Record<string, any>): string {
+    random(length: number, options?: IHelperStringRandomOptions): string {
         return options && options.safe
             ? faker.random.alpha({
                   count: length,

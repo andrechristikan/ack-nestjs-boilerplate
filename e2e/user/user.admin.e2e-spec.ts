@@ -96,6 +96,7 @@ describe('E2E User Admin', () => {
                     role: true,
                     permission: true,
                 },
+                version: 1,
             }
         );
 

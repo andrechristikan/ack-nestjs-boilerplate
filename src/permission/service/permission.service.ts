@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { Model } from 'mongoose';
 import { DatabaseEntity } from 'src/database/database.decorator';
+import { IDatabaseFindAllOptions } from 'src/database/database.interface';
 import { IPermission } from '../permission.interface';
 import {
     PermissionDocument,
@@ -20,7 +21,7 @@ export class PermissionService {
 
     async findAll(
         find?: Record<string, any>,
-        options?: Record<string, any>
+        options?: IDatabaseFindAllOptions
     ): Promise<PermissionDocument[]> {
         const findAll = this.permissionModel.find(find);
         if (

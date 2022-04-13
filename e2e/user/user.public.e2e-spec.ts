@@ -75,6 +75,7 @@ describe('E2E User Public', () => {
                     role: true,
                     permission: true,
                 },
+                version: 1,
             }
         );
 

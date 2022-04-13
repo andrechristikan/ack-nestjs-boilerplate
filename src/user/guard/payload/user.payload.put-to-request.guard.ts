@@ -16,6 +16,7 @@ export class UserPayloadPutToRequestGuard implements CanActivate {
                     role: true,
                     permission: true,
                 },
+                version: 1,
             });
         request.__user = check;
 

@@ -9,6 +9,10 @@ import { IRoleDocument } from '../role.interface';
 import { RoleListTransformer } from '../transformer/role.list.transformer';
 import { RoleDocument, RoleEntity } from '../schema/role.schema';
 import { PermissionEntity } from 'src/permission/schema/permission.schema';
+import {
+    IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
+} from 'src/database/database.interface';
 
 @Injectable()
 export class RoleService {
@@ -19,7 +23,7 @@ export class RoleService {
 
     async findAll(
         find?: Record<string, any>,
-        options?: Record<string, any>
+        options?: IDatabaseFindAllOptions
     ): Promise<RoleDocument[]> {
         const roles = this.roleModel.find(find);
         if (
@@ -43,7 +47,7 @@ export class RoleService {
 
     async findOneById<T>(
         _id: string,
-        options?: Record<string, any>
+        options?: IDatabaseFindOneOptions
     ): Promise<T> {
         const roles = this.roleModel.findById(_id);
 
@@ -59,7 +63,7 @@ export class RoleService {
 
     async findOne<T>(
         find?: Record<string, any>,
-        options?: Record<string, any>
+        options?: IDatabaseFindOneOptions
     ): Promise<T> {
         const role = this.roleModel.findOne(find);
 

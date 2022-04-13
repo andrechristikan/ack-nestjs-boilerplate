@@ -70,6 +70,7 @@ export class PermissionAdminController {
                 skip: skip,
                 limit: perPage,
                 sort,
+                version: 1,
             });
 
         const totalData: number = await this.permissionService.getTotal(find);

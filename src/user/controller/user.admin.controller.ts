@@ -90,6 +90,7 @@ export class UserAdminController {
             limit: perPage,
             skip: skip,
             sort,
+            version: 1,
         });
         const totalData: number = await this.userService.getTotal(find);
         const totalPage: number = await this.paginationService.totalPage(

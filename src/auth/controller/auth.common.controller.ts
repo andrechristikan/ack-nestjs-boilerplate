@@ -66,6 +66,7 @@ export class AuthCommonController {
                         role: true,
                         permission: true,
                     },
+                    version: 1,
                 }
             );
 
@@ -184,6 +185,7 @@ export class AuthCommonController {
                     role: true,
                     permission: true,
                 },
+                version: 1,
             });
 
         if (!user) {

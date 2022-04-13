@@ -19,6 +19,10 @@ import { HelperStringService } from 'src/utils/helper/service/helper.string.serv
 import { UserDocument, UserEntity } from '../schema/user.schema';
 import { RoleEntity } from 'src/role/schema/role.schema';
 import { PermissionEntity } from 'src/permission/schema/permission.schema';
+import {
+    IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
+} from 'src/database/database.interface';
 
 @Injectable()
 export class UserService {
@@ -35,7 +39,7 @@ export class UserService {
 
     async findAll(
         find?: Record<string, any>,
-        options?: Record<string, any>
+        options?: IDatabaseFindAllOptions
     ): Promise<IUserDocument[]> {
         const users = this.userModel.find(find).populate({
             path: 'role',
@@ -75,7 +79,7 @@ export class UserService {
 
     async findOneById<T>(
         _id: string,
-        options?: Record<string, any>
+        options?: IDatabaseFindOneOptions
     ): Promise<T> {
         const user = this.userModel.findById(_id);
 
@@ -102,7 +106,7 @@ export class UserService {
 
     async findOne<T>(
         find?: Record<string, any>,
-        options?: Record<string, any>
+        options?: IDatabaseFindOneOptions
     ): Promise<T> {
         const user = this.userModel.findOne(find);
 
