@@ -5,5 +5,5 @@ export interface IDatabaseFindOneOptions {
 export interface IDatabaseFindAllOptions extends IDatabaseFindOneOptions {
     limit: number;
     skip: number;
-    sort?: Record<string, number>;
+    sort?: Record<string, 1 | -1>;
 }
