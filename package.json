@@ -57,7 +57,7 @@
     "morgan": "^1.10.0",
     "nest-winston": "^1.6.2",
     "nestjs-command": "^3.1.1",
-    "nestjs-i18n": "^9.0.5",
+    "nestjs-i18n": "^9.0.6",
     "passport": "^0.5.2",
     "passport-jwt": "^4.0.0",
     "reflect-metadata": "^0.1.13",

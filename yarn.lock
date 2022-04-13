@@ -5521,14 +5521,15 @@ nestjs-command@^3.1.1:
     lodash.compact "^3.0.1"
     lodash.flattendeep "^4.4.0"
 
-nestjs-i18n@^9.0.5:
-  version "9.0.5"
-  resolved "https://registry.yarnpkg.com/nestjs-i18n/-/nestjs-i18n-9.0.5.tgz#087c9e73b33ddf52058361076fda1a9c6e4ddf0c"
-  integrity sha512-/QaeplaRkbm7u/xXvAIVXm4VL/D9ld3vIImpp6DzK4TJWf+StttQ6w/8ZaMdml+o6P4tDHsSUmrIS5ErQ9O4XA==
+nestjs-i18n@^9.0.6:
+  version "9.0.6"
+  resolved "https://registry.yarnpkg.com/nestjs-i18n/-/nestjs-i18n-9.0.6.tgz#72e2ed14ab8c491500669471096e12e6c2fb302c"
+  integrity sha512-DE9+XtKOHWnAbEh1D35hB5DYQ1w4yKn0+MEJdP4RGc9sb4USoCc9t1DsZHveWMIjrh5SnjloKB79mBCaLBIhQg==
   dependencies:
     accept-language-parser "^1.5.0"
     chokidar "^3.5.3"
     cookie "^0.4.1"
+    js-yaml "^4.1.0"
     string-format "^2.0.0"
 
 next-tick@1, next-tick@^1.1.0:
