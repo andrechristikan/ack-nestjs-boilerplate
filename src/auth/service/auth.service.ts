@@ -5,6 +5,7 @@ import { IUserDocument } from 'src/user/user.interface';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { HelperEncryptionService } from 'src/utils/helper/service/helper.encryption.service';
 import { HelperHashService } from 'src/utils/helper/service/helper.hash.service';
+import { IVersionOptions } from 'src/utils/version/version.interface';
 import { IAuthPassword, IAuthPayloadOptions } from '../auth.interface';
 import { AuthLoginTransformer } from '../transformer/auth.login.transformer';
 
@@ -148,8 +149,11 @@ export class AuthService {
         };
     }
 
-    async mapLogin(data: IUserDocument): Promise<AuthLoginTransformer> {
-        return plainToInstance(AuthLoginTransformer, data);
+    async mapLogin(
+        data: IUserDocument,
+        { version }: IVersionOptions
+    ): Promise<AuthLoginTransformer> {
+        return plainToInstance(AuthLoginTransformer, data, { version });
     }
 
     async createPassword(password: string): Promise<IAuthPassword> {

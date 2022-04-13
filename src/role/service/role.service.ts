@@ -13,6 +13,7 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
 } from 'src/database/database.interface';
+import { IVersionOptions } from 'src/utils/version/version.interface';
 
 @Injectable()
 export class RoleService {
@@ -134,11 +135,17 @@ export class RoleService {
         return this.roleModel.findByIdAndDelete(_id);
     }
 
-    async mapGet(data: IRoleDocument): Promise<RoleGetTransformer> {
-        return plainToInstance(RoleGetTransformer, data);
+    async mapGet(
+        data: IRoleDocument,
+        { version }: IVersionOptions
+    ): Promise<RoleGetTransformer> {
+        return plainToInstance(RoleGetTransformer, data, { version });
     }
 
-    async mapList(data: RoleDocument[]): Promise<RoleListTransformer[]> {
-        return plainToInstance(RoleListTransformer, data);
+    async mapList(
+        data: RoleDocument[],
+        { version }: IVersionOptions
+    ): Promise<RoleListTransformer[]> {
+        return plainToInstance(RoleListTransformer, data, { version });
     }
 }

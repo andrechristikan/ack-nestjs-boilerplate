@@ -93,7 +93,8 @@ export class RoleAdminController {
         );
 
         const data: RoleListTransformer[] = await this.roleService.mapList(
-            roles
+            roles,
+            { version: 1 }
         );
 
         return {
@@ -110,7 +111,7 @@ export class RoleAdminController {
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ)
     @Get('get/:role')
     async get(@GetRole() role: IRoleDocument): Promise<IResponse> {
-        return this.roleService.mapGet(role);
+        return this.roleService.mapGet(role, { version: 1 });
     }
 
     @Response('role.create')

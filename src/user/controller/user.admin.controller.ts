@@ -99,7 +99,8 @@ export class UserAdminController {
         );
 
         const data: UserListTransformer[] = await this.userService.mapList(
-            users
+            users,
+            { version: 1 }
         );
 
         return {
@@ -116,7 +117,7 @@ export class UserAdminController {
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ)
     @Get('get/:user')
     async get(@GetUser() user: IUserDocument): Promise<IResponse> {
-        return this.userService.mapGet(user);
+        return this.userService.mapGet(user, { version: 1 });
     }
 
     @Response('user.create')

@@ -122,7 +122,8 @@ export class AuthPublicController {
                     version: 1,
                 });
             const safe: AuthLoginTransformer = await this.authService.mapLogin(
-                user
+                user,
+                { version: 1 }
             );
 
             const payloadAccessToken: Record<string, any> =

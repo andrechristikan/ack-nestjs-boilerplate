@@ -3,6 +3,7 @@ import { plainToInstance } from 'class-transformer';
 import { Model } from 'mongoose';
 import { DatabaseEntity } from 'src/database/database.decorator';
 import { IDatabaseFindAllOptions } from 'src/database/database.interface';
+import { IVersionOptions } from 'src/utils/version/version.interface';
 import { IPermission } from '../permission.interface';
 import {
     PermissionDocument,
@@ -77,14 +78,18 @@ export class PermissionService {
         return permission.save();
     }
 
-    async mapGet(data: PermissionDocument): Promise<PermissionGetTransformer> {
-        return plainToInstance(PermissionGetTransformer, data);
+    async mapGet(
+        data: PermissionDocument,
+        { version }: IVersionOptions
+    ): Promise<PermissionGetTransformer> {
+        return plainToInstance(PermissionGetTransformer, data, { version });
     }
 
     async mapList(
-        data: PermissionDocument[]
+        data: PermissionDocument[],
+        { version }: IVersionOptions
     ): Promise<PermissionListTransformer[]> {
-        return plainToInstance(PermissionListTransformer, data);
+        return plainToInstance(PermissionListTransformer, data, { version });
     }
 
     async inactive(_id: string): Promise<PermissionDocument> {

@@ -87,7 +87,7 @@ describe('E2E Refresh', () => {
             }
         );
 
-        const map = await authService.mapLogin(userPopulate);
+        const map = await authService.mapLogin(userPopulate, { version: 1 });
         const payload = await authService.createPayloadRefreshToken(map, false);
         const payloadNotFound = {
             ...payload,
