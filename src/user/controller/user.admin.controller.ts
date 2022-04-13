@@ -90,7 +90,6 @@ export class UserAdminController {
             limit: perPage,
             skip: skip,
             sort,
-            version: 1,
         });
         const totalData: number = await this.userService.getTotal(find);
         const totalPage: number = await this.paginationService.totalPage(
@@ -99,8 +98,7 @@ export class UserAdminController {
         );
 
         const data: UserListTransformer[] = await this.userService.mapList(
-            users,
-            { version: 1 }
+            users
         );
 
         return {
@@ -117,7 +115,7 @@ export class UserAdminController {
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ)
     @Get('get/:user')
     async get(@GetUser() user: IUserDocument): Promise<IResponse> {
-        return this.userService.mapGet(user, { version: 1 });
+        return this.userService.mapGet(user);
     }
 
     @Response('user.create')

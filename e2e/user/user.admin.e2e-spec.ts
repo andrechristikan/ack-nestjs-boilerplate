@@ -96,11 +96,10 @@ describe('E2E User Admin', () => {
                     role: true,
                     permission: true,
                 },
-                version: 1,
             }
         );
 
-        const map = await authService.mapLogin(user, { version: 1 });
+        const map = await authService.mapLogin(user);
         const payload = await authService.createPayloadAccessToken(map, false);
         accessToken = await authService.createAccessToken(payload);
 

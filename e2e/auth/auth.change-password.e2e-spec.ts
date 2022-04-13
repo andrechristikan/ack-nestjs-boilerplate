@@ -74,11 +74,10 @@ describe('E2E Change Password', () => {
                     role: true,
                     permission: true,
                 },
-                version: 1,
             }
         );
 
-        const map = await authService.mapLogin(userPopulate, { version: 1 });
+        const map = await authService.mapLogin(userPopulate);
         const payload = await authService.createPayloadAccessToken(map, false);
         const payloadNotFound = {
             ...payload,
