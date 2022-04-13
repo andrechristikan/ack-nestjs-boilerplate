@@ -3,3 +3,8 @@ export interface IHelperJwtOptions {
     notBefore?: string;
     secretKey?: string;
 }
+
+export interface IHelperStringRandomOptions {
+    upperCase: boolean;
+    safe: boolean;
+}

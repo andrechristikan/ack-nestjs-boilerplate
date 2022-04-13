@@ -83,6 +83,7 @@ export class RoleAdminController {
             skip: skip,
             limit: perPage,
             sort,
+            version: 1,
         });
 
         const totalData: number = await this.roleService.getTotal({});

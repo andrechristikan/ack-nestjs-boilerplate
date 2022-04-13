@@ -74,6 +74,7 @@ describe('E2E Change Password', () => {
                     role: true,
                     permission: true,
                 },
+                version: 1,
             }
         );
 

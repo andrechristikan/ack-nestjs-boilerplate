@@ -11,7 +11,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Readable } from 'stream';
-import { IAwsS3Response } from '../aws.interface';
+import { IAwsS3PutItemOptions, IAwsS3Response } from '../aws.interface';
 
 @Injectable()
 export class AwsS3Service {
@@ -101,7 +101,7 @@ export class AwsS3Service {
             | Readable
             | ReadableStream
             | Blob,
-        options?: Record<string, any>
+        options?: IAwsS3PutItemOptions
     ): Promise<IAwsS3Response> {
         let path: string = options && options.path ? options.path : undefined;
         const acl: string =

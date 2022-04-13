@@ -83,6 +83,7 @@ describe('E2E Refresh', () => {
                     role: true,
                     permission: true,
                 },
+                version: 1,
             }
         );
 

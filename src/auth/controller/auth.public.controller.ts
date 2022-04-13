@@ -119,6 +119,7 @@ export class AuthPublicController {
                         role: true,
                         permission: true,
                     },
+                    version: 1,
                 });
             const safe: AuthLoginTransformer = await this.authService.mapLogin(
                 user
