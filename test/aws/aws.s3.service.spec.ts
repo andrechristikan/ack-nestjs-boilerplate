@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { readFileSync } from 'fs';
 import { AwsS3Service } from 'src/aws/service/aws.s3.service';
-import { CoreModule } from 'src/core/core.module';
+import { BaseModule } from 'src/core/core.module';
 
 describe('AwsS3Service', () => {
     let awsS3Service: AwsS3Service;
@@ -12,7 +12,7 @@ describe('AwsS3Service', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule],
+            imports: [BaseModule],
             providers: [AwsS3Service],
         }).compile();
 
