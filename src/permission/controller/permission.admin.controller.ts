@@ -80,7 +80,7 @@ export class PermissionAdminController {
         );
 
         const data: PermissionListTransformer[] =
-            await this.permissionService.mapList(permissions);
+            await this.permissionService.mapList(permissions, { version: 1 });
 
         return {
             totalData,
@@ -98,7 +98,7 @@ export class PermissionAdminController {
     async get(
         @GetPermission() permission: PermissionDocument
     ): Promise<IResponse> {
-        return this.permissionService.mapGet(permission);
+        return this.permissionService.mapGet(permission, { version: 1 });
     }
 
     @Response('permission.update')

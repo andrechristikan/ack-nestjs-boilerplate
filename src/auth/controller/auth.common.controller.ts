@@ -117,7 +117,8 @@ export class AuthCommonController {
         }
 
         const safe: AuthLoginTransformer = await this.authService.mapLogin(
-            user
+            user,
+            { version: 1 }
         );
 
         const payloadAccessToken: Record<string, any> =
@@ -241,7 +242,8 @@ export class AuthCommonController {
         }
 
         const safe: AuthLoginTransformer = await this.authService.mapLogin(
-            user
+            user,
+            { version: 1 }
         );
         const payloadAccessToken: Record<string, any> =
             await this.authService.createPayloadAccessToken(safe, rememberMe, {
