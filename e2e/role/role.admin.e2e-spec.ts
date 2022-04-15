@@ -102,7 +102,8 @@ describe('E2E Role Admin', () => {
     it(`GET ${E2E_ROLE_ADMIN_LIST_URL} List Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_ROLE_ADMIN_LIST_URL)
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -118,7 +119,8 @@ describe('E2E Role Admin', () => {
                     `${new Types.ObjectId()}`
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -131,7 +133,8 @@ describe('E2E Role Admin', () => {
     it(`GET ${E2E_ROLE_ADMIN_GET_BY_ID_URL} Get Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_ROLE_ADMIN_GET_BY_ID_URL.replace(':_id', role._id))
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -145,7 +148,8 @@ describe('E2E Role Admin', () => {
             .send({
                 name: 123123,
             })
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
@@ -159,7 +163,8 @@ describe('E2E Role Admin', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_ROLE_ADMIN_CREATE_URL)
             .send(existData)
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -173,7 +178,8 @@ describe('E2E Role Admin', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_ROLE_ADMIN_CREATE_URL)
             .send(successData)
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.CREATED);
         expect(response.body.statusCode).toEqual(HttpStatus.CREATED);
@@ -187,7 +193,8 @@ describe('E2E Role Admin', () => {
             .send({
                 name: [231231],
             })
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
@@ -206,7 +213,8 @@ describe('E2E Role Admin', () => {
                 )
             )
             .send(updateData)
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -220,7 +228,8 @@ describe('E2E Role Admin', () => {
         const response = await request(app.getHttpServer())
             .put(E2E_ROLE_ADMIN_UPDATE_URL.replace(':_id', roleUpdate._id))
             .send(existData)
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -234,7 +243,8 @@ describe('E2E Role Admin', () => {
         const response = await request(app.getHttpServer())
             .put(E2E_ROLE_ADMIN_UPDATE_URL.replace(':_id', roleUpdate._id))
             .send(updateData)
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -250,7 +260,8 @@ describe('E2E Role Admin', () => {
                     `${new Types.ObjectId()}`
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -263,7 +274,8 @@ describe('E2E Role Admin', () => {
     it(`PATCH ${E2E_ROLE_ADMIN_INACTIVE_URL} Inactive, success`, async () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_ROLE_ADMIN_INACTIVE_URL.replace(':_id', roleUpdate._id))
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -274,7 +286,8 @@ describe('E2E Role Admin', () => {
     it(`PATCH ${E2E_ROLE_ADMIN_INACTIVE_URL} Inactive, already inactive`, async () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_ROLE_ADMIN_INACTIVE_URL.replace(':_id', roleUpdate._id))
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -292,7 +305,8 @@ describe('E2E Role Admin', () => {
                     `${new Types.ObjectId()}`
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -305,7 +319,8 @@ describe('E2E Role Admin', () => {
     it(`PATCH ${E2E_ROLE_ADMIN_ACTIVE_URL} Active, success`, async () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_ROLE_ADMIN_ACTIVE_URL.replace(':_id', roleUpdate._id))
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -316,7 +331,8 @@ describe('E2E Role Admin', () => {
     it(`PATCH ${E2E_ROLE_ADMIN_ACTIVE_URL} Active, already active`, async () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_ROLE_ADMIN_ACTIVE_URL.replace(':_id', roleUpdate._id))
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -334,7 +350,8 @@ describe('E2E Role Admin', () => {
                     `${new Types.ObjectId()}`
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -347,7 +364,8 @@ describe('E2E Role Admin', () => {
     it(`DELETE ${E2E_ROLE_ADMIN_DELETE_URL} Delete Success`, async () => {
         const response = await request(app.getHttpServer())
             .delete(E2E_ROLE_ADMIN_DELETE_URL.replace(':_id', role._id))
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

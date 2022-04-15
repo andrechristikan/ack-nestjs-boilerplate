@@ -9,3 +9,10 @@ export enum ENUM_USER_STATUS_CODE_ERROR {
 
 export const USER_ACTIVE_META_KEY = 'UserActiveMetaKey';
 export const USER_DEFAULT_SORT = 'name@asc';
+export const USER_DEFAULT_AVAILABLE_SORT = [
+    'firstName',
+    'lastName',
+    'email',
+    'phoneNumber',
+    'createdAt',
+];

@@ -39,8 +39,15 @@ export function ResponsePagingInterceptor(
                     const statusCode: number =
                         customStatusCode || responseExpress.statusCode;
                     const responseData: Record<string, any> = await response;
-                    const { totalData, totalPage, currentPage, perPage, data } =
-                        responseData;
+                    const {
+                        totalData,
+                        totalPage,
+                        currentPage,
+                        perPage,
+                        data,
+                        availableSort,
+                        sort,
+                    } = responseData;
 
                     const message: string | IMessage =
                         (await this.messageService.get(messagePath, {
@@ -55,6 +62,11 @@ export function ResponsePagingInterceptor(
                         totalPage,
                         currentPage,
                         perPage,
+                        availableSort,
+                        sort: {
+                            field: sort.field,
+                            type: sort.type,
+                        },
                         data,
                     };
                 })

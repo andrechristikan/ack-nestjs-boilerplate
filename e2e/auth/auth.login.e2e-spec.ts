@@ -82,6 +82,7 @@ describe('E2E Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
+            .set('x-timestamp', `${Date.now()}`)
             .send({
                 email: [1231],
                 password,
@@ -100,6 +101,7 @@ describe('E2E Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
+            .set('x-timestamp', `${Date.now()}`)
             .send({
                 email: faker.internet.email(),
                 password,
@@ -118,6 +120,7 @@ describe('E2E Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
+            .set('x-timestamp', `${Date.now()}`)
             .send({
                 email: user.email,
                 password: 'asdaAA@@1231',
@@ -138,6 +141,7 @@ describe('E2E Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
+            .set('x-timestamp', `${Date.now()}`)
             .send({
                 email: user.email,
                 password,
@@ -159,6 +163,7 @@ describe('E2E Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
+            .set('x-timestamp', `${Date.now()}`)
             .send({
                 email: user.email,
                 password,
@@ -178,6 +183,7 @@ describe('E2E Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
+            .set('x-timestamp', `${Date.now()}`)
             .send({
                 email: user.email,
                 password,
@@ -197,6 +203,7 @@ describe('E2E Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
+            .set('x-timestamp', `${Date.now()}`)
             .send({
                 email: user.email,
                 password,

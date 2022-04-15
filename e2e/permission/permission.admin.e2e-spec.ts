@@ -70,7 +70,8 @@ describe('E2E Permission Admin', () => {
     it(`GET ${E2E_PERMISSION_ADMIN_LIST_URL} List Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_PERMISSION_ADMIN_LIST_URL)
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -86,7 +87,8 @@ describe('E2E Permission Admin', () => {
                     `${new Types.ObjectId()}`
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -99,7 +101,8 @@ describe('E2E Permission Admin', () => {
     it(`GET ${E2E_PERMISSION_ADMIN_GET_URL} Get Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_PERMISSION_ADMIN_GET_URL.replace(':_id', permission._id))
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -116,7 +119,8 @@ describe('E2E Permission Admin', () => {
                 )
             )
             .send(updateData)
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -134,7 +138,8 @@ describe('E2E Permission Admin', () => {
             .send({
                 name: [1231231],
             })
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
@@ -150,7 +155,8 @@ describe('E2E Permission Admin', () => {
                 E2E_PERMISSION_ADMIN_UPDATE_URL.replace(':_id', permission._id)
             )
             .send(updateData)
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -166,7 +172,8 @@ describe('E2E Permission Admin', () => {
                     `${new Types.ObjectId()}`
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -181,7 +188,8 @@ describe('E2E Permission Admin', () => {
             .patch(
                 E2E_PERMISSION_ADMIN_ACTIVE_URL.replace(':_id', permission._id)
             )
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -199,7 +207,8 @@ describe('E2E Permission Admin', () => {
                     `${new Types.ObjectId()}`
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -217,7 +226,8 @@ describe('E2E Permission Admin', () => {
                     permission._id
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -233,7 +243,8 @@ describe('E2E Permission Admin', () => {
                     permission._id
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -248,7 +259,8 @@ describe('E2E Permission Admin', () => {
             .patch(
                 E2E_PERMISSION_ADMIN_ACTIVE_URL.replace(':_id', permission._id)
             )
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

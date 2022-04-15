@@ -110,7 +110,8 @@ describe('E2E Refresh', () => {
     it(`POST ${E2E_AUTH_REFRESH_URL} Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_REFRESH_URL)
-            .set('Authorization', `Bearer ${refreshTokenNotFound}`);
+            .set('Authorization', `Bearer ${refreshTokenNotFound}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -124,7 +125,8 @@ describe('E2E Refresh', () => {
         await userService.inactive(user._id);
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_REFRESH_URL)
-            .set('Authorization', `Bearer ${refreshToken}`);
+            .set('Authorization', `Bearer ${refreshToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         await userService.active(user._id);
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
@@ -139,7 +141,8 @@ describe('E2E Refresh', () => {
         await roleService.inactive(`${user.role}`);
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_REFRESH_URL)
-            .set('Authorization', `Bearer ${refreshToken}`);
+            .set('Authorization', `Bearer ${refreshToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         await roleService.active(`${user.role}`);
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
@@ -154,7 +157,8 @@ describe('E2E Refresh', () => {
         await userService.updatePasswordExpired(user._id, passwordExpiredDate);
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_REFRESH_URL)
-            .set('Authorization', `Bearer ${refreshToken}`);
+            .set('Authorization', `Bearer ${refreshToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         await userService.updatePasswordExpired(
             user._id,
@@ -171,7 +175,8 @@ describe('E2E Refresh', () => {
     it(`POST ${E2E_AUTH_REFRESH_URL} Success`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_REFRESH_URL)
-            .set('Authorization', `Bearer ${refreshToken}`);
+            .set('Authorization', `Bearer ${refreshToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

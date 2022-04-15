@@ -27,11 +27,15 @@ export default registerAs(
                 'Host',
                 'X-Requested-With',
                 'x-custom-lang',
+                'x-timestamp',
             ],
         },
         rateLimit: {
-            resetTime: 1 * 60 * 1000,
-            maxRequestPerId: 10,
+            resetTime: 1 * 1000, // 1 mins
+            maxRequestPerId: 1, // max request per reset time
+        },
+        timestamp: {
+            toleranceTimeInMinutes: 5, // 5 mins
         },
     })
 );

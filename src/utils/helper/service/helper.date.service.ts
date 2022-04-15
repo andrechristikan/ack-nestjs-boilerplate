@@ -25,11 +25,11 @@ export class HelperDateService {
         }
     }
 
-    check(date: string): boolean {
+    check(date: string | number): boolean {
         return moment(date, true).isValid();
     }
 
-    create(date?: string | Date): Date {
+    create(date?: string | Date | number): Date {
         return moment(date, true).toDate();
     }
 

@@ -37,6 +37,7 @@ import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { LoggerService } from 'src/logger/service/logger.service';
 import { UserDocument } from 'src/user/schema/user.schema';
+import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 
 @Controller({
     version: '1',
@@ -44,6 +45,7 @@ import { UserDocument } from 'src/user/schema/user.schema';
 export class AuthCommonController {
     constructor(
         private readonly debuggerService: DebuggerService,
+        private readonly helperDateService: HelperDateService,
         private readonly userService: UserService,
         private readonly authService: AuthService,
         private readonly loggerService: LoggerService
@@ -135,8 +137,10 @@ export class AuthCommonController {
             rememberMe
         );
 
-        const today: Date = new Date();
-        const passwordExpiredDate: Date = new Date(user.passwordExpiredDate);
+        const today: Date = this.helperDateService.create();
+        const passwordExpiredDate: Date = this.helperDateService.create(
+            user.passwordExpiredDate
+        );
 
         if (today > passwordExpiredDate) {
             this.debuggerService.error(
@@ -221,8 +225,10 @@ export class AuthCommonController {
             });
         }
 
-        const today: Date = new Date();
-        const passwordExpiredDate: Date = new Date(user.passwordExpiredDate);
+        const today: Date = this.helperDateService.create();
+        const passwordExpiredDate: Date = this.helperDateService.create(
+            user.passwordExpiredDate
+        );
 
         if (today > passwordExpiredDate) {
             this.debuggerService.error(

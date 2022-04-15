@@ -1,22 +1,32 @@
 import { Exclude, Expose, Transform } from 'class-transformer';
 import {
-    DEFAULT_PAGE,
-    DEFAULT_PER_PAGE,
+    ENUM_PAGINATION_AVAILABLE_SORT_TYPE,
+    PAGINATION_DEFAULT_AVAILABLE_SORT_FIELD,
+    PAGINATION_DEFAULT_MAX_PAGE,
+    PAGINATION_DEFAULT_MAX_PER_PAGE,
+    PAGINATION_DEFAULT_PAGE,
+    PAGINATION_DEFAULT_PER_PAGE,
 } from 'src/utils/pagination/pagination.constant';
+import { IRequestSort } from '../request.interface';
 
 export class RequestQueryBaseListValidation {
     constructor(
         defaultSort: string,
+        defaultAvailableSort: string[],
         defaultPage?: number,
         defaultPerPage?: number
     ) {
         this._sort = defaultSort;
+        this._availableSort = defaultAvailableSort;
         this._page = defaultPage;
         this._perPage = defaultPerPage;
     }
 
     @Exclude()
     readonly _sort: string;
+
+    @Exclude()
+    readonly _availableSort: string[];
 
     @Exclude()
     readonly _page: number;
@@ -34,11 +44,13 @@ export class RequestQueryBaseListValidation {
     @Transform(
         ({ value, obj }) =>
             !obj._page
-                ? DEFAULT_PAGE
+                ? PAGINATION_DEFAULT_PAGE
                 : !value
                 ? obj._page
                 : value && isNaN(value)
                 ? obj._page
+                : parseInt(value) > PAGINATION_DEFAULT_MAX_PAGE
+                ? PAGINATION_DEFAULT_MAX_PAGE
                 : parseInt(value),
         { toClassOnly: true }
     )
@@ -48,11 +60,13 @@ export class RequestQueryBaseListValidation {
     @Transform(
         ({ value, obj }) =>
             !obj._perPage
-                ? DEFAULT_PER_PAGE
+                ? PAGINATION_DEFAULT_PER_PAGE
                 : !value
                 ? obj._perPage
                 : value && isNaN(value)
                 ? obj._perPage
+                : parseInt(value) > PAGINATION_DEFAULT_MAX_PER_PAGE
+                ? PAGINATION_DEFAULT_MAX_PER_PAGE
                 : parseInt(value),
         { toClassOnly: true }
     )
@@ -61,18 +75,32 @@ export class RequestQueryBaseListValidation {
     @Expose()
     @Transform(
         ({ value, obj }) => {
-            if (!value) {
-                value = obj._sort;
-            }
+            const sortString = value ? value : obj._sort;
+            const field: string = sortString.split('@')[0];
+            const type: number = sortString.split('@')[1];
+            const convertField: string = obj._availableSort.includes(field)
+                ? field
+                : PAGINATION_DEFAULT_AVAILABLE_SORT_FIELD;
+            const convertType: number =
+                sortString.split('@')[1] === 'desc'
+                    ? ENUM_PAGINATION_AVAILABLE_SORT_TYPE.DESC
+                    : ENUM_PAGINATION_AVAILABLE_SORT_TYPE.ASC;
 
-            const fieldSort: string = value.split('@')[0];
-            const typeSort: number = value.split('@')[1] === 'desc' ? -1 : 1;
-
-            return { [fieldSort]: typeSort };
+            return {
+                field,
+                type,
+                sort: { [convertField]: convertType },
+            };
         },
         {
             toClassOnly: true,
         }
     )
-    readonly sort: Record<string, any>;
+    readonly sort: IRequestSort;
+
+    @Expose()
+    @Transform(({ obj }) => obj._availableSort, {
+        toClassOnly: true,
+    })
+    readonly availableSort: string[];
 }

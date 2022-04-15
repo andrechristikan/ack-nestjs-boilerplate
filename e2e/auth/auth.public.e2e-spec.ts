@@ -51,6 +51,7 @@ describe('E2E Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
+            .set('x-timestamp', `${Date.now()}`)
             .send({
                 email: faker.name.firstName().toLowerCase(),
                 firstName: faker.name.firstName().toLowerCase(),
@@ -69,6 +70,7 @@ describe('E2E Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
+            .set('x-timestamp', `${Date.now()}`)
             .send(userData);
 
         expect(response.status).toEqual(HttpStatus.CREATED);
@@ -79,6 +81,7 @@ describe('E2E Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
+            .set('x-timestamp', `${Date.now()}`)
             .send(userData);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
@@ -93,6 +96,7 @@ describe('E2E Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
+            .set('x-timestamp', `${Date.now()}`)
             .send({
                 ...userData,
                 mobileNumber: faker.phone.phoneNumber('62812#########'),
@@ -110,6 +114,7 @@ describe('E2E Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
+            .set('x-timestamp', `${Date.now()}`)
             .send({
                 ...userData,
                 email: faker.internet.email(),

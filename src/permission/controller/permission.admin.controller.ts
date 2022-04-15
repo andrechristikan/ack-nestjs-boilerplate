@@ -50,7 +50,7 @@ export class PermissionAdminController {
     @Get('/list')
     async list(
         @Query(RequestValidationPipe)
-        { page, perPage, sort, search }: PermissionListValidation
+        { page, perPage, sort, search, availableSort }: PermissionListValidation
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
         const find: Record<string, any> = {};
@@ -69,7 +69,7 @@ export class PermissionAdminController {
             await this.permissionService.findAll(find, {
                 skip: skip,
                 limit: perPage,
-                sort,
+                sort: sort.sort,
             });
 
         const totalData: number = await this.permissionService.getTotal(find);
@@ -86,6 +86,8 @@ export class PermissionAdminController {
             totalPage,
             currentPage: page,
             perPage,
+            availableSort,
+            sort,
             data,
         };
     }

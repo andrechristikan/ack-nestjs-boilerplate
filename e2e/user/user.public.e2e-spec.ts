@@ -96,7 +96,8 @@ describe('E2E User Public', () => {
     it(`GET ${E2E_USER_PUBLIC_PROFILE_URL} Profile Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_USER_PUBLIC_PROFILE_URL)
-            .set('Authorization', `Bearer ${accessTokenNotFound}`);
+            .set('Authorization', `Bearer ${accessTokenNotFound}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -109,7 +110,8 @@ describe('E2E User Public', () => {
     it(`GET ${E2E_USER_PUBLIC_PROFILE_URL} Profile`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_USER_PUBLIC_PROFILE_URL)
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -122,7 +124,8 @@ describe('E2E User Public', () => {
             .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
             .attach('file', './e2e/user/files/test.txt')
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('Content-Type', 'multipart/form-data');
+            .set('Content-Type', 'multipart/form-data')
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
         expect(response.body.statusCode).toEqual(
@@ -137,7 +140,8 @@ describe('E2E User Public', () => {
             .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
             .attach('file', './e2e/user/files/test.txt')
             .set('Authorization', `Bearer ${accessTokenNotFound}`)
-            .set('Content-Type', 'multipart/form-data');
+            .set('Content-Type', 'multipart/form-data')
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -153,7 +157,8 @@ describe('E2E User Public', () => {
             .send()
             .attach('file', './e2e/user/files/medium.jpg')
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('Content-Type', 'multipart/form-data');
+            .set('Content-Type', 'multipart/form-data')
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.PAYLOAD_TOO_LARGE);
         expect(response.body.statusCode).toEqual(
@@ -169,7 +174,8 @@ describe('E2E User Public', () => {
             .send()
             .attach('file', './e2e/user/files/small.jpg')
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('Content-Type', 'multipart/form-data');
+            .set('Content-Type', 'multipart/form-data')
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

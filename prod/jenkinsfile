@@ -56,6 +56,7 @@ pipeline {
                 url: GIT_URL
 
                 sh "git rev-parse --short HEAD > .git/commit-id"
+                sh "grep version package.json | sed 's/.*\"version": \"\(.*\)\".*/\1/' > .git/version-id"
             }
         }
         stage('Build'){
@@ -91,6 +92,30 @@ pipeline {
                 
             }
         }
+        stage('Integration Test') {
+            steps {
+                script{
+                    def commit_id = readFile('.git/commit-id').trim()
+                    def app_image = "${DOCKER_USERNAME}/${APP_NAME}-builder:${commit_id}"
+                    def container_testing = "${APP_NAME}-testing"
+
+                    try{
+                        sh "docker stop ${container_testing} && docker rm ${container_testing}"
+                    }catch(e){}
+
+                    try{
+                        sh "docker network create ${APP_NETWORK} --driver=bridge"
+                    }catch(e){}
+
+                    sh "docker run --rm --network ${APP_NETWORK} \
+                        --volume /app/${APP_NAME}/.env:/app/.env \
+                        --name ${container_testing} \
+                        ${app_image} \
+                        sh -c 'yarn test:integration'"
+                }
+                
+            }
+        }
         stage('E2E Test') {
             steps {
                 script{
@@ -119,12 +144,14 @@ pipeline {
             steps {
                 script{
                     def commit_id = readFile('.git/commit-id').trim()
+                    def version_id = readFile('.git/version-id').trim()
                     def app_image = "${DOCKER_USERNAME}/${APP_NAME}:${commit_id}"
                     
                     def app = docker.build(app_image, "--target main -f ${DOCKER_FILE} .")
                     docker.withRegistry(DOCKER_REGISTRY, DOCKER_CREDENTIAL) {
-                        app.push()
                         app.push('latest')
+                        app.push("v${version_id}")
+                        app.push("v${version_id}_sha-${commit_id}")
                     }
                 }
                 
@@ -134,7 +161,8 @@ pipeline {
             steps {
                 script{
                     def commit_id = readFile('.git/commit-id').trim()
-                    def app_image = "${DOCKER_USERNAME}/${APP_NAME}:${commit_id}"
+                    def version_id = readFile('.git/version-id').trim()
+                    def app_image = "${DOCKER_USERNAME}/${APP_NAME}:v${version_id}_sha-${commit_id}"
 
                     def remote = [:]
                     remote.name = APP_NAME
@@ -195,7 +223,7 @@ pipeline {
                     }catch(e){}
 
                     try{
-                        sshCommand remote: remote, command: "docker image prune --force"
+                        sh "docker image prune --force"
                     }catch(e){}
 
                     try{

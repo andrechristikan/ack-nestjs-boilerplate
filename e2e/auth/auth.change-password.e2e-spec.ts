@@ -98,7 +98,8 @@ describe('E2E Change Password', () => {
                 oldPassword: '123123',
                 newPassword: '123',
             })
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
@@ -115,7 +116,8 @@ describe('E2E Change Password', () => {
                 oldPassword: password,
                 newPassword,
             })
-            .set('Authorization', `Bearer ${accessTokenNotFound}`);
+            .set('Authorization', `Bearer ${accessTokenNotFound}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -132,7 +134,8 @@ describe('E2E Change Password', () => {
                 oldPassword: 'as1231dAA@@!',
                 newPassword,
             })
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -149,7 +152,8 @@ describe('E2E Change Password', () => {
                 oldPassword: password,
                 newPassword: password,
             })
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -166,7 +170,8 @@ describe('E2E Change Password', () => {
                 oldPassword: password,
                 newPassword,
             })
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-timestamp', `${Date.now()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

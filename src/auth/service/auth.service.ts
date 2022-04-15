@@ -131,7 +131,9 @@ export class AuthService {
             ...data,
             rememberMe,
             loginDate:
-                options && options.loginDate ? options.loginDate : new Date(),
+                options && options.loginDate
+                    ? options.loginDate
+                    : this.helperDateService.create(),
         };
     }
 

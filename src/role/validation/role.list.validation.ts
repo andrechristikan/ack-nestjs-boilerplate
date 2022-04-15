@@ -1,5 +1,6 @@
 import { RequestQueryBaseListValidation } from 'src/utils/request/validation/request.query.base-list.validation';
 import {
+    ROLE_DEFAULT_AVAILABLE_SORT,
     ROLE_DEFAULT_PAGE,
     ROLE_DEFAULT_PER_PAGE,
     ROLE_DEFAULT_SORT,
@@ -7,6 +8,11 @@ import {
 
 export class RoleListValidation extends RequestQueryBaseListValidation {
     constructor() {
-        super(ROLE_DEFAULT_SORT, ROLE_DEFAULT_PAGE, ROLE_DEFAULT_PER_PAGE);
+        super(
+            ROLE_DEFAULT_SORT,
+            ROLE_DEFAULT_AVAILABLE_SORT,
+            ROLE_DEFAULT_PAGE,
+            ROLE_DEFAULT_PER_PAGE
+        );
     }
 }

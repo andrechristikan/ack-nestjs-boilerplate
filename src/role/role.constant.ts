@@ -1,6 +1,7 @@
 export const ROLE_DEFAULT_SORT = 'name@asc';
 export const ROLE_DEFAULT_PAGE = 1;
 export const ROLE_DEFAULT_PER_PAGE = 10;
+export const ROLE_DEFAULT_AVAILABLE_SORT = ['name', 'createdAt'];
 
 export enum ENUM_ROLE_STATUS_CODE_ERROR {
     ROLE_IS_INACTIVE_ERROR = 5500,

@@ -20,7 +20,8 @@
   "include": [
     "src",
     "test",
-    "e2e"
+    "e2e",
+    "integration"
   ],
   "exclude": [
     "node_modules",

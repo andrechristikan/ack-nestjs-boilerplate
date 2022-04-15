@@ -15,14 +15,14 @@
 
 # ACK NestJs Boilerplate Mongoose  🔥 🚀
 
-> Best uses for API or Microservice Project
+> Best uses for RESTFUL API or [Microservice](https://microservices.io) Project
 
 ack-nestjs-boilerplate-mongoose is a [NestJs](http://nestjs.com) Boilerplate with [Mongoose](https://mongoosejs.com) and [MongoDB](https://docs.mongodb.com) as Database.
 
 Made with following
 - [nodejs-best-practice](https://github.com/goldbergyoni/nodebestpractices) 
 - [The Twelve-Factor App](https://12factor.net)
-- NestJs Habit as benchmark.
+- NestJs Habit.
 
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
 
@@ -36,15 +36,16 @@ Made with following
 
 ack-nestjs-boilerplate-mongoose have some objective.
 
-- Simple and secure
+- Simple, scalable and secure
 - Avoid spaghetti code
 - Component based
 - Reusable component
 - Easy to maintenance
+- Support for all microservice patterns
 
 ## Features
 
-Cool features, [click this for more information][ack-docs-features] 😎.
+[Click this for more information][ack-docs-features] 😎.
 
 ## Documentation
 
@@ -58,6 +59,13 @@ Next development
 
 - [x] Documentation
 - [x] Unit Testing
+- [x] Integration Testing
+- [x] Github action CI/CD
+- [x] Github action Auto Release
+- [x] Jenkins update script
+- [x] Limitation of pagination, available sort - sort - limit page - limit perPage
+- [x] Health Check Separate Endpoint
+- [x] Timestamp Tolerance Middleware
 - [ ] Docker compose file mongodb replication set  **_(Ongoing)_**
 - [ ] Swagger **_(Ongoing)_**
 
