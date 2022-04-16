@@ -2,6 +2,7 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import faker from '@faker-js/faker';
+
 import { IUserDocument } from 'src/user/user.interface';
 import {
     E2E_USER_PUBLIC_PROFILE_UPLOAD_URL,
@@ -18,12 +19,14 @@ import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/utils/file/file.constant';
 import { RouterPublicModule } from 'src/router/router.public.module';
 import { RoleDocument } from 'src/role/schema/role.schema';
 import { UserDocument } from 'src/user/schema/user.schema';
+import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 
 describe('E2E User Public', () => {
     let app: INestApplication;
     let userService: UserService;
     let authService: AuthService;
     let roleService: RoleService;
+    let helperDateService: HelperDateService;
 
     let user: UserDocument;
 
@@ -48,6 +51,7 @@ describe('E2E User Public', () => {
         userService = app.get(UserService);
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
+        helperDateService = app.get(HelperDateService);
 
         const role: RoleDocument = await roleService.findOne({
             name: 'user',
@@ -97,7 +101,8 @@ describe('E2E User Public', () => {
         const response = await request(app.getHttpServer())
             .get(E2E_USER_PUBLIC_PROFILE_URL)
             .set('Authorization', `Bearer ${accessTokenNotFound}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -111,7 +116,8 @@ describe('E2E User Public', () => {
         const response = await request(app.getHttpServer())
             .get(E2E_USER_PUBLIC_PROFILE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -125,7 +131,8 @@ describe('E2E User Public', () => {
             .attach('file', './e2e/user/files/test.txt')
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data')
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
         expect(response.body.statusCode).toEqual(
@@ -141,7 +148,8 @@ describe('E2E User Public', () => {
             .attach('file', './e2e/user/files/test.txt')
             .set('Authorization', `Bearer ${accessTokenNotFound}`)
             .set('Content-Type', 'multipart/form-data')
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -158,7 +166,8 @@ describe('E2E User Public', () => {
             .attach('file', './e2e/user/files/medium.jpg')
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data')
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.PAYLOAD_TOO_LARGE);
         expect(response.body.statusCode).toEqual(
@@ -175,7 +184,8 @@ describe('E2E User Public', () => {
             .attach('file', './e2e/user/files/small.jpg')
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data')
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

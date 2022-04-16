@@ -28,6 +28,7 @@ export default registerAs(
                 'X-Requested-With',
                 'x-custom-lang',
                 'x-timestamp',
+                'user-agent',
             ],
         },
         rateLimit: {

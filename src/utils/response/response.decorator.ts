@@ -1,18 +1,15 @@
-import { applyDecorators, UseFilters, UseInterceptors } from '@nestjs/common';
-import { ErrorHttpFilter } from '../error/error.filter';
+import { applyDecorators, UseInterceptors } from '@nestjs/common';
 import { ResponseDefaultInterceptor } from './interceptor/response.default.interceptor';
 import { ResponsePagingInterceptor } from './interceptor/response.paging.interceptor';
 
 export function Response(messagePath: string, statusCode?: number): any {
     return applyDecorators(
-        UseInterceptors(ResponseDefaultInterceptor(messagePath, statusCode)),
-        UseFilters(ErrorHttpFilter)
+        UseInterceptors(ResponseDefaultInterceptor(messagePath, statusCode))
     );
 }
 
 export function ResponsePaging(messagePath: string, statusCode?: number): any {
     return applyDecorators(
-        UseInterceptors(ResponsePagingInterceptor(messagePath, statusCode)),
-        UseFilters(ErrorHttpFilter)
+        UseInterceptors(ResponsePagingInterceptor(messagePath, statusCode))
     );
 }

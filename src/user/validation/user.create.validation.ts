@@ -9,7 +9,10 @@ import {
     IsOptional,
     ValidateIf,
 } from 'class-validator';
-import { IsPasswordStrong, IsStart } from 'src/utils/request/request.decorator';
+import {
+    IsPasswordStrong,
+    IsStartWith,
+} from 'src/utils/request/request.decorator';
 
 export class UserCreateValidation {
     @IsEmail()
@@ -38,7 +41,7 @@ export class UserCreateValidation {
     @MinLength(10)
     @MaxLength(14)
     @Type(() => String)
-    @IsStart(['628'])
+    @IsStartWith(['628'])
     readonly mobileNumber: string;
 
     @IsNotEmpty()

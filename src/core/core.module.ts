@@ -15,6 +15,7 @@ import { DATABASE_CONNECTION_NAME } from 'src/database/database.constant';
 import { DatabaseService } from 'src/database/service/database.service';
 import { LoggerModule } from 'src/logger/logger.module';
 
+// For unit test
 @Module({
     controllers: [],
     providers: [],
@@ -43,6 +44,7 @@ import { LoggerModule } from 'src/logger/logger.module';
 })
 export class BaseModule {}
 
+// For E2E test
 @Module({
     controllers: [],
     providers: [],

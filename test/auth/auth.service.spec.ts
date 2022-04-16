@@ -1,9 +1,9 @@
-import faker from '@faker-js/faker';
 import { Test } from '@nestjs/testing';
 import { AuthService } from 'src/auth/service/auth.service';
 import { BaseModule } from 'src/core/core.module';
 import { IRoleDocument } from 'src/role/role.interface';
 import { IUserDocument } from 'src/user/user.interface';
+import faker from '@faker-js/faker';
 
 describe('AuthService', () => {
     let authService: AuthService;

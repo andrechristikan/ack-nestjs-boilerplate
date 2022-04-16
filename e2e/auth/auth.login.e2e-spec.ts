@@ -2,6 +2,7 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import faker from '@faker-js/faker';
+
 import { E2E_AUTH_LOGIN_URL } from './auth.constant';
 import { UserDocument } from 'src/user/schema/user.schema';
 import { RoleDocument } from 'src/role/schema/role.schema';
@@ -82,7 +83,8 @@ describe('E2E Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('x-timestamp', `${Date.now()}`)
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`)
             .send({
                 email: [1231],
                 password,
@@ -101,7 +103,8 @@ describe('E2E Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('x-timestamp', `${Date.now()}`)
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`)
             .send({
                 email: faker.internet.email(),
                 password,
@@ -120,7 +123,8 @@ describe('E2E Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('x-timestamp', `${Date.now()}`)
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`)
             .send({
                 email: user.email,
                 password: 'asdaAA@@1231',
@@ -141,7 +145,8 @@ describe('E2E Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('x-timestamp', `${Date.now()}`)
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`)
             .send({
                 email: user.email,
                 password,
@@ -163,7 +168,8 @@ describe('E2E Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('x-timestamp', `${Date.now()}`)
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`)
             .send({
                 email: user.email,
                 password,
@@ -183,7 +189,8 @@ describe('E2E Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('x-timestamp', `${Date.now()}`)
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`)
             .send({
                 email: user.email,
                 password,
@@ -203,7 +210,8 @@ describe('E2E Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('x-timestamp', `${Date.now()}`)
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`)
             .send({
                 email: user.email,
                 password,

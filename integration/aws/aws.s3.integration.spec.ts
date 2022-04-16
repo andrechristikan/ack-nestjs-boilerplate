@@ -5,10 +5,13 @@ import { HealthCommonController } from 'src/health/controller/health.common.cont
 import { HealthModule } from 'src/health/health.module';
 import { E2E_AWS_INTEGRATION_URL } from './aws.s3.constant';
 import request from 'supertest';
+import faker from '@faker-js/faker';
 import { TerminusModule } from '@nestjs/terminus';
+import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 
 describe('Aws S3 Integration', () => {
     let app: INestApplication;
+    let helperDateService: HelperDateService;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
@@ -17,13 +20,15 @@ describe('Aws S3 Integration', () => {
         }).compile();
 
         app = moduleRef.createNestApplication();
+        helperDateService = app.get(HelperDateService);
         await app.init();
     });
 
     it(`GET ${E2E_AWS_INTEGRATION_URL} Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_AWS_INTEGRATION_URL)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

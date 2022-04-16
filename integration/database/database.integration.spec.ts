@@ -4,11 +4,14 @@ import { Test } from '@nestjs/testing';
 import { CoreModule } from 'src/core/core.module';
 import { HealthCommonController } from 'src/health/controller/health.common.controller';
 import { HealthModule } from 'src/health/health.module';
+import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import request from 'supertest';
+import faker from '@faker-js/faker';
 import { E2E_DATABASE_INTEGRATION_URL } from './database.constant';
 
 describe('Database Integration', () => {
     let app: INestApplication;
+    let helperDateService: HelperDateService;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
@@ -17,13 +20,15 @@ describe('Database Integration', () => {
         }).compile();
 
         app = moduleRef.createNestApplication();
+        helperDateService = app.get(HelperDateService);
         await app.init();
     });
 
     it(`GET ${E2E_DATABASE_INTEGRATION_URL} Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_DATABASE_INTEGRATION_URL)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

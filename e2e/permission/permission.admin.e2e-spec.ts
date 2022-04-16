@@ -1,6 +1,7 @@
 import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
+import faker from '@faker-js/faker';
 import {
     E2E_PERMISSION_ADMIN_ACTIVE_URL,
     E2E_PERMISSION_ADMIN_GET_URL,
@@ -19,11 +20,13 @@ import { PermissionUpdateValidation } from 'src/permission/validation/permission
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/utils/request/request.constant';
 import { RouterAdminModule } from 'src/router/router.admin.module';
 import { PermissionDocument } from 'src/permission/schema/permission.schema';
+import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 
 describe('E2E Permission Admin', () => {
     let app: INestApplication;
     let authService: AuthService;
     let permissionService: PermissionService;
+    let helperDateService: HelperDateService;
 
     let accessToken: string;
     let permission: PermissionDocument;
@@ -50,6 +53,7 @@ describe('E2E Permission Admin', () => {
         app = modRef.createNestApplication();
         authService = app.get(AuthService);
         permissionService = app.get(PermissionService);
+        helperDateService = app.get(HelperDateService);
 
         accessToken = await authService.createAccessToken({
             ...E2E_PERMISSION_PAYLOAD_TEST,
@@ -71,7 +75,8 @@ describe('E2E Permission Admin', () => {
         const response = await request(app.getHttpServer())
             .get(E2E_PERMISSION_ADMIN_LIST_URL)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -88,7 +93,8 @@ describe('E2E Permission Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -102,7 +108,8 @@ describe('E2E Permission Admin', () => {
         const response = await request(app.getHttpServer())
             .get(E2E_PERMISSION_ADMIN_GET_URL.replace(':_id', permission._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -120,7 +127,8 @@ describe('E2E Permission Admin', () => {
             )
             .send(updateData)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -139,7 +147,8 @@ describe('E2E Permission Admin', () => {
                 name: [1231231],
             })
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
@@ -156,7 +165,8 @@ describe('E2E Permission Admin', () => {
             )
             .send(updateData)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -173,7 +183,8 @@ describe('E2E Permission Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -189,7 +200,8 @@ describe('E2E Permission Admin', () => {
                 E2E_PERMISSION_ADMIN_ACTIVE_URL.replace(':_id', permission._id)
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -208,7 +220,8 @@ describe('E2E Permission Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -227,7 +240,8 @@ describe('E2E Permission Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -244,7 +258,8 @@ describe('E2E Permission Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -260,7 +275,8 @@ describe('E2E Permission Admin', () => {
                 E2E_PERMISSION_ADMIN_ACTIVE_URL.replace(':_id', permission._id)
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

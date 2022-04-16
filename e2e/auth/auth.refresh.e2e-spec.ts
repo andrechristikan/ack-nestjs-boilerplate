@@ -2,6 +2,7 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import faker from '@faker-js/faker';
+
 import { E2E_AUTH_REFRESH_URL } from './auth.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
 import { UserDocument } from 'src/user/schema/user.schema';
@@ -111,7 +112,8 @@ describe('E2E Refresh', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshTokenNotFound}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -126,7 +128,8 @@ describe('E2E Refresh', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         await userService.active(user._id);
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
@@ -142,7 +145,8 @@ describe('E2E Refresh', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         await roleService.active(`${user.role}`);
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
@@ -158,7 +162,8 @@ describe('E2E Refresh', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         await userService.updatePasswordExpired(
             user._id,
@@ -176,7 +181,8 @@ describe('E2E Refresh', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`)
-            .set('x-timestamp', `${Date.now()}`);
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

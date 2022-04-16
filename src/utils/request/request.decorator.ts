@@ -1,8 +1,18 @@
+import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import {
     registerDecorator,
     ValidationArguments,
     ValidationOptions,
 } from 'class-validator';
+import { IResult } from 'ua-parser-js';
+import { IRequestApp } from './request.interface';
+
+export const UserAgent = createParamDecorator(
+    (data: string, ctx: ExecutionContext): IResult => {
+        const { userAgent } = ctx.switchToHttp().getRequest() as IRequestApp;
+        return userAgent;
+    }
+);
 
 export function IsPasswordStrong(
     minLength = 8,
@@ -103,13 +113,13 @@ export function IsPasswordWeak(
     };
 }
 
-export function IsStart(
+export function IsStartWith(
     prefix: string[],
     validationOptions?: ValidationOptions
 ) {
     return function (object: Record<string, any>, propertyName: string): any {
         registerDecorator({
-            name: 'IsStart',
+            name: 'IsStartWith',
             target: object.constructor,
             propertyName: propertyName,
             options: validationOptions,
