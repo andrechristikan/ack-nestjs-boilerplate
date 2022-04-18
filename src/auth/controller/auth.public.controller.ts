@@ -14,12 +14,11 @@ import { UserService } from 'src/user/service/user.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
 import { IUserCheckExist, IUserDocument } from 'src/user/user.interface';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
-import { RequestValidationPipe } from 'src/utils/request/pipe/request.validation.pipe';
 import { Response } from 'src/utils/response/response.decorator';
 import { IResponse } from 'src/utils/response/response.interface';
+import { AuthSignUpDto } from '../dto/auth.sign-up.dto';
+import { AuthLoginSerialization } from '../serialization/auth.login.serialization';
 import { AuthService } from '../service/auth.service';
-import { AuthLoginTransformer } from '../transformer/auth.login.transformer';
-import { AuthSignUpValidation } from '../validation/auth.sign-up.validation';
 
 @Controller({
     version: '1',
@@ -35,8 +34,8 @@ export class AuthPublicController {
     @Response('auth.signUp')
     @Post('/sign-up')
     async signUp(
-        @Body(RequestValidationPipe)
-        { email, mobileNumber, ...body }: AuthSignUpValidation
+        @Body()
+        { email, mobileNumber, ...body }: AuthSignUpDto
     ): Promise<IResponse> {
         const role: RoleDocument = await this.roleService.findOne<RoleDocument>(
             {
@@ -120,9 +119,8 @@ export class AuthPublicController {
                         permission: true,
                     },
                 });
-            const safe: AuthLoginTransformer = await this.authService.mapLogin(
-                user
-            );
+            const safe: AuthLoginSerialization =
+                await this.authService.serializationLogin(user);
 
             const payloadAccessToken: Record<string, any> =
                 await this.authService.createPayloadAccessToken(safe, false);

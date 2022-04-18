@@ -6,6 +6,7 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
+    "useDefineForClassFields": false,
     "target": "ESNext",
     "sourceMap": true,
     "outDir": "./dist",
@@ -20,7 +21,8 @@
   "include": [
     "src",
     "test",
-    "e2e"
+    "e2e",
+    "integration"
   ],
   "exclude": [
     "node_modules",

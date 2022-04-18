@@ -2,6 +2,7 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import faker from '@faker-js/faker';
+
 import { E2E_AUTH_PUBLIC_SIGN_UP_URL } from './auth.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
 import { CoreModule } from 'src/core/core.module';
@@ -10,10 +11,13 @@ import { connection } from 'mongoose';
 import { UserService } from 'src/user/service/user.service';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/utils/request/request.constant';
 import { RouterPublicModule } from 'src/router/router.public.module';
+import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
+import { useContainer } from 'class-validator';
 
 describe('E2E Public', () => {
     let app: INestApplication;
     let userService: UserService;
+    let helperDateService: HelperDateService;
 
     const password = `@!aaAA@123`;
 
@@ -34,7 +38,9 @@ describe('E2E Public', () => {
         }).compile();
 
         app = modRef.createNestApplication();
+        useContainer(app.select(CoreModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
+        helperDateService = app.get(HelperDateService);
 
         userData = {
             firstName: faker.name.firstName(),
@@ -51,6 +57,8 @@ describe('E2E Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`)
             .send({
                 email: faker.name.firstName().toLowerCase(),
                 firstName: faker.name.firstName().toLowerCase(),
@@ -69,6 +77,8 @@ describe('E2E Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`)
             .send(userData);
 
         expect(response.status).toEqual(HttpStatus.CREATED);
@@ -79,6 +89,8 @@ describe('E2E Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`)
             .send(userData);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
@@ -93,6 +105,8 @@ describe('E2E Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`)
             .send({
                 ...userData,
                 mobileNumber: faker.phone.phoneNumber('62812#########'),
@@ -110,6 +124,8 @@ describe('E2E Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`)
             .send({
                 ...userData,
                 email: faker.internet.email(),

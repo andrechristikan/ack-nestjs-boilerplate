@@ -6,16 +6,21 @@ import {
 } from '@nestjs/common';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
+import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 
 @Injectable()
 export class AuthPayloadPasswordExpiredGuard implements CanActivate {
-    constructor(private readonly debuggerService: DebuggerService) {}
+    constructor(
+        private readonly debuggerService: DebuggerService,
+        private readonly helperDateService: HelperDateService
+    ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const { user } = context.switchToHttp().getRequest();
         const { passwordExpiredDate } = user;
-        const today: Date = new Date();
-        const dPasswordExpiredDate = new Date(passwordExpiredDate);
+        const today: Date = this.helperDateService.create();
+        const dPasswordExpiredDate =
+            this.helperDateService.create(passwordExpiredDate);
 
         if (today > dPasswordExpiredDate) {
             this.debuggerService.error(

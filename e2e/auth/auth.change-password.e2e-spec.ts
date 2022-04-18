@@ -2,6 +2,7 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import faker from '@faker-js/faker';
+
 import { IUserDocument } from 'src/user/user.interface';
 import { E2E_AUTH_CHANGE_PASSWORD_URL } from './auth.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
@@ -16,12 +17,15 @@ import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/utils/request/request.consta
 import { RouterCommonModule } from 'src/router/router.common.module';
 import { UserDocument } from 'src/user/schema/user.schema';
 import { RoleDocument } from 'src/role/schema/role.schema';
+import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
+import { useContainer } from 'class-validator';
 
 describe('E2E Change Password', () => {
     let app: INestApplication;
     let userService: UserService;
     let authService: AuthService;
     let roleService: RoleService;
+    let helperDateService: HelperDateService;
 
     const password = `aaAA@!123`;
     const newPassword = `bbBB@!456`;
@@ -46,9 +50,11 @@ describe('E2E Change Password', () => {
         }).compile();
 
         app = modRef.createNestApplication();
+        useContainer(app.select(CoreModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
+        helperDateService = app.get(HelperDateService);
 
         const role: RoleDocument = await roleService.findOne({
             name: 'user',
@@ -77,7 +83,7 @@ describe('E2E Change Password', () => {
             }
         );
 
-        const map = await authService.mapLogin(userPopulate);
+        const map = await authService.serializationLogin(userPopulate);
         const payload = await authService.createPayloadAccessToken(map, false);
         const payloadNotFound = {
             ...payload,
@@ -98,7 +104,9 @@ describe('E2E Change Password', () => {
                 oldPassword: '123123',
                 newPassword: '123',
             })
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
@@ -115,7 +123,9 @@ describe('E2E Change Password', () => {
                 oldPassword: password,
                 newPassword,
             })
-            .set('Authorization', `Bearer ${accessTokenNotFound}`);
+            .set('Authorization', `Bearer ${accessTokenNotFound}`)
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -132,7 +142,9 @@ describe('E2E Change Password', () => {
                 oldPassword: 'as1231dAA@@!',
                 newPassword,
             })
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -149,7 +161,9 @@ describe('E2E Change Password', () => {
                 oldPassword: password,
                 newPassword: password,
             })
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -166,7 +180,9 @@ describe('E2E Change Password', () => {
                 oldPassword: password,
                 newPassword,
             })
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', `${helperDateService.timestamp()}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

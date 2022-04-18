@@ -5,7 +5,7 @@ import bodyParser from 'body-parser';
 @Injectable()
 export class UrlencodedBodyParserMiddleware implements NestMiddleware {
     use(req: Request, res: Response, next: NextFunction): void {
-        bodyParser.urlencoded({ extended: true })(req, res, next);
+        bodyParser.urlencoded({ extended: false })(req, res, next);
     }
 }
 

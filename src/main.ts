@@ -2,6 +2,7 @@ import { NestApplication, NestFactory } from '@nestjs/core';
 import { Logger, VersioningType, VERSION_NEUTRAL } from '@nestjs/common';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
+import { useContainer } from 'class-validator';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule);
@@ -18,6 +19,7 @@ async function bootstrap() {
 
     // Global Prefix
     app.setGlobalPrefix('/api');
+    useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
     // Versioning
     if (versioning) {

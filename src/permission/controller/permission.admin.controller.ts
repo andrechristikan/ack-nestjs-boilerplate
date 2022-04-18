@@ -11,8 +11,6 @@ import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { PermissionService } from '../service/permission.service';
-import { PermissionListValidation } from '../validation/permission.list.validation';
-import { PermissionListTransformer } from '../transformer/permission.list.transformer';
 import {
     GetPermission,
     PermissionGetGuard,
@@ -20,8 +18,6 @@ import {
     PermissionUpdateGuard,
     PermissionUpdateInactiveGuard,
 } from '../permission.decorator';
-import { PermissionUpdateValidation } from '../validation/permission.update.validation';
-import { RequestValidationPipe } from 'src/utils/request/pipe/request.validation.pipe';
 import {
     Response,
     ResponsePaging,
@@ -33,6 +29,11 @@ import {
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
 import { PaginationService } from 'src/utils/pagination/service/pagination.service';
 import { PermissionDocument } from '../schema/permission.schema';
+import { PermissionListDto } from '../dto/permission.list.dto';
+import { PermissionUpdateDto } from '../dto/permission.update.dto';
+import { PermissionListSerialization } from '../serialization/permission.list.serialization';
+import { RequestParamGuard } from 'src/utils/request/request.decorator';
+import { PermissionRequestDto } from '../dto/permissions.request.dto';
 
 @Controller({
     version: '1',
@@ -49,11 +50,23 @@ export class PermissionAdminController {
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.PERMISSION_READ)
     @Get('/list')
     async list(
-        @Query(RequestValidationPipe)
-        { page, perPage, sort, search }: PermissionListValidation
+        @Query()
+        {
+            page,
+            perPage,
+            sort,
+            search,
+            availableSort,
+            availableSearch,
+            isActive,
+        }: PermissionListDto
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
-        const find: Record<string, any> = {};
+        const find: Record<string, any> = {
+            isActive: {
+                $in: isActive,
+            },
+        };
         if (search) {
             find['$or'] = [
                 {
@@ -78,30 +91,34 @@ export class PermissionAdminController {
             perPage
         );
 
-        const data: PermissionListTransformer[] =
-            await this.permissionService.mapList(permissions);
+        const data: PermissionListSerialization[] =
+            await this.permissionService.serializationList(permissions);
 
         return {
             totalData,
             totalPage,
             currentPage: page,
             perPage,
+            availableSearch,
+            availableSort,
             data,
         };
     }
 
     @Response('permission.get')
     @PermissionGetGuard()
+    @RequestParamGuard(PermissionRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.PERMISSION_READ)
     @Get('/get/:permission')
     async get(
         @GetPermission() permission: PermissionDocument
     ): Promise<IResponse> {
-        return this.permissionService.mapGet(permission);
+        return this.permissionService.serializationGet(permission);
     }
 
     @Response('permission.update')
     @PermissionUpdateGuard()
+    @RequestParamGuard(PermissionRequestDto)
     @AuthAdminJwtGuard(
         ENUM_PERMISSIONS.PERMISSION_READ,
         ENUM_PERMISSIONS.PERMISSION_UPDATE
@@ -109,7 +126,7 @@ export class PermissionAdminController {
     @Put('/update/:permission')
     async update(
         @GetPermission() permission: PermissionDocument,
-        @Body(RequestValidationPipe) body: PermissionUpdateValidation
+        @Body() body: PermissionUpdateDto
     ): Promise<IResponse> {
         try {
             await this.permissionService.update(permission._id, body);
@@ -134,6 +151,7 @@ export class PermissionAdminController {
 
     @Response('permission.inactive')
     @PermissionUpdateInactiveGuard()
+    @RequestParamGuard(PermissionRequestDto)
     @AuthAdminJwtGuard(
         ENUM_PERMISSIONS.PERMISSION_READ,
         ENUM_PERMISSIONS.PERMISSION_UPDATE
@@ -164,6 +182,7 @@ export class PermissionAdminController {
 
     @Response('permission.active')
     @PermissionUpdateActiveGuard()
+    @RequestParamGuard(PermissionRequestDto)
     @AuthAdminJwtGuard(
         ENUM_PERMISSIONS.PERMISSION_READ,
         ENUM_PERMISSIONS.PERMISSION_UPDATE

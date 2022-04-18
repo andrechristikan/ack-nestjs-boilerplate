@@ -1,0 +1,6 @@
+{
+    "error": {
+        "timestampInvalid": "Request timestamp not acceptable",
+        "userAgentInvalid": "Request user agent not acceptable"
+    }
+}

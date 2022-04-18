@@ -2,17 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
 import { plainToInstance } from 'class-transformer';
 import { DatabaseEntity } from 'src/database/database.decorator';
-import { RoleCreateValidation } from '../validation/role.create.validation';
-import { RoleUpdateValidation } from '../validation/role.update.validation';
-import { RoleGetTransformer } from '../transformer/role.get.transformer';
 import { IRoleDocument } from '../role.interface';
-import { RoleListTransformer } from '../transformer/role.list.transformer';
 import { RoleDocument, RoleEntity } from '../schema/role.schema';
 import { PermissionEntity } from 'src/permission/schema/permission.schema';
 import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
 } from 'src/database/database.interface';
+import { RoleCreateDto } from '../dto/role.create.dto';
+import { RoleUpdateDto } from '../dto/role.update.dto';
+import { RoleGetSerialization } from '../serialization/role.get.serialization';
+import { RoleListSerialization } from '../serialization/role.list.serialization';
 
 @Injectable()
 export class RoleService {
@@ -93,7 +93,7 @@ export class RoleService {
         name,
         permissions,
         isAdmin,
-    }: RoleCreateValidation): Promise<RoleDocument> {
+    }: RoleCreateDto): Promise<RoleDocument> {
         const create: RoleDocument = new this.roleModel({
             name: name,
             permissions: permissions.map((val) => new Types.ObjectId(val)),
@@ -106,7 +106,7 @@ export class RoleService {
 
     async update(
         _id: string,
-        { name, permissions, isAdmin }: RoleUpdateValidation
+        { name, permissions, isAdmin }: RoleUpdateDto
     ): Promise<RoleDocument> {
         const update: RoleDocument = await this.roleModel.findById(_id);
         update.name = name;
@@ -134,11 +134,13 @@ export class RoleService {
         return this.roleModel.findByIdAndDelete(_id);
     }
 
-    async mapGet(data: IRoleDocument): Promise<RoleGetTransformer> {
-        return plainToInstance(RoleGetTransformer, data);
+    async serializationGet(data: IRoleDocument): Promise<RoleGetSerialization> {
+        return plainToInstance(RoleGetSerialization, data);
     }
 
-    async mapList(data: RoleDocument[]): Promise<RoleListTransformer[]> {
-        return plainToInstance(RoleListTransformer, data);
+    async serializationList(
+        data: RoleDocument[]
+    ): Promise<RoleListSerialization[]> {
+        return plainToInstance(RoleListSerialization, data);
     }
 }

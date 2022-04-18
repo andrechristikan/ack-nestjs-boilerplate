@@ -25,7 +25,6 @@ export class ErrorHttpFilter implements ExceptionFilter {
 
         // Restructure
         const response = exception.getResponse() as IErrorHttpException;
-
         if (typeof response === 'object') {
             const { statusCode, message, errors, data, properties } = response;
             const rErrors = errors

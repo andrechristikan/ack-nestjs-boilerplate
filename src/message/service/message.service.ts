@@ -6,7 +6,7 @@ import {
     IMessageOptions,
     IMessageSetOptions,
 } from '../message.interface';
-import { isArray } from 'class-validator';
+import { isArray, ValidationError } from 'class-validator';
 import { I18nService } from 'nestjs-i18n';
 import { IErrors } from 'src/utils/error/error.interface';
 
@@ -22,7 +22,7 @@ export class MessageService {
     }
 
     async getRequestErrorsMessage(
-        requestErrors: Record<string, any>[],
+        requestErrors: ValidationError[],
         appLanguages?: string[]
     ): Promise<IErrors[]> {
         const messages: Array<IErrors[]> = [];

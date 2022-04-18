@@ -36,7 +36,7 @@ export class UserPublicController {
     @AuthPublicJwtGuard()
     @Get('/profile')
     async profile(@GetUser() user: IUserDocument): Promise<IResponse> {
-        return this.userService.mapProfile(user);
+        return this.userService.serializationProfile(user);
     }
 
     @Response('user.upload')

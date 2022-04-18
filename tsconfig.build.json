@@ -5,7 +5,8 @@
     "dist", 
     "test", 
     "e2e", 
-    "prod"
+    "prod",
+    "integration"
   ],
   "include": [
     "src"

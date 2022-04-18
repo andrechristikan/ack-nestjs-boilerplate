@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
 import { DatabaseEntity } from 'src/database/database.decorator';
 import { DeleteResult } from 'mongodb';
-import { RoleCreateValidation } from '../validation/role.create.validation';
 import { RoleDocument, RoleEntity } from '../schema/role.schema';
+import { RoleCreateDto } from '../dto/role.create.dto';
 
 @Injectable()
 export class RoleBulkService {
@@ -16,7 +16,7 @@ export class RoleBulkService {
         return await this.roleModel.deleteMany(find);
     }
 
-    async createMany(data: RoleCreateValidation[]): Promise<RoleDocument[]> {
+    async createMany(data: RoleCreateDto[]): Promise<RoleDocument[]> {
         return this.roleModel.insertMany(
             data.map(({ name, permissions, isAdmin }) => ({
                 name,

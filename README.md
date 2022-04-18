@@ -15,36 +15,52 @@
 
 # ACK NestJs Boilerplate Mongoose  🔥 🚀
 
-> Best uses for API or Microservice Project
+> Best uses for RESTFUL API or [Microservice](https://microservices.io) Project
 
 ack-nestjs-boilerplate-mongoose is a [NestJs](http://nestjs.com) Boilerplate with [Mongoose](https://mongoosejs.com) and [MongoDB](https://docs.mongodb.com) as Database.
 
 Made with following
 - [nodejs-best-practice](https://github.com/goldbergyoni/nodebestpractices) 
 - [The Twelve-Factor App](https://12factor.net)
-- NestJs Habit as benchmark.
+- NestJs Habit.
 
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
+
+## Important
+
+Now ack-nestjs-boilerplate-mongoose have `required` request headers.
+
+1. `x-timestamp`, tolerant 5 minutes of request.
+2. `user-agent`, whitelist of user agent.
+
+You can see our `e2e testing file`.
 
 ## Version
 
 - NestJs v8.x
+- NodeJs v17.x
+- Typescript v4.x
 - Mongoose v6.x
 - MongoDB v5.x
+- Yarn v1.x
+- NPM v8.x
+- Docker v20.x
+- Docker Compose v2.x
 
 ## Objective
 
 ack-nestjs-boilerplate-mongoose have some objective.
 
-- Simple and secure
+- Simple, scalable and secure
 - Avoid spaghetti code
 - Component based
 - Reusable component
 - Easy to maintenance
+- Support for all microservice patterns
 
 ## Features
 
-Cool features, [click this for more information][ack-docs-features] 😎.
+[Click this for more information][ack-docs-features] 😎.
 
 ## Documentation
 
@@ -58,6 +74,14 @@ Next development
 
 - [x] Documentation
 - [x] Unit Testing
+- [x] Integration Testing
+- [x] Github action CI/CD
+- [x] Github action Auto Release
+- [x] Jenkins update script
+- [x] Limitation of pagination, available sort - sort - limit page - limit perPage
+- [x] Health Check Separate Endpoint
+- [x] Timestamp Tolerance Middleware
+- [x] Optimize code
 - [ ] Docker compose file mongodb replication set  **_(Ongoing)_**
 - [ ] Swagger **_(Ongoing)_**
 

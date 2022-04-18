@@ -12,9 +12,6 @@ import { IAwsS3Response } from 'src/aws/aws.interface';
 import { IAuthPassword } from 'src/auth/auth.interface';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseEntity } from 'src/database/database.decorator';
-import { UserProfileTransformer } from '../transformer/user.profile.transformer';
-import { UserGetTransformer } from '../transformer/user.get.transformer';
-import { UserListTransformer } from '../transformer/user.list.transformer';
 import { HelperStringService } from 'src/utils/helper/service/helper.string.service';
 import { UserDocument, UserEntity } from '../schema/user.schema';
 import { RoleEntity } from 'src/role/schema/role.schema';
@@ -23,6 +20,9 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
 } from 'src/database/database.interface';
+import { UserProfileSerialization } from '../serialization/user.profile.serialization';
+import { UserListSerialization } from '../serialization/user.list.serialization';
+import { UserGetSerialization } from '../serialization/user.get.serialization';
 
 @Injectable()
 export class UserService {
@@ -65,16 +65,20 @@ export class UserService {
         return this.userModel.countDocuments(find);
     }
 
-    async mapProfile(data: IUserDocument): Promise<UserProfileTransformer> {
-        return plainToInstance(UserProfileTransformer, data);
+    async serializationProfile(
+        data: IUserDocument
+    ): Promise<UserProfileSerialization> {
+        return plainToInstance(UserProfileSerialization, data);
     }
 
-    async mapList(data: IUserDocument[]): Promise<UserListTransformer[]> {
-        return plainToInstance(UserListTransformer, data);
+    async serializationList(
+        data: IUserDocument[]
+    ): Promise<UserListSerialization[]> {
+        return plainToInstance(UserListSerialization, data);
     }
 
-    async mapGet(data: IUserDocument): Promise<UserGetTransformer> {
-        return plainToInstance(UserGetTransformer, data);
+    async serializationGet(data: IUserDocument): Promise<UserGetSerialization> {
+        return plainToInstance(UserGetSerialization, data);
     }
 
     async findOneById<T>(

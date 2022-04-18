@@ -13,6 +13,8 @@ import {
 } from './http-debugger/http-debugger.middleware';
 import { HelmetMiddleware } from './helmet/helmet.middleware';
 import { RateLimitMiddleware } from './rate-limit/rate-limit.middleware';
+import { UserAgentMiddleware } from './user-agent/user-agent.middleware';
+import { TimestampMiddleware } from './timestamp/timestamp.middleware';
 
 @Module({})
 export class MiddlewareModule implements NestModule {
@@ -28,7 +30,9 @@ export class MiddlewareModule implements NestModule {
                 HttpDebuggerResponseMiddleware,
                 HttpDebuggerMiddleware,
                 HelmetMiddleware,
-                RateLimitMiddleware
+                RateLimitMiddleware,
+                TimestampMiddleware,
+                UserAgentMiddleware
             )
             .forRoutes('*');
     }

@@ -1,0 +1,35 @@
+{
+    "testTimeout": 5000,
+    "verbose": true,
+    "rootDir": "..",
+    "modulePaths": [
+        "."
+    ],
+    "testEnvironment": "node",
+    "testMatch": [
+        "<rootDir>/integration/**/*.spec.ts"
+    ],
+    "collectCoverage": true,
+    "coveragePathIgnorePatterns": [
+        "node_modules", 
+        "vendor",
+        "src",
+        "prod",
+        "e2e"
+    ],
+    "coverageReporters": [
+        "clover", 
+        "json", 
+        "lcov", 
+        "text"
+    ],
+    "coverageDirectory": "coverage",
+    "moduleFileExtensions": [
+        "js", 
+        "ts", 
+        "json"
+    ],
+    "transform": {
+        "^.+\\.(t|j)s$": "ts-jest"
+    }
+}

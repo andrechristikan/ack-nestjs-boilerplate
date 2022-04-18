@@ -1,35 +1,47 @@
 import { Injectable } from '@nestjs/common';
-import moment from 'moment';
+import { ConfigService } from '@nestjs/config';
+import moment from 'moment-timezone';
+import {
+    ENUM_HELPER_DATE_DIFF,
+    ENUM_HELPER_DATE_FORMAT,
+    IHelperDateFormatOptions,
+} from '../helper.constant';
 
 @Injectable()
 export class HelperDateService {
+    private readonly tz: string;
+
+    constructor(private readonly configService: ConfigService) {
+        this.tz = this.configService.get<string>('app.timezone');
+    }
+
     calculateAge(dateOfBirth: Date): number {
         return moment().diff(dateOfBirth, 'years');
     }
 
-    diff(dateOne: Date, dateTwo: Date, options?: string): number {
+    diff(dateOne: Date, dateTwo: Date, format?: ENUM_HELPER_DATE_DIFF): number {
         const mDateOne = moment(dateOne);
         const mDateTwo = moment(dateTwo);
         const diff = moment.duration(mDateTwo.diff(mDateOne));
 
-        if (options === 'milis') {
+        if (format === 'milis') {
             return diff.asMilliseconds();
-        } else if (options === 'seconds') {
+        } else if (format === 'seconds') {
             return diff.asSeconds();
-        } else if (options === 'hours') {
+        } else if (format === 'hours') {
             return diff.asHours();
-        } else if (options === 'days') {
+        } else if (format === 'days') {
             return diff.asDays();
         } else {
             return diff.asMinutes();
         }
     }
 
-    check(date: string): boolean {
+    check(date: string | number): boolean {
         return moment(date, true).isValid();
     }
 
-    create(date?: string | Date): Date {
+    create(date?: string | Date | number): Date {
         return moment(date, true).toDate();
     }
 
@@ -37,8 +49,14 @@ export class HelperDateService {
         return moment(date, true).valueOf();
     }
 
-    format(date: Date, format?: string): string {
-        return moment(date).format(format || 'YYYY-MM-DD');
+    format(date: Date, options?: IHelperDateFormatOptions): string {
+        return moment(date)
+            .tz(options && options.timezone ? options.timezone : this.tz)
+            .format(
+                options && options.format
+                    ? options.format
+                    : ENUM_HELPER_DATE_FORMAT.DATE
+            );
     }
 
     forwardInMinutes(minutes: number): Date {
