@@ -91,7 +91,7 @@ Next development
 
 All endpoints in [endpoints.json][endpoints] and need import to PostMan. [Follow this step for import into Postman][ref-postman-import-export].
 
-## Kafka
+## Microservice
 
 Nestjs microservice or Kafka integration will put in separate repo [ack-microservice-nestjs-boilerplate-mongoose][ack-microservice-repo].
 
@@ -112,19 +112,12 @@ Thanks goes to these wonderful people
 [![LinkedIn][linkedin-shield]][author-linkedin]
 [![Instagram][instagram-shield]][author-instagram]
 
-<!-- ACK BADGE LINKS -->
+<!-- BADGE LINKS -->
 [ack-contributors-shield]: https://img.shields.io/github/contributors/andrechristikan/ack-nestjs-boilerplate-mongoose?style=for-the-badge
 [ack-forks-shield]: https://img.shields.io/github/forks/andrechristikan/ack-nestjs-boilerplate-mongoose?style=for-the-badge
 [ack-stars-shield]: https://img.shields.io/github/stars/andrechristikan/ack-nestjs-boilerplate-mongoose?style=for-the-badge
 [ack-issues-shield]: https://img.shields.io/github/issues/andrechristikan/ack-nestjs-boilerplate-mongoose?style=for-the-badge
 [ack-license-shield]: https://img.shields.io/github/license/andrechristikan/ack-nestjs-boilerplate-mongoose?style=for-the-badge
-
-<!-- ack microservice BADGE LINKS -->
-[ack-microservice-contributors-shield]: https://img.shields.io/github/contributors/andrechristikan/ack-microservice-nestjs-mongoose?style=for-the-badge
-[ack-microservice-forks-shield]: https://img.shields.io/github/forks/andrechristikan/ack-microservice-nestjs-mongoose?style=for-the-badge
-[ack-microservice-stars-shield]: https://img.shields.io/github/stars/andrechristikan/ack-microservice-nestjs-mongoose?style=for-the-badge
-[ack-microservice-issues-shield]: https://img.shields.io/github/issues/andrechristikan/ack-microservice-nestjs-mongoose?style=for-the-badge
-[ack-microservice-license-shield]: https://img.shields.io/github/license/andrechristikan/ack-microservice-nestjs-mongoose?style=for-the-badge
 
 [nestjs-shield]: https://img.shields.io/badge/nestjs-%23E0234E.svg?style=for-the-badge&logo=nestjs&logoColor=white
 [nodejs-shield]: https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
@@ -155,11 +148,6 @@ Thanks goes to these wonderful people
 
 <!-- ack microservice -->
 [ack-microservice-repo]: https://github.com/andrechristikan/ack-microservice-nestjs-mongoose
-[ack-microservice-issues]:https://github.com/andrechristikan/ack-microservice-nestjs-mongoose/issues
-[ack-microservice-stars]:https://github.com/andrechristikan/ack-microservice-nestjs-mongoose/stargazers
-[ack-microservice-forks]:https://github.com/andrechristikan/ack-microservice-nestjs-mongoose/network/members
-[ack-microservice-contributors]:https://github.com/andrechristikan/ack-microservice-nestjs-mongoose/graphs/contributors
-[ack-microservice-history]:https://github.com/andrechristikan/ack-microservice-nestjs-mongoose/commits/main
 
 <!-- license -->
 [license]: LICENSE.md
