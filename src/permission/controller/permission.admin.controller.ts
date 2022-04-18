@@ -51,10 +51,22 @@ export class PermissionAdminController {
     @Get('/list')
     async list(
         @Query()
-        { page, perPage, sort, search, availableSort }: PermissionListDto
+        {
+            page,
+            perPage,
+            sort,
+            search,
+            availableSort,
+            availableSearch,
+            isActive,
+        }: PermissionListDto
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
-        const find: Record<string, any> = {};
+        const find: Record<string, any> = {
+            isActive: {
+                $in: isActive,
+            },
+        };
         if (search) {
             find['$or'] = [
                 {
@@ -70,7 +82,7 @@ export class PermissionAdminController {
             await this.permissionService.findAll(find, {
                 skip: skip,
                 limit: perPage,
-                sort: sort.sort,
+                sort,
             });
 
         const totalData: number = await this.permissionService.getTotal(find);
@@ -87,8 +99,8 @@ export class PermissionAdminController {
             totalPage,
             currentPage: page,
             perPage,
+            availableSearch,
             availableSort,
-            sort,
             data,
         };
     }

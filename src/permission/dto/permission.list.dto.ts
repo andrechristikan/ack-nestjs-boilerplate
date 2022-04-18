@@ -1,13 +1,17 @@
-import { Expose, Transform } from 'class-transformer';
 import { PaginationListAbstract } from 'src/utils/pagination/pagination.abstract';
 import {
+    PaginationDefaultAvailableSearch,
     PaginationDefaultAvailableSort,
+    PaginationDefaultFilterBoolean,
     PaginationDefaultPage,
     PaginationDefaultPerPage,
+    PaginationDefaultSearch,
     PaginationDefaultSort,
 } from 'src/utils/pagination/pagination.decorator';
 import { IPaginationSort } from 'src/utils/pagination/pagination.interface';
 import {
+    PERMISSION_DEFAULT_ACTIVE,
+    PERMISSION_DEFAULT_AVAILABLE_SEARCH,
     PERMISSION_DEFAULT_AVAILABLE_SORT,
     PERMISSION_DEFAULT_PAGE,
     PERMISSION_DEFAULT_PER_PAGE,
@@ -15,28 +19,27 @@ import {
 } from '../permission.constant';
 
 export class PermissionListDto implements PaginationListAbstract {
-    @Expose()
-    @Transform(({ value }) => (value ? value : undefined), {
-        toClassOnly: true,
-    })
+    @PaginationDefaultSearch()
     readonly search?: string;
 
-    @Expose()
+    @PaginationDefaultAvailableSearch(PERMISSION_DEFAULT_AVAILABLE_SEARCH)
+    readonly availableSearch?: string[];
+
     @PaginationDefaultPage(PERMISSION_DEFAULT_PAGE)
     readonly page: number;
 
-    @Expose()
     @PaginationDefaultPerPage(PERMISSION_DEFAULT_PER_PAGE)
     readonly perPage: number;
 
-    @Expose()
     @PaginationDefaultSort(
         PERMISSION_DEFAULT_SORT,
         PERMISSION_DEFAULT_AVAILABLE_SORT
     )
-    readonly sort: IPaginationSort;
+    readonly sort?: IPaginationSort;
 
-    @Expose()
     @PaginationDefaultAvailableSort(PERMISSION_DEFAULT_AVAILABLE_SORT)
-    readonly availableSort: string[];
+    readonly availableSort?: string[];
+
+    @PaginationDefaultFilterBoolean(PERMISSION_DEFAULT_ACTIVE)
+    readonly isActive: string[];
 }

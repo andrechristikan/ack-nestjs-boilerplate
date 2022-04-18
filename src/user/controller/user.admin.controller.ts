@@ -63,7 +63,14 @@ export class UserAdminController {
     @Get('/list')
     async list(
         @Query()
-        { page, perPage, sort, search, availableSort }: UserListDto
+        {
+            page,
+            perPage,
+            sort,
+            search,
+            availableSort,
+            availableSearch,
+        }: UserListDto
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
         const find: Record<string, any> = {};
@@ -90,7 +97,7 @@ export class UserAdminController {
         const users: IUserDocument[] = await this.userService.findAll(find, {
             limit: perPage,
             skip: skip,
-            sort: sort.sort,
+            sort,
         });
         const totalData: number = await this.userService.getTotal(find);
         const totalPage: number = await this.paginationService.totalPage(
@@ -106,8 +113,8 @@ export class UserAdminController {
             totalPage,
             currentPage: page,
             perPage,
+            availableSearch,
             availableSort,
-            sort,
             data,
         };
     }

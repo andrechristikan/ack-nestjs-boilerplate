@@ -26,6 +26,15 @@ Made with following
 
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
 
+## Important
+
+Now ack-nestjs-boilerplate-mongoose have `required` request headers.
+
+1. `x-timestamp`, tolerant 5 minutes of request.
+2. `user-agent`, whitelist of user agent.
+
+You can see our `e2e testing file`.
+
 ## Version
 
 - NestJs v8.x

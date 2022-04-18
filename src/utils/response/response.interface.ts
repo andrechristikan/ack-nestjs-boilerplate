@@ -5,10 +5,7 @@ export interface IResponsePaging {
     totalPage: number;
     currentPage: number;
     perPage: number;
+    availableSearch?: string[];
     availableSort: string[];
-    sort: {
-        field: string;
-        type: string;
-    };
     data: Record<string, any>[];
 }

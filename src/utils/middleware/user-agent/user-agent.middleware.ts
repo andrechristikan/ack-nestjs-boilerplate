@@ -20,7 +20,6 @@ export class UserAgentMiddleware implements NestMiddleware {
         }
 
         req.userAgent = userAgentParser(req.headers['user-agent']);
-
         next();
     }
 }

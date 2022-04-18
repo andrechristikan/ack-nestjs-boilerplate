@@ -1,13 +1,15 @@
-import { Expose, Transform } from 'class-transformer';
 import { PaginationListAbstract } from 'src/utils/pagination/pagination.abstract';
 import {
+    PaginationDefaultAvailableSearch,
     PaginationDefaultAvailableSort,
     PaginationDefaultPage,
     PaginationDefaultPerPage,
+    PaginationDefaultSearch,
     PaginationDefaultSort,
 } from 'src/utils/pagination/pagination.decorator';
 import { IPaginationSort } from 'src/utils/pagination/pagination.interface';
 import {
+    ROLE_DEFAULT_AVAILABLE_SEARCH,
     ROLE_DEFAULT_AVAILABLE_SORT,
     ROLE_DEFAULT_PAGE,
     ROLE_DEFAULT_PER_PAGE,
@@ -15,25 +17,21 @@ import {
 } from '../role.constant';
 
 export class RoleListDto implements PaginationListAbstract {
-    @Expose()
-    @Transform(({ value }) => (value ? value : undefined), {
-        toClassOnly: true,
-    })
+    @PaginationDefaultSearch()
     readonly search?: string;
 
-    @Expose()
+    @PaginationDefaultAvailableSearch(ROLE_DEFAULT_AVAILABLE_SEARCH)
+    readonly availableSearch?: string[];
+
     @PaginationDefaultPage(ROLE_DEFAULT_PAGE)
     readonly page: number;
 
-    @Expose()
     @PaginationDefaultPerPage(ROLE_DEFAULT_PER_PAGE)
     readonly perPage: number;
 
-    @Expose()
     @PaginationDefaultSort(ROLE_DEFAULT_SORT, ROLE_DEFAULT_AVAILABLE_SORT)
-    readonly sort: IPaginationSort;
+    readonly sort?: IPaginationSort;
 
-    @Expose()
     @PaginationDefaultAvailableSort(ROLE_DEFAULT_AVAILABLE_SORT)
-    readonly availableSort: string[];
+    readonly availableSort?: string[];
 }

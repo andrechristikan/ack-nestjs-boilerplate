@@ -46,7 +46,7 @@ export function ResponsePagingInterceptor(
                         perPage,
                         data,
                         availableSort,
-                        sort,
+                        availableSearch,
                     } = responseData;
 
                     const message: string | IMessage =
@@ -63,10 +63,7 @@ export function ResponsePagingInterceptor(
                         currentPage,
                         perPage,
                         availableSort,
-                        sort: {
-                            field: sort.field,
-                            type: sort.type,
-                        },
+                        availableSearch,
                         data,
                     };
                 })

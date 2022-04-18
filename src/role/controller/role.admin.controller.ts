@@ -65,7 +65,14 @@ export class RoleAdminController {
     @Get('/list')
     async list(
         @Query()
-        { page, perPage, sort, search, availableSort }: RoleListDto
+        {
+            page,
+            perPage,
+            sort,
+            search,
+            availableSort,
+            availableSearch,
+        }: RoleListDto
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
         const find: Record<string, any> = {};
@@ -83,7 +90,7 @@ export class RoleAdminController {
         const roles: RoleDocument[] = await this.roleService.findAll(find, {
             skip: skip,
             limit: perPage,
-            sort: sort.sort,
+            sort,
         });
 
         const totalData: number = await this.roleService.getTotal({});
@@ -100,8 +107,8 @@ export class RoleAdminController {
             totalPage,
             currentPage: page,
             perPage,
+            availableSearch,
             availableSort,
-            sort,
             data,
         };
     }
