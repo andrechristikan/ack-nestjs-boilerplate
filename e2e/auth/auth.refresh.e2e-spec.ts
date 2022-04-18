@@ -18,6 +18,7 @@ import { AuthService } from 'src/auth/service/auth.service';
 import { RoleService } from 'src/role/service/role.service';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { RouterCommonModule } from 'src/router/router.common.module';
+import { useContainer } from 'class-validator';
 
 describe('E2E Refresh', () => {
     let app: INestApplication;
@@ -52,6 +53,7 @@ describe('E2E Refresh', () => {
         }).compile();
 
         app = modRef.createNestApplication();
+        useContainer(app.select(CoreModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
@@ -87,7 +89,7 @@ describe('E2E Refresh', () => {
             }
         );
 
-        const map = await authService.mapLogin(userPopulate);
+        const map = await authService.serializationLogin(userPopulate);
         const payload = await authService.createPayloadRefreshToken(map, false);
         const payloadNotFound = {
             ...payload,

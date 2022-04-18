@@ -20,12 +20,13 @@ import { AuthService } from 'src/auth/service/auth.service';
 import { RoleService } from 'src/role/service/role.service';
 import { PermissionService } from 'src/permission/service/permission.service';
 import { RoleBulkService } from 'src/role/service/role.bulk.service';
-import { RoleCreateValidation } from 'src/role/validation/role.create.validation';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/utils/request/request.constant';
 import { RouterAdminModule } from 'src/router/router.admin.module';
 import { RoleDocument } from 'src/role/schema/role.schema';
 import { PermissionDocument } from 'src/permission/schema/permission.schema';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
+import { RoleCreateDto } from 'src/role/dto/role.create.dto';
+import { useContainer } from 'class-validator';
 
 describe('E2E Role Admin', () => {
     let app: INestApplication;
@@ -40,9 +41,9 @@ describe('E2E Role Admin', () => {
 
     let accessToken: string;
 
-    let successData: RoleCreateValidation;
-    let updateData: RoleCreateValidation;
-    let existData: RoleCreateValidation;
+    let successData: RoleCreateDto;
+    let updateData: RoleCreateDto;
+    let existData: RoleCreateDto;
 
     beforeAll(async () => {
         const modRef = await Test.createTestingModule({
@@ -59,6 +60,7 @@ describe('E2E Role Admin', () => {
         }).compile();
 
         app = modRef.createNestApplication();
+        useContainer(app.select(CoreModule), { fallbackOnErrors: true });
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
         roleBulkService = app.get(RoleBulkService);
@@ -92,7 +94,7 @@ describe('E2E Role Admin', () => {
             isAdmin: true,
         };
 
-        role = await roleService.create(existData as RoleCreateValidation);
+        role = await roleService.create(existData as RoleCreateDto);
 
         accessToken = await authService.createAccessToken({
             ...E2E_ROLE_PAYLOAD_TEST,

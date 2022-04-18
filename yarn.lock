@@ -5412,10 +5412,15 @@ moment-timezone@^0.5.34:
   dependencies:
     moment ">= 2.9.0"
 
-"moment@>= 2.9.0", moment@^2.29.1, moment@^2.29.2:
+"moment@>= 2.9.0", moment@^2.29.1:
   version "2.29.2"
   resolved "https://registry.yarnpkg.com/moment/-/moment-2.29.2.tgz#00910c60b20843bcba52d37d58c628b47b1f20e4"
   integrity sha512-UgzG4rvxYpN15jgCmVJwac49h9ly9NurikMWGPdVxm8GZD6XjkKPxDTjQQ43gtGgnV3X0cAyWDdP2Wexoquifg==
+
+moment@^2.29.3:
+  version "2.29.3"
+  resolved "https://registry.yarnpkg.com/moment/-/moment-2.29.3.tgz#edd47411c322413999f7a5940d526de183c031f3"
+  integrity sha512-c6YRvhEo//6T2Jz/vVtYzqBzwvPT95JBQ+smCytzf7c50oMZRsR/a4w88aD34I+/QVSfnoAnSBFPJHItlOMJVw==
 
 mongodb-connection-string-url@^2.5.2:
   version "2.5.2"
@@ -5538,10 +5543,10 @@ nestjs-command@^3.1.1:
     lodash.compact "^3.0.1"
     lodash.flattendeep "^4.4.0"
 
-nestjs-i18n@^9.0.7:
-  version "9.0.7"
-  resolved "https://registry.yarnpkg.com/nestjs-i18n/-/nestjs-i18n-9.0.7.tgz#9c4761708271ff1b85a08c1a0c3b5fd5cadb3ce5"
-  integrity sha512-gAAeVpZGyWENYHkYUz93p96JNT1tk1AeY4LCy1a93J6rIlGZx+rcBrAQbIm8QdzfthFRBDbbqEFqvAykm1EjhQ==
+nestjs-i18n@^9.0.8:
+  version "9.0.8"
+  resolved "https://registry.yarnpkg.com/nestjs-i18n/-/nestjs-i18n-9.0.8.tgz#b59239547991e09d17b60dea9b02dd2078e1e4ae"
+  integrity sha512-lpGfHYPc0aJv+JBjcJVt4XtpMurDR1q/U9MGJU+NjwsCPbMg0/ve+fzVEE6mjSxmqZS/+r0uTruKkDoVylu6Yg==
   dependencies:
     accept-language-parser "^1.5.0"
     chokidar "^3.5.3"

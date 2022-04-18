@@ -29,8 +29,14 @@ Made with following
 ## Version
 
 - NestJs v8.x
+- NodeJs v17.x
+- Typescript v4.x
 - Mongoose v6.x
 - MongoDB v5.x
+- Yarn v1.x
+- NPM v8.x
+- Docker v20.x
+- Docker Compose v2.x
 
 ## Objective
 
@@ -66,6 +72,7 @@ Next development
 - [x] Limitation of pagination, available sort - sort - limit page - limit perPage
 - [x] Health Check Separate Endpoint
 - [x] Timestamp Tolerance Middleware
+- [x] Optimize code
 - [ ] Docker compose file mongodb replication set  **_(Ongoing)_**
 - [ ] Swagger **_(Ongoing)_**
 

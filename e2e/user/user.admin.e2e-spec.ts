@@ -26,6 +26,7 @@ import { RouterAdminModule } from 'src/router/router.admin.module';
 import { UserDocument } from 'src/user/schema/user.schema';
 import { RoleDocument } from 'src/role/schema/role.schema';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
+import { useContainer } from 'class-validator';
 
 describe('E2E User Admin', () => {
     let app: INestApplication;
@@ -58,6 +59,7 @@ describe('E2E User Admin', () => {
         }).compile();
 
         app = modRef.createNestApplication();
+        useContainer(app.select(CoreModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
@@ -103,7 +105,7 @@ describe('E2E User Admin', () => {
             }
         );
 
-        const map = await authService.mapLogin(user);
+        const map = await authService.serializationLogin(user);
         const payload = await authService.createPayloadAccessToken(map, false);
         accessToken = await authService.createAccessToken(payload);
 

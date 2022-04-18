@@ -20,6 +20,7 @@ import { RouterPublicModule } from 'src/router/router.public.module';
 import { RoleDocument } from 'src/role/schema/role.schema';
 import { UserDocument } from 'src/user/schema/user.schema';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
+import { useContainer } from 'class-validator';
 
 describe('E2E User Public', () => {
     let app: INestApplication;
@@ -48,6 +49,7 @@ describe('E2E User Public', () => {
         }).compile();
 
         app = modRef.createNestApplication();
+        useContainer(app.select(CoreModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
@@ -82,7 +84,7 @@ describe('E2E User Public', () => {
             }
         );
 
-        const map = await authService.mapLogin(userPopulate);
+        const map = await authService.serializationLogin(userPopulate);
         const payload = await authService.createPayloadAccessToken(map, false);
         const payloadNotFound = {
             ...payload,

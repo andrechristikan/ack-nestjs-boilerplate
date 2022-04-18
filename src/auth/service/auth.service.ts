@@ -6,7 +6,8 @@ import { HelperDateService } from 'src/utils/helper/service/helper.date.service'
 import { HelperEncryptionService } from 'src/utils/helper/service/helper.encryption.service';
 import { HelperHashService } from 'src/utils/helper/service/helper.hash.service';
 import { IAuthPassword, IAuthPayloadOptions } from '../auth.interface';
-import { AuthLoginTransformer } from '../transformer/auth.login.transformer';
+import { AuthLoginDto } from '../dto/auth.login.dto';
+import { AuthLoginSerialization } from '../serialization/auth.login.serialization';
 
 @Injectable()
 export class AuthService {
@@ -123,7 +124,7 @@ export class AuthService {
     }
 
     async createPayloadAccessToken(
-        data: AuthLoginTransformer,
+        data: AuthLoginDto,
         rememberMe: boolean,
         options?: IAuthPayloadOptions
     ): Promise<Record<string, any>> {
@@ -138,7 +139,7 @@ export class AuthService {
     }
 
     async createPayloadRefreshToken(
-        { _id }: AuthLoginTransformer,
+        { _id }: AuthLoginSerialization,
         rememberMe: boolean,
         options?: IAuthPayloadOptions
     ): Promise<Record<string, any>> {
@@ -150,8 +151,10 @@ export class AuthService {
         };
     }
 
-    async mapLogin(data: IUserDocument): Promise<AuthLoginTransformer> {
-        return plainToInstance(AuthLoginTransformer, data);
+    async serializationLogin(
+        data: IUserDocument
+    ): Promise<AuthLoginSerialization> {
+        return plainToInstance(AuthLoginSerialization, data);
     }
 
     async createPassword(password: string): Promise<IAuthPassword> {

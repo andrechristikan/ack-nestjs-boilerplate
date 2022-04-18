@@ -3,14 +3,14 @@ import { plainToInstance } from 'class-transformer';
 import { Model } from 'mongoose';
 import { DatabaseEntity } from 'src/database/database.decorator';
 import { IDatabaseFindAllOptions } from 'src/database/database.interface';
+import { PermissionUpdateDto } from '../dto/permission.update.dto';
 import { IPermission } from '../permission.interface';
 import {
     PermissionDocument,
     PermissionEntity,
 } from '../schema/permission.schema';
-import { PermissionGetTransformer } from '../transformer/permission.get.transformer';
-import { PermissionListTransformer } from '../transformer/permission.list.transformer';
-import { PermissionUpdateValidation } from '../validation/permission.update.validation';
+import { PermissionGetSerialization } from '../serialization/permission.get.serialization';
+import { PermissionListSerialization } from '../serialization/permission.list.serialization';
 
 @Injectable()
 export class PermissionService {
@@ -68,7 +68,7 @@ export class PermissionService {
 
     async update(
         _id: string,
-        { name, description }: PermissionUpdateValidation
+        { name, description }: PermissionUpdateDto
     ): Promise<PermissionDocument> {
         const permission = await this.permissionModel.findById(_id);
 
@@ -77,14 +77,16 @@ export class PermissionService {
         return permission.save();
     }
 
-    async mapGet(data: PermissionDocument): Promise<PermissionGetTransformer> {
-        return plainToInstance(PermissionGetTransformer, data);
+    async serializationGet(
+        data: PermissionDocument
+    ): Promise<PermissionGetSerialization> {
+        return plainToInstance(PermissionGetSerialization, data);
     }
 
-    async mapList(
+    async serializationList(
         data: PermissionDocument[]
-    ): Promise<PermissionListTransformer[]> {
-        return plainToInstance(PermissionListTransformer, data);
+    ): Promise<PermissionListSerialization[]> {
+        return plainToInstance(PermissionListSerialization, data);
     }
 
     async inactive(_id: string): Promise<PermissionDocument> {

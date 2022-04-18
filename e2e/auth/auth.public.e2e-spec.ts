@@ -12,6 +12,7 @@ import { UserService } from 'src/user/service/user.service';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/utils/request/request.constant';
 import { RouterPublicModule } from 'src/router/router.public.module';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
+import { useContainer } from 'class-validator';
 
 describe('E2E Public', () => {
     let app: INestApplication;
@@ -37,6 +38,7 @@ describe('E2E Public', () => {
         }).compile();
 
         app = modRef.createNestApplication();
+        useContainer(app.select(CoreModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
         helperDateService = app.get(HelperDateService);
 

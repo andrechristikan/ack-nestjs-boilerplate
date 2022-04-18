@@ -32,7 +32,7 @@ export class HelperStringService {
             : faker.random.alphaNumeric(length);
     }
 
-    censor(value: string) {
+    censor(value: string): string {
         const length = value.length;
         if (length === 1) {
             return value;
@@ -42,5 +42,31 @@ export class HelperStringService {
         const censorString = '*'.repeat(end > 10 ? 10 : end);
         const visibleString = value.substring(end, length);
         return `${censorString}${visibleString}`;
+    }
+
+    checkPasswordWeak(password: string, length?: number): boolean {
+        const regex = new RegExp(
+            `^(?=.*?[A-Z])(?=.*?[a-z]).{${length || 8},}$`
+        );
+
+        return regex.test(password);
+    }
+
+    checkPasswordMedium(password: string, length?: number): boolean {
+        const regex = new RegExp(
+            `^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9]).{${length || 8},}$`
+        );
+
+        return regex.test(password);
+    }
+
+    checkPasswordStrong(password: string, length?: number): boolean {
+        const regex = new RegExp(
+            `^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{${
+                length || 8
+            },}$`
+        );
+
+        return regex.test(password);
     }
 }

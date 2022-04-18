@@ -11,8 +11,6 @@ import {
     Patch,
     NotFoundException,
 } from '@nestjs/common';
-import { UserCreateValidation } from 'src/user/validation/user.create.validation';
-import { UserUpdateValidation } from 'src/user/validation/user.update.validation';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import {
     GetUser,
@@ -26,9 +24,7 @@ import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
 import { UserService } from '../service/user.service';
 import { RoleService } from 'src/role/service/role.service';
-import { UserListValidation } from '../validation/user.list.validation';
 import { IUserCheckExist, IUserDocument } from '../user.interface';
-import { UserListTransformer } from '../transformer/user.list.transformer';
 import { ENUM_USER_STATUS_CODE_ERROR } from '../user.constant';
 import { PaginationService } from 'src/utils/pagination/service/pagination.service';
 import { AuthService } from 'src/auth/service/auth.service';
@@ -36,13 +32,18 @@ import {
     Response,
     ResponsePaging,
 } from 'src/utils/response/response.decorator';
-import { RequestValidationPipe } from 'src/utils/request/pipe/request.validation.pipe';
 import {
     IResponse,
     IResponsePaging,
 } from 'src/utils/response/response.interface';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
+import { UserListDto } from '../dto/user.list.dto';
+import { UserListSerialization } from '../serialization/user.list.serialization';
+import { UserCreateDto } from '../dto/user.create.dto';
+import { UserUpdateDto } from '../dto/user.update.dto';
+import { RequestParamGuard } from 'src/utils/request/request.decorator';
+import { UserRequestDto } from '../dto/user.request.dto';
 
 @Controller({
     version: '1',
@@ -61,8 +62,8 @@ export class UserAdminController {
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ)
     @Get('/list')
     async list(
-        @Query(RequestValidationPipe)
-        { page, perPage, sort, search, availableSort }: UserListValidation
+        @Query()
+        { page, perPage, sort, search, availableSort }: UserListDto
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
         const find: Record<string, any> = {};
@@ -97,9 +98,8 @@ export class UserAdminController {
             perPage
         );
 
-        const data: UserListTransformer[] = await this.userService.mapList(
-            users
-        );
+        const data: UserListSerialization[] =
+            await this.userService.serializationList(users);
 
         return {
             totalData,
@@ -114,18 +114,19 @@ export class UserAdminController {
 
     @Response('user.get')
     @UserGetGuard()
+    @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ)
     @Get('get/:user')
     async get(@GetUser() user: IUserDocument): Promise<IResponse> {
-        return this.userService.mapGet(user);
+        return this.userService.serializationGet(user);
     }
 
     @Response('user.create')
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_CREATE)
     @Post('/create')
     async create(
-        @Body(RequestValidationPipe)
-        body: UserCreateValidation
+        @Body()
+        body: UserCreateDto
     ): Promise<IResponse> {
         const checkExist: IUserCheckExist = await this.userService.checkExist(
             body.email,
@@ -218,6 +219,7 @@ export class UserAdminController {
 
     @Response('user.delete')
     @UserDeleteGuard()
+    @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_DELETE)
     @Delete('/delete/:user')
     async delete(@GetUser() user: IUserDocument): Promise<void> {
@@ -241,12 +243,13 @@ export class UserAdminController {
 
     @Response('user.update')
     @UserUpdateGuard()
+    @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
     @Put('/update/:user')
     async update(
         @GetUser() user: IUserDocument,
-        @Body(RequestValidationPipe)
-        body: UserUpdateValidation
+        @Body()
+        body: UserUpdateDto
     ): Promise<IResponse> {
         try {
             await this.userService.updateOneById(user._id, body);
@@ -271,6 +274,7 @@ export class UserAdminController {
 
     @Response('user.inactive')
     @UserUpdateInactiveGuard()
+    @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
     @Patch('/update/:user/inactive')
     async inactive(@GetUser() user: IUserDocument): Promise<void> {
@@ -295,6 +299,7 @@ export class UserAdminController {
 
     @Response('user.active')
     @UserUpdateActiveGuard()
+    @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
     @Patch('/update/:user/active')
     async active(@GetUser() user: IUserDocument): Promise<void> {

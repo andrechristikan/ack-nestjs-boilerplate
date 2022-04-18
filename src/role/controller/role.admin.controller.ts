@@ -18,8 +18,6 @@ import {
 import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
 import { PermissionService } from 'src/permission/service/permission.service';
 import { RoleService } from '../service/role.service';
-import { RoleListValidation } from '../validation/role.list.validation';
-import { RoleListTransformer } from '../transformer/role.list.transformer';
 import {
     GetRole,
     RoleDeleteGuard,
@@ -29,14 +27,11 @@ import {
     RoleUpdateInactiveGuard,
 } from '../role.decorator';
 import { IRoleDocument } from '../role.interface';
-import { RoleCreateValidation } from '../validation/role.create.validation';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '../role.constant';
-import { RoleUpdateValidation } from '../validation/role.update.validation';
 import {
     Response,
     ResponsePaging,
 } from 'src/utils/response/response.decorator';
-import { RequestValidationPipe } from 'src/utils/request/pipe/request.validation.pipe';
 import {
     IResponse,
     IResponsePaging,
@@ -46,6 +41,12 @@ import { PaginationService } from 'src/utils/pagination/service/pagination.servi
 import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { RoleDocument } from '../schema/role.schema';
 import { PermissionDocument } from 'src/permission/schema/permission.schema';
+import { RoleListDto } from '../dto/role.list.dto';
+import { RoleCreateDto } from '../dto/role.create.dto';
+import { RoleUpdateDto } from '../dto/role.update.dto';
+import { RoleListSerialization } from '../serialization/role.list.serialization';
+import { RoleRequestDto } from '../dto/role.request.dto';
+import { RequestParamGuard } from 'src/utils/request/request.decorator';
 
 @Controller({
     version: '1',
@@ -63,8 +64,8 @@ export class RoleAdminController {
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ)
     @Get('/list')
     async list(
-        @Query(RequestValidationPipe)
-        { page, perPage, sort, search, availableSort }: RoleListValidation
+        @Query()
+        { page, perPage, sort, search, availableSort }: RoleListDto
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
         const find: Record<string, any> = {};
@@ -91,9 +92,8 @@ export class RoleAdminController {
             perPage
         );
 
-        const data: RoleListTransformer[] = await this.roleService.mapList(
-            roles
-        );
+        const data: RoleListSerialization[] =
+            await this.roleService.serializationList(roles);
 
         return {
             totalData,
@@ -108,18 +108,19 @@ export class RoleAdminController {
 
     @Response('role.get')
     @RoleGetGuard()
+    @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ)
     @Get('get/:role')
     async get(@GetRole() role: IRoleDocument): Promise<IResponse> {
-        return this.roleService.mapGet(role);
+        return this.roleService.serializationGet(role);
     }
 
     @Response('role.create')
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_CREATE)
     @Post('/create')
     async create(
-        @Body(RequestValidationPipe)
-        { name, permissions, isAdmin }: RoleCreateValidation
+        @Body()
+        { name, permissions, isAdmin }: RoleCreateDto
     ): Promise<IResponse> {
         const exist: boolean = await this.roleService.exists(name);
         if (exist) {
@@ -181,12 +182,13 @@ export class RoleAdminController {
 
     @Response('role.update')
     @RoleUpdateGuard()
+    @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_UPDATE)
     @Put('/update/:role')
     async update(
         @GetRole() role: RoleDocument,
-        @Body(RequestValidationPipe)
-        { name, permissions, isAdmin }: RoleUpdateValidation
+        @Body()
+        { name, permissions, isAdmin }: RoleUpdateDto
     ): Promise<IResponse> {
         const check: boolean = await this.roleService.exists(name, role._id);
         if (check) {
@@ -248,6 +250,7 @@ export class RoleAdminController {
 
     @Response('role.delete')
     @RoleDeleteGuard()
+    @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_DELETE)
     @Delete('/delete/:role')
     async delete(@GetRole() role: IRoleDocument): Promise<void> {
@@ -270,6 +273,7 @@ export class RoleAdminController {
 
     @Response('role.inactive')
     @RoleUpdateInactiveGuard()
+    @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_UPDATE)
     @Patch('/update/:role/inactive')
     async inactive(@GetRole() role: IRoleDocument): Promise<void> {
@@ -294,6 +298,7 @@ export class RoleAdminController {
 
     @Response('role.active')
     @RoleUpdateActiveGuard()
+    @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_UPDATE)
     @Patch('/update/:role/active')
     async active(@GetRole() role: IRoleDocument): Promise<void> {

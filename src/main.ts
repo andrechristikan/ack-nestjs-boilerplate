@@ -2,8 +2,7 @@ import { NestApplication, NestFactory } from '@nestjs/core';
 import { Logger, VersioningType, VERSION_NEUTRAL } from '@nestjs/common';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
-import { ErrorHttpFilter } from './utils/error/error.filter';
-import { MessageService } from './message/service/message.service';
+import { useContainer } from 'class-validator';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule);
@@ -19,9 +18,8 @@ async function bootstrap() {
     process.env.NODE_ENV = env;
 
     // Global Prefix
-    const messageService = app.get(MessageService);
     app.setGlobalPrefix('/api');
-    app.useGlobalFilters(new ErrorHttpFilter(messageService));
+    useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
     // Versioning
     if (versioning) {

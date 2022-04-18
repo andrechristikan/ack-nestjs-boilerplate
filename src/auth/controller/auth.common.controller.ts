@@ -20,10 +20,7 @@ import {
 } from '../auth.constant';
 import { Response } from 'src/utils/response/response.decorator';
 import { IResponse } from 'src/utils/response/response.interface';
-import { RequestValidationPipe } from 'src/utils/request/pipe/request.validation.pipe';
-import { AuthLoginValidation } from '../validation/auth.login.validation';
 import { IUserDocument } from 'src/user/user.interface';
-import { AuthLoginTransformer } from '../transformer/auth.login.transformer';
 import { SuccessException } from 'src/utils/error/error.exception';
 import { ENUM_LOGGER_ACTION } from 'src/logger/logger.constant';
 import {
@@ -32,12 +29,14 @@ import {
     Token,
     User,
 } from '../auth.decorator';
-import { AuthChangePasswordValidation } from '../validation/auth.change-password.validation';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { LoggerService } from 'src/logger/service/logger.service';
 import { UserDocument } from 'src/user/schema/user.schema';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
+import { AuthLoginDto } from '../dto/auth.login.dto';
+import { AuthChangePasswordDto } from '../dto/auth.change-password.dto';
+import { AuthLoginSerialization } from '../serialization/auth.login.serialization';
 
 @Controller({
     version: '1',
@@ -54,9 +53,7 @@ export class AuthCommonController {
     @Response('auth.login', ENUM_AUTH_STATUS_CODE_SUCCESS.AUTH_LOGIN_SUCCESS)
     @HttpCode(HttpStatus.OK)
     @Post('/login')
-    async login(
-        @Body(RequestValidationPipe) body: AuthLoginValidation
-    ): Promise<IResponse> {
+    async login(@Body() body: AuthLoginDto): Promise<IResponse> {
         const rememberMe: boolean = body.rememberMe ? true : false;
         const user: IUserDocument =
             await this.userService.findOne<IUserDocument>(
@@ -117,9 +114,8 @@ export class AuthCommonController {
             });
         }
 
-        const safe: AuthLoginTransformer = await this.authService.mapLogin(
-            user
-        );
+        const safe: AuthLoginSerialization =
+            await this.authService.serializationLogin(user);
 
         const payloadAccessToken: Record<string, any> =
             await this.authService.createPayloadAccessToken(safe, rememberMe);
@@ -244,9 +240,8 @@ export class AuthCommonController {
             });
         }
 
-        const safe: AuthLoginTransformer = await this.authService.mapLogin(
-            user
-        );
+        const safe: AuthLoginSerialization =
+            await this.authService.serializationLogin(user);
         const payloadAccessToken: Record<string, any> =
             await this.authService.createPayloadAccessToken(safe, rememberMe, {
                 loginDate,
@@ -266,7 +261,7 @@ export class AuthCommonController {
     @AuthJwtGuard()
     @Patch('/change-password')
     async changePassword(
-        @Body(RequestValidationPipe) body: AuthChangePasswordValidation,
+        @Body() body: AuthChangePasswordDto,
         @User('_id') _id: string
     ): Promise<void> {
         const user: UserDocument = await this.userService.findOneById(_id);

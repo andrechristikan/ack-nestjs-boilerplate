@@ -43,21 +43,21 @@ describe('AuthService', () => {
         expect(authService).toBeDefined();
     });
 
-    describe('mapLogin', () => {
+    describe('serializationLogin', () => {
         it('should be called', async () => {
-            const test = jest.spyOn(authService, 'mapLogin');
+            const test = jest.spyOn(authService, 'serializationLogin');
 
-            await authService.mapLogin(user);
+            await authService.serializationLogin(user);
             expect(test).toHaveBeenCalledWith(user);
         });
 
         it('should be mapped', async () => {
-            const map = await authService.mapLogin(user);
-            jest.spyOn(authService, 'mapLogin').mockImplementation(
+            const map = await authService.serializationLogin(user);
+            jest.spyOn(authService, 'serializationLogin').mockImplementation(
                 async () => map
             );
 
-            expect(await authService.mapLogin(user)).toBe(map);
+            expect(await authService.serializationLogin(user)).toBe(map);
         });
     });
 
@@ -65,13 +65,13 @@ describe('AuthService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(authService, 'createPayloadAccessToken');
 
-            const map = await authService.mapLogin(user);
+            const map = await authService.serializationLogin(user);
             await authService.createPayloadAccessToken(map, rememberMe);
             expect(test).toHaveBeenCalledWith(map, rememberMe);
         });
 
         it('should be mapped', async () => {
-            const map = await authService.mapLogin(user);
+            const map = await authService.serializationLogin(user);
             const payload = await authService.createPayloadAccessToken(
                 map,
                 rememberMe
@@ -91,7 +91,7 @@ describe('AuthService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(authService, 'createAccessToken');
 
-            const map = await authService.mapLogin(user);
+            const map = await authService.serializationLogin(user);
             const payload = await authService.createPayloadAccessToken(
                 map,
                 rememberMe
@@ -101,7 +101,7 @@ describe('AuthService', () => {
         });
 
         it('should be mapped', async () => {
-            const map = await authService.mapLogin(user);
+            const map = await authService.serializationLogin(user);
             const payload = await authService.createPayloadAccessToken(
                 map,
                 rememberMe
@@ -121,7 +121,7 @@ describe('AuthService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(authService, 'validateAccessToken');
 
-            const map = await authService.mapLogin(user);
+            const map = await authService.serializationLogin(user);
             const payload = await authService.createPayloadAccessToken(
                 map,
                 rememberMe
@@ -132,7 +132,7 @@ describe('AuthService', () => {
         });
 
         it('should be success', async () => {
-            const map = await authService.mapLogin(user);
+            const map = await authService.serializationLogin(user);
             const payload = await authService.createPayloadAccessToken(
                 map,
                 rememberMe
@@ -153,7 +153,7 @@ describe('AuthService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(authService, 'payloadAccessToken');
 
-            const map = await authService.mapLogin(user);
+            const map = await authService.serializationLogin(user);
             const payload = await authService.createPayloadAccessToken(
                 map,
                 rememberMe
@@ -164,7 +164,7 @@ describe('AuthService', () => {
         });
 
         it('should be success', async () => {
-            const map = await authService.mapLogin(user);
+            const map = await authService.serializationLogin(user);
             const payload = await authService.createPayloadAccessToken(
                 map,
                 rememberMe
@@ -184,13 +184,13 @@ describe('AuthService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(authService, 'createPayloadRefreshToken');
 
-            const map = await authService.mapLogin(user);
+            const map = await authService.serializationLogin(user);
             await authService.createPayloadRefreshToken(map, rememberMe);
             expect(test).toHaveBeenCalledWith(map, rememberMe);
         });
 
         it('should be success', async () => {
-            const map = await authService.mapLogin(user);
+            const map = await authService.serializationLogin(user);
             const payload = await authService.createPayloadRefreshToken(
                 map,
                 rememberMe
@@ -210,7 +210,7 @@ describe('AuthService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(authService, 'createRefreshToken');
 
-            const map = await authService.mapLogin(user);
+            const map = await authService.serializationLogin(user);
             const payload = await authService.createPayloadRefreshToken(
                 map,
                 rememberMe
@@ -220,7 +220,7 @@ describe('AuthService', () => {
         });
 
         it('should be success', async () => {
-            const map = await authService.mapLogin(user);
+            const map = await authService.serializationLogin(user);
             const payload = await authService.createPayloadRefreshToken(
                 map,
                 rememberMe
@@ -243,7 +243,7 @@ describe('AuthService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(authService, 'validateRefreshToken');
 
-            const map = await authService.mapLogin(user);
+            const map = await authService.serializationLogin(user);
             const payload = await authService.createPayloadRefreshToken(
                 map,
                 rememberMe
@@ -258,7 +258,7 @@ describe('AuthService', () => {
         });
 
         it('should be success', async () => {
-            const map = await authService.mapLogin(user);
+            const map = await authService.serializationLogin(user);
             const payload = await authService.createPayloadRefreshToken(
                 map,
                 rememberMe
@@ -285,7 +285,7 @@ describe('AuthService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(authService, 'payloadRefreshToken');
 
-            const map = await authService.mapLogin(user);
+            const map = await authService.serializationLogin(user);
             const payload = await authService.createPayloadRefreshToken(
                 map,
                 rememberMe
@@ -300,7 +300,7 @@ describe('AuthService', () => {
         });
 
         it('should be success', async () => {
-            const map = await authService.mapLogin(user);
+            const map = await authService.serializationLogin(user);
             const payload = await authService.createPayloadRefreshToken(
                 map,
                 rememberMe
