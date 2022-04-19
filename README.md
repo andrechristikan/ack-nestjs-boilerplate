@@ -82,6 +82,7 @@ Next development
 - [x] Health Check Separate Endpoint
 - [x] Timestamp Tolerance Middleware
 - [x] Optimize code
+- [ ] Whitelist user agent **_(Ongoing)_**
 - [ ] Docker compose file mongodb replication set  **_(Ongoing)_**
 - [ ] Swagger **_(Ongoing)_**
 
