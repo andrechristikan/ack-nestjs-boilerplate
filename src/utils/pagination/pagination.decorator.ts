@@ -1,6 +1,6 @@
 import { applyDecorators } from '@nestjs/common';
 import { Expose, Transform } from 'class-transformer';
-import { IsBoolean } from 'class-validator';
+import { IsBoolean, IsMongoId, IsOptional, ValidateIf } from 'class-validator';
 import {
     ENUM_PAGINATION_AVAILABLE_SORT_TYPE,
     PAGINATION_DEFAULT_AVAILABLE_SORT,
@@ -140,5 +140,14 @@ export function PaginationDefaultFilterEnum<T>(defaultValue: T): any {
                     : defaultValue,
             { toClassOnly: true }
         ) as PropertyDecorator
+    );
+}
+
+export function PaginationDefaultFilterId(field: string): any {
+    return applyDecorators(
+        IsOptional() as PropertyDecorator,
+        IsMongoId() as PropertyDecorator,
+        Expose() as PropertyDecorator,
+        ValidateIf((e) => e[field] !== '') as PropertyDecorator
     );
 }
