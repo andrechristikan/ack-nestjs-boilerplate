@@ -195,3 +195,18 @@ export function PaginationFilterDate(
             : ValidateIf(() => false)
     );
 }
+
+export function PaginationFilterString() {
+    return applyDecorators(
+        Expose(),
+        Transform(
+            ({ value }) =>
+                value
+                    ? value.split(',').map((val: string) => val.toLowerCase())
+                    : undefined,
+            {
+                toClassOnly: true,
+            }
+        )
+    );
+}
