@@ -1,6 +1,13 @@
 import { applyDecorators } from '@nestjs/common';
 import { Expose, Transform } from 'class-transformer';
-import { IsBoolean, IsMongoId, IsOptional, ValidateIf } from 'class-validator';
+import {
+    IsBoolean,
+    IsMongoId,
+    IsOptional,
+    ValidateIf,
+    IsEnum,
+    IsNotEmpty,
+} from 'class-validator';
 import {
     ENUM_PAGINATION_AVAILABLE_SORT_TYPE,
     PAGINATION_DEFAULT_AVAILABLE_SORT,
@@ -11,29 +18,27 @@ import {
     PAGINATION_DEFAULT_SORT,
 } from './pagination.constant';
 
-export function PaginationDefaultSearch(): any {
+export function PaginationSearch(): any {
     return applyDecorators(
-        Expose() as PropertyDecorator,
+        Expose(),
         Transform(({ value }) => (value ? value : undefined), {
             toClassOnly: true,
-        }) as PropertyDecorator
+        })
     );
 }
 
-export function PaginationDefaultAvailableSearch(
-    availableSearch: string[]
-): any {
+export function PaginationAvailableSearch(availableSearch: string[]): any {
     return applyDecorators(
-        Expose() as PropertyDecorator,
+        Expose(),
         Transform(() => availableSearch, {
             toClassOnly: true,
-        }) as PropertyDecorator
+        })
     );
 }
 
-export function PaginationDefaultPage(page = PAGINATION_DEFAULT_PAGE): any {
+export function PaginationPage(page = PAGINATION_DEFAULT_PAGE): any {
     return applyDecorators(
-        Expose() as PropertyDecorator,
+        Expose(),
         Transform(
             ({ value }) =>
                 !value
@@ -46,15 +51,13 @@ export function PaginationDefaultPage(page = PAGINATION_DEFAULT_PAGE): any {
             {
                 toClassOnly: true,
             }
-        ) as PropertyDecorator
+        )
     );
 }
 
-export function PaginationDefaultPerPage(
-    perPage = PAGINATION_DEFAULT_PER_PAGE
-): any {
+export function PaginationPerPage(perPage = PAGINATION_DEFAULT_PER_PAGE): any {
     return applyDecorators(
-        Expose() as PropertyDecorator,
+        Expose(),
         Transform(
             ({ value }) =>
                 !value
@@ -67,16 +70,16 @@ export function PaginationDefaultPerPage(
             {
                 toClassOnly: true,
             }
-        ) as PropertyDecorator
+        )
     );
 }
 
-export function PaginationDefaultSort(
+export function PaginationSort(
     sort = PAGINATION_DEFAULT_SORT,
     availableSort = PAGINATION_DEFAULT_AVAILABLE_SORT
 ): any {
     return applyDecorators(
-        Expose() as PropertyDecorator,
+        Expose(),
         Transform(
             ({ value, obj }) => {
                 const bSort = PAGINATION_DEFAULT_SORT.split('@')[0];
@@ -98,25 +101,25 @@ export function PaginationDefaultSort(
             {
                 toClassOnly: true,
             }
-        ) as PropertyDecorator
+        )
     );
 }
 
-export function PaginationDefaultAvailableSort(
+export function PaginationAvailableSort(
     availableSort = PAGINATION_DEFAULT_AVAILABLE_SORT
 ): any {
     return applyDecorators(
-        Expose() as PropertyDecorator,
+        Expose(),
         Transform(({ value }) => (!value ? availableSort : value), {
             toClassOnly: true,
-        }) as PropertyDecorator
+        })
     );
 }
 
-export function PaginationDefaultFilterBoolean(defaultValue: boolean[]): any {
+export function PaginationFilterBoolean(defaultValue: boolean[]): any {
     return applyDecorators(
-        Expose() as PropertyDecorator,
-        IsBoolean({ each: true }) as PropertyDecorator,
+        Expose(),
+        IsBoolean({ each: true }),
         Transform(
             ({ value }) =>
                 value
@@ -125,29 +128,32 @@ export function PaginationDefaultFilterBoolean(defaultValue: boolean[]): any {
                           .map((val: string) => (val === 'true' ? true : false))
                     : defaultValue,
             { toClassOnly: true }
-        ) as PropertyDecorator
+        )
     );
 }
 
-export function PaginationDefaultFilterEnum<T>(defaultValue: T): any {
+export function PaginationFilterEnum(
+    defaultValue: Record<string, any>[],
+    defaultEnum: Record<string, any>
+): any {
     return applyDecorators(
-        Expose() as PropertyDecorator,
-        IsBoolean({ each: true }) as PropertyDecorator,
+        Expose(),
+        IsEnum(defaultEnum as object, { each: true }),
         Transform(
             ({ value }) =>
                 value
-                    ? value.split(',').map((val: string) => defaultValue[val])
+                    ? value.split(',').map((val: string) => defaultEnum[val])
                     : defaultValue,
             { toClassOnly: true }
-        ) as PropertyDecorator
+        )
     );
 }
 
-export function PaginationDefaultFilterId(field: string): any {
+export function PaginationFilterId(field: string, required?: boolean): any {
     return applyDecorators(
-        IsOptional() as PropertyDecorator,
-        IsMongoId() as PropertyDecorator,
-        Expose() as PropertyDecorator,
-        ValidateIf((e) => e[field] !== '') as PropertyDecorator
+        Expose(),
+        IsMongoId(),
+        required ? IsNotEmpty() : IsOptional(),
+        required ? IsNotEmpty() : ValidateIf((e) => e[field] !== '')
     );
 }
