@@ -2,7 +2,6 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import faker from '@faker-js/faker';
-
 import { Types, connection } from 'mongoose';
 import { IUserDocument } from 'src/user/user.interface';
 import {
