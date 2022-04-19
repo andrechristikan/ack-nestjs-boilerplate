@@ -132,13 +132,14 @@ export function PaginationFilterBoolean(defaultValue: boolean[]): any {
     );
 }
 
-export function PaginationFilterEnum(
-    defaultValue: Record<string, any>[],
+export function PaginationFilterEnum<T>(
+    defaultValue: T[],
     defaultEnum: Record<string, any>
 ): any {
+    const cEnum = defaultEnum as unknown;
     return applyDecorators(
         Expose(),
-        IsEnum(defaultEnum as object, { each: true }),
+        IsEnum(cEnum as object, { each: true }),
         Transform(
             ({ value }) =>
                 value
