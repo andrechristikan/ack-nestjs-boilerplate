@@ -1,11 +1,11 @@
 import { PaginationListAbstract } from 'src/utils/pagination/pagination.abstract';
 import {
-    PaginationDefaultAvailableSearch,
-    PaginationDefaultAvailableSort,
-    PaginationDefaultPage,
-    PaginationDefaultPerPage,
-    PaginationDefaultSearch,
-    PaginationDefaultSort,
+    PaginationAvailableSearch,
+    PaginationAvailableSort,
+    PaginationPage,
+    PaginationPerPage,
+    PaginationSearch,
+    PaginationSort,
 } from 'src/utils/pagination/pagination.decorator';
 import { IPaginationSort } from 'src/utils/pagination/pagination.interface';
 import {
@@ -17,21 +17,21 @@ import {
 } from '../role.constant';
 
 export class RoleListDto implements PaginationListAbstract {
-    @PaginationDefaultSearch()
+    @PaginationSearch()
     readonly search?: string;
 
-    @PaginationDefaultAvailableSearch(ROLE_DEFAULT_AVAILABLE_SEARCH)
+    @PaginationAvailableSearch(ROLE_DEFAULT_AVAILABLE_SEARCH)
     readonly availableSearch?: string[];
 
-    @PaginationDefaultPage(ROLE_DEFAULT_PAGE)
+    @PaginationPage(ROLE_DEFAULT_PAGE)
     readonly page: number;
 
-    @PaginationDefaultPerPage(ROLE_DEFAULT_PER_PAGE)
+    @PaginationPerPage(ROLE_DEFAULT_PER_PAGE)
     readonly perPage: number;
 
-    @PaginationDefaultSort(ROLE_DEFAULT_SORT, ROLE_DEFAULT_AVAILABLE_SORT)
+    @PaginationSort(ROLE_DEFAULT_SORT, ROLE_DEFAULT_AVAILABLE_SORT)
     readonly sort?: IPaginationSort;
 
-    @PaginationDefaultAvailableSort(ROLE_DEFAULT_AVAILABLE_SORT)
+    @PaginationAvailableSort(ROLE_DEFAULT_AVAILABLE_SORT)
     readonly availableSort?: string[];
 }
