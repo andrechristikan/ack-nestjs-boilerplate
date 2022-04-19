@@ -1,5 +1,5 @@
 import { applyDecorators } from '@nestjs/common';
-import { Expose, Transform } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
     IsBoolean,
     IsMongoId,
@@ -7,7 +7,9 @@ import {
     ValidateIf,
     IsEnum,
     IsNotEmpty,
+    IsDate,
 } from 'class-validator';
+import { MinGreaterThan } from '../request/validation/request.min-greater-than.validation';
 import {
     ENUM_PAGINATION_AVAILABLE_SORT_TYPE,
     PAGINATION_DEFAULT_AVAILABLE_SORT,
@@ -17,6 +19,10 @@ import {
     PAGINATION_DEFAULT_PER_PAGE,
     PAGINATION_DEFAULT_SORT,
 } from './pagination.constant';
+import {
+    IPaginationFilterDateOptions,
+    IPaginationFilterOptions,
+} from './pagination.interface';
 
 export function PaginationSearch(): any {
     return applyDecorators(
@@ -150,11 +156,42 @@ export function PaginationFilterEnum<T>(
     );
 }
 
-export function PaginationFilterId(field: string, required?: boolean): any {
+export function PaginationFilterId(
+    field: string,
+    options?: IPaginationFilterOptions
+): any {
     return applyDecorators(
         Expose(),
         IsMongoId(),
-        required ? IsNotEmpty() : IsOptional(),
-        required ? IsNotEmpty() : ValidateIf((e) => e[field] !== '')
+        options && options.required ? IsNotEmpty() : IsOptional(),
+        options && options.required
+            ? ValidateIf(() => false)
+            : ValidateIf((e) => e[field] !== '')
+    );
+}
+
+export function PaginationFilterDate(
+    field: string,
+    options?: IPaginationFilterDateOptions
+): any {
+    return applyDecorators(
+        Expose(),
+        IsDate(),
+        Type(() => Date),
+        options && options.required ? IsNotEmpty() : IsOptional(),
+        options && options.required && options.asEndDate
+            ? ValidateIf(
+                  (e) =>
+                      e[field] !== '' &&
+                      e[options.asEndDate.moreThanField] !== ''
+              )
+            : options && options.required
+            ? ValidateIf((e) => e[field] !== '')
+            : options && options.asEndDate
+            ? ValidateIf((e) => e[options.asEndDate.moreThanField] !== '')
+            : ValidateIf(() => false),
+        options && options.asEndDate
+            ? MinGreaterThan(options.asEndDate.moreThanField)
+            : ValidateIf(() => false)
     );
 }

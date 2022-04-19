@@ -2,7 +2,6 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import faker from '@faker-js/faker';
-
 import { IUserDocument } from 'src/user/user.interface';
 import {
     E2E_USER_PUBLIC_PROFILE_UPLOAD_URL,

@@ -10,3 +10,13 @@ export type IPaginationSort = Record<
     string,
     ENUM_PAGINATION_AVAILABLE_SORT_TYPE
 >;
+
+export interface IPaginationFilterOptions {
+    required?: boolean;
+}
+
+export interface IPaginationFilterDateOptions extends IPaginationFilterOptions {
+    asEndDate?: {
+        moreThanField: string;
+    };
+}
