@@ -23,7 +23,7 @@
         "lcov", 
         "text"
     ],
-    "coverageDirectory": "coverage",
+    "coverageDirectory": "integration-coverage",
     "moduleFileExtensions": [
         "js", 
         "ts", 

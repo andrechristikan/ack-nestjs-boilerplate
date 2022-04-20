@@ -4,6 +4,7 @@
 node_modules/
 coverage/
 e2e-coverage/
+integration-coverage/
 dist/
 .husky/
 .github/
