@@ -1,11 +1,5 @@
 import { Exclude, Type } from 'class-transformer';
-import { PermissionDocument } from '../schema/permission.schema';
-
 export class PermissionListSerialization {
-    constructor(partial: Partial<PermissionDocument[]>) {
-        Object.assign(this, partial);
-    }
-
     @Type(() => String)
     readonly _id: string;
 
