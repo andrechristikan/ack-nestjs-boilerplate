@@ -1,13 +1,8 @@
 import { Exclude, Transform, Type } from 'class-transformer';
 import { IAwsS3Response } from 'src/aws/aws.interface';
 import { IRoleDocument } from 'src/role/role.interface';
-import { IUserDocument } from 'src/user/user.interface';
 
 export class AuthLoginSerialization {
-    constructor(partial: Partial<IUserDocument>) {
-        Object.assign(this, partial);
-    }
-
     @Type(() => String)
     readonly _id: string;
 
