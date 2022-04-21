@@ -14,7 +14,7 @@ describe('AuthService', () => {
         _id: '623cb7fd37a861a10bac2c91',
         isActive: true,
         salt: '$2b$08$GZfqgaDMPpWQ3lJEGQ8Ueu',
-        passwordExpiredDate: new Date('2023-03-24T18:27:09.500Z'),
+        passwordExpired: new Date('2023-03-24T18:27:09.500Z'),
         password:
             '$2b$08$GZfqgaDMPpWQ3lJEGQ8Ueu1vJ3C6G3stnkS/5e61bK/4f1.Fuw2Eq',
         role: {

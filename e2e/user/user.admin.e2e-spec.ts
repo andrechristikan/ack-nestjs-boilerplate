@@ -85,7 +85,7 @@ describe('E2E User Admin', () => {
             firstName: faker.name.firstName(),
             lastName: faker.name.lastName(),
             password: passwordHash.passwordHash,
-            passwordExpiredDate: passwordHash.passwordExpiredDate,
+            passwordExpired: passwordHash.passwordExpired,
             salt: passwordHash.salt,
             email: faker.internet.email(),
             mobileNumber: faker.phone.phoneNumber('62812#########'),

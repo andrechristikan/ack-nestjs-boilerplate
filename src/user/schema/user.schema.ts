@@ -53,7 +53,7 @@ export class UserEntity {
     @Prop({
         required: true,
     })
-    passwordExpiredDate: Date;
+    passwordExpired: Date;
 
     @Prop({
         required: true,

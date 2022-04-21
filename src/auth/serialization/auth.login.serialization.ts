@@ -23,7 +23,7 @@ export class AuthLoginSerialization {
     readonly email: string;
     readonly mobileNumber: string;
     readonly isActive: boolean;
-    readonly passwordExpiredDate: Date;
+    readonly passwordExpired: Date;
     readonly loginDate: Date;
     readonly rememberMe: boolean;
 

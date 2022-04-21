@@ -169,7 +169,7 @@ export class AuthService {
         const passwordExpiredInDays: number = this.configService.get<number>(
             'auth.password.expiredInDay'
         );
-        const passwordExpiredDate: Date = this.helperDateService.forwardInDays(
+        const passwordExpired: Date = this.helperDateService.forwardInDays(
             passwordExpiredInDays
         );
         const passwordHash = await this.helperHashService.bcrypt(
@@ -178,7 +178,7 @@ export class AuthService {
         );
         return {
             passwordHash,
-            passwordExpiredDate,
+            passwordExpired,
             salt,
         };
     }

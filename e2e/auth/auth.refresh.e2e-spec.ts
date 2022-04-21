@@ -31,7 +31,7 @@ describe('E2E Refresh', () => {
         .toLowerCase()}${faker.random.alphaNumeric(5).toUpperCase()}`;
 
     let user: UserDocument;
-    let passwordExpiredDate: Date;
+    let passwordExpired: Date;
     let passwordExpiredForward: Date;
 
     let refreshToken: string;
@@ -62,7 +62,7 @@ describe('E2E Refresh', () => {
             name: 'user',
         });
 
-        passwordExpiredDate = helperDateService.backwardInDays(5);
+        passwordExpired = helperDateService.backwardInDays(5);
         passwordExpiredForward = helperDateService.forwardInDays(5);
 
         const passwordHash = await authService.createPassword(password);
@@ -71,7 +71,7 @@ describe('E2E Refresh', () => {
             firstName: faker.name.firstName(),
             lastName: faker.name.lastName(),
             password: passwordHash.passwordHash,
-            passwordExpiredDate: passwordHash.passwordExpiredDate,
+            passwordExpired: passwordHash.passwordExpired,
             salt: passwordHash.salt,
             email: faker.internet.email(),
             mobileNumber: faker.phone.phoneNumber('62812#########'),
@@ -159,7 +159,7 @@ describe('E2E Refresh', () => {
     });
 
     it(`POST ${E2E_AUTH_REFRESH_URL} Password Expired`, async () => {
-        await userService.updatePasswordExpired(user._id, passwordExpiredDate);
+        await userService.updatePasswordExpired(user._id, passwordExpired);
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`)
