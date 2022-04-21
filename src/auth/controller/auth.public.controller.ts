@@ -108,7 +108,7 @@ export class AuthPublicController {
                 mobileNumber,
                 role: role._id,
                 password: password.passwordHash,
-                passwordExpiredDate: password.passwordExpiredDate,
+                passwordExpired: password.passwordExpired,
                 salt: password.salt,
             });
 

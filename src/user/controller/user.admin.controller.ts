@@ -202,7 +202,7 @@ export class UserAdminController {
                 mobileNumber: body.mobileNumber,
                 role: body.role,
                 password: password.passwordHash,
-                passwordExpiredDate: password.passwordExpiredDate,
+                passwordExpired: password.passwordExpired,
                 salt: password.salt,
             });
 

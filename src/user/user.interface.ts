@@ -9,7 +9,7 @@ export interface IUserCreate {
     firstName: string;
     lastName?: string;
     password: string;
-    passwordExpiredDate: Date;
+    passwordExpired: Date;
     email: string;
     mobileNumber: string;
     role: string;

@@ -29,7 +29,7 @@ export class UserGetSerialization {
     @Exclude()
     readonly password: string;
 
-    readonly passwordExpiredDate: Date;
+    readonly passwordExpired: Date;
 
     @Exclude()
     readonly salt: string;

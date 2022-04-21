@@ -35,7 +35,7 @@ describe('E2E Login', () => {
 
     let user: UserDocument;
 
-    let passwordExpiredDate: Date;
+    let passwordExpired: Date;
 
     beforeAll(async () => {
         const modRef = await Test.createTestingModule({
@@ -62,7 +62,7 @@ describe('E2E Login', () => {
             name: 'user',
         });
 
-        passwordExpiredDate = helperDateService.backwardInDays(5);
+        passwordExpired = helperDateService.backwardInDays(5);
 
         const passwordHash = await authService.createPassword(password);
 
@@ -70,7 +70,7 @@ describe('E2E Login', () => {
             firstName: faker.name.firstName(),
             lastName: faker.name.lastName(),
             password: passwordHash.passwordHash,
-            passwordExpiredDate: passwordHash.passwordExpiredDate,
+            passwordExpired: passwordHash.passwordExpired,
             salt: passwordHash.salt,
             email: faker.internet.email(),
             mobileNumber: faker.phone.phoneNumber('62812#########'),
@@ -207,7 +207,7 @@ describe('E2E Login', () => {
     });
 
     it(`POST ${E2E_AUTH_LOGIN_URL} Password Expired`, async () => {
-        await userService.updatePasswordExpired(user._id, passwordExpiredDate);
+        await userService.updatePasswordExpired(user._id, passwordExpired);
         const response = await request(app.getHttpServer())
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')

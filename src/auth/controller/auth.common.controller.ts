@@ -134,11 +134,11 @@ export class AuthCommonController {
         );
 
         const today: Date = this.helperDateService.create();
-        const passwordExpiredDate: Date = this.helperDateService.create(
-            user.passwordExpiredDate
+        const passwordExpired: Date = this.helperDateService.create(
+            user.passwordExpired
         );
 
-        if (today > passwordExpiredDate) {
+        if (today > passwordExpired) {
             this.debuggerService.error(
                 'Password expired',
                 'AuthController',
@@ -148,7 +148,7 @@ export class AuthCommonController {
             throw new SuccessException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR,
-                message: 'auth.error.passwordExpiredDate',
+                message: 'auth.error.passwordExpired',
                 data: {
                     accessToken,
                     refreshToken,
@@ -222,11 +222,11 @@ export class AuthCommonController {
         }
 
         const today: Date = this.helperDateService.create();
-        const passwordExpiredDate: Date = this.helperDateService.create(
-            user.passwordExpiredDate
+        const passwordExpired: Date = this.helperDateService.create(
+            user.passwordExpired
         );
 
-        if (today > passwordExpiredDate) {
+        if (today > passwordExpired) {
             this.debuggerService.error(
                 'Password expired',
                 'AuthController',
@@ -236,7 +236,7 @@ export class AuthCommonController {
             throw new ForbiddenException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR,
-                message: 'auth.error.passwordExpiredDate',
+                message: 'auth.error.passwordExpired',
             });
         }
 
