@@ -21,7 +21,7 @@ jobs:
       
       - name: Get latest version
         id: version
-        uses: martinbeentjes/npm-get-version-action@master
+        uses: martinbeentjes/npm-get-version-action@main
 
       - name: Git
         run: |
