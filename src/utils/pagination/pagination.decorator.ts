@@ -1,4 +1,4 @@
-import { applyDecorators } from '@nestjs/common';
+import { applyDecorators, Inject } from '@nestjs/common';
 import { Expose, Transform, Type } from 'class-transformer';
 import {
     IsBoolean,
@@ -9,6 +9,7 @@ import {
     IsNotEmpty,
     IsDate,
 } from 'class-validator';
+import { HelperDateService } from '../helper/service/helper.date.service';
 import { MinGreaterThan } from '../request/validation/request.min-greater-than.validation';
 import {
     ENUM_PAGINATION_AVAILABLE_SORT_TYPE,
@@ -192,6 +193,18 @@ export function PaginationFilterDate(
             : ValidateIf(() => false),
         options && options.asEndDate
             ? MinGreaterThan(options.asEndDate.moreThanField)
+            : ValidateIf(() => false),
+        options && options.asEndDate
+            ? Transform(
+                  ({ value }) => {
+                      const result = new Date(value);
+                      result.setDate(result.getDate() + 1);
+                      return result;
+                  },
+                  {
+                      toClassOnly: true,
+                  }
+              )
             : ValidateIf(() => false)
     );
 }
