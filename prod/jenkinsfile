@@ -56,7 +56,7 @@ pipeline {
                 url: GIT_URL
 
                 sh "git rev-parse --short HEAD > .git/commit-id"
-                sh "grep version package.json | sed 's/.*\"version": \"\(.*\)\".*/\1/' > .git/version-id"
+                sh "grep -o '\"version\": \"[^\"]*' package.json | grep -o '[^\"]*\$' > .git/version-id"
             }
         }
         stage('Build'){
