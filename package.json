@@ -1,6 +1,6 @@
 {
   "name": "ack-nestjs-boilerplate-mongoose",
-  "version": "1.2.14",
+  "version": "1.2.15",
   "description": "Ack NestJs BoilerPlate Mongoose",
   "repository": {
     "type": "git",
