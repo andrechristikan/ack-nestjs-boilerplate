@@ -20,10 +20,10 @@ import {
 
 export class PermissionListDto implements PaginationListAbstract {
     @PaginationSearch()
-    readonly search?: string;
+    readonly search: string;
 
     @PaginationAvailableSearch(PERMISSION_DEFAULT_AVAILABLE_SEARCH)
-    readonly availableSearch?: string[];
+    readonly availableSearch: string[];
 
     @PaginationPage(PERMISSION_DEFAULT_PAGE)
     readonly page: number;
@@ -32,10 +32,10 @@ export class PermissionListDto implements PaginationListAbstract {
     readonly perPage: number;
 
     @PaginationSort(PERMISSION_DEFAULT_SORT, PERMISSION_DEFAULT_AVAILABLE_SORT)
-    readonly sort?: IPaginationSort;
+    readonly sort: IPaginationSort;
 
     @PaginationAvailableSort(PERMISSION_DEFAULT_AVAILABLE_SORT)
-    readonly availableSort?: string[];
+    readonly availableSort: string[];
 
     @PaginationFilterBoolean(PERMISSION_DEFAULT_ACTIVE)
     readonly isActive: string[];

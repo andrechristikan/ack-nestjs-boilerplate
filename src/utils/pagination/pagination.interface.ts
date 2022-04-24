@@ -20,3 +20,8 @@ export interface IPaginationFilterDateOptions extends IPaginationFilterOptions {
         moreThanField: string;
     };
 }
+
+export interface IPaginationFilterStringOptions
+    extends IPaginationFilterOptions {
+    lowercase?: boolean;
+}

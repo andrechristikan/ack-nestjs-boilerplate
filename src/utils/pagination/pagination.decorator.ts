@@ -1,4 +1,4 @@
-import { applyDecorators, Inject } from '@nestjs/common';
+import { applyDecorators } from '@nestjs/common';
 import { Expose, Transform, Type } from 'class-transformer';
 import {
     IsBoolean,
@@ -9,7 +9,6 @@ import {
     IsNotEmpty,
     IsDate,
 } from 'class-validator';
-import { HelperDateService } from '../helper/service/helper.date.service';
 import { MinGreaterThan } from '../request/validation/request.min-greater-than.validation';
 import {
     ENUM_PAGINATION_AVAILABLE_SORT_TYPE,
@@ -23,6 +22,7 @@ import {
 import {
     IPaginationFilterDateOptions,
     IPaginationFilterOptions,
+    IPaginationFilterStringOptions,
 } from './pagination.interface';
 
 export function PaginationSearch(): any {
@@ -209,17 +209,28 @@ export function PaginationFilterDate(
     );
 }
 
-export function PaginationFilterString() {
+export function PaginationFilterString(
+    field: string,
+    options?: IPaginationFilterStringOptions
+) {
     return applyDecorators(
         Expose(),
-        Transform(
-            ({ value }) =>
-                value
-                    ? value.split(',').map((val: string) => val.toLowerCase())
-                    : undefined,
-            {
-                toClassOnly: true,
-            }
-        )
+        options && options.lowercase
+            ? Transform(
+                  ({ value }) =>
+                      value
+                          ? value
+                                .split(',')
+                                .map((val: string) => val.toLowerCase())
+                          : undefined,
+                  {
+                      toClassOnly: true,
+                  }
+              )
+            : ValidateIf(() => false),
+        options && options.required ? IsNotEmpty() : IsOptional(),
+        options && options.required
+            ? ValidateIf(() => false)
+            : ValidateIf((e) => e[field] !== '')
     );
 }

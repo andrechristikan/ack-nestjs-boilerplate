@@ -16,6 +16,8 @@ export const UserAgent = createParamDecorator(
     }
 );
 
-export function RequestParamGuard(classValidation: ClassConstructor<any>): any {
+export function RequestParamGuard(
+    ...classValidation: ClassConstructor<any>[]
+): any {
     return applyDecorators(UseGuards(ParamGuard(classValidation)));
 }

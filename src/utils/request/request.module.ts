@@ -12,7 +12,7 @@ import { IsPasswordStrongConstraint } from './validation/request.is-password-str
 import { IsPasswordWeakConstraint } from './validation/request.is-password-weak.validation';
 import { IsStartWithConstraint } from './validation/request.is-start-with.validation';
 import { MaxGreaterThanEqualConstraint } from './validation/request.max-greater-than-equal.validation';
-import { MaxGreaterThanConstraint } from './validation/request.max-greter-than.validation';
+import { MaxGreaterThanConstraint } from './validation/request.max-greater-than.validation';
 import { MinGreaterThanEqualConstraint } from './validation/request.min-greater-than-equal.validation';
 import { MinGreaterThanConstraint } from './validation/request.min-greater-than.validation';
 
