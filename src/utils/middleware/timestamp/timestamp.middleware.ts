@@ -14,7 +14,7 @@ export class TimestampMiddleware implements NestMiddleware {
     use(req: Request, res: Response, next: NextFunction): void {
         const env: string = this.configService.get<string>('app.env');
 
-        if (env === 'production') {
+        if (env === 'production' || env === 'staging') {
             const toleranceTimeInMinutes = this.configService.get<number>(
                 'middleware.timestamp.toleranceTimeInMinutes'
             );
