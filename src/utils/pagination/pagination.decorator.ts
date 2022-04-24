@@ -10,6 +10,7 @@ import {
     IsDate,
 } from 'class-validator';
 import { MinGreaterThan } from '../request/validation/request.min-greater-than.validation';
+import { Skip } from '../request/validation/request.skip.validation';
 import {
     ENUM_PAGINATION_AVAILABLE_SORT_TYPE,
     PAGINATION_DEFAULT_AVAILABLE_SORT,
@@ -164,9 +165,9 @@ export function PaginationFilterId(
     return applyDecorators(
         Expose(),
         IsMongoId(),
-        options && options.required ? IsNotEmpty() : IsOptional(),
+        options && options.required ? IsNotEmpty() : Skip(),
         options && options.required
-            ? ValidateIf(() => false)
+            ? Skip()
             : ValidateIf((e) => e[field] !== '')
     );
 }
@@ -180,20 +181,18 @@ export function PaginationFilterDate(
         IsDate(),
         Type(() => Date),
         options && options.required ? IsNotEmpty() : IsOptional(),
-        options && options.required && options.asEndDate
+        options && options.required
+            ? Skip()
+            : options.asEndDate
             ? ValidateIf(
                   (e) =>
                       e[field] !== '' &&
                       e[options.asEndDate.moreThanField] !== ''
               )
-            : options && options.required
-            ? ValidateIf((e) => e[field] !== '')
-            : options && options.asEndDate
-            ? ValidateIf((e) => e[options.asEndDate.moreThanField] !== '')
-            : ValidateIf(() => false),
+            : ValidateIf((e) => e[field] !== ''),
         options && options.asEndDate
             ? MinGreaterThan(options.asEndDate.moreThanField)
-            : ValidateIf(() => false),
+            : Skip(),
         options && options.asEndDate
             ? Transform(
                   ({ value }) => {
@@ -205,7 +204,7 @@ export function PaginationFilterDate(
                       toClassOnly: true,
                   }
               )
-            : ValidateIf(() => false)
+            : Skip()
     );
 }
 
@@ -227,10 +226,10 @@ export function PaginationFilterString(
                       toClassOnly: true,
                   }
               )
-            : ValidateIf(() => false),
+            : Skip(),
         options && options.required ? IsNotEmpty() : IsOptional(),
         options && options.required
-            ? ValidateIf(() => false)
+            ? Skip()
             : ValidateIf((e) => e[field] !== '')
     );
 }
