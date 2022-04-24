@@ -168,7 +168,7 @@ export function PaginationFilterId(
         options && options.required ? IsNotEmpty() : Skip(),
         options && options.required
             ? Skip()
-            : ValidateIf((e) => e[field] !== '')
+            : ValidateIf((e) => e[field] !== '' && e[field])
     );
 }
 
@@ -187,9 +187,11 @@ export function PaginationFilterDate(
             ? ValidateIf(
                   (e) =>
                       e[field] !== '' &&
-                      e[options.asEndDate.moreThanField] !== ''
+                      e[options.asEndDate.moreThanField] !== '' &&
+                      e[field] &&
+                      e[options.asEndDate.moreThanField]
               )
-            : ValidateIf((e) => e[field] !== ''),
+            : ValidateIf((e) => e[field] !== '' && e[field]),
         options && options.asEndDate
             ? MinGreaterThan(options.asEndDate.moreThanField)
             : Skip(),
@@ -230,6 +232,6 @@ export function PaginationFilterString(
         options && options.required ? IsNotEmpty() : IsOptional(),
         options && options.required
             ? Skip()
-            : ValidateIf((e) => e[field] !== '')
+            : ValidateIf((e) => e[field] !== '' && e[field])
     );
 }
