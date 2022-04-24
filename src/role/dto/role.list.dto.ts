@@ -18,10 +18,10 @@ import {
 
 export class RoleListDto implements PaginationListAbstract {
     @PaginationSearch()
-    readonly search?: string;
+    readonly search: string;
 
     @PaginationAvailableSearch(ROLE_DEFAULT_AVAILABLE_SEARCH)
-    readonly availableSearch?: string[];
+    readonly availableSearch: string[];
 
     @PaginationPage(ROLE_DEFAULT_PAGE)
     readonly page: number;
@@ -30,8 +30,8 @@ export class RoleListDto implements PaginationListAbstract {
     readonly perPage: number;
 
     @PaginationSort(ROLE_DEFAULT_SORT, ROLE_DEFAULT_AVAILABLE_SORT)
-    readonly sort?: IPaginationSort;
+    readonly sort: IPaginationSort;
 
     @PaginationAvailableSort(ROLE_DEFAULT_AVAILABLE_SORT)
-    readonly availableSort?: string[];
+    readonly availableSort: string[];
 }

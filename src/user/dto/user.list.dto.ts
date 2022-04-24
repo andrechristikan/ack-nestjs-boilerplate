@@ -16,10 +16,10 @@ import {
 
 export class UserListDto implements PaginationListAbstract {
     @PaginationSearch()
-    readonly search?: string;
+    readonly search: string;
 
     @PaginationAvailableSearch(USER_DEFAULT_AVAILABLE_SEARCH)
-    readonly availableSearch?: string[];
+    readonly availableSearch: string[];
 
     @PaginationPage()
     readonly page: number;
@@ -28,8 +28,8 @@ export class UserListDto implements PaginationListAbstract {
     readonly perPage: number;
 
     @PaginationSort(USER_DEFAULT_SORT, USER_DEFAULT_AVAILABLE_SORT)
-    readonly sort?: IPaginationSort;
+    readonly sort: IPaginationSort;
 
     @PaginationAvailableSort(USER_DEFAULT_AVAILABLE_SORT)
-    readonly availableSort?: string[];
+    readonly availableSort: string[];
 }
