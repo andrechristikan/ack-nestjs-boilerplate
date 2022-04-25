@@ -2,6 +2,7 @@
 . "$(dirname "$0")/_/husky.sh"
 
 yarn lint
+yarn deadcode
 yarn test
 yarn test:integration
 yarn test:e2e

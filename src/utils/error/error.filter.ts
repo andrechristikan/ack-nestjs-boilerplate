@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
-import { IErrorHttpException } from './error.interface';
+import { IErrorException } from './error.interface';
 import { IMessage } from 'src/message/message.interface';
 import { MessageService } from 'src/message/service/message.service';
 
@@ -24,7 +24,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
             : undefined;
 
         // Restructure
-        const response = exception.getResponse() as IErrorHttpException;
+        const response = exception.getResponse() as IErrorException;
         if (typeof response === 'object') {
             const { statusCode, message, errors, data, properties } = response;
             const rErrors = errors

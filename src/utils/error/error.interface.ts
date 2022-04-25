@@ -5,7 +5,7 @@ export interface IErrors {
     readonly property: string;
 }
 
-export interface IErrorHttpException {
+export interface IErrorException {
     statusCode: number;
     message: string;
     errors?: IErrors[];
