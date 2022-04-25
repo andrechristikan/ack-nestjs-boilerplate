@@ -15,6 +15,7 @@ import { HelmetMiddleware } from './helmet/helmet.middleware';
 import { RateLimitMiddleware } from './rate-limit/rate-limit.middleware';
 import { UserAgentMiddleware } from './user-agent/user-agent.middleware';
 import { TimestampMiddleware } from './timestamp/timestamp.middleware';
+import { CompressionMiddleware } from './compression/compression.middleware';
 
 @Module({})
 export class MiddlewareModule implements NestModule {
@@ -26,6 +27,7 @@ export class MiddlewareModule implements NestModule {
                 HtmlBodyParserMiddleware,
                 TextBodyParserMiddleware,
                 UrlencodedBodyParserMiddleware,
+                CompressionMiddleware,
                 CorsMiddleware,
                 HttpDebuggerResponseMiddleware,
                 HttpDebuggerMiddleware,
