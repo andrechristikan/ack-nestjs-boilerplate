@@ -8,6 +8,7 @@ import { HelperEncryptionService } from './service/helper.encryption.service';
 import { HelperHashService } from './service/helper.hash.service';
 import { HelperNumberService } from './service/helper.number.service';
 import { HelperStringService } from './service/helper.string.service';
+import { HelperFileService } from './service/helper.file.service';
 
 @Global()
 @Module({
@@ -19,6 +20,7 @@ import { HelperStringService } from './service/helper.string.service';
         HelperHashService,
         HelperNumberService,
         HelperStringService,
+        HelperFileService,
     ],
     exports: [
         HelperService,
@@ -28,6 +30,7 @@ import { HelperStringService } from './service/helper.string.service';
         HelperHashService,
         HelperNumberService,
         HelperStringService,
+        HelperFileService,
     ],
     controllers: [],
     imports: [
