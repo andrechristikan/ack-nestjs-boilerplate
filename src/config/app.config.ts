@@ -3,6 +3,7 @@ import { registerAs } from '@nestjs/config';
 export default registerAs(
     'app',
     (): Record<string, any> => ({
+        name: process.env.APP_NAME || 'ack',
         env: process.env.APP_ENV || 'development',
         language: process.env.APP_LANGUAGE || 'en',
         versioning: process.env.APP_VERSIONING === 'true' || false,
