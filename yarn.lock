@@ -5918,10 +5918,10 @@ nestjs-command@^3.1.1:
     lodash.compact "^3.0.1"
     lodash.flattendeep "^4.4.0"
 
-nestjs-i18n@^9.0.10:
-  version "9.0.10"
-  resolved "https://registry.yarnpkg.com/nestjs-i18n/-/nestjs-i18n-9.0.10.tgz#ddf1a6171016697cae53bcb734f273584c5cf215"
-  integrity sha512-Niqk166yvTsWtRV4Ku/tgCXi7lXkMKgK6aQJjEa6ihAjCWBAeXOqq0H73UYArMCiNH/EIXMSKSdWyRz6oxlgGw==
+nestjs-i18n@^9.0.11:
+  version "9.0.11"
+  resolved "https://registry.yarnpkg.com/nestjs-i18n/-/nestjs-i18n-9.0.11.tgz#9c207265647e6af6820cbaeb6c6237ab2734b665"
+  integrity sha512-rLoLQhRZSvoLhy4IA8OxHNz6D5Iymj1NrhF4iBnQKeRip3W2bkRzasDyc5a+F5i9A/LVwC3wegalcifBIKsf4w==
   dependencies:
     accept-language-parser "^1.5.0"
     chokidar "^3.5.3"
