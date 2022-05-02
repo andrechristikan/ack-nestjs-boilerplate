@@ -1,6 +1,5 @@
 {
     "testTimeout": 5000,
-    "verbose": true,
     "rootDir": "..",
     "modulePaths": [
         "."
@@ -10,20 +9,18 @@
         "<rootDir>/e2e/**/*.e2e-spec.ts"
     ],
     "collectCoverage": true,
-    "coveragePathIgnorePatterns": [
-        "node_modules", 
-        "vendor",
-        "src",
-        "prod",
-        "test"
-    ],
-    "coverageReporters": [
-        "clover", 
-        "json", 
-        "lcov", 
-        "text"
-    ],
     "coverageDirectory": "e2e-coverage",
+    "collectCoverageFrom": [
+        "./e2e"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 90,
+        "functions": 90,
+        "lines": 90,
+        "statements": 90
+      }
+    },
     "moduleFileExtensions": [
         "js", 
         "ts", 

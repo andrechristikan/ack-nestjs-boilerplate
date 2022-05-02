@@ -59,7 +59,7 @@ describe('E2E User Public', () => {
         });
 
         const passwordHash = await authService.createPassword(
-            faker.random.alphaNumeric()
+            faker.internet.password(20, true, /[A-Za-z0-9]/)
         );
 
         user = await userService.create({

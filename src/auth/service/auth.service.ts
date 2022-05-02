@@ -107,10 +107,7 @@ export class AuthService {
         clientBasicToken: string,
         ourBasicToken: string
     ): Promise<boolean> {
-        if (ourBasicToken !== clientBasicToken) {
-            return false;
-        }
-        return true;
+        return ourBasicToken === clientBasicToken;
     }
 
     async validateUser(

@@ -29,9 +29,9 @@ describe('E2E Login', () => {
     let roleService: RoleService;
     let helperDateService: HelperDateService;
 
-    const password = `@!${faker.random
-        .alphaNumeric(5)
-        .toLowerCase()}${faker.random.alphaNumeric(5).toUpperCase()}`;
+    const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
+        .firstName()
+        .toUpperCase()}${faker.datatype.number({ min: 1, max: 99 })}`;
 
     let user: UserDocument;
 

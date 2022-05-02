@@ -32,7 +32,7 @@ export default registerAs(
             ],
         },
         rateLimit: {
-            resetTime: 1 * 1000, // 1 mins
+            resetTime: 1 * 500, // 0.5 secs
             maxRequestPerId: 1, // max request per reset time
         },
         timestamp: {

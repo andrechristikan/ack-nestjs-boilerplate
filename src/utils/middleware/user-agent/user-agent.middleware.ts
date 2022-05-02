@@ -13,6 +13,7 @@ export class UserAgentMiddleware implements NestMiddleware {
         const env: string = this.configService.get<string>('app.env');
 
         if (env === 'production' || env === 'staging') {
+            // Put your specific user agent
             const userAgent: string = req.headers['user-agent'] as string;
             if (!userAgent) {
                 throw new ForbiddenException({

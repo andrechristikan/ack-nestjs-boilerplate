@@ -34,8 +34,8 @@ describe('E2E User Admin', () => {
     let roleService: RoleService;
     let helperDateService: HelperDateService;
 
-    const password = `@!${faker.random.alpha(5).toLowerCase()}${faker.random
-        .alpha(5)
+    const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
+        .firstName()
         .toUpperCase()}${faker.datatype.number({ min: 1, max: 99 })}`;
 
     let userData: Record<string, any>;
@@ -78,7 +78,7 @@ describe('E2E User Admin', () => {
         };
 
         const passwordHash = await authService.createPassword(
-            faker.random.alphaNumeric()
+            faker.internet.password(20, true, /[A-Za-z0-9]/)
         );
 
         userExist = await userService.create({

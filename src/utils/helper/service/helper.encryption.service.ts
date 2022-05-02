@@ -91,13 +91,19 @@ export class HelperEncryptionService {
         token: string,
         options?: IHelperJwtOptions
     ): Promise<boolean> {
-        const payload: Record<string, any> = this.jwtService.verify(token, {
-            secret:
-                options && options.secretKey
-                    ? options.secretKey
-                    : this.configService.get<string>('helper.jwt.secretKey'),
-        });
+        try {
+            await this.jwtService.verify(token, {
+                secret:
+                    options && options.secretKey
+                        ? options.secretKey
+                        : this.configService.get<string>(
+                              'helper.jwt.secretKey'
+                          ),
+            });
 
-        return payload ? true : false;
+            return true;
+        } catch (e) {
+            return false;
+        }
     }
 }

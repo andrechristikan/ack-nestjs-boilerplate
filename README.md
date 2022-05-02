@@ -15,7 +15,7 @@
 
 # ACK NestJs Boilerplate Mongoose  🔥 🚀
 
-> Best uses for RESTFUL API or [Microservice](https://microservices.io) Project
+> Best uses for RESTFUL API, [Microservice](https://microservices.io), or SaaS Project
 
 ack-nestjs-boilerplate-mongoose is a [NestJs](http://nestjs.com) Boilerplate with [Mongoose](https://mongoosejs.com) and [MongoDB](https://docs.mongodb.com) as Database.
 
@@ -60,7 +60,7 @@ ack-nestjs-boilerplate-mongoose have some objective.
 
 ## Features
 
-[Click this for more information][ack-docs-features] 😎.
+- [ ] List
 
 ## Documentation
 
@@ -82,9 +82,11 @@ Next development
 - [x] Health Check Separate Endpoint
 - [x] Timestamp Tolerance Middleware
 - [x] Optimize code
-- [ ] Whitelist user agent **_(Ongoing)_**
-- [ ] Docker compose file mongodb replication set  **_(Ongoing)_**
-- [ ] Swagger **_(Ongoing)_**
+- [x] Whitelist user agent
+- [x] Docker compose file mongodb replication set
+- [ ] API Key Guard **_(Ongoing)_**
+- [ ] Master Settings **_(Ongoing)_**
+- [ ] Swagger
 
 ## Endpoints
 

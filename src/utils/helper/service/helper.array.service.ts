@@ -12,11 +12,11 @@ export class HelperArrayService {
     }
 
     getLeftByLength(array: Array<any>, length: number): Array<any> {
-        return _.take(array, length ?? 1);
+        return _.take(array, length);
     }
 
     getRightByLength(array: Array<any>, length: number): Array<any> {
-        return _.takeRight(array, length ?? 1);
+        return _.takeRight(array, length);
     }
 
     getLast<T>(array: T[]): T {
@@ -42,11 +42,11 @@ export class HelperArrayService {
     }
 
     removeLeftByLength(array: Array<any>, length: number) {
-        return _.drop(array, length ?? 1);
+        return _.drop(array, length);
     }
 
     removeRightByLength(array: Array<any>, length: number) {
-        return _.dropRight(array, length ?? 1);
+        return _.dropRight(array, length);
     }
 
     joinToString(array: Array<any>, delimiter: string): string {

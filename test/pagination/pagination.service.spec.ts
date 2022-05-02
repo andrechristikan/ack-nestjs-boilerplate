@@ -33,6 +33,24 @@ describe('PaginationService', () => {
 
             expect(paginationService.skip(1, 10)).toBe(skip);
         });
+
+        it('max page should be success', async () => {
+            const skip = paginationService.skip(1, 150);
+            jest.spyOn(paginationService, 'skip').mockImplementation(
+                () => skip
+            );
+
+            expect(paginationService.skip(1, 150)).toBe(skip);
+        });
+
+        it('max per page should be success', async () => {
+            const skip = paginationService.skip(50, 10);
+            jest.spyOn(paginationService, 'skip').mockImplementation(
+                () => skip
+            );
+
+            expect(paginationService.skip(50, 10)).toBe(skip);
+        });
     });
 
     describe('totalPage', () => {

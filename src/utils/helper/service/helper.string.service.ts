@@ -22,14 +22,12 @@ export class HelperStringService {
     }
 
     random(length: number, options?: IHelperStringRandomOptions): string {
-        return options && options.safe
-            ? faker.random.alpha({
-                  count: length,
-                  upcase: options && options.upperCase ? true : false,
-              })
-            : options && options.upperCase
-            ? faker.random.alphaNumeric(length).toUpperCase()
-            : faker.random.alphaNumeric(length);
+        const rString =
+            options && options.safe
+                ? faker.internet.password(length, true, /[A-Z]/)
+                : faker.internet.password(length, true, /[A-Za-z0-9]/);
+
+        return options && options.upperCase ? rString.toUpperCase() : rString;
     }
 
     censor(value: string): string {

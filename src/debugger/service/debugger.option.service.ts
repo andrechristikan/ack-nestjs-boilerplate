@@ -64,6 +64,7 @@ export class DebuggerOptionService {
             })
         );
 
+        /* istanbul ignore next */
         if ((this.debug || this.logger) && this.env !== 'production') {
             transports.push(new winston.transports.Console());
         }
