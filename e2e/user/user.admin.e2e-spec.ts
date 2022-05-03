@@ -26,6 +26,7 @@ import { UserDocument } from 'src/user/schema/user.schema';
 import { RoleDocument } from 'src/role/schema/role.schema';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { useContainer } from 'class-validator';
+import { AuthApiService } from 'src/auth/service/auth.api.service';
 
 describe('E2E User Admin', () => {
     let app: INestApplication;
@@ -33,10 +34,15 @@ describe('E2E User Admin', () => {
     let authService: AuthService;
     let roleService: RoleService;
     let helperDateService: HelperDateService;
+    let authApiService: AuthApiService;
 
     const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
         .firstName()
         .toUpperCase()}${faker.datatype.number({ min: 1, max: 99 })}`;
+
+    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
+    let xApiKey: string;
+    let timestamp: number;
 
     let userData: Record<string, any>;
     let userExist: UserDocument;
@@ -63,6 +69,7 @@ describe('E2E User Admin', () => {
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
         helperDateService = app.get(HelperDateService);
+        authApiService = app.get(AuthApiService);
 
         const role: RoleDocument = await roleService.findOne({
             name: 'user',
@@ -108,6 +115,18 @@ describe('E2E User Admin', () => {
         const payload = await authService.createPayloadAccessToken(map, false);
         accessToken = await authService.createAccessToken(payload);
 
+        timestamp = helperDateService.timestamp();
+        const apiEncryption = await authApiService.encryptApiKey(
+            {
+                key: apiKey,
+                timestamp,
+                secret: '5124512412412asdasdasdasdasdASDASDASD',
+                hash: 'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54',
+            },
+            'cuwakimacojulawu'
+        );
+        xApiKey = `${apiKey}:${apiEncryption}`;
+
         await app.init();
     });
 
@@ -115,8 +134,9 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .get(E2E_USER_ADMIN_LIST_URL)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -129,7 +149,8 @@ describe('E2E User Admin', () => {
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .send({
                 role: '21easdasd1',
                 isAdmin: 'falsea',
@@ -154,7 +175,8 @@ describe('E2E User Admin', () => {
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .send(req);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
@@ -170,7 +192,8 @@ describe('E2E User Admin', () => {
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .send({
                 ...userData,
                 email: userExist.email,
@@ -191,7 +214,8 @@ describe('E2E User Admin', () => {
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .send({
                 ...userData,
                 email: userExist.email,
@@ -211,7 +235,8 @@ describe('E2E User Admin', () => {
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .send({
                 ...userData,
                 mobileNumber: userExist.mobileNumber,
@@ -231,7 +256,8 @@ describe('E2E User Admin', () => {
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .send(userData);
 
         userData = response.body.data;
@@ -251,7 +277,8 @@ describe('E2E User Admin', () => {
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -266,7 +293,8 @@ describe('E2E User Admin', () => {
             .get(E2E_USER_ADMIN_GET_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -279,7 +307,8 @@ describe('E2E User Admin', () => {
             .put(E2E_USER_ADMIN_UPDATE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .send({
                 firstName: [],
                 lastName: 1231231,
@@ -304,7 +333,8 @@ describe('E2E User Admin', () => {
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .send({
                 firstName: faker.name.firstName(),
                 lastName: faker.name.lastName(),
@@ -324,7 +354,8 @@ describe('E2E User Admin', () => {
             .put(E2E_USER_ADMIN_UPDATE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .send({
                 firstName: faker.name.firstName(),
                 lastName: faker.name.lastName(),
@@ -347,7 +378,8 @@ describe('E2E User Admin', () => {
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .expect(404);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
@@ -363,7 +395,8 @@ describe('E2E User Admin', () => {
             .patch(E2E_USER_ADMIN_INACTIVE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .expect(200);
 
         expect(response.status).toEqual(HttpStatus.OK);
@@ -377,7 +410,8 @@ describe('E2E User Admin', () => {
             .patch(E2E_USER_ADMIN_INACTIVE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .expect(400);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
@@ -398,7 +432,8 @@ describe('E2E User Admin', () => {
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .expect(404);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
@@ -414,7 +449,8 @@ describe('E2E User Admin', () => {
             .patch(E2E_USER_ADMIN_ACTIVE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .expect(200);
 
         expect(response.status).toEqual(HttpStatus.OK);
@@ -428,7 +464,8 @@ describe('E2E User Admin', () => {
             .patch(E2E_USER_ADMIN_ACTIVE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .expect(400);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
@@ -449,7 +486,8 @@ describe('E2E User Admin', () => {
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .expect(404);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
@@ -465,7 +503,8 @@ describe('E2E User Admin', () => {
             .delete(E2E_USER_ADMIN_DELETE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .expect(200);
 
         expect(response.status).toEqual(HttpStatus.OK);

@@ -28,10 +28,7 @@ export class HelperHashService {
         return createHash('sha256').update(string).digest('hex');
     }
 
-    async sha256Compare(string: string, hash: string): Promise<boolean> {
-        const stringHash: string = createHash('sha256')
-            .update(string)
-            .digest('hex');
-        return stringHash === hash;
+    async sha256Compare(hashOne: string, hashTwo: string): Promise<boolean> {
+        return hashOne === hashTwo;
     }
 }

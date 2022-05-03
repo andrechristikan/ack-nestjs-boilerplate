@@ -13,13 +13,20 @@ export class HelperEncryptionService {
     ) {}
 
     async base64Encrypt(data: string): Promise<string> {
-        const buff: Buffer = Buffer.from(data);
+        const buff: Buffer = Buffer.from(data, 'utf8');
         return buff.toString('base64');
     }
 
     async base64Decrypt(data: string): Promise<string> {
         const buff: Buffer = Buffer.from(data, 'base64');
         return buff.toString('utf8');
+    }
+
+    async base64Compare(
+        clientBasicToken: string,
+        ourBasicToken: string
+    ): Promise<boolean> {
+        return ourBasicToken === clientBasicToken;
     }
 
     async aes256Encrypt(

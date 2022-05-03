@@ -7,8 +7,8 @@ import {
 import { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
-import { AuthService } from 'src/auth/service/auth.service';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
+import { AuthApiService } from 'src/auth/service/auth.api.service';
 
 @Injectable()
 export class BasicGuard implements CanActivate {
@@ -18,7 +18,7 @@ export class BasicGuard implements CanActivate {
     constructor(
         private readonly debuggerService: DebuggerService,
         private readonly configService: ConfigService,
-        private readonly authService: AuthService
+        private readonly authApiService: AuthApiService
     ) {
         this.clientId = this.configService.get<string>(
             'auth.basicToken.clientId'
@@ -48,13 +48,14 @@ export class BasicGuard implements CanActivate {
         }
 
         const clientBasicToken: string = authorization.replace('Basic ', '');
-        const ourBasicToken: string = await this.authService.createBasicToken(
-            this.clientId,
-            this.clientSecret
-        );
+        const ourBasicToken: string =
+            await this.authApiService.createBasicToken(
+                this.clientId,
+                this.clientSecret
+            );
 
         const validateBasicToken: boolean =
-            await this.authService.validateBasicToken(
+            await this.authApiService.validateBasicToken(
                 clientBasicToken,
                 ourBasicToken
             );

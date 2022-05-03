@@ -22,12 +22,14 @@ import { PermissionDocument } from 'src/permission/schema/permission.schema';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { PermissionUpdateDto } from 'src/permission/dto/permission.update.dto';
 import { useContainer } from 'class-validator';
+import { AuthApiService } from 'src/auth/service/auth.api.service';
 
 describe('E2E Permission Admin', () => {
     let app: INestApplication;
     let authService: AuthService;
     let permissionService: PermissionService;
     let helperDateService: HelperDateService;
+    let authApiService: AuthApiService;
 
     let accessToken: string;
     let permission: PermissionDocument;
@@ -36,6 +38,10 @@ describe('E2E Permission Admin', () => {
         name: 'update role',
         description: 'UPDATEROLE',
     };
+
+    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
+    let xApiKey: string;
+    let timestamp: number;
 
     beforeAll(async () => {
         const modRef = await Test.createTestingModule({
@@ -56,6 +62,7 @@ describe('E2E Permission Admin', () => {
         authService = app.get(AuthService);
         permissionService = app.get(PermissionService);
         helperDateService = app.get(HelperDateService);
+        authApiService = app.get(AuthApiService);
 
         accessToken = await authService.createAccessToken({
             ...E2E_PERMISSION_PAYLOAD_TEST,
@@ -70,6 +77,18 @@ describe('E2E Permission Admin', () => {
             description: 'test description',
         });
 
+        timestamp = helperDateService.timestamp();
+        const apiEncryption = await authApiService.encryptApiKey(
+            {
+                key: apiKey,
+                timestamp,
+                secret: '5124512412412asdasdasdasdasdASDASDASD',
+                hash: 'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54',
+            },
+            'cuwakimacojulawu'
+        );
+        xApiKey = `${apiKey}:${apiEncryption}`;
+
         await app.init();
     });
 
@@ -78,7 +97,8 @@ describe('E2E Permission Admin', () => {
             .get(E2E_PERMISSION_ADMIN_LIST_URL)
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -96,7 +116,8 @@ describe('E2E Permission Admin', () => {
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -111,7 +132,8 @@ describe('E2E Permission Admin', () => {
             .get(E2E_PERMISSION_ADMIN_GET_URL.replace(':_id', permission._id))
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -130,7 +152,8 @@ describe('E2E Permission Admin', () => {
             .send(updateData)
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -150,7 +173,8 @@ describe('E2E Permission Admin', () => {
             })
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
@@ -168,7 +192,8 @@ describe('E2E Permission Admin', () => {
             .send(updateData)
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -186,7 +211,8 @@ describe('E2E Permission Admin', () => {
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -203,7 +229,8 @@ describe('E2E Permission Admin', () => {
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -223,7 +250,8 @@ describe('E2E Permission Admin', () => {
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -243,7 +271,8 @@ describe('E2E Permission Admin', () => {
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -261,7 +290,8 @@ describe('E2E Permission Admin', () => {
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -278,7 +308,8 @@ describe('E2E Permission Admin', () => {
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

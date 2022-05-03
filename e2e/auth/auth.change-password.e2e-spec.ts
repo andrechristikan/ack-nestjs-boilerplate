@@ -18,13 +18,19 @@ import { UserDocument } from 'src/user/schema/user.schema';
 import { RoleDocument } from 'src/role/schema/role.schema';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { useContainer } from 'class-validator';
+import { AuthApiService } from 'src/auth/service/auth.api.service';
 
 describe('E2E Change Password', () => {
     let app: INestApplication;
     let userService: UserService;
     let authService: AuthService;
+    let authApiService: AuthApiService;
     let roleService: RoleService;
     let helperDateService: HelperDateService;
+
+    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
+    let xApiKey: string;
+    let timestamp: number;
 
     const password = `aaAA@!123`;
     const newPassword = `bbBB@!456`;
@@ -52,6 +58,7 @@ describe('E2E Change Password', () => {
         useContainer(app.select(CoreModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
         authService = app.get(AuthService);
+        authApiService = app.get(AuthApiService);
         roleService = app.get(RoleService);
         helperDateService = app.get(HelperDateService);
 
@@ -82,6 +89,18 @@ describe('E2E Change Password', () => {
             }
         );
 
+        timestamp = helperDateService.timestamp();
+        const apiEncryption = await authApiService.encryptApiKey(
+            {
+                key: apiKey,
+                timestamp,
+                secret: '5124512412412asdasdasdasdasdASDASDASD',
+                hash: 'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54',
+            },
+            'cuwakimacojulawu'
+        );
+        xApiKey = `${apiKey}:${apiEncryption}`;
+
         const map = await authService.serializationLogin(userPopulate);
         const payload = await authService.createPayloadAccessToken(map, false);
         const payloadNotFound = {
@@ -105,7 +124,8 @@ describe('E2E Change Password', () => {
             })
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
@@ -124,7 +144,8 @@ describe('E2E Change Password', () => {
             })
             .set('Authorization', `Bearer ${accessTokenNotFound}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -143,7 +164,8 @@ describe('E2E Change Password', () => {
             })
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -162,7 +184,8 @@ describe('E2E Change Password', () => {
             })
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -181,7 +204,8 @@ describe('E2E Change Password', () => {
             })
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

@@ -28,12 +28,14 @@ Made with following
 
 ## Important
 
-Now ack-nestjs-boilerplate-mongoose have `required` request headers.
+If you change env value of `APP_MODE` to `complex` that will trigger more validation.
 
 1. `x-timestamp`, tolerant 5 minutes of request.
 2. `user-agent`, whitelist of user agent.
+3. `x-api-key`, check api key.
+4. check cors origin
 
-You can see our `e2e testing file`.
+You can see our `e2e testing file` or read the documentation on [section environment][ack-doc-env].
 
 ## Build with
 
@@ -58,6 +60,27 @@ ack-nestjs-boilerplate-mongoose have some objective.
 - Easy to maintenance
 - Support for all microservice patterns
 
+## Features
+
+- NestJs v8.x 🥳
+- Typescript 🚀
+- Authentication and Authorization (OAuth2, API Key, Basic Auth) 💪
+- Mongodb integrate by using Mongoose Package 🎉
+- Database Migration
+- Integrate with AWS
+- Server Side Pagination
+- Url Versioning
+- Request Validation Pipe
+- Custom error status code 🤫
+- Logger and Debugger 📝
+- Centralize Configuration 🤖
+- Centralize Exception Filter
+- Multi-language (i18n)
+- Support Docker Installation
+- Support CI/CD with Github Action or Jenkins
+- Husky GitHook For Check Source Code, and Run Test Before Commit 🐶
+- Linter with EsLint for Typescript
+
 ## Prerequisites
 
 We assume that everyone who comes here is _**`programmer with intermediate knowledge`**_ and we also need to understand more before we begin in order to reduce the knowledge gap.
@@ -67,24 +90,6 @@ We assume that everyone who comes here is _**`programmer with intermediate knowl
 3. Understand [ExpressJs Fundamental](https://nodejs.org), NodeJs Base Framework. It will help us in understanding how the NestJs Framework works.
 4. Understand what NoSql is and how it works as a database, especially [MongoDB.](https://docs.mongodb.com)
 
-## Features
-
-- NestJs v8.x 🥳
-- Typescript 🚀
-- Authentication and Authorization (OAuth2, API Key, Basic Auth) 💪
-- Integrate with Mongodb by using Mongoose Package 🎉
-- Database Migration
-- Integrate with AWS
-- Server Side Pagination
-- Url Versioning
-- Request Validation Pipe
-- Logger and Debugger 📝
-- Centralize Configuration 🤖
-- Centralize Exception Filter
-- Multi-language (i18n)
-- Support Docker Installation
-- Support CI/CD with Github Action or Jenkins
-- Husky GitHook For Check Source Code Before Commit 🐶
 
 ## Todo
 
@@ -102,7 +107,7 @@ Next development
 - [x] Optimize code
 - [x] Whitelist user agent
 - [x] Docker Compose File Mongodb Replication Set
-- [ ] API Key Guard **_(Ongoing)_**
+- [x] API Key Guard
 - [ ] Master Settings **_(Ongoing)_**
 - [ ] Swagger
 
@@ -184,6 +189,7 @@ Thanks goes to these wonderful people
 [ack-docs-features]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/features/readme
 [ack-docs-example]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/example
 [ack-docs-tips]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/tips/readme
+[ack-doc-env]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/features/readme
 
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com

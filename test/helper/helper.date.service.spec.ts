@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { BaseModule } from 'src/core/core.module';
+import { CoreModule } from 'src/core/core.module';
 import {
     ENUM_HELPER_DATE_DIFF,
     ENUM_HELPER_DATE_FORMAT,
@@ -13,7 +13,7 @@ describe('HelperDateService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [BaseModule],
+            imports: [CoreModule],
         }).compile();
 
         helperDateService = moduleRef.get<HelperDateService>(HelperDateService);

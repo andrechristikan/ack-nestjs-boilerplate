@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { BaseModule } from 'src/core/core.module';
+import { CoreModule } from 'src/core/core.module';
 import { HelperEncryptionService } from 'src/utils/helper/service/helper.encryption.service';
 
 describe('HelperEncryptionService', () => {
@@ -9,7 +9,7 @@ describe('HelperEncryptionService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [BaseModule],
+            imports: [CoreModule],
         }).compile();
 
         helperEncryptionService = moduleRef.get<HelperEncryptionService>(

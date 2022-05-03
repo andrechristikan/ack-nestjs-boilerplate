@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { BaseModule } from 'src/core/core.module';
+import { CoreModule } from 'src/core/core.module';
 import { MessageService } from 'src/message/service/message.service';
 
 describe('MessageService', () => {
@@ -7,7 +7,7 @@ describe('MessageService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [BaseModule],
+            imports: [CoreModule],
         }).compile();
 
         messageService = moduleRef.get<MessageService>(MessageService);

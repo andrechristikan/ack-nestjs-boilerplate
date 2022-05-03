@@ -21,10 +21,8 @@ export default registerAs(
             },
         },
 
-        basicToken: {
-            clientId: process.env.AUTH_BASIC_TOKEN_CLIENT_ID || '123456',
-            clientSecret:
-                process.env.AUTH_BASIC_TOKEN_CLIENT_SECRET || '1234567890',
+        apiKey: {
+            secret: process.env.AUTH_API_SECRET_KEY || '1234561241234124',
         },
 
         password: {

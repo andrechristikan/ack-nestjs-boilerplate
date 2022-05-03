@@ -17,7 +17,6 @@ import { LoggerModule } from 'src/logger/logger.module';
 import { RequestModule } from 'src/utils/request/request.module';
 import { ErrorModule } from 'src/utils/error/error.module';
 
-// For unit test
 @Module({
     controllers: [],
     providers: [],
@@ -36,24 +35,6 @@ import { ErrorModule } from 'src/utils/error/error.module';
             useFactory: (loggerService: DebuggerOptionService) =>
                 loggerService.createLogger(),
         }),
-        ErrorModule,
-        RequestModule,
-        DatabaseModule,
-        MessageModule,
-        PaginationModule,
-        DebuggerModule,
-        HelperModule,
-        AuthModule,
-    ],
-})
-export class BaseModule {}
-
-// For E2E test
-@Module({
-    controllers: [],
-    providers: [],
-    imports: [
-        BaseModule,
         MongooseModule.forRootAsync({
             connectionName: DATABASE_CONNECTION_NAME,
             inject: [DatabaseService],
@@ -62,6 +43,14 @@ export class BaseModule {}
                 databaseService.createMongooseOptions(),
         }),
         LoggerModule,
+        ErrorModule,
+        RequestModule,
+        DatabaseModule,
+        MessageModule,
+        PaginationModule,
+        DebuggerModule,
+        HelperModule,
+        AuthModule,
     ],
 })
 export class CoreModule {}

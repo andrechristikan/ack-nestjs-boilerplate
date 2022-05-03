@@ -18,6 +18,7 @@ import { RoleService } from 'src/role/service/role.service';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { RouterCommonModule } from 'src/router/router.common.module';
 import { useContainer } from 'class-validator';
+import { AuthApiService } from 'src/auth/service/auth.api.service';
 
 describe('E2E Refresh', () => {
     let app: INestApplication;
@@ -25,10 +26,15 @@ describe('E2E Refresh', () => {
     let authService: AuthService;
     let roleService: RoleService;
     let helperDateService: HelperDateService;
+    let authApiService: AuthApiService;
 
     const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
         .firstName()
         .toUpperCase()}${faker.datatype.number({ min: 1, max: 99 })}`;
+
+    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
+    let xApiKey: string;
+    let timestamp: number;
 
     let user: UserDocument;
     let passwordExpired: Date;
@@ -57,6 +63,7 @@ describe('E2E Refresh', () => {
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
         helperDateService = app.get(HelperDateService);
+        authApiService = app.get(AuthApiService);
 
         const role: RoleDocument = await roleService.findOne({
             name: 'user',
@@ -106,6 +113,18 @@ describe('E2E Refresh', () => {
             true
         );
 
+        timestamp = helperDateService.timestamp();
+        const apiEncryption = await authApiService.encryptApiKey(
+            {
+                key: apiKey,
+                timestamp,
+                secret: '5124512412412asdasdasdasdasdASDASDASD',
+                hash: 'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54',
+            },
+            'cuwakimacojulawu'
+        );
+        xApiKey = `${apiKey}:${apiEncryption}`;
+
         await app.init();
     });
 
@@ -114,7 +133,8 @@ describe('E2E Refresh', () => {
             .post(E2E_AUTH_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshTokenNotFound}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -130,7 +150,8 @@ describe('E2E Refresh', () => {
             .post(E2E_AUTH_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         await userService.active(user._id);
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
@@ -147,7 +168,8 @@ describe('E2E Refresh', () => {
             .post(E2E_AUTH_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         await roleService.active(`${user.role}`);
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
@@ -164,7 +186,8 @@ describe('E2E Refresh', () => {
             .post(E2E_AUTH_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         await userService.updatePasswordExpired(
             user._id,
@@ -183,7 +206,8 @@ describe('E2E Refresh', () => {
             .post(E2E_AUTH_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

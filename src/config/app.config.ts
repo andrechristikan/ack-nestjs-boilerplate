@@ -5,13 +5,15 @@ export default registerAs(
     (): Record<string, any> => ({
         name: process.env.APP_NAME || 'ack',
         env: process.env.APP_ENV || 'development',
+        mode: process.env.APP_MODE || 'simple',
         language: process.env.APP_LANGUAGE || 'en',
-        versioning: process.env.APP_VERSIONING === 'true' || false,
+        timezone: process.env.APP_TZ || 'Asia/Jakarta',
+
         http: {
             host: process.env.APP_HOST || 'localhost',
             port: parseInt(process.env.APP_PORT) || 3000,
         },
-        timezone: process.env.APP_TZ || 'Asia/Jakarta',
+        versioning: process.env.APP_VERSIONING === 'true' || false,
         debug: process.env.APP_DEBUG === 'true' || false,
         debugger: {
             http: {
