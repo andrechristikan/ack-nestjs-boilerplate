@@ -35,7 +35,7 @@ Now ack-nestjs-boilerplate-mongoose have `required` request headers.
 
 You can see our `e2e testing file`.
 
-## Version
+## Build with
 
 - NestJs v8.x
 - NodeJs v17.x
@@ -58,15 +58,33 @@ ack-nestjs-boilerplate-mongoose have some objective.
 - Easy to maintenance
 - Support for all microservice patterns
 
+## Prerequisites
+
+We assume that everyone who comes here is _**`programmer with intermediate knowledge`**_ and we also need to understand more before we begin in order to reduce the knowledge gap.
+
+1. Understand [NestJs Fundamental](http://nestjs.com), Main Framework. NodeJs Framework with support fully TypeScript.
+2. Understand[Typescript Fundamental](https://www.typescriptlang.org), Programming Language. It will help us to write and read the code.
+3. Understand [ExpressJs Fundamental](https://nodejs.org), NodeJs Base Framework. It will help us in understanding how the NestJs Framework works.
+4. Understand what NoSql is and how it works as a database, especially [MongoDB.](https://docs.mongodb.com)
+
 ## Features
 
-- [ ] List
-
-## Documentation
-
-- [Documentation][ack-docs]
-- [Example][ack-docs-example]
-- [Tips][ack-docs-tips]
+- NestJs v8.x 🥳
+- Typescript 🚀
+- Authentication and Authorization (OAuth2, API Key, Basic Auth) 💪
+- Integrate with Mongodb by using Mongoose Package 🎉
+- Database Migration
+- Integrate with AWS
+- Server Side Pagination
+- Url Versioning
+- Request Validation Pipe
+- Logger and Debugger 📝
+- Centralize Configuration 🤖
+- Centralize Exception Filter
+- Multi-language (i18n)
+- Support Docker Installation
+- Support CI/CD with Github Action or Jenkins
+- Husky GitHook For Check Source Code Before Commit 🐶
 
 ## Todo
 
@@ -83,16 +101,20 @@ Next development
 - [x] Timestamp Tolerance Middleware
 - [x] Optimize code
 - [x] Whitelist user agent
-- [x] Docker compose file mongodb replication set
+- [x] Docker Compose File Mongodb Replication Set
 - [ ] API Key Guard **_(Ongoing)_**
 - [ ] Master Settings **_(Ongoing)_**
 - [ ] Swagger
 
+## Documentation
+
+- [Documentation][ack-docs]
+- [Example][ack-docs-example]
+- [Tips][ack-docs-tips]
+
 ## Endpoints
 
-> will replace with swagger
-
-All endpoints in [endpoints.json][endpoints] and need import to PostMan. [Follow this step for import into Postman][ref-postman-import-export].
+See our [e2e testing][ack-e2e]
 
 ## Microservice
 
@@ -143,6 +165,7 @@ Thanks goes to these wonderful people
 
 <!-- Repo LINKS -->
 [ack-repo]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose
+[ack-e2e]: /e2e
 [ack-issues]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose/issues
 [ack-stars]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose/stargazers
 [ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose/network/members
