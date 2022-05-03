@@ -12,9 +12,9 @@ export class TimestampMiddleware implements NestMiddleware {
     ) {}
 
     use(req: Request, res: Response, next: NextFunction): void {
-        const env: string = this.configService.get<string>('app.env');
+        const mode: string = this.configService.get<string>('app.mode');
 
-        if (env === 'production' || env === 'staging') {
+        if (mode === 'complex') {
             const toleranceTimeInMinutes = this.configService.get<number>(
                 'middleware.timestamp.toleranceTimeInMinutes'
             );

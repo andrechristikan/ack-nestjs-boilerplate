@@ -87,7 +87,7 @@ pipeline {
                         --volume /app/${APP_NAME}/.env:/app/.env \
                         --name ${container_testing} \
                         ${app_image} \
-                        sh -c 'yarn test'"
+                        sh -c 'yarn test:unit'"
                 }
                 
             }

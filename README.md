@@ -15,7 +15,7 @@
 
 # ACK NestJs Boilerplate Mongoose  🔥 🚀
 
-> Best uses for RESTFUL API or [Microservice](https://microservices.io) Project
+> Best uses for RESTFUL API, [Microservice](https://microservices.io), or SaaS Project
 
 ack-nestjs-boilerplate-mongoose is a [NestJs](http://nestjs.com) Boilerplate with [Mongoose](https://mongoosejs.com) and [MongoDB](https://docs.mongodb.com) as Database.
 
@@ -28,14 +28,16 @@ Made with following
 
 ## Important
 
-Now ack-nestjs-boilerplate-mongoose have `required` request headers.
+If you change env value of `APP_MODE` to `complex` that will trigger more validation.
 
 1. `x-timestamp`, tolerant 5 minutes of request.
 2. `user-agent`, whitelist of user agent.
+3. `x-api-key`, check api key.
+4. check cors origin
 
-You can see our `e2e testing file`.
+You can see our `e2e testing file` or read the documentation on [section environment][ack-doc-env].
 
-## Version
+## Build with
 
 - NestJs v8.x
 - NodeJs v17.x
@@ -60,13 +62,34 @@ ack-nestjs-boilerplate-mongoose have some objective.
 
 ## Features
 
-[Click this for more information][ack-docs-features] 😎.
+- NestJs v8.x 🥳
+- Typescript 🚀
+- Authentication and Authorization (OAuth2, API Key, Basic Auth) 💪
+- Mongodb integrate by using Mongoose Package 🎉
+- Database Migration
+- Integrate with AWS
+- Server Side Pagination
+- Url Versioning
+- Request Validation Pipe
+- Custom error status code 🤫
+- Logger and Debugger 📝
+- Centralize Configuration 🤖
+- Centralize Exception Filter
+- Multi-language (i18n)
+- Support Docker Installation
+- Support CI/CD with Github Action or Jenkins
+- Husky GitHook For Check Source Code, and Run Test Before Commit 🐶
+- Linter with EsLint for Typescript
 
-## Documentation
+## Prerequisites
 
-- [Documentation][ack-docs]
-- [Example][ack-docs-example]
-- [Tips][ack-docs-tips]
+We assume that everyone who comes here is _**`programmer with intermediate knowledge`**_ and we also need to understand more before we begin in order to reduce the knowledge gap.
+
+1. Understand [NestJs Fundamental](http://nestjs.com), Main Framework. NodeJs Framework with support fully TypeScript.
+2. Understand[Typescript Fundamental](https://www.typescriptlang.org), Programming Language. It will help us to write and read the code.
+3. Understand [ExpressJs Fundamental](https://nodejs.org), NodeJs Base Framework. It will help us in understanding how the NestJs Framework works.
+4. Understand what NoSql is and how it works as a database, especially [MongoDB.](https://docs.mongodb.com)
+
 
 ## Todo
 
@@ -82,15 +105,21 @@ Next development
 - [x] Health Check Separate Endpoint
 - [x] Timestamp Tolerance Middleware
 - [x] Optimize code
-- [ ] Whitelist user agent **_(Ongoing)_**
-- [ ] Docker compose file mongodb replication set  **_(Ongoing)_**
-- [ ] Swagger **_(Ongoing)_**
+- [x] Whitelist user agent
+- [x] Docker Compose File Mongodb Replication Set
+- [x] API Key Guard
+- [ ] Master Settings **_(Ongoing)_**
+- [ ] Swagger
+
+## Documentation
+
+- [Documentation][ack-docs]
+- [Example][ack-docs-example]
+- [Tips][ack-docs-tips]
 
 ## Endpoints
 
-> will replace with swagger
-
-All endpoints in [endpoints.json][endpoints] and need import to PostMan. [Follow this step for import into Postman][ref-postman-import-export].
+See our [e2e testing][ack-e2e]
 
 ## Microservice
 
@@ -141,6 +170,7 @@ Thanks goes to these wonderful people
 
 <!-- Repo LINKS -->
 [ack-repo]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose
+[ack-e2e]: /e2e
 [ack-issues]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose/issues
 [ack-stars]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose/stargazers
 [ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose/network/members
@@ -159,6 +189,7 @@ Thanks goes to these wonderful people
 [ack-docs-features]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/features/readme
 [ack-docs-example]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/example
 [ack-docs-tips]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/tips/readme
+[ack-doc-env]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/features/readme
 
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com

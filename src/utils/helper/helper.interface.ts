@@ -5,6 +5,7 @@ export interface IHelperJwtOptions {
 }
 
 export interface IHelperStringRandomOptions {
-    upperCase: boolean;
-    safe: boolean;
+    upperCase?: boolean;
+    safe?: boolean;
+    prefix?: string;
 }

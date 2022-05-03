@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { BaseModule } from 'src/core/core.module';
+import { CoreModule } from 'src/core/core.module';
 import { HelperFileService } from 'src/utils/helper/service/helper.file.service';
 
 describe('HelperFileService', () => {
@@ -7,7 +7,7 @@ describe('HelperFileService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [BaseModule],
+            imports: [CoreModule],
         }).compile();
 
         helperFileService = moduleRef.get<HelperFileService>(HelperFileService);

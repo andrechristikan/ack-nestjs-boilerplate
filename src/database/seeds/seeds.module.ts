@@ -8,17 +8,19 @@ import { UserSeed } from './user.seed';
 import { UserModule } from 'src/user/user.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { CoreModule } from 'src/core/core.module';
+import { AuthApiSeed } from './auth.api.seed';
 
 @Module({
     imports: [
         CoreModule,
         CommandModule,
         PermissionModule,
+        AuthModule,
         UserModule,
         AuthModule,
         RoleModule,
     ],
-    providers: [PermissionSeed, RoleSeed, UserSeed],
+    providers: [AuthApiSeed, PermissionSeed, RoleSeed, UserSeed],
     exports: [],
 })
 export class SeedsModule {}

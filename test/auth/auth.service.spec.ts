@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { AuthService } from 'src/auth/service/auth.service';
-import { BaseModule } from 'src/core/core.module';
+import { CoreModule } from 'src/core/core.module';
 import { IRoleDocument } from 'src/role/role.interface';
 import { IUserDocument } from 'src/user/user.interface';
 import faker from '@faker-js/faker';
@@ -32,7 +32,7 @@ describe('AuthService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [BaseModule],
+            imports: [CoreModule],
             providers: [AuthService],
         }).compile();
 
@@ -83,6 +83,25 @@ describe('AuthService', () => {
 
             expect(
                 await authService.createPayloadAccessToken(map, rememberMe)
+            ).toBe(payload);
+        });
+
+        it('login date should be mapped', async () => {
+            const map = await authService.serializationLogin(user);
+            const payload = await authService.createPayloadAccessToken(
+                map,
+                rememberMe,
+                { loginDate: new Date() }
+            );
+            jest.spyOn(
+                authService,
+                'createPayloadAccessToken'
+            ).mockImplementation(async () => payload);
+
+            expect(
+                await authService.createPayloadAccessToken(map, rememberMe, {
+                    loginDate: new Date(),
+                })
             ).toBe(payload);
         });
     });
@@ -204,6 +223,25 @@ describe('AuthService', () => {
                 await authService.createPayloadRefreshToken(map, rememberMe)
             ).toBe(payload);
         });
+
+        it('login date should be success', async () => {
+            const map = await authService.serializationLogin(user);
+            const payload = await authService.createPayloadRefreshToken(
+                map,
+                rememberMe,
+                { loginDate: new Date() }
+            );
+            jest.spyOn(
+                authService,
+                'createPayloadRefreshToken'
+            ).mockImplementation(async () => payload);
+
+            expect(
+                await authService.createPayloadRefreshToken(map, rememberMe, {
+                    loginDate: new Date(),
+                })
+            ).toBe(payload);
+        });
     });
 
     describe('createRefreshToken', () => {
@@ -236,6 +274,25 @@ describe('AuthService', () => {
             expect(
                 await authService.createRefreshToken(payload, rememberMe)
             ).toBe(refreshToken);
+        });
+
+        it('remember me should be success', async () => {
+            const map = await authService.serializationLogin(user);
+            const payload = await authService.createPayloadRefreshToken(
+                map,
+                true
+            );
+            const refreshToken = await authService.createRefreshToken(
+                payload,
+                true
+            );
+            jest.spyOn(authService, 'createRefreshToken').mockImplementation(
+                async () => refreshToken
+            );
+
+            expect(await authService.createRefreshToken(payload, true)).toBe(
+                refreshToken
+            );
         });
     });
 
@@ -319,81 +376,17 @@ describe('AuthService', () => {
         });
     });
 
-    describe('createBasicToken', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(authService, 'createBasicToken');
-            const clientId = faker.random.alphaNumeric();
-            const clientSecret = faker.random.alphaNumeric();
-
-            await authService.createBasicToken(clientId, clientSecret);
-            expect(test).toHaveBeenCalledWith(clientId, clientSecret);
-        });
-
-        it('should be success', async () => {
-            const clientId = faker.random.alphaNumeric();
-            const clientSecret = faker.random.alphaNumeric();
-            const basicToken = await authService.createBasicToken(
-                clientId,
-                clientSecret
-            );
-
-            jest.spyOn(authService, 'createBasicToken').mockImplementation(
-                async () => basicToken
-            );
-
-            expect(
-                await authService.createBasicToken(clientId, clientSecret)
-            ).toBe(basicToken);
-        });
-    });
-
-    describe('validateBasicToken', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(authService, 'validateBasicToken');
-            const clientId = faker.random.alphaNumeric();
-            const clientSecret = faker.random.alphaNumeric();
-            const basicToken = await authService.createBasicToken(
-                clientId,
-                clientSecret
-            );
-
-            await authService.validateBasicToken(basicToken, basicToken);
-            expect(test).toHaveBeenCalledWith(basicToken, basicToken);
-        });
-
-        it('should be success', async () => {
-            const clientId = faker.random.alphaNumeric();
-            const clientSecret = faker.random.alphaNumeric();
-            const basicToken = await authService.createBasicToken(
-                clientId,
-                clientSecret
-            );
-            const validate = await authService.validateBasicToken(
-                basicToken,
-                basicToken
-            );
-
-            jest.spyOn(authService, 'validateBasicToken').mockImplementation(
-                async () => validate
-            );
-
-            expect(
-                await authService.validateBasicToken(basicToken, basicToken)
-            ).toBe(validate);
-        });
-    });
-
     describe('createPassword', () => {
         it('should be called', async () => {
             const test = jest.spyOn(authService, 'createPassword');
-            const password = faker.random.alphaNumeric();
+            const password = faker.internet.password(20, true, /[A-Za-z0-9]/);
 
             await authService.createPassword(password);
             expect(test).toHaveBeenCalledWith(password);
         });
 
         it('should be success', async () => {
-            const password = faker.random.alphaNumeric();
+            const password = faker.internet.password(20, true, /[A-Za-z0-9]/);
             const passwordHash = await authService.createPassword(password);
 
             jest.spyOn(authService, 'createPassword').mockImplementation(
@@ -409,7 +402,7 @@ describe('AuthService', () => {
     describe('validateUser', () => {
         it('should be called', async () => {
             const test = jest.spyOn(authService, 'validateUser');
-            const password = faker.random.alphaNumeric();
+            const password = faker.internet.password(20, true, /[A-Za-z0-9]/);
             const passwordHash = await authService.createPassword(password);
 
             await authService.validateUser(password, passwordHash.passwordHash);
@@ -420,7 +413,7 @@ describe('AuthService', () => {
         });
 
         it('should be success', async () => {
-            const password = faker.random.alphaNumeric();
+            const password = faker.internet.password(20, true, /[A-Za-z0-9]/);
             const passwordHash = await authService.createPassword(password);
             const validate = await authService.validateUser(
                 password,

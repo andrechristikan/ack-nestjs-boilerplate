@@ -11,6 +11,7 @@ import {
     PERMISSION_META_KEY,
 } from 'src/permission/permission.constant';
 import { AUTH_ADMIN_META_KEY } from './auth.constant';
+import { ApiKeyGuard } from './guard/api-key/auth.api-key.guard';
 import { BasicGuard } from './guard/basic/auth.basic.guard';
 import { JwtRefreshGuard } from './guard/jwt-refresh/auth.jwt-refresh.guard';
 import { JwtGuard } from './guard/jwt/auth.jwt.guard';
@@ -19,12 +20,15 @@ import { AuthPayloadDefaultGuard } from './guard/payload/auth.payload.default.gu
 import { AuthPayloadPasswordExpiredGuard } from './guard/payload/auth.payload.password-expired.guard';
 
 export function AuthJwtGuard(): any {
-    return applyDecorators(UseGuards(JwtGuard, AuthPayloadDefaultGuard));
+    return applyDecorators(
+        UseGuards(ApiKeyGuard, JwtGuard, AuthPayloadDefaultGuard)
+    );
 }
 
 export function AuthPublicJwtGuard(...permissions: ENUM_PERMISSIONS[]): any {
     return applyDecorators(
         UseGuards(
+            ApiKeyGuard,
             JwtGuard,
             AuthPayloadDefaultGuard,
             AuthPayloadPasswordExpiredGuard,
@@ -39,6 +43,7 @@ export function AuthPublicJwtGuard(...permissions: ENUM_PERMISSIONS[]): any {
 export function AuthAdminJwtGuard(...permissions: ENUM_PERMISSIONS[]) {
     return applyDecorators(
         UseGuards(
+            ApiKeyGuard,
             JwtGuard,
             AuthPayloadDefaultGuard,
             AuthPayloadPasswordExpiredGuard,
@@ -50,12 +55,12 @@ export function AuthAdminJwtGuard(...permissions: ENUM_PERMISSIONS[]) {
     );
 }
 
-export function AuthBasicGuard(): any {
-    return applyDecorators(UseGuards(BasicGuard));
+export function AuthRefreshJwtGuard(): any {
+    return applyDecorators(UseGuards(ApiKeyGuard, JwtRefreshGuard));
 }
 
-export function AuthRefreshJwtGuard(): any {
-    return applyDecorators(UseGuards(JwtRefreshGuard));
+export function AuthBasicGuard(): any {
+    return applyDecorators(UseGuards(BasicGuard));
 }
 
 export const User = createParamDecorator(

@@ -53,7 +53,7 @@ jobs:
           AWS_S3_REGION: ${{ secrets.AWS_S3_REGION }}
           
       - name: Unit Test
-        run: yarn test
+        run: yarn test:unit
 
       - name: Unit Integration
         run: yarn test:integration

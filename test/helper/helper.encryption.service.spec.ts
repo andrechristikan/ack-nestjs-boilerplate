@@ -1,14 +1,15 @@
 import { Test } from '@nestjs/testing';
-import { BaseModule } from 'src/core/core.module';
+import { CoreModule } from 'src/core/core.module';
 import { HelperEncryptionService } from 'src/utils/helper/service/helper.encryption.service';
 
 describe('HelperEncryptionService', () => {
     let helperEncryptionService: HelperEncryptionService;
     const data = 'aaaa';
+    const dataObject = { test: 'aaaa' };
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [BaseModule],
+            imports: [CoreModule],
         }).compile();
 
         helperEncryptionService = moduleRef.get<HelperEncryptionService>(
@@ -79,7 +80,7 @@ describe('HelperEncryptionService', () => {
             );
         });
 
-        it('should be success', async () => {
+        it('string should be success', async () => {
             const result = await helperEncryptionService.aes256Encrypt(
                 data,
                 '1234567',
@@ -93,6 +94,26 @@ describe('HelperEncryptionService', () => {
             expect(
                 await helperEncryptionService.aes256Encrypt(
                     data,
+                    '1234567',
+                    '1231231231231231'
+                )
+            ).toBe(result);
+        });
+
+        it('object should be success', async () => {
+            const result = await helperEncryptionService.aes256Encrypt(
+                dataObject,
+                '1234567',
+                '1231231231231231'
+            );
+            jest.spyOn(
+                helperEncryptionService,
+                'aes256Encrypt'
+            ).mockImplementation(async () => result);
+
+            expect(
+                await helperEncryptionService.aes256Encrypt(
+                    dataObject,
                     '1234567',
                     '1231231231231231'
                 )
@@ -197,6 +218,21 @@ describe('HelperEncryptionService', () => {
 
         it('should be success', async () => {
             const result = await helperEncryptionService.jwtEncrypt({ data });
+            const verify = await helperEncryptionService.jwtVerify(result);
+            jest.spyOn(helperEncryptionService, 'jwtVerify').mockImplementation(
+                async () => verify
+            );
+
+            expect(await helperEncryptionService.jwtVerify(result)).toBe(
+                verify
+            );
+        });
+
+        it('should be failed', async () => {
+            const result = await helperEncryptionService.jwtEncrypt(
+                { data },
+                { secretKey: '123123123' }
+            );
             const verify = await helperEncryptionService.jwtVerify(result);
             jest.spyOn(helperEncryptionService, 'jwtVerify').mockImplementation(
                 async () => verify

@@ -1,6 +1,5 @@
 {
     "testTimeout": 5000,
-    "verbose": true,
     "rootDir": "..",
     "modulePaths": [
         "."
@@ -10,20 +9,18 @@
         "<rootDir>/integration/**/*.spec.ts"
     ],
     "collectCoverage": true,
-    "coveragePathIgnorePatterns": [
-        "node_modules", 
-        "vendor",
-        "src",
-        "prod",
-        "e2e"
-    ],
-    "coverageReporters": [
-        "clover", 
-        "json", 
-        "lcov", 
-        "text"
-    ],
     "coverageDirectory": "integration-coverage",
+    "collectCoverageFrom": [
+        "./integration"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 90,
+        "functions": 90,
+        "lines": 90,
+        "statements": 90
+      }
+    },
     "moduleFileExtensions": [
         "js", 
         "ts", 

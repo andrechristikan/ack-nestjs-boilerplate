@@ -27,10 +27,8 @@ export class MessageService {
     ): Promise<IErrors[]> {
         const messages: Array<IErrors[]> = [];
         for (const transfomer of requestErrors) {
-            let children: Record<string, any>[] = transfomer.children || [];
-            let constraints: string[] = transfomer.constraints
-                ? Object.keys(transfomer.constraints)
-                : [];
+            let children: Record<string, any>[] = transfomer.children;
+            let constraints: string[] = Object.keys(transfomer.constraints);
             const errors: IErrors[] = [];
             let property: string = transfomer.property;
             let propertyValue: string = transfomer.value;
@@ -40,14 +38,13 @@ export class MessageService {
                     for (const child of children) {
                         property = `${property}.${child.property}`;
 
-                        if (child.constraints) {
+                        if (child.children.length > 0) {
+                            children = child.children;
+                            break;
+                        } else if (child.constraints) {
                             constraints = Object.keys(child.constraints);
                             children = [];
                             propertyValue = child.value;
-                            break;
-                        }
-                        if (child.children.length > 0) {
-                            children = child.children;
                             break;
                         }
                     }

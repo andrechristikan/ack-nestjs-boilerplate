@@ -1,6 +1,8 @@
+/* istanbul ignore file */
+
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import excelJs, { Buffer } from 'exceljs';
+import excelJs from 'exceljs';
 
 @Injectable()
 export class HelperFileService {
@@ -45,6 +47,6 @@ export class HelperFileService {
         }));
         worksheet.addRows(rows);
 
-        return workbook.xlsx.writeBuffer();
+        return (await workbook.xlsx.writeBuffer()) as Buffer;
     }
 }

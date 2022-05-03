@@ -22,6 +22,8 @@ export class DatabaseService implements MongooseOptionsFactory {
         this.user = this.configService.get<string>('database.user');
         this.password = this.configService.get<string>('database.password');
         this.debug = this.configService.get<boolean>('database.debug');
+
+        /* istanbul ignore next */
         this.options = this.configService.get<string>('database.options')
             ? `?${this.configService.get<string>('database.options')}`
             : '';
@@ -31,13 +33,10 @@ export class DatabaseService implements MongooseOptionsFactory {
         let uri = `${this.host}`;
 
         if (this.database) {
-            uri = `${uri}/${this.database}`;
+            uri = `${uri}/${this.database}${this.options}`;
         }
 
-        if (this.options) {
-            uri = `${uri}${this.options}`;
-        }
-
+        /* istanbul ignore next */
         if (this.env !== 'production') {
             mongoose.set('debug', this.debug);
         }
@@ -50,6 +49,7 @@ export class DatabaseService implements MongooseOptionsFactory {
             // useMongoClient: true
         };
 
+        /* istanbul ignore next */
         if (this.user && this.password) {
             mongooseOptions.auth = {
                 username: this.user,

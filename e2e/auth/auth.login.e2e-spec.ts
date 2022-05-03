@@ -21,6 +21,7 @@ import { HelperDateService } from 'src/utils/helper/service/helper.date.service'
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/utils/request/request.constant';
 import { RouterCommonModule } from 'src/router/router.common.module';
 import { useContainer } from 'class-validator';
+import { AuthApiService } from 'src/auth/service/auth.api.service';
 
 describe('E2E Login', () => {
     let app: INestApplication;
@@ -28,10 +29,15 @@ describe('E2E Login', () => {
     let authService: AuthService;
     let roleService: RoleService;
     let helperDateService: HelperDateService;
+    let authApiService: AuthApiService;
 
-    const password = `@!${faker.random
-        .alphaNumeric(5)
-        .toLowerCase()}${faker.random.alphaNumeric(5).toUpperCase()}`;
+    const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
+        .firstName()
+        .toUpperCase()}${faker.datatype.number({ min: 1, max: 99 })}`;
+
+    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
+    let xApiKey: string;
+    let timestamp: number;
 
     let user: UserDocument;
 
@@ -57,6 +63,7 @@ describe('E2E Login', () => {
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
         helperDateService = app.get(HelperDateService);
+        authApiService = app.get(AuthApiService);
 
         const role: RoleDocument = await roleService.findOne({
             name: 'user',
@@ -77,6 +84,18 @@ describe('E2E Login', () => {
             role: `${role._id}`,
         });
 
+        timestamp = helperDateService.timestamp();
+        const apiEncryption = await authApiService.encryptApiKey(
+            {
+                key: apiKey,
+                timestamp,
+                secret: '5124512412412asdasdasdasdasdASDASDASD',
+                hash: 'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54',
+            },
+            'cuwakimacojulawu'
+        );
+        xApiKey = `${apiKey}:${apiEncryption}`;
+
         await app.init();
     });
 
@@ -85,7 +104,8 @@ describe('E2E Login', () => {
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .send({
                 email: [1231],
                 password,
@@ -105,7 +125,8 @@ describe('E2E Login', () => {
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .send({
                 email: faker.internet.email(),
                 password,
@@ -125,7 +146,8 @@ describe('E2E Login', () => {
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .send({
                 email: user.email,
                 password: 'asdaAA@@1231',
@@ -147,7 +169,8 @@ describe('E2E Login', () => {
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .send({
                 email: user.email,
                 password,
@@ -170,7 +193,8 @@ describe('E2E Login', () => {
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .send({
                 email: user.email,
                 password,
@@ -191,7 +215,8 @@ describe('E2E Login', () => {
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .send({
                 email: user.email,
                 password,
@@ -212,7 +237,8 @@ describe('E2E Login', () => {
             .post(E2E_AUTH_LOGIN_URL)
             .set('Content-Type', 'application/json')
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`)
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey)
             .send({
                 email: user.email,
                 password,

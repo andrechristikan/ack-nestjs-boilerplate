@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { BaseModule } from 'src/core/core.module';
+import { CoreModule } from 'src/core/core.module';
 import { HelperArrayService } from 'src/utils/helper/service/helper.array.service';
 
 describe('HelperArrayService', () => {
@@ -8,7 +8,7 @@ describe('HelperArrayService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [BaseModule],
+            imports: [CoreModule],
         }).compile();
 
         helperArrayService =
@@ -487,6 +487,24 @@ describe('HelperArrayService', () => {
             );
 
             expect(helperArrayService.notIn(arrays, arrays)).toBe(result);
+        });
+    });
+
+    describe('includes', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(helperArrayService, 'includes');
+
+            helperArrayService.includes(arrays, 1);
+            expect(test).toHaveBeenCalledWith(arrays, 1);
+        });
+
+        it('should be success', async () => {
+            const result = helperArrayService.includes(arrays, 1);
+            jest.spyOn(helperArrayService, 'includes').mockImplementation(
+                () => result
+            );
+
+            expect(helperArrayService.includes(arrays, 1)).toBe(result);
         });
     });
 });

@@ -13,13 +13,20 @@ export class HelperEncryptionService {
     ) {}
 
     async base64Encrypt(data: string): Promise<string> {
-        const buff: Buffer = Buffer.from(data);
+        const buff: Buffer = Buffer.from(data, 'utf8');
         return buff.toString('base64');
     }
 
     async base64Decrypt(data: string): Promise<string> {
         const buff: Buffer = Buffer.from(data, 'base64');
         return buff.toString('utf8');
+    }
+
+    async base64Compare(
+        clientBasicToken: string,
+        ourBasicToken: string
+    ): Promise<boolean> {
+        return ourBasicToken === clientBasicToken;
     }
 
     async aes256Encrypt(
@@ -91,13 +98,19 @@ export class HelperEncryptionService {
         token: string,
         options?: IHelperJwtOptions
     ): Promise<boolean> {
-        const payload: Record<string, any> = this.jwtService.verify(token, {
-            secret:
-                options && options.secretKey
-                    ? options.secretKey
-                    : this.configService.get<string>('helper.jwt.secretKey'),
-        });
+        try {
+            await this.jwtService.verify(token, {
+                secret:
+                    options && options.secretKey
+                        ? options.secretKey
+                        : this.configService.get<string>(
+                              'helper.jwt.secretKey'
+                          ),
+            });
 
-        return payload ? true : false;
+            return true;
+        } catch (e) {
+            return false;
+        }
     }
 }

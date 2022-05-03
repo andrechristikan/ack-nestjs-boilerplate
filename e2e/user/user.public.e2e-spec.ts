@@ -20,6 +20,7 @@ import { RoleDocument } from 'src/role/schema/role.schema';
 import { UserDocument } from 'src/user/schema/user.schema';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { useContainer } from 'class-validator';
+import { AuthApiService } from 'src/auth/service/auth.api.service';
 
 describe('E2E User Public', () => {
     let app: INestApplication;
@@ -27,11 +28,16 @@ describe('E2E User Public', () => {
     let authService: AuthService;
     let roleService: RoleService;
     let helperDateService: HelperDateService;
+    let authApiService: AuthApiService;
 
     let user: UserDocument;
 
     let accessToken: string;
     let accessTokenNotFound: string;
+
+    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
+    let xApiKey: string;
+    let timestamp: number;
 
     beforeAll(async () => {
         const modRef = await Test.createTestingModule({
@@ -53,13 +59,14 @@ describe('E2E User Public', () => {
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
         helperDateService = app.get(HelperDateService);
+        authApiService = app.get(AuthApiService);
 
         const role: RoleDocument = await roleService.findOne({
             name: 'user',
         });
 
         const passwordHash = await authService.createPassword(
-            faker.random.alphaNumeric()
+            faker.internet.password(20, true, /[A-Za-z0-9]/)
         );
 
         user = await userService.create({
@@ -95,6 +102,18 @@ describe('E2E User Public', () => {
             payloadNotFound
         );
 
+        timestamp = helperDateService.timestamp();
+        const apiEncryption = await authApiService.encryptApiKey(
+            {
+                key: apiKey,
+                timestamp,
+                secret: '5124512412412asdasdasdasdasdASDASDASD',
+                hash: 'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54',
+            },
+            'cuwakimacojulawu'
+        );
+        xApiKey = `${apiKey}:${apiEncryption}`;
+
         await app.init();
     });
 
@@ -103,7 +122,8 @@ describe('E2E User Public', () => {
             .get(E2E_USER_PUBLIC_PROFILE_URL)
             .set('Authorization', `Bearer ${accessTokenNotFound}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -118,7 +138,8 @@ describe('E2E User Public', () => {
             .get(E2E_USER_PUBLIC_PROFILE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -133,7 +154,8 @@ describe('E2E User Public', () => {
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data')
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
         expect(response.body.statusCode).toEqual(
@@ -150,7 +172,8 @@ describe('E2E User Public', () => {
             .set('Authorization', `Bearer ${accessTokenNotFound}`)
             .set('Content-Type', 'multipart/form-data')
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -168,7 +191,8 @@ describe('E2E User Public', () => {
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data')
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.PAYLOAD_TOO_LARGE);
         expect(response.body.statusCode).toEqual(
@@ -186,7 +210,8 @@ describe('E2E User Public', () => {
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data')
             .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', `${helperDateService.timestamp()}`);
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
