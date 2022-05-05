@@ -12,7 +12,7 @@ export class UserAgentMiddleware implements NestMiddleware {
     use(req: IRequestApp, res: Response, next: NextFunction): void {
         const mode: string = this.configService.get<string>('app.mode');
 
-        if (mode === 'complex') {
+        if (mode === 'secure') {
             // Put your specific user agent
             const userAgent: string = req.headers['user-agent'] as string;
             if (!userAgent) {

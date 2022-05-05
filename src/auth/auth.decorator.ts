@@ -11,7 +11,6 @@ import {
     PERMISSION_META_KEY,
 } from 'src/permission/permission.constant';
 import { AUTH_ADMIN_META_KEY } from './auth.constant';
-import { ApiKeyGuard } from './guard/api-key/auth.api-key.guard';
 import { BasicGuard } from './guard/basic/auth.basic.guard';
 import { JwtRefreshGuard } from './guard/jwt-refresh/auth.jwt-refresh.guard';
 import { JwtGuard } from './guard/jwt/auth.jwt.guard';
@@ -20,15 +19,12 @@ import { AuthPayloadDefaultGuard } from './guard/payload/auth.payload.default.gu
 import { AuthPayloadPasswordExpiredGuard } from './guard/payload/auth.payload.password-expired.guard';
 
 export function AuthJwtGuard(): any {
-    return applyDecorators(
-        UseGuards(ApiKeyGuard, JwtGuard, AuthPayloadDefaultGuard)
-    );
+    return applyDecorators(UseGuards(JwtGuard, AuthPayloadDefaultGuard));
 }
 
 export function AuthPublicJwtGuard(...permissions: ENUM_PERMISSIONS[]): any {
     return applyDecorators(
         UseGuards(
-            ApiKeyGuard,
             JwtGuard,
             AuthPayloadDefaultGuard,
             AuthPayloadPasswordExpiredGuard,
@@ -43,7 +39,6 @@ export function AuthPublicJwtGuard(...permissions: ENUM_PERMISSIONS[]): any {
 export function AuthAdminJwtGuard(...permissions: ENUM_PERMISSIONS[]) {
     return applyDecorators(
         UseGuards(
-            ApiKeyGuard,
             JwtGuard,
             AuthPayloadDefaultGuard,
             AuthPayloadPasswordExpiredGuard,
@@ -56,7 +51,7 @@ export function AuthAdminJwtGuard(...permissions: ENUM_PERMISSIONS[]) {
 }
 
 export function AuthRefreshJwtGuard(): any {
-    return applyDecorators(UseGuards(ApiKeyGuard, JwtRefreshGuard));
+    return applyDecorators(UseGuards(JwtRefreshGuard));
 }
 
 export function AuthBasicGuard(): any {
@@ -67,6 +62,13 @@ export const User = createParamDecorator(
     (data: string, ctx: ExecutionContext): Record<string, any> => {
         const { user } = ctx.switchToHttp().getRequest();
         return data ? user[data] : user;
+    }
+);
+
+export const ApiKey = createParamDecorator(
+    (data: string, ctx: ExecutionContext): Record<string, any> => {
+        const { apiKey } = ctx.switchToHttp().getRequest();
+        return data ? apiKey[data] : apiKey;
     }
 );
 
