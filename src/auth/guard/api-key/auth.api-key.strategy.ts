@@ -36,11 +36,11 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
             user?: TUser,
             info?: string | number
         ) => Promise<void>,
-        req: Request
+        req: any
     ) {
         const mode = this.configService.get<string>('app.mode');
 
-        if (mode === 'complex') {
+        if (mode === 'secure') {
             const xApiKey: string[] = apiKey.split(':');
             const key = xApiKey[0];
             const encrypted = xApiKey[1];
@@ -74,6 +74,7 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
             const timestamp: number = parseInt(
                 req.headers['x-timestamp'] as string
             );
+
             if (!hasKey) {
                 verified(
                     null,
@@ -116,6 +117,12 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
                 );
             }
 
+            req.apiKey = {
+                _id: authApi._id,
+                key: authApi.key,
+                name: authApi.name,
+                description: authApi.description,
+            };
             verified(null, authApi as any);
         } else {
             verified(null, {} as any);

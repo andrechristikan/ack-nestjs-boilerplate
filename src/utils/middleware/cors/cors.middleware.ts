@@ -11,7 +11,7 @@ export class CorsMiddleware implements NestMiddleware {
         const mode: string = this.configService.get<string>('app.mode');
 
         const allowOrigin =
-            mode === 'complex'
+            mode === 'secure'
                 ? this.configService.get<string | boolean | string[]>(
                       'middleware.cors.allowOrigin'
                   )

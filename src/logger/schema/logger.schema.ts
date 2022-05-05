@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
+import { AuthApiEntity } from 'src/auth/schema/auth.api.schema';
 import { ENUM_LOGGER_ACTION, ENUM_LOGGER_LEVEL } from '../logger.constant';
 
 @Schema({ timestamps: true, versionKey: false })
@@ -20,6 +21,12 @@ export class LoggerEntity {
         required: false,
     })
     user?: Types.ObjectId;
+
+    @Prop({
+        required: true,
+        ref: AuthApiEntity.name,
+    })
+    apiKey: Types.ObjectId;
 
     @Prop({
         required: true,

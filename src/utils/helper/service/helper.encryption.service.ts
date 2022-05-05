@@ -47,7 +47,7 @@ export class HelperEncryptionService {
             cipher.final(),
         ]);
 
-        return encryptedText.toString('base64');
+        return encryptedText.toString('hex');
     }
 
     async aes256Decrypt(
@@ -55,7 +55,7 @@ export class HelperEncryptionService {
         key: string,
         iv: string
     ): Promise<string> {
-        const data: Buffer = Buffer.from(encrypted, 'base64');
+        const data: Buffer = Buffer.from(encrypted, 'hex');
         const crp = (await promisify(scrypt)(key, 'salt', 32)) as Buffer;
         const decipher = createDecipheriv('aes-256-ctr', crp, iv);
         const decryptedText = Buffer.concat([

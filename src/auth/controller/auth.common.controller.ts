@@ -24,6 +24,7 @@ import { IUserDocument } from 'src/user/user.interface';
 import { SuccessException } from 'src/utils/error/error.exception';
 import { ENUM_LOGGER_ACTION } from 'src/logger/logger.constant';
 import {
+    ApiKey,
     AuthJwtGuard,
     AuthRefreshJwtGuard,
     Token,
@@ -37,6 +38,7 @@ import { HelperDateService } from 'src/utils/helper/service/helper.date.service'
 import { AuthLoginDto } from '../dto/auth.login.dto';
 import { AuthChangePasswordDto } from '../dto/auth.change-password.dto';
 import { AuthLoginSerialization } from '../serialization/auth.login.serialization';
+import { IAuthApiPayload } from '../auth.interface';
 
 @Controller({
     version: '1',
@@ -53,7 +55,10 @@ export class AuthCommonController {
     @Response('auth.login', ENUM_AUTH_STATUS_CODE_SUCCESS.AUTH_LOGIN_SUCCESS)
     @HttpCode(HttpStatus.OK)
     @Post('/login')
-    async login(@Body() body: AuthLoginDto): Promise<IResponse> {
+    async login(
+        @Body() body: AuthLoginDto,
+        @ApiKey() apiKey: IAuthApiPayload
+    ): Promise<IResponse> {
         const rememberMe: boolean = body.rememberMe ? true : false;
         const user: IUserDocument =
             await this.userService.findOne<IUserDocument>(
@@ -160,6 +165,7 @@ export class AuthCommonController {
             action: ENUM_LOGGER_ACTION.LOGIN,
             description: `${user._id} do login`,
             user: user._id,
+            apiKey: apiKey._id,
             tags: ['login', 'withEmail'],
         });
 

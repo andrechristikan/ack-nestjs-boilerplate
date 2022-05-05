@@ -11,6 +11,13 @@ export interface IAuthPayloadOptions {
     loginDate: Date;
 }
 
+export interface IAuthApiPayload {
+    _id: string;
+    key: string;
+    name: string;
+    description: string;
+}
+
 export interface IAuthApiDocument {
     authApi: AuthApiDocument;
     secret: string;
