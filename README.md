@@ -93,7 +93,6 @@ We assume that everyone who comes here is _**`programmer with intermediate knowl
 3. Understand [ExpressJs Fundamental](https://nodejs.org), NodeJs Base Framework. It will help us in understanding how the NestJs Framework works.
 4. Understand what NoSql is and how it works as a database, especially [MongoDB.](https://docs.mongodb.com)
 
-
 ## Todo
 
 Next development
@@ -112,6 +111,9 @@ Next development
 - [x] Docker Compose File Mongodb Replication Set
 - [x] API Key Guard
 - [x] Master Settings
+- [x] Scheduler
+- [x] Flag on / off scheduler
+- [x] Flag on / off http
 - [ ] Swagger
 
 ## Documentation

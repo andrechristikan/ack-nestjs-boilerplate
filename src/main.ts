@@ -42,11 +42,16 @@ async function bootstrap() {
         `App Debug is ${configService.get<boolean>('app.debug')}`,
         'NestApplication'
     );
-    logger.log(`App Timezone is ${tz}`, 'NestApplication');
+    logger.log(`App Versioning is ${versioning}`, 'NestApplication');
     logger.log(
-        `App Versioning is ${versioning ? 'on' : 'off'}`,
+        `App Http is ${configService.get<boolean>('app.httpOn')}`,
         'NestApplication'
     );
+    logger.log(
+        `App Task is ${configService.get<boolean>('app.taskOn')}`,
+        'NestApplication'
+    );
+    logger.log(`App Timezone is ${tz}`, 'NestApplication');
     logger.log(
         `Database Debug is ${configService.get<boolean>('database.debug')}`,
         'NestApplication'
