@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtStrategy } from 'src/auth/guard/jwt/auth.jwt.strategy';
@@ -24,9 +25,12 @@ import { AuthService } from './service/auth.service';
         ApiKeyStrategy,
         {
             provide: APP_GUARD,
-            inject: [DebuggerService],
-            useFactory: (debuggerService: DebuggerService) => {
-                return new ApiKeyGuard(debuggerService);
+            inject: [DebuggerService, ConfigService],
+            useFactory: (
+                debuggerService: DebuggerService,
+                configService: ConfigService
+            ) => {
+                return new ApiKeyGuard(debuggerService, configService);
             },
         },
     ],

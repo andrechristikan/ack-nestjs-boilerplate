@@ -28,7 +28,7 @@ Made with following
 
 ## Important
 
-If you change env value of `APP_MODE` to `complex` that will trigger more validation.
+If you change env value of `APP_MODE` to `secure` that will trigger more validation.
 
 1. `x-timestamp`, tolerant 5 minutes of request.
 2. `user-agent`, whitelist of user agent.
@@ -76,6 +76,9 @@ ack-nestjs-boilerplate-mongoose have some objective.
 - Centralize Configuration 🤖
 - Centralize Exception Filter
 - Multi-language (i18n)
+- Dynamic Setting from Database 🗿
+- Maintenance Mode on / off
+- Support Docker Installation
 - Support Docker Installation
 - Support CI/CD with Github Action or Jenkins
 - Husky GitHook For Check Source Code, and Run Test Before Commit 🐶
@@ -89,7 +92,6 @@ We assume that everyone who comes here is _**`programmer with intermediate knowl
 2. Understand[Typescript Fundamental](https://www.typescriptlang.org), Programming Language. It will help us to write and read the code.
 3. Understand [ExpressJs Fundamental](https://nodejs.org), NodeJs Base Framework. It will help us in understanding how the NestJs Framework works.
 4. Understand what NoSql is and how it works as a database, especially [MongoDB.](https://docs.mongodb.com)
-
 
 ## Todo
 
@@ -108,7 +110,10 @@ Next development
 - [x] Whitelist user agent
 - [x] Docker Compose File Mongodb Replication Set
 - [x] API Key Guard
-- [ ] Master Settings **_(Ongoing)_**
+- [x] Master Settings
+- [x] Scheduler
+- [x] Flag on / off scheduler
+- [x] Flag on / off http
 - [ ] Swagger
 
 ## Documentation

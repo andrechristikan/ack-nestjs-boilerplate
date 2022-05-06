@@ -36,10 +36,7 @@ export class HelperFileService {
 
         // sheet
         const worksheet = workbook.addWorksheet('Sheet 1', {
-            views: [
-                { state: 'frozen', xSplit: 1, ySplit: 1 },
-                { showGridLines: true },
-            ],
+            views: [{ state: 'frozen', xSplit: 1 }, { showGridLines: true }],
         });
 
         worksheet.columns = headers.map((val) => ({

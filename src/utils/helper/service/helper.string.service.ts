@@ -52,6 +52,27 @@ export class HelperStringService {
         return `${censorString}${visibleString}`;
     }
 
+    checkStringOrNumber(text: string) {
+        const regex = new RegExp(/^[\w.-]+$/);
+
+        return regex.test(text);
+    }
+
+    convertStringToNumberOrBooleanIfPossible(
+        text: string
+    ): string | number | boolean {
+        let convertValue: string | boolean | number = text;
+
+        const regexNumber = /^-?\d+$/;
+        if (text === 'true' || text === 'false') {
+            convertValue = text === 'true';
+        } else if (regexNumber.test(text)) {
+            convertValue = Number(text);
+        }
+
+        return convertValue;
+    }
+
     checkPasswordWeak(password: string, length?: number): boolean {
         const regex = new RegExp(
             `^(?=.*?[A-Z])(?=.*?[a-z]).{${length || 8},}$`

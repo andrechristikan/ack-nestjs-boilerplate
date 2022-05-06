@@ -8,6 +8,10 @@ export class HelperNumberService {
         return regex.test(number);
     }
 
+    createFromString(number: string): number {
+        return Number(number);
+    }
+
     random(length: number): number {
         const min: number = parseInt(`1`.padEnd(length, '0'));
         const max: number = parseInt(`9`.padEnd(length, '9'));

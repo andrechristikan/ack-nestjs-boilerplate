@@ -1,4 +1,9 @@
-import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import {
+    Module,
+    NestModule,
+    MiddlewareConsumer,
+    RequestMethod,
+} from '@nestjs/common';
 import { CorsMiddleware } from './cors/cors.middleware';
 import {
     HtmlBodyParserMiddleware,
@@ -16,6 +21,7 @@ import { RateLimitMiddleware } from './rate-limit/rate-limit.middleware';
 import { UserAgentMiddleware } from './user-agent/user-agent.middleware';
 import { TimestampMiddleware } from './timestamp/timestamp.middleware';
 import { CompressionMiddleware } from './compression/compression.middleware';
+import { MaintenanceMiddleware } from './maintenance/maintenance.middleware';
 
 @Module({})
 export class MiddlewareModule implements NestModule {
@@ -35,6 +41,33 @@ export class MiddlewareModule implements NestModule {
                 RateLimitMiddleware,
                 TimestampMiddleware,
                 UserAgentMiddleware
+            )
+            .forRoutes('*');
+
+        consumer
+            .apply(MaintenanceMiddleware)
+            .exclude(
+                {
+                    path:
+                        process.env.APP_VERSIONING === 'true'
+                            ? 'api/v:version*/auth/login'
+                            : 'api/auth/login',
+                    method: RequestMethod.POST,
+                },
+                {
+                    path:
+                        process.env.APP_VERSIONING === 'true'
+                            ? 'api/v:version*/auth/refresh'
+                            : 'api/auth/refresh',
+                    method: RequestMethod.POST,
+                },
+                {
+                    path:
+                        process.env.APP_VERSIONING === 'true'
+                            ? 'api/v:version*/admin/setting/(.*)'
+                            : 'api/admin/setting/(.*)',
+                    method: RequestMethod.ALL,
+                }
             )
             .forRoutes('*');
     }

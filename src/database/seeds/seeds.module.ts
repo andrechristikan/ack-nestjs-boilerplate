@@ -9,6 +9,7 @@ import { UserModule } from 'src/user/user.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { CoreModule } from 'src/core/core.module';
 import { AuthApiSeed } from './auth.api.seed';
+import { SettingSeed } from './setting.seed';
 
 @Module({
     imports: [
@@ -20,7 +21,7 @@ import { AuthApiSeed } from './auth.api.seed';
         AuthModule,
         RoleModule,
     ],
-    providers: [AuthApiSeed, PermissionSeed, RoleSeed, UserSeed],
+    providers: [AuthApiSeed, PermissionSeed, RoleSeed, UserSeed, SettingSeed],
     exports: [],
 })
 export class SeedsModule {}

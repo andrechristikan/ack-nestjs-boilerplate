@@ -16,6 +16,7 @@ import { MaxGreaterThanConstraint } from './validation/request.max-greater-than.
 import { MinGreaterThanEqualConstraint } from './validation/request.min-greater-than-equal.validation';
 import { MinGreaterThanConstraint } from './validation/request.min-greater-than.validation';
 import { SkipConstraint } from './validation/request.skip.validation';
+import { StringOrNumberOrBooleanConstraint } from './validation/request.string-or-number-or-boolean.validation';
 
 @Module({
     controllers: [],
@@ -50,6 +51,7 @@ import { SkipConstraint } from './validation/request.skip.validation';
         MinGreaterThanEqualConstraint,
         MinGreaterThanConstraint,
         SkipConstraint,
+        StringOrNumberOrBooleanConstraint,
     ],
     imports: [],
 })

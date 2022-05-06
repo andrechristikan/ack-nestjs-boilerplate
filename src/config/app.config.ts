@@ -26,5 +26,8 @@ export default registerAs(
                 maxSize: '2m',
             },
         },
+
+        httpOn: process.env.APP_HTTP_ON === 'true' || true,
+        taskOn: process.env.APP_TASK_ON === 'true' || false,
     })
 );
