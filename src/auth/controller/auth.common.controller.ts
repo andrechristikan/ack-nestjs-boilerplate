@@ -42,6 +42,7 @@ import { IAuthApiPayload } from '../auth.interface';
 
 @Controller({
     version: '1',
+    path: '/auth',
 })
 export class AuthCommonController {
     constructor(
@@ -165,7 +166,7 @@ export class AuthCommonController {
             action: ENUM_LOGGER_ACTION.LOGIN,
             description: `${user._id} do login`,
             user: user._id,
-            apiKey: apiKey._id,
+            apiKey: apiKey?._id,
             tags: ['login', 'withEmail'],
         });
 

@@ -4,6 +4,7 @@ import { PermissionAdminController } from 'src/permission/controller/permission.
 import { PermissionModule } from 'src/permission/permission.module';
 import { RoleAdminController } from 'src/role/controller/role.admin.controller';
 import { RoleModule } from 'src/role/role.module';
+import { SettingAdminController } from 'src/setting/controller/setting.controller';
 import { UserAdminController } from 'src/user/controller/user.admin.controller';
 import { UserModule } from 'src/user/user.module';
 
@@ -12,6 +13,7 @@ import { UserModule } from 'src/user/user.module';
         RoleAdminController,
         UserAdminController,
         PermissionAdminController,
+        SettingAdminController,
     ],
     providers: [],
     exports: [],

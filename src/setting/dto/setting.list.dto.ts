@@ -9,29 +9,29 @@ import {
 } from 'src/utils/pagination/pagination.decorator';
 import { IPaginationSort } from 'src/utils/pagination/pagination.interface';
 import {
-    USER_DEFAULT_AVAILABLE_SEARCH,
-    USER_DEFAULT_AVAILABLE_SORT,
-    USER_DEFAULT_PAGE,
-    USER_DEFAULT_PER_PAGE,
-    USER_DEFAULT_SORT,
-} from '../user.constant';
+    SETTING_DEFAULT_AVAILABLE_SEARCH,
+    SETTING_DEFAULT_AVAILABLE_SORT,
+    SETTING_DEFAULT_PAGE,
+    SETTING_DEFAULT_PER_PAGE,
+    SETTING_DEFAULT_SORT,
+} from '../setting.constant';
 
-export class UserListDto implements PaginationListAbstract {
+export class SettingListDto implements PaginationListAbstract {
     @PaginationSearch()
     readonly search: string;
 
-    @PaginationAvailableSearch(USER_DEFAULT_AVAILABLE_SEARCH)
+    @PaginationAvailableSearch(SETTING_DEFAULT_AVAILABLE_SEARCH)
     readonly availableSearch: string[];
 
-    @PaginationPage(USER_DEFAULT_PAGE)
+    @PaginationPage(SETTING_DEFAULT_PAGE)
     readonly page: number;
 
-    @PaginationPerPage(USER_DEFAULT_PER_PAGE)
+    @PaginationPerPage(SETTING_DEFAULT_PER_PAGE)
     readonly perPage: number;
 
-    @PaginationSort(USER_DEFAULT_SORT, USER_DEFAULT_AVAILABLE_SORT)
+    @PaginationSort(SETTING_DEFAULT_SORT, SETTING_DEFAULT_AVAILABLE_SORT)
     readonly sort: IPaginationSort;
 
-    @PaginationAvailableSort(USER_DEFAULT_AVAILABLE_SORT)
+    @PaginationAvailableSort(SETTING_DEFAULT_AVAILABLE_SORT)
     readonly availableSort: string[];
 }

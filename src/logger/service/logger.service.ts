@@ -7,8 +7,6 @@ import { LoggerDocument, LoggerEntity } from '../schema/logger.schema';
 
 @Injectable()
 export class LoggerService {
-    private readonly testMode: boolean;
-
     constructor(
         @DatabaseEntity(LoggerEntity.name)
         private readonly loggerModel: Model<LoggerDocument>

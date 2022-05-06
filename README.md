@@ -28,7 +28,7 @@ Made with following
 
 ## Important
 
-If you change env value of `APP_MODE` to `complex` that will trigger more validation.
+If you change env value of `APP_MODE` to `secure` that will trigger more validation.
 
 1. `x-timestamp`, tolerant 5 minutes of request.
 2. `user-agent`, whitelist of user agent.
@@ -76,6 +76,9 @@ ack-nestjs-boilerplate-mongoose have some objective.
 - Centralize Configuration 🤖
 - Centralize Exception Filter
 - Multi-language (i18n)
+- Dynamic Setting from Database 🗿
+- Maintenance Mode on / off
+- Support Docker Installation
 - Support Docker Installation
 - Support CI/CD with Github Action or Jenkins
 - Husky GitHook For Check Source Code, and Run Test Before Commit 🐶
@@ -108,7 +111,7 @@ Next development
 - [x] Whitelist user agent
 - [x] Docker Compose File Mongodb Replication Set
 - [x] API Key Guard
-- [ ] Master Settings **_(Ongoing)_**
+- [x] Master Settings
 - [ ] Swagger
 
 ## Documentation

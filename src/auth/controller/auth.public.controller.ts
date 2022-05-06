@@ -22,6 +22,7 @@ import { AuthService } from '../service/auth.service';
 
 @Controller({
     version: '1',
+    path: '/auth',
 })
 export class AuthPublicController {
     constructor(

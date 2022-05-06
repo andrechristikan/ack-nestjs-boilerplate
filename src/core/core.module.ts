@@ -16,6 +16,7 @@ import { DatabaseService } from 'src/database/service/database.service';
 import { LoggerModule } from 'src/logger/logger.module';
 import { RequestModule } from 'src/utils/request/request.module';
 import { ErrorModule } from 'src/utils/error/error.module';
+import { SettingModule } from 'src/setting/setting.module';
 
 @Module({
     controllers: [],
@@ -51,6 +52,7 @@ import { ErrorModule } from 'src/utils/error/error.module';
         DebuggerModule,
         HelperModule,
         AuthModule,
+        SettingModule,
     ],
 })
 export class CoreModule {}
