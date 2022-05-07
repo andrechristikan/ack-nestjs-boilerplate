@@ -6,7 +6,6 @@ export class SettingEntity {
     @Prop({
         required: true,
         index: true,
-        lowercase: true,
         unique: true,
         trim: true,
     })
@@ -29,10 +28,3 @@ export const SettingDatabaseName = 'settings';
 export const SettingSchema = SchemaFactory.createForClass(SettingEntity);
 
 export type SettingDocument = SettingEntity & Document;
-
-// Hooks
-SettingSchema.pre<SettingDocument>('save', function (next) {
-    this.name = this.name.toLowerCase();
-
-    next();
-});
