@@ -39,9 +39,19 @@ export class MiddlewareModule implements NestModule {
                 HttpDebuggerMiddleware,
                 HelmetMiddleware,
                 RateLimitMiddleware,
-                TimestampMiddleware,
                 UserAgentMiddleware
             )
+            .forRoutes('*');
+
+        consumer
+            .apply(TimestampMiddleware)
+            .exclude({
+                path:
+                    process.env.APP_VERSIONING === 'true'
+                        ? 'api/v:version*/callback/(.*)'
+                        : 'api/callback/(.*)',
+                method: RequestMethod.ALL,
+            })
             .forRoutes('*');
 
         consumer
