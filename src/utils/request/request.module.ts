@@ -15,6 +15,7 @@ import { MaxGreaterThanEqualConstraint } from './validation/request.max-greater-
 import { MaxGreaterThanConstraint } from './validation/request.max-greater-than.validation';
 import { MinGreaterThanEqualConstraint } from './validation/request.min-greater-than-equal.validation';
 import { MinGreaterThanConstraint } from './validation/request.min-greater-than.validation';
+import { SafeStringConstraint } from './validation/request.safe-string.validation';
 import { SkipConstraint } from './validation/request.skip.validation';
 import { StringOrNumberOrBooleanConstraint } from './validation/request.string-or-number-or-boolean.validation';
 
@@ -52,6 +53,7 @@ import { StringOrNumberOrBooleanConstraint } from './validation/request.string-o
         MinGreaterThanConstraint,
         SkipConstraint,
         StringOrNumberOrBooleanConstraint,
+        SafeStringConstraint,
     ],
     imports: [],
 })
