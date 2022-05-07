@@ -6,7 +6,7 @@ export class SettingUpdateDto {
     @IsString()
     @IsOptional()
     @Type(() => String)
-    @ValidateIf((e) => e.lastName !== '')
+    @ValidateIf((e) => e.description !== '')
     readonly description?: string;
 
     @IsNotEmpty()

@@ -98,4 +98,9 @@ export class HelperStringService {
 
         return regex.test(password);
     }
+
+    checkSafeString(text: string): boolean {
+        const regex = new RegExp('^[A-Za-z0-9_-]+$');
+        return regex.test(text);
+    }
 }
