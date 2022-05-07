@@ -1,5 +1,5 @@
 import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
-import { ApiKey } from 'src/auth/auth.decorator';
+import { ApiKey, AuthExcludeApiKey } from 'src/auth/auth.decorator';
 import { IAuthApiPayload } from 'src/auth/auth.interface';
 import { UserAgent } from 'src/utils/request/request.decorator';
 import { Response } from 'src/utils/response/response.decorator';
@@ -11,6 +11,7 @@ import { IResult } from 'ua-parser-js';
 })
 export class TestingCommonController {
     @Response('test.hello')
+    @AuthExcludeApiKey()
     @Get('/hello')
     async hello(
         @UserAgent() userAgent: IResult,
