@@ -110,11 +110,12 @@ export class AuthApiService {
         description,
         key,
         secret,
+        passphrase,
     }: IAuthCreate): Promise<IAuthApiDocument> {
         key = key ? key : await this.createKey();
         secret = secret ? secret : await this.createSecret();
+        passphrase = passphrase ? passphrase : await this.createPassphrase();
         const hash: string = await this.createHashApiKey(key, secret);
-        const passphrase: string = await this.createPassphrase();
 
         const create: AuthApiDocument = new this.authApiModel({
             name,
