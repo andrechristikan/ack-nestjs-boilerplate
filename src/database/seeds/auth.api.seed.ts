@@ -18,12 +18,14 @@ export class AuthApiSeed {
         try {
             const key = 'qwertyuiop12345zxcvbnmkjh';
             const secret = '5124512412412asdasdasdasdasdASDASDASD';
+            const passphrase = 'cuwakimacojulawu';
 
             await this.authApiService.create({
                 name: 'Auth Api Key Migration',
                 description: 'From migraiton',
                 key,
                 secret,
+                passphrase,
             });
 
             this.debuggerService.debug(
