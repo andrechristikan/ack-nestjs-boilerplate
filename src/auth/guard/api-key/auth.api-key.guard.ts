@@ -26,6 +26,9 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
             context.getHandler()
         );
 
+        const request = context.switchToHttp().getRequest();
+        request.apiKey = {};
+
         if (excludeApiKey || mode !== 'secure') {
             return true;
         }
