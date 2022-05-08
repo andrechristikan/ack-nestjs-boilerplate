@@ -4,14 +4,12 @@ import Strategy from 'passport-headerapikey';
 import { AuthApiService } from 'src/auth/service/auth.api.service';
 import { Request } from 'express';
 import { AuthApiDocument } from 'src/auth/schema/auth.api.schema';
-import { ConfigService } from '@nestjs/config';
 import { IAuthApiRequestHashedData } from 'src/auth/auth.interface';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
 
 @Injectable()
 export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
     constructor(
-        private readonly configService: ConfigService,
         private readonly authApiService: AuthApiService
     ) {
         super(
