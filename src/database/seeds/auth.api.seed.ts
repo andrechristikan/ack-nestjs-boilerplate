@@ -22,7 +22,7 @@ export class AuthApiSeed {
 
             await this.authApiService.create({
                 name: 'Auth Api Key Migration',
-                description: 'From migraiton',
+                description: 'From migration',
                 key,
                 secret,
                 passphrase,

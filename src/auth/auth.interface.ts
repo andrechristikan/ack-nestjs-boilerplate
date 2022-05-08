@@ -24,7 +24,7 @@ export interface IAuthApiDocument {
     passphrase: string;
 }
 
-export interface IAuthCreate extends AuthApiCreateDto {
+export interface IAuthApiCreate extends AuthApiCreateDto {
     key?: string;
     secret?: string;
     passphrase?: string;
