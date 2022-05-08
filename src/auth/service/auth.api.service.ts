@@ -11,7 +11,7 @@ import { AuthApiGetSerialization } from '../serialization/auth.api.get.serializa
 import {
     IAuthApiDocument,
     IAuthApiRequestHashedData,
-    IAuthCreate,
+    IAuthApiCreate,
 } from '../auth.interface';
 import { HelperStringService } from 'src/utils/helper/service/helper.string.service';
 import { ConfigService } from '@nestjs/config';
@@ -111,7 +111,7 @@ export class AuthApiService {
         key,
         secret,
         passphrase,
-    }: IAuthCreate): Promise<IAuthApiDocument> {
+    }: IAuthApiCreate): Promise<IAuthApiDocument> {
         key = key ? key : await this.createKey();
         secret = secret ? secret : await this.createSecret();
         passphrase = passphrase ? passphrase : await this.createPassphrase();
