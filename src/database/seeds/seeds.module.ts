@@ -18,7 +18,6 @@ import { SettingSeed } from './setting.seed';
         PermissionModule,
         AuthModule,
         UserModule,
-        AuthModule,
         RoleModule,
     ],
     providers: [AuthApiSeed, PermissionSeed, RoleSeed, UserSeed, SettingSeed],
