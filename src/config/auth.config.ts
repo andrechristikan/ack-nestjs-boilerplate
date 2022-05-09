@@ -7,7 +7,8 @@ export default registerAs(
             accessToken: {
                 secretKey:
                     process.env.AUTH_JWT_ACCESS_TOKEN_SECRET_KEY || '123456',
-                expirationTime: '30m', // recommendation for production is 30m
+                expirationTime:
+                    process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED || '30m', // recommendation for production is 30m
                 notBeforeExpirationTime: '0', // keep it in zero value
             },
 
@@ -16,8 +17,10 @@ export default registerAs(
                     process.env.AUTH_JWT_REFRESH_TOKEN_SECRET_KEY ||
                     '123456000',
                 expirationTime: '7d', // recommendation for production is 7d
-                expirationTimeRememberMe: '30d', // recommendation for production is 30d
-                notBeforeExpirationTime: '30m', // recommendation for production is 30m
+                expirationTimeRememberMe:
+                    process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED || '30d', // recommendation for production is 30d
+                notBeforeExpirationTime:
+                    process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED || '30m', // recommendation for production is 30m
             },
         },
 
