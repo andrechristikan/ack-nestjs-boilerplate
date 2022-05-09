@@ -9,9 +9,7 @@ import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
 
 @Injectable()
 export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
-    constructor(
-        private readonly authApiService: AuthApiService
-    ) {
+    constructor(private readonly authApiService: AuthApiService) {
         super(
             { header: 'X-API-KEY', prefix: '' },
             true,
@@ -63,7 +61,7 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
                 authApi.passphrase
             );
 
-        const keys: string[] = ['key', 'secret', 'timestamp', 'hash'];
+        const keys: string[] = ['key', 'timestamp', 'hash'];
         const deKeys: string[] = Object.keys(decrypted);
         const hasKey: boolean = keys.every((key) => deKeys.includes(key));
 
@@ -91,15 +89,12 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
             );
         }
 
-        const hash: string = await this.authApiService.createHashApiKey(
-            decrypted.key,
-            decrypted.secret
-        );
-        const validateApiKeyRequest: boolean =
-            await this.authApiService.validateHashApiKey(decrypted.hash, hash);
         const validateApiKey: boolean =
-            await this.authApiService.validateHashApiKey(authApi.hash, hash);
-        if (!validateApiKeyRequest || !validateApiKey) {
+            await this.authApiService.validateHashApiKey(
+                decrypted.hash,
+                authApi.hash
+            );
+        if (!validateApiKey) {
             verified(
                 null,
                 null,

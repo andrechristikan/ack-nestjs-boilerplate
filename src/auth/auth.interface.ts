@@ -33,6 +33,5 @@ export interface IAuthApiCreate extends AuthApiCreateDto {
 export interface IAuthApiRequestHashedData {
     key: string;
     timestamp: number;
-    secret: string;
     hash: string;
 }
