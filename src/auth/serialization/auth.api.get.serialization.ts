@@ -11,6 +11,9 @@ export class AuthApiGetSerialization {
     @Exclude()
     readonly hash: string;
 
+    readonly encryptionKey: string;
+    readonly passphrase: string;
+
     readonly isActive: boolean;
     readonly createdAt: Date;
     readonly updatedAt: Date;
