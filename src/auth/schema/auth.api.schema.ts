@@ -29,6 +29,12 @@ export class AuthApiEntity {
     @Prop({
         required: true,
         trim: true,
+    })
+    encryptionKey: string;
+
+    @Prop({
+        required: true,
+        trim: true,
         minLength: 16,
         maxLength: 16,
     })

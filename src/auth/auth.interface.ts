@@ -1,5 +1,5 @@
+import { Types } from 'mongoose';
 import { AuthApiCreateDto } from './dto/auth.api.create.dto';
-import { AuthApiDocument } from './schema/auth.api.schema';
 
 export interface IAuthPassword {
     salt: string;
@@ -19,15 +19,17 @@ export interface IAuthApiPayload {
 }
 
 export interface IAuthApiDocument {
-    authApi: AuthApiDocument;
+    _id: Types.ObjectId;
     secret: string;
     passphrase: string;
+    encryptionKey: string;
 }
 
 export interface IAuthApiCreate extends AuthApiCreateDto {
     key?: string;
     secret?: string;
     passphrase?: string;
+    encryptionKey?: string;
 }
 
 export interface IAuthApiRequestHashedData {

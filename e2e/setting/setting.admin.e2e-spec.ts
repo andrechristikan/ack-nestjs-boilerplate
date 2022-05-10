@@ -85,6 +85,7 @@ describe('E2E Setting Admin', () => {
                 timestamp,
                 hash: 'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54',
             },
+            'opbUwdiS1FBsrDUoPgZdx',
             'cuwakimacojulawu'
         );
         xApiKey = `${apiKey}:${apiEncryption}`;
