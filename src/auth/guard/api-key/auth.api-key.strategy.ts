@@ -58,6 +58,7 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
         const decrypted: IAuthApiRequestHashedData =
             await this.authApiService.decryptApiKey(
                 encrypted,
+                authApi.encryptionKey,
                 authApi.passphrase
             );
 

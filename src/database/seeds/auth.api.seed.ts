@@ -16,16 +16,13 @@ export class AuthApiSeed {
     })
     async insert(): Promise<void> {
         try {
-            const key = 'qwertyuiop12345zxcvbnmkjh';
-            const secret = '5124512412412asdasdasdasdasdASDASDASD';
-            const passphrase = 'cuwakimacojulawu';
-
             await this.authApiService.create({
                 name: 'Auth Api Key Migration',
                 description: 'From migration',
-                key,
-                secret,
-                passphrase,
+                key: 'qwertyuiop12345zxcvbnmkjh',
+                secret: '5124512412412asdasdasdasdasdASDASDASD',
+                passphrase: 'cuwakimacojulawu',
+                encryptionKey: 'opbUwdiS1FBsrDUoPgZdx',
             });
 
             this.debuggerService.debug(
@@ -44,9 +41,9 @@ export class AuthApiSeed {
     })
     async remove(): Promise<void> {
         try {
-            const key = 'qwertyuiop12345zxcvbnmkjh';
-
-            await this.authApiService.deleteOne({ key });
+            await this.authApiService.deleteOne({
+                key: 'qwertyuiop12345zxcvbnmkjh',
+            });
 
             this.debuggerService.debug(
                 'Remove Auth Api Succeed',

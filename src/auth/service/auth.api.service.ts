@@ -22,7 +22,6 @@ import { HelperEncryptionService } from 'src/utils/helper/service/helper.encrypt
 @Injectable()
 export class AuthApiService {
     private readonly env: string;
-    private readonly apiSecret: string;
 
     constructor(
         @DatabaseEntity(AuthApiEntity.name)
@@ -33,7 +32,6 @@ export class AuthApiService {
         private readonly helperEncryptionService: HelperEncryptionService
     ) {
         this.env = this.configService.get<string>('app.env');
-        this.apiSecret = this.configService.get<string>('auth.apiKey.secret');
     }
 
     async findAll(
@@ -111,10 +109,14 @@ export class AuthApiService {
         key,
         secret,
         passphrase,
+        encryptionKey,
     }: IAuthApiCreate): Promise<IAuthApiDocument> {
         key = key ? key : await this.createKey();
         secret = secret ? secret : await this.createSecret();
         passphrase = passphrase ? passphrase : await this.createPassphrase();
+        encryptionKey = encryptionKey
+            ? encryptionKey
+            : await this.createEncryptionKey();
         const hash: string = await this.createHashApiKey(key, secret);
 
         const create: AuthApiDocument = new this.authApiModel({
@@ -123,13 +125,17 @@ export class AuthApiService {
             key,
             hash,
             passphrase,
+            encryptionKey,
             isActive: true,
         });
 
+        await create.save();
+
         return {
-            authApi: await create.save(),
+            _id: create._id,
             secret,
             passphrase,
+            encryptionKey,
         };
     }
 
@@ -150,14 +156,19 @@ export class AuthApiService {
         const secret: string = await this.createSecret();
         const hash: string = await this.createHashApiKey(authApi.key, secret);
         const passphrase: string = await this.createPassphrase();
+        const encryptionKey: string = await this.createEncryptionKey();
 
         authApi.hash = hash;
         authApi.passphrase = passphrase;
+        authApi.encryptionKey = encryptionKey;
+
+        await authApi.save();
 
         return {
-            authApi: await authApi.save(),
+            _id: authApi._id,
             secret,
             passphrase,
+            encryptionKey,
         };
     }
 
@@ -171,6 +182,14 @@ export class AuthApiService {
 
     async createKey(): Promise<string> {
         return this.helperStringService.random(25, {
+            safe: false,
+            upperCase: true,
+            prefix: this.env === 'production' ? 'production_' : 'development_',
+        });
+    }
+
+    async createEncryptionKey(): Promise<string> {
+        return this.helperStringService.random(15, {
             safe: false,
             upperCase: true,
             prefix: this.env === 'production' ? 'production_' : 'development_',
@@ -203,11 +222,12 @@ export class AuthApiService {
 
     async decryptApiKey(
         apiKeyHashed: string,
+        secretKey: string,
         passphrase: string
     ): Promise<IAuthApiRequestHashedData> {
         const decrypted = await this.helperEncryptionService.aes256Decrypt(
             apiKeyHashed,
-            this.apiSecret,
+            secretKey,
             passphrase
         );
 
@@ -216,11 +236,12 @@ export class AuthApiService {
 
     async encryptApiKey(
         data: IAuthApiRequestHashedData,
+        secretKey: string,
         passphrase: string
     ): Promise<string> {
         return this.helperEncryptionService.aes256Encrypt(
             data,
-            this.apiSecret,
+            secretKey,
             passphrase
         );
     }
