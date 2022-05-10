@@ -40,7 +40,6 @@ export class AuthApiService {
     ): Promise<AuthApiDocument[]> {
         const users = this.authApiModel.find(find).select({
             name: 1,
-            type: 1,
             key: 1,
             isActive: 1,
             createdAt: 1,
