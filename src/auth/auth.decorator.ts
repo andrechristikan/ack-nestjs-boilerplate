@@ -18,8 +18,15 @@ import { AuthPayloadAdminGuard } from './guard/payload/auth.payload.admin.guard'
 import { AuthPayloadDefaultGuard } from './guard/payload/auth.payload.default.guard';
 import { AuthPayloadPasswordExpiredGuard } from './guard/payload/auth.payload.password-expired.guard';
 
-export function AuthJwtGuard(): any {
-    return applyDecorators(UseGuards(JwtGuard, AuthPayloadDefaultGuard));
+export function AuthJwtGuard(...permissions: ENUM_PERMISSIONS[]): any {
+    return applyDecorators(
+        UseGuards(
+            JwtGuard,
+            AuthPayloadDefaultGuard,
+            PermissionPayloadDefaultGuard
+        ),
+        SetMetadata(PERMISSION_META_KEY, permissions)
+    );
 }
 
 export function AuthPublicJwtGuard(...permissions: ENUM_PERMISSIONS[]): any {
