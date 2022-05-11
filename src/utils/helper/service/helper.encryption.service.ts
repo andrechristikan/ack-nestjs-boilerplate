@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { createCipheriv, createDecipheriv, scrypt } from 'crypto';
-import { promisify } from 'util';
+import { AES, enc, mode, pad } from 'crypto-js';
 import { IHelperJwtOptions } from '../helper.interface';
 
 @Injectable()
@@ -12,64 +11,50 @@ export class HelperEncryptionService {
         private readonly jwtService: JwtService
     ) {}
 
-    async base64Encrypt(data: string): Promise<string> {
+    base64Encrypt(data: string): string {
         const buff: Buffer = Buffer.from(data, 'utf8');
         return buff.toString('base64');
     }
 
-    async base64Decrypt(data: string): Promise<string> {
+    base64Decrypt(data: string): string {
         const buff: Buffer = Buffer.from(data, 'base64');
         return buff.toString('utf8');
     }
 
-    async base64Compare(
-        clientBasicToken: string,
-        ourBasicToken: string
-    ): Promise<boolean> {
+    base64Compare(clientBasicToken: string, ourBasicToken: string): boolean {
         return ourBasicToken === clientBasicToken;
     }
 
-    async aes256Encrypt(
+    aes256Encrypt(
         data: string | Record<string, any> | Record<string, any>[],
         key: string,
         iv: string
-    ): Promise<string> {
-        let dataParse: string = data as string;
-        if (typeof data !== 'string') {
-            dataParse = JSON.stringify(data);
-        }
+    ): string {
+        const cIv = enc.Utf8.parse(iv);
+        const cipher = AES.encrypt(JSON.stringify(data), key, {
+            mode: mode.CBC,
+            padding: pad.Pkcs7,
+            iv: cIv,
+        });
 
-        const crp = (await promisify(scrypt)(key, 'salt', 32)) as Buffer;
-        const cipher = createCipheriv('aes-256-ctr', crp, iv);
-
-        const encryptedText = Buffer.concat([
-            cipher.update(dataParse),
-            cipher.final(),
-        ]);
-
-        return encryptedText.toString('hex');
+        return cipher.toString();
     }
 
-    async aes256Decrypt(
-        encrypted: string,
-        key: string,
-        iv: string
-    ): Promise<string> {
-        const data: Buffer = Buffer.from(encrypted, 'hex');
-        const crp = (await promisify(scrypt)(key, 'salt', 32)) as Buffer;
-        const decipher = createDecipheriv('aes-256-ctr', crp, iv);
-        const decryptedText = Buffer.concat([
-            decipher.update(data),
-            decipher.final(),
-        ]);
+    aes256Decrypt(encrypted: string, key: string, iv: string): string {
+        const cIv = enc.Utf8.parse(iv);
+        const cipher = AES.decrypt(encrypted, key, {
+            mode: mode.CBC,
+            padding: pad.Pkcs7,
+            iv: cIv,
+        });
 
-        return decryptedText.toString('utf8');
+        return cipher.toString(enc.Utf8);
     }
 
-    async jwtEncrypt(
+    jwtEncrypt(
         payload: Record<string, any>,
         options?: IHelperJwtOptions
-    ): Promise<string> {
+    ): string {
         return this.jwtService.sign(payload, {
             secret:
                 options && options.secretKey
@@ -90,16 +75,13 @@ export class HelperEncryptionService {
         });
     }
 
-    async jwtDecrypt(token: string): Promise<Record<string, any>> {
+    jwtDecrypt(token: string): Record<string, any> {
         return this.jwtService.decode(token) as Record<string, any>;
     }
 
-    async jwtVerify(
-        token: string,
-        options?: IHelperJwtOptions
-    ): Promise<boolean> {
+    jwtVerify(token: string, options?: IHelperJwtOptions): boolean {
         try {
-            await this.jwtService.verify(token, {
+            this.jwtService.verify(token, {
                 secret:
                     options && options.secretKey
                         ? options.secretKey
@@ -107,7 +89,6 @@ export class HelperEncryptionService {
                               'helper.jwt.secretKey'
                           ),
             });
-
             return true;
         } catch (e) {
             return false;

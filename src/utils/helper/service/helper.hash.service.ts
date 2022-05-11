@@ -1,34 +1,31 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { hash, compare, genSalt } from 'bcrypt';
-import { createHash } from 'crypto';
+import { compareSync, genSaltSync, hashSync } from 'bcrypt';
+import { SHA256, enc } from 'crypto-js';
 
 @Injectable()
 export class HelperHashService {
     constructor(private readonly configService: ConfigService) {}
 
-    async randomSalt(length?: number): Promise<string> {
-        return genSalt(
+    randomSalt(length?: number): string {
+        return genSaltSync(
             length || this.configService.get<number>('helper.salt.length')
         );
     }
 
-    async bcrypt(passwordString: string, salt: string): Promise<string> {
-        return hash(passwordString, salt);
+    bcrypt(passwordString: string, salt: string): string {
+        return hashSync(passwordString, salt);
     }
 
-    async bcryptCompare(
-        passwordString: string,
-        passwordHashed: string
-    ): Promise<boolean> {
-        return compare(passwordString, passwordHashed);
+    bcryptCompare(passwordString: string, passwordHashed: string): boolean {
+        return compareSync(passwordString, passwordHashed);
     }
 
-    async sha256(string: string): Promise<string> {
-        return createHash('sha256').update(string).digest('hex');
+    sha256(string: string): string {
+        return SHA256(string).toString(enc.Hex);
     }
 
-    async sha256Compare(hashOne: string, hashTwo: string): Promise<boolean> {
+    sha256Compare(hashOne: string, hashTwo: string): boolean {
         return hashOne === hashTwo;
     }
 }

@@ -25,20 +25,18 @@ describe('HelperEncryptionService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(helperEncryptionService, 'base64Encrypt');
 
-            await helperEncryptionService.base64Encrypt(data);
+            helperEncryptionService.base64Encrypt(data);
             expect(test).toHaveBeenCalledWith(data);
         });
 
         it('should be success', async () => {
-            const result = await helperEncryptionService.base64Encrypt(data);
+            const result = helperEncryptionService.base64Encrypt(data);
             jest.spyOn(
                 helperEncryptionService,
                 'base64Encrypt'
-            ).mockImplementation(async () => result);
+            ).mockImplementation(() => result);
 
-            expect(await helperEncryptionService.base64Encrypt(data)).toBe(
-                result
-            );
+            expect(helperEncryptionService.base64Encrypt(data)).toBe(result);
         });
     });
 
@@ -46,21 +44,19 @@ describe('HelperEncryptionService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(helperEncryptionService, 'base64Decrypt');
 
-            const result = await helperEncryptionService.base64Encrypt(data);
+            const result = helperEncryptionService.base64Encrypt(data);
             helperEncryptionService.base64Decrypt(result);
             expect(test).toHaveBeenCalledWith(result);
         });
 
         it('should be success', async () => {
-            const result = await helperEncryptionService.base64Encrypt(data);
+            const result = helperEncryptionService.base64Encrypt(data);
             jest.spyOn(
                 helperEncryptionService,
                 'base64Decrypt'
-            ).mockImplementation(async () => data);
+            ).mockImplementation(() => data);
 
-            expect(await helperEncryptionService.base64Decrypt(result)).toBe(
-                data
-            );
+            expect(helperEncryptionService.base64Decrypt(result)).toBe(data);
         });
     });
 
@@ -68,7 +64,7 @@ describe('HelperEncryptionService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(helperEncryptionService, 'aes256Encrypt');
 
-            await helperEncryptionService.aes256Encrypt(
+            helperEncryptionService.aes256Encrypt(
                 data,
                 '1234567',
                 '1231231231231231'
@@ -81,7 +77,7 @@ describe('HelperEncryptionService', () => {
         });
 
         it('string should be success', async () => {
-            const result = await helperEncryptionService.aes256Encrypt(
+            const result = helperEncryptionService.aes256Encrypt(
                 data,
                 '1234567',
                 '1231231231231231'
@@ -89,10 +85,10 @@ describe('HelperEncryptionService', () => {
             jest.spyOn(
                 helperEncryptionService,
                 'aes256Encrypt'
-            ).mockImplementation(async () => result);
+            ).mockImplementation(() => result);
 
             expect(
-                await helperEncryptionService.aes256Encrypt(
+                helperEncryptionService.aes256Encrypt(
                     data,
                     '1234567',
                     '1231231231231231'
@@ -101,7 +97,7 @@ describe('HelperEncryptionService', () => {
         });
 
         it('object should be success', async () => {
-            const result = await helperEncryptionService.aes256Encrypt(
+            const result = helperEncryptionService.aes256Encrypt(
                 dataObject,
                 '1234567',
                 '1231231231231231'
@@ -109,10 +105,10 @@ describe('HelperEncryptionService', () => {
             jest.spyOn(
                 helperEncryptionService,
                 'aes256Encrypt'
-            ).mockImplementation(async () => result);
+            ).mockImplementation(() => result);
 
             expect(
-                await helperEncryptionService.aes256Encrypt(
+                helperEncryptionService.aes256Encrypt(
                     dataObject,
                     '1234567',
                     '1231231231231231'
@@ -125,7 +121,7 @@ describe('HelperEncryptionService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(helperEncryptionService, 'aes256Decrypt');
 
-            const result = await helperEncryptionService.aes256Encrypt(
+            const result = helperEncryptionService.aes256Encrypt(
                 data,
                 '1234567',
                 '1231231231231231'
@@ -143,7 +139,7 @@ describe('HelperEncryptionService', () => {
         });
 
         it('should be success', async () => {
-            const result = await helperEncryptionService.aes256Encrypt(
+            const result = helperEncryptionService.aes256Encrypt(
                 data,
                 '1234567',
                 '1231231231231231'
@@ -151,10 +147,10 @@ describe('HelperEncryptionService', () => {
             jest.spyOn(
                 helperEncryptionService,
                 'aes256Decrypt'
-            ).mockImplementation(async () => data);
+            ).mockImplementation(() => data);
 
             expect(
-                await helperEncryptionService.aes256Decrypt(
+                helperEncryptionService.aes256Decrypt(
                     result,
                     '1234567',
                     '1231231231231231'
@@ -167,20 +163,18 @@ describe('HelperEncryptionService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(helperEncryptionService, 'jwtEncrypt');
 
-            await helperEncryptionService.jwtEncrypt({ data });
+            helperEncryptionService.jwtEncrypt({ data });
             expect(test).toHaveBeenCalledWith({ data });
         });
 
         it('should be success', async () => {
-            const result = await helperEncryptionService.jwtEncrypt({ data });
+            const result = helperEncryptionService.jwtEncrypt({ data });
             jest.spyOn(
                 helperEncryptionService,
                 'jwtEncrypt'
-            ).mockImplementation(async () => result);
+            ).mockImplementation(() => result);
 
-            expect(await helperEncryptionService.jwtEncrypt({ data })).toBe(
-                result
-            );
+            expect(helperEncryptionService.jwtEncrypt({ data })).toBe(result);
         });
     });
 
@@ -188,22 +182,20 @@ describe('HelperEncryptionService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(helperEncryptionService, 'jwtDecrypt');
 
-            const result = await helperEncryptionService.jwtEncrypt({ data });
+            const result = helperEncryptionService.jwtEncrypt({ data });
             helperEncryptionService.jwtDecrypt(result);
             expect(test).toHaveBeenCalledWith(result);
         });
 
         it('should be success', async () => {
-            const result = await helperEncryptionService.jwtEncrypt({ data });
-            const decrypt = await helperEncryptionService.jwtDecrypt(result);
+            const result = helperEncryptionService.jwtEncrypt({ data });
+            const decrypt = helperEncryptionService.jwtDecrypt(result);
             jest.spyOn(
                 helperEncryptionService,
                 'jwtDecrypt'
-            ).mockImplementation(async () => decrypt);
+            ).mockImplementation(() => decrypt);
 
-            expect(await helperEncryptionService.jwtDecrypt(result)).toBe(
-                decrypt
-            );
+            expect(helperEncryptionService.jwtDecrypt(result)).toBe(decrypt);
         });
     });
 
@@ -217,30 +209,26 @@ describe('HelperEncryptionService', () => {
         });
 
         it('should be success', async () => {
-            const result = await helperEncryptionService.jwtEncrypt({ data });
-            const verify = await helperEncryptionService.jwtVerify(result);
+            const result = helperEncryptionService.jwtEncrypt({ data });
+            const verify = helperEncryptionService.jwtVerify(result);
             jest.spyOn(helperEncryptionService, 'jwtVerify').mockImplementation(
-                async () => verify
+                () => verify
             );
 
-            expect(await helperEncryptionService.jwtVerify(result)).toBe(
-                verify
-            );
+            expect(helperEncryptionService.jwtVerify(result)).toBe(verify);
         });
 
         it('should be failed', async () => {
-            const result = await helperEncryptionService.jwtEncrypt(
+            const result = helperEncryptionService.jwtEncrypt(
                 { data },
                 { secretKey: '123123123' }
             );
-            const verify = await helperEncryptionService.jwtVerify(result);
+            const verify = helperEncryptionService.jwtVerify(result);
             jest.spyOn(helperEncryptionService, 'jwtVerify').mockImplementation(
-                async () => verify
+                () => verify
             );
 
-            expect(await helperEncryptionService.jwtVerify(result)).toBe(
-                verify
-            );
+            expect(helperEncryptionService.jwtVerify(result)).toBe(verify);
         });
     });
 });

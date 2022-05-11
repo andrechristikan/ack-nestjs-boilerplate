@@ -22,17 +22,17 @@ describe('HelperHashService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(helperHashService, 'randomSalt');
 
-            await helperHashService.randomSalt();
+            helperHashService.randomSalt();
             expect(test).toHaveBeenCalled();
         });
 
         it('should be success', async () => {
-            const result = await helperHashService.randomSalt();
+            const result = helperHashService.randomSalt();
             jest.spyOn(helperHashService, 'randomSalt').mockImplementation(
-                async () => result
+                () => result
             );
 
-            expect(await helperHashService.randomSalt()).toBe(result);
+            expect(helperHashService.randomSalt()).toBe(result);
         });
     });
 
@@ -40,19 +40,19 @@ describe('HelperHashService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(helperHashService, 'bcrypt');
 
-            const salt = await helperHashService.randomSalt();
-            await helperHashService.bcrypt(data, salt);
+            const salt = helperHashService.randomSalt();
+            helperHashService.bcrypt(data, salt);
             expect(test).toHaveBeenCalledWith(data, salt);
         });
 
         it('should be success', async () => {
-            const salt = await helperHashService.randomSalt();
-            const result = await helperHashService.bcrypt(data, salt);
+            const salt = helperHashService.randomSalt();
+            const result = helperHashService.bcrypt(data, salt);
             jest.spyOn(helperHashService, 'bcrypt').mockImplementation(
-                async () => result
+                () => result
             );
 
-            expect(await helperHashService.bcrypt(data, salt)).toBe(result);
+            expect(helperHashService.bcrypt(data, salt)).toBe(result);
         });
     });
 
@@ -60,24 +60,21 @@ describe('HelperHashService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(helperHashService, 'bcryptCompare');
 
-            const salt = await helperHashService.randomSalt();
-            const hash = await helperHashService.bcrypt(data, salt);
-            await helperHashService.bcryptCompare('bbbb', hash);
+            const salt = helperHashService.randomSalt();
+            const hash = helperHashService.bcrypt(data, salt);
+            helperHashService.bcryptCompare('bbbb', hash);
             expect(test).toHaveBeenCalledWith('bbbb', hash);
         });
 
         it('should be success', async () => {
-            const salt = await helperHashService.randomSalt();
-            const hash = await helperHashService.bcrypt(data, salt);
-            const validate = await helperHashService.bcryptCompare(
-                'bbbb',
-                hash
-            );
+            const salt = helperHashService.randomSalt();
+            const hash = helperHashService.bcrypt(data, salt);
+            const validate = helperHashService.bcryptCompare('bbbb', hash);
             jest.spyOn(helperHashService, 'bcryptCompare').mockImplementation(
-                async () => validate
+                () => validate
             );
 
-            expect(await helperHashService.bcryptCompare('bbbb', hash)).toBe(
+            expect(helperHashService.bcryptCompare('bbbb', hash)).toBe(
                 validate
             );
         });
@@ -87,17 +84,17 @@ describe('HelperHashService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(helperHashService, 'sha256');
 
-            await helperHashService.sha256(data);
+            helperHashService.sha256(data);
             expect(test).toHaveBeenCalledWith(data);
         });
 
         it('should be success', async () => {
-            const hash = await helperHashService.sha256(data);
+            const hash = helperHashService.sha256(data);
             jest.spyOn(helperHashService, 'sha256').mockImplementation(
-                async () => hash
+                () => hash
             );
 
-            expect(await helperHashService.sha256(data)).toBe(hash);
+            expect(helperHashService.sha256(data)).toBe(hash);
         });
     });
 
@@ -105,22 +102,19 @@ describe('HelperHashService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(helperHashService, 'sha256Compare');
 
-            const hash = await helperHashService.sha256(data);
-            await helperHashService.sha256Compare('bbbb', hash);
+            const hash = helperHashService.sha256(data);
+            helperHashService.sha256Compare('bbbb', hash);
             expect(test).toHaveBeenCalledWith('bbbb', hash);
         });
 
         it('should be success', async () => {
-            const hash = await helperHashService.sha256(data);
-            const validate = await helperHashService.sha256Compare(
-                'bbbb',
-                hash
-            );
+            const hash = helperHashService.sha256(data);
+            const validate = helperHashService.sha256Compare('bbbb', hash);
             jest.spyOn(helperHashService, 'bcryptCompare').mockImplementation(
-                async () => validate
+                () => validate
             );
 
-            expect(await helperHashService.sha256Compare('bbbb', hash)).toBe(
+            expect(helperHashService.sha256Compare('bbbb', hash)).toBe(
                 validate
             );
         });

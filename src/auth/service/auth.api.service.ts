@@ -224,7 +224,7 @@ export class AuthApiService {
         secretKey: string,
         passphrase: string
     ): Promise<IAuthApiRequestHashedData> {
-        const decrypted = await this.helperEncryptionService.aes256Decrypt(
+        const decrypted = this.helperEncryptionService.aes256Decrypt(
             apiKeyHashed,
             secretKey,
             passphrase
