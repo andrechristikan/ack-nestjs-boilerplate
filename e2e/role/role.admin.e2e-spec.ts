@@ -436,13 +436,17 @@ describe('E2E Role Admin', () => {
 
     afterAll(async () => {
         try {
-            await roleService.deleteOneById(role._id);
-            await roleService.deleteOneById(roleUpdate._id);
             await roleBulkService.deleteMany({
-                name: successData.name,
+                name: 'testRole',
             });
             await roleBulkService.deleteMany({
-                name: updateData.name,
+                name: 'testRole1',
+            });
+            await roleBulkService.deleteMany({
+                name: 'testRole2',
+            });
+            await roleBulkService.deleteMany({
+                name: 'testRole3',
             });
         } catch (e) {
             console.error(e);

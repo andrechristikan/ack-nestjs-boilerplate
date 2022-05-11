@@ -1,4 +1,4 @@
-import { Exclude, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 
 export class AuthApiListSerialization {
     @Type(() => String)
