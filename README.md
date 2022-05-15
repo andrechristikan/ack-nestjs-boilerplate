@@ -40,15 +40,19 @@ You can see our `e2e testing file` or read the documentation on [section environ
 
 ## Build with
 
-- NestJs v8.x
-- NodeJs v17.x
-- Typescript v4.x
-- Mongoose v6.x
-- MongoDB v5.x
-- Yarn v1.x
-- NPM v8.x
-- Docker v20.x
-- Docker Compose v2.x
+Describes which version of the main packages and main tools.
+
+| Name       | Version  |
+| ---------- | -------- |
+| NestJs     | v8.x     |
+| NodeJs     | v17.x    |
+| Typescript | v4.x     |
+| Mongoose   | v6.x     |
+| MongoDB    | v5.x     |
+| Yarn       | v1.x     |
+| NPM        | v8.x     |
+| Docker     | v20.x    |
+| Docker Compose | v2.x |
 
 ## Objective
 
@@ -103,6 +107,8 @@ Next development
 - [ ] Swagger
 
 ## Documentation
+
+Let's go into deep ! 🚀
 
 - [Documentation][ack-docs]
 - [Example][ack-docs-example]
