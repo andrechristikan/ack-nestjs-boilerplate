@@ -15,7 +15,7 @@
 
 # ACK NestJs Boilerplate Mongoose  🔥 🚀
 
-> Best uses for RESTFUL API, Microservice, or SaaS Project
+> Best uses for Restful API, Microservice, or SaaS Project
 
 ack-nestjs-boilerplate-mongoose is a [NestJs](http://nestjs.com) Boilerplate with [Mongoose](https://mongoosejs.com) and [MongoDB](https://docs.mongodb.com) as Database.
 
@@ -29,12 +29,12 @@ Made with following
 
 ## Important
 
-If you change env value of `APP_MODE` to `secure` that will trigger more validation.
+If you change env value of `APP_MODE` to `secure` that will trigger more `Middleware` and `Guard`.
 
-1. `x-timestamp`, tolerant 5 minutes of request.
-2. `user-agent`, whitelist of user agent.
-3. `x-api-key`, check api key.
-4. check cors origin
+1. `TimestampMiddleware`, tolerant 5 minutes of request.
+2. `UserAgentMiddleware`, whitelist of user agent.
+3. `ApiKeyGuard`, check api key based on database.
+4. `CorsMiddleware`, check cors
 
 You can see our `e2e testing file` or read the documentation on [section environment][ack-doc-env].
 
