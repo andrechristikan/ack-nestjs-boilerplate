@@ -82,4 +82,30 @@ export class HelperDateService {
     backwardInMonths(months: number): Date {
         return moment().subtract(months, 'M').toDate();
     }
+
+    endOfMonth(month: number, year?: number): Date {
+        year = year || moment().year();
+        return moment()
+            .year(year)
+            .month(month - 1)
+            .endOf('month')
+            .toDate();
+    }
+
+    startOfMonth(month: number, year?: number): Date {
+        year = year || moment().year();
+        return moment()
+            .year(year)
+            .month(month - 1)
+            .startOf('month')
+            .toDate();
+    }
+
+    endOfYear(year: number): Date {
+        return moment().year(year).endOf('year').toDate();
+    }
+
+    startOfYear(year: number): Date {
+        return moment().year(year).startOf('year').toDate();
+    }
 }
