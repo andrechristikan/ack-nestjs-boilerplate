@@ -11,11 +11,7 @@ import { UserService } from 'src/user/service/user.service';
 import { IUserDocument } from 'src/user/user.interface';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { connection, Types } from 'mongoose';
-import {
-    E2E_SETTING_ADMIN_GET_URL,
-    E2E_SETTING_ADMIN_LIST_URL,
-    E2E_SETTING_ADMIN_UPDATE_URL,
-} from './setting.constant';
+import { E2E_SETTING_ADMIN_UPDATE_URL } from './setting.constant';
 import request from 'supertest';
 import faker from '@faker-js/faker';
 import { SettingDocument } from 'src/setting/schema/setting.schema';
@@ -91,55 +87,6 @@ describe('E2E Setting Admin', () => {
         xApiKey = `${apiKey}:${apiEncryption}`;
 
         await app.init();
-    });
-
-    it(`GET ${E2E_SETTING_ADMIN_LIST_URL} List Success`, async () => {
-        const response = await request(app.getHttpServer())
-            .get(E2E_SETTING_ADMIN_LIST_URL)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
-
-        expect(response.status).toEqual(HttpStatus.OK);
-        expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
-    });
-
-    it(`GET ${E2E_SETTING_ADMIN_GET_URL} Get Not Found`, async () => {
-        const response = await request(app.getHttpServer())
-            .get(
-                E2E_SETTING_ADMIN_GET_URL.replace(
-                    ':_id',
-                    `${new Types.ObjectId()}`
-                )
-            )
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
-
-        expect(response.status).toEqual(HttpStatus.NOT_FOUND);
-        expect(response.body.statusCode).toEqual(
-            ENUM_SETTING_STATUS_CODE_ERROR.SETTING_NOT_FOUND_ERROR
-        );
-
-        return;
-    });
-
-    it(`GET ${E2E_SETTING_ADMIN_GET_URL} Get Success`, async () => {
-        const response = await request(app.getHttpServer())
-            .get(E2E_SETTING_ADMIN_GET_URL.replace(':_id', `${setting._id}`))
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
-
-        expect(response.status).toEqual(HttpStatus.OK);
-        expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`PUT ${E2E_SETTING_ADMIN_UPDATE_URL} Update Not Found`, async () => {
