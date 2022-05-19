@@ -2,12 +2,14 @@ import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { SettingService } from 'src/setting/service/setting.service';
+import { SettingBulkService } from 'src/setting/service/setting.bulk.service';
 
 @Injectable()
 export class SettingSeed {
     constructor(
         private readonly debuggerService: DebuggerService,
-        private readonly settingService: SettingService
+        private readonly settingService: SettingService,
+        private readonly settingBulkService: SettingBulkService
     ) {}
 
     @Command({
@@ -38,9 +40,7 @@ export class SettingSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.settingService.deleteOne({
-                name: 'maintenance',
-            });
+            await this.settingBulkService.deleteMany({});
 
             this.debuggerService.debug(
                 'Remove Setting Succeed',
