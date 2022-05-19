@@ -5,7 +5,10 @@ import {
     UseGuards,
 } from '@nestjs/common';
 import { SettingNotFoundGuard } from './guard/setting.not-found.guard';
-import { SettingPutToRequestGuard } from './guard/setting.put-to-request.guard';
+import {
+    SettingPutToRequestByNameGuard,
+    SettingPutToRequestGuard,
+} from './guard/setting.put-to-request.guard';
 
 export const GetSetting = createParamDecorator(
     (data: string, ctx: ExecutionContext) => {
@@ -17,6 +20,12 @@ export const GetSetting = createParamDecorator(
 export function SettingGetGuard(): any {
     return applyDecorators(
         UseGuards(SettingPutToRequestGuard, SettingNotFoundGuard)
+    );
+}
+
+export function SettingGetByNameGuard(): any {
+    return applyDecorators(
+        UseGuards(SettingPutToRequestByNameGuard, SettingNotFoundGuard)
     );
 }
 

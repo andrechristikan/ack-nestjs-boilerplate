@@ -14,7 +14,11 @@ import { SettingRequestDto } from '../dto/setting.request.dto';
 import { SettingDocument } from '../schema/setting.schema';
 import { SettingListSerialization } from '../serialization/setting.list.serialization';
 import { SettingService } from '../service/setting.service';
-import { GetSetting, SettingGetGuard } from '../setting.decorator';
+import {
+    GetSetting,
+    SettingGetByNameGuard,
+    SettingGetGuard,
+} from '../setting.decorator';
 
 @Controller({
     version: '1',
@@ -85,6 +89,15 @@ export class SettingCommonController {
     @RequestParamGuard(SettingRequestDto)
     @Get('get/:setting')
     async get(@GetSetting() setting: SettingDocument): Promise<IResponse> {
+        return this.settingService.serializationGet(setting);
+    }
+
+    @Response('setting.getByName')
+    @SettingGetByNameGuard()
+    @Get('get/name/:settingName')
+    async getByName(
+        @GetSetting() setting: SettingDocument
+    ): Promise<IResponse> {
         return this.settingService.serializationGet(setting);
     }
 }

@@ -12,6 +12,7 @@ import faker from '@faker-js/faker';
 import { SettingDocument } from 'src/setting/schema/setting.schema';
 import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/setting/setting.constant';
 import {
+    E2E_SETTING_COMMON_GET_BY_NAME_URL,
     E2E_SETTING_COMMON_GET_URL,
     E2E_SETTING_COMMON_LIST_URL,
 } from './setting.constant';
@@ -102,6 +103,44 @@ describe('E2E Setting Common', () => {
     it(`GET ${E2E_SETTING_COMMON_GET_URL} Get Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_SETTING_COMMON_GET_URL.replace(':_id', `${setting._id}`))
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
+
+        expect(response.status).toEqual(HttpStatus.OK);
+        expect(response.body.statusCode).toEqual(HttpStatus.OK);
+
+        return;
+    });
+
+    it(`GET ${E2E_SETTING_COMMON_GET_BY_NAME_URL} Not Found`, async () => {
+        const response = await request(app.getHttpServer())
+            .get(
+                E2E_SETTING_COMMON_GET_BY_NAME_URL.replace(
+                    ':settingName',
+                    faker.name.firstName()
+                )
+            )
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
+
+        expect(response.status).toEqual(HttpStatus.NOT_FOUND);
+        expect(response.body.statusCode).toEqual(
+            ENUM_SETTING_STATUS_CODE_ERROR.SETTING_NOT_FOUND_ERROR
+        );
+
+        return;
+    });
+
+    it(`GET ${E2E_SETTING_COMMON_GET_BY_NAME_URL} Success`, async () => {
+        const response = await request(app.getHttpServer())
+            .get(
+                E2E_SETTING_COMMON_GET_BY_NAME_URL.replace(
+                    ':settingName',
+                    setting.name
+                )
+            )
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
