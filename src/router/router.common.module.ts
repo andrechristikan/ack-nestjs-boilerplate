@@ -7,10 +7,15 @@ import { HealthCommonController } from 'src/health/controller/health.common.cont
 import { HealthModule } from 'src/health/health.module';
 import { PermissionModule } from 'src/permission/permission.module';
 import { RoleModule } from 'src/role/role.module';
+import { SettingCommonController } from 'src/setting/controller/setting.common.controller';
 import { UserModule } from 'src/user/user.module';
 
 @Module({
-    controllers: [AuthCommonController, HealthCommonController],
+    controllers: [
+        AuthCommonController,
+        HealthCommonController,
+        SettingCommonController,
+    ],
     providers: [],
     exports: [],
     imports: [
