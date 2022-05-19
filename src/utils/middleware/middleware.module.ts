@@ -45,37 +45,44 @@ export class MiddlewareModule implements NestModule {
 
         consumer
             .apply(TimestampMiddleware)
-            .exclude({
-                path:
-                    process.env.APP_VERSIONING === 'true'
-                        ? 'api/v:version*/callback/(.*)'
-                        : 'api/callback/(.*)',
-                method: RequestMethod.ALL,
-            })
+            .exclude(
+                {
+                    path: 'api/v:version*/callback/(.*)',
+
+                    method: RequestMethod.ALL,
+                },
+                {
+                    path: 'api/callback/(.*)',
+                    method: RequestMethod.ALL,
+                }
+            )
             .forRoutes('*');
 
         consumer
             .apply(MaintenanceMiddleware)
             .exclude(
                 {
-                    path:
-                        process.env.APP_VERSIONING === 'true'
-                            ? 'api/v:version*/auth/login'
-                            : 'api/auth/login',
+                    path: 'api/v:version*/auth/login',
                     method: RequestMethod.POST,
                 },
                 {
-                    path:
-                        process.env.APP_VERSIONING === 'true'
-                            ? 'api/v:version*/auth/refresh'
-                            : 'api/auth/refresh',
+                    path: 'api/auth/login',
                     method: RequestMethod.POST,
                 },
                 {
-                    path:
-                        process.env.APP_VERSIONING === 'true'
-                            ? 'api/v:version*/admin/setting/(.*)'
-                            : 'api/admin/setting/(.*)',
+                    path: 'api/v:version*/auth/refresh',
+                    method: RequestMethod.POST,
+                },
+                {
+                    path: 'api/auth/refresh',
+                    method: RequestMethod.POST,
+                },
+                {
+                    path: 'api/v:version*/admin/setting/(.*)',
+                    method: RequestMethod.ALL,
+                },
+                {
+                    path: 'api/admin/setting/(.*)',
                     method: RequestMethod.ALL,
                 }
             )

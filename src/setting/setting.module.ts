@@ -7,6 +7,7 @@ import {
     SettingEntity,
     SettingSchema,
 } from './schema/setting.schema';
+import { SettingBulkService } from './service/setting.bulk.service';
 
 @Global()
 @Module({
@@ -22,8 +23,8 @@ import {
             DATABASE_CONNECTION_NAME
         ),
     ],
-    exports: [SettingService],
-    providers: [SettingService],
+    exports: [SettingService, SettingBulkService],
+    providers: [SettingService, SettingBulkService],
     controllers: [],
 })
 export class SettingModule {}
