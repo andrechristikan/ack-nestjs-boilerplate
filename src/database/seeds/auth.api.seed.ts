@@ -2,12 +2,14 @@ import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { AuthApiService } from 'src/auth/service/auth.api.service';
+import { AuthApiBulkService } from 'src/auth/service/auth.api.bulk.service';
 
 @Injectable()
 export class AuthApiSeed {
     constructor(
         private readonly debuggerService: DebuggerService,
-        private readonly authApiService: AuthApiService
+        private readonly authApiService: AuthApiService,
+        private readonly authApiBulkService: AuthApiBulkService
     ) {}
 
     @Command({
@@ -41,9 +43,7 @@ export class AuthApiSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.authApiService.deleteOne({
-                key: 'qwertyuiop12345zxcvbnmkjh',
-            });
+            await this.authApiBulkService.deleteMany({});
 
             this.debuggerService.debug(
                 'Remove Auth Api Succeed',
