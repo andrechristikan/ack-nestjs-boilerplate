@@ -13,6 +13,7 @@ import {
     AuthApiEntity,
     AuthApiSchema,
 } from './schema/auth.api.schema';
+import { AuthApiBulkService } from './service/auth.api.bulk.service';
 import { AuthApiService } from './service/auth.api.service';
 import { AuthService } from './service/auth.service';
 
@@ -20,6 +21,7 @@ import { AuthService } from './service/auth.service';
     providers: [
         AuthService,
         AuthApiService,
+        AuthApiBulkService,
         JwtStrategy,
         JwtRefreshStrategy,
         ApiKeyStrategy,
@@ -39,7 +41,7 @@ import { AuthService } from './service/auth.service';
             },
         },
     ],
-    exports: [AuthService, AuthApiService],
+    exports: [AuthService, AuthApiService, AuthApiBulkService],
     controllers: [],
     imports: [
         MongooseModule.forFeature(
