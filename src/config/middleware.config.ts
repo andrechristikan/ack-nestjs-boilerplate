@@ -28,6 +28,7 @@ export default registerAs(
                 'X-Requested-With',
                 'x-custom-lang',
                 'x-timestamp',
+                'x-api-key',
                 'user-agent',
             ],
         },
@@ -36,7 +37,8 @@ export default registerAs(
             maxRequestPerId: 1, // max request per reset time
         },
         timestamp: {
-            toleranceTimeInMinutes: parseInt(process.env.MIDDLEWARE_TOLERANCE_TIMESTAMP) || 5, // 5 mins
+            toleranceTimeInMinutes:
+                parseInt(process.env.MIDDLEWARE_TOLERANCE_TIMESTAMP) || 5, // 5 mins
         },
     })
 );
