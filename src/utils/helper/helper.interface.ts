@@ -9,3 +9,12 @@ export interface IHelperStringRandomOptions {
     safe?: boolean;
     prefix?: string;
 }
+
+export interface IGeoCurrent {
+    latitude: number;
+    longitude: number;
+}
+
+export interface IGeoRules extends IGeoCurrent {
+    inRadius: number;
+}
