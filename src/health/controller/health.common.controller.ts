@@ -126,23 +126,4 @@ export class HealthCommonController {
             });
         }
     }
-
-    @Response('health.check')
-    @HealthCheck()
-    @Get('/database')
-    async check(): Promise<IResponse> {
-        try {
-            return this.health.check([
-                () =>
-                    this.databaseIndicator.pingCheck('database', {
-                        connection: this.databaseConnection,
-                    }),
-            ]);
-        } catch (e) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
-                message: 'http.serverError.internalServerError',
-            });
-        }
-    }
 }
