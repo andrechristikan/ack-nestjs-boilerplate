@@ -59,28 +59,28 @@ export class HelperDateService {
             );
     }
 
-    forwardInMinutes(minutes: number): Date {
-        return moment().add(minutes, 'm').toDate();
+    forwardInMinutes(minutes: number, fromDate?: Date): Date {
+        return moment(fromDate, true).add(minutes, 'm').toDate();
     }
 
-    backwardInMinutes(minutes: number): Date {
-        return moment().subtract(minutes, 'm').toDate();
+    backwardInMinutes(minutes: number, fromDate?: Date): Date {
+        return moment(fromDate, true).subtract(minutes, 'm').toDate();
     }
 
-    forwardInDays(days: number): Date {
-        return moment().add(days, 'd').toDate();
+    forwardInDays(days: number, fromDate?: Date): Date {
+        return moment(fromDate, true).add(days, 'd').toDate();
     }
 
-    backwardInDays(days: number): Date {
-        return moment().subtract(days, 'd').toDate();
+    backwardInDays(days: number, fromDate?: Date): Date {
+        return moment(fromDate, true).subtract(days, 'd').toDate();
     }
 
-    forwardInMonths(months: number): Date {
-        return moment().add(months, 'M').toDate();
+    forwardInMonths(months: number, fromDate?: Date): Date {
+        return moment(fromDate, true).add(months, 'M').toDate();
     }
 
-    backwardInMonths(months: number): Date {
-        return moment().subtract(months, 'M').toDate();
+    backwardInMonths(months: number, fromDate?: Date): Date {
+        return moment(fromDate, true).subtract(months, 'M').toDate();
     }
 
     endOfMonth(month: number, year?: number): Date {
