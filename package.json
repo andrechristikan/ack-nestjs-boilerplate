@@ -78,7 +78,7 @@
     "ua-parser-js": "^1.0.2",
     "winston": "^3.7.2",
     "winston-daily-rotate-file": "^4.6.1",
-    "yargs": "^17.4.1"
+    "yargs": "^17.5.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^8.2.5",
