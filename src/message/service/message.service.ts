@@ -28,7 +28,9 @@ export class MessageService {
         const messages: Array<IErrors[]> = [];
         for (const transfomer of requestErrors) {
             let children: Record<string, any>[] = transfomer.children;
-            let constraints: string[] = Object.keys(transfomer.constraints || []);
+            let constraints: string[] = Object.keys(
+                transfomer.constraints || []
+            );
             const errors: IErrors[] = [];
             let property: string = transfomer.property;
             let propertyValue: string = transfomer.value;

@@ -1,7 +1,7 @@
 import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import faker from '@faker-js/faker';
+import { faker } from '@faker-js/faker';
 import { IUserDocument } from 'src/user/user.interface';
 import { E2E_AUTH_CHANGE_PASSWORD_URL } from './auth.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';

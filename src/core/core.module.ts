@@ -22,7 +22,6 @@ import { SettingModule } from 'src/setting/setting.module';
     controllers: [],
     providers: [],
     imports: [
-        MiddlewareModule,
         ConfigModule.forRoot({
             load: Configs,
             ignoreEnvFile: false,
@@ -43,16 +42,16 @@ import { SettingModule } from 'src/setting/setting.module';
             useFactory: (databaseService: DatabaseService) =>
                 databaseService.createMongooseOptions(),
         }),
-        LoggerModule,
-        ErrorModule,
-        RequestModule,
-        DatabaseModule,
-        MessageModule,
-        PaginationModule,
-        DebuggerModule,
         HelperModule,
-        AuthModule,
+        DebuggerModule,
+        MessageModule,
+        ErrorModule,
+        PaginationModule,
         SettingModule,
+        RequestModule,
+        MiddlewareModule,
+        LoggerModule,
+        AuthModule,
     ],
 })
 export class CoreModule {}
