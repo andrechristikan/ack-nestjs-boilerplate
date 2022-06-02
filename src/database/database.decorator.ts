@@ -8,7 +8,8 @@ export function DatabaseConnection(
 }
 
 export function DatabaseEntity(
-    entity: string
+    entity: string,
+    connectionName?: string
 ): (target: Record<string, any>, key: string | symbol, index?: number) => void {
-    return InjectModel(entity);
+    return InjectModel(entity, connectionName || DATABASE_CONNECTION_NAME);
 }

@@ -116,7 +116,7 @@ Let's go into deep ! 🚀
 
 ## Endpoints
 
-See our [e2e testing][ack-e2e]
+Import [endpoints.json][ack-endpoint] into postman or see our [e2e testing][ack-e2e]
 
 ## Microservice
 
@@ -173,6 +173,7 @@ Thanks goes to these wonderful people
 [ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose/network/members
 [ack-contributors]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose/graphs/contributors
 [ack-history]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose/commits/main
+[ack-endpoint]: /endpoints.json
 
 <!-- ack microservice -->
 [ack-microservice-repo]: https://github.com/andrechristikan/ack-microservice-nestjs-mongoose

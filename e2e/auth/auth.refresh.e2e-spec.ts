@@ -1,7 +1,7 @@
 import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import faker from '@faker-js/faker';
+import { faker } from '@faker-js/faker';
 import { E2E_AUTH_REFRESH_URL } from './auth.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
 import { UserDocument } from 'src/user/schema/user.schema';

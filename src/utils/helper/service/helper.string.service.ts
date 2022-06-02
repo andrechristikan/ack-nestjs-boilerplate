@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import faker from '@faker-js/faker';
+import { faker } from '@faker-js/faker';
 import { IHelperStringRandomOptions } from '../helper.interface';
 
 @Injectable()
