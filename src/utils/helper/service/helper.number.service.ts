@@ -13,8 +13,8 @@ export class HelperNumberService {
     }
 
     random(length: number): number {
-        const min: number = parseInt(`1`.padEnd(length, '0'));
-        const max: number = parseInt(`9`.padEnd(length, '9'));
+        const min: number = Number.parseInt(`1`.padEnd(length, '0'));
+        const max: number = Number.parseInt(`9`.padEnd(length, '9'));
         return this.randomInRange(min, max);
     }
 

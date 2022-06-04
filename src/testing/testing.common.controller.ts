@@ -4,6 +4,7 @@ import { IAuthApiPayload } from 'src/auth/auth.interface';
 import { UserAgent } from 'src/utils/request/request.decorator';
 import { Response } from 'src/utils/response/response.decorator';
 import { IResponse } from 'src/utils/response/response.interface';
+import { GetVersion } from 'src/utils/version/version.decorator';
 import { IResult } from 'ua-parser-js';
 
 @Controller({
@@ -15,8 +16,9 @@ export class TestingCommonController {
     @Get('/hello')
     async hello(
         @UserAgent() userAgent: IResult,
-        @ApiKey() apiKey: IAuthApiPayload
+        @ApiKey() apiKey: IAuthApiPayload,
+        @GetVersion() version: number
     ): Promise<IResponse> {
-        return { userAgent, apiKey };
+        return { userAgent, apiKey, version };
     }
 }

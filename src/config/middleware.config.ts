@@ -38,7 +38,8 @@ export default registerAs(
         },
         timestamp: {
             toleranceTimeInMinutes:
-                parseInt(process.env.MIDDLEWARE_TOLERANCE_TIMESTAMP) || 5, // 5 mins
+                Number.parseInt(process.env.MIDDLEWARE_TOLERANCE_TIMESTAMP) ||
+                5, // 5 mins
         },
     })
 );

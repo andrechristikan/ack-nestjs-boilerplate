@@ -71,7 +71,7 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
                 });
             }
 
-            const statusCode: number = parseInt(info as string);
+            const statusCode: number = Number.parseInt(info as string);
 
             if (
                 statusCode ===

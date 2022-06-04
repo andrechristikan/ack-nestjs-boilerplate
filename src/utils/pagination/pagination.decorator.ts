@@ -51,11 +51,11 @@ export function PaginationPage(page = PAGINATION_DEFAULT_PAGE): any {
             ({ value }) =>
                 !value
                     ? page
-                    : value && isNaN(value)
+                    : value && Number.isNaN(value)
                     ? page
-                    : parseInt(value) > PAGINATION_DEFAULT_MAX_PAGE
+                    : Number.parseInt(value) > PAGINATION_DEFAULT_MAX_PAGE
                     ? PAGINATION_DEFAULT_MAX_PAGE
-                    : parseInt(value),
+                    : Number.parseInt(value),
             {
                 toClassOnly: true,
             }
@@ -70,11 +70,11 @@ export function PaginationPerPage(perPage = PAGINATION_DEFAULT_PER_PAGE): any {
             ({ value }) =>
                 !value
                     ? perPage
-                    : value && isNaN(value)
+                    : value && Number.isNaN(value)
                     ? perPage
-                    : parseInt(value) > PAGINATION_DEFAULT_MAX_PER_PAGE
+                    : Number.parseInt(value) > PAGINATION_DEFAULT_MAX_PER_PAGE
                     ? PAGINATION_DEFAULT_MAX_PER_PAGE
-                    : parseInt(value),
+                    : Number.parseInt(value),
             {
                 toClassOnly: true,
             }

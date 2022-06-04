@@ -1,3 +1,3 @@
-export interface IVersionOptions {
+export interface IVersionSerializationOptions {
     version: number;
 }

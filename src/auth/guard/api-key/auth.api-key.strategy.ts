@@ -66,7 +66,7 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
         const deKeys: string[] = Object.keys(decrypted);
         const hasKey: boolean = keys.every((key) => deKeys.includes(key));
 
-        const timestamp: number = parseInt(
+        const timestamp: number = Number.parseInt(
             req.headers['x-timestamp'] as string
         );
 

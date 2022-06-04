@@ -11,14 +11,18 @@ async function bootstrap() {
     const tz: string = configService.get<string>('app.timezone');
     const host: string = configService.get<string>('app.http.host');
     const port: number = configService.get<number>('app.http.port');
-    const versioning: boolean = configService.get<boolean>('app.versioning');
+    const globalPrefix: string = configService.get<string>('app.globalPrefix');
+    const versioning: boolean = configService.get<boolean>('app.versioning.on');
+    const versioningPrefix: string = configService.get<string>(
+        'app.versioning.prefix'
+    );
 
     const logger = new Logger();
     process.env.TZ = tz;
     process.env.NODE_ENV = env;
 
     // Global Prefix
-    app.setGlobalPrefix('/api');
+    app.setGlobalPrefix(globalPrefix);
     useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
     // Versioning
@@ -26,6 +30,7 @@ async function bootstrap() {
         app.enableVersioning({
             type: VersioningType.URI,
             defaultVersion: VERSION_NEUTRAL,
+            prefix: versioningPrefix,
         });
     }
 
