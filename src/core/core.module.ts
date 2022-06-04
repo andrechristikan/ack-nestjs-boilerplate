@@ -17,6 +17,7 @@ import { LoggerModule } from 'src/logger/logger.module';
 import { RequestModule } from 'src/utils/request/request.module';
 import { ErrorModule } from 'src/utils/error/error.module';
 import { SettingModule } from 'src/setting/setting.module';
+import { VersionModule } from 'src/utils/version/version.module';
 
 @Module({
     controllers: [],
@@ -49,6 +50,7 @@ import { SettingModule } from 'src/setting/setting.module';
         PaginationModule,
         SettingModule,
         RequestModule,
+        VersionModule,
         MiddlewareModule,
         LoggerModule,
         AuthModule,

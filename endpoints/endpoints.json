@@ -11,17 +11,65 @@
 			"item": [
 				{
 					"name": "hello",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Set Function",
+									"const cryptoJs = require('crypto-js');",
+									"const { AES, enc, mode, pad } = cryptoJs;",
+									"const setUtils = {",
+									"    getCurrentTimestamp: function() {",
+									"        return Date.now();",
+									"    },",
+									"    createXApiKey: function (data, key, iv){",
+									"        const cIv = enc.Utf8.parse(iv);",
+									"        const cipher = AES.encrypt(",
+									"            JSON.stringify(data), ",
+									"            key, ",
+									"            {",
+									"                mode: mode.CBC,",
+									"                padding: pad.Pkcs7,",
+									"                iv: cIv,",
+									"            }",
+									"        );",
+									"",
+									"        return cipher.toString();",
+									"    }",
+									"}",
+									"pm.globals.set('utils', setUtils);",
+									"let utils = eval(pm.globals.get(\"utils\"));",
+									"",
+									"// Set x-timestamp",
+									"pm.environment.set(\"xTimestamp\", utils.getCurrentTimestamp());",
+									"",
+									"// Set x-api-key",
+									"const xTimestamp = pm.environment.get(\"xTimestamp\");",
+									"const apiKey = pm.environment.get(\"ApiKey\");",
+									"const apiHash = pm.environment.get(\"ApiHash\");",
+									"const apiEncryptionKey = pm.environment.get(\"ApiEncryptionKey\");",
+									"const apiPassphrase = pm.environment.get(\"ApiPassphrase\");",
+									"const apiPayload = {",
+									"    \"key\": apiKey,",
+									"    \"timestamp\": parseInt(xTimestamp),",
+									"    \"hash\": apiHash",
+									"}",
+									"const apiEncrypted = utils.createXApiKey(apiPayload, apiEncryptionKey, apiPassphrase);",
+									"const xApiKey = `${apiKey}:${apiEncrypted}`;",
+									"pm.environment.set(\"ApiEncrypted\", apiEncrypted);",
+									"pm.environment.set(\"xApiKey\", xApiKey);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "GET",
 						"header": [
 							{
 								"key": "x-timestamp",
 								"value": "{{xTimestamp}}",
-								"type": "text"
-							},
-							{
-								"key": "x-api-key",
-								"value": "{{xApiKey}}",
 								"type": "text"
 							},
 							{
@@ -53,21 +101,6 @@
 										"type": "text"
 									},
 									{
-										"key": "x-api-key",
-										"value": "{{xApiKey}}",
-										"type": "text"
-									},
-									{
-										"key": "Authorization",
-										"value": "Bearer {{AccessToken}}",
-										"type": "text"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
-									},
-									{
 										"key": "User-Agent",
 										"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
 										"type": "text"
@@ -92,28 +125,13 @@
 							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"This is test endpoint.\",\n    \"data\": {\n        \"userAgent\": {\n            \"ua\": \"PostmanRuntime/7.29.0\",\n            \"browser\": {},\n            \"engine\": {},\n            \"os\": {},\n            \"device\": {},\n            \"cpu\": {}\n        },\n        \"apiKey\": {}\n    }\n}"
 						},
 						{
-							"name": "success with language",
+							"name": "success multi language",
 							"originalRequest": {
 								"method": "GET",
 								"header": [
 									{
 										"key": "x-timestamp",
 										"value": "{{xTimestamp}}",
-										"type": "text"
-									},
-									{
-										"key": "x-api-key",
-										"value": "{{xApiKey}}",
-										"type": "text"
-									},
-									{
-										"key": "Authorization",
-										"value": "Bearer {{AccessToken}}",
-										"type": "text"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json",
 										"type": "text"
 									},
 									{
@@ -144,6 +162,45 @@
 							"header": null,
 							"cookie": [],
 							"body": "{\n    \"statusCode\": 200,\n    \"message\": {\n        \"en\": \"This is test endpoint.\",\n        \"id\": \"Ini adalah endpoint test\"\n    },\n    \"data\": {\n        \"userAgent\": {\n            \"ua\": \"PostmanRuntime/7.29.0\",\n            \"browser\": {},\n            \"engine\": {},\n            \"os\": {},\n            \"device\": {},\n            \"cpu\": {}\n        },\n        \"apiKey\": {}\n    }\n}"
+						},
+						{
+							"name": "success version",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-timestamp",
+										"value": "{{xTimestamp}}",
+										"type": "text"
+									},
+									{
+										"key": "User-Agent",
+										"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
+										"type": "text"
+									},
+									{
+										"key": "x-custom-lang",
+										"value": "en",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello",
+									"host": [
+										"{{BaseUrl}}{{PrefixUrl}}"
+									],
+									"path": [
+										"test",
+										"hello"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 200,\n    \"message\": {\n        \"en\": \"This is test endpoint.\",\n        \"id\": \"Ini adalah endpoint test\"\n    },\n    \"data\": {\n        \"userAgent\": {\n            \"ua\": \"PostmanRuntime/7.29.0\",\n            \"browser\": {},\n            \"engine\": {},\n            \"os\": {},\n            \"device\": {},\n            \"cpu\": {}\n        },\n        \"apiKey\": {},\n        \"version\": 1\n    }\n}"
 						}
 					]
 				}

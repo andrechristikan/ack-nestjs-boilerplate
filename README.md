@@ -131,6 +131,7 @@ Distributed under [MIT licensed][license].
 Thanks goes to these wonderful people
 
 ### Boilerplate
+
 <table><tr><td align="center"><a href="https://github.com/PSheon"><img src="https://avatars.githubusercontent.com/u/20603727?v=4" width="80px;" alt="Tiaamoo"/><br /><sub><b>Tiaamoo</b></sub></a><br /></td></tr></table>
 
 ### Documentation
@@ -179,7 +180,7 @@ Thanks goes to these wonderful people
 [ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose/network/members
 [ack-contributors]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose/graphs/contributors
 [ack-history]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose/commits/main
-[ack-endpoint]: /endpoints.json
+[ack-endpoint]: /endpoints/endpoints.json
 
 <!-- ack microservice -->
 [ack-microservice-repo]: https://github.com/andrechristikan/ack-microservice-nestjs-mongoose

@@ -11,9 +11,13 @@ export default registerAs(
 
         http: {
             host: process.env.APP_HOST || 'localhost',
-            port: parseInt(process.env.APP_PORT) || 3000,
+            port: Number.parseInt(process.env.APP_PORT) || 3000,
         },
-        versioning: process.env.APP_VERSIONING === 'true' || false,
+        globalPrefix: '/api',
+        versioning: {
+            on: process.env.APP_VERSIONING === 'true' || false,
+            prefix: 'v',
+        },
         debug: process.env.APP_DEBUG === 'true' || false,
         debugger: {
             http: {

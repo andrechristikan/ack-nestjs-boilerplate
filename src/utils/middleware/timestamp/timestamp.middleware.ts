@@ -20,7 +20,7 @@ export class TimestampMiddleware implements NestMiddleware {
             );
             const ts: string = req.headers['x-timestamp'] as string;
             const check: boolean = this.helperDateService.check(
-                isNaN(parseInt(ts)) ? ts : parseInt(ts)
+                Number.isNaN(Number.parseInt(ts)) ? ts : Number.parseInt(ts)
             );
             if (!ts || !check) {
                 throw new ForbiddenException({
@@ -31,7 +31,7 @@ export class TimestampMiddleware implements NestMiddleware {
             }
 
             const timestamp = this.helperDateService.create(
-                isNaN(parseInt(ts)) ? ts : parseInt(ts)
+                Number.isNaN(Number.parseInt(ts)) ? ts : Number.parseInt(ts)
             );
             const toleranceMin = this.helperDateService.backwardInMinutes(
                 toleranceTimeInMinutes
