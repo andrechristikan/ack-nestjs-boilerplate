@@ -129,6 +129,12 @@ Distributed under [MIT licensed][license].
 ## Contributors
 
 Thanks goes to these wonderful people
+
+### Boilerplate
+<table><tr><td align="center"><a href="https://github.com/PSheon"><img src="https://avatars.githubusercontent.com/u/20603727?v=4" width="80px;" alt="Tiaamoo"/><br /><sub><b>Tiaamoo</b></sub></a><br /></td></tr></table>
+
+### Documentation
+
 <table><tr><td align="center"><a href="https://github.com/tiaamoo"><img src="https://avatars.githubusercontent.com/u/97380402?v=4" width="80px;" alt="Tiaamoo"/><br /><sub><b>Tiaamoo</b></sub></a><br /></td></tr></table>
 
 ## Contact
