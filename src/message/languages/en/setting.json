@@ -1,0 +1,9 @@
+{
+  "list": "List Setting Success.",
+  "get": "Get Setting Success.",
+  "getByName": "Get Setting by name Success.",
+  "update": "Update Succeed",
+  "error": {
+      "notFound": "Setting not found"
+  }
+}
