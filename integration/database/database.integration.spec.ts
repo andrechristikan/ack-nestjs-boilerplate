@@ -7,7 +7,7 @@ import { HealthModule } from 'src/health/health.module';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
-import { E2E_DATABASE_INTEGRATION_URL } from './database.constant';
+import { INTEGRATION_DATABASE_URL } from './database.constant';
 import { AuthApiService } from 'src/auth/service/auth.api.service';
 
 describe('Database Integration', () => {
@@ -44,9 +44,9 @@ describe('Database Integration', () => {
         await app.init();
     });
 
-    it(`GET ${E2E_DATABASE_INTEGRATION_URL} Success`, async () => {
+    it(`GET ${INTEGRATION_DATABASE_URL} Success`, async () => {
         const response = await request(app.getHttpServer())
-            .get(E2E_DATABASE_INTEGRATION_URL)
+            .get(INTEGRATION_DATABASE_URL)
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);

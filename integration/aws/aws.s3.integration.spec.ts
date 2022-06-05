@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import { CoreModule } from 'src/core/core.module';
 import { HealthCommonController } from 'src/health/controller/health.common.controller';
 import { HealthModule } from 'src/health/health.module';
-import { E2E_AWS_INTEGRATION_URL } from './aws.s3.constant';
+import { INTEGRATION_AWS_URL } from './aws.s3.constant';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
 import { TerminusModule } from '@nestjs/terminus';
@@ -44,9 +44,9 @@ describe('Aws S3 Integration', () => {
         await app.init();
     });
 
-    it(`GET ${E2E_AWS_INTEGRATION_URL} Success`, async () => {
+    it(`GET ${INTEGRATION_AWS_URL} Success`, async () => {
         const response = await request(app.getHttpServer())
-            .get(E2E_AWS_INTEGRATION_URL)
+            .get(INTEGRATION_AWS_URL)
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);

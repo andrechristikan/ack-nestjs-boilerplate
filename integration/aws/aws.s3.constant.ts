@@ -1,1 +1,1 @@
-export const E2E_AWS_INTEGRATION_URL = '/health/aws';
+export const INTEGRATION_AWS_URL = '/health/aws';
