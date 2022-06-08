@@ -132,11 +132,41 @@ Thanks goes to these wonderful people
 
 ### Boilerplate
 
-<table><tr><td align="center"><a href="https://github.com/PSheon"><img src="https://avatars.githubusercontent.com/u/20603727?v=4" width="80px;" alt="Tiaamoo"/><br /><sub><b>Tiaamoo</b></sub></a><br /></td></tr></table>
+<table>
+    <tr>
+        <td align="center">
+            <a href="https://github.com/PSheon">
+                <img src="https://avatars.githubusercontent.com/u/20603727?v=4" width="80px;" alt="PSheon"/>
+                <br />
+                <sub> <b> PSheon </b> </sub>
+            </a>
+            <br />
+        </td>
+        <td align="center">
+            <a href="https://github.com/aallithioo">
+                <img src="https://avatars.githubusercontent.com/u/33598841?v=4" width="80px;" alt="aallithioo"/>
+                <br />
+                <sub> <b> aallithioo </b> </sub>
+            </a>
+            <br />
+        </td>
+    </tr>
+</table>
 
 ### Documentation
 
-<table><tr><td align="center"><a href="https://github.com/tiaamoo"><img src="https://avatars.githubusercontent.com/u/97380402?v=4" width="80px;" alt="Tiaamoo"/><br /><sub><b>Tiaamoo</b></sub></a><br /></td></tr></table>
+<table>
+    <tr>
+        <td align="center">
+            <a href="https://github.com/tiaamoo">
+                <img src="https://avatars.githubusercontent.com/u/97380402?v=4" width="80px;" alt="Tiaamoo"/>
+                <br />
+                <sub> <b> Tiaamoo </b> </sub>
+            </a>
+            <br />
+        </td>
+    </tr>
+</table>
 
 ## Contact
 
