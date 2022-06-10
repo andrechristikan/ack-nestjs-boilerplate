@@ -53,7 +53,9 @@ export class AuthCommonController {
         private readonly loggerService: LoggerService
     ) {}
 
-    @Response('auth.login', ENUM_AUTH_STATUS_CODE_SUCCESS.AUTH_LOGIN_SUCCESS)
+    @Response('auth.login', {
+        statusCode: ENUM_AUTH_STATUS_CODE_SUCCESS.AUTH_LOGIN_SUCCESS,
+    })
     @HttpCode(HttpStatus.OK)
     @Post('/login')
     async login(
