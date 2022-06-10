@@ -6,18 +6,15 @@ export class AuthLoginSerialization {
     @Type(() => String)
     readonly _id: string;
 
-    @Transform(
-        ({ value }) => ({
-            name: value.name,
-            permissions: value.permissions.map((val: Record<string, any>) => ({
-                code: val.code,
-                isActive: val.isActive,
-            })),
-            isActive: value.isActive,
-            isAdmin: value.isAdmin,
-        }),
-        { toClassOnly: true }
-    )
+    @Transform(({ value }) => ({
+        name: value.name,
+        permissions: value.permissions.map((val: Record<string, any>) => ({
+            code: val.code,
+            isActive: val.isActive,
+        })),
+        isActive: value.isActive,
+        isAdmin: value.isAdmin,
+    }))
     readonly role: IRoleDocument;
 
     readonly email: string;

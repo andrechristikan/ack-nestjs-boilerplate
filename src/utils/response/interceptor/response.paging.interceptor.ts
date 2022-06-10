@@ -11,12 +11,16 @@ import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { IMessage } from 'src/message/message.interface';
 import { MessageService } from 'src/message/service/message.service';
-import { PAGINATION_DEFAULT_MAX_PAGE } from 'src/utils/pagination/pagination.constant';
+import {
+    ENUM_PAGINATION_TYPE,
+    PAGINATION_DEFAULT_MAX_PAGE,
+} from 'src/utils/pagination/pagination.constant';
+import { IResponsePagingOptions } from '../response.interface';
 
 // This interceptor for restructure response success
 export function ResponsePagingInterceptor(
     messagePath: string,
-    customStatusCode: number
+    options?: IResponsePagingOptions
 ): Type<NestInterceptor> {
     @Injectable()
     class MixinResponseInterceptor implements NestInterceptor<Promise<any>> {
@@ -38,18 +42,25 @@ export function ResponsePagingInterceptor(
             return next.handle().pipe(
                 map(async (response: Promise<Record<string, any>>) => {
                     const statusCode: number =
-                        customStatusCode || responseExpress.statusCode;
+                        options && options.statusCode
+                            ? options.statusCode
+                            : responseExpress.statusCode;
                     const responseData: Record<string, any> = await response;
                     const {
                         totalData,
                         currentPage,
                         perPage,
                         data,
+                        metadata,
                         availableSort,
                         availableSearch,
                     } = responseData;
 
                     let { totalPage } = responseData;
+                    totalPage =
+                        totalPage > PAGINATION_DEFAULT_MAX_PAGE
+                            ? PAGINATION_DEFAULT_MAX_PAGE
+                            : totalPage;
 
                     const message: string | IMessage =
                         (await this.messageService.get(messagePath, {
@@ -57,10 +68,32 @@ export function ResponsePagingInterceptor(
                         })) ||
                         (await this.messageService.get('response.default'));
 
-                    totalPage =
-                        totalPage > PAGINATION_DEFAULT_MAX_PAGE
-                            ? PAGINATION_DEFAULT_MAX_PAGE
-                            : totalPage;
+                    if (
+                        options &&
+                        options.type === ENUM_PAGINATION_TYPE.SIMPLE
+                    ) {
+                        return {
+                            statusCode,
+                            message,
+                            totalData,
+                            totalPage,
+                            currentPage,
+                            perPage,
+                            metadata,
+                            data,
+                        };
+                    } else if (
+                        options &&
+                        options.type === ENUM_PAGINATION_TYPE.MINI
+                    ) {
+                        return {
+                            statusCode,
+                            message,
+                            totalData,
+                            metadata,
+                            data,
+                        };
+                    }
 
                     return {
                         statusCode,
@@ -71,6 +104,7 @@ export function ResponsePagingInterceptor(
                         perPage,
                         availableSort,
                         availableSearch,
+                        metadata,
                         data,
                     };
                 })

@@ -1,4 +1,4 @@
-import { PaginationListAbstract } from 'src/utils/pagination/pagination.abstract';
+import { PaginationFullListAbstract } from 'src/utils/pagination/pagination.abstract';
 import {
     PaginationAvailableSearch,
     PaginationAvailableSort,
@@ -16,7 +16,7 @@ import {
     ROLE_DEFAULT_SORT,
 } from '../role.constant';
 
-export class RoleListDto implements PaginationListAbstract {
+export class RoleListDto implements PaginationFullListAbstract {
     @PaginationSearch()
     readonly search: string;
 

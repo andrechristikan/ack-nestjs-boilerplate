@@ -15,7 +15,6 @@ export class UserGetSerialization {
             })),
             isActive: value.isActive,
         }),
-        { toClassOnly: true }
     )
     readonly role: IRoleDocument;
 

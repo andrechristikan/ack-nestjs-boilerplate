@@ -6,17 +6,14 @@ export class UserProfileSerialization {
     @Type(() => String)
     readonly _id: string;
 
-    @Transform(
-        ({ value }) => ({
-            name: value.name,
-            permissions: value.permissions.map((val: Record<string, any>) => ({
-                name: val.name,
-                isActive: val.isActive,
-            })),
-            isActive: value.isActive,
-        }),
-        { toClassOnly: true }
-    )
+    @Transform(({ value }) => ({
+        name: value.name,
+        permissions: value.permissions.map((val: Record<string, any>) => ({
+            name: val.name,
+            isActive: val.isActive,
+        })),
+        isActive: value.isActive,
+    }))
     readonly role: IRoleDocument;
 
     readonly firstName: string;

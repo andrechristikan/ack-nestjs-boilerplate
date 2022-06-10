@@ -1,4 +1,4 @@
-import { PaginationListAbstract } from 'src/utils/pagination/pagination.abstract';
+import { PaginationFullListAbstract } from 'src/utils/pagination/pagination.abstract';
 import {
     PaginationAvailableSearch,
     PaginationAvailableSort,
@@ -18,7 +18,7 @@ import {
     PERMISSION_DEFAULT_SORT,
 } from '../permission.constant';
 
-export class PermissionListDto implements PaginationListAbstract {
+export class PermissionListDto implements PaginationFullListAbstract {
     @PaginationSearch()
     readonly search: string;
 

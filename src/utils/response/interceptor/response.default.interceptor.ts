@@ -11,10 +11,11 @@ import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { IMessage } from 'src/message/message.interface';
 import { MessageService } from 'src/message/service/message.service';
+import { IResponseOptions } from '../response.interface';
 
 export function ResponseDefaultInterceptor(
     messagePath: string,
-    customStatusCode?: number
+    options?: IResponseOptions
 ): Type<NestInterceptor> {
     @Injectable()
     class MixinResponseDefaultInterceptor
@@ -39,7 +40,9 @@ export function ResponseDefaultInterceptor(
             return next.handle().pipe(
                 map(async (response: Promise<Record<string, any>>) => {
                     const statusCode: number =
-                        customStatusCode || responseExpress.statusCode;
+                        options && options.statusCode
+                            ? options.statusCode
+                            : responseExpress.statusCode;
                     const data: Record<string, any> = await response;
                     const message: string | IMessage =
                         (await this.messageService.get(messagePath, {

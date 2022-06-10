@@ -9,15 +9,13 @@ export class RoleGetSerialization {
     readonly name: string;
     readonly isAdmin: boolean;
 
-    @Transform(
-        ({ obj }) =>
-            obj.permissions.map((val) => ({
-                _id: `${val._id}`,
-                code: val.code,
-                name: val.name,
-                isActive: val.isActive,
-            })),
-        { toClassOnly: true }
+    @Transform(({ obj }) =>
+        obj.permissions.map((val) => ({
+            _id: `${val._id}`,
+            code: val.code,
+            name: val.name,
+            isActive: val.isActive,
+        }))
     )
     readonly permissions: PermissionDocument[];
 
