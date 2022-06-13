@@ -1,4 +1,4 @@
-import { PaginationFullListAbstract } from 'src/utils/pagination/pagination.abstract';
+import { PaginationListAbstract } from 'src/utils/pagination/pagination.abstract';
 import {
     PaginationAvailableSearch,
     PaginationAvailableSort,
@@ -16,7 +16,7 @@ import {
     SETTING_DEFAULT_SORT,
 } from '../setting.constant';
 
-export class SettingListDto implements PaginationFullListAbstract {
+export class SettingListDto implements PaginationListAbstract {
     @PaginationSearch()
     readonly search: string;
 

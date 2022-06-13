@@ -1,6 +1,6 @@
 import { IPaginationSort } from './pagination.interface';
 
-export abstract class PaginationFullListAbstract {
+export abstract class PaginationListAbstract {
     abstract search?: string;
     abstract availableSearch?: string[];
     abstract page?: number;
