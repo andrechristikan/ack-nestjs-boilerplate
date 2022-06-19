@@ -1,6 +1,6 @@
 {
   "name": "ack-nestjs-boilerplate-mongoose",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "Ack NestJs BoilerPlate Mongoose",
   "repository": {
     "type": "git",
@@ -51,7 +51,7 @@
     "@nestjs/passport": "^8.2.2",
     "@nestjs/platform-express": "^8.4.7",
     "@nestjs/schedule": "^2.0.1",
-    "@nestjs/terminus": "^8.0.6",
+    "@nestjs/terminus": "^8.0.8",
     "@types/response-time": "^2.3.5",
     "bcrypt": "^5.0.1",
     "cache-manager": "^4.0.1",
