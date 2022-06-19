@@ -29,6 +29,8 @@ export default registerAs(
                 'x-custom-lang',
                 'x-timestamp',
                 'x-api-key',
+                'x-timezone',
+                'x-request-id',
                 'user-agent',
             ],
         },
@@ -40,6 +42,15 @@ export default registerAs(
             toleranceTimeInMinutes:
                 Number.parseInt(process.env.MIDDLEWARE_TOLERANCE_TIMESTAMP) ||
                 5, // 5 mins
+        },
+        cache: {
+            ttl: 30, // 30sec
+            max: 5, // maximum number of items in cache
+        },
+        timeout: {
+            in: process.env.MIDDLEWARE_TIMEOUT
+                ? parseInt(process.env.MIDDLEWARE_TIMEOUT) * 1000
+                : 30 * 1000, // 30s based on ms module
         },
     })
 );

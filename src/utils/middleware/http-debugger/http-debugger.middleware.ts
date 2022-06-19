@@ -13,6 +13,7 @@ import {
     DEBUGGER_HTTP_FORMAT,
     DEBUGGER_HTTP_NAME,
 } from './http-debugger.constant';
+import { CacheService } from 'src/cache/service/cache.service';
 
 @Injectable()
 export class HttpDebuggerMiddleware implements NestMiddleware {
@@ -20,6 +21,7 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
     private readonly maxFiles: number;
 
     constructor(
+        private readonly cacheService: CacheService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
     ) {
@@ -48,9 +50,12 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
         );
     }
 
-    private httpLogger(): IHttpDebuggerConfig {
+    private async httpLogger(): Promise<IHttpDebuggerConfig> {
         const date: string = this.helperDateService.format(
-            this.helperDateService.create()
+            this.helperDateService.create({
+                timezone: await this.cacheService.getTimezone(),
+            }),
+            { timezone: await this.cacheService.getTimezone() }
         );
         const HttpDebuggerOptions: IHttpDebuggerConfigOptions = {
             stream: createStream(`${date}.log`, {
@@ -68,8 +73,8 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
         };
     }
 
-    use(req: Request, res: Response, next: NextFunction): void {
-        const config: IHttpDebuggerConfig = this.httpLogger();
+    async use(req: Request, res: Response, next: NextFunction): Promise<void> {
+        const config: IHttpDebuggerConfig = await this.httpLogger();
         this.customToken();
         morgan(config.debuggerHttpFormat, config.HttpDebuggerOptions)(
             req,

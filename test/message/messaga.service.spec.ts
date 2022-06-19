@@ -1,9 +1,15 @@
 import { Test } from '@nestjs/testing';
+import { ValidationError } from 'class-validator';
 import { CoreModule } from 'src/core/core.module';
 import { MessageService } from 'src/message/service/message.service';
 
 describe('MessageService', () => {
     let messageService: MessageService;
+
+    let validationError: ValidationError[];
+    let validationErrorTwo: ValidationError[];
+    let validationErrorThree: ValidationError[];
+    let validationErrorConstrainEmpty: ValidationError[];
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
@@ -11,30 +17,8 @@ describe('MessageService', () => {
         }).compile();
 
         messageService = moduleRef.get<MessageService>(MessageService);
-    });
 
-    it('should be defined', () => {
-        expect(messageService).toBeDefined();
-    });
-
-    describe('get', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(messageService, 'get');
-
-            await messageService.get('test.hello');
-            expect(test).toHaveBeenCalledWith('test.hello');
-        });
-
-        it('should be success', async () => {
-            const message = messageService.get('test.hello');
-            jest.spyOn(messageService, 'get').mockImplementation(() => message);
-
-            expect(messageService.get('test.hello')).toBe(message);
-        });
-    });
-
-    describe('getRequestErrorsMessage', () => {
-        const validationError = [
+        validationError = [
             {
                 target: {
                     email: 'adminmail.com',
@@ -48,7 +32,7 @@ describe('MessageService', () => {
             },
         ];
 
-        const validationErrorTwo = [
+        validationErrorTwo = [
             {
                 target: {
                     email: 'adminmail.com',
@@ -76,7 +60,7 @@ describe('MessageService', () => {
             },
         ];
 
-        const validationErrorThree = [
+        validationErrorThree = [
             {
                 target: {
                     email: 'adminmail.com',
@@ -118,6 +102,41 @@ describe('MessageService', () => {
             },
         ];
 
+        validationErrorConstrainEmpty = [
+            {
+                target: {
+                    email: 'adminmail.com',
+                    password: 'aaAA@@123444',
+                    rememberMe: true,
+                },
+                value: 'adminmail.com',
+                property: 'email',
+                children: [],
+            },
+        ];
+    });
+
+    it('should be defined', () => {
+        expect(messageService).toBeDefined();
+    });
+
+    describe('get', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(messageService, 'get');
+
+            await messageService.get('test.hello');
+            expect(test).toHaveBeenCalledWith('test.hello');
+        });
+
+        it('should be success', async () => {
+            const message = messageService.get('test.hello');
+            jest.spyOn(messageService, 'get').mockImplementation(() => message);
+
+            expect(messageService.get('test.hello')).toBe(message);
+        });
+    });
+
+    describe('getRequestErrorsMessage', () => {
         it('should be called', async () => {
             const test = jest.spyOn(messageService, 'getRequestErrorsMessage');
 
@@ -214,6 +233,22 @@ describe('MessageService', () => {
             expect(
                 await messageService.getRequestErrorsMessage(
                     validationErrorThree
+                )
+            ).toBe(message);
+        });
+
+        it('empty constrain should be success', async () => {
+            const message = await messageService.getRequestErrorsMessage(
+                validationErrorConstrainEmpty
+            );
+            jest.spyOn(
+                messageService,
+                'getRequestErrorsMessage'
+            ).mockImplementation(async () => message);
+
+            expect(
+                await messageService.getRequestErrorsMessage(
+                    validationErrorConstrainEmpty
                 )
             ).toBe(message);
         });

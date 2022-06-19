@@ -73,6 +73,31 @@ describe('HelperStringService', () => {
 
             expect(helperStringService.random(5)).toBe(result);
         });
+
+        it('should be success with options prefix', async () => {
+            const result = helperStringService.random(5, { prefix: 'aaa' });
+            jest.spyOn(helperStringService, 'random').mockImplementation(
+                () => result
+            );
+
+            expect(helperStringService.random(5, { prefix: 'aaa' })).toBe(
+                result
+            );
+        });
+
+        it('should be success with options prefix and safe', async () => {
+            const result = helperStringService.random(5, {
+                prefix: 'aaa',
+                safe: true,
+            });
+            jest.spyOn(helperStringService, 'random').mockImplementation(
+                () => result
+            );
+
+            expect(
+                helperStringService.random(5, { prefix: 'aaa', safe: true })
+            ).toBe(result);
+        });
     });
 
     describe('censor', () => {
@@ -121,6 +146,88 @@ describe('HelperStringService', () => {
             expect(helperStringService.censor('12312312312312312312312')).toBe(
                 result
             );
+        });
+    });
+
+    describe('checkStringOrNumber', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(helperStringService, 'checkStringOrNumber');
+
+            helperStringService.checkStringOrNumber('123');
+            expect(test).toHaveBeenCalledWith('123');
+        });
+
+        it('should be success', async () => {
+            const result = helperStringService.checkStringOrNumber('123');
+            jest.spyOn(
+                helperStringService,
+                'checkStringOrNumber'
+            ).mockImplementation(() => result);
+
+            expect(helperStringService.checkStringOrNumber('123')).toBe(result);
+        });
+    });
+
+    describe('convertStringToNumberOrBooleanIfPossible', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(
+                helperStringService,
+                'convertStringToNumberOrBooleanIfPossible'
+            );
+
+            helperStringService.convertStringToNumberOrBooleanIfPossible('123');
+            expect(test).toHaveBeenCalledWith('123');
+        });
+
+        it('should be success string', async () => {
+            const result =
+                helperStringService.convertStringToNumberOrBooleanIfPossible(
+                    'asdasd'
+                );
+            jest.spyOn(
+                helperStringService,
+                'convertStringToNumberOrBooleanIfPossible'
+            ).mockImplementation(() => result);
+
+            expect(
+                helperStringService.convertStringToNumberOrBooleanIfPossible(
+                    'asdasd'
+                )
+            ).toBe(result);
+        });
+
+        it('should be success boolean', async () => {
+            const result =
+                helperStringService.convertStringToNumberOrBooleanIfPossible(
+                    'true'
+                );
+            jest.spyOn(
+                helperStringService,
+                'convertStringToNumberOrBooleanIfPossible'
+            ).mockImplementation(() => result);
+
+            expect(
+                helperStringService.convertStringToNumberOrBooleanIfPossible(
+                    'true'
+                )
+            ).toBe(result);
+        });
+
+        it('should be success number', async () => {
+            const result =
+                helperStringService.convertStringToNumberOrBooleanIfPossible(
+                    '123'
+                );
+            jest.spyOn(
+                helperStringService,
+                'convertStringToNumberOrBooleanIfPossible'
+            ).mockImplementation(() => result);
+
+            expect(
+                helperStringService.convertStringToNumberOrBooleanIfPossible(
+                    '123'
+                )
+            ).toBe(result);
         });
     });
 
@@ -186,6 +293,25 @@ describe('HelperStringService', () => {
             expect(helperStringService.checkPasswordStrong('aaAA12345@!')).toBe(
                 result
             );
+        });
+    });
+
+    describe('checkSafeString', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(helperStringService, 'checkSafeString');
+
+            helperStringService.checkSafeString('123');
+            expect(test).toHaveBeenCalledWith('123');
+        });
+
+        it('should be success', async () => {
+            const result = helperStringService.checkSafeString('123');
+            jest.spyOn(
+                helperStringService,
+                'checkSafeString'
+            ).mockImplementation(() => result);
+
+            expect(helperStringService.checkSafeString('123')).toBe(result);
         });
     });
 });

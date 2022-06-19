@@ -105,11 +105,17 @@ We assume that everyone who comes here is _**`programmer with intermediate knowl
 
 Next development
 
-- [ ] Default Timezone, and custom timezone (by `x-timezone`)
-- [ ] Add response header `x-custom-lang`, `x-timestamp`, and `x-timezone`
-- [ ] Cors optimization allowed header, and allowed method
-- [ ] Versioning Serialization
-- [ ] Update Documentation 
+- [x] Pagination Optimization, Pagination Category
+- [x] Default Timezone, and custom timezone (by `x-timezone`)
+- [x] Add response header `x-custom-lang`, `x-timestamp`, and `x-timezone`, and `x-request-id`
+- [x] Add `x-request-id` middleware
+- [x] Add x-request-id per debugger log, to make more specific log per request
+- [x] Cors optimization allowed header, and allowed method
+- [x] Implement Cache Manager for `x-custom-lang`, `x-timestamp`, and `x-timezone`, and `x-request-id`
+- [x] Response Timeout, custom timeout with decorator
+- [ ] Convert any time using `ms package` in Config Module. Centralize
+- [ ] Update Documentation
+- [ ] Versioning Serialization (Low Priority)
 - [ ] Docker Compose File Mongodb Replication Set (Low Priority)
 - [ ] Swagger (Low Priority)
 

@@ -22,12 +22,17 @@ import { UserAgentMiddleware } from './user-agent/user-agent.middleware';
 import { TimestampMiddleware } from './timestamp/timestamp.middleware';
 import { CompressionMiddleware } from './compression/compression.middleware';
 import { MaintenanceMiddleware } from './maintenance/maintenance.middleware';
+import { RequestMiddleware } from './request/request.middleware';
+import { TimezoneMiddleware } from './timezone/timezone.middleware';
+import { CustomLanguageMiddleware } from './custom-language/custom-language.middleware';
 
 @Module({})
 export class MiddlewareModule implements NestModule {
     configure(consumer: MiddlewareConsumer): void {
         consumer
             .apply(
+                RequestMiddleware,
+                TimezoneMiddleware,
                 JsonBodyParserMiddleware,
                 RawBodyParserMiddleware,
                 HtmlBodyParserMiddleware,
@@ -39,7 +44,8 @@ export class MiddlewareModule implements NestModule {
                 HttpDebuggerMiddleware,
                 HelmetMiddleware,
                 RateLimitMiddleware,
-                UserAgentMiddleware
+                UserAgentMiddleware,
+                CustomLanguageMiddleware
             )
             .forRoutes('*');
 
@@ -48,7 +54,6 @@ export class MiddlewareModule implements NestModule {
             .exclude(
                 {
                     path: 'api/v:version*/callback/(.*)',
-
                     method: RequestMethod.ALL,
                 },
                 {

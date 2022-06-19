@@ -10,11 +10,6 @@ export enum ENUM_HELPER_DATE_FORMAT {
     ISO_DATE = 'YYYY-MM-DDTHH:MM:SSZ',
 }
 
-export interface IHelperDateFormatOptions {
-    timezone?: string;
-    format?: ENUM_HELPER_DATE_FORMAT | string;
-}
-
 export enum ENUM_HELPER_DATE_DIFF {
     MILIS = 'milis',
     SECONDS = 'seconds',
