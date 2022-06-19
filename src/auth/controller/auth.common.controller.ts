@@ -143,15 +143,10 @@ export class AuthCommonController {
             rememberMe
         );
 
-        const today: Date = this.helperDateService.create({
-            timezone: await this.cacheService.getTimezone(),
-        });
-        const passwordExpired: Date = this.helperDateService.create({
-            date: user.passwordExpired,
-            timezone: await this.cacheService.getTimezone(),
-        });
+        const checkPasswordExpired: boolean =
+            await this.authService.checkPasswordExpired(user.passwordExpired);
 
-        if (today > passwordExpired) {
+        if (checkPasswordExpired) {
             this.debuggerService.error(
                 'Password expired',
                 'AuthController',
@@ -235,15 +230,10 @@ export class AuthCommonController {
             });
         }
 
-        const today: Date = this.helperDateService.create({
-            timezone: await this.cacheService.getTimezone(),
-        });
-        const passwordExpired: Date = this.helperDateService.create({
-            date: user.passwordExpired,
-            timezone: await this.cacheService.getTimezone(),
-        });
+        const checkPasswordExpired: boolean =
+            await this.authService.checkPasswordExpired(user.passwordExpired);
 
-        if (today > passwordExpired) {
+        if (checkPasswordExpired) {
             this.debuggerService.error(
                 'Password expired',
                 'AuthController',

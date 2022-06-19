@@ -432,4 +432,38 @@ describe('AuthService', () => {
             ).toBe(validate);
         });
     });
+
+    describe('checkPasswordExpired', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(authService, 'checkPasswordExpired');
+
+            await authService.checkPasswordExpired(user.passwordExpired);
+            expect(test).toHaveBeenCalledWith(user.passwordExpired);
+        });
+
+        it('should be success false', async () => {
+            const result = await authService.checkPasswordExpired(
+                user.passwordExpired
+            );
+            jest.spyOn(authService, 'checkPasswordExpired').mockImplementation(
+                async () => result
+            );
+
+            expect(
+                await authService.checkPasswordExpired(user.passwordExpired)
+            ).toBe(result);
+        });
+
+        it('should be success true', async () => {
+            const expiredDate = new Date('1999-01-01');
+            const result = await authService.checkPasswordExpired(expiredDate);
+            jest.spyOn(authService, 'checkPasswordExpired').mockImplementation(
+                async () => result
+            );
+
+            expect(await authService.checkPasswordExpired(expiredDate)).toBe(
+                result
+            );
+        });
+    });
 });

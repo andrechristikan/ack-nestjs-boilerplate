@@ -166,4 +166,20 @@ export class AuthService {
             salt,
         };
     }
+
+    async checkPasswordExpired(passwordExpired: Date): Promise<boolean> {
+        const today: Date = this.helperDateService.create({
+            timezone: await this.cacheService.getTimezone(),
+        });
+        const passwordExpiredConvert: Date = this.helperDateService.create({
+            date: passwordExpired,
+            timezone: await this.cacheService.getTimezone(),
+        });
+
+        if (today > passwordExpiredConvert) {
+            return true;
+        }
+
+        return false;
+    }
 }
