@@ -31,6 +31,7 @@ export default registerAs(
                 'x-api-key',
                 'x-timezone',
                 'x-request-id',
+                'X-Response-Time',
                 'user-agent',
             ],
         },
