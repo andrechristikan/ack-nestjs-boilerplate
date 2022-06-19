@@ -88,7 +88,7 @@ ack-nestjs-boilerplate-mongoose have some objective.
 - Request Timeout, and Timeout Override ⌛️
 - Dynamic Setting from Database 🗿
 - Maintenance Mode on / off 🐤
-- Cache Manager Impelementation
+- Cache Manager Implementation
 - Advance Example 🥶
 - Support Docker Installation
 - Support CI/CD with Github Action or Jenkins 🤖
