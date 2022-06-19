@@ -39,6 +39,7 @@ import { AuthLoginDto } from '../dto/auth.login.dto';
 import { AuthChangePasswordDto } from '../dto/auth.change-password.dto';
 import { AuthLoginSerialization } from '../serialization/auth.login.serialization';
 import { IAuthApiPayload } from '../auth.interface';
+import { CacheService } from 'src/cache/service/cache.service';
 
 @Controller({
     version: '1',
@@ -46,6 +47,7 @@ import { IAuthApiPayload } from '../auth.interface';
 })
 export class AuthCommonController {
     constructor(
+        private readonly cacheService: CacheService,
         private readonly debuggerService: DebuggerService,
         private readonly helperDateService: HelperDateService,
         private readonly userService: UserService,
@@ -141,10 +143,13 @@ export class AuthCommonController {
             rememberMe
         );
 
-        const today: Date = this.helperDateService.create();
-        const passwordExpired: Date = this.helperDateService.create(
-            user.passwordExpired
-        );
+        const today: Date = this.helperDateService.create({
+            timezone: await this.cacheService.getTimezone(),
+        });
+        const passwordExpired: Date = this.helperDateService.create({
+            date: user.passwordExpired,
+            timezone: await this.cacheService.getTimezone(),
+        });
 
         if (today > passwordExpired) {
             this.debuggerService.error(
@@ -230,10 +235,13 @@ export class AuthCommonController {
             });
         }
 
-        const today: Date = this.helperDateService.create();
-        const passwordExpired: Date = this.helperDateService.create(
-            user.passwordExpired
-        );
+        const today: Date = this.helperDateService.create({
+            timezone: await this.cacheService.getTimezone(),
+        });
+        const passwordExpired: Date = this.helperDateService.create({
+            date: user.passwordExpired,
+            timezone: await this.cacheService.getTimezone(),
+        });
 
         if (today > passwordExpired) {
             this.debuggerService.error(

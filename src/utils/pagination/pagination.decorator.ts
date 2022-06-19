@@ -1,4 +1,4 @@
-import { applyDecorators } from '@nestjs/common';
+import { applyDecorators, UsePipes } from '@nestjs/common';
 import { Expose, Transform, Type } from 'class-transformer';
 import {
     IsBoolean,
@@ -10,6 +10,7 @@ import {
     IsDate,
     IsString,
 } from 'class-validator';
+import { RequestAddDatePipe } from '../request/pipe/request.add-date.pipe';
 import { MinGreaterThan } from '../request/validation/request.min-greater-than.validation';
 import { Skip } from '../request/validation/request.skip.validation';
 import {
@@ -173,13 +174,7 @@ export function PaginationFilterDate(
         options && options.asEndDate
             ? MinGreaterThan(options.asEndDate.moreThanField)
             : Skip(),
-        options && options.asEndDate
-            ? Transform(({ value }) => {
-                  const result = new Date(value);
-                  result.setDate(result.getDate() + 1);
-                  return result;
-              })
-            : Skip()
+        options && options.asEndDate ? UsePipes(RequestAddDatePipe(1)) : Skip()
     );
 }
 

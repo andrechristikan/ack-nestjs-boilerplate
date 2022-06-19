@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
+import { CacheService } from 'src/cache/service/cache.service';
 import { IUserDocument } from 'src/user/user.interface';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { HelperEncryptionService } from 'src/utils/helper/service/helper.encryption.service';
@@ -21,6 +22,7 @@ export class AuthService {
     private readonly refreshTokenNotBeforeExpirationTime: string;
 
     constructor(
+        private readonly cacheService: CacheService,
         private readonly helperHashService: HelperHashService,
         private readonly helperDateService: HelperDateService,
         private readonly helperEncryptionService: HelperEncryptionService,
@@ -64,6 +66,7 @@ export class AuthService {
     async validateAccessToken(token: string): Promise<boolean> {
         return this.helperEncryptionService.jwtVerify(token, {
             secretKey: this.accessTokenSecretToken,
+            expiredIn: this.accessTokenExpirationTime,
         });
     }
 
@@ -88,6 +91,7 @@ export class AuthService {
     async validateRefreshToken(token: string): Promise<boolean> {
         return this.helperEncryptionService.jwtVerify(token, {
             secretKey: this.refreshTokenSecretToken,
+            expiredIn: this.accessTokenExpirationTime,
         });
     }
 
@@ -116,7 +120,9 @@ export class AuthService {
             loginDate:
                 options && options.loginDate
                     ? options.loginDate
-                    : this.helperDateService.create(),
+                    : this.helperDateService.create({
+                          timezone: await this.cacheService.getTimezone(),
+                      }),
         };
     }
 
@@ -150,7 +156,8 @@ export class AuthService {
             'auth.password.expiredInDay'
         );
         const passwordExpired: Date = this.helperDateService.forwardInDays(
-            passwordExpiredInDays
+            passwordExpiredInDays,
+            { timezone: await this.cacheService.getTimezone() }
         );
         const passwordHash = this.helperHashService.bcrypt(password, salt);
         return {

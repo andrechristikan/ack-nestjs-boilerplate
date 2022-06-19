@@ -1,4 +1,5 @@
 import { registerAs } from '@nestjs/config';
+import ms from 'ms';
 
 export default registerAs(
     'helper',
@@ -8,8 +9,8 @@ export default registerAs(
         },
         jwt: {
             secretKey: '123456',
-            expirationTime: '1h',
-            notBeforeExpirationTime: '0',
+            expirationTime: ms('1h'),
+            notBeforeExpirationTime: ms(0),
         },
     })
 );

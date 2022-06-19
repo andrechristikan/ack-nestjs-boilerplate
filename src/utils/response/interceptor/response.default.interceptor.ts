@@ -12,6 +12,8 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { IMessage } from 'src/message/message.interface';
 import { MessageService } from 'src/message/service/message.service';
 import { IResponseOptions } from '../response.interface';
+import { Response } from 'express';
+import { CacheService } from 'src/cache/service/cache.service';
 
 export function ResponseDefaultInterceptor(
     messagePath: string,
@@ -21,21 +23,21 @@ export function ResponseDefaultInterceptor(
     class MixinResponseDefaultInterceptor
         implements NestInterceptor<Promise<any>>
     {
-        constructor(private readonly messageService: MessageService) {}
+        constructor(
+            private readonly cacheService: CacheService,
+            private readonly messageService: MessageService
+        ) {}
 
         async intercept(
             context: ExecutionContext,
             next: CallHandler
         ): Promise<Observable<Promise<any> | string>> {
             const ctx: HttpArgumentsHost = context.switchToHttp();
-            const responseExpress: any = ctx.getResponse();
+            const responseExpress: Response = ctx.getResponse();
 
-            const request: Request = ctx.getRequest<Request>();
-            const { headers } = request;
-
-            const appLanguages: string[] = headers['x-custom-lang']
-                ? ctx.getRequest().i18nLang.split(',')
-                : undefined;
+            const customLanguages: string[] = (
+                await this.cacheService.get<string>('x-custom-lang')
+            ).split(',');
 
             return next.handle().pipe(
                 map(async (response: Promise<Record<string, any>>) => {
@@ -46,9 +48,11 @@ export function ResponseDefaultInterceptor(
                     const data: Record<string, any> = await response;
                     const message: string | IMessage =
                         (await this.messageService.get(messagePath, {
-                            appLanguages,
+                            customLanguages,
                         })) ||
-                        (await this.messageService.get('response.default'));
+                        (await this.messageService.get('response.default', {
+                            customLanguages,
+                        }));
 
                     return {
                         statusCode,

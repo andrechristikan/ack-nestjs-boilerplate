@@ -36,6 +36,24 @@ describe('HelperNumberService', () => {
         });
     });
 
+    describe('convert', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(helperNumberService, 'convert');
+
+            helperNumberService.convert('111');
+            expect(test).toHaveBeenCalledWith('111');
+        });
+
+        it('should be success', async () => {
+            const result = helperNumberService.convert('111');
+            jest.spyOn(helperNumberService, 'convert').mockImplementation(
+                () => result
+            );
+
+            expect(helperNumberService.convert('111')).toBe(result);
+        });
+    });
+
     describe('random', () => {
         it('should be called', async () => {
             const test = jest.spyOn(helperNumberService, 'random');

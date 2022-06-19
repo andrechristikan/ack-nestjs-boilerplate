@@ -1,11 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { CacheService } from 'src/cache/service/cache.service';
 
 @Injectable()
 export class DebuggerService {
     constructor(
-        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+        private readonly cacheService: CacheService
     ) {}
 
     info(
@@ -14,10 +16,13 @@ export class DebuggerService {
         sFunction: string,
         data?: any
     ): void {
-        this.logger.info(description, {
-            class: sClass,
-            function: sFunction,
-            data,
+        this.cacheService.getRequestId().then((request: string) => {
+            this.logger.info(description, {
+                request: request || 'unknown',
+                class: sClass,
+                function: sFunction,
+                data,
+            });
         });
     }
 
@@ -27,10 +32,13 @@ export class DebuggerService {
         sFunction: string,
         data?: any
     ): void {
-        this.logger.debug(description, {
-            class: sClass,
-            function: sFunction,
-            data,
+        this.cacheService.getRequestId().then((request: string) => {
+            this.logger.debug(description, {
+                request: request || 'unknown',
+                class: sClass,
+                function: sFunction,
+                data,
+            });
         });
     }
 
@@ -40,10 +48,13 @@ export class DebuggerService {
         sFunction: string,
         error?: any
     ): void {
-        this.logger.error(description, {
-            class: sClass,
-            function: sFunction,
-            error,
+        this.cacheService.getRequestId().then((request: string) => {
+            this.logger.error(description, {
+                request: request || 'unknown',
+                class: sClass,
+                function: sFunction,
+                error,
+            });
         });
     }
 }

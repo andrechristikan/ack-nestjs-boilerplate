@@ -15,12 +15,12 @@ export const USER_DEFAULT_AVAILABLE_SORT = [
     'firstName',
     'lastName',
     'email',
-    'phoneNumber',
+    'mobileNumber',
     'createdAt',
 ];
 export const USER_DEFAULT_AVAILABLE_SEARCH = [
     'firstName',
     'lastName',
     'email',
-    'phoneNumber',
+    'mobileNumber',
 ];

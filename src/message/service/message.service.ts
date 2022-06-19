@@ -23,7 +23,7 @@ export class MessageService {
 
     async getRequestErrorsMessage(
         requestErrors: ValidationError[],
-        appLanguages?: string[]
+        customLanguages?: string[]
     ): Promise<IErrors[]> {
         const messages: Array<IErrors[]> = [];
         for (const transfomer of requestErrors) {
@@ -57,7 +57,7 @@ export class MessageService {
                 errors.push({
                     property: property,
                     message: (await this.get(`request.${constraint}`, {
-                        appLanguages,
+                        customLanguages,
                         properties: {
                             property,
                             value: propertyValue,
@@ -76,15 +76,19 @@ export class MessageService {
         key: string,
         options?: IMessageOptions
     ): Promise<string | IMessage> {
-        const { properties, appLanguages } = options
+        const { properties, customLanguages } = options
             ? options
-            : { properties: undefined, appLanguages: undefined };
+            : { properties: undefined, customLanguages: undefined };
 
-        if (appLanguages && isArray(appLanguages) && appLanguages.length > 0) {
+        if (
+            customLanguages &&
+            isArray(customLanguages) &&
+            customLanguages.length > 0
+        ) {
             const messages: IMessage = {};
-            for (const appLanguage of appLanguages) {
-                messages[appLanguage] = await this.setMessage(
-                    appLanguage,
+            for (const customLanguage of customLanguages) {
+                messages[customLanguage] = await this.setMessage(
+                    customLanguage,
                     key,
                     {
                         properties,
@@ -93,7 +97,7 @@ export class MessageService {
             }
 
             if (Object.keys(messages).length === 1) {
-                return messages[appLanguages[0]];
+                return messages[customLanguages[0]];
             }
 
             return messages;

@@ -1,4 +1,5 @@
 import { registerAs } from '@nestjs/config';
+import ms from 'ms';
 
 export default registerAs(
     'app',
@@ -26,7 +27,7 @@ export default registerAs(
             },
             system: {
                 active: false,
-                maxFiles: '7d',
+                maxFiles: ms('7d'),
                 maxSize: '2m',
             },
         },

@@ -1,11 +1,12 @@
 import { registerAs } from '@nestjs/config';
+import bytes from 'bytes';
 
 export default registerAs(
     'file',
     (): Record<string, any> => ({
-        fieldNameSize: 100, // in bytes
-        fieldSize: 524288, // 500 KB
-        maxFileSize: 104858, // 100 KB
+        fieldNameSize: bytes(100), // in bytes
+        fieldSize: bytes('500kb'), // 500 KB
+        maxFileSize: bytes('100kb'), // 100 KB
         maxFiles: 2, // 2 files
     })
 );

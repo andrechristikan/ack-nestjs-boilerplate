@@ -22,17 +22,17 @@ describe('HelperHashService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(helperHashService, 'randomSalt');
 
-            helperHashService.randomSalt();
+            helperHashService.randomSalt(10);
             expect(test).toHaveBeenCalled();
         });
 
         it('should be success', async () => {
-            const result = helperHashService.randomSalt();
+            const result = helperHashService.randomSalt(10);
             jest.spyOn(helperHashService, 'randomSalt').mockImplementation(
                 () => result
             );
 
-            expect(helperHashService.randomSalt()).toBe(result);
+            expect(helperHashService.randomSalt(10)).toBe(result);
         });
     });
 
@@ -40,13 +40,13 @@ describe('HelperHashService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(helperHashService, 'bcrypt');
 
-            const salt = helperHashService.randomSalt();
+            const salt = helperHashService.randomSalt(10);
             helperHashService.bcrypt(data, salt);
             expect(test).toHaveBeenCalledWith(data, salt);
         });
 
         it('should be success', async () => {
-            const salt = helperHashService.randomSalt();
+            const salt = helperHashService.randomSalt(10);
             const result = helperHashService.bcrypt(data, salt);
             jest.spyOn(helperHashService, 'bcrypt').mockImplementation(
                 () => result
@@ -60,14 +60,14 @@ describe('HelperHashService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(helperHashService, 'bcryptCompare');
 
-            const salt = helperHashService.randomSalt();
+            const salt = helperHashService.randomSalt(10);
             const hash = helperHashService.bcrypt(data, salt);
             helperHashService.bcryptCompare('bbbb', hash);
             expect(test).toHaveBeenCalledWith('bbbb', hash);
         });
 
         it('should be success', async () => {
-            const salt = helperHashService.randomSalt();
+            const salt = helperHashService.randomSalt(10);
             const hash = helperHashService.bcrypt(data, salt);
             const validate = helperHashService.bcryptCompare('bbbb', hash);
             jest.spyOn(helperHashService, 'bcryptCompare').mockImplementation(

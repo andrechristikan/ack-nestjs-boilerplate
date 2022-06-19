@@ -1,4 +1,5 @@
 import { registerAs } from '@nestjs/config';
+import ms from 'ms';
 
 export default registerAs(
     'middleware',
@@ -29,17 +30,29 @@ export default registerAs(
                 'x-custom-lang',
                 'x-timestamp',
                 'x-api-key',
+                'x-timezone',
+                'x-request-id',
+                'X-Response-Time',
                 'user-agent',
             ],
         },
         rateLimit: {
-            resetTime: 1 * 500, // 0.5 secs
+            resetTime: ms(500), // 0.5 secs
             maxRequestPerId: 1, // max request per reset time
         },
         timestamp: {
-            toleranceTimeInMinutes:
-                Number.parseInt(process.env.MIDDLEWARE_TOLERANCE_TIMESTAMP) ||
-                5, // 5 mins
+            toleranceTimeInMinutes: process.env.MIDDLEWARE_TOLERANCE_TIMESTAMP
+                ? ms(process.env.MIDDLEWARE_TOLERANCE_TIMESTAMP)
+                : ms('5m'), // 5 mins
+        },
+        cache: {
+            ttl: ms('30s'), // 30sec
+            max: 5, // maximum number of items in cache
+        },
+        timeout: {
+            in: process.env.MIDDLEWARE_TIMEOUT
+                ? ms(process.env.MIDDLEWARE_TIMEOUT)
+                : ms('30s'), // 30s based on ms module
         },
     })
 );

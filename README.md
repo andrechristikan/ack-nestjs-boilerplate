@@ -73,22 +73,25 @@ ack-nestjs-boilerplate-mongoose have some objective.
 - Production Ready 🔥
 - Typescript 🚀
 - Authentication and Authorization (OAuth2, API Key, Basic Auth) 💪
-- Mongodb integrate by using Mongoose Package 🎉
+- Mongodb Integrate by Using Mongoose Package 🎉
 - Database Migration
 - Integrate with AWS
 - Server Side Pagination
 - Url Versioning
-- Request Validation Pipe
+- Request Validation Pipe 🛑
 - Custom error status code 🤫
 - Logger and Debugger 📝
 - Centralize Configuration 🤖
 - Centralize Exception Filter
-- Multi-language (i18n)
+- Multi-language (i18n) 🗣
+- Timezone Awareness, and Custom Timezone
+- Request Timeout, and Timeout Override ⌛️
 - Dynamic Setting from Database 🗿
-- Maintenance Mode on / off
+- Maintenance Mode on / off 🐤
+- Cache Manager Impelementation
 - Advance Example 🥶
 - Support Docker Installation
-- Support CI/CD with Github Action or Jenkins
+- Support CI/CD with Github Action or Jenkins 🤖
 - Husky GitHook For Check Source Code, and Run Test Before Commit 🐶
 - Linter with EsLint for Typescript
 
@@ -105,11 +108,17 @@ We assume that everyone who comes here is _**`programmer with intermediate knowl
 
 Next development
 
-- [ ] Default Timezone, and custom timezone (by `x-timezone`)
-- [ ] Add response header `x-custom-lang`, `x-timestamp`, and `x-timezone`
-- [ ] Cors optimization allowed header, and allowed method
-- [ ] Versioning Serialization
-- [ ] Update Documentation 
+- [x] Pagination Optimization, Pagination Category
+- [x] Default Timezone, and custom timezone (by `x-timezone`)
+- [x] Add response header `x-custom-lang`, `x-timestamp`, and `x-timezone`, and `x-request-id`
+- [x] Add `x-request-id` middleware
+- [x] Add x-request-id per debugger log, to make more specific log per request
+- [x] Cors optimization allowed header, and allowed method
+- [x] Implement Cache Manager for `x-custom-lang`, `x-timestamp`, and `x-timezone`, and `x-request-id`
+- [x] Response Timeout, custom timeout with decorator
+- [x] Convert any time using `ms package` in Config Module. Centralize
+- [ ] Update Documentation
+- [ ] Versioning Serialization (Low Priority)
 - [ ] Docker Compose File Mongodb Replication Set (Low Priority)
 - [ ] Swagger (Low Priority)
 

@@ -9,19 +9,23 @@ import { Response } from 'express';
 import { IErrorException } from './error.interface';
 import { IMessage } from 'src/message/message.interface';
 import { MessageService } from 'src/message/service/message.service';
+import { CacheService } from 'src/cache/service/cache.service';
 
 @Catch(HttpException)
 export class ErrorHttpFilter implements ExceptionFilter {
-    constructor(private readonly messageService: MessageService) {}
+    constructor(
+        private readonly cacheService: CacheService,
+        private readonly messageService: MessageService
+    ) {}
 
     async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
         const ctx: HttpArgumentsHost = host.switchToHttp();
         const statusHttp: number = exception.getStatus();
         const responseHttp: any = ctx.getResponse<Response>();
 
-        const appLanguages: string[] = ctx.getRequest().i18nLang
-            ? ctx.getRequest().i18nLang.split(',')
-            : undefined;
+        const customLanguages: string[] = (
+            await this.cacheService.get<string>('x-custom-lang')
+        ).split(',');
 
         // Restructure
         const response = exception.getResponse() as IErrorException;
@@ -30,18 +34,18 @@ export class ErrorHttpFilter implements ExceptionFilter {
             const rErrors = errors
                 ? await this.messageService.getRequestErrorsMessage(
                       errors,
-                      appLanguages
+                      customLanguages
                   )
                 : undefined;
 
             let rMessage: string | IMessage = await this.messageService.get(
                 message,
-                { appLanguages }
+                { customLanguages }
             );
 
             if (properties) {
                 rMessage = await this.messageService.get(message, {
-                    appLanguages,
+                    customLanguages,
                     properties,
                 });
             }
@@ -55,7 +59,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
         } else {
             const rMessage: string | IMessage = await this.messageService.get(
                 'response.error.structure',
-                { appLanguages }
+                { customLanguages }
             );
             responseHttp.status(statusHttp).json({
                 statusCode: 500,

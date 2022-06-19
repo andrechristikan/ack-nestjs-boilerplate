@@ -18,6 +18,8 @@ import { RequestModule } from 'src/utils/request/request.module';
 import { ErrorModule } from 'src/utils/error/error.module';
 import { SettingModule } from 'src/setting/setting.module';
 import { VersionModule } from 'src/utils/version/version.module';
+import { CacheModule } from 'src/cache/cache.module';
+import { ResponseModule } from 'src/utils/response/response.module';
 
 @Module({
     controllers: [],
@@ -44,9 +46,11 @@ import { VersionModule } from 'src/utils/version/version.module';
                 databaseService.createMongooseOptions(),
         }),
         HelperModule,
+        CacheModule,
         DebuggerModule,
         MessageModule,
         ErrorModule,
+        ResponseModule,
         PaginationModule,
         SettingModule,
         RequestModule,
