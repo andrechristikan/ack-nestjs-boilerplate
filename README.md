@@ -73,7 +73,7 @@ ack-nestjs-boilerplate-mongoose have some objective.
 - Production Ready 🔥
 - Typescript 🚀
 - Authentication and Authorization (OAuth2, API Key, Basic Auth) 💪
-- Mongodb integrate by using Mongoose Package 🎉
+- Mongodb Integrate by Using Mongoose Package 🎉
 - Database Migration
 - Integrate with AWS
 - Server Side Pagination
@@ -84,10 +84,11 @@ ack-nestjs-boilerplate-mongoose have some objective.
 - Centralize Configuration 🤖
 - Centralize Exception Filter
 - Multi-language (i18n)
-- Timezone awareness, and custom timezone
-- Request Timeout
+- Timezone Awareness, and Custom Timezone
+- Request Timeout, and Timeout Override
 - Dynamic Setting from Database 🗿
 - Maintenance Mode on / off
+- Cache Manager Impelementation
 - Advance Example 🥶
 - Support Docker Installation
 - Support CI/CD with Github Action or Jenkins
