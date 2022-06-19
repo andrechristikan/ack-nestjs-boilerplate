@@ -29,7 +29,7 @@ Made with following
 
 ## Important
 
-> ack-nestjs-boilerplate-mongoose still on trial and error phase and the test will base on real projects or cases. So there will be have new update and new features.
+> ack-nestjs-boilerplate-mongoose still on trial and error phase and the test will base on real projects or cases. So there will be (always) have new update and new features.
 
 If you change env value of `APP_MODE` to `secure` that will trigger more `Middleware` and `Guard`.
 
@@ -72,28 +72,29 @@ ack-nestjs-boilerplate-mongoose have some objective.
 - NestJs v8.x 🥳
 - Production Ready 🔥
 - Typescript 🚀
-- Authentication and Authorization (OAuth2, API Key, Basic Auth) 💪
+- Authentication and Authorization (OAuth2, API Key, Basic Auth, Role Management) 💪
 - Mongodb Integrate by Using Mongoose Package 🎉
-- Database Migration
-- Integrate with AWS
-- Server Side Pagination
+- Database Migration (NestJs-Command)
+- Storage management with Amazon (AWS) or maybe with Internal Storage (Fs)
+- Server Side Pagination (3 Types)
 - Url Versioning
-- Request Validation Pipe 🛑
-- Custom error status code 🤫
-- Logger and Debugger 📝
+- Request Validation Pipe with Custom Message 🛑
+- Custom Error Status Code 🤫
+- Logger (Morgan) and Debugger (Winston) 📝
 - Centralize Configuration 🤖
-- Centralize Exception Filter
+- Centralize Exception Filter, and Custom Error Structure
 - Multi-language (i18n) 🗣
 - Timezone Awareness, and Custom Timezone
-- Request Timeout, and Timeout Override ⌛️
+- Request Timeout, and Custom Timeout (Override) ⌛️
 - Dynamic Setting from Database 🗿
 - Maintenance Mode on / off 🐤
-- Cache Manager Implementation
+- Cache Manager Implementation, can replace with Redis, Memcached, or anything else
 - Advance Example 🥶
 - Support Docker Installation
-- Support CI/CD with Github Action or Jenkins 🤖
+- Support CI/CD with Github Action or Jenkins
 - Husky GitHook For Check Source Code, and Run Test Before Commit 🐶
 - Linter with EsLint for Typescript
+- Etc.
 
 ## Prerequisites
 
@@ -103,6 +104,9 @@ We assume that everyone who comes here is _**`programmer with intermediate knowl
 2. Understand[Typescript Fundamental](https://www.typescriptlang.org), Programming Language. It will help us to write and read the code.
 3. Understand [ExpressJs Fundamental](https://nodejs.org), NodeJs Base Framework. It will help us in understanding how the NestJs Framework works.
 4. Understand what NoSql is and how it works as a database, especially [MongoDB.](https://docs.mongodb.com)
+6. Understand [Microservice Architecture](https://microservices.io) and the design pattern.
+7. [The Twelve Factor Apps](https://12factor.net)
+8. Optional, Understand [Docker](ref-docker) that can help you to run the project
 
 ## Todo
 
@@ -112,11 +116,11 @@ Next development
 - [x] Default Timezone, and custom timezone (by `x-timezone`)
 - [x] Add response header `x-custom-lang`, `x-timestamp`, and `x-timezone`, and `x-request-id`
 - [x] Add `x-request-id` middleware
-- [x] Add x-request-id per debugger log, to make more specific log per request
+- [x] Add `x-request-id` per debugger log, to make more specific log per request
 - [x] Cors optimization allowed header, and allowed method
 - [x] Implement Cache Manager for `x-custom-lang`, `x-timestamp`, and `x-timezone`, and `x-request-id`
 - [x] Response Timeout, custom timeout with decorator
-- [x] Convert any time using `ms package` in Config Module. Centralize
+- [x] Convert time using `ms package` in Config Module. Centralize
 - [ ] Update Documentation
 - [ ] Versioning Serialization (Low Priority)
 - [ ] Docker Compose File Mongodb Replication Set (Low Priority)
