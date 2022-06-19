@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import moment from 'moment-timezone';
-import { ENUM_HELPER_DATE_DIFF } from '../helper.constant';
+import {
+    ENUM_HELPER_DATE_DIFF,
+    ENUM_HELPER_DATE_FORMAT,
+} from '../helper.constant';
 import {
     IHelperDateOptions,
     IHelperDateOptionsBackward,
@@ -94,7 +97,11 @@ export class HelperDateService {
                 date,
                 options && options.timezone ? options.timezone : this.timezone
             )
-            .format(options && options.format ? options.format : undefined);
+            .format(
+                options && options.format
+                    ? options.format
+                    : ENUM_HELPER_DATE_FORMAT.DATE
+            );
     }
 
     forwardInMinutes(

@@ -84,6 +84,8 @@ ack-nestjs-boilerplate-mongoose have some objective.
 - Centralize Configuration 🤖
 - Centralize Exception Filter
 - Multi-language (i18n)
+- Timezone awareness, and custom timezone
+- Request Timeout
 - Dynamic Setting from Database 🗿
 - Maintenance Mode on / off
 - Advance Example 🥶
@@ -113,7 +115,7 @@ Next development
 - [x] Cors optimization allowed header, and allowed method
 - [x] Implement Cache Manager for `x-custom-lang`, `x-timestamp`, and `x-timezone`, and `x-request-id`
 - [x] Response Timeout, custom timeout with decorator
-- [ ] Convert any time using `ms package` in Config Module. Centralize
+- [x] Convert any time using `ms package` in Config Module. Centralize
 - [ ] Update Documentation
 - [ ] Versioning Serialization (Low Priority)
 - [ ] Docker Compose File Mongodb Replication Set (Low Priority)
