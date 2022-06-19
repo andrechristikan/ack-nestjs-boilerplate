@@ -78,20 +78,20 @@ ack-nestjs-boilerplate-mongoose have some objective.
 - Integrate with AWS
 - Server Side Pagination
 - Url Versioning
-- Request Validation Pipe
+- Request Validation Pipe 🛑
 - Custom error status code 🤫
 - Logger and Debugger 📝
 - Centralize Configuration 🤖
 - Centralize Exception Filter
-- Multi-language (i18n)
+- Multi-language (i18n) 🗣
 - Timezone Awareness, and Custom Timezone
-- Request Timeout, and Timeout Override
+- Request Timeout, and Timeout Override ⌛️
 - Dynamic Setting from Database 🗿
-- Maintenance Mode on / off
+- Maintenance Mode on / off 🐤
 - Cache Manager Impelementation
 - Advance Example 🥶
 - Support Docker Installation
-- Support CI/CD with Github Action or Jenkins
+- Support CI/CD with Github Action or Jenkins 🤖
 - Husky GitHook For Check Source Code, and Run Test Before Commit 🐶
 - Linter with EsLint for Typescript
 
