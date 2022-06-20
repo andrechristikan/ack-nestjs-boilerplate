@@ -38,11 +38,11 @@
     "test:integration": "jest --config integration/jest.json --detectOpenHandles --passWithNoTests --forceExit",
     "prepare": "husky install",
     "deadcode": "ts-prune --project tsconfig.json",
-    "spell:test": "cspell lint --config cspell.json test/**/*.ts --color --gitignore",
-    "spell:src": "cspell lint --config cspell.json src/**/*.ts --color --gitignore",
-    "spell:e2e": "cspell lint --config cspell.json e2e/**/*.ts --color --gitignore",
-    "spell:integration": "cspell lint --config cspell.json integration/**/*.ts --color --gitignore",
-    "spell": "cspell lint --config cspell.json {src,test,e2e,integration}/**/*.ts --color --gitignore"
+    "spell:test": "cspell lint --config cspell.json test/**/*.ts --color --gitignore --no-must-find-files --no-summary --no-progress || true",
+    "spell:src": "cspell lint --config cspell.json src/**/*.ts --color --gitignore --no-must-find-files --no-summary --no-progress || true",
+    "spell:e2e": "cspell lint --config cspell.json e2e/**/*.ts --color --gitignore --no-must-find-files --no-summary --no-progress || true",
+    "spell:integration": "cspell lint --config cspell.json integration/**/*.ts --color --gitignore --no-must-find-files --no-summary --no-progress || true",
+    "spell": "cspell lint --config cspell.json {src,test,e2e,integration}/**/*.ts readme.md tsconfig*.json docker* package.json nodemon.json license.md .github/* .husky/* --color --gitignore --no-must-find-files --no-summary --no-progress || true"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.113.0",

@@ -9,18 +9,30 @@
         "logform",
         "transfomer",
         "insync",
-        "acks",
         "microservices",
         "globby",
         "dockerhub",
         "fifsky",
         "buildx",
-        "baibay",
         "exceljs",
         "milis",
+        "workdir",
+        "dbdata",
+        "initdb",
+        "deadcode",
+        "authapis",
+        "headerapikey"
+    ],
+    "ignoreWords": [
+        "Sheon",
+        "aallithioo",
+        "tiaamoo",
         "qwertyuiop12345zxcvbnmkjh",
         "opbUwdiS1FBsrDUoPgZdx",
-        "cuwakimacojulawu"
+        "cuwakimacojulawu",
+        "baibay",
+        "acks",
+        "andrechristikan"
     ],
     "ignorePaths": [
         "node_modules/**", 
