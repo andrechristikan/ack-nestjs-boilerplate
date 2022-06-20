@@ -76,6 +76,11 @@
 								"key": "x-custom-lang",
 								"value": "en,id",
 								"type": "text"
+							},
+							{
+								"key": "x-timezone",
+								"value": "Asia/Jakarta",
+								"type": "text"
 							}
 						],
 						"url": {
@@ -104,6 +109,11 @@
 										"key": "User-Agent",
 										"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
 										"type": "text"
+									},
+									{
+										"key": "x-custom-lang",
+										"value": "en",
+										"type": "text"
 									}
 								],
 								"url": {
@@ -122,7 +132,7 @@
 							"_postman_previewlanguage": "json",
 							"header": null,
 							"cookie": [],
-							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"This is test endpoint.\",\n    \"data\": {\n        \"userAgent\": {\n            \"ua\": \"PostmanRuntime/7.29.0\",\n            \"browser\": {},\n            \"engine\": {},\n            \"os\": {},\n            \"device\": {},\n            \"cpu\": {}\n        },\n        \"apiKey\": {}\n    }\n}"
+							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"This is test endpoint.\",\n    \"data\": {\n        \"userAgent\": {\n            \"ua\": \"PostmanRuntime/7.29.0\",\n            \"browser\": {},\n            \"engine\": {},\n            \"os\": {},\n            \"device\": {},\n            \"cpu\": {}\n        },\n        \"date\": \"2022-06-17T17:20:13.018Z\",\n        \"format\": \"2022-06-18T00:20:13+07:00\",\n        \"timestamp\": 1655486413018\n    }\n}"
 						},
 						{
 							"name": "success multi language",
@@ -141,7 +151,7 @@
 									},
 									{
 										"key": "x-custom-lang",
-										"value": "en",
+										"value": "en,id",
 										"type": "text"
 									}
 								],
@@ -161,10 +171,98 @@
 							"_postman_previewlanguage": "json",
 							"header": null,
 							"cookie": [],
-							"body": "{\n    \"statusCode\": 200,\n    \"message\": {\n        \"en\": \"This is test endpoint.\",\n        \"id\": \"Ini adalah endpoint test\"\n    },\n    \"data\": {\n        \"userAgent\": {\n            \"ua\": \"PostmanRuntime/7.29.0\",\n            \"browser\": {},\n            \"engine\": {},\n            \"os\": {},\n            \"device\": {},\n            \"cpu\": {}\n        },\n        \"apiKey\": {}\n    }\n}"
-						},
+							"body": "{\n    \"statusCode\": 200,\n    \"message\": {\n        \"en\": \"This is test endpoint.\",\n        \"id\": \"Ini adalah endpoint test\"\n    },\n    \"data\": {\n        \"userAgent\": {\n            \"ua\": \"PostmanRuntime/7.29.0\",\n            \"browser\": {},\n            \"engine\": {},\n            \"os\": {},\n            \"device\": {},\n            \"cpu\": {}\n        },\n        \"date\": \"2022-06-17T17:20:13.018Z\",\n        \"format\": \"2022-06-18T00:20:13+07:00\",\n        \"timestamp\": 1655486413018\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "hello timeout",
+					"event": [
 						{
-							"name": "success version",
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Set Function",
+									"const cryptoJs = require('crypto-js');",
+									"const { AES, enc, mode, pad } = cryptoJs;",
+									"const setUtils = {",
+									"    getCurrentTimestamp: function() {",
+									"        return Date.now();",
+									"    },",
+									"    createXApiKey: function (data, key, iv){",
+									"        const cIv = enc.Utf8.parse(iv);",
+									"        const cipher = AES.encrypt(",
+									"            JSON.stringify(data), ",
+									"            key, ",
+									"            {",
+									"                mode: mode.CBC,",
+									"                padding: pad.Pkcs7,",
+									"                iv: cIv,",
+									"            }",
+									"        );",
+									"",
+									"        return cipher.toString();",
+									"    }",
+									"}",
+									"pm.globals.set('utils', setUtils);",
+									"let utils = eval(pm.globals.get(\"utils\"));",
+									"",
+									"// Set x-timestamp",
+									"pm.environment.set(\"xTimestamp\", utils.getCurrentTimestamp());",
+									"",
+									"// Set x-api-key",
+									"const xTimestamp = pm.environment.get(\"xTimestamp\");",
+									"const apiKey = pm.environment.get(\"ApiKey\");",
+									"const apiHash = pm.environment.get(\"ApiHash\");",
+									"const apiEncryptionKey = pm.environment.get(\"ApiEncryptionKey\");",
+									"const apiPassphrase = pm.environment.get(\"ApiPassphrase\");",
+									"const apiPayload = {",
+									"    \"key\": apiKey,",
+									"    \"timestamp\": parseInt(xTimestamp),",
+									"    \"hash\": apiHash",
+									"}",
+									"const apiEncrypted = utils.createXApiKey(apiPayload, apiEncryptionKey, apiPassphrase);",
+									"const xApiKey = `${apiKey}:${apiEncrypted}`;",
+									"pm.environment.set(\"ApiEncrypted\", apiEncrypted);",
+									"pm.environment.set(\"xApiKey\", xApiKey);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-timestamp",
+								"value": "{{xTimestamp}}",
+								"type": "text"
+							},
+							{
+								"key": "x-custom-lang",
+								"value": "en",
+								"type": "text"
+							},
+							{
+								"key": "x-timezone",
+								"value": "Asia/Jakarta",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello-timeout",
+							"host": [
+								"{{BaseUrl}}{{PrefixUrl}}"
+							],
+							"path": [
+								"test",
+								"hello-timeout"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "success",
 							"originalRequest": {
 								"method": "GET",
 								"header": [
@@ -195,12 +293,12 @@
 									]
 								}
 							},
-							"status": "OK",
-							"code": 200,
+							"status": "Request Timeout",
+							"code": 408,
 							"_postman_previewlanguage": "json",
 							"header": null,
 							"cookie": [],
-							"body": "{\n    \"statusCode\": 200,\n    \"message\": {\n        \"en\": \"This is test endpoint.\",\n        \"id\": \"Ini adalah endpoint test\"\n    },\n    \"data\": {\n        \"userAgent\": {\n            \"ua\": \"PostmanRuntime/7.29.0\",\n            \"browser\": {},\n            \"engine\": {},\n            \"os\": {},\n            \"device\": {},\n            \"cpu\": {}\n        },\n        \"apiKey\": {},\n        \"version\": 1\n    }\n}"
+							"body": "{\n    \"statusCode\": 5992,\n    \"message\": \"Request time out\"\n}"
 						}
 					]
 				}
@@ -360,7 +458,7 @@
 							"_postman_previewlanguage": "json",
 							"header": null,
 							"cookie": [],
-							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Healthy\",\n    \"data\": {\n        \"status\": \"ok\",\n        \"info\": {\n            \"aws bucket\": {\n                \"status\": \"up\"\n            }\n        },\n        \"error\": {},\n        \"details\": {\n            \"aws bucket\": {\n                \"status\": \"up\"\n            }\n        }\n    }\n}"
+							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Healthy\",\n    \"data\": {\n        \"status\": \"ok\",\n        \"info\": {\n            \"awsBucket\": {\n                \"status\": \"up\"\n            }\n        },\n        \"error\": {},\n        \"details\": {\n            \"awsBucket\": {\n                \"status\": \"up\"\n            }\n        }\n    }\n}"
 						}
 					]
 				},
@@ -508,7 +606,7 @@
 							"_postman_previewlanguage": "json",
 							"header": null,
 							"cookie": [],
-							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Healthy\",\n    \"data\": {\n        \"status\": \"ok\",\n        \"info\": {\n            \"aws bucket\": {\n                \"status\": \"up\"\n            }\n        },\n        \"error\": {},\n        \"details\": {\n            \"aws bucket\": {\n                \"status\": \"up\"\n            }\n        }\n    }\n}"
+							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Healthy\",\n    \"data\": {\n        \"status\": \"ok\",\n        \"info\": {\n            \"memoryHeap\": {\n                \"status\": \"up\"\n            }\n        },\n        \"error\": {},\n        \"details\": {\n            \"memoryHeap\": {\n                \"status\": \"up\"\n            }\n        }\n    }\n}"
 						}
 					]
 				},
@@ -582,7 +680,7 @@
 							"_postman_previewlanguage": "json",
 							"header": null,
 							"cookie": [],
-							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Healthy\",\n    \"data\": {\n        \"status\": \"ok\",\n        \"info\": {\n            \"aws bucket\": {\n                \"status\": \"up\"\n            }\n        },\n        \"error\": {},\n        \"details\": {\n            \"aws bucket\": {\n                \"status\": \"up\"\n            }\n        }\n    }\n}"
+							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Healthy\",\n    \"data\": {\n        \"status\": \"ok\",\n        \"info\": {\n            \"memoryRss\": {\n                \"status\": \"up\"\n            }\n        },\n        \"error\": {},\n        \"details\": {\n            \"memoryRss\": {\n                \"status\": \"up\"\n            }\n        }\n    }\n}"
 						}
 					]
 				},
@@ -656,7 +754,7 @@
 							"_postman_previewlanguage": "json",
 							"header": null,
 							"cookie": [],
-							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Healthy\",\n    \"data\": {\n        \"status\": \"ok\",\n        \"info\": {\n            \"aws bucket\": {\n                \"status\": \"up\"\n            }\n        },\n        \"error\": {},\n        \"details\": {\n            \"aws bucket\": {\n                \"status\": \"up\"\n            }\n        }\n    }\n}"
+							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Healthy\",\n    \"data\": {\n        \"status\": \"ok\",\n        \"info\": {\n            \"storage\": {\n                \"status\": \"up\"\n            }\n        },\n        \"error\": {},\n        \"details\": {\n            \"storage\": {\n                \"status\": \"up\"\n            }\n        }\n    }\n}"
 						}
 					]
 				}

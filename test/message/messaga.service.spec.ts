@@ -21,11 +21,11 @@ describe('MessageService', () => {
         validationError = [
             {
                 target: {
-                    email: 'adminmail.com',
+                    email: 'admin-mail.com',
                     password: 'aaAA@@123444',
                     rememberMe: true,
                 },
-                value: 'adminmail.com',
+                value: 'admin-mail.com',
                 property: 'email',
                 children: [],
                 constraints: { isEmail: 'email must be an email' },
@@ -35,21 +35,21 @@ describe('MessageService', () => {
         validationErrorTwo = [
             {
                 target: {
-                    email: 'adminmail.com',
+                    email: 'admin-mail.com',
                     password: 'aaAA@@123444',
                     rememberMe: true,
                 },
-                value: 'adminmail.com',
+                value: 'admin-mail.com',
                 property: 'email',
                 constraints: { isEmail: 'email must be an email' },
                 children: [
                     {
                         target: {
-                            email: 'adminmail.com',
+                            email: 'admin-mail.com',
                             password: 'aaAA@@123444',
                             rememberMe: true,
                         },
-                        value: 'adminmail.com',
+                        value: 'admin-mail.com',
                         property: 'email',
                         constraints: {
                             isEmail: 'email must be an email',
@@ -63,21 +63,21 @@ describe('MessageService', () => {
         validationErrorThree = [
             {
                 target: {
-                    email: 'adminmail.com',
+                    email: 'admin-mail.com',
                     password: 'aaAA@@123444',
                     rememberMe: true,
                 },
-                value: 'adminmail.com',
+                value: 'admin-mail.com',
                 property: 'email',
                 constraints: { isEmail: 'email must be an email' },
                 children: [
                     {
                         target: {
-                            email: 'adminmail.com',
+                            email: 'admin-mail.com',
                             password: 'aaAA@@123444',
                             rememberMe: true,
                         },
-                        value: 'adminmail.com',
+                        value: 'admin-mail.com',
                         property: 'email',
                         constraints: {
                             isEmail: 'email must be an email',
@@ -85,11 +85,11 @@ describe('MessageService', () => {
                         children: [
                             {
                                 target: {
-                                    email: 'adminmail.com',
+                                    email: 'admin-mail.com',
                                     password: 'aaAA@@123444',
                                     rememberMe: true,
                                 },
-                                value: 'adminmail.com',
+                                value: 'admin-mail.com',
                                 property: 'email',
                                 constraints: {
                                     isEmail: 'email must be an email',
@@ -105,11 +105,11 @@ describe('MessageService', () => {
         validationErrorConstrainEmpty = [
             {
                 target: {
-                    email: 'adminmail.com',
+                    email: 'admin-mail.com',
                     password: 'aaAA@@123444',
                     rememberMe: true,
                 },
-                value: 'adminmail.com',
+                value: 'admin-mail.com',
                 property: 'email',
                 children: [],
             },

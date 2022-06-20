@@ -24,18 +24,23 @@ export function ResponseTimeoutInterceptor(
             context: ExecutionContext,
             next: CallHandler
         ): Promise<Observable<Promise<any> | string>> {
-            return next.handle().pipe(
-                timeout(seconds * 1000),
-                catchError((err) => {
-                    if (err instanceof TimeoutError) {
-                        throw new RequestTimeoutException({
-                            statusCode: ENUM_STATUS_CODE_ERROR.REQUEST_TIMEOUT,
-                            message: 'http.clientError.requestTimeOut',
-                        });
-                    }
-                    return throwError(() => err);
-                })
-            );
+            if (context.getType() === 'http') {
+                return next.handle().pipe(
+                    timeout(seconds * 1000),
+                    catchError((err) => {
+                        if (err instanceof TimeoutError) {
+                            throw new RequestTimeoutException({
+                                statusCode:
+                                    ENUM_STATUS_CODE_ERROR.REQUEST_TIMEOUT,
+                                message: 'http.clientError.requestTimeOut',
+                            });
+                        }
+                        return throwError(() => err);
+                    })
+                );
+            }
+
+            return next.handle();
         }
     }
 
@@ -54,27 +59,30 @@ export class ResponseTimeoutDefaultInterceptor
         context: ExecutionContext,
         next: CallHandler
     ): Promise<Observable<Promise<any> | string>> {
-        const customTimeout = this.reflector.get<boolean>(
-            'customTimeout',
-            context.getHandler()
-        );
+        if (context.getType() === 'http') {
+            const customTimeout = this.reflector.get<boolean>(
+                'customTimeout',
+                context.getHandler()
+            );
 
-        if (!customTimeout) {
-            const defaultTimeout: number = this.configService.get<number>(
-                'middleware.timeout.in'
-            );
-            return next.handle().pipe(
-                timeout(defaultTimeout),
-                catchError((err) => {
-                    if (err instanceof TimeoutError) {
-                        throw new RequestTimeoutException({
-                            statusCode: ENUM_STATUS_CODE_ERROR.REQUEST_TIMEOUT,
-                            message: 'http.clientError.requestTimeOut',
-                        });
-                    }
-                    return throwError(() => err);
-                })
-            );
+            if (!customTimeout) {
+                const defaultTimeout: number = this.configService.get<number>(
+                    'middleware.timeout.in'
+                );
+                return next.handle().pipe(
+                    timeout(defaultTimeout),
+                    catchError((err) => {
+                        if (err instanceof TimeoutError) {
+                            throw new RequestTimeoutException({
+                                statusCode:
+                                    ENUM_STATUS_CODE_ERROR.REQUEST_TIMEOUT,
+                                message: 'http.clientError.requestTimeOut',
+                            });
+                        }
+                        return throwError(() => err);
+                    })
+                );
+            }
         }
 
         return next.handle();

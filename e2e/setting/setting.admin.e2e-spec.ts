@@ -135,7 +135,7 @@ describe('E2E Setting Admin', () => {
             .set('x-timestamp', timestamp.toString())
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-api-key', xApiKey)
-            .send({ value: 'falasdasse' });
+            .send({ value: 'test' });
 
         await settingService.updateOneById(setting._id, { value: false });
 

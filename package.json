@@ -1,6 +1,6 @@
 {
   "name": "ack-nestjs-boilerplate-mongoose",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "Ack NestJs BoilerPlate Mongoose",
   "repository": {
     "type": "git",
@@ -37,7 +37,12 @@
     "test:e2e": "jest --config e2e/jest.json --detectOpenHandles --passWithNoTests --forceExit",
     "test:integration": "jest --config integration/jest.json --detectOpenHandles --passWithNoTests --forceExit",
     "prepare": "husky install",
-    "deadcode": "ts-prune --project tsconfig.json"
+    "deadcode": "ts-prune --project tsconfig.json",
+    "spell:test": "cspell lint --config cspell.json test/**/*.ts --color --gitignore",
+    "spell:src": "cspell lint --config cspell.json src/**/*.ts --color --gitignore",
+    "spell:e2e": "cspell lint --config cspell.json e2e/**/*.ts --color --gitignore",
+    "spell:integration": "cspell lint --config cspell.json integration/**/*.ts --color --gitignore",
+    "spell": "cspell lint --config cspell.json {src,test,e2e,integration}/**/*.ts --color --gitignore"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.113.0",
@@ -110,6 +115,7 @@
     "@types/ws": "^8.5.3",
     "@typescript-eslint/eslint-plugin": "^5.28.0",
     "@typescript-eslint/parser": "^5.28.0",
+    "cspell": "^6.1.2",
     "eslint": "^8.18.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-import": "^2.26.0",

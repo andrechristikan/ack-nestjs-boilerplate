@@ -1,12 +1,14 @@
 {
+    "version": "0.2",
+    "language": "en",
     "words": [
         "nestjs",
         "metatype",
         "virtuals",
         "prebuild",
-        "Logform",
+        "logform",
         "transfomer",
-        "Insync",
+        "insync",
         "acks",
         "microservices",
         "globby",
@@ -14,6 +16,19 @@
         "fifsky",
         "buildx",
         "baibay",
-        "exceljs"
+        "exceljs",
+        "milis",
+        "qwertyuiop12345zxcvbnmkjh",
+        "opbUwdiS1FBsrDUoPgZdx",
+        "cuwakimacojulawu"
+    ],
+    "ignorePaths": [
+        "node_modules/**", 
+        "endpoints/**",
+        "*coverage/**",
+        ".husky/**",
+        ".github/**",
+        "dist/**",
+        "logs/**"
     ]
 }
