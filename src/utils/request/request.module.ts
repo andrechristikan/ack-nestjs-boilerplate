@@ -5,8 +5,12 @@ import {
     ValidationError,
     ValidationPipe,
 } from '@nestjs/common';
-import { APP_PIPE } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
+import { APP_INTERCEPTOR, APP_PIPE, Reflector } from '@nestjs/core';
+import { CacheService } from 'src/cache/service/cache.service';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
+import { HelperDateService } from '../helper/service/helper.date.service';
+import { RequestTimestampInterceptor } from './interceptor/request.timestamp.interceptor';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from './request.constant';
 import { IsPasswordMediumConstraint } from './validation/request.is-password-medium.validation';
 import { IsPasswordStrongConstraint } from './validation/request.is-password-strong.validation';
@@ -51,6 +55,22 @@ import { StringOrNumberOrBooleanConstraint } from './validation/request.string-o
                     },
                 });
             },
+        },
+        {
+            provide: APP_INTERCEPTOR,
+            inject: [ConfigService, Reflector, HelperDateService, CacheService],
+            useFactory: (
+                configService: ConfigService,
+                reflector: Reflector,
+                helperDateService: HelperDateService,
+                cacheService: CacheService
+            ) =>
+                new RequestTimestampInterceptor(
+                    configService,
+                    reflector,
+                    helperDateService,
+                    cacheService
+                ),
         },
         IsPasswordStrongConstraint,
         IsPasswordMediumConstraint,
