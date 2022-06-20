@@ -10,7 +10,7 @@ export class RequestMiddleware implements NestMiddleware {
     async use(req: Request, res: Response, next: NextFunction): Promise<void> {
         const uuid: string = v4();
         req.headers['x-request-id'] = uuid;
-        await this.cacheService.set(`x-request-id`, uuid);
+        await this.cacheService.set(`x-request-id`, `${uuid}`);
         next();
     }
 }

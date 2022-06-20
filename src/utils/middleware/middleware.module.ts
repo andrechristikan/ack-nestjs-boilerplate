@@ -19,13 +19,13 @@ import {
 import { HelmetMiddleware } from './helmet/helmet.middleware';
 import { RateLimitMiddleware } from './rate-limit/rate-limit.middleware';
 import { UserAgentMiddleware } from './user-agent/user-agent.middleware';
-import { TimestampMiddleware } from './timestamp/timestamp.middleware';
 import { CompressionMiddleware } from './compression/compression.middleware';
 import { MaintenanceMiddleware } from './maintenance/maintenance.middleware';
 import { RequestMiddleware } from './request/request.middleware';
 import { TimezoneMiddleware } from './timezone/timezone.middleware';
 import { CustomLanguageMiddleware } from './custom-language/custom-language.middleware';
 import { ResponseTimeMiddleware } from './response-time/response-time.middleware';
+import { TimestampMiddleware } from './timestamp/timestamp.middleware';
 
 @Module({})
 export class MiddlewareModule implements NestModule {
@@ -47,21 +47,8 @@ export class MiddlewareModule implements NestModule {
                 RateLimitMiddleware,
                 UserAgentMiddleware,
                 CustomLanguageMiddleware,
-                ResponseTimeMiddleware
-            )
-            .forRoutes('*');
-
-        consumer
-            .apply(TimestampMiddleware)
-            .exclude(
-                {
-                    path: 'api/v:version*/callback/(.*)',
-                    method: RequestMethod.ALL,
-                },
-                {
-                    path: 'api/callback/(.*)',
-                    method: RequestMethod.ALL,
-                }
+                ResponseTimeMiddleware,
+                TimestampMiddleware
             )
             .forRoutes('*');
 

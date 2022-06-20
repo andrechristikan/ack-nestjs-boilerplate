@@ -2,6 +2,7 @@ import {
     applyDecorators,
     createParamDecorator,
     ExecutionContext,
+    SetMetadata,
     UseGuards,
 } from '@nestjs/common';
 import { ClassConstructor } from 'class-transformer';
@@ -21,3 +22,6 @@ export function RequestParamGuard(
 ): any {
     return applyDecorators(UseGuards(ParamGuard(classValidation)));
 }
+
+export const RequestExcludeTimestamp = () =>
+    SetMetadata('excludeTimestamp', true);
