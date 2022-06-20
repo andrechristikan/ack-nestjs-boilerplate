@@ -150,7 +150,7 @@ describe('E2E Login', () => {
             .set('x-api-key', xApiKey)
             .send({
                 email: user.email,
-                password: 'asdaAA@@1231',
+                password: 'Password@@1231',
                 rememberMe: false,
             });
 

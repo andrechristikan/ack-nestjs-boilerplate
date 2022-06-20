@@ -10,6 +10,7 @@ describe('AuthService', () => {
 
     const rememberMe = false;
 
+    // cSpell:ignore ZfqgaDMPpWQ3lJEGQ8Ueu stnk
     const user: IUserDocument = {
         _id: '623cb7fd37a861a10bac2c91',
         isActive: true,

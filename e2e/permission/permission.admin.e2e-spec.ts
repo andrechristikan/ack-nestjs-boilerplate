@@ -36,7 +36,7 @@ describe('E2E Permission Admin', () => {
 
     const updateData: PermissionUpdateDto = {
         name: 'update role',
-        description: 'UPDATEROLE',
+        description: 'UPDATE_ROLE',
     };
 
     const apiKey = 'qwertyuiop12345zxcvbnmkjh';

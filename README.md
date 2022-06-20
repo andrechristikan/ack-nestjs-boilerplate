@@ -121,6 +121,7 @@ Next development
 - [x] Implement Cache Manager for `x-custom-lang`, `x-timestamp`, and `x-timezone`, and `x-request-id`
 - [x] Response Timeout, custom timeout with decorator
 - [x] Convert time using `ms package` in Config Module. Centralize
+- [x] Add cSpell
 - [ ] Update Documentation
 - [ ] Versioning Serialization (Low Priority)
 - [ ] Docker Compose File Mongodb Replication Set (Low Priority)

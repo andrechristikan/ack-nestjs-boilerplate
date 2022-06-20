@@ -7,7 +7,6 @@ import { UserAgent } from 'src/utils/request/request.decorator';
 import {
     Response,
     ResponseTimeout,
-    // ResponseTimeout,
 } from 'src/utils/response/response.decorator';
 import { IResponse } from 'src/utils/response/response.interface';
 import { IResult } from 'ua-parser-js';

@@ -182,7 +182,7 @@ describe('HelperStringService', () => {
         it('should be success string', async () => {
             const result =
                 helperStringService.convertStringToNumberOrBooleanIfPossible(
-                    'asdasd'
+                    'check'
                 );
             jest.spyOn(
                 helperStringService,
@@ -191,7 +191,7 @@ describe('HelperStringService', () => {
 
             expect(
                 helperStringService.convertStringToNumberOrBooleanIfPossible(
-                    'asdasd'
+                    'check'
                 )
             ).toBe(result);
         });
