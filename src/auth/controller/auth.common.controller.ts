@@ -39,7 +39,6 @@ import { AuthLoginDto } from '../dto/auth.login.dto';
 import { AuthChangePasswordDto } from '../dto/auth.change-password.dto';
 import { AuthLoginSerialization } from '../serialization/auth.login.serialization';
 import { IAuthApiPayload } from '../auth.interface';
-import { CacheService } from 'src/cache/service/cache.service';
 
 @Controller({
     version: '1',
@@ -47,7 +46,6 @@ import { CacheService } from 'src/cache/service/cache.service';
 })
 export class AuthCommonController {
     constructor(
-        private readonly cacheService: CacheService,
         private readonly debuggerService: DebuggerService,
         private readonly helperDateService: HelperDateService,
         private readonly userService: UserService,
