@@ -1,5 +1,6 @@
 import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
 import { AuthExcludeApiKey } from 'src/auth/auth.decorator';
+import { ErrorMeta } from 'src/utils/error/error.decorator';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { HelperService } from 'src/utils/helper/service/helper.service';
 import {
@@ -24,6 +25,7 @@ export class TestingCommonController {
 
     @Response('test.hello')
     @AuthExcludeApiKey()
+    @ErrorMeta(TestingCommonController.name, 'hello')
     @Get('/hello')
     async hello(
         @RequestUserAgent() userAgent: IResult,
@@ -48,6 +50,7 @@ export class TestingCommonController {
     @Response('test.helloTimeout')
     @AuthExcludeApiKey()
     @ResponseTimeout('10s')
+    @ErrorMeta(TestingCommonController.name, 'helloTimeout')
     @Get('/hello-timeout')
     async helloTimeout(
         @RequestUserAgent() userAgent: IResult,

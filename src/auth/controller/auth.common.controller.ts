@@ -21,7 +21,6 @@ import {
 import { Response } from 'src/utils/response/response.decorator';
 import { IResponse } from 'src/utils/response/response.interface';
 import { IUserDocument } from 'src/user/user.interface';
-import { SuccessException } from 'src/utils/error/error.exception';
 import { ENUM_LOGGER_ACTION } from 'src/logger/logger.constant';
 import {
     ApiKey,
@@ -31,14 +30,14 @@ import {
     User,
 } from '../auth.decorator';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { LoggerService } from 'src/logger/service/logger.service';
 import { UserDocument } from 'src/user/schema/user.schema';
 import { AuthLoginDto } from '../dto/auth.login.dto';
 import { AuthChangePasswordDto } from '../dto/auth.change-password.dto';
 import { AuthLoginSerialization } from '../serialization/auth.login.serialization';
 import { IAuthApiPayload } from '../auth.interface';
-import { RequestId } from 'src/utils/request/request.decorator';
+import { SuccessException } from 'src/utils/error/exception/error.success.exception';
+import { ErrorMeta } from 'src/utils/error/error.decorator';
 
 @Controller({
     version: '1',
@@ -46,7 +45,6 @@ import { RequestId } from 'src/utils/request/request.decorator';
 })
 export class AuthCommonController {
     constructor(
-        private readonly debuggerService: DebuggerService,
         private readonly userService: UserService,
         private readonly authService: AuthService,
         private readonly loggerService: LoggerService
@@ -56,11 +54,11 @@ export class AuthCommonController {
         statusCode: ENUM_AUTH_STATUS_CODE_SUCCESS.AUTH_LOGIN_SUCCESS,
     })
     @HttpCode(HttpStatus.OK)
+    @ErrorMeta(AuthCommonController.name, 'login')
     @Post('/login')
     async login(
         @Body() body: AuthLoginDto,
-        @ApiKey() apiKey: IAuthApiPayload,
-        @RequestId() requestId: string
+        @ApiKey() apiKey: IAuthApiPayload
     ): Promise<IResponse> {
         const rememberMe: boolean = body.rememberMe ? true : false;
         const user: IUserDocument =
@@ -77,12 +75,6 @@ export class AuthCommonController {
             );
 
         if (!user) {
-            this.debuggerService.error(requestId, {
-                description: 'Authorized error user not found',
-                class: 'AuthController',
-                function: 'login',
-            });
-
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
                 message: 'user.error.notFound',
@@ -95,35 +87,17 @@ export class AuthCommonController {
         );
 
         if (!validate) {
-            this.debuggerService.error(requestId, {
-                description: 'Authorized error',
-                class: 'AuthController',
-                function: 'login',
-            });
-
             throw new BadRequestException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR,
                 message: 'auth.error.passwordNotMatch',
             });
         } else if (!user.isActive) {
-            this.debuggerService.error(requestId, {
-                description: 'Auth Block',
-                class: 'AuthController',
-                function: 'login',
-            });
-
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR,
                 message: 'user.error.inactive',
             });
         } else if (!user.role.isActive) {
-            this.debuggerService.error(requestId, {
-                description: 'Role Block',
-                class: 'AuthController',
-                function: 'login',
-            });
-
             throw new ForbiddenException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR,
                 message: 'role.error.inactive',
@@ -153,12 +127,6 @@ export class AuthCommonController {
             await this.authService.checkPasswordExpired(user.passwordExpired);
 
         if (checkPasswordExpired) {
-            this.debuggerService.error(requestId, {
-                description: 'Password expired',
-                class: 'AuthController',
-                function: 'login',
-            });
-
             throw new SuccessException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR,
@@ -187,12 +155,12 @@ export class AuthCommonController {
     @Response('auth.refresh')
     @AuthRefreshJwtGuard()
     @HttpCode(HttpStatus.OK)
+    @ErrorMeta(AuthCommonController.name, 'refresh')
     @Post('/refresh')
     async refresh(
         @User()
         { _id, rememberMe, loginDate }: Record<string, any>,
-        @Token() refreshToken: string,
-        @RequestId() requestId: string
+        @Token() refreshToken: string
     ): Promise<IResponse> {
         const user: IUserDocument =
             await this.userService.findOneById<IUserDocument>(_id, {
@@ -203,34 +171,16 @@ export class AuthCommonController {
             });
 
         if (!user) {
-            this.debuggerService.error(requestId, {
-                description: 'Authorized error user not found',
-                class: 'AuthController',
-                function: 'refresh',
-            });
-
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
                 message: 'user.error.notFound',
             });
         } else if (!user.isActive) {
-            this.debuggerService.error(requestId, {
-                description: 'Auth Block',
-                class: 'AuthController',
-                function: 'refresh',
-            });
-
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR,
                 message: 'user.error.inactive',
             });
         } else if (!user.role.isActive) {
-            this.debuggerService.error(requestId, {
-                description: 'Role Block',
-                class: 'AuthController',
-                function: 'refresh',
-            });
-
             throw new ForbiddenException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR,
                 message: 'role.error.inactive',
@@ -241,12 +191,6 @@ export class AuthCommonController {
             await this.authService.checkPasswordExpired(user.passwordExpired);
 
         if (checkPasswordExpired) {
-            this.debuggerService.error(requestId, {
-                description: 'Password expired',
-                class: 'AuthController',
-                function: 'refresh',
-            });
-
             throw new ForbiddenException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR,
@@ -273,20 +217,14 @@ export class AuthCommonController {
 
     @Response('auth.changePassword')
     @AuthJwtGuard()
+    @ErrorMeta(AuthCommonController.name, 'changePassword')
     @Patch('/change-password')
     async changePassword(
         @Body() body: AuthChangePasswordDto,
-        @User('_id') _id: string,
-        @RequestId() requestId: string
+        @User('_id') _id: string
     ): Promise<void> {
         const user: UserDocument = await this.userService.findOneById(_id);
         if (!user) {
-            this.debuggerService.error(requestId, {
-                description: 'User not found',
-                class: 'AuthController',
-                function: 'changePassword',
-            });
-
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
                 message: 'user.error.notFound',
@@ -298,12 +236,6 @@ export class AuthCommonController {
             user.password
         );
         if (!matchPassword) {
-            this.debuggerService.error(requestId, {
-                description: "Old password don't match",
-                class: 'AuthController',
-                function: 'changePassword',
-            });
-
             throw new BadRequestException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR,
@@ -316,12 +248,6 @@ export class AuthCommonController {
             user.password
         );
         if (newMatchPassword) {
-            this.debuggerService.error(requestId, {
-                description: "New password cant't same with old password",
-                class: 'AuthController',
-                function: 'changePassword',
-            });
-
             throw new BadRequestException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NEW_MUST_DIFFERENCE_ERROR,
@@ -336,16 +262,6 @@ export class AuthCommonController {
 
             await this.userService.updatePassword(user._id, password);
         } catch (e) {
-            this.debuggerService.error(
-                requestId,
-                {
-                    description: 'Change password error internal server error',
-                    class: 'AuthController',
-                    function: 'changePassword',
-                },
-                e
-            );
-
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',

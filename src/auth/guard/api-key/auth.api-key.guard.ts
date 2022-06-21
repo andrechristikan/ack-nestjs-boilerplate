@@ -4,16 +4,16 @@ import {
     Injectable,
     UnauthorizedException,
 } from '@nestjs/common';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
+import {
+    AUTH_EXCLUDE_API_KEY_META_KEY,
+    ENUM_AUTH_STATUS_CODE_ERROR,
+} from 'src/auth/auth.constant';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
-import { IRequestApp } from 'src/utils/request/request.interface';
 
 @Injectable()
 export class ApiKeyGuard extends AuthGuard('api-key') {
     constructor(
-        private readonly debuggerService: DebuggerService,
         private readonly configService: ConfigService,
         private readonly reflector: Reflector
     ) {
@@ -23,7 +23,7 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
     canActivate(context: ExecutionContext) {
         const mode = this.configService.get<string>('app.mode');
         const excludeApiKey = this.reflector.get<boolean>(
-            'excludeApiKey',
+            AUTH_EXCLUDE_API_KEY_META_KEY,
             context.getHandler()
         );
 
@@ -40,23 +40,9 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
     handleRequest<TUser = any>(
         err: Record<string, any>,
         user: TUser,
-        info: Error | string,
-        context: ExecutionContext
+        info: Error | string
     ): TUser {
         if (err || !user) {
-            const request: IRequestApp = context.switchToHttp().getRequest();
-
-            this.debuggerService.error(
-                request.id,
-                {
-                    description:
-                        info instanceof Error ? info.message : `${info}`,
-                    class: 'ApiKeyGuard',
-                    function: 'handleRequest',
-                },
-                err
-            );
-
             if (
                 info instanceof Error &&
                 info.name === 'BadRequestError' &&

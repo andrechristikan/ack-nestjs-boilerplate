@@ -25,3 +25,4 @@ export enum ENUM_AUTH_STATUS_CODE_SUCCESS {
 }
 
 export const AUTH_ADMIN_META_KEY = 'AuthAdminMetaKey';
+export const AUTH_EXCLUDE_API_KEY_META_KEY = 'AuthExcludeApiKeyMetaKey';

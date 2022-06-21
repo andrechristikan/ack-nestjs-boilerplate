@@ -6,10 +6,10 @@ import {
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
-import { IErrorException } from './error.interface';
 import { IMessage } from 'src/message/message.interface';
 import { MessageService } from 'src/message/service/message.service';
-import { IRequestApp } from '../request/request.interface';
+import { IRequestApp } from 'src/utils/request/request.interface';
+import { IErrorException } from '../error.interface';
 
 @Catch(HttpException)
 export class ErrorHttpFilter implements ExceptionFilter {

@@ -6,7 +6,6 @@ import {
     NotFoundException,
     Post,
 } from '@nestjs/common';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
 import { RoleDocument } from 'src/role/schema/role.schema';
 import { RoleService } from 'src/role/service/role.service';
@@ -14,7 +13,7 @@ import { UserService } from 'src/user/service/user.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
 import { IUserCheckExist, IUserDocument } from 'src/user/user.interface';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
-import { RequestId } from 'src/utils/request/request.decorator';
+import { ErrorMeta } from 'src/utils/error/error.decorator';
 import { Response } from 'src/utils/response/response.decorator';
 import { IResponse } from 'src/utils/response/response.interface';
 import { AuthSignUpDto } from '../dto/auth.sign-up.dto';
@@ -27,18 +26,17 @@ import { AuthService } from '../service/auth.service';
 })
 export class AuthPublicController {
     constructor(
-        private readonly debuggerService: DebuggerService,
         private readonly userService: UserService,
         private readonly authService: AuthService,
         private readonly roleService: RoleService
     ) {}
 
     @Response('auth.signUp')
+    @ErrorMeta(AuthPublicController.name, 'signUp')
     @Post('/sign-up')
     async signUp(
         @Body()
-        { email, mobileNumber, ...body }: AuthSignUpDto,
-        @RequestId() requestId: string
+        { email, mobileNumber, ...body }: AuthSignUpDto
     ): Promise<IResponse> {
         const role: RoleDocument = await this.roleService.findOne<RoleDocument>(
             {
@@ -46,12 +44,6 @@ export class AuthPublicController {
             }
         );
         if (!role) {
-            this.debuggerService.error(requestId, {
-                description: 'Role not found',
-                class: 'AuthPublicController',
-                function: 'signUp',
-            });
-
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
                 message: 'role.error.notFound',
@@ -64,34 +56,16 @@ export class AuthPublicController {
         );
 
         if (checkExist.email && checkExist.mobileNumber) {
-            this.debuggerService.error(requestId, {
-                description: 'create user exist',
-                class: 'AuthPublicController',
-                function: 'signUp',
-            });
-
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EXISTS_ERROR,
                 message: 'user.error.exist',
             });
         } else if (checkExist.email) {
-            this.debuggerService.error(requestId, {
-                description: 'create user exist email',
-                class: 'AuthPublicController',
-                function: 'signUp',
-            });
-
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
                 message: 'user.error.emailExist',
             });
         } else if (checkExist.mobileNumber) {
-            this.debuggerService.error(requestId, {
-                description: 'create user exist mobile number',
-                class: 'AuthPublicController',
-                function: 'signUp',
-            });
-
             throw new BadRequestException({
                 statusCode:
                     ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
@@ -146,16 +120,6 @@ export class AuthPublicController {
                 refreshToken,
             };
         } catch (err: any) {
-            this.debuggerService.error(
-                requestId,
-                {
-                    description: 'Signup try catch',
-                    class: 'AuthPublicController',
-                    function: 'signUp',
-                },
-                err
-            );
-
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',

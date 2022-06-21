@@ -8,7 +8,10 @@ import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from '../request.constant';
+import {
+    ENUM_REQUEST_STATUS_CODE_ERROR,
+    REQUEST_EXCLUDE_TIMESTAMP_META_KEY,
+} from '../request.constant';
 import { IRequestApp } from '../request.interface';
 
 export class RequestTimestampInterceptor
@@ -31,7 +34,7 @@ export class RequestTimestampInterceptor
             const reqTs: string = headers['x-timestamp'] as string;
             const currentTimestamp: number = this.helperDateService.timestamp();
             const excludeTimestamp = this.reflector.get<boolean>(
-                'excludeTimestamp',
+                REQUEST_EXCLUDE_TIMESTAMP_META_KEY,
                 context.getHandler()
             );
 

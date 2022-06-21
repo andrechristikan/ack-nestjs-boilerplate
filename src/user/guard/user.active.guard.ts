@@ -5,7 +5,6 @@ import {
     BadRequestException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
 import {
     ENUM_USER_STATUS_CODE_ERROR,
     USER_ACTIVE_META_KEY,
@@ -13,10 +12,7 @@ import {
 
 @Injectable()
 export class UserActiveGuard implements CanActivate {
-    constructor(
-        private readonly debuggerService: DebuggerService,
-        private reflector: Reflector
-    ) {}
+    constructor(private reflector: Reflector) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const required: boolean[] = this.reflector.getAllAndOverride<boolean[]>(
@@ -28,15 +24,9 @@ export class UserActiveGuard implements CanActivate {
             return true;
         }
 
-        const { __user, id } = context.switchToHttp().getRequest();
+        const { __user } = context.switchToHttp().getRequest();
 
         if (!required.includes(__user.isActive)) {
-            this.debuggerService.error(id, {
-                description: 'User active error',
-                class: 'UserActiveGuard',
-                function: 'canActivate',
-            });
-
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_ACTIVE_ERROR,
                 message: 'user.error.active',

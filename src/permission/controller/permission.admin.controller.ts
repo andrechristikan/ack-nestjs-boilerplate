@@ -9,7 +9,6 @@ import {
 } from '@nestjs/common';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { PermissionService } from '../service/permission.service';
 import {
     GetPermission,
@@ -32,11 +31,9 @@ import { PermissionDocument } from '../schema/permission.schema';
 import { PermissionListDto } from '../dto/permission.list.dto';
 import { PermissionUpdateDto } from '../dto/permission.update.dto';
 import { PermissionListSerialization } from '../serialization/permission.list.serialization';
-import {
-    RequestId,
-    RequestParamGuard,
-} from 'src/utils/request/request.decorator';
+import { RequestParamGuard } from 'src/utils/request/request.decorator';
 import { PermissionRequestDto } from '../dto/permissions.request.dto';
+import { ErrorMeta } from 'src/utils/error/error.decorator';
 
 @Controller({
     version: '1',
@@ -44,13 +41,13 @@ import { PermissionRequestDto } from '../dto/permissions.request.dto';
 })
 export class PermissionAdminController {
     constructor(
-        private readonly debuggerService: DebuggerService,
         private readonly paginationService: PaginationService,
         private readonly permissionService: PermissionService
     ) {}
 
     @ResponsePaging('permission.list')
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.PERMISSION_READ)
+    @ErrorMeta(PermissionAdminController.name, 'list')
     @Get('/list')
     async list(
         @Query()
@@ -112,6 +109,7 @@ export class PermissionAdminController {
     @PermissionGetGuard()
     @RequestParamGuard(PermissionRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.PERMISSION_READ)
+    @ErrorMeta(PermissionAdminController.name, 'get')
     @Get('/get/:permission')
     async get(
         @GetPermission() permission: PermissionDocument
@@ -127,24 +125,14 @@ export class PermissionAdminController {
         ENUM_PERMISSIONS.PERMISSION_UPDATE
     )
     @Put('/update/:permission')
+    @ErrorMeta(PermissionAdminController.name, 'ErrorMeta')
     async update(
         @GetPermission() permission: PermissionDocument,
-        @Body() body: PermissionUpdateDto,
-        @RequestId() requestId: string
+        @Body() body: PermissionUpdateDto
     ): Promise<IResponse> {
         try {
             await this.permissionService.update(permission._id, body);
         } catch (e) {
-            this.debuggerService.error(
-                requestId,
-                {
-                    description: 'Auth active server internal error',
-                    class: 'AuthAdminController',
-                    function: 'updateActive',
-                },
-                e
-            );
-
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
@@ -163,24 +151,14 @@ export class PermissionAdminController {
         ENUM_PERMISSIONS.PERMISSION_READ,
         ENUM_PERMISSIONS.PERMISSION_UPDATE
     )
+    @ErrorMeta(PermissionAdminController.name, 'inactive')
     @Patch('/update/:permission/inactive')
     async inactive(
-        @GetPermission() permission: PermissionDocument,
-        @RequestId() requestId: string
+        @GetPermission() permission: PermissionDocument
     ): Promise<void> {
         try {
             await this.permissionService.inactive(permission._id);
         } catch (e) {
-            this.debuggerService.error(
-                requestId,
-                {
-                    description: 'Permission inactive server internal error',
-                    class: 'PermissionController',
-                    function: 'inactive',
-                },
-                e
-            );
-
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
@@ -197,24 +175,14 @@ export class PermissionAdminController {
         ENUM_PERMISSIONS.PERMISSION_READ,
         ENUM_PERMISSIONS.PERMISSION_UPDATE
     )
+    @ErrorMeta(PermissionAdminController.name, 'active')
     @Patch('/update/:permission/active')
     async active(
-        @GetPermission() permission: PermissionDocument,
-        @RequestId() requestId: string
+        @GetPermission() permission: PermissionDocument
     ): Promise<void> {
         try {
             await this.permissionService.active(permission._id);
         } catch (e) {
-            this.debuggerService.error(
-                requestId,
-                {
-                    description: 'Permission active server internal error',
-                    class: 'PermissionController',
-                    function: 'active',
-                },
-                e
-            );
-
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',

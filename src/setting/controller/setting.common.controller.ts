@@ -1,5 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { PaginationService } from 'src/pagination/service/pagination.service';
+import { ErrorMeta } from 'src/utils/error/error.decorator';
 import { RequestParamGuard } from 'src/utils/request/request.decorator';
 import {
     Response,
@@ -32,6 +33,7 @@ export class SettingCommonController {
 
     @ResponsePaging('setting.list')
     @Get('/list')
+    @ErrorMeta(SettingCommonController.name, 'list')
     async list(
         @Query()
         {
@@ -87,6 +89,7 @@ export class SettingCommonController {
     @Response('setting.get')
     @SettingGetGuard()
     @RequestParamGuard(SettingRequestDto)
+    @ErrorMeta(SettingCommonController.name, 'get')
     @Get('get/:setting')
     async get(@GetSetting() setting: SettingDocument): Promise<IResponse> {
         return this.settingService.serializationGet(setting);
@@ -94,6 +97,7 @@ export class SettingCommonController {
 
     @Response('setting.getByName')
     @SettingGetByNameGuard()
+    @ErrorMeta(SettingCommonController.name, 'getByName')
     @Get('get/name/:settingName')
     async getByName(
         @GetSetting() setting: SettingDocument

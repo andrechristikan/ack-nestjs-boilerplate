@@ -17,6 +17,7 @@ import { AwsHealthIndicator } from '../indicator/health.aws.indicator';
 import { IResponse } from 'src/utils/response/response.interface';
 import { Response } from 'src/utils/response/response.decorator';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
+import { ErrorMeta } from 'src/utils/error/error.decorator';
 
 @Controller({
     version: VERSION_NEUTRAL,
@@ -34,11 +35,12 @@ export class HealthCommonController {
 
     @Response('health.check')
     @HealthCheck()
+    @ErrorMeta(HealthCommonController.name, 'aws')
     @Get('/aws')
     async checkAws(): Promise<IResponse> {
         try {
             return this.health.check([
-                () => this.awsIndicator.isHealthy('aws bucket'),
+                () => this.awsIndicator.isHealthy('awsBucket'),
             ]);
         } catch (e) {
             throw new InternalServerErrorException({
@@ -50,6 +52,7 @@ export class HealthCommonController {
 
     @Response('health.check')
     @HealthCheck()
+    @ErrorMeta(HealthCommonController.name, 'checkDatabase')
     @Get('/database')
     async checkDatabase(): Promise<IResponse> {
         try {
@@ -69,13 +72,14 @@ export class HealthCommonController {
 
     @Response('health.check')
     @HealthCheck()
+    @ErrorMeta(HealthCommonController.name, 'checkMemoryHeap')
     @Get('/memory-heap')
     async checkMemoryHeap(): Promise<IResponse> {
         try {
             return this.health.check([
                 () =>
                     this.memoryHealthIndicator.checkHeap(
-                        'memory heap',
+                        'memoryHeap',
                         300 * 1024 * 1024
                     ),
             ]);
@@ -89,13 +93,14 @@ export class HealthCommonController {
 
     @Response('health.check')
     @HealthCheck()
+    @ErrorMeta(HealthCommonController.name, 'checkMemoryRss')
     @Get('/memory-rss')
     async checkMemoryRss(): Promise<IResponse> {
         try {
             return this.health.check([
                 () =>
                     this.memoryHealthIndicator.checkRSS(
-                        'memory RSS',
+                        'memoryRss',
                         300 * 1024 * 1024
                     ),
             ]);
@@ -109,12 +114,13 @@ export class HealthCommonController {
 
     @Response('health.check')
     @HealthCheck()
+    @ErrorMeta(HealthCommonController.name, 'checkStorage')
     @Get('/storage')
     async checkStorage(): Promise<IResponse> {
         try {
             return this.health.check([
                 () =>
-                    this.diskHealthIndicator.checkStorage('disk health', {
+                    this.diskHealthIndicator.checkStorage('diskHealth', {
                         thresholdPercent: 0.75,
                         path: '/',
                     }),

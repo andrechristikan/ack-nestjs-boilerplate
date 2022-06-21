@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { AuthApiService } from 'src/auth/service/auth.api.service';
 import { IRequestApp } from 'src/utils/request/request.interface';
 
@@ -16,7 +15,6 @@ export class BasicGuard implements CanActivate {
     private readonly clientSecret: string;
 
     constructor(
-        private readonly debuggerService: DebuggerService,
         private readonly configService: ConfigService,
         private readonly authApiService: AuthApiService
     ) {
@@ -33,12 +31,6 @@ export class BasicGuard implements CanActivate {
         const authorization: string = request.headers.authorization;
 
         if (!authorization) {
-            this.debuggerService.error(request.id, {
-                description: 'AuthBasicGuard Error',
-                class: 'BasicGuard',
-                function: 'canActivate',
-            });
-
             throw new UnauthorizedException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GUARD_BASIC_TOKEN_NEEDED_ERROR,
@@ -60,12 +52,6 @@ export class BasicGuard implements CanActivate {
             );
 
         if (!validateBasicToken) {
-            this.debuggerService.error(request.id, {
-                description: 'AuthBasicGuardError Validate Basic Token',
-                class: 'BasicGuard',
-                function: 'canActivate',
-            });
-
             throw new UnauthorizedException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GUARD_BASIC_TOKEN_INVALID_ERROR,

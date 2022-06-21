@@ -10,7 +10,10 @@ import {
     ENUM_PERMISSIONS,
     PERMISSION_META_KEY,
 } from 'src/permission/permission.constant';
-import { AUTH_ADMIN_META_KEY } from './auth.constant';
+import {
+    AUTH_ADMIN_META_KEY,
+    AUTH_EXCLUDE_API_KEY_META_KEY,
+} from './auth.constant';
 import { BasicGuard } from './guard/basic/auth.basic.guard';
 import { JwtRefreshGuard } from './guard/jwt-refresh/auth.jwt-refresh.guard';
 import { JwtGuard } from './guard/jwt/auth.jwt.guard';
@@ -65,7 +68,8 @@ export function AuthBasicGuard(): any {
     return applyDecorators(UseGuards(BasicGuard));
 }
 
-export const AuthExcludeApiKey = () => SetMetadata('excludeApiKey', true);
+export const AuthExcludeApiKey = () =>
+    SetMetadata(AUTH_EXCLUDE_API_KEY_META_KEY, true);
 
 export const User = createParamDecorator(
     (data: string, ctx: ExecutionContext): Record<string, any> => {

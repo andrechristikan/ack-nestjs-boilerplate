@@ -5,7 +5,6 @@ import {
     ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
 import {
     ENUM_PERMISSIONS,
     ENUM_PERMISSION_STATUS_CODE_ERROR,
@@ -15,10 +14,7 @@ import { IPermission } from 'src/permission/permission.interface';
 
 @Injectable()
 export class PermissionPayloadDefaultGuard implements CanActivate {
-    constructor(
-        private readonly debuggerService: DebuggerService,
-        private reflector: Reflector
-    ) {}
+    constructor(private reflector: Reflector) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredPermission: ENUM_PERMISSIONS[] =
@@ -29,7 +25,7 @@ export class PermissionPayloadDefaultGuard implements CanActivate {
         if (!requiredPermission) {
             return true;
         }
-        const { user, id } = context.switchToHttp().getRequest();
+        const { user } = context.switchToHttp().getRequest();
         const { role } = user;
         const permissions: string[] = role.permissions
             .filter((val: IPermission) => val.isActive)
@@ -40,12 +36,6 @@ export class PermissionPayloadDefaultGuard implements CanActivate {
         );
 
         if (!hasPermission) {
-            this.debuggerService.error(id, {
-                description: 'Permission not has permission',
-                class: 'PermissionDefaultGuard',
-                function: 'canActivate',
-            });
-
             throw new ForbiddenException({
                 statusCode:
                     ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_GUARD_INVALID_ERROR,

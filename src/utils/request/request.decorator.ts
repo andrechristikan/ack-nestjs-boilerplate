@@ -8,6 +8,7 @@ import {
 import { ClassConstructor } from 'class-transformer';
 import { IResult } from 'ua-parser-js';
 import { ParamGuard } from './guard/request.param.guard';
+import { REQUEST_EXCLUDE_TIMESTAMP_META_KEY } from './request.constant';
 import { IRequestApp } from './request.interface';
 
 export const RequestUserAgent = createParamDecorator(
@@ -52,4 +53,4 @@ export function RequestParamGuard(
 }
 
 export const RequestExcludeTimestamp = () =>
-    SetMetadata('excludeTimestamp', true);
+    SetMetadata(REQUEST_EXCLUDE_TIMESTAMP_META_KEY, true);

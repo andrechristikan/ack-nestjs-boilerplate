@@ -36,7 +36,7 @@ export default registerAs(
             saltLength: 8,
             expiredInDay: 182, // recommendation for production is 182 days
         },
-        
+
         basicToken: {
             clientId: process.env.AUTH_BASIC_TOKEN_CLIENT_ID,
             clientSecret: process.env.AUTH_BASIC_TOKEN_CLIENT_SECRET,

@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_INTERCEPTOR, APP_PIPE, Reflector } from '@nestjs/core';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { HelperDateService } from '../helper/service/helper.date.service';
 import { RequestTimestampInterceptor } from './interceptor/request.timestamp.interceptor';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from './request.constant';
@@ -29,32 +28,21 @@ import { StringOrNumberOrBooleanConstraint } from './validation/request.string-o
     providers: [
         {
             provide: APP_PIPE,
-            inject: [DebuggerService],
-            useFactory: (debuggerService: DebuggerService) => {
+            inject: [],
+            useFactory: () => {
                 return new ValidationPipe({
                     transform: true,
                     skipNullProperties: false,
                     skipUndefinedProperties: false,
                     skipMissingProperties: false,
                     errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-                    exceptionFactory: async (errors: ValidationError[]) => {
-                        debuggerService.error(
-                            ValidationPipe.name,
-                            {
-                                description: 'Request validation error',
-                                class: 'RequestModule',
-                                function: 'exceptionFactory',
-                            },
-                            errors
-                        );
-
-                        return new UnprocessableEntityException({
+                    exceptionFactory: async (errors: ValidationError[]) =>
+                        new UnprocessableEntityException({
                             statusCode:
                                 ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR,
                             message: 'http.clientError.unprocessableEntity',
                             errors,
-                        });
-                    },
+                        }),
                 });
             },
         },
