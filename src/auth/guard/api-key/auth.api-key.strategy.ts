@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import Strategy from 'passport-headerapikey';
 import { AuthApiService } from 'src/auth/service/auth.api.service';
-import { Request } from 'express';
 import { AuthApiDocument } from 'src/auth/schema/auth.api.schema';
 import { IAuthApiRequestHashedData } from 'src/auth/auth.interface';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
+import { IRequestApp } from 'src/utils/request/request.interface';
 
 @Injectable()
 export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
@@ -20,7 +20,7 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
                     user?: Record<string, any>,
                     info?: string | number
                 ) => Promise<void>,
-                req: Request
+                req: IRequestApp
             ) => this.validate(apiKey, verified, req)
         );
     }

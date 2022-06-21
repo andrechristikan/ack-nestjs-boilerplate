@@ -29,33 +29,36 @@ export function FileImageInterceptor(
             context: ExecutionContext,
             next: CallHandler
         ): Promise<Observable<Promise<any> | string>> {
-            const ctx: HttpArgumentsHost = context.switchToHttp();
-            const { file, files } = ctx.getRequest();
+            if (context.getType() === 'http') {
+                const ctx: HttpArgumentsHost = context.switchToHttp();
+                const { file, files } = ctx.getRequest();
 
-            const finalFiles = files || file;
+                const finalFiles = files || file;
 
-            if (Array.isArray(finalFiles)) {
-                const maxFiles =
-                    this.configService.get<number>('file.maxFiles');
+                if (Array.isArray(finalFiles)) {
+                    const maxFiles =
+                        this.configService.get<number>('file.maxFiles');
 
-                if (required && finalFiles.length === 0) {
-                    throw new UnprocessableEntityException({
-                        statusCode:
-                            ENUM_FILE_STATUS_CODE_ERROR.FILE_NEEDED_ERROR,
-                        message: 'file.error.notFound',
-                    });
-                } else if (finalFiles.length > maxFiles) {
-                    throw new UnprocessableEntityException({
-                        statusCode: ENUM_FILE_STATUS_CODE_ERROR.FILE_MAX_ERROR,
-                        message: 'file.error.maxFiles',
-                    });
+                    if (required && finalFiles.length === 0) {
+                        throw new UnprocessableEntityException({
+                            statusCode:
+                                ENUM_FILE_STATUS_CODE_ERROR.FILE_NEEDED_ERROR,
+                            message: 'file.error.notFound',
+                        });
+                    } else if (finalFiles.length > maxFiles) {
+                        throw new UnprocessableEntityException({
+                            statusCode:
+                                ENUM_FILE_STATUS_CODE_ERROR.FILE_MAX_ERROR,
+                            message: 'file.error.maxFiles',
+                        });
+                    }
+
+                    for (const file of finalFiles) {
+                        await this.validate(file);
+                    }
+                } else {
+                    await this.validate(finalFiles);
                 }
-
-                for (const file of finalFiles) {
-                    await this.validate(file);
-                }
-            } else {
-                await this.validate(finalFiles);
             }
 
             return next.handle();

@@ -7,8 +7,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_INTERCEPTOR, APP_PIPE, Reflector } from '@nestjs/core';
-import { CacheService } from 'src/cache/service/cache.service';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { HelperDateService } from '../helper/service/helper.date.service';
 import { RequestTimestampInterceptor } from './interceptor/request.timestamp.interceptor';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from './request.constant';
@@ -30,46 +28,36 @@ import { StringOrNumberOrBooleanConstraint } from './validation/request.string-o
     providers: [
         {
             provide: APP_PIPE,
-            inject: [DebuggerService],
-            useFactory: (debuggerService: DebuggerService) => {
+            inject: [],
+            useFactory: () => {
                 return new ValidationPipe({
                     transform: true,
                     skipNullProperties: false,
                     skipUndefinedProperties: false,
                     skipMissingProperties: false,
                     errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-                    exceptionFactory: async (errors: ValidationError[]) => {
-                        debuggerService.error(
-                            'Request validation error',
-                            'RequestModule',
-                            'exceptionFactory',
-                            errors
-                        );
-
-                        return new UnprocessableEntityException({
+                    exceptionFactory: async (errors: ValidationError[]) =>
+                        new UnprocessableEntityException({
                             statusCode:
                                 ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR,
                             message: 'http.clientError.unprocessableEntity',
                             errors,
-                        });
-                    },
+                        }),
                 });
             },
         },
         {
             provide: APP_INTERCEPTOR,
-            inject: [ConfigService, Reflector, HelperDateService, CacheService],
+            inject: [ConfigService, Reflector, HelperDateService],
             useFactory: (
                 configService: ConfigService,
                 reflector: Reflector,
-                helperDateService: HelperDateService,
-                cacheService: CacheService
+                helperDateService: HelperDateService
             ) =>
                 new RequestTimestampInterceptor(
                     configService,
                     reflector,
-                    helperDateService,
-                    cacheService
+                    helperDateService
                 ),
         },
         IsPasswordStrongConstraint,

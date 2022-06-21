@@ -26,7 +26,7 @@ import { UserService } from '../service/user.service';
 import { RoleService } from 'src/role/service/role.service';
 import { IUserCheckExist, IUserDocument } from '../user.interface';
 import { ENUM_USER_STATUS_CODE_ERROR } from '../user.constant';
-import { PaginationService } from 'src/utils/pagination/service/pagination.service';
+import { PaginationService } from 'src/pagination/service/pagination.service';
 import { AuthService } from 'src/auth/service/auth.service';
 import {
     Response,
@@ -37,13 +37,13 @@ import {
     IResponsePaging,
 } from 'src/utils/response/response.interface';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { UserListDto } from '../dto/user.list.dto';
 import { UserListSerialization } from '../serialization/user.list.serialization';
 import { UserCreateDto } from '../dto/user.create.dto';
 import { UserUpdateDto } from '../dto/user.update.dto';
 import { RequestParamGuard } from 'src/utils/request/request.decorator';
 import { UserRequestDto } from '../dto/user.request.dto';
+import { ErrorMeta } from 'src/utils/error/error.decorator';
 
 @Controller({
     version: '1',
@@ -51,7 +51,6 @@ import { UserRequestDto } from '../dto/user.request.dto';
 })
 export class UserAdminController {
     constructor(
-        private readonly debuggerService: DebuggerService,
         private readonly authService: AuthService,
         private readonly paginationService: PaginationService,
         private readonly userService: UserService,
@@ -60,6 +59,7 @@ export class UserAdminController {
 
     @ResponsePaging('user.list')
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ)
+    @ErrorMeta(UserAdminController.name, 'list')
     @Get('/list')
     async list(
         @Query()
@@ -123,6 +123,7 @@ export class UserAdminController {
     @UserGetGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ)
+    @ErrorMeta(UserAdminController.name, 'get')
     @Get('get/:user')
     async get(@GetUser() user: IUserDocument): Promise<IResponse> {
         return this.userService.serializationGet(user);
@@ -130,6 +131,7 @@ export class UserAdminController {
 
     @Response('user.create')
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_CREATE)
+    @ErrorMeta(UserAdminController.name, 'create')
     @Post('/create')
     async create(
         @Body()
@@ -141,34 +143,16 @@ export class UserAdminController {
         );
 
         if (checkExist.email && checkExist.mobileNumber) {
-            this.debuggerService.error(
-                'create user exist',
-                'UserController',
-                'create'
-            );
-
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EXISTS_ERROR,
                 message: 'user.error.exist',
             });
         } else if (checkExist.email) {
-            this.debuggerService.error(
-                'create user exist',
-                'UserController',
-                'create'
-            );
-
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
                 message: 'user.error.emailExist',
             });
         } else if (checkExist.mobileNumber) {
-            this.debuggerService.error(
-                'create user exist',
-                'UserController',
-                'create'
-            );
-
             throw new BadRequestException({
                 statusCode:
                     ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
@@ -178,12 +162,6 @@ export class UserAdminController {
 
         const role = await this.roleService.findOneById(body.role);
         if (!role) {
-            this.debuggerService.error(
-                'Role not found',
-                'UserController',
-                'create'
-            );
-
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
                 message: 'role.error.notFound',
@@ -210,13 +188,6 @@ export class UserAdminController {
                 _id: create._id,
             };
         } catch (err: any) {
-            this.debuggerService.error(
-                'create try catch',
-                'UserController',
-                'create',
-                err
-            );
-
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
@@ -228,17 +199,12 @@ export class UserAdminController {
     @UserDeleteGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_DELETE)
+    @ErrorMeta(UserAdminController.name, 'delete')
     @Delete('/delete/:user')
     async delete(@GetUser() user: IUserDocument): Promise<void> {
         try {
             await this.userService.deleteOneById(user._id);
         } catch (err) {
-            this.debuggerService.error(
-                'delete try catch',
-                'UserController',
-                'create',
-                err
-            );
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
@@ -252,6 +218,7 @@ export class UserAdminController {
     @UserUpdateGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
+    @ErrorMeta(UserAdminController.name, 'update')
     @Put('/update/:user')
     async update(
         @GetUser() user: IUserDocument,
@@ -261,13 +228,6 @@ export class UserAdminController {
         try {
             await this.userService.updateOneById(user._id, body);
         } catch (err: any) {
-            this.debuggerService.error(
-                'update try catch',
-                'UserController',
-                'update',
-                err
-            );
-
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
@@ -283,18 +243,12 @@ export class UserAdminController {
     @UserUpdateInactiveGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
+    @ErrorMeta(UserAdminController.name, 'inactive')
     @Patch('/update/:user/inactive')
     async inactive(@GetUser() user: IUserDocument): Promise<void> {
         try {
             await this.userService.inactive(user._id);
         } catch (e) {
-            this.debuggerService.error(
-                'User inactive server internal error',
-                'UserController',
-                'inactive',
-                e
-            );
-
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
@@ -308,18 +262,12 @@ export class UserAdminController {
     @UserUpdateActiveGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
+    @ErrorMeta(UserAdminController.name, 'active')
     @Patch('/update/:user/active')
     async active(@GetUser() user: IUserDocument): Promise<void> {
         try {
             await this.userService.active(user._id);
         } catch (e) {
-            this.debuggerService.error(
-                'User active server internal error',
-                'UserController',
-                'active',
-                e
-            );
-
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',

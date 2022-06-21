@@ -13,7 +13,6 @@ import {
     DEBUGGER_HTTP_FORMAT,
     DEBUGGER_HTTP_NAME,
 } from './http-debugger.constant';
-import { CacheService } from 'src/cache/service/cache.service';
 
 @Injectable()
 export class HttpDebuggerMiddleware implements NestMiddleware {
@@ -21,7 +20,6 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
     private readonly maxFiles: number;
 
     constructor(
-        private readonly cacheService: CacheService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
     ) {
@@ -52,10 +50,7 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
 
     private async httpLogger(): Promise<IHttpDebuggerConfig> {
         const date: string = this.helperDateService.format(
-            this.helperDateService.create({
-                timezone: await this.cacheService.getTimezone(),
-            }),
-            { timezone: await this.cacheService.getTimezone() }
+            this.helperDateService.create()
         );
         const HttpDebuggerOptions: IHttpDebuggerConfigOptions = {
             stream: createStream(`${date}.log`, {

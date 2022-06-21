@@ -14,10 +14,9 @@ import { MessageService } from 'src/message/service/message.service';
 import {
     ENUM_PAGINATION_TYPE,
     PAGINATION_DEFAULT_MAX_PAGE,
-} from 'src/utils/pagination/pagination.constant';
+} from 'src/pagination/pagination.constant';
 import { IResponsePagingOptions } from '../response.interface';
 import { Response } from 'express';
-import { CacheService } from 'src/cache/service/cache.service';
 
 // This interceptor for restructure response success
 export function ResponsePagingInterceptor(
@@ -26,57 +25,77 @@ export function ResponsePagingInterceptor(
 ): Type<NestInterceptor> {
     @Injectable()
     class MixinResponseInterceptor implements NestInterceptor<Promise<any>> {
-        constructor(
-            private readonly cacheService: CacheService,
-            private readonly messageService: MessageService
-        ) {}
+        constructor(private readonly messageService: MessageService) {}
 
         async intercept(
             context: ExecutionContext,
             next: CallHandler
         ): Promise<Observable<Promise<any> | string>> {
-            const ctx: HttpArgumentsHost = context.switchToHttp();
-            const responseExpress: Response = ctx.getResponse();
+            if (context.getType() === 'http') {
+                return next.handle().pipe(
+                    map(async (response: Promise<Record<string, any>>) => {
+                        const ctx: HttpArgumentsHost = context.switchToHttp();
+                        const responseExpress: Response = ctx.getResponse();
+                        const { headers } = ctx.getRequest();
+                        const customLanguages = headers['x-custom-lang'];
 
-            const customLanguages: string[] = (
-                await this.cacheService.get<string>('x-custom-lang')
-            ).split(',');
+                        const statusCode: number =
+                            options && options.statusCode
+                                ? options.statusCode
+                                : responseExpress.statusCode;
+                        const responseData: Record<string, any> =
+                            await response;
+                        const {
+                            totalData,
+                            currentPage,
+                            perPage,
+                            data,
+                            metadata,
+                            availableSort,
+                            availableSearch,
+                        } = responseData;
 
-            return next.handle().pipe(
-                map(async (response: Promise<Record<string, any>>) => {
-                    const statusCode: number =
-                        options && options.statusCode
-                            ? options.statusCode
-                            : responseExpress.statusCode;
-                    const responseData: Record<string, any> = await response;
-                    const {
-                        totalData,
-                        currentPage,
-                        perPage,
-                        data,
-                        metadata,
-                        availableSort,
-                        availableSearch,
-                    } = responseData;
+                        let { totalPage } = responseData;
+                        totalPage =
+                            totalPage > PAGINATION_DEFAULT_MAX_PAGE
+                                ? PAGINATION_DEFAULT_MAX_PAGE
+                                : totalPage;
 
-                    let { totalPage } = responseData;
-                    totalPage =
-                        totalPage > PAGINATION_DEFAULT_MAX_PAGE
-                            ? PAGINATION_DEFAULT_MAX_PAGE
-                            : totalPage;
+                        const message: string | IMessage =
+                            (await this.messageService.get(messagePath, {
+                                customLanguages,
+                            })) ||
+                            (await this.messageService.get('response.default', {
+                                customLanguages,
+                            }));
 
-                    const message: string | IMessage =
-                        (await this.messageService.get(messagePath, {
-                            customLanguages,
-                        })) ||
-                        (await this.messageService.get('response.default', {
-                            customLanguages,
-                        }));
+                        if (
+                            options &&
+                            options.type === ENUM_PAGINATION_TYPE.SIMPLE
+                        ) {
+                            return {
+                                statusCode,
+                                message,
+                                totalData,
+                                totalPage,
+                                currentPage,
+                                perPage,
+                                metadata,
+                                data,
+                            };
+                        } else if (
+                            options &&
+                            options.type === ENUM_PAGINATION_TYPE.MINI
+                        ) {
+                            return {
+                                statusCode,
+                                message,
+                                totalData,
+                                metadata,
+                                data,
+                            };
+                        }
 
-                    if (
-                        options &&
-                        options.type === ENUM_PAGINATION_TYPE.SIMPLE
-                    ) {
                         return {
                             statusCode,
                             message,
@@ -84,36 +103,16 @@ export function ResponsePagingInterceptor(
                             totalPage,
                             currentPage,
                             perPage,
+                            availableSort,
+                            availableSearch,
                             metadata,
                             data,
                         };
-                    } else if (
-                        options &&
-                        options.type === ENUM_PAGINATION_TYPE.MINI
-                    ) {
-                        return {
-                            statusCode,
-                            message,
-                            totalData,
-                            metadata,
-                            data,
-                        };
-                    }
+                    })
+                );
+            }
 
-                    return {
-                        statusCode,
-                        message,
-                        totalData,
-                        totalPage,
-                        currentPage,
-                        perPage,
-                        availableSort,
-                        availableSearch,
-                        metadata,
-                        data,
-                    };
-                })
-            );
+            return next.handle();
         }
     }
 

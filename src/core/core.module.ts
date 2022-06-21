@@ -5,7 +5,7 @@ import { WinstonModule } from 'nest-winston';
 import { DebuggerModule } from 'src/debugger/debugger.module';
 import Configs from 'src/config/index';
 import { AuthModule } from 'src/auth/auth.module';
-import { PaginationModule } from 'src/utils/pagination/pagination.module';
+import { PaginationModule } from 'src/pagination/pagination.module';
 import { HelperModule } from 'src/utils/helper/helper.module';
 import { MiddlewareModule } from 'src/utils/middleware/middleware.module';
 import { DebuggerOptionService } from 'src/debugger/service/debugger.option.service';
@@ -18,8 +18,8 @@ import { RequestModule } from 'src/utils/request/request.module';
 import { ErrorModule } from 'src/utils/error/error.module';
 import { SettingModule } from 'src/setting/setting.module';
 import { VersionModule } from 'src/utils/version/version.module';
-import { CacheModule } from 'src/cache/cache.module';
 import { ResponseModule } from 'src/utils/response/response.module';
+import { CacheModule } from 'src/cache/cache.module';
 
 @Module({
     controllers: [],
@@ -46,7 +46,6 @@ import { ResponseModule } from 'src/utils/response/response.module';
                 databaseService.createMongooseOptions(),
         }),
         HelperModule,
-        CacheModule,
         DebuggerModule,
         MessageModule,
         ErrorModule,
@@ -57,6 +56,7 @@ import { ResponseModule } from 'src/utils/response/response.module';
         VersionModule,
         MiddlewareModule,
         LoggerModule,
+        CacheModule,
         AuthModule,
     ],
 })

@@ -44,13 +44,17 @@ export class UserSeed {
                 salt: password.salt,
             });
 
-            this.debuggerService.debug(
-                'Insert User Succeed',
-                'UserSeed',
-                'insert'
-            );
+            this.debuggerService.debug(UserSeed.name, {
+                description: 'Insert User Succeed',
+                class: 'UserSeed',
+                function: 'insert',
+            });
         } catch (e) {
-            this.debuggerService.error(e.message, 'UserSeed', 'insert');
+            this.debuggerService.error(UserSeed.name, {
+                description: e.message,
+                class: 'UserSeed',
+                function: 'insert',
+            });
         }
     }
 
@@ -62,13 +66,17 @@ export class UserSeed {
         try {
             await this.userBulkService.deleteMany({});
 
-            this.debuggerService.debug(
-                'Remove User Succeed',
-                'UserSeed',
-                'remove'
-            );
+            this.debuggerService.debug(UserSeed.name, {
+                description: 'Remove User Succeed',
+                class: 'UserSeed',
+                function: 'remove',
+            });
         } catch (e) {
-            this.debuggerService.error(e.message, 'UserSeed', 'remove');
+            this.debuggerService.error(UserSeed.name, {
+                description: e.message,
+                class: 'UserSeed',
+                function: 'remove',
+            });
         }
     }
 }

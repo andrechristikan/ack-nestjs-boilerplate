@@ -118,10 +118,13 @@ Next development
 - [x] Add `x-request-id` middleware
 - [x] Add `x-request-id` per debugger log, to make more specific log per request
 - [x] Cors optimization allowed header, and allowed method
-- [x] Implement Cache Manager for `x-custom-lang`, `x-timestamp`, and `x-timezone`, and `x-request-id`
+- [x] Implement Cache Manager for response (for improve performance)
 - [x] Response Timeout, custom timeout with decorator
 - [x] Convert time using `ms package` in Config Module. Centralize
-- [x] Add cSpell
+- [x] Add `cSpell`
+- [x] Add `ErrorLogInterceptor`
+- [ ] Timezone in serialization and dto
+- [ ] Add `Redis` Configuration
 - [ ] Update Documentation
 - [ ] Versioning Serialization (Low Priority)
 - [ ] Docker Compose File Mongodb Replication Set (Low Priority)

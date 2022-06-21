@@ -2,6 +2,7 @@ import { applyDecorators, SetMetadata, UseInterceptors } from '@nestjs/common';
 import { ResponseDefaultInterceptor } from './interceptor/response.default.interceptor';
 import { ResponsePagingInterceptor } from './interceptor/response.paging.interceptor';
 import { ResponseTimeoutInterceptor } from './interceptor/response.timeout.interceptor';
+import { RESPONSE_CUSTOM_TIMEOUT_META_KEY } from './response.constant';
 import { IResponseOptions, IResponsePagingOptions } from './response.interface';
 
 export function Response(messagePath: string, options?: IResponseOptions): any {
@@ -19,9 +20,9 @@ export function ResponsePaging(
     );
 }
 
-export function ResponseTimeout(seconds: number): any {
+export function ResponseTimeout(seconds: string): any {
     return applyDecorators(
-        SetMetadata('customTimeout', true),
+        SetMetadata(RESPONSE_CUSTOM_TIMEOUT_META_KEY, true),
         UseInterceptors(ResponseTimeoutInterceptor(seconds))
     );
 }

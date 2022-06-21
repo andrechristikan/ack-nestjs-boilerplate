@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
-import { CacheService } from 'src/cache/service/cache.service';
 import { IUserDocument } from 'src/user/user.interface';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { HelperEncryptionService } from 'src/utils/helper/service/helper.encryption.service';
@@ -22,7 +21,6 @@ export class AuthService {
     private readonly refreshTokenNotBeforeExpirationTime: string;
 
     constructor(
-        private readonly cacheService: CacheService,
         private readonly helperHashService: HelperHashService,
         private readonly helperDateService: HelperDateService,
         private readonly helperEncryptionService: HelperEncryptionService,
@@ -120,9 +118,7 @@ export class AuthService {
             loginDate:
                 options && options.loginDate
                     ? options.loginDate
-                    : this.helperDateService.create({
-                          timezone: await this.cacheService.getTimezone(),
-                      }),
+                    : this.helperDateService.create(),
         };
     }
 
@@ -156,8 +152,7 @@ export class AuthService {
             'auth.password.expiredInDay'
         );
         const passwordExpired: Date = this.helperDateService.forwardInDays(
-            passwordExpiredInDays,
-            { timezone: await this.cacheService.getTimezone() }
+            passwordExpiredInDays
         );
         const passwordHash = this.helperHashService.bcrypt(password, salt);
         return {
@@ -168,12 +163,9 @@ export class AuthService {
     }
 
     async checkPasswordExpired(passwordExpired: Date): Promise<boolean> {
-        const today: Date = this.helperDateService.create({
-            timezone: await this.cacheService.getTimezone(),
-        });
+        const today: Date = this.helperDateService.create();
         const passwordExpiredConvert: Date = this.helperDateService.create({
             date: passwordExpired,
-            timezone: await this.cacheService.getTimezone(),
         });
 
         if (today > passwordExpiredConvert) {

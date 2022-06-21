@@ -21,7 +21,6 @@ import {
 import { Response } from 'src/utils/response/response.decorator';
 import { IResponse } from 'src/utils/response/response.interface';
 import { IUserDocument } from 'src/user/user.interface';
-import { SuccessException } from 'src/utils/error/error.exception';
 import { ENUM_LOGGER_ACTION } from 'src/logger/logger.constant';
 import {
     ApiKey,
@@ -31,14 +30,14 @@ import {
     User,
 } from '../auth.decorator';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { LoggerService } from 'src/logger/service/logger.service';
 import { UserDocument } from 'src/user/schema/user.schema';
-import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { AuthLoginDto } from '../dto/auth.login.dto';
 import { AuthChangePasswordDto } from '../dto/auth.change-password.dto';
 import { AuthLoginSerialization } from '../serialization/auth.login.serialization';
 import { IAuthApiPayload } from '../auth.interface';
+import { SuccessException } from 'src/utils/error/exception/error.success.exception';
+import { ErrorMeta } from 'src/utils/error/error.decorator';
 
 @Controller({
     version: '1',
@@ -46,8 +45,6 @@ import { IAuthApiPayload } from '../auth.interface';
 })
 export class AuthCommonController {
     constructor(
-        private readonly debuggerService: DebuggerService,
-        private readonly helperDateService: HelperDateService,
         private readonly userService: UserService,
         private readonly authService: AuthService,
         private readonly loggerService: LoggerService
@@ -57,6 +54,7 @@ export class AuthCommonController {
         statusCode: ENUM_AUTH_STATUS_CODE_SUCCESS.AUTH_LOGIN_SUCCESS,
     })
     @HttpCode(HttpStatus.OK)
+    @ErrorMeta(AuthCommonController.name, 'login')
     @Post('/login')
     async login(
         @Body() body: AuthLoginDto,
@@ -77,12 +75,6 @@ export class AuthCommonController {
             );
 
         if (!user) {
-            this.debuggerService.error(
-                'Authorized error user not found',
-                'AuthController',
-                'login'
-            );
-
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
                 message: 'user.error.notFound',
@@ -95,27 +87,17 @@ export class AuthCommonController {
         );
 
         if (!validate) {
-            this.debuggerService.error(
-                'Authorized error',
-                'AuthController',
-                'login'
-            );
-
             throw new BadRequestException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR,
                 message: 'auth.error.passwordNotMatch',
             });
         } else if (!user.isActive) {
-            this.debuggerService.error('Auth Block', 'AuthController', 'login');
-
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR,
                 message: 'user.error.inactive',
             });
         } else if (!user.role.isActive) {
-            this.debuggerService.error('Role Block', 'AuthController', 'login');
-
             throw new ForbiddenException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR,
                 message: 'role.error.inactive',
@@ -145,12 +127,6 @@ export class AuthCommonController {
             await this.authService.checkPasswordExpired(user.passwordExpired);
 
         if (checkPasswordExpired) {
-            this.debuggerService.error(
-                'Password expired',
-                'AuthController',
-                'login'
-            );
-
             throw new SuccessException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR,
@@ -179,6 +155,7 @@ export class AuthCommonController {
     @Response('auth.refresh')
     @AuthRefreshJwtGuard()
     @HttpCode(HttpStatus.OK)
+    @ErrorMeta(AuthCommonController.name, 'refresh')
     @Post('/refresh')
     async refresh(
         @User()
@@ -194,34 +171,16 @@ export class AuthCommonController {
             });
 
         if (!user) {
-            this.debuggerService.error(
-                'Authorized error user not found',
-                'AuthController',
-                'refresh'
-            );
-
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
                 message: 'user.error.notFound',
             });
         } else if (!user.isActive) {
-            this.debuggerService.error(
-                'Auth Block',
-                'AuthController',
-                'refresh'
-            );
-
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR,
                 message: 'user.error.inactive',
             });
         } else if (!user.role.isActive) {
-            this.debuggerService.error(
-                'Role Block',
-                'AuthController',
-                'refresh'
-            );
-
             throw new ForbiddenException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR,
                 message: 'role.error.inactive',
@@ -232,12 +191,6 @@ export class AuthCommonController {
             await this.authService.checkPasswordExpired(user.passwordExpired);
 
         if (checkPasswordExpired) {
-            this.debuggerService.error(
-                'Password expired',
-                'AuthController',
-                'refresh'
-            );
-
             throw new ForbiddenException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR,
@@ -264,6 +217,7 @@ export class AuthCommonController {
 
     @Response('auth.changePassword')
     @AuthJwtGuard()
+    @ErrorMeta(AuthCommonController.name, 'changePassword')
     @Patch('/change-password')
     async changePassword(
         @Body() body: AuthChangePasswordDto,
@@ -271,12 +225,6 @@ export class AuthCommonController {
     ): Promise<void> {
         const user: UserDocument = await this.userService.findOneById(_id);
         if (!user) {
-            this.debuggerService.error(
-                'User not found',
-                'AuthController',
-                'changePassword'
-            );
-
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
                 message: 'user.error.notFound',
@@ -288,12 +236,6 @@ export class AuthCommonController {
             user.password
         );
         if (!matchPassword) {
-            this.debuggerService.error(
-                "Old password don't match",
-                'AuthController',
-                'changePassword'
-            );
-
             throw new BadRequestException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR,
@@ -306,12 +248,6 @@ export class AuthCommonController {
             user.password
         );
         if (newMatchPassword) {
-            this.debuggerService.error(
-                "New password cant't same with old password",
-                'AuthController',
-                'changePassword'
-            );
-
             throw new BadRequestException({
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NEW_MUST_DIFFERENCE_ERROR,
@@ -326,13 +262,6 @@ export class AuthCommonController {
 
             await this.userService.updatePassword(user._id, password);
         } catch (e) {
-            this.debuggerService.error(
-                'Change password error internal server error',
-                'AuthController',
-                'changePassword',
-                e
-            );
-
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',

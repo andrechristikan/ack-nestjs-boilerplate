@@ -4,7 +4,6 @@ import { APP_GUARD, Reflector } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtStrategy } from 'src/auth/guard/jwt/auth.jwt.strategy';
 import { DATABASE_CONNECTION_NAME } from 'src/database/database.constant';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { ApiKeyGuard } from './guard/api-key/auth.api-key.guard';
 import { ApiKeyStrategy } from './guard/api-key/auth.api-key.strategy';
 import { JwtRefreshStrategy } from './guard/jwt-refresh/auth.jwt-refresh.strategy';
@@ -27,17 +26,12 @@ import { AuthService } from './service/auth.service';
         ApiKeyStrategy,
         {
             provide: APP_GUARD,
-            inject: [DebuggerService, ConfigService, Reflector],
+            inject: [ConfigService, Reflector],
             useFactory: (
-                debuggerService: DebuggerService,
                 configService: ConfigService,
                 reflector: Reflector
             ) => {
-                return new ApiKeyGuard(
-                    debuggerService,
-                    configService,
-                    reflector
-                );
+                return new ApiKeyGuard(configService, reflector);
             },
         },
     ],

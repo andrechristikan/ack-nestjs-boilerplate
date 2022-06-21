@@ -10,9 +10,9 @@ import {
     IsDate,
     IsString,
 } from 'class-validator';
-import { RequestAddDatePipe } from '../request/pipe/request.add-date.pipe';
-import { MinGreaterThan } from '../request/validation/request.min-greater-than.validation';
-import { Skip } from '../request/validation/request.skip.validation';
+import { RequestAddDatePipe } from 'src/utils/request/pipe/request.add-date.pipe';
+import { MinGreaterThan } from 'src/utils/request/validation/request.min-greater-than.validation';
+import { Skip } from 'src/utils/request/validation/request.skip.validation';
 import {
     ENUM_PAGINATION_AVAILABLE_SORT_TYPE,
     PAGINATION_DEFAULT_AVAILABLE_SORT,

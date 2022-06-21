@@ -7,6 +7,7 @@ import {
 import { Observable } from 'rxjs';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
+import { IRequestApp } from 'src/utils/request/request.interface';
 
 @Injectable()
 export class VersionInterceptor implements NestInterceptor<Promise<any>> {
@@ -16,28 +17,28 @@ export class VersionInterceptor implements NestInterceptor<Promise<any>> {
         context: ExecutionContext,
         next: CallHandler
     ): Promise<Observable<Promise<any> | string>> {
-        const ctx: HttpArgumentsHost = context.switchToHttp();
+        if (context.getType() === 'http') {
+            const ctx: HttpArgumentsHost = context.switchToHttp();
 
-        const globalPrefix: boolean =
-            this.configService.get<boolean>('app.globalPrefix');
-        const versioning: boolean =
-            this.configService.get<boolean>('app.versioning.on');
-        const versioningPrefix: string = this.configService.get<string>(
-            'app.versioning.prefix'
-        );
-        const request = ctx.getRequest<any>();
-        const originalUrl: string = request.url;
-
-        if (
-            versioning &&
-            originalUrl.startsWith(`${globalPrefix}/${versioningPrefix}`)
-        ) {
-            const url: string[] = originalUrl.split('/');
-            const version: number = Number.parseInt(
-                url[2].replace(versioningPrefix, '')
+            const globalPrefix: boolean =
+                this.configService.get<boolean>('app.globalPrefix');
+            const versioning: boolean =
+                this.configService.get<boolean>('app.versioning.on');
+            const versioningPrefix: string = this.configService.get<string>(
+                'app.versioning.prefix'
             );
+            const request = ctx.getRequest<IRequestApp>();
+            const originalUrl: string = request.url;
 
-            request.__version = version;
+            if (
+                versioning &&
+                originalUrl.startsWith(`${globalPrefix}/${versioningPrefix}`)
+            ) {
+                const url: string[] = originalUrl.split('/');
+                const version: string = url[2].replace(versioningPrefix, '');
+
+                request.version = version;
+            }
         }
 
         return next.handle();

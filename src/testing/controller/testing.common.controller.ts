@@ -1,9 +1,12 @@
 import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
 import { AuthExcludeApiKey } from 'src/auth/auth.decorator';
-import { CacheService } from 'src/cache/service/cache.service';
+import { ErrorMeta } from 'src/utils/error/error.decorator';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { HelperService } from 'src/utils/helper/service/helper.service';
-import { UserAgent } from 'src/utils/request/request.decorator';
+import {
+    RequestTimezone,
+    RequestUserAgent,
+} from 'src/utils/request/request.decorator';
 import {
     Response,
     ResponseTimeout,
@@ -16,50 +19,57 @@ import { IResult } from 'ua-parser-js';
 })
 export class TestingCommonController {
     constructor(
-        private readonly cacheService: CacheService,
         private readonly helperDateService: HelperDateService,
         private readonly helperService: HelperService
     ) {}
 
     @Response('test.hello')
     @AuthExcludeApiKey()
+    @ErrorMeta(TestingCommonController.name, 'hello')
     @Get('/hello')
-    async hello(@UserAgent() userAgent: IResult): Promise<IResponse> {
+    async hello(
+        @RequestUserAgent() userAgent: IResult,
+        @RequestTimezone() timezone: string
+    ): Promise<IResponse> {
         const newDate = this.helperDateService.create({
-            timezone: await this.cacheService.getTimezone(),
+            timezone: timezone,
         });
         return {
             userAgent,
             date: newDate,
             format: this.helperDateService.format(newDate, {
-                timezone: await this.cacheService.getTimezone(),
+                timezone: timezone,
             }),
             timestamp: this.helperDateService.timestamp({
                 date: newDate,
-                timezone: await this.cacheService.getTimezone(),
+                timezone: timezone,
             }),
         };
     }
 
     @Response('test.helloTimeout')
     @AuthExcludeApiKey()
-    @ResponseTimeout(10)
+    @ResponseTimeout('10s')
+    @ErrorMeta(TestingCommonController.name, 'helloTimeout')
     @Get('/hello-timeout')
-    async helloTimeout(@UserAgent() userAgent: IResult): Promise<IResponse> {
+    async helloTimeout(
+        @RequestUserAgent() userAgent: IResult,
+        @RequestTimezone() timezone: string
+    ): Promise<IResponse> {
         await this.helperService.delay(60000);
 
         const newDate = this.helperDateService.create({
-            timezone: await this.cacheService.getTimezone(),
+            timezone: timezone,
         });
         return {
             userAgent,
             date: newDate,
             format: this.helperDateService.format(newDate, {
-                timezone: await this.cacheService.getTimezone(),
+                timezone: timezone,
             }),
             timestamp: this.helperDateService.timestamp({
                 date: newDate,
-                timezone: await this.cacheService.getTimezone(),
+                timezone: timezone,
             }),
         };
     }

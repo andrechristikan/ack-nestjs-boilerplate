@@ -3,21 +3,18 @@ import {
     Global,
     Module,
 } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { CacheOptionsService } from './service/cache.options.service';
 import { CacheService } from './service/cache.service';
 
 @Global()
 @Module({
-    imports: [
-        NestJsCacheModule.registerAsync({
-            imports: [ConfigModule],
-            useFactory: async (configService: ConfigService) =>
-                configService.get<Record<string, any>>('middleware.cache'),
-
-            inject: [ConfigService],
-        }),
-    ],
+    controllers: [],
     providers: [CacheService],
     exports: [CacheService],
+    imports: [
+        NestJsCacheModule.registerAsync({
+            useClass: CacheOptionsService,
+        }),
+    ],
 })
 export class CacheModule {}

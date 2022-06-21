@@ -80,7 +80,7 @@ describe('E2E User Admin', () => {
             lastName: faker.name.lastName(),
             password: password,
             email: faker.internet.email(),
-            mobileNumber: faker.phone.phoneNumber('62812#########'),
+            mobileNumber: faker.phone.number('62812#########'),
             role: `${role._id}`,
         };
 
@@ -95,7 +95,7 @@ describe('E2E User Admin', () => {
             passwordExpired: passwordHash.passwordExpired,
             salt: passwordHash.salt,
             email: faker.internet.email(),
-            mobileNumber: faker.phone.phoneNumber('62812#########'),
+            mobileNumber: faker.phone.number('62812#########'),
             role: `${role._id}`,
         });
 

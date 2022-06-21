@@ -24,13 +24,17 @@ export class SettingSeed {
                 value: 'false',
             });
 
-            this.debuggerService.debug(
-                'Insert Setting Succeed',
-                'SettingSeed',
-                'insert'
-            );
+            this.debuggerService.debug(SettingSeed.name, {
+                description: 'Insert Setting Succeed',
+                class: 'SettingSeed',
+                function: 'insert',
+            });
         } catch (e) {
-            this.debuggerService.error(e.message, 'SettingSeed', 'insert');
+            this.debuggerService.error(SettingSeed.name, {
+                description: e.message,
+                class: 'SettingSeed',
+                function: 'insert',
+            });
         }
     }
 
@@ -42,13 +46,17 @@ export class SettingSeed {
         try {
             await this.settingBulkService.deleteMany({});
 
-            this.debuggerService.debug(
-                'Remove Setting Succeed',
-                'SettingSeed',
-                'remove'
-            );
+            this.debuggerService.debug(SettingSeed.name, {
+                description: 'Remove Setting Succeed',
+                class: 'SettingSeed',
+                function: 'remove',
+            });
         } catch (e) {
-            this.debuggerService.error(e.message, 'SettingSeed', 'remove');
+            this.debuggerService.error(SettingSeed.name, {
+                description: e.message,
+                class: 'SettingSeed',
+                function: 'remove',
+            });
         }
     }
 }

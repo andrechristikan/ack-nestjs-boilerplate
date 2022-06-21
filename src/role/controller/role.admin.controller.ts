@@ -37,8 +37,7 @@ import {
     IResponsePaging,
 } from 'src/utils/response/response.interface';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
-import { PaginationService } from 'src/utils/pagination/service/pagination.service';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
+import { PaginationService } from 'src/pagination/service/pagination.service';
 import { RoleDocument } from '../schema/role.schema';
 import { PermissionDocument } from 'src/permission/schema/permission.schema';
 import { RoleListDto } from '../dto/role.list.dto';
@@ -47,6 +46,7 @@ import { RoleUpdateDto } from '../dto/role.update.dto';
 import { RoleListSerialization } from '../serialization/role.list.serialization';
 import { RoleRequestDto } from '../dto/role.request.dto';
 import { RequestParamGuard } from 'src/utils/request/request.decorator';
+import { ErrorMeta } from 'src/utils/error/error.decorator';
 
 @Controller({
     version: '1',
@@ -54,7 +54,6 @@ import { RequestParamGuard } from 'src/utils/request/request.decorator';
 })
 export class RoleAdminController {
     constructor(
-        private readonly debuggerService: DebuggerService,
         private readonly paginationService: PaginationService,
         private readonly roleService: RoleService,
         private readonly permissionService: PermissionService
@@ -62,6 +61,7 @@ export class RoleAdminController {
 
     @ResponsePaging('role.list')
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ)
+    @ErrorMeta(RoleAdminController.name, 'list')
     @Get('/list')
     async list(
         @Query()
@@ -117,6 +117,7 @@ export class RoleAdminController {
     @RoleGetGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ)
+    @ErrorMeta(RoleAdminController.name, 'get')
     @Get('get/:role')
     async get(@GetRole() role: IRoleDocument): Promise<IResponse> {
         return this.roleService.serializationGet(role);
@@ -124,6 +125,7 @@ export class RoleAdminController {
 
     @Response('role.create')
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_CREATE)
+    @ErrorMeta(RoleAdminController.name, 'create')
     @Post('/create')
     async create(
         @Body()
@@ -131,12 +133,6 @@ export class RoleAdminController {
     ): Promise<IResponse> {
         const exist: boolean = await this.roleService.exists(name);
         if (exist) {
-            this.debuggerService.error(
-                'Role Error',
-                'RoleController',
-                'create'
-            );
-
             throw new BadRequestException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR,
                 message: 'role.error.exist',
@@ -148,12 +144,6 @@ export class RoleAdminController {
                 await this.permissionService.findOneById(permission);
 
             if (!checkPermission) {
-                this.debuggerService.error(
-                    'Permission not found',
-                    'RoleController',
-                    'create'
-                );
-
                 throw new NotFoundException({
                     statusCode:
                         ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR,
@@ -173,13 +163,6 @@ export class RoleAdminController {
                 _id: create._id,
             };
         } catch (err: any) {
-            this.debuggerService.error(
-                'create try catch',
-                'RoleController',
-                'create',
-                err
-            );
-
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
@@ -191,6 +174,7 @@ export class RoleAdminController {
     @RoleUpdateGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_UPDATE)
+    @ErrorMeta(RoleAdminController.name, 'update')
     @Put('/update/:role')
     async update(
         @GetRole() role: RoleDocument,
@@ -199,12 +183,6 @@ export class RoleAdminController {
     ): Promise<IResponse> {
         const check: boolean = await this.roleService.exists(name, role._id);
         if (check) {
-            this.debuggerService.error(
-                'Role Exist Error',
-                'RoleController',
-                'update'
-            );
-
             throw new BadRequestException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR,
                 message: 'role.error.exist',
@@ -216,12 +194,6 @@ export class RoleAdminController {
                 await this.permissionService.findOneById(permission);
 
             if (!checkPermission) {
-                this.debuggerService.error(
-                    'Permission not found',
-                    'RoleController',
-                    'update'
-                );
-
                 throw new NotFoundException({
                     statusCode:
                         ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR,
@@ -237,13 +209,6 @@ export class RoleAdminController {
                 isAdmin,
             });
         } catch (e) {
-            this.debuggerService.error(
-                'Project server internal error',
-                'SurveyAdminController',
-                'update',
-                e
-            );
-
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
@@ -259,17 +224,12 @@ export class RoleAdminController {
     @RoleDeleteGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_DELETE)
+    @ErrorMeta(RoleAdminController.name, 'delete')
     @Delete('/delete/:role')
     async delete(@GetRole() role: IRoleDocument): Promise<void> {
         try {
             await this.roleService.deleteOneById(role._id);
         } catch (err) {
-            this.debuggerService.error(
-                'delete try catch',
-                'RoleController',
-                'delete',
-                err
-            );
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
@@ -282,18 +242,12 @@ export class RoleAdminController {
     @RoleUpdateInactiveGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_UPDATE)
+    @ErrorMeta(RoleAdminController.name, 'inactive')
     @Patch('/update/:role/inactive')
     async inactive(@GetRole() role: IRoleDocument): Promise<void> {
         try {
             await this.roleService.inactive(role._id);
         } catch (e) {
-            this.debuggerService.error(
-                'Role inactive server internal error',
-                'RoleController',
-                'inactive',
-                e
-            );
-
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
@@ -307,18 +261,12 @@ export class RoleAdminController {
     @RoleUpdateActiveGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_UPDATE)
+    @ErrorMeta(RoleAdminController.name, 'active')
     @Patch('/update/:role/active')
     async active(@GetRole() role: IRoleDocument): Promise<void> {
         try {
             await this.roleService.active(role._id);
         } catch (e) {
-            this.debuggerService.error(
-                'Role active server internal error',
-                'RoleController',
-                'active',
-                e
-            );
-
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',

@@ -21,7 +21,7 @@ import { RateLimitMiddleware } from './rate-limit/rate-limit.middleware';
 import { UserAgentMiddleware } from './user-agent/user-agent.middleware';
 import { CompressionMiddleware } from './compression/compression.middleware';
 import { MaintenanceMiddleware } from './maintenance/maintenance.middleware';
-import { RequestMiddleware } from './request/request.middleware';
+import { RequestIdMiddleware } from './request-id/request-id.middleware';
 import { TimezoneMiddleware } from './timezone/timezone.middleware';
 import { CustomLanguageMiddleware } from './custom-language/custom-language.middleware';
 import { ResponseTimeMiddleware } from './response-time/response-time.middleware';
@@ -32,7 +32,7 @@ export class MiddlewareModule implements NestModule {
     configure(consumer: MiddlewareConsumer): void {
         consumer
             .apply(
-                RequestMiddleware,
+                RequestIdMiddleware,
                 TimezoneMiddleware,
                 JsonBodyParserMiddleware,
                 RawBodyParserMiddleware,

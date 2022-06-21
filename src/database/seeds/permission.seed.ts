@@ -24,13 +24,17 @@ export class PermissionSeed {
 
             await this.permissionBulkService.createMany(permissions);
 
-            this.debuggerService.debug(
-                'Insert Permission Succeed',
-                'PermissionSeed',
-                'insert'
-            );
+            this.debuggerService.debug(PermissionSeed.name, {
+                description: 'Insert Permission Succeed',
+                class: 'PermissionSeed',
+                function: 'insert',
+            });
         } catch (e) {
-            this.debuggerService.error(e.message, 'PermissionSeed', 'insert');
+            this.debuggerService.error(PermissionSeed.name, {
+                description: e.message,
+                class: 'PermissionSeed',
+                function: 'insert',
+            });
         }
     }
 
@@ -42,13 +46,17 @@ export class PermissionSeed {
         try {
             await this.permissionBulkService.deleteMany({});
 
-            this.debuggerService.debug(
-                'Remove Permission Succeed',
-                'PermissionSeed',
-                'remove'
-            );
+            this.debuggerService.debug(PermissionSeed.name, {
+                description: 'Remove Permission Succeed',
+                class: 'PermissionSeed',
+                function: 'remove',
+            });
         } catch (e) {
-            this.debuggerService.error(e.message, 'PermissionSeed', 'remove');
+            this.debuggerService.error(PermissionSeed.name, {
+                description: e.message,
+                class: 'PermissionSeed',
+                function: 'remove',
+            });
         }
     }
 }
