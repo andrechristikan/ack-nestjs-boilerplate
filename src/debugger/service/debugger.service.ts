@@ -1,60 +1,38 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { CacheService } from 'src/cache/service/cache.service';
+import { IDebuggerLog } from '../debugger.interface';
 
 @Injectable()
 export class DebuggerService {
     constructor(
-        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
-        private readonly cacheService: CacheService
+        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 
-    info(
-        description: string,
-        sClass: string,
-        sFunction: string,
-        data?: any
-    ): void {
-        this.cacheService.getRequestId().then((request: string) => {
-            this.logger.info(description, {
-                request: request || 'unknown',
-                class: sClass,
-                function: sFunction,
-                data,
-            });
+    info(_id: string, log: IDebuggerLog, data?: any): void {
+        this.logger.info(log.description, {
+            _id,
+            class: log.class,
+            function: log.function,
+            data,
         });
     }
 
-    debug(
-        description: string,
-        sClass: string,
-        sFunction: string,
-        data?: any
-    ): void {
-        this.cacheService.getRequestId().then((request: string) => {
-            this.logger.debug(description, {
-                request: request || 'unknown',
-                class: sClass,
-                function: sFunction,
-                data,
-            });
+    debug(_id: string, log: IDebuggerLog, data?: any): void {
+        this.logger.debug(log.description, {
+            _id,
+            class: log.class,
+            function: log.function,
+            data,
         });
     }
 
-    error(
-        description: string,
-        sClass: string,
-        sFunction: string,
-        error?: any
-    ): void {
-        this.cacheService.getRequestId().then((request: string) => {
-            this.logger.error(description, {
-                request: request || 'unknown',
-                class: sClass,
-                function: sFunction,
-                error,
-            });
+    error(_id: string, log: IDebuggerLog, data?: any): void {
+        this.logger.error(log.description, {
+            _id,
+            class: log.class,
+            function: log.function,
+            data,
         });
     }
 }

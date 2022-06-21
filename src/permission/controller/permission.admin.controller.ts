@@ -27,12 +27,15 @@ import {
     IResponsePaging,
 } from 'src/utils/response/response.interface';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
-import { PaginationService } from 'src/utils/pagination/service/pagination.service';
+import { PaginationService } from 'src/pagination/service/pagination.service';
 import { PermissionDocument } from '../schema/permission.schema';
 import { PermissionListDto } from '../dto/permission.list.dto';
 import { PermissionUpdateDto } from '../dto/permission.update.dto';
 import { PermissionListSerialization } from '../serialization/permission.list.serialization';
-import { RequestParamGuard } from 'src/utils/request/request.decorator';
+import {
+    RequestId,
+    RequestParamGuard,
+} from 'src/utils/request/request.decorator';
 import { PermissionRequestDto } from '../dto/permissions.request.dto';
 
 @Controller({
@@ -126,15 +129,19 @@ export class PermissionAdminController {
     @Put('/update/:permission')
     async update(
         @GetPermission() permission: PermissionDocument,
-        @Body() body: PermissionUpdateDto
+        @Body() body: PermissionUpdateDto,
+        @RequestId() requestId: string
     ): Promise<IResponse> {
         try {
             await this.permissionService.update(permission._id, body);
         } catch (e) {
             this.debuggerService.error(
-                'Auth active server internal error',
-                'AuthAdminController',
-                'updateActive',
+                requestId,
+                {
+                    description: 'Auth active server internal error',
+                    class: 'AuthAdminController',
+                    function: 'updateActive',
+                },
                 e
             );
 
@@ -158,16 +165,19 @@ export class PermissionAdminController {
     )
     @Patch('/update/:permission/inactive')
     async inactive(
-        @GetPermission() permission: PermissionDocument
+        @GetPermission() permission: PermissionDocument,
+        @RequestId() requestId: string
     ): Promise<void> {
         try {
             await this.permissionService.inactive(permission._id);
         } catch (e) {
             this.debuggerService.error(
-                'Permission inactive server internal error',
-
-                'PermissionController',
-                'inactive',
+                requestId,
+                {
+                    description: 'Permission inactive server internal error',
+                    class: 'PermissionController',
+                    function: 'inactive',
+                },
                 e
             );
 
@@ -189,15 +199,19 @@ export class PermissionAdminController {
     )
     @Patch('/update/:permission/active')
     async active(
-        @GetPermission() permission: PermissionDocument
+        @GetPermission() permission: PermissionDocument,
+        @RequestId() requestId: string
     ): Promise<void> {
         try {
             await this.permissionService.active(permission._id);
         } catch (e) {
             this.debuggerService.error(
-                'Permission active server internal error',
-                'PermissionController',
-                'active',
+                requestId,
+                {
+                    description: 'Permission active server internal error',
+                    class: 'PermissionController',
+                    function: 'active',
+                },
                 e
             );
 

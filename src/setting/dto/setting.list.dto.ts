@@ -1,4 +1,4 @@
-import { PaginationListAbstract } from 'src/utils/pagination/pagination.abstract';
+import { PaginationListAbstract } from 'src/pagination/pagination.abstract';
 import {
     PaginationAvailableSearch,
     PaginationAvailableSort,
@@ -6,8 +6,8 @@ import {
     PaginationPerPage,
     PaginationSearch,
     PaginationSort,
-} from 'src/utils/pagination/pagination.decorator';
-import { IPaginationSort } from 'src/utils/pagination/pagination.interface';
+} from 'src/pagination/pagination.decorator';
+import { IPaginationSort } from 'src/pagination/pagination.interface';
 import {
     SETTING_DEFAULT_AVAILABLE_SEARCH,
     SETTING_DEFAULT_AVAILABLE_SORT,

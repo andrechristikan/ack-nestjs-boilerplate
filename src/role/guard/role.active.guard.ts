@@ -28,14 +28,14 @@ export class RoleActiveGuard implements CanActivate {
             return true;
         }
 
-        const { __role } = context.switchToHttp().getRequest();
+        const { __role, id } = context.switchToHttp().getRequest();
 
         if (!required.includes(__role.isActive)) {
-            this.debuggerService.error(
-                'Role active error',
-                'RoleActiveGuard',
-                'canActivate'
-            );
+            this.debuggerService.error(id, {
+                description: 'Role active error',
+                class: 'RoleActiveGuard',
+                function: 'canActivate',
+            });
 
             throw new BadRequestException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_ACTIVE_ERROR,

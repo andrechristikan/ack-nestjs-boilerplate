@@ -28,14 +28,14 @@ export class PermissionActiveGuard implements CanActivate {
             return true;
         }
 
-        const { __permission } = context.switchToHttp().getRequest();
+        const { __permission, id } = context.switchToHttp().getRequest();
 
         if (!required.includes(__permission.isActive)) {
-            this.debuggerService.error(
-                'Permission active error',
-                'PermissionActiveGuard',
-                'canActivate'
-            );
+            this.debuggerService.error(id, {
+                description: 'Permission active error',
+                class: 'PermissionActiveGuard',
+                function: 'canActivate',
+            });
 
             throw new BadRequestException({
                 statusCode:

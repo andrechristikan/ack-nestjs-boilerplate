@@ -8,6 +8,7 @@ import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
+import { IRequestApp } from 'src/utils/request/request.interface';
 
 @Injectable()
 export class ApiKeyGuard extends AuthGuard('api-key') {
@@ -39,13 +40,20 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
     handleRequest<TUser = any>(
         err: Record<string, any>,
         user: TUser,
-        info: Error | string
+        info: Error | string,
+        context: ExecutionContext
     ): TUser {
         if (err || !user) {
+            const request: IRequestApp = context.switchToHttp().getRequest();
+
             this.debuggerService.error(
-                info instanceof Error ? info.message : `${info}`,
-                'ApiKeyGuard',
-                'handleRequest',
+                request.id,
+                {
+                    description:
+                        info instanceof Error ? info.message : `${info}`,
+                    class: 'ApiKeyGuard',
+                    function: 'handleRequest',
+                },
                 err
             );
 

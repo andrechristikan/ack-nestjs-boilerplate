@@ -34,11 +34,11 @@ import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { LoggerService } from 'src/logger/service/logger.service';
 import { UserDocument } from 'src/user/schema/user.schema';
-import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { AuthLoginDto } from '../dto/auth.login.dto';
 import { AuthChangePasswordDto } from '../dto/auth.change-password.dto';
 import { AuthLoginSerialization } from '../serialization/auth.login.serialization';
 import { IAuthApiPayload } from '../auth.interface';
+import { RequestId } from 'src/utils/request/request.decorator';
 
 @Controller({
     version: '1',
@@ -47,7 +47,6 @@ import { IAuthApiPayload } from '../auth.interface';
 export class AuthCommonController {
     constructor(
         private readonly debuggerService: DebuggerService,
-        private readonly helperDateService: HelperDateService,
         private readonly userService: UserService,
         private readonly authService: AuthService,
         private readonly loggerService: LoggerService
@@ -60,7 +59,8 @@ export class AuthCommonController {
     @Post('/login')
     async login(
         @Body() body: AuthLoginDto,
-        @ApiKey() apiKey: IAuthApiPayload
+        @ApiKey() apiKey: IAuthApiPayload,
+        @RequestId() requestId: string
     ): Promise<IResponse> {
         const rememberMe: boolean = body.rememberMe ? true : false;
         const user: IUserDocument =
@@ -77,11 +77,11 @@ export class AuthCommonController {
             );
 
         if (!user) {
-            this.debuggerService.error(
-                'Authorized error user not found',
-                'AuthController',
-                'login'
-            );
+            this.debuggerService.error(requestId, {
+                description: 'Authorized error user not found',
+                class: 'AuthController',
+                function: 'login',
+            });
 
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
@@ -95,11 +95,11 @@ export class AuthCommonController {
         );
 
         if (!validate) {
-            this.debuggerService.error(
-                'Authorized error',
-                'AuthController',
-                'login'
-            );
+            this.debuggerService.error(requestId, {
+                description: 'Authorized error',
+                class: 'AuthController',
+                function: 'login',
+            });
 
             throw new BadRequestException({
                 statusCode:
@@ -107,14 +107,22 @@ export class AuthCommonController {
                 message: 'auth.error.passwordNotMatch',
             });
         } else if (!user.isActive) {
-            this.debuggerService.error('Auth Block', 'AuthController', 'login');
+            this.debuggerService.error(requestId, {
+                description: 'Auth Block',
+                class: 'AuthController',
+                function: 'login',
+            });
 
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR,
                 message: 'user.error.inactive',
             });
         } else if (!user.role.isActive) {
-            this.debuggerService.error('Role Block', 'AuthController', 'login');
+            this.debuggerService.error(requestId, {
+                description: 'Role Block',
+                class: 'AuthController',
+                function: 'login',
+            });
 
             throw new ForbiddenException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR,
@@ -145,11 +153,11 @@ export class AuthCommonController {
             await this.authService.checkPasswordExpired(user.passwordExpired);
 
         if (checkPasswordExpired) {
-            this.debuggerService.error(
-                'Password expired',
-                'AuthController',
-                'login'
-            );
+            this.debuggerService.error(requestId, {
+                description: 'Password expired',
+                class: 'AuthController',
+                function: 'login',
+            });
 
             throw new SuccessException({
                 statusCode:
@@ -183,7 +191,8 @@ export class AuthCommonController {
     async refresh(
         @User()
         { _id, rememberMe, loginDate }: Record<string, any>,
-        @Token() refreshToken: string
+        @Token() refreshToken: string,
+        @RequestId() requestId: string
     ): Promise<IResponse> {
         const user: IUserDocument =
             await this.userService.findOneById<IUserDocument>(_id, {
@@ -194,33 +203,33 @@ export class AuthCommonController {
             });
 
         if (!user) {
-            this.debuggerService.error(
-                'Authorized error user not found',
-                'AuthController',
-                'refresh'
-            );
+            this.debuggerService.error(requestId, {
+                description: 'Authorized error user not found',
+                class: 'AuthController',
+                function: 'refresh',
+            });
 
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
                 message: 'user.error.notFound',
             });
         } else if (!user.isActive) {
-            this.debuggerService.error(
-                'Auth Block',
-                'AuthController',
-                'refresh'
-            );
+            this.debuggerService.error(requestId, {
+                description: 'Auth Block',
+                class: 'AuthController',
+                function: 'refresh',
+            });
 
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR,
                 message: 'user.error.inactive',
             });
         } else if (!user.role.isActive) {
-            this.debuggerService.error(
-                'Role Block',
-                'AuthController',
-                'refresh'
-            );
+            this.debuggerService.error(requestId, {
+                description: 'Role Block',
+                class: 'AuthController',
+                function: 'refresh',
+            });
 
             throw new ForbiddenException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR,
@@ -232,11 +241,11 @@ export class AuthCommonController {
             await this.authService.checkPasswordExpired(user.passwordExpired);
 
         if (checkPasswordExpired) {
-            this.debuggerService.error(
-                'Password expired',
-                'AuthController',
-                'refresh'
-            );
+            this.debuggerService.error(requestId, {
+                description: 'Password expired',
+                class: 'AuthController',
+                function: 'refresh',
+            });
 
             throw new ForbiddenException({
                 statusCode:
@@ -267,15 +276,16 @@ export class AuthCommonController {
     @Patch('/change-password')
     async changePassword(
         @Body() body: AuthChangePasswordDto,
-        @User('_id') _id: string
+        @User('_id') _id: string,
+        @RequestId() requestId: string
     ): Promise<void> {
         const user: UserDocument = await this.userService.findOneById(_id);
         if (!user) {
-            this.debuggerService.error(
-                'User not found',
-                'AuthController',
-                'changePassword'
-            );
+            this.debuggerService.error(requestId, {
+                description: 'User not found',
+                class: 'AuthController',
+                function: 'changePassword',
+            });
 
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
@@ -288,11 +298,11 @@ export class AuthCommonController {
             user.password
         );
         if (!matchPassword) {
-            this.debuggerService.error(
-                "Old password don't match",
-                'AuthController',
-                'changePassword'
-            );
+            this.debuggerService.error(requestId, {
+                description: "Old password don't match",
+                class: 'AuthController',
+                function: 'changePassword',
+            });
 
             throw new BadRequestException({
                 statusCode:
@@ -306,11 +316,11 @@ export class AuthCommonController {
             user.password
         );
         if (newMatchPassword) {
-            this.debuggerService.error(
-                "New password cant't same with old password",
-                'AuthController',
-                'changePassword'
-            );
+            this.debuggerService.error(requestId, {
+                description: "New password cant't same with old password",
+                class: 'AuthController',
+                function: 'changePassword',
+            });
 
             throw new BadRequestException({
                 statusCode:
@@ -327,9 +337,12 @@ export class AuthCommonController {
             await this.userService.updatePassword(user._id, password);
         } catch (e) {
             this.debuggerService.error(
-                'Change password error internal server error',
-                'AuthController',
-                'changePassword',
+                requestId,
+                {
+                    description: 'Change password error internal server error',
+                    class: 'AuthController',
+                    function: 'changePassword',
+                },
                 e
             );
 

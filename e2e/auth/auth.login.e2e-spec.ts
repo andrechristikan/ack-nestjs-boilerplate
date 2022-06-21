@@ -80,7 +80,7 @@ describe('E2E Login', () => {
             passwordExpired: passwordHash.passwordExpired,
             salt: passwordHash.salt,
             email: faker.internet.email(),
-            mobileNumber: faker.phone.phoneNumber('62812#########'),
+            mobileNumber: faker.phone.number('62812#########'),
             role: `${role._id}`,
         });
 

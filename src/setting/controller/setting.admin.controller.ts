@@ -8,7 +8,10 @@ import { AuthAdminJwtGuard } from 'src/auth/auth.decorator';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
-import { RequestParamGuard } from 'src/utils/request/request.decorator';
+import {
+    RequestId,
+    RequestParamGuard,
+} from 'src/utils/request/request.decorator';
 import { Response } from 'src/utils/response/response.decorator';
 import { IResponse } from 'src/utils/response/response.interface';
 import { SettingRequestDto } from '../dto/setting.request.dto';
@@ -38,15 +41,19 @@ export class SettingAdminController {
     async update(
         @GetSetting() setting: SettingDocument,
         @Body()
-        body: SettingUpdateDto
+        body: SettingUpdateDto,
+        @RequestId() requestId: string
     ): Promise<IResponse> {
         try {
             await this.settingService.updateOneById(setting._id, body);
         } catch (err: any) {
             this.debuggerService.error(
-                'update try catch',
-                'SettingController',
-                'update',
+                requestId,
+                {
+                    description: 'update try catch',
+                    class: 'SettingController',
+                    function: 'update',
+                },
                 err
             );
 

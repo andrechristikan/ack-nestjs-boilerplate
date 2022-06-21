@@ -26,7 +26,7 @@ import { UserService } from '../service/user.service';
 import { RoleService } from 'src/role/service/role.service';
 import { IUserCheckExist, IUserDocument } from '../user.interface';
 import { ENUM_USER_STATUS_CODE_ERROR } from '../user.constant';
-import { PaginationService } from 'src/utils/pagination/service/pagination.service';
+import { PaginationService } from 'src/pagination/service/pagination.service';
 import { AuthService } from 'src/auth/service/auth.service';
 import {
     Response,
@@ -42,7 +42,10 @@ import { UserListDto } from '../dto/user.list.dto';
 import { UserListSerialization } from '../serialization/user.list.serialization';
 import { UserCreateDto } from '../dto/user.create.dto';
 import { UserUpdateDto } from '../dto/user.update.dto';
-import { RequestParamGuard } from 'src/utils/request/request.decorator';
+import {
+    RequestId,
+    RequestParamGuard,
+} from 'src/utils/request/request.decorator';
 import { UserRequestDto } from '../dto/user.request.dto';
 
 @Controller({
@@ -133,7 +136,8 @@ export class UserAdminController {
     @Post('/create')
     async create(
         @Body()
-        body: UserCreateDto
+        body: UserCreateDto,
+        @RequestId() requestId: string
     ): Promise<IResponse> {
         const checkExist: IUserCheckExist = await this.userService.checkExist(
             body.email,
@@ -141,33 +145,33 @@ export class UserAdminController {
         );
 
         if (checkExist.email && checkExist.mobileNumber) {
-            this.debuggerService.error(
-                'create user exist',
-                'UserController',
-                'create'
-            );
+            this.debuggerService.error(requestId, {
+                description: 'create user exist',
+                class: 'UserController',
+                function: 'create',
+            });
 
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EXISTS_ERROR,
                 message: 'user.error.exist',
             });
         } else if (checkExist.email) {
-            this.debuggerService.error(
-                'create user exist',
-                'UserController',
-                'create'
-            );
+            this.debuggerService.error(requestId, {
+                description: 'create user exist',
+                class: 'UserController',
+                function: 'create',
+            });
 
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
                 message: 'user.error.emailExist',
             });
         } else if (checkExist.mobileNumber) {
-            this.debuggerService.error(
-                'create user exist',
-                'UserController',
-                'create'
-            );
+            this.debuggerService.error(requestId, {
+                description: 'create user exist',
+                class: 'UserController',
+                function: 'create',
+            });
 
             throw new BadRequestException({
                 statusCode:
@@ -178,11 +182,11 @@ export class UserAdminController {
 
         const role = await this.roleService.findOneById(body.role);
         if (!role) {
-            this.debuggerService.error(
-                'Role not found',
-                'UserController',
-                'create'
-            );
+            this.debuggerService.error(requestId, {
+                description: 'Role not found',
+                class: 'UserController',
+                function: 'create',
+            });
 
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
@@ -211,9 +215,12 @@ export class UserAdminController {
             };
         } catch (err: any) {
             this.debuggerService.error(
-                'create try catch',
-                'UserController',
-                'create',
+                requestId,
+                {
+                    description: 'create try catch',
+                    class: 'UserController',
+                    function: 'create',
+                },
                 err
             );
 
@@ -229,14 +236,20 @@ export class UserAdminController {
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_DELETE)
     @Delete('/delete/:user')
-    async delete(@GetUser() user: IUserDocument): Promise<void> {
+    async delete(
+        @GetUser() user: IUserDocument,
+        @RequestId() requestId: string
+    ): Promise<void> {
         try {
             await this.userService.deleteOneById(user._id);
         } catch (err) {
             this.debuggerService.error(
-                'delete try catch',
-                'UserController',
-                'create',
+                requestId,
+                {
+                    description: 'delete try catch',
+                    class: 'UserController',
+                    function: 'create',
+                },
                 err
             );
             throw new InternalServerErrorException({
@@ -256,15 +269,19 @@ export class UserAdminController {
     async update(
         @GetUser() user: IUserDocument,
         @Body()
-        body: UserUpdateDto
+        body: UserUpdateDto,
+        @RequestId() requestId: string
     ): Promise<IResponse> {
         try {
             await this.userService.updateOneById(user._id, body);
         } catch (err: any) {
             this.debuggerService.error(
-                'update try catch',
-                'UserController',
-                'update',
+                requestId,
+                {
+                    description: 'update try catch',
+                    class: 'UserController',
+                    function: 'update',
+                },
                 err
             );
 
@@ -284,14 +301,20 @@ export class UserAdminController {
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
     @Patch('/update/:user/inactive')
-    async inactive(@GetUser() user: IUserDocument): Promise<void> {
+    async inactive(
+        @GetUser() user: IUserDocument,
+        @RequestId() requestId: string
+    ): Promise<void> {
         try {
             await this.userService.inactive(user._id);
         } catch (e) {
             this.debuggerService.error(
-                'User inactive server internal error',
-                'UserController',
-                'inactive',
+                requestId,
+                {
+                    description: 'User inactive server internal error',
+                    class: 'UserController',
+                    function: 'inactive',
+                },
                 e
             );
 
@@ -309,14 +332,20 @@ export class UserAdminController {
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
     @Patch('/update/:user/active')
-    async active(@GetUser() user: IUserDocument): Promise<void> {
+    async active(
+        @GetUser() user: IUserDocument,
+        @RequestId() requestId: string
+    ): Promise<void> {
         try {
             await this.userService.active(user._id);
         } catch (e) {
             this.debuggerService.error(
-                'User active server internal error',
-                'UserController',
-                'active',
+                requestId,
+                {
+                    description: 'User active server internal error',
+                    class: 'UserController',
+                    function: 'active',
+                },
                 e
             );
 

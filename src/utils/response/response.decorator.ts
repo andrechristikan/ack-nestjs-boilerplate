@@ -19,7 +19,7 @@ export function ResponsePaging(
     );
 }
 
-export function ResponseTimeout(seconds: number): any {
+export function ResponseTimeout(seconds: string): any {
     return applyDecorators(
         SetMetadata('customTimeout', true),
         UseInterceptors(ResponseTimeoutInterceptor(seconds))

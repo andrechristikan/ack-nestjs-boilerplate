@@ -14,6 +14,7 @@ import { UserService } from 'src/user/service/user.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
 import { IUserCheckExist, IUserDocument } from 'src/user/user.interface';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
+import { RequestId } from 'src/utils/request/request.decorator';
 import { Response } from 'src/utils/response/response.decorator';
 import { IResponse } from 'src/utils/response/response.interface';
 import { AuthSignUpDto } from '../dto/auth.sign-up.dto';
@@ -36,7 +37,8 @@ export class AuthPublicController {
     @Post('/sign-up')
     async signUp(
         @Body()
-        { email, mobileNumber, ...body }: AuthSignUpDto
+        { email, mobileNumber, ...body }: AuthSignUpDto,
+        @RequestId() requestId: string
     ): Promise<IResponse> {
         const role: RoleDocument = await this.roleService.findOne<RoleDocument>(
             {
@@ -44,11 +46,11 @@ export class AuthPublicController {
             }
         );
         if (!role) {
-            this.debuggerService.error(
-                'Role not found',
-                'AuthController',
-                'signUp'
-            );
+            this.debuggerService.error(requestId, {
+                description: 'Role not found',
+                class: 'AuthPublicController',
+                function: 'signUp',
+            });
 
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
@@ -62,33 +64,33 @@ export class AuthPublicController {
         );
 
         if (checkExist.email && checkExist.mobileNumber) {
-            this.debuggerService.error(
-                'create user exist',
-                'UserController',
-                'create'
-            );
+            this.debuggerService.error(requestId, {
+                description: 'create user exist',
+                class: 'AuthPublicController',
+                function: 'signUp',
+            });
 
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EXISTS_ERROR,
                 message: 'user.error.exist',
             });
         } else if (checkExist.email) {
-            this.debuggerService.error(
-                'create user exist',
-                'UserController',
-                'create'
-            );
+            this.debuggerService.error(requestId, {
+                description: 'create user exist email',
+                class: 'AuthPublicController',
+                function: 'signUp',
+            });
 
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
                 message: 'user.error.emailExist',
             });
         } else if (checkExist.mobileNumber) {
-            this.debuggerService.error(
-                'create user exist',
-                'UserController',
-                'create'
-            );
+            this.debuggerService.error(requestId, {
+                description: 'create user exist mobile number',
+                class: 'AuthPublicController',
+                function: 'signUp',
+            });
 
             throw new BadRequestException({
                 statusCode:
@@ -145,9 +147,12 @@ export class AuthPublicController {
             };
         } catch (err: any) {
             this.debuggerService.error(
-                'Signup try catch',
-                'AuthController',
-                'signUp',
+                requestId,
+                {
+                    description: 'Signup try catch',
+                    class: 'AuthPublicController',
+                    function: 'signUp',
+                },
                 err
             );
 

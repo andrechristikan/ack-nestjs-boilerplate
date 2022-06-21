@@ -2,14 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { faker } from '@faker-js/faker';
 import { IHelperStringRandomOptions } from '../helper.interface';
 import { HelperDateService } from './helper.date.service';
-import { CacheService } from 'src/cache/service/cache.service';
 
 @Injectable()
 export class HelperStringService {
-    constructor(
-        private readonly cacheService: CacheService,
-        private readonly helperDateService: HelperDateService
-    ) {}
+    constructor(private readonly helperDateService: HelperDateService) {}
 
     checkEmail(email: string): boolean {
         const regex = /\S+@\S+\.\S+/;

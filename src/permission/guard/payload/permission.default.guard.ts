@@ -29,7 +29,7 @@ export class PermissionPayloadDefaultGuard implements CanActivate {
         if (!requiredPermission) {
             return true;
         }
-        const { user } = context.switchToHttp().getRequest();
+        const { user, id } = context.switchToHttp().getRequest();
         const { role } = user;
         const permissions: string[] = role.permissions
             .filter((val: IPermission) => val.isActive)
@@ -40,11 +40,11 @@ export class PermissionPayloadDefaultGuard implements CanActivate {
         );
 
         if (!hasPermission) {
-            this.debuggerService.error(
-                'Permission not has permission',
-                'PermissionDefaultGuard',
-                'canActivate'
-            );
+            this.debuggerService.error(id, {
+                description: 'Permission not has permission',
+                class: 'PermissionDefaultGuard',
+                function: 'canActivate',
+            });
 
             throw new ForbiddenException({
                 statusCode:

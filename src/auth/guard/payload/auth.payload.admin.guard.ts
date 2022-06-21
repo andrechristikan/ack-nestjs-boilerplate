@@ -10,6 +10,7 @@ import {
 } from 'src/auth/auth.constant';
 import { Reflector } from '@nestjs/core';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
+import { IRequestApp } from 'src/utils/request/request.interface';
 
 @Injectable()
 export class AuthPayloadAdminGuard implements CanActivate {
@@ -19,6 +20,7 @@ export class AuthPayloadAdminGuard implements CanActivate {
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
+        const request: IRequestApp = context.switchToHttp().getRequest();
         const required: boolean[] = this.reflector.getAllAndOverride<boolean[]>(
             AUTH_ADMIN_META_KEY,
             [context.getHandler(), context.getClass()]
@@ -30,11 +32,11 @@ export class AuthPayloadAdminGuard implements CanActivate {
 
         const { user } = context.switchToHttp().getRequest();
         if (!required.includes(user.role.isAdmin)) {
-            this.debuggerService.error(
-                'Auth active error',
-                'AuthActiveGuard',
-                'canActivate'
-            );
+            this.debuggerService.error(request.id, {
+                description: 'Auth active error',
+                class: 'AuthPayloadAdminGuard',
+                function: 'canActivate',
+            });
 
             throw new ForbiddenException({
                 statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GUARD_ADMIN_ERROR,

@@ -39,13 +39,17 @@ export class RoleSeed {
                 },
             ]);
 
-            this.debuggerService.debug(
-                'Insert Role Succeed',
-                'RoleSeed',
-                'insert'
-            );
+            this.debuggerService.debug(RoleSeed.name, {
+                description: 'Insert Role Succeed',
+                class: 'RoleSeed',
+                function: 'insert',
+            });
         } catch (e) {
-            this.debuggerService.error(e.message, 'RoleSeed', 'insert');
+            this.debuggerService.error(RoleSeed.name, {
+                description: e.message,
+                class: 'RoleSeed',
+                function: 'insert',
+            });
         }
     }
 
@@ -57,13 +61,17 @@ export class RoleSeed {
         try {
             await this.roleBulkService.deleteMany({});
 
-            this.debuggerService.debug(
-                'Remove Role Succeed',
-                'RoleSeed',
-                'remove'
-            );
+            this.debuggerService.debug(RoleSeed.name, {
+                description: 'Remove Role Succeed',
+                class: 'RoleSeed',
+                function: 'remove',
+            });
         } catch (e) {
-            this.debuggerService.error(e.message, 'RoleSeed', 'remove');
+            this.debuggerService.error(RoleSeed.name, {
+                description: e.message,
+                class: 'RoleSeed',
+                function: 'remove',
+            });
         }
     }
 }

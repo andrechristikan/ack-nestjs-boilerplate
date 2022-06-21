@@ -12,14 +12,14 @@ export class SettingNotFoundGuard implements CanActivate {
     constructor(private readonly debuggerService: DebuggerService) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const { __setting } = context.switchToHttp().getRequest();
+        const { __setting, id } = context.switchToHttp().getRequest();
 
         if (!__setting) {
-            this.debuggerService.error(
-                'Setting not found',
-                'SettingNotFoundGuard',
-                'canActivate'
-            );
+            this.debuggerService.error(id, {
+                description: 'Setting not found',
+                class: 'SettingNotFoundGuard',
+                function: 'canActivate',
+            });
 
             throw new NotFoundException({
                 statusCode:

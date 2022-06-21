@@ -12,9 +12,10 @@ import { Reflector } from '@nestjs/core';
 import { Observable, throwError, TimeoutError } from 'rxjs';
 import { catchError, timeout } from 'rxjs/operators';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
+import ms from 'ms';
 
 export function ResponseTimeoutInterceptor(
-    seconds: number
+    seconds: string
 ): Type<NestInterceptor> {
     @Injectable()
     class MixinResponseTimeoutInterceptor
@@ -26,7 +27,7 @@ export function ResponseTimeoutInterceptor(
         ): Promise<Observable<Promise<any> | string>> {
             if (context.getType() === 'http') {
                 return next.handle().pipe(
-                    timeout(seconds * 1000),
+                    timeout(ms(seconds)),
                     catchError((err) => {
                         if (err instanceof TimeoutError) {
                             throw new RequestTimeoutException({

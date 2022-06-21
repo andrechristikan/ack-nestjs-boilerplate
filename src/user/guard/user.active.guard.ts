@@ -28,14 +28,14 @@ export class UserActiveGuard implements CanActivate {
             return true;
         }
 
-        const { __user } = context.switchToHttp().getRequest();
+        const { __user, id } = context.switchToHttp().getRequest();
 
         if (!required.includes(__user.isActive)) {
-            this.debuggerService.error(
-                'User active error',
-                'UserActiveGuard',
-                'canActivate'
-            );
+            this.debuggerService.error(id, {
+                description: 'User active error',
+                class: 'UserActiveGuard',
+                function: 'canActivate',
+            });
 
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_ACTIVE_ERROR,

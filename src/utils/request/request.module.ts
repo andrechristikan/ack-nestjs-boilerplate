@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_INTERCEPTOR, APP_PIPE, Reflector } from '@nestjs/core';
-import { CacheService } from 'src/cache/service/cache.service';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { HelperDateService } from '../helper/service/helper.date.service';
 import { RequestTimestampInterceptor } from './interceptor/request.timestamp.interceptor';
@@ -40,9 +39,12 @@ import { StringOrNumberOrBooleanConstraint } from './validation/request.string-o
                     errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
                     exceptionFactory: async (errors: ValidationError[]) => {
                         debuggerService.error(
-                            'Request validation error',
-                            'RequestModule',
-                            'exceptionFactory',
+                            ValidationPipe.name,
+                            {
+                                description: 'Request validation error',
+                                class: 'RequestModule',
+                                function: 'exceptionFactory',
+                            },
                             errors
                         );
 
@@ -58,18 +60,16 @@ import { StringOrNumberOrBooleanConstraint } from './validation/request.string-o
         },
         {
             provide: APP_INTERCEPTOR,
-            inject: [ConfigService, Reflector, HelperDateService, CacheService],
+            inject: [ConfigService, Reflector, HelperDateService],
             useFactory: (
                 configService: ConfigService,
                 reflector: Reflector,
-                helperDateService: HelperDateService,
-                cacheService: CacheService
+                helperDateService: HelperDateService
             ) =>
                 new RequestTimestampInterceptor(
                     configService,
                     reflector,
-                    helperDateService,
-                    cacheService
+                    helperDateService
                 ),
         },
         IsPasswordStrongConstraint,

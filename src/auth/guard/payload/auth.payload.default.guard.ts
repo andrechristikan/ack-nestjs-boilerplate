@@ -12,14 +12,14 @@ export class AuthPayloadDefaultGuard implements CanActivate {
     constructor(private readonly debuggerService: DebuggerService) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const { user } = context.switchToHttp().getRequest();
+        const { user, id } = context.switchToHttp().getRequest();
 
         if (!user.isActive) {
-            this.debuggerService.error(
-                'UserGuard Inactive',
-                'AuthDefaultGuard',
-                'canActivate'
-            );
+            this.debuggerService.error(id, {
+                description: 'UserGuard Inactive',
+                class: 'AuthPayloadDefaultGuard',
+                function: 'canActivate',
+            });
 
             throw new ForbiddenException({
                 statusCode:
@@ -27,11 +27,11 @@ export class AuthPayloadDefaultGuard implements CanActivate {
                 message: 'auth.error.blocked',
             });
         } else if (!user.role.isActive) {
-            this.debuggerService.error(
-                'UserGuard Role Inactive',
-                'AuthDefaultGuard',
-                'canActivate'
-            );
+            this.debuggerService.error(id, {
+                description: 'UserGuard Role Inactive',
+                class: 'AuthPayloadDefaultGuard',
+                function: 'canActivate',
+            });
 
             throw new ForbiddenException({
                 statusCode:

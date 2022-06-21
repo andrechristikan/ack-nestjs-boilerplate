@@ -1,7 +1,12 @@
 import { AuthGuard } from '@nestjs/passport';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+    ExecutionContext,
+    Injectable,
+    UnauthorizedException,
+} from '@nestjs/common';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/auth/auth.constant';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
+import { IRequestApp } from 'src/utils/request/request.interface';
 
 @Injectable()
 export class JwtRefreshGuard extends AuthGuard('jwtRefresh') {
@@ -12,13 +17,19 @@ export class JwtRefreshGuard extends AuthGuard('jwtRefresh') {
     handleRequest<TUser = any>(
         err: Record<string, any>,
         user: TUser,
-        info: string
+        info: string,
+        context: ExecutionContext
     ): TUser {
         if (err || !user) {
+            const request: IRequestApp = context.switchToHttp().getRequest();
+
             this.debuggerService.error(
-                info,
-                'JwtRefreshGuard',
-                'handleRequest',
+                request.id,
+                {
+                    description: info,
+                    class: 'JwtRefreshGuard',
+                    function: 'handleRequest',
+                },
                 err
             );
 

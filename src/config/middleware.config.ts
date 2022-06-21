@@ -47,7 +47,7 @@ export default registerAs(
         },
         cache: {
             ttl: ms('30s'), // 30sec
-            max: 5, // maximum number of items in cache
+            max: 100, // maximum number of items in cache,
         },
         timeout: {
             in: process.env.MIDDLEWARE_TIMEOUT

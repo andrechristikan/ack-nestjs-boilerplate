@@ -12,14 +12,14 @@ export class RoleNotFoundGuard implements CanActivate {
     constructor(private readonly debuggerService: DebuggerService) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const { __role } = context.switchToHttp().getRequest();
+        const { __role, id } = context.switchToHttp().getRequest();
 
         if (!__role) {
-            this.debuggerService.error(
-                'Role not found',
-                'RoleNotFoundGuard',
-                'canActivate'
-            );
+            this.debuggerService.error(id, {
+                description: 'Role not found',
+                class: 'RoleNotFoundGuard',
+                function: 'canActivate',
+            });
 
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,

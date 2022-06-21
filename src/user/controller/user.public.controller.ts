@@ -14,6 +14,7 @@ import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
 import { ENUM_FILE_TYPE } from 'src/utils/file/file.constant';
 import { UploadFileSingle } from 'src/utils/file/file.decorator';
+import { RequestId } from 'src/utils/request/request.decorator';
 import { Response } from 'src/utils/response/response.decorator';
 import { IResponse } from 'src/utils/response/response.interface';
 import { UserService } from '../service/user.service';
@@ -47,7 +48,8 @@ export class UserPublicController {
     @Post('/profile/upload')
     async upload(
         @GetUser() user: IUserDocument,
-        @UploadedFile() file: Express.Multer.File
+        @UploadedFile() file: Express.Multer.File,
+        @RequestId() requestId: string
     ): Promise<void> {
         const filename: string = file.originalname;
         const content: Buffer = file.buffer;
@@ -69,9 +71,12 @@ export class UserPublicController {
             await this.userService.updatePhoto(user._id, aws);
         } catch (err) {
             this.debuggerService.error(
-                'Store photo user',
-                'UserPublicController',
-                'upload',
+                requestId,
+                {
+                    description: 'Store photo user',
+                    class: 'UserPublicController',
+                    function: 'upload',
+                },
                 err
             );
 

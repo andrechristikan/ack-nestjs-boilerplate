@@ -1,4 +1,4 @@
-import { IPaginationOptions } from 'src/utils/pagination/pagination.interface';
+import { IPaginationOptions } from 'src/pagination/pagination.interface';
 
 export interface IDatabaseFindOneOptions {
     populate?: Record<string, boolean>;

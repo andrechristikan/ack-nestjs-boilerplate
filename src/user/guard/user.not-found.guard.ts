@@ -12,14 +12,14 @@ export class UserNotFoundGuard implements CanActivate {
     constructor(private readonly debuggerService: DebuggerService) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const { __user } = context.switchToHttp().getRequest();
+        const { __user, id } = context.switchToHttp().getRequest();
 
         if (!__user) {
-            this.debuggerService.error(
-                'User not found',
-                'UserNotFoundGuard',
-                'canActivate'
-            );
+            this.debuggerService.error(id, {
+                description: 'User not found',
+                class: 'UserNotFoundGuard',
+                function: 'canActivate',
+            });
 
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,

@@ -7,23 +7,6 @@ export class CacheService {
     async get<T>(key: string): Promise<T> {
         return this.cacheManager.get<T>(key);
     }
-
-    async getTimezone(): Promise<string> {
-        return this.cacheManager.get<string>('x-timezone');
-    }
-
-    async getTimestamp(): Promise<string> {
-        return this.cacheManager.get<string>('x-timestamp');
-    }
-
-    async getRequestId(): Promise<string> {
-        return this.cacheManager.get<string>('x-request-id');
-    }
-
-    async getCustomLang(): Promise<string> {
-        return this.cacheManager.get<string>('x-custom-lang');
-    }
-
     async set<T>(key: string, value: T): Promise<T> {
         return this.cacheManager.set<T>(key, value);
     }

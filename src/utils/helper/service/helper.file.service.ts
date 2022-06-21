@@ -3,7 +3,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import excelJs from 'exceljs';
-import { CacheService } from 'src/cache/service/cache.service';
 import { HelperDateService } from './helper.date.service';
 
 @Injectable()
@@ -11,7 +10,6 @@ export class HelperFileService {
     private readonly appName: string;
 
     constructor(
-        private readonly cacheService: CacheService,
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
     ) {
@@ -25,12 +23,8 @@ export class HelperFileService {
         const workbook = new excelJs.Workbook();
         workbook.creator = this.appName;
         workbook.lastModifiedBy = this.appName;
-        workbook.created = this.helperDateService.create({
-            timezone: await this.cacheService.getTimezone(),
-        });
-        workbook.modified = this.helperDateService.create({
-            timezone: await this.cacheService.getTimezone(),
-        });
+        workbook.created = this.helperDateService.create();
+        workbook.modified = this.helperDateService.create();
         workbook.properties.date1904 = true;
         workbook.views = [
             {

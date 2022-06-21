@@ -7,9 +7,9 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
-import { CacheService } from 'src/cache/service/cache.service';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from '../request.constant';
+import { IRequestApp } from '../request.interface';
 
 export class RequestTimestampInterceptor
     implements NestInterceptor<Promise<any>>
@@ -17,8 +17,7 @@ export class RequestTimestampInterceptor
     constructor(
         private readonly configService: ConfigService,
         private readonly reflector: Reflector,
-        private readonly helperDateService: HelperDateService,
-        private readonly cacheService: CacheService
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async intercept(
@@ -26,14 +25,11 @@ export class RequestTimestampInterceptor
         next: CallHandler
     ): Promise<Observable<Promise<any> | string>> {
         if (context.getType() === 'http') {
-            const request = context.switchToHttp().getRequest();
+            const request: IRequestApp = context.switchToHttp().getRequest();
             const { headers } = request;
             const mode: string = this.configService.get<string>('app.mode');
             const reqTs: string = headers['x-timestamp'] as string;
-            const reqTz: string = headers['x-timezone'] as string;
-            const currentTimestamp: number = this.helperDateService.timestamp({
-                timezone: reqTz,
-            });
+            const currentTimestamp: number = this.helperDateService.timestamp();
             const excludeTimestamp = this.reflector.get<boolean>(
                 'excludeTimestamp',
                 context.getHandler()
@@ -46,8 +42,7 @@ export class RequestTimestampInterceptor
                 const check: boolean = this.helperDateService.check(
                     Number.isNaN(Number.parseInt(reqTs))
                         ? reqTs
-                        : Number.parseInt(reqTs),
-                    { timezone: reqTz }
+                        : Number.parseInt(reqTs)
                 );
                 if (!reqTs || !check) {
                     throw new ForbiddenException({
@@ -61,15 +56,12 @@ export class RequestTimestampInterceptor
                     date: Number.isNaN(Number.parseInt(reqTs))
                         ? reqTs
                         : Number.parseInt(reqTs),
-                    timezone: reqTz,
                 });
                 const toleranceMin = this.helperDateService.backwardInMinutes(
-                    toleranceTimeInMinutes,
-                    { timezone: reqTz }
+                    toleranceTimeInMinutes
                 );
                 const toleranceMax = this.helperDateService.forwardInMinutes(
-                    toleranceTimeInMinutes,
-                    { timezone: reqTz }
+                    toleranceTimeInMinutes
                 );
                 if (timestamp < toleranceMin || timestamp > toleranceMax) {
                     throw new ForbiddenException({
@@ -81,7 +73,7 @@ export class RequestTimestampInterceptor
             } else {
                 const newTimestamp = reqTs || `${currentTimestamp}`;
                 request.headers['x-timestamp'] = newTimestamp;
-                await this.cacheService.set('x-timestamp', `${newTimestamp}`);
+                request.timestamp = newTimestamp;
             }
         }
 

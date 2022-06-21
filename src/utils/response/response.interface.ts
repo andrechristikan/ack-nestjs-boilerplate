@@ -1,4 +1,4 @@
-import { ENUM_PAGINATION_TYPE } from '../pagination/pagination.constant';
+import { ENUM_PAGINATION_TYPE } from 'src/pagination/pagination.constant';
 
 export type IResponse = Record<string, any>;
 

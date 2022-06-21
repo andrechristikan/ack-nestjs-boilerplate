@@ -53,7 +53,7 @@ describe('E2E Public', () => {
             lastName: faker.name.lastName(),
             password: password,
             email: faker.internet.email(),
-            mobileNumber: faker.phone.phoneNumber('62812#########'),
+            mobileNumber: faker.phone.number('62812#########'),
         };
 
         timestamp = helperDateService.timestamp();
@@ -131,7 +131,7 @@ describe('E2E Public', () => {
             .set('x-api-key', xApiKey)
             .send({
                 ...userData,
-                mobileNumber: faker.phone.phoneNumber('62812#########'),
+                mobileNumber: faker.phone.number('62812#########'),
             });
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);

@@ -1,5 +1,5 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { PaginationService } from 'src/utils/pagination/service/pagination.service';
+import { PaginationService } from 'src/pagination/service/pagination.service';
 import { RequestParamGuard } from 'src/utils/request/request.decorator';
 import {
     Response,

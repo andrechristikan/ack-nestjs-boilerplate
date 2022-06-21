@@ -27,13 +27,17 @@ export class AuthApiSeed {
                 encryptionKey: 'opbUwdiS1FBsrDUoPgZdx',
             });
 
-            this.debuggerService.debug(
-                'Insert Auth Api Succeed',
-                'AuthApiSeed',
-                'insert'
-            );
+            this.debuggerService.debug(AuthApiSeed.name, {
+                description: 'Insert Auth Api Succeed',
+                class: 'AuthApiSeed',
+                function: 'insert',
+            });
         } catch (e) {
-            this.debuggerService.error(e.message, 'AuthApiSeed', 'insert');
+            this.debuggerService.error(AuthApiSeed.name, {
+                description: e.message,
+                class: 'AuthApiSeed',
+                function: 'insert',
+            });
         }
     }
 
@@ -45,13 +49,17 @@ export class AuthApiSeed {
         try {
             await this.authApiBulkService.deleteMany({});
 
-            this.debuggerService.debug(
-                'Remove Auth Api Succeed',
-                'AuthApiSeed',
-                'remove'
-            );
+            this.debuggerService.debug(AuthApiSeed.name, {
+                description: 'Remove Auth Api Succeed',
+                class: 'AuthApiSeed',
+                function: 'remove',
+            });
         } catch (e) {
-            this.debuggerService.error(e.message, 'AuthApiSeed', 'remove');
+            this.debuggerService.error(AuthApiSeed.name, {
+                description: e.message,
+                class: 'AuthApiSeed',
+                function: 'remove',
+            });
         }
     }
 }
