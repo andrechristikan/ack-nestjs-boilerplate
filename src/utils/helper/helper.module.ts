@@ -40,18 +40,16 @@ import { HelperGeoService } from './service/helper.geo.service';
         JwtModule.registerAsync({
             inject: [ConfigService],
             imports: [ConfigModule],
-            useFactory: (configService: ConfigService) => {
-                return {
-                    secret: configService.get<string>(
-                        'helper.jwt.defaultSecretKey'
+            useFactory: (configService: ConfigService) => ({
+                secret: configService.get<string>(
+                    'helper.jwt.defaultSecretKey'
+                ),
+                signOptions: {
+                    expiresIn: configService.get<string>(
+                        'helper.jwt.defaultExpirationTime'
                     ),
-                    signOptions: {
-                        expiresIn: configService.get<string>(
-                            'helper.jwt.defaultExpirationTime'
-                        ),
-                    },
-                };
-            },
+                },
+            }),
         }),
     ],
 })

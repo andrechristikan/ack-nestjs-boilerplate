@@ -11,9 +11,8 @@ import { ErrorLogInterceptor } from './interceptor/error.log.interceptor';
         {
             provide: APP_FILTER,
             inject: [MessageService],
-            useFactory: (messageService: MessageService) => {
-                return new ErrorHttpFilter(messageService);
-            },
+            useFactory: (messageService: MessageService) =>
+                new ErrorHttpFilter(messageService),
         },
         {
             provide: APP_INTERCEPTOR,

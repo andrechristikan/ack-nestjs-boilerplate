@@ -123,6 +123,7 @@ Next development
 - [x] Convert time using `ms package` in Config Module. Centralize
 - [x] Add `cSpell`
 - [x] Add `ErrorLogInterceptor`
+- [x] Add `LoggerInterceptor`
 - [ ] Timezone in serialization and dto
 - [ ] Add `Redis` Configuration
 - [ ] Update Documentation

@@ -9,9 +9,8 @@ import { VersionInterceptor } from './interceptor/version.interceptor';
         {
             provide: APP_INTERCEPTOR,
             inject: [ConfigService],
-            useFactory: (configService: ConfigService) => {
-                return new VersionInterceptor(configService);
-            },
+            useFactory: (configService: ConfigService) =>
+                new VersionInterceptor(configService),
         },
     ],
     imports: [],

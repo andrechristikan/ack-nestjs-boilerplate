@@ -29,8 +29,8 @@ import { StringOrNumberOrBooleanConstraint } from './validation/request.string-o
         {
             provide: APP_PIPE,
             inject: [],
-            useFactory: () => {
-                return new ValidationPipe({
+            useFactory: () =>
+                new ValidationPipe({
                     transform: true,
                     skipNullProperties: false,
                     skipUndefinedProperties: false,
@@ -43,8 +43,7 @@ import { StringOrNumberOrBooleanConstraint } from './validation/request.string-o
                             message: 'http.clientError.unprocessableEntity',
                             errors,
                         }),
-                });
-            },
+                }),
         },
         {
             provide: APP_INTERCEPTOR,

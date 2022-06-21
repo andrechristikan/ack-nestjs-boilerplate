@@ -7,4 +7,5 @@ export enum ENUM_LOGGER_LEVEL {
 
 export enum ENUM_LOGGER_ACTION {
     LOGIN = 'LOGIN',
+    TEST = 'TEST',
 }
