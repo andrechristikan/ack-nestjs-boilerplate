@@ -17,6 +17,8 @@ export class LoggerService {
         description,
         apiKey,
         user,
+        method,
+        requestId,
         tags,
     }: ILogger): Promise<LoggerDocument> {
         const create = new this.loggerModel({
@@ -26,6 +28,8 @@ export class LoggerService {
             anonymous: user ? false : true,
             action,
             description,
+            method,
+            requestId,
             tags,
         });
         return create.save();
@@ -36,6 +40,8 @@ export class LoggerService {
         description,
         apiKey,
         user,
+        method,
+        requestId,
         tags,
     }: ILogger): Promise<LoggerDocument> {
         const create = new this.loggerModel({
@@ -45,6 +51,8 @@ export class LoggerService {
             anonymous: user ? false : true,
             action,
             description,
+            method,
+            requestId,
             tags,
         });
         return create.save();
@@ -55,6 +63,8 @@ export class LoggerService {
         description,
         apiKey,
         user,
+        method,
+        requestId,
         tags,
     }: ILogger): Promise<LoggerDocument> {
         const create = new this.loggerModel({
@@ -64,6 +74,8 @@ export class LoggerService {
             anonymous: user ? false : true,
             action,
             description,
+            method,
+            requestId,
             tags,
         });
         return create.save();
@@ -74,6 +86,8 @@ export class LoggerService {
         description,
         apiKey,
         user,
+        method,
+        requestId,
         tags,
     }: ILogger): Promise<LoggerDocument> {
         const create = new this.loggerModel({
@@ -83,6 +97,8 @@ export class LoggerService {
             anonymous: user ? false : true,
             action,
             description,
+            method,
+            requestId,
             tags,
         });
         return create.save();

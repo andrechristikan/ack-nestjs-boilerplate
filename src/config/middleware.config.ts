@@ -1,11 +1,18 @@
 import { registerAs } from '@nestjs/config';
 import ms from 'ms';
+import { ENUM_REQUEST_METHOD } from 'src/utils/request/request.constant';
 
 export default registerAs(
     'middleware',
     (): Record<string, any> => ({
         cors: {
-            allowMethod: ['GET', 'DELETE', 'PUT', 'PATCH', 'POST'],
+            allowMethod: [
+                ENUM_REQUEST_METHOD.GET,
+                ENUM_REQUEST_METHOD.DELETE,
+                ENUM_REQUEST_METHOD.PUT,
+                ENUM_REQUEST_METHOD.PATCH,
+                ENUM_REQUEST_METHOD.POST,
+            ],
             allowOrigin: '*',
             // allowOrigin: [/example\.com(\:\d{1,4})?$/], // allow all subdomain, and all port
             // allowOrigin: [/example\.com$/], // allow only subdomain

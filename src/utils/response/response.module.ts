@@ -15,7 +15,7 @@ import { ResponseTimeoutDefaultInterceptor } from './interceptor/response.timeou
         },
         {
             provide: APP_INTERCEPTOR,
-            useFactory: () => ResponseCustomHeadersInterceptor,
+            useFactory: () => new ResponseCustomHeadersInterceptor(),
         },
     ],
     imports: [],

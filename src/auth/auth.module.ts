@@ -27,12 +27,8 @@ import { AuthService } from './service/auth.service';
         {
             provide: APP_GUARD,
             inject: [ConfigService, Reflector],
-            useFactory: (
-                configService: ConfigService,
-                reflector: Reflector
-            ) => {
-                return new ApiKeyGuard(configService, reflector);
-            },
+            useFactory: (configService: ConfigService, reflector: Reflector) =>
+                new ApiKeyGuard(configService, reflector),
         },
     ],
     exports: [AuthService, AuthApiService, AuthApiBulkService],

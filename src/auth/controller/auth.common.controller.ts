@@ -23,21 +23,19 @@ import { IResponse } from 'src/utils/response/response.interface';
 import { IUserDocument } from 'src/user/user.interface';
 import { ENUM_LOGGER_ACTION } from 'src/logger/logger.constant';
 import {
-    ApiKey,
     AuthJwtGuard,
     AuthRefreshJwtGuard,
     Token,
     User,
 } from '../auth.decorator';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
-import { LoggerService } from 'src/logger/service/logger.service';
 import { UserDocument } from 'src/user/schema/user.schema';
 import { AuthLoginDto } from '../dto/auth.login.dto';
 import { AuthChangePasswordDto } from '../dto/auth.change-password.dto';
 import { AuthLoginSerialization } from '../serialization/auth.login.serialization';
-import { IAuthApiPayload } from '../auth.interface';
 import { SuccessException } from 'src/utils/error/exception/error.success.exception';
 import { ErrorMeta } from 'src/utils/error/error.decorator';
+import { Logger } from 'src/logger/logger.decorator';
 
 @Controller({
     version: '1',
@@ -46,20 +44,17 @@ import { ErrorMeta } from 'src/utils/error/error.decorator';
 export class AuthCommonController {
     constructor(
         private readonly userService: UserService,
-        private readonly authService: AuthService,
-        private readonly loggerService: LoggerService
+        private readonly authService: AuthService
     ) {}
 
     @Response('auth.login', {
         statusCode: ENUM_AUTH_STATUS_CODE_SUCCESS.AUTH_LOGIN_SUCCESS,
     })
+    @Logger(ENUM_LOGGER_ACTION.LOGIN, { tags: ['login', 'withEmail'] })
     @HttpCode(HttpStatus.OK)
     @ErrorMeta(AuthCommonController.name, 'login')
     @Post('/login')
-    async login(
-        @Body() body: AuthLoginDto,
-        @ApiKey() apiKey: IAuthApiPayload
-    ): Promise<IResponse> {
+    async login(@Body() body: AuthLoginDto): Promise<IResponse> {
         const rememberMe: boolean = body.rememberMe ? true : false;
         const user: IUserDocument =
             await this.userService.findOne<IUserDocument>(
@@ -137,14 +132,6 @@ export class AuthCommonController {
                 },
             });
         }
-
-        await this.loggerService.info({
-            action: ENUM_LOGGER_ACTION.LOGIN,
-            description: `${user._id} do login`,
-            user: user._id,
-            apiKey: apiKey?._id,
-            tags: ['login', 'withEmail'],
-        });
 
         return {
             accessToken,
