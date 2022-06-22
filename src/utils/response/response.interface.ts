@@ -15,11 +15,9 @@ export interface IResponsePaging {
 
 export interface IResponseOptions {
     statusCode?: number;
-    timeout?: number;
 }
 
 export interface IResponsePagingOptions {
     statusCode?: number;
     type?: ENUM_PAGINATION_TYPE;
-    timeout?: number;
 }

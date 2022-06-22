@@ -1,17 +1,17 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { AuthApiService } from 'src/auth/service/auth.api.service';
 import { AuthApiBulkService } from 'src/auth/service/auth.api.bulk.service';
+import { ErrorMeta } from 'src/utils/error/error.decorator';
 
 @Injectable()
 export class AuthApiSeed {
     constructor(
-        private readonly debuggerService: DebuggerService,
         private readonly authApiService: AuthApiService,
         private readonly authApiBulkService: AuthApiBulkService
     ) {}
 
+    @ErrorMeta(AuthApiSeed.name, 'insert')
     @Command({
         command: 'insert:authapis',
         describe: 'insert authapiss',
@@ -26,21 +26,12 @@ export class AuthApiSeed {
                 passphrase: 'cuwakimacojulawu',
                 encryptionKey: 'opbUwdiS1FBsrDUoPgZdx',
             });
-
-            this.debuggerService.debug(AuthApiSeed.name, {
-                description: 'Insert Auth Api Succeed',
-                class: 'AuthApiSeed',
-                function: 'insert',
-            });
         } catch (e) {
-            this.debuggerService.error(AuthApiSeed.name, {
-                description: e.message,
-                class: 'AuthApiSeed',
-                function: 'insert',
-            });
+            throw new Error(e.message);
         }
     }
 
+    @ErrorMeta(AuthApiSeed.name, 'remove')
     @Command({
         command: 'remove:authapis',
         describe: 'remove authapis',
@@ -48,18 +39,8 @@ export class AuthApiSeed {
     async remove(): Promise<void> {
         try {
             await this.authApiBulkService.deleteMany({});
-
-            this.debuggerService.debug(AuthApiSeed.name, {
-                description: 'Remove Auth Api Succeed',
-                class: 'AuthApiSeed',
-                function: 'remove',
-            });
         } catch (e) {
-            this.debuggerService.error(AuthApiSeed.name, {
-                description: e.message,
-                class: 'AuthApiSeed',
-                function: 'remove',
-            });
+            throw new Error(e.message);
         }
     }
 }
