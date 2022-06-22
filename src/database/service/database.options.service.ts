@@ -6,7 +6,7 @@ import {
 import mongoose from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 @Injectable()
-export class DatabaseService implements MongooseOptionsFactory {
+export class DatabaseOptionsService implements MongooseOptionsFactory {
     private readonly host: string;
     private readonly database: string;
     private readonly user: string;

@@ -9,10 +9,9 @@ import { PaginationModule } from 'src/pagination/pagination.module';
 import { HelperModule } from 'src/utils/helper/helper.module';
 import { MiddlewareModule } from 'src/utils/middleware/middleware.module';
 import { DebuggerOptionService } from 'src/debugger/service/debugger.option.service';
-import { DatabaseModule } from 'src/database/database.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/database/database.constant';
-import { DatabaseService } from 'src/database/service/database.service';
+import { DatabaseOptionsService } from 'src/database/service/database.options.service';
 import { LoggerModule } from 'src/logger/logger.module';
 import { RequestModule } from 'src/utils/request/request.module';
 import { ErrorModule } from 'src/utils/error/error.module';
@@ -20,6 +19,7 @@ import { SettingModule } from 'src/setting/setting.module';
 import { VersionModule } from 'src/utils/version/version.module';
 import { ResponseModule } from 'src/utils/response/response.module';
 import { CacheModule } from 'src/cache/cache.module';
+import { DatabaseModule } from 'src/database/database.module';
 
 @Module({
     controllers: [],
@@ -35,15 +35,15 @@ import { CacheModule } from 'src/cache/cache.module';
         WinstonModule.forRootAsync({
             inject: [DebuggerOptionService],
             imports: [DebuggerModule],
-            useFactory: (loggerService: DebuggerOptionService) =>
-                loggerService.createLogger(),
+            useFactory: (debuggerOptionsService: DebuggerOptionService) =>
+                debuggerOptionsService.createLogger(),
         }),
         MongooseModule.forRootAsync({
             connectionName: DATABASE_CONNECTION_NAME,
-            inject: [DatabaseService],
+            inject: [DatabaseOptionsService],
             imports: [DatabaseModule],
-            useFactory: (databaseService: DatabaseService) =>
-                databaseService.createMongooseOptions(),
+            useFactory: (databaseOptionsService: DatabaseOptionsService) =>
+                databaseOptionsService.createMongooseOptions(),
         }),
         HelperModule,
         DebuggerModule,

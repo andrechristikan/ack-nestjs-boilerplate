@@ -40,11 +40,12 @@ export function LoggerInterceptor(
                                 description:
                                     options && options.description
                                         ? options.description
-                                        : `Request ${method} called, url ${originalUrl}`,
+                                        : `Request ${method} called, url ${originalUrl}, and action ${action}`,
                                 apiKey: apiKey ? apiKey._id : undefined,
                                 user: user ? user._id : undefined,
                                 requestId: id,
                                 method: method as ENUM_REQUEST_METHOD,
+                                role: user ? user.role : undefined,
                                 tags:
                                     options && options.tags ? options.tags : [],
                             });
@@ -57,11 +58,12 @@ export function LoggerInterceptor(
                                 description:
                                     options && options.description
                                         ? options.description
-                                        : `Request ${method} called, url ${originalUrl}`,
+                                        : `Request ${method} called, url ${originalUrl}, and action ${action}`,
                                 apiKey: apiKey ? apiKey._id : undefined,
                                 user: user ? user._id : undefined,
                                 requestId: id,
                                 method: method as ENUM_REQUEST_METHOD,
+                                role: user ? user.role : undefined,
                                 tags:
                                     options && options.tags ? options.tags : [],
                             });
@@ -74,11 +76,12 @@ export function LoggerInterceptor(
                                 description:
                                     options && options.description
                                         ? options.description
-                                        : `Request ${method} called, url ${originalUrl}`,
+                                        : `Request ${method} called, url ${originalUrl}, and action ${action}`,
                                 apiKey: apiKey ? apiKey._id : undefined,
                                 user: user ? user._id : undefined,
                                 requestId: id,
                                 method: method as ENUM_REQUEST_METHOD,
+                                role: user ? user.role : undefined,
                                 tags:
                                     options && options.tags ? options.tags : [],
                             });
@@ -88,11 +91,12 @@ export function LoggerInterceptor(
                                 description:
                                     options && options.description
                                         ? options.description
-                                        : `Request ${method} called, url ${originalUrl}`,
+                                        : `Request ${method} called, url ${originalUrl}, and action ${action}`,
                                 apiKey: apiKey ? apiKey._id : undefined,
                                 user: user ? user._id : undefined,
                                 requestId: id,
                                 method: method as ENUM_REQUEST_METHOD,
+                                role: user ? user.role : undefined,
                                 tags:
                                     options && options.tags ? options.tags : [],
                             });

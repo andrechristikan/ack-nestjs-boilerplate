@@ -12,12 +12,15 @@
     "coverageDirectory": "coverage",
     "collectCoverageFrom": [
         "./src/auth/service/**",
+        "./src/cache/service/**",
         "./src/config/service/**",
         "./src/database/service/**",
         "./src/debugger/service/**",
+        "./src/logger/service/**",
         "./src/message/service/**",
-        "./src/utils/helper/service/**",
-        "./src/utils/pagination/service/**"
+        "./src/pagination/service/**",
+        "./src/setting/service/**",
+        "./src/utils/helper/service/**"
     ],
     "coverageThreshold": {
       "global": {
