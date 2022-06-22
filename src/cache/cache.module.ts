@@ -9,11 +9,14 @@ import { CacheService } from './service/cache.service';
 @Global()
 @Module({
     controllers: [],
-    providers: [CacheService],
-    exports: [CacheService],
+    providers: [CacheOptionsService, CacheService],
+    exports: [CacheOptionsService, CacheService],
     imports: [
         NestJsCacheModule.registerAsync({
-            useClass: CacheOptionsService,
+            inject: [CacheOptionsService],
+            imports: [CacheModule],
+            useFactory: (cacheOptionsService: CacheOptionsService) =>
+                cacheOptionsService.createCacheOptions(),
         }),
     ],
 })
