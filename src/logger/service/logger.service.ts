@@ -25,7 +25,7 @@ export class LoggerService {
         const create = new this.loggerModel({
             level: ENUM_LOGGER_LEVEL.INFO,
             user: user ? new Types.ObjectId(user) : undefined,
-            apiKey: role ? new Types.ObjectId(apiKey) : undefined,
+            apiKey: apiKey ? new Types.ObjectId(apiKey) : undefined,
             anonymous: user ? false : true,
             action,
             description,
@@ -51,7 +51,7 @@ export class LoggerService {
         const create = new this.loggerModel({
             level: ENUM_LOGGER_LEVEL.DEBUG,
             user: user ? new Types.ObjectId(user) : undefined,
-            apiKey: role ? new Types.ObjectId(apiKey) : undefined,
+            apiKey: apiKey ? new Types.ObjectId(apiKey) : undefined,
             anonymous: user ? false : true,
             action,
             description,
@@ -77,7 +77,7 @@ export class LoggerService {
         const create = new this.loggerModel({
             level: ENUM_LOGGER_LEVEL.WARM,
             user: user ? new Types.ObjectId(user) : undefined,
-            apiKey: role ? new Types.ObjectId(apiKey) : undefined,
+            apiKey: apiKey ? new Types.ObjectId(apiKey) : undefined,
             anonymous: user ? false : true,
             action,
             description,
@@ -103,7 +103,7 @@ export class LoggerService {
         const create = new this.loggerModel({
             level: ENUM_LOGGER_LEVEL.FATAL,
             user: user ? new Types.ObjectId(user) : undefined,
-            apiKey: role ? new Types.ObjectId(apiKey) : undefined,
+            apiKey: apiKey ? new Types.ObjectId(apiKey) : undefined,
             anonymous: user ? false : true,
             action,
             description,
