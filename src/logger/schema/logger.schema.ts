@@ -1,6 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
 import { AuthApiEntity } from 'src/auth/schema/auth.api.schema';
+import { RoleEntity } from 'src/role/schema/role.schema';
+import { UserEntity } from 'src/user/schema/user.schema';
 import { ENUM_REQUEST_METHOD } from 'src/utils/request/request.constant';
 import { ENUM_LOGGER_ACTION, ENUM_LOGGER_LEVEL } from '../logger.constant';
 
@@ -31,8 +33,15 @@ export class LoggerEntity {
 
     @Prop({
         required: false,
+        ref: UserEntity.name,
     })
     user?: Types.ObjectId;
+
+    @Prop({
+        required: false,
+        ref: RoleEntity.name,
+    })
+    role?: Types.ObjectId;
 
     @Prop({
         required: false,
@@ -45,6 +54,12 @@ export class LoggerEntity {
         default: true,
     })
     anonymous: boolean;
+
+    @Prop({
+        required: true,
+        default: true,
+    })
+    isPublic: boolean;
 
     @Prop({
         required: true,

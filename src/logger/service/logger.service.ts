@@ -19,17 +19,20 @@ export class LoggerService {
         user,
         method,
         requestId,
+        role,
         tags,
     }: ILogger): Promise<LoggerDocument> {
         const create = new this.loggerModel({
             level: ENUM_LOGGER_LEVEL.INFO,
-            user: new Types.ObjectId(user),
-            apiKey: new Types.ObjectId(apiKey),
+            user: user ? new Types.ObjectId(user) : undefined,
+            apiKey: role ? new Types.ObjectId(apiKey) : undefined,
             anonymous: user ? false : true,
             action,
             description,
             method,
             requestId,
+            role: role ? new Types.ObjectId(role._id) : undefined,
+            isPublic: role && role.isAdmin ? false : true,
             tags,
         });
         return create.save();
@@ -42,17 +45,20 @@ export class LoggerService {
         user,
         method,
         requestId,
+        role,
         tags,
     }: ILogger): Promise<LoggerDocument> {
         const create = new this.loggerModel({
             level: ENUM_LOGGER_LEVEL.DEBUG,
-            user: new Types.ObjectId(user),
-            apiKey: new Types.ObjectId(apiKey),
+            user: user ? new Types.ObjectId(user) : undefined,
+            apiKey: role ? new Types.ObjectId(apiKey) : undefined,
             anonymous: user ? false : true,
             action,
             description,
             method,
             requestId,
+            role: role ? new Types.ObjectId(role._id) : undefined,
+            isPublic: role && role.isAdmin ? false : true,
             tags,
         });
         return create.save();
@@ -65,17 +71,20 @@ export class LoggerService {
         user,
         method,
         requestId,
+        role,
         tags,
     }: ILogger): Promise<LoggerDocument> {
         const create = new this.loggerModel({
             level: ENUM_LOGGER_LEVEL.WARM,
-            user: new Types.ObjectId(user),
-            apiKey: new Types.ObjectId(apiKey),
+            user: user ? new Types.ObjectId(user) : undefined,
+            apiKey: role ? new Types.ObjectId(apiKey) : undefined,
             anonymous: user ? false : true,
             action,
             description,
             method,
             requestId,
+            role: role ? new Types.ObjectId(role._id) : undefined,
+            isPublic: role && role.isAdmin ? false : true,
             tags,
         });
         return create.save();
@@ -88,17 +97,20 @@ export class LoggerService {
         user,
         method,
         requestId,
+        role,
         tags,
     }: ILogger): Promise<LoggerDocument> {
         const create = new this.loggerModel({
             level: ENUM_LOGGER_LEVEL.FATAL,
-            user: new Types.ObjectId(user),
-            apiKey: new Types.ObjectId(apiKey),
+            user: user ? new Types.ObjectId(user) : undefined,
+            apiKey: role ? new Types.ObjectId(apiKey) : undefined,
             anonymous: user ? false : true,
             action,
             description,
             method,
             requestId,
+            role: role ? new Types.ObjectId(role._id) : undefined,
+            isPublic: role && role.isAdmin ? false : true,
             tags,
         });
         return create.save();
