@@ -1,9 +1,4 @@
-import {
-    CallHandler,
-    ExecutionContext,
-    HttpException,
-    NestInterceptor,
-} from '@nestjs/common';
+import { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { catchError, Observable, throwError } from 'rxjs';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
@@ -23,7 +18,6 @@ export class ErrorLogInterceptor implements NestInterceptor<Promise<any>> {
         context: ExecutionContext,
         next: CallHandler
     ): Promise<Observable<Promise<any> | string>> {
-        const request: IRequestApp = context.switchToHttp().getRequest();
         const cls = this.reflector.get<string>(
             ERROR_CLASS_META_KEY,
             context.getHandler()
@@ -33,26 +27,25 @@ export class ErrorLogInterceptor implements NestInterceptor<Promise<any>> {
             context.getHandler()
         );
 
-        if (context.getType() === 'http') {
-            return next.handle().pipe(
-                catchError((err) => {
-                    if (err instanceof HttpException) {
-                        this.debuggerService.error(
-                            request.id,
-                            {
-                                description: err.message,
-                                class: cls,
-                                function: func,
-                            },
-                            err.getResponse()
-                        );
-                    }
+        return next.handle().pipe(
+            catchError((err) => {
+                const request: IRequestApp = context
+                    .switchToHttp()
+                    .getRequest();
+                this.debuggerService.error(
+                    context.getType() === 'http'
+                        ? request.id
+                        : ErrorLogInterceptor.name,
+                    {
+                        description: err.message,
+                        class: cls,
+                        function: func,
+                    },
+                    err.message
+                );
 
-                    return throwError(() => err);
-                })
-            );
-        }
-
-        return next.handle();
+                return throwError(() => err);
+            })
+        );
     }
 }

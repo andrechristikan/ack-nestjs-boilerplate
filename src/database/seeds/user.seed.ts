@@ -5,18 +5,18 @@ import { UserBulkService } from 'src/user/service/user.bulk.service';
 import { RoleService } from 'src/role/service/role.service';
 import { AuthService } from 'src/auth/service/auth.service';
 import { RoleDocument } from 'src/role/schema/role.schema';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
+import { ErrorMeta } from 'src/utils/error/error.decorator';
 
 @Injectable()
 export class UserSeed {
     constructor(
-        private readonly debuggerService: DebuggerService,
         private readonly authService: AuthService,
         private readonly userService: UserService,
         private readonly userBulkService: UserBulkService,
         private readonly roleService: RoleService
     ) {}
 
+    @ErrorMeta(UserSeed.name, 'insert')
     @Command({
         command: 'insert:user',
         describe: 'insert users',
@@ -43,21 +43,12 @@ export class UserSeed {
                 role: role._id,
                 salt: password.salt,
             });
-
-            this.debuggerService.debug(UserSeed.name, {
-                description: 'Insert User Succeed',
-                class: 'UserSeed',
-                function: 'insert',
-            });
         } catch (e) {
-            this.debuggerService.error(UserSeed.name, {
-                description: e.message,
-                class: 'UserSeed',
-                function: 'insert',
-            });
+            throw new Error(e.message);
         }
     }
 
+    @ErrorMeta(UserSeed.name, 'remove')
     @Command({
         command: 'remove:user',
         describe: 'remove users',
@@ -65,18 +56,8 @@ export class UserSeed {
     async remove(): Promise<void> {
         try {
             await this.userBulkService.deleteMany({});
-
-            this.debuggerService.debug(UserSeed.name, {
-                description: 'Remove User Succeed',
-                class: 'UserSeed',
-                function: 'remove',
-            });
         } catch (e) {
-            this.debuggerService.error(UserSeed.name, {
-                description: e.message,
-                class: 'UserSeed',
-                function: 'remove',
-            });
+            throw new Error(e.message);
         }
     }
 }

@@ -3,17 +3,17 @@ import { Injectable } from '@nestjs/common';
 import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { PermissionService } from 'src/permission/service/permission.service';
 import { RoleBulkService } from 'src/role/service/role.bulk.service';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { PermissionDocument } from 'src/permission/schema/permission.schema';
+import { ErrorMeta } from 'src/utils/error/error.decorator';
 
 @Injectable()
 export class RoleSeed {
     constructor(
-        private readonly debuggerService: DebuggerService,
         private readonly permissionService: PermissionService,
         private readonly roleBulkService: RoleBulkService
     ) {}
 
+    @ErrorMeta(RoleSeed.name, 'insert')
     @Command({
         command: 'insert:role',
         describe: 'insert roles',
@@ -38,21 +38,12 @@ export class RoleSeed {
                     isAdmin: false,
                 },
             ]);
-
-            this.debuggerService.debug(RoleSeed.name, {
-                description: 'Insert Role Succeed',
-                class: 'RoleSeed',
-                function: 'insert',
-            });
         } catch (e) {
-            this.debuggerService.error(RoleSeed.name, {
-                description: e.message,
-                class: 'RoleSeed',
-                function: 'insert',
-            });
+            throw new Error(e.message);
         }
     }
 
+    @ErrorMeta(RoleSeed.name, 'remove')
     @Command({
         command: 'remove:role',
         describe: 'remove roles',
@@ -60,18 +51,8 @@ export class RoleSeed {
     async remove(): Promise<void> {
         try {
             await this.roleBulkService.deleteMany({});
-
-            this.debuggerService.debug(RoleSeed.name, {
-                description: 'Remove Role Succeed',
-                class: 'RoleSeed',
-                function: 'remove',
-            });
         } catch (e) {
-            this.debuggerService.error(RoleSeed.name, {
-                description: e.message,
-                class: 'RoleSeed',
-                function: 'remove',
-            });
+            throw new Error(e.message);
         }
     }
 }

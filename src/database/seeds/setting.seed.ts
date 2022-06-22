@@ -1,17 +1,17 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { SettingService } from 'src/setting/service/setting.service';
 import { SettingBulkService } from 'src/setting/service/setting.bulk.service';
+import { ErrorMeta } from 'src/utils/error/error.decorator';
 
 @Injectable()
 export class SettingSeed {
     constructor(
-        private readonly debuggerService: DebuggerService,
         private readonly settingService: SettingService,
         private readonly settingBulkService: SettingBulkService
     ) {}
 
+    @ErrorMeta(SettingSeed.name, 'insert')
     @Command({
         command: 'insert:setting',
         describe: 'insert settings',
@@ -23,21 +23,12 @@ export class SettingSeed {
                 description: 'Maintenance Mode',
                 value: 'false',
             });
-
-            this.debuggerService.debug(SettingSeed.name, {
-                description: 'Insert Setting Succeed',
-                class: 'SettingSeed',
-                function: 'insert',
-            });
         } catch (e) {
-            this.debuggerService.error(SettingSeed.name, {
-                description: e.message,
-                class: 'SettingSeed',
-                function: 'insert',
-            });
+            throw new Error(e.message);
         }
     }
 
+    @ErrorMeta(SettingSeed.name, 'remove')
     @Command({
         command: 'remove:setting',
         describe: 'remove settings',
@@ -45,18 +36,8 @@ export class SettingSeed {
     async remove(): Promise<void> {
         try {
             await this.settingBulkService.deleteMany({});
-
-            this.debuggerService.debug(SettingSeed.name, {
-                description: 'Remove Setting Succeed',
-                class: 'SettingSeed',
-                function: 'remove',
-            });
         } catch (e) {
-            this.debuggerService.error(SettingSeed.name, {
-                description: e.message,
-                class: 'SettingSeed',
-                function: 'remove',
-            });
+            throw new Error(e.message);
         }
     }
 }
