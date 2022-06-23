@@ -46,6 +46,8 @@ export class UserSeed {
         } catch (e) {
             throw new Error(e.message);
         }
+
+        return;
     }
 
     @ErrorMeta(UserSeed.name, 'remove')
@@ -59,5 +61,7 @@ export class UserSeed {
         } catch (e) {
             throw new Error(e.message);
         }
+
+        return;
     }
 }

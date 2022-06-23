@@ -21,7 +21,8 @@
         "initdb",
         "deadcode",
         "authapis",
-        "headerapikey"
+        "headerapikey",
+        "jenkinsfile"
     ],
     "ignoreWords": [
         "psheon",

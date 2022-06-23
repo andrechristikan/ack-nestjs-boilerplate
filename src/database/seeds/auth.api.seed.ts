@@ -29,6 +29,8 @@ export class AuthApiSeed {
         } catch (e) {
             throw new Error(e.message);
         }
+        
+        return;
     }
 
     @ErrorMeta(AuthApiSeed.name, 'remove')
@@ -42,5 +44,7 @@ export class AuthApiSeed {
         } catch (e) {
             throw new Error(e.message);
         }
+        
+        return;
     }
 }

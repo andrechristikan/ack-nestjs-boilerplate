@@ -26,6 +26,8 @@ export class SettingSeed {
         } catch (e) {
             throw new Error(e.message);
         }
+
+        return;
     }
 
     @ErrorMeta(SettingSeed.name, 'remove')
@@ -39,5 +41,7 @@ export class SettingSeed {
         } catch (e) {
             throw new Error(e.message);
         }
+
+        return;
     }
 }

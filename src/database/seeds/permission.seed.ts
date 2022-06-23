@@ -26,6 +26,8 @@ export class PermissionSeed {
         } catch (e) {
             throw new Error(e.message);
         }
+
+        return;
     }
 
     @ErrorMeta(PermissionSeed.name, 'remove')
@@ -39,5 +41,7 @@ export class PermissionSeed {
         } catch (e) {
             throw new Error(e.message);
         }
+
+        return;
     }
 }
