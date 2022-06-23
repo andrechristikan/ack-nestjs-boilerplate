@@ -75,7 +75,7 @@ ack-nestjs-boilerplate-mongoose have some objective.
 - Authentication and Authorization (JWT, OAuth2, API Key, Basic Auth, Role Management) 💪
 - Mongodb Integrate by Using Mongoose Package 🎉
 - Database Migration (NestJs-Command)
-- Storage management with Amazon (AWS) or maybe with Internal Storage (Fs)
+- Storage Management with AWS (S3), and can switch with Internal Storage using FS Package
 - Server Side Pagination (3 Types)
 - Url Versioning
 - Request Validation Pipe with Custom Message 🛑
@@ -88,7 +88,7 @@ ack-nestjs-boilerplate-mongoose have some objective.
 - Request Timeout, and Custom Timeout (Override) ⌛️
 - Dynamic Setting from Database 🗿
 - Maintenance Mode on / off 🐤
-- Cache Manager Implementation, can replace with Redis, Memcached, or anything else
+- Cache Manager Implementation, can switch with Redis, Memcached, or anything else
 - Advance Example 🥶
 - Support Docker Installation
 - Support CI/CD with Github Action or Jenkins
