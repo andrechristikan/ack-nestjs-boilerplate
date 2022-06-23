@@ -1,6 +1,6 @@
 {
   "name": "ack-nestjs-boilerplate-mongoose",
-  "version": "1.5.8",
+  "version": "1.5.9",
   "description": "Ack NestJs BoilerPlate Mongoose",
   "repository": {
     "type": "git",
@@ -42,7 +42,7 @@
     "spell:src": "cspell lint --config cspell.json src/**/*.ts --color --gitignore --no-must-find-files --no-summary --no-progress || true",
     "spell:e2e": "cspell lint --config cspell.json e2e/**/*.ts --color --gitignore --no-must-find-files --no-summary --no-progress || true",
     "spell:integration": "cspell lint --config cspell.json integration/**/*.ts --color --gitignore --no-must-find-files --no-summary --no-progress || true",
-    "spell": "cspell lint --config cspell.json {src,test,e2e,integration}/**/*.ts readme.md tsconfig*.json docker* package.json nodemon.json license.md .github/* .husky/* --color --gitignore --no-must-find-files --no-summary --no-progress || true"
+    "spell": "cspell lint --config cspell.json {src,test,e2e,integration}/**/*.ts prod/* readme.md tsconfig*.json docker* package.json nodemon.json license.md .github/* .husky/* --color --gitignore --no-must-find-files --no-summary --no-progress || true"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.113.0",
@@ -124,7 +124,7 @@
     "prettier": "^2.7.1",
     "supertest": "^6.2.3",
     "ts-jest": "^28.0.5",
-    "ts-loader": "^9.3.0",
+    "ts-loader": "^9.3.1",
     "ts-node": "^10.8.1",
     "ts-prune": "^0.10.3",
     "tsconfig-paths": "^4.0.0",

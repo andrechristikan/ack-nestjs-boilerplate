@@ -72,7 +72,7 @@ ack-nestjs-boilerplate-mongoose have some objective.
 - NestJs v8.x 🥳
 - Production Ready 🔥
 - Typescript 🚀
-- Authentication and Authorization (OAuth2, API Key, Basic Auth, Role Management) 💪
+- Authentication and Authorization (JWT, OAuth2, API Key, Basic Auth, Role Management) 💪
 - Mongodb Integrate by Using Mongoose Package 🎉
 - Database Migration (NestJs-Command)
 - Storage management with Amazon (AWS) or maybe with Internal Storage (Fs)

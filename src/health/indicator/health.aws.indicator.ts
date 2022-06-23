@@ -18,7 +18,7 @@ export class AwsHealthIndicator extends HealthIndicator {
             return this.getStatus(key, true);
         } catch (error) {
             throw new HealthCheckError(
-                'ElasticsearchHealthIndicator failed',
+                'AwsHealthIndicator failed',
                 this.getStatus(key, false)
             );
         }

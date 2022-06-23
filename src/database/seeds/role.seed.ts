@@ -41,6 +41,8 @@ export class RoleSeed {
         } catch (e) {
             throw new Error(e.message);
         }
+
+        return;
     }
 
     @ErrorMeta(RoleSeed.name, 'remove')
@@ -54,5 +56,7 @@ export class RoleSeed {
         } catch (e) {
             throw new Error(e.message);
         }
+
+        return;
     }
 }
