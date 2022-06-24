@@ -20,6 +20,9 @@ export class LoggerService {
         method,
         requestId,
         role,
+        params,
+        bodies,
+        statusCode,
         tags,
     }: ILogger): Promise<LoggerDocument> {
         const create = new this.loggerModel({
@@ -33,6 +36,9 @@ export class LoggerService {
             requestId,
             role: role ? new Types.ObjectId(role._id) : undefined,
             isPublic: role && role.isAdmin ? false : true,
+            params,
+            bodies,
+            statusCode,
             tags,
         });
         return create.save();
@@ -46,6 +52,9 @@ export class LoggerService {
         method,
         requestId,
         role,
+        params,
+        bodies,
+        statusCode,
         tags,
     }: ILogger): Promise<LoggerDocument> {
         const create = new this.loggerModel({
@@ -59,6 +68,9 @@ export class LoggerService {
             requestId,
             role: role ? new Types.ObjectId(role._id) : undefined,
             isPublic: role && role.isAdmin ? false : true,
+            params,
+            bodies,
+            statusCode,
             tags,
         });
         return create.save();
@@ -72,6 +84,9 @@ export class LoggerService {
         method,
         requestId,
         role,
+        params,
+        bodies,
+        statusCode,
         tags,
     }: ILogger): Promise<LoggerDocument> {
         const create = new this.loggerModel({
@@ -85,6 +100,9 @@ export class LoggerService {
             requestId,
             role: role ? new Types.ObjectId(role._id) : undefined,
             isPublic: role && role.isAdmin ? false : true,
+            params,
+            bodies,
+            statusCode,
             tags,
         });
         return create.save();
@@ -98,6 +116,9 @@ export class LoggerService {
         method,
         requestId,
         role,
+        params,
+        bodies,
+        statusCode,
         tags,
     }: ILogger): Promise<LoggerDocument> {
         const create = new this.loggerModel({
@@ -111,6 +132,9 @@ export class LoggerService {
             requestId,
             role: role ? new Types.ObjectId(role._id) : undefined,
             isPublic: role && role.isAdmin ? false : true,
+            params,
+            bodies,
+            statusCode,
             tags,
         });
         return create.save();

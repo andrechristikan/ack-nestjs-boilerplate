@@ -26,6 +26,13 @@ describe('LoggerService', () => {
             isAdmin: true,
         },
         method: ENUM_REQUEST_METHOD.GET,
+        statusCode: 10000,
+        bodies: {
+            test: 'aaa',
+        },
+        params: {
+            test: 'bbb',
+        },
         tags: [],
     };
 

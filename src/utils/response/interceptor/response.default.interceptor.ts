@@ -30,6 +30,11 @@ export function ResponseDefaultInterceptor(
             next: CallHandler
         ): Promise<Observable<Promise<any> | string>> {
             if (context.getType() === 'http') {
+                const statusCode: number =
+                    options && options.statusCode
+                        ? options.statusCode
+                        : undefined;
+
                 return next.handle().pipe(
                     map(async (response: Promise<Record<string, any>>) => {
                         const ctx: HttpArgumentsHost = context.switchToHttp();
@@ -37,10 +42,9 @@ export function ResponseDefaultInterceptor(
                         const { customLang } = ctx.getRequest<IRequestApp>();
                         const customLanguages = customLang.split(',');
 
-                        const statusCode: number =
-                            options && options.statusCode
-                                ? options.statusCode
-                                : responseExpress.statusCode;
+                        const newStatusCode = statusCode
+                            ? statusCode
+                            : responseExpress.statusCode;
                         const data: Record<string, any> = await response;
                         const message: string | IMessage =
                             (await this.messageService.get(messagePath, {
@@ -51,7 +55,7 @@ export function ResponseDefaultInterceptor(
                             }));
 
                         return {
-                            statusCode,
+                            statusCode: newStatusCode,
                             message,
                             data,
                         };

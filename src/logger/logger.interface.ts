@@ -15,6 +15,9 @@ export interface ILogger {
     method: ENUM_REQUEST_METHOD;
     role?: ILoggerRole;
     tags?: string[];
+    params?: Record<string, any>;
+    bodies?: Record<string, any>;
+    statusCode?: number;
 }
 
 export interface ILoggerOptions {
