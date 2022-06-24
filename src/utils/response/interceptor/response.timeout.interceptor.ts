@@ -49,6 +49,7 @@ export function ResponseTimeoutInterceptor(
     return mixin(MixinResponseTimeoutInterceptor);
 }
 
+@Injectable()
 export class ResponseTimeoutDefaultInterceptor
     implements NestInterceptor<Promise<any>>
 {

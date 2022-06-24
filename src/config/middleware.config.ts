@@ -48,7 +48,7 @@ export default registerAs(
             maxRequestPerId: 1, // max request per reset time
         },
         timestamp: {
-            toleranceTimeInMinutes: process.env.MIDDLEWARE_TOLERANCE_TIMESTAMP
+            toleranceTimeInMs: process.env.MIDDLEWARE_TOLERANCE_TIMESTAMP
                 ? ms(process.env.MIDDLEWARE_TOLERANCE_TIMESTAMP)
                 : ms('5m'), // 5 mins
         },

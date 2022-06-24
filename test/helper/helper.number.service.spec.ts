@@ -36,21 +36,21 @@ describe('HelperNumberService', () => {
         });
     });
 
-    describe('convert', () => {
+    describe('create', () => {
         it('should be called', async () => {
-            const test = jest.spyOn(helperNumberService, 'convert');
+            const test = jest.spyOn(helperNumberService, 'create');
 
-            helperNumberService.convert('111');
+            helperNumberService.create('111');
             expect(test).toHaveBeenCalledWith('111');
         });
 
         it('should be success', async () => {
-            const result = helperNumberService.convert('111');
-            jest.spyOn(helperNumberService, 'convert').mockImplementation(
+            const result = helperNumberService.create('111');
+            jest.spyOn(helperNumberService, 'create').mockImplementation(
                 () => result
             );
 
-            expect(helperNumberService.convert('111')).toBe(result);
+            expect(helperNumberService.create('111')).toBe(result);
         });
     });
 

@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_FILTER, APP_INTERCEPTOR, Reflector } from '@nestjs/core';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
-import { MessageService } from 'src/message/service/message.service';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ErrorHttpFilter } from './filter/error.filter';
 import { ErrorLogInterceptor } from './interceptor/error.log.interceptor';
 
@@ -10,17 +8,11 @@ import { ErrorLogInterceptor } from './interceptor/error.log.interceptor';
     providers: [
         {
             provide: APP_FILTER,
-            inject: [MessageService],
-            useFactory: (messageService: MessageService) =>
-                new ErrorHttpFilter(messageService),
+            useClass: ErrorHttpFilter,
         },
         {
             provide: APP_INTERCEPTOR,
-            inject: [Reflector, DebuggerService],
-            useFactory: (
-                reflector: Reflector,
-                debuggerService: DebuggerService
-            ) => new ErrorLogInterceptor(reflector, debuggerService),
+            useClass: ErrorLogInterceptor,
         },
     ],
     imports: [],

@@ -5,9 +5,7 @@ import {
     ValidationError,
     ValidationPipe,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { APP_INTERCEPTOR, APP_PIPE, Reflector } from '@nestjs/core';
-import { HelperDateService } from '../helper/service/helper.date.service';
+import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { RequestTimestampInterceptor } from './interceptor/request.timestamp.interceptor';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from './request.constant';
 import { IsPasswordMediumConstraint } from './validation/request.is-password-medium.validation';
@@ -28,7 +26,6 @@ import { StringOrNumberOrBooleanConstraint } from './validation/request.string-o
     providers: [
         {
             provide: APP_PIPE,
-            inject: [],
             useFactory: () =>
                 new ValidationPipe({
                     transform: true,
@@ -47,17 +44,7 @@ import { StringOrNumberOrBooleanConstraint } from './validation/request.string-o
         },
         {
             provide: APP_INTERCEPTOR,
-            inject: [ConfigService, Reflector, HelperDateService],
-            useFactory: (
-                configService: ConfigService,
-                reflector: Reflector,
-                helperDateService: HelperDateService
-            ) =>
-                new RequestTimestampInterceptor(
-                    configService,
-                    reflector,
-                    helperDateService
-                ),
+            useClass: RequestTimestampInterceptor,
         },
         IsPasswordStrongConstraint,
         IsPasswordMediumConstraint,
