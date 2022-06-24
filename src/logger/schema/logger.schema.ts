@@ -68,6 +68,28 @@ export class LoggerEntity {
 
     @Prop({
         required: false,
+        type: Object,
+    })
+    requestParam?: Record<string, any>;
+
+    @Prop({
+        required: false,
+        type: Object,
+    })
+    requestBody?: Record<string, any>;
+
+    @Prop({
+        required: true,
+    })
+    responseStatus: number;
+
+    @Prop({
+        required: false,
+    })
+    responseStatusCode?: number;
+
+    @Prop({
+        required: false,
         default: [],
     })
     tags: string[];

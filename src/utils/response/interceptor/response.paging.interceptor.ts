@@ -32,6 +32,11 @@ export function ResponsePagingInterceptor(
             next: CallHandler
         ): Promise<Observable<Promise<any> | string>> {
             if (context.getType() === 'http') {
+                const statusCode: number =
+                    options && options.statusCode
+                        ? options.statusCode
+                        : undefined;
+
                 return next.handle().pipe(
                     map(async (response: Promise<Record<string, any>>) => {
                         const ctx: HttpArgumentsHost = context.switchToHttp();
@@ -39,10 +44,9 @@ export function ResponsePagingInterceptor(
                         const { headers } = ctx.getRequest();
                         const customLanguages = headers['x-custom-lang'];
 
-                        const statusCode: number =
-                            options && options.statusCode
-                                ? options.statusCode
-                                : responseExpress.statusCode;
+                        const newStatusCode = statusCode
+                            ? statusCode
+                            : responseExpress.statusCode;
                         const responseData: Record<string, any> =
                             await response;
                         const {
@@ -74,7 +78,7 @@ export function ResponsePagingInterceptor(
                             options.type === ENUM_PAGINATION_TYPE.SIMPLE
                         ) {
                             return {
-                                statusCode,
+                                statusCode: newStatusCode,
                                 message,
                                 totalData,
                                 totalPage,
@@ -88,7 +92,7 @@ export function ResponsePagingInterceptor(
                             options.type === ENUM_PAGINATION_TYPE.MINI
                         ) {
                             return {
-                                statusCode,
+                                statusCode: newStatusCode,
                                 message,
                                 totalData,
                                 metadata,
@@ -97,7 +101,7 @@ export function ResponsePagingInterceptor(
                         }
 
                         return {
-                            statusCode,
+                            statusCode: newStatusCode,
                             message,
                             totalData,
                             totalPage,

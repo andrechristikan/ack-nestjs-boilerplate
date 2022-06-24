@@ -12,6 +12,8 @@ import { ILoggerOptions } from '../logger.interface';
 import { ENUM_LOGGER_ACTION, ENUM_LOGGER_LEVEL } from '../logger.constant';
 import { IRequestApp } from 'src/utils/request/request.interface';
 import { ENUM_REQUEST_METHOD } from 'src/utils/request/request.constant';
+import { Response } from 'express';
+import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 
 export function LoggerInterceptor(
     action: ENUM_LOGGER_ACTION,
@@ -26,11 +28,20 @@ export function LoggerInterceptor(
             next: CallHandler
         ): Promise<Observable<Promise<any> | string>> {
             if (context.getType() === 'http') {
-                const { apiKey, method, originalUrl, user, id } = context
-                    .switchToHttp()
-                    .getRequest<IRequestApp>();
+                const ctx: HttpArgumentsHost = context.switchToHttp();
+                const { apiKey, method, originalUrl, user, id, body, params } =
+                    ctx.getRequest<IRequestApp>();
+                const responseExpress = ctx.getResponse<Response>();
                 return next.handle().pipe(
-                    tap(async () => {
+                    tap(async (response: Promise<Record<string, any>>) => {
+                        const responseData: Record<string, any> =
+                            await response;
+                        const responseStatus: number =
+                            responseExpress.statusCode;
+                        const responseStatusCode =
+                            responseData && responseData.statusCode
+                                ? responseData.statusCode
+                                : responseStatus;
                         if (
                             options &&
                             options.level === ENUM_LOGGER_LEVEL.FATAL
@@ -46,6 +57,10 @@ export function LoggerInterceptor(
                                 requestId: id,
                                 method: method as ENUM_REQUEST_METHOD,
                                 role: user ? user.role : undefined,
+                                requestParam: params,
+                                requestBody: body,
+                                responseStatus,
+                                responseStatusCode,
                                 tags:
                                     options && options.tags ? options.tags : [],
                             });
@@ -64,6 +79,10 @@ export function LoggerInterceptor(
                                 requestId: id,
                                 method: method as ENUM_REQUEST_METHOD,
                                 role: user ? user.role : undefined,
+                                requestParam: params,
+                                requestBody: body,
+                                responseStatus,
+                                responseStatusCode,
                                 tags:
                                     options && options.tags ? options.tags : [],
                             });
@@ -82,6 +101,10 @@ export function LoggerInterceptor(
                                 requestId: id,
                                 method: method as ENUM_REQUEST_METHOD,
                                 role: user ? user.role : undefined,
+                                requestParam: params,
+                                requestBody: body,
+                                responseStatus,
+                                responseStatusCode,
                                 tags:
                                     options && options.tags ? options.tags : [],
                             });
@@ -97,6 +120,10 @@ export function LoggerInterceptor(
                                 requestId: id,
                                 method: method as ENUM_REQUEST_METHOD,
                                 role: user ? user.role : undefined,
+                                requestParam: params,
+                                requestBody: body,
+                                responseStatus,
+                                responseStatusCode,
                                 tags:
                                     options && options.tags ? options.tags : [],
                             });
