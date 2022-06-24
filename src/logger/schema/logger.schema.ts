@@ -70,23 +70,18 @@ export class LoggerEntity {
         required: false,
         type: Object,
     })
-    requestParam?: Record<string, any>;
+    params?: Record<string, any>;
 
     @Prop({
         required: false,
         type: Object,
     })
-    requestBody?: Record<string, any>;
-
-    @Prop({
-        required: true,
-    })
-    responseStatus: number;
+    bodies?: Record<string, any>;
 
     @Prop({
         required: false,
     })
-    responseStatusCode?: number;
+    statusCode?: number;
 
     @Prop({
         required: false,

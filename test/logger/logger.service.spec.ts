@@ -13,7 +13,6 @@ describe('LoggerService', () => {
         action: ENUM_LOGGER_ACTION.TEST,
         description: 'test aaa',
         method: ENUM_REQUEST_METHOD.GET,
-        responseStatus: 200,
         tags: [],
     };
     const loggerComplete: ILogger = {
@@ -27,12 +26,11 @@ describe('LoggerService', () => {
             isAdmin: true,
         },
         method: ENUM_REQUEST_METHOD.GET,
-        responseStatus: 200,
-        responseStatusCode: 10000,
-        requestBody: {
+        statusCode: 10000,
+        bodies: {
             test: 'aaa',
         },
-        requestParam: {
+        params: {
             test: 'bbb',
         },
         tags: [],

@@ -38,7 +38,7 @@ export function LoggerInterceptor(
                             await response;
                         const responseStatus: number =
                             responseExpress.statusCode;
-                        const responseStatusCode =
+                        const statusCode =
                             responseData && responseData.statusCode
                                 ? responseData.statusCode
                                 : responseStatus;
@@ -57,10 +57,9 @@ export function LoggerInterceptor(
                                 requestId: id,
                                 method: method as ENUM_REQUEST_METHOD,
                                 role: user ? user.role : undefined,
-                                requestParam: params,
-                                requestBody: body,
-                                responseStatus,
-                                responseStatusCode,
+                                params,
+                                bodies: body,
+                                statusCode,
                                 tags:
                                     options && options.tags ? options.tags : [],
                             });
@@ -79,10 +78,9 @@ export function LoggerInterceptor(
                                 requestId: id,
                                 method: method as ENUM_REQUEST_METHOD,
                                 role: user ? user.role : undefined,
-                                requestParam: params,
-                                requestBody: body,
-                                responseStatus,
-                                responseStatusCode,
+                                params,
+                                bodies: body,
+                                statusCode,
                                 tags:
                                     options && options.tags ? options.tags : [],
                             });
@@ -101,10 +99,9 @@ export function LoggerInterceptor(
                                 requestId: id,
                                 method: method as ENUM_REQUEST_METHOD,
                                 role: user ? user.role : undefined,
-                                requestParam: params,
-                                requestBody: body,
-                                responseStatus,
-                                responseStatusCode,
+                                params,
+                                bodies: body,
+                                statusCode,
                                 tags:
                                     options && options.tags ? options.tags : [],
                             });
@@ -120,10 +117,9 @@ export function LoggerInterceptor(
                                 requestId: id,
                                 method: method as ENUM_REQUEST_METHOD,
                                 role: user ? user.role : undefined,
-                                requestParam: params,
-                                requestBody: body,
-                                responseStatus,
-                                responseStatusCode,
+                                params,
+                                bodies: body,
+                                statusCode,
                                 tags:
                                     options && options.tags ? options.tags : [],
                             });
