@@ -1,4 +1,9 @@
-import { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
+import {
+    CallHandler,
+    ExecutionContext,
+    Injectable,
+    NestInterceptor,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { catchError, Observable, throwError } from 'rxjs';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
@@ -8,6 +13,7 @@ import {
     ERROR_FUNCTION_META_KEY,
 } from '../error.constant';
 
+@Injectable()
 export class ErrorLogInterceptor implements NestInterceptor<Promise<any>> {
     constructor(
         private readonly reflector: Reflector,

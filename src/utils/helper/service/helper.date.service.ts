@@ -69,6 +69,12 @@ export class HelperDateService {
             .isValid();
     }
 
+    checkTimestamp(timestamp: number, options?: IHelperDateOptions): boolean {
+        return moment(timestamp, true)
+            .tz(options && options.timezone ? options.timezone : this.timezone)
+            .isValid();
+    }
+
     checkTimezone(timezone: string): boolean {
         return !!moment.tz.zone(timezone);
     }
@@ -102,6 +108,58 @@ export class HelperDateService {
                     ? options.format
                     : ENUM_HELPER_DATE_FORMAT.DATE
             );
+    }
+
+    forwardInMilliseconds(
+        milliseconds: number,
+        options?: IHelperDateOptionsForward
+    ): Date {
+        return moment
+            .tz(
+                options && options.fromDate ? options.fromDate : undefined,
+                options && options.timezone ? options.timezone : this.timezone
+            )
+            .add(milliseconds, 'ms')
+            .toDate();
+    }
+
+    backwardInMilliseconds(
+        milliseconds: number,
+        options?: IHelperDateOptionsBackward
+    ): Date {
+        return moment
+            .tz(
+                options && options.fromDate ? options.fromDate : undefined,
+                options && options.timezone ? options.timezone : this.timezone
+            )
+            .subtract(milliseconds, 'ms')
+            .toDate();
+    }
+
+    forwardInSeconds(
+        seconds: number,
+        options?: IHelperDateOptionsForward
+    ): Date {
+        return moment
+            .tz(
+                options && options.fromDate ? options.fromDate : undefined,
+                options && options.timezone ? options.timezone : this.timezone
+            )
+            .add(seconds, 's')
+            .toDate();
+    }
+
+    backwardInSeconds(
+        seconds: number,
+        options?: IHelperDateOptionsBackward
+    ): Date {
+        return moment
+            .tz(
+                options && options.fromDate ? options.fromDate : undefined,
+                options && options.timezone ? options.timezone : this.timezone
+            )
+            .subtract(seconds, 's')
+            .toDate();
     }
 
     forwardInMinutes(

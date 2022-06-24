@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { VersionInterceptor } from './interceptor/version.interceptor';
 
@@ -8,9 +7,7 @@ import { VersionInterceptor } from './interceptor/version.interceptor';
     providers: [
         {
             provide: APP_INTERCEPTOR,
-            inject: [ConfigService],
-            useFactory: (configService: ConfigService) =>
-                new VersionInterceptor(configService),
+            useClass: VersionInterceptor,
         },
     ],
     imports: [],

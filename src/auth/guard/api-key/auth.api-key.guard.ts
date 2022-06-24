@@ -10,12 +10,14 @@ import {
 } from 'src/auth/auth.constant';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
+import { HelperNumberService } from 'src/utils/helper/service/helper.number.service';
 
 @Injectable()
 export class ApiKeyGuard extends AuthGuard('api-key') {
     constructor(
         private readonly configService: ConfigService,
-        private readonly reflector: Reflector
+        private readonly reflector: Reflector,
+        private readonly helperNumberService: HelperNumberService
     ) {
         super();
     }
@@ -65,7 +67,9 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
                 });
             }
 
-            const statusCode: number = Number.parseInt(info as string);
+            const statusCode: number = this.helperNumberService.create(
+                info as string
+            );
 
             if (
                 statusCode ===

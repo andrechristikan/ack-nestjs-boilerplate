@@ -148,12 +148,11 @@ export class AuthService {
 
         const salt: string = this.helperHashService.randomSalt(saltLength);
 
-        const passwordExpiredInDays: number = this.configService.get<number>(
-            'auth.password.expiredInDay'
+        const passwordExpiredInMs: number = this.configService.get<number>(
+            'auth.password.expiredInMs'
         );
-        const passwordExpired: Date = this.helperDateService.forwardInDays(
-            passwordExpiredInDays
-        );
+        const passwordExpired: Date =
+            this.helperDateService.forwardInMilliseconds(passwordExpiredInMs);
         const passwordHash = this.helperHashService.bcrypt(password, salt);
         return {
             passwordHash,

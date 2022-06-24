@@ -2,25 +2,29 @@ import {
     CallHandler,
     ExecutionContext,
     ForbiddenException,
+    Injectable,
     NestInterceptor,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
+import { HelperNumberService } from 'src/utils/helper/service/helper.number.service';
 import {
     ENUM_REQUEST_STATUS_CODE_ERROR,
     REQUEST_EXCLUDE_TIMESTAMP_META_KEY,
 } from '../request.constant';
 import { IRequestApp } from '../request.interface';
 
+@Injectable()
 export class RequestTimestampInterceptor
     implements NestInterceptor<Promise<any>>
 {
     constructor(
         private readonly configService: ConfigService,
         private readonly reflector: Reflector,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly helperNumberService: HelperNumberService
     ) {}
 
     async intercept(
@@ -39,13 +43,11 @@ export class RequestTimestampInterceptor
             );
 
             if (!excludeTimestamp && mode === 'secure') {
-                const toleranceTimeInMinutes = this.configService.get<number>(
-                    'middleware.timestamp.toleranceTimeInMinutes'
+                const toleranceTimeInMs = this.configService.get<number>(
+                    'middleware.timestamp.toleranceTimeInMs'
                 );
-                const check: boolean = this.helperDateService.check(
-                    Number.isNaN(Number.parseInt(reqTs))
-                        ? reqTs
-                        : Number.parseInt(reqTs)
+                const check: boolean = this.helperDateService.checkTimestamp(
+                    this.helperNumberService.create(reqTs)
                 );
                 if (!reqTs || !check) {
                     throw new ForbiddenException({
@@ -56,16 +58,17 @@ export class RequestTimestampInterceptor
                 }
 
                 const timestamp = this.helperDateService.create({
-                    date: Number.isNaN(Number.parseInt(reqTs))
-                        ? reqTs
-                        : Number.parseInt(reqTs),
+                    date: this.helperNumberService.create(reqTs),
                 });
-                const toleranceMin = this.helperDateService.backwardInMinutes(
-                    toleranceTimeInMinutes
-                );
-                const toleranceMax = this.helperDateService.forwardInMinutes(
-                    toleranceTimeInMinutes
-                );
+                const toleranceMin =
+                    this.helperDateService.backwardInMilliseconds(
+                        toleranceTimeInMs
+                    );
+                const toleranceMax =
+                    this.helperDateService.forwardInMilliseconds(
+                        toleranceTimeInMs
+                    );
+
                 if (timestamp < toleranceMin || timestamp > toleranceMax) {
                     throw new ForbiddenException({
                         statusCode:

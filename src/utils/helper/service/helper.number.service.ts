@@ -8,7 +8,7 @@ export class HelperNumberService {
         return regex.test(number);
     }
 
-    convert(number: string): number {
+    create(number: string): number {
         return Number(number);
     }
 

@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { APP_INTERCEPTOR, Reflector } from '@nestjs/core';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ResponseCustomHeadersInterceptor } from './interceptor/response.custom-headers.interceptor';
 import { ResponseTimeoutDefaultInterceptor } from './interceptor/response.timeout.interceptor';
 
@@ -9,13 +8,11 @@ import { ResponseTimeoutDefaultInterceptor } from './interceptor/response.timeou
     providers: [
         {
             provide: APP_INTERCEPTOR,
-            inject: [ConfigService, Reflector],
-            useFactory: (configService: ConfigService, reflector: Reflector) =>
-                new ResponseTimeoutDefaultInterceptor(configService, reflector),
+            useClass: ResponseTimeoutDefaultInterceptor,
         },
         {
             provide: APP_INTERCEPTOR,
-            useFactory: () => new ResponseCustomHeadersInterceptor(),
+            useClass: ResponseCustomHeadersInterceptor,
         },
     ],
     imports: [],
