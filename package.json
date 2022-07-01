@@ -94,7 +94,7 @@
     "@nestjs/testing": "^8.4.7",
     "@types/bcrypt": "^5.0.0",
     "@types/bytes": "^3.1.1",
-    "@types/cache-manager": "^4.0.0",
+    "@types/cache-manager": "^4.0.1",
     "@types/compression": "^1.7.2",
     "@types/cors": "^2.8.12",
     "@types/cron": "^2.0.0",
