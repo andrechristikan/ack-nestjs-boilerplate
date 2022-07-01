@@ -70,7 +70,7 @@
     "helmet": "^5.1.0",
     "moment": "^2.29.3",
     "moment-timezone": "^0.5.34",
-    "mongoose": "^6.4.0",
+    "mongoose": "^6.4.1",
     "morgan": "^1.10.0",
     "nest-winston": "^1.6.2",
     "nestjs-command": "^3.1.1",
