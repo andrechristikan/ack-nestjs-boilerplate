@@ -84,7 +84,7 @@
     "rotating-file-stream": "^3.0.4",
     "rxjs": "^7.5.5",
     "ua-parser-js": "^1.0.2",
-    "winston": "^3.8.0",
+    "winston": "^3.8.1",
     "winston-daily-rotate-file": "^4.7.1",
     "yargs": "^17.5.1"
   },
