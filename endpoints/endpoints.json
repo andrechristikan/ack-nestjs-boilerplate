@@ -176,6 +176,264 @@
 					]
 				},
 				{
+					"name": "hello kafka",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Set Function",
+									"const cryptoJs = require('crypto-js');",
+									"const { AES, enc, mode, pad } = cryptoJs;",
+									"const setUtils = {",
+									"    getCurrentTimestamp: function() {",
+									"        return Date.now();",
+									"    },",
+									"    createXApiKey: function (data, key, iv){",
+									"        const cIv = enc.Utf8.parse(iv);",
+									"        const cipher = AES.encrypt(",
+									"            JSON.stringify(data), ",
+									"            key, ",
+									"            {",
+									"                mode: mode.CBC,",
+									"                padding: pad.Pkcs7,",
+									"                iv: cIv,",
+									"            }",
+									"        );",
+									"",
+									"        return cipher.toString();",
+									"    }",
+									"}",
+									"pm.globals.set('utils', setUtils);",
+									"let utils = eval(pm.globals.get(\"utils\"));",
+									"",
+									"// Set x-timestamp",
+									"pm.environment.set(\"xTimestamp\", utils.getCurrentTimestamp());",
+									"",
+									"// Set x-api-key",
+									"const xTimestamp = pm.environment.get(\"xTimestamp\");",
+									"const apiKey = pm.environment.get(\"ApiKey\");",
+									"const apiHash = pm.environment.get(\"ApiHash\");",
+									"const apiEncryptionKey = pm.environment.get(\"ApiEncryptionKey\");",
+									"const apiPassphrase = pm.environment.get(\"ApiPassphrase\");",
+									"const apiPayload = {",
+									"    \"key\": apiKey,",
+									"    \"timestamp\": parseInt(xTimestamp),",
+									"    \"hash\": apiHash",
+									"}",
+									"const apiEncrypted = utils.createXApiKey(apiPayload, apiEncryptionKey, apiPassphrase);",
+									"const xApiKey = `${apiKey}:${apiEncrypted}`;",
+									"pm.environment.set(\"ApiEncrypted\", apiEncrypted);",
+									"pm.environment.set(\"xApiKey\", xApiKey);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-timestamp",
+								"value": "{{xTimestamp}}",
+								"type": "text"
+							},
+							{
+								"key": "x-custom-lang",
+								"value": "en,id",
+								"type": "text"
+							},
+							{
+								"key": "x-timezone",
+								"value": "Asia/Jakarta",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello/kafka",
+							"host": [
+								"{{BaseUrl}}{{PrefixUrl}}"
+							],
+							"path": [
+								"test",
+								"hello",
+								"kafka"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "success",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-timestamp",
+										"value": "{{xTimestamp}}",
+										"type": "text"
+									},
+									{
+										"key": "User-Agent",
+										"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
+										"type": "text"
+									},
+									{
+										"key": "x-custom-lang",
+										"value": "en",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello/kafka",
+									"host": [
+										"{{BaseUrl}}{{PrefixUrl}}"
+									],
+									"path": [
+										"test",
+										"hello",
+										"kafka"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"This is test endpoint.\",\n    \"data\": {\n        \"userAgent\": {\n            \"ua\": \"PostmanRuntime/7.29.0\",\n            \"browser\": {},\n            \"engine\": {},\n            \"os\": {},\n            \"device\": {},\n            \"cpu\": {}\n        },\n        \"date\": \"2022-06-17T17:20:13.018Z\",\n        \"format\": \"2022-06-18T00:20:13+07:00\",\n        \"timestamp\": 1655486413018\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "hello kafka error",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Set Function",
+									"const cryptoJs = require('crypto-js');",
+									"const { AES, enc, mode, pad } = cryptoJs;",
+									"const setUtils = {",
+									"    getCurrentTimestamp: function() {",
+									"        return Date.now();",
+									"    },",
+									"    createXApiKey: function (data, key, iv){",
+									"        const cIv = enc.Utf8.parse(iv);",
+									"        const cipher = AES.encrypt(",
+									"            JSON.stringify(data), ",
+									"            key, ",
+									"            {",
+									"                mode: mode.CBC,",
+									"                padding: pad.Pkcs7,",
+									"                iv: cIv,",
+									"            }",
+									"        );",
+									"",
+									"        return cipher.toString();",
+									"    }",
+									"}",
+									"pm.globals.set('utils', setUtils);",
+									"let utils = eval(pm.globals.get(\"utils\"));",
+									"",
+									"// Set x-timestamp",
+									"pm.environment.set(\"xTimestamp\", utils.getCurrentTimestamp());",
+									"",
+									"// Set x-api-key",
+									"const xTimestamp = pm.environment.get(\"xTimestamp\");",
+									"const apiKey = pm.environment.get(\"ApiKey\");",
+									"const apiHash = pm.environment.get(\"ApiHash\");",
+									"const apiEncryptionKey = pm.environment.get(\"ApiEncryptionKey\");",
+									"const apiPassphrase = pm.environment.get(\"ApiPassphrase\");",
+									"const apiPayload = {",
+									"    \"key\": apiKey,",
+									"    \"timestamp\": parseInt(xTimestamp),",
+									"    \"hash\": apiHash",
+									"}",
+									"const apiEncrypted = utils.createXApiKey(apiPayload, apiEncryptionKey, apiPassphrase);",
+									"const xApiKey = `${apiKey}:${apiEncrypted}`;",
+									"pm.environment.set(\"ApiEncrypted\", apiEncrypted);",
+									"pm.environment.set(\"xApiKey\", xApiKey);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-timestamp",
+								"value": "{{xTimestamp}}",
+								"type": "text"
+							},
+							{
+								"key": "x-custom-lang",
+								"value": "en,id",
+								"type": "text"
+							},
+							{
+								"key": "x-timezone",
+								"value": "Asia/Jakarta",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello/kafka-error",
+							"host": [
+								"{{BaseUrl}}{{PrefixUrl}}"
+							],
+							"path": [
+								"test",
+								"hello",
+								"kafka-error"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "error",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-timestamp",
+										"value": "{{xTimestamp}}",
+										"type": "text"
+									},
+									{
+										"key": "User-Agent",
+										"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
+										"type": "text"
+									},
+									{
+										"key": "x-custom-lang",
+										"value": "en",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello/kafka-error",
+									"host": [
+										"{{BaseUrl}}{{PrefixUrl}}"
+									],
+									"path": [
+										"test",
+										"hello",
+										"kafka-error"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"This is test endpoint.\",\n    \"data\": {\n        \"userAgent\": {\n            \"ua\": \"PostmanRuntime/7.29.0\",\n            \"browser\": {},\n            \"engine\": {},\n            \"os\": {},\n            \"device\": {},\n            \"cpu\": {}\n        },\n        \"date\": \"2022-06-17T17:20:13.018Z\",\n        \"format\": \"2022-06-18T00:20:13+07:00\",\n        \"timestamp\": 1655486413018\n    }\n}"
+						}
+					]
+				},
+				{
 					"name": "hello timeout",
 					"event": [
 						{
@@ -250,13 +508,14 @@
 							}
 						],
 						"url": {
-							"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello-timeout",
+							"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello/timeout",
 							"host": [
 								"{{BaseUrl}}{{PrefixUrl}}"
 							],
 							"path": [
 								"test",
-								"hello-timeout"
+								"hello",
+								"timeout"
 							]
 						}
 					},
@@ -283,13 +542,14 @@
 									}
 								],
 								"url": {
-									"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello",
+									"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello/timeout",
 									"host": [
 										"{{BaseUrl}}{{PrefixUrl}}"
 									],
 									"path": [
 										"test",
-										"hello"
+										"hello",
+										"timeout"
 									]
 								}
 							},
@@ -886,7 +1146,7 @@
 											"_postman_previewlanguage": "json",
 											"header": null,
 											"cookie": [],
-											"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Profile Success\",\n    \"data\": {\n        \"_id\": \"6298d44cf50e591f9369e2e8\",\n        \"firstName\": \"user@mail.com\",\n        \"lastName\": \"aaa\",\n        \"mobileNumber\": \"628123121111\",\n        \"email\": \"user@mail.com\",\n        \"role\": {\n            \"name\": \"user\",\n            \"permissions\": [],\n            \"isActive\": true\n        },\n        \"passwordExpired\": \"2022-12-01T15:16:28.657Z\",\n        \"isActive\": true\n    }\n}"
+											"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Profile Success\",\n    \"data\": {\n        \"_id\": \"6298d44cf50e591f9369e2e8\",\n        \"firstName\": \"user@mail.com\",\n        \"lastName\": \"aaa\",\n        \"mobileNumber\": \"628123121111\",\n        \"email\": \"user@mail.com\",\n        \"role\": {\n            \"name\": \"user\",\n            \"permissions\": [],\n            \"isActive\": true,\n            \"accessFor\": [\n                \"ADMIN\"\n            ]\n        },\n        \"passwordExpired\": \"2022-12-01T15:16:28.657Z\",\n        \"isActive\": true\n    }\n}"
 										}
 									]
 								},
@@ -1915,7 +2175,7 @@
 											"_postman_previewlanguage": "json",
 											"header": null,
 											"cookie": [],
-											"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Get User Success.\",\n    \"data\": {\n        \"_id\": \"6298cb32bd530c9c84266c40\",\n        \"firstName\": \"admin@mail.com\",\n        \"lastName\": \"test\",\n        \"mobileNumber\": \"08111111111\",\n        \"email\": \"admin@mail.com\",\n        \"role\": {\n            \"name\": \"admin\",\n            \"permissions\": [\n                {\n                    \"name\": \"permission read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"role create\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"permission test\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"role read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"role update\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"setting read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"setting update\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"user create\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"user delete\",\n                    \"isActive\": false\n                },\n                {\n                    \"name\": \"user read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"user update\",\n                    \"isActive\": true\n                }\n            ],\n            \"isActive\": true\n        },\n        \"passwordExpired\": \"2022-12-01T14:37:38.705Z\",\n        \"isActive\": true,\n        \"createdAt\": \"2022-06-02T14:37:38.729Z\"\n    }\n}"
+											"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Get User Success.\",\n    \"data\": {\n        \"_id\": \"6298cb32bd530c9c84266c40\",\n        \"firstName\": \"admin@mail.com\",\n        \"lastName\": \"test\",\n        \"mobileNumber\": \"08111111111\",\n        \"email\": \"admin@mail.com\",\n        \"role\": {\n            \"name\": \"admin\",\n            \"permissions\": [\n                {\n                    \"name\": \"permission read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"role create\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"permission test\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"role read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"role update\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"setting read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"setting update\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"user create\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"user delete\",\n                    \"isActive\": false\n                },\n                {\n                    \"name\": \"user read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"user update\",\n                    \"isActive\": true\n                }\n            ],\n            \"accessFor\": [\n                \"ADMIN\"\n            ],\n            \"isActive\": true\n        },\n        \"passwordExpired\": \"2022-12-01T14:37:38.705Z\",\n        \"isActive\": true,\n        \"createdAt\": \"2022-06-02T14:37:38.729Z\"\n    }\n}"
 										}
 									]
 								},
@@ -3286,7 +3546,7 @@
 											"_postman_previewlanguage": "json",
 											"header": null,
 											"cookie": [],
-											"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Get Role Success.\",\n    \"data\": {\n        \"_id\": \"6298cb290280eeabb17f9d32\",\n        \"name\": \"admin\",\n        \"permissions\": [\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08bb\",\n                \"code\": \"PERMISSION_READ\",\n                \"name\": \"permission read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b7\",\n                \"code\": \"ROLE_CREATE\",\n                \"name\": \"role create\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08ba\",\n                \"code\": \"ROLE_DELETE\",\n                \"name\": \"permission test\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b9\",\n                \"code\": \"ROLE_READ\",\n                \"name\": \"role read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b8\",\n                \"code\": \"ROLE_UPDATE\",\n                \"name\": \"role update\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08bd\",\n                \"code\": \"SETTING_READ\",\n                \"name\": \"setting read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08be\",\n                \"code\": \"SETTING_UPDATE\",\n                \"name\": \"setting update\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b3\",\n                \"code\": \"USER_CREATE\",\n                \"name\": \"user create\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b6\",\n                \"code\": \"USER_DELETE\",\n                \"name\": \"user delete\",\n                \"isActive\": false\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b5\",\n                \"code\": \"USER_READ\",\n                \"name\": \"user read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b4\",\n                \"code\": \"USER_UPDATE\",\n                \"name\": \"user update\",\n                \"isActive\": true\n            }\n        ],\n        \"isActive\": true,\n        \"isAdmin\": true,\n        \"createdAt\": \"2022-06-02T14:37:29.771Z\"\n    }\n}"
+											"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Get Role Success.\",\n    \"data\": {\n        \"_id\": \"6298cb290280eeabb17f9d32\",\n        \"name\": \"admin\",\n        \"permissions\": [\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08bb\",\n                \"code\": \"PERMISSION_READ\",\n                \"name\": \"permission read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b7\",\n                \"code\": \"ROLE_CREATE\",\n                \"name\": \"role create\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08ba\",\n                \"code\": \"ROLE_DELETE\",\n                \"name\": \"permission test\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b9\",\n                \"code\": \"ROLE_READ\",\n                \"name\": \"role read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b8\",\n                \"code\": \"ROLE_UPDATE\",\n                \"name\": \"role update\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08bd\",\n                \"code\": \"SETTING_READ\",\n                \"name\": \"setting read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08be\",\n                \"code\": \"SETTING_UPDATE\",\n                \"name\": \"setting update\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b3\",\n                \"code\": \"USER_CREATE\",\n                \"name\": \"user create\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b6\",\n                \"code\": \"USER_DELETE\",\n                \"name\": \"user delete\",\n                \"isActive\": false\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b5\",\n                \"code\": \"USER_READ\",\n                \"name\": \"user read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b4\",\n                \"code\": \"USER_UPDATE\",\n                \"name\": \"user update\",\n                \"isActive\": true\n            }\n        ],\n        \"isActive\": true,\n        \"accessFor\": [\n            \"ADMIN\"\n        ],\n        \"createdAt\": \"2022-06-02T14:37:29.771Z\"\n    }\n}"
 										}
 									]
 								},
@@ -3308,7 +3568,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n    \"name\": \"RRQasdass\",\n    \"permissions\": [\n        \"6298cb21094ec30dfa5d081b\"\n    ],\n    \"isAdmin\": false\n}",
+											"raw": "{\n    \"name\": \"RRQasdass\",\n    \"permissions\": [\n        \"6298cb21094ec30dfa5d081b\"\n    ],\n    \"accessFor\": [\n        \"USER\"\n    ]\n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -3361,7 +3621,7 @@
 												],
 												"body": {
 													"mode": "raw",
-													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"isAdmin\": false\n}",
+													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"accessFor\": []\n}",
 													"options": {
 														"raw": {
 															"language": "json"
@@ -3385,7 +3645,7 @@
 											"_postman_previewlanguage": "json",
 											"header": null,
 											"cookie": [],
-											"body": "{\n    \"statusCode\": 5981,\n    \"message\": \"Unprocessable Entity\",\n    \"errors\": [\n        {\n            \"property\": \"isAdmin\",\n            \"message\": \"isAdmin should be a boolean\"\n        }\n    ]\n}"
+											"body": "{\n    \"statusCode\": 5981,\n    \"message\": \"Unprocessable Entity\",\n    \"errors\": [\n        {\n            \"property\": \"accessFor\",\n            \"message\": \"accessFor should be a enum\"\n        }\n    ]\n}"
 										},
 										{
 											"name": "exists",
@@ -3420,7 +3680,7 @@
 												],
 												"body": {
 													"mode": "raw",
-													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"isAdmin\": false\n}",
+													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"accessFor\": [\n        \"USER\"\n    ]\n}",
 													"options": {
 														"raw": {
 															"language": "json"
@@ -3479,7 +3739,7 @@
 												],
 												"body": {
 													"mode": "raw",
-													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"isAdmin\": false\n}",
+													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"accessFor\": [\n        \"USER\"\n    ]\n}",
 													"options": {
 														"raw": {
 															"language": "json"
@@ -3538,7 +3798,7 @@
 												],
 												"body": {
 													"mode": "raw",
-													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"isAdmin\": false\n}",
+													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"accessFor\": [\n        \"USER\"\n    ]\n}",
 													"options": {
 														"raw": {
 															"language": "json"
