@@ -12,6 +12,7 @@ export class UserGetSerialization {
             name: val.name,
             isActive: val.isActive,
         })),
+        accessFor: value.accessFor,
         isActive: value.isActive,
     }))
     readonly role: IRoleDocument;

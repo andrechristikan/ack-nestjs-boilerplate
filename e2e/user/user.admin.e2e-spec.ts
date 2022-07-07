@@ -153,7 +153,7 @@ describe('E2E User Admin', () => {
             .set('x-api-key', xApiKey)
             .send({
                 role: 'test_roles',
-                isAdmin: 'test',
+                accessFor: 'test',
             });
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);

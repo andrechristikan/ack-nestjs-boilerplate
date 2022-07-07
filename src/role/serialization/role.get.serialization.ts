@@ -1,5 +1,6 @@
 import { Exclude, Transform, Type } from 'class-transformer';
 import { PermissionDocument } from 'src/permission/schema/permission.schema';
+import { ENUM_ROLE_ACCESS_FOR } from '../role.constant';
 
 export class RoleGetSerialization {
     @Type(() => String)
@@ -7,7 +8,7 @@ export class RoleGetSerialization {
 
     readonly isActive: boolean;
     readonly name: string;
-    readonly isAdmin: boolean;
+    readonly accessFor: ENUM_ROLE_ACCESS_FOR[];
 
     @Transform(({ obj }) =>
         obj.permissions.map((val) => ({

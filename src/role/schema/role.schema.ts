@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types, Document } from 'mongoose';
 import { PermissionEntity } from 'src/permission/schema/permission.schema';
+import { ENUM_ROLE_ACCESS_FOR } from '../role.constant';
 
 @Schema({ timestamps: true, versionKey: false })
 export class RoleEntity {
@@ -29,9 +30,9 @@ export class RoleEntity {
 
     @Prop({
         required: true,
-        default: false,
+        type: Array,
     })
-    isAdmin: boolean;
+    accessFor: ENUM_ROLE_ACCESS_FOR[];
 }
 
 export const RoleDatabaseName = 'roles';

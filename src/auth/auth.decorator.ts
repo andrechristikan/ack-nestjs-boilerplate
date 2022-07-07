@@ -5,20 +5,21 @@ import {
     applyDecorators,
     SetMetadata,
 } from '@nestjs/common';
-import { PermissionPayloadDefaultGuard } from 'src/permission/guard/payload/permission.default.guard';
+import { PermissionPayloadDefaultGuard } from 'src/permission/guard/payload/permission.payload.default.guard';
 import {
     ENUM_PERMISSIONS,
     PERMISSION_META_KEY,
 } from 'src/permission/permission.constant';
 import {
-    AUTH_ADMIN_META_KEY,
-    AUTH_EXCLUDE_API_KEY_META_KEY,
-} from './auth.constant';
+    ENUM_ROLE_ACCESS_FOR,
+    ROLE_ACCESS_FOR_META_KEY,
+} from 'src/role/role.constant';
+import { AUTH_EXCLUDE_API_KEY_META_KEY } from './auth.constant';
 import { BasicGuard } from './guard/basic/auth.basic.guard';
 import { JwtRefreshGuard } from './guard/jwt-refresh/auth.jwt-refresh.guard';
 import { JwtGuard } from './guard/jwt/auth.jwt.guard';
-import { AuthPayloadAdminGuard } from './guard/payload/auth.payload.admin.guard';
 import { AuthPayloadDefaultGuard } from './guard/payload/auth.payload.default.guard';
+import { AuthPayloadAccessForGuard } from './guard/payload/auth.payload.access-for.guard';
 import { AuthPayloadPasswordExpiredGuard } from './guard/payload/auth.payload.password-expired.guard';
 
 export function AuthJwtGuard(...permissions: ENUM_PERMISSIONS[]): any {
@@ -38,11 +39,11 @@ export function AuthPublicJwtGuard(...permissions: ENUM_PERMISSIONS[]): any {
             JwtGuard,
             AuthPayloadDefaultGuard,
             AuthPayloadPasswordExpiredGuard,
-            AuthPayloadAdminGuard,
+            AuthPayloadAccessForGuard,
             PermissionPayloadDefaultGuard
         ),
         SetMetadata(PERMISSION_META_KEY, permissions),
-        SetMetadata(AUTH_ADMIN_META_KEY, [false])
+        SetMetadata(ROLE_ACCESS_FOR_META_KEY, [ENUM_ROLE_ACCESS_FOR.USER])
     );
 }
 
@@ -52,11 +53,11 @@ export function AuthAdminJwtGuard(...permissions: ENUM_PERMISSIONS[]) {
             JwtGuard,
             AuthPayloadDefaultGuard,
             AuthPayloadPasswordExpiredGuard,
-            AuthPayloadAdminGuard,
+            AuthPayloadAccessForGuard,
             PermissionPayloadDefaultGuard
         ),
         SetMetadata(PERMISSION_META_KEY, permissions),
-        SetMetadata(AUTH_ADMIN_META_KEY, [true])
+        SetMetadata(ROLE_ACCESS_FOR_META_KEY, [ENUM_ROLE_ACCESS_FOR.ADMIN])
     );
 }
 

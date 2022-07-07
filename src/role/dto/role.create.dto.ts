@@ -5,8 +5,11 @@ import {
     MaxLength,
     MinLength,
     IsMongoId,
-    IsBoolean,
+    IsEnum,
+    IsArray,
+    ArrayNotEmpty,
 } from 'class-validator';
+import { ENUM_ROLE_ACCESS_FOR } from '../role.constant';
 
 export class RoleCreateDto {
     @IsString()
@@ -20,7 +23,9 @@ export class RoleCreateDto {
     @IsNotEmpty()
     readonly permissions: string[];
 
-    @IsBoolean()
+    @IsEnum(ENUM_ROLE_ACCESS_FOR, { each: true })
+    @IsArray()
+    @ArrayNotEmpty()
     @IsNotEmpty()
-    readonly isAdmin: boolean;
+    readonly accessFor: ENUM_ROLE_ACCESS_FOR[];
 }

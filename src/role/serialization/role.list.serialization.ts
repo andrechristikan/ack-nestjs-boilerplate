@@ -1,4 +1,5 @@
 import { Exclude, Type } from 'class-transformer';
+import { ENUM_ROLE_ACCESS_FOR } from '../role.constant';
 
 export class RoleListSerialization {
     @Type(() => String)
@@ -6,7 +7,7 @@ export class RoleListSerialization {
 
     readonly isActive: boolean;
     readonly name: string;
-    readonly isAdmin: boolean;
+    readonly accessFor: ENUM_ROLE_ACCESS_FOR[];
 
     @Exclude()
     readonly permissions: number;

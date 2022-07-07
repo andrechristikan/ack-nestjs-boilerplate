@@ -13,7 +13,10 @@ import {
     E2E_ROLE_PAYLOAD_TEST,
 } from './role.constant';
 import { connection, Types } from 'mongoose';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
+import {
+    ENUM_ROLE_ACCESS_FOR,
+    ENUM_ROLE_STATUS_CODE_ERROR,
+} from 'src/role/role.constant';
 import { RouterModule } from '@nestjs/core';
 import { CoreModule } from 'src/core/core.module';
 import { AuthService } from 'src/auth/service/auth.service';
@@ -80,25 +83,25 @@ describe('E2E Role Admin', () => {
         successData = {
             name: 'testRole1',
             permissions: permissions.map((val) => `${val._id}`),
-            isAdmin: true,
+            accessFor: [ENUM_ROLE_ACCESS_FOR.ADMIN],
         };
 
         roleUpdate = await roleService.create({
             name: 'testRole2',
             permissions: permissions.map((val) => `${val._id}`),
-            isAdmin: true,
+            accessFor: [ENUM_ROLE_ACCESS_FOR.ADMIN],
         });
 
         updateData = {
             name: 'testRole3',
             permissions: permissions.map((val) => `${val._id}`),
-            isAdmin: true,
+            accessFor: [ENUM_ROLE_ACCESS_FOR.ADMIN],
         };
 
         existData = {
             name: 'testRole',
             permissions: permissions.map((val) => `${val._id}`),
-            isAdmin: true,
+            accessFor: [ENUM_ROLE_ACCESS_FOR.ADMIN],
         };
 
         role = await roleService.create(existData as RoleCreateDto);

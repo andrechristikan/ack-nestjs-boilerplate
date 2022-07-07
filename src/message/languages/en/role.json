@@ -9,6 +9,7 @@
     "error": {
         "notFound": "Role not found",
         "inactive": "Role inactive",
+        "forbidden": "Permission invalid",
         "exist": "Role exist",
         "active": "Role status active invalid",
         "used": "Role in used"
