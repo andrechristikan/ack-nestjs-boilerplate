@@ -4,6 +4,7 @@ import { CoreModule } from 'src/core/core.module';
 import { ENUM_LOGGER_ACTION } from 'src/logger/logger.constant';
 import { ILogger } from 'src/logger/logger.interface';
 import { LoggerService } from 'src/logger/service/logger.service';
+import { ENUM_ROLE_ACCESS_FOR } from 'src/role/role.constant';
 import { ENUM_REQUEST_METHOD } from 'src/utils/request/request.constant';
 import { v4 } from 'uuid';
 
@@ -23,7 +24,7 @@ describe('LoggerService', () => {
         requestId: v4(),
         role: {
             _id: `${new Types.ObjectId()}`,
-            isAdmin: true,
+            accessFor: [ENUM_ROLE_ACCESS_FOR.ADMIN],
         },
         method: ENUM_REQUEST_METHOD.GET,
         statusCode: 10000,

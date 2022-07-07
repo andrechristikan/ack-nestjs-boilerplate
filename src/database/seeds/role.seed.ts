@@ -5,6 +5,7 @@ import { PermissionService } from 'src/permission/service/permission.service';
 import { RoleBulkService } from 'src/role/service/role.bulk.service';
 import { PermissionDocument } from 'src/permission/schema/permission.schema';
 import { ErrorMeta } from 'src/utils/error/error.decorator';
+import { ENUM_ROLE_ACCESS_FOR } from 'src/role/role.constant';
 
 @Injectable()
 export class RoleSeed {
@@ -30,12 +31,12 @@ export class RoleSeed {
                 {
                     name: 'admin',
                     permissions: permissionsMap,
-                    isAdmin: true,
+                    accessFor: [ENUM_ROLE_ACCESS_FOR.ADMIN],
                 },
                 {
                     name: 'user',
                     permissions: [],
-                    isAdmin: false,
+                    accessFor: [ENUM_ROLE_ACCESS_FOR.USER],
                 },
             ]);
         } catch (e) {

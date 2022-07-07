@@ -4,6 +4,7 @@ import { CoreModule } from 'src/core/core.module';
 import { IRoleDocument } from 'src/role/role.interface';
 import { IUserDocument } from 'src/user/user.interface';
 import { faker } from '@faker-js/faker';
+import { ENUM_ROLE_ACCESS_FOR } from 'src/role/role.constant';
 
 describe('AuthService', () => {
     let authService: AuthService;
@@ -20,7 +21,7 @@ describe('AuthService', () => {
             '$2b$08$GZfqgaDMPpWQ3lJEGQ8Ueu1vJ3C6G3stnkS/5e61bK/4f1.Fuw2Eq',
         role: {
             _id: '623cb7f7965a74bf7a0e9e53',
-            isAdmin: true,
+            accessFor: [ENUM_ROLE_ACCESS_FOR.ADMIN],
             isActive: true,
             permissions: [],
             name: 'admin',

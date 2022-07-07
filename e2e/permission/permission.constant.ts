@@ -1,3 +1,5 @@
+import { ENUM_ROLE_ACCESS_FOR } from 'src/role/role.constant';
+
 export const E2E_PERMISSION_ADMIN_LIST_URL = '/admin/permission/list';
 export const E2E_PERMISSION_ADMIN_GET_URL = '/admin/permission/get/:_id';
 export const E2E_PERMISSION_ADMIN_UPDATE_URL = '/admin/permission/update/:_id';
@@ -10,7 +12,7 @@ export const E2E_PERMISSION_PAYLOAD_TEST = {
     role: {
         name: 'admin',
         isActive: true,
-        isAdmin: true,
+        accessFor: [ENUM_ROLE_ACCESS_FOR.ADMIN],
         permissions: [
             {
                 code: 'PERMISSION_READ',

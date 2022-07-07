@@ -1,9 +1,10 @@
+import { ENUM_ROLE_ACCESS_FOR } from 'src/role/role.constant';
 import { ENUM_REQUEST_METHOD } from 'src/utils/request/request.constant';
 import { ENUM_LOGGER_ACTION, ENUM_LOGGER_LEVEL } from './logger.constant';
 
 export interface ILoggerRole {
     _id: string;
-    isAdmin: boolean;
+    accessFor: ENUM_ROLE_ACCESS_FOR[];
 }
 
 export interface ILogger {

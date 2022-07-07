@@ -13,3 +13,9 @@ export enum ENUM_ROLE_STATUS_CODE_ERROR {
 }
 
 export const ROLE_ACTIVE_META_KEY = 'RoleActiveMetaKey';
+export const ROLE_ACCESS_FOR_META_KEY = 'RoleAccessForMetaKey';
+
+export enum ENUM_ROLE_ACCESS_FOR {
+    USER = 'USER',
+    ADMIN = 'ADMIN',
+}

@@ -13,7 +13,7 @@ export class AuthLoginSerialization {
             isActive: val.isActive,
         })),
         isActive: value.isActive,
-        isAdmin: value.isAdmin,
+        accessFor: value.accessFor,
     }))
     readonly role: IRoleDocument;
 
