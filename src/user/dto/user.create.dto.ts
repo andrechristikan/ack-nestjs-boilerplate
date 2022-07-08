@@ -6,8 +6,6 @@ import {
     MaxLength,
     MinLength,
     IsMongoId,
-    IsOptional,
-    ValidateIf,
 } from 'class-validator';
 import { IsPasswordStrong } from 'src/utils/request/validation/request.is-password-strong.validation';
 import { IsStartWith } from 'src/utils/request/validation/request.is-start-with.validation';
@@ -27,12 +25,11 @@ export class UserCreateDto {
     readonly firstName: string;
 
     @IsString()
-    @IsOptional()
-    @ValidateIf((e) => e.lastName !== '')
+    @IsNotEmpty()
     @MinLength(1)
     @MaxLength(30)
     @Type(() => String)
-    readonly lastName?: string;
+    readonly lastName: string;
 
     @IsString()
     @IsNotEmpty()

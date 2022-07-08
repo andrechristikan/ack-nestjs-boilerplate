@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
 import { AuthApiEntity } from 'src/auth/schema/auth.api.schema';
+import { ENUM_ROLE_ACCESS_FOR } from 'src/role/role.constant';
 import { RoleEntity } from 'src/role/schema/role.schema';
 import { UserEntity } from 'src/user/schema/user.schema';
 import { ENUM_REQUEST_METHOD } from 'src/utils/request/request.constant';
@@ -56,10 +57,10 @@ export class LoggerEntity {
     anonymous: boolean;
 
     @Prop({
-        required: true,
-        default: true,
+        required: false,
+        type: Array,
     })
-    isPublic: boolean;
+    accessFor?: ENUM_ROLE_ACCESS_FOR[];
 
     @Prop({
         required: true,
