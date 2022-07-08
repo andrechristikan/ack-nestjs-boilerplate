@@ -14,6 +14,7 @@ import { IsPasswordWeakConstraint } from './validation/request.is-password-weak.
 import { IsStartWithConstraint } from './validation/request.is-start-with.validation';
 import { MaxGreaterThanEqualConstraint } from './validation/request.max-greater-than-equal.validation';
 import { MaxGreaterThanConstraint } from './validation/request.max-greater-than.validation';
+import { MinDateTodayEqualConstraint } from './validation/request.min-date-equal.validation';
 import { MinGreaterThanEqualConstraint } from './validation/request.min-greater-than-equal.validation';
 import { MinGreaterThanConstraint } from './validation/request.min-greater-than.validation';
 import { IsOnlyDigitsConstraint } from './validation/request.only-digits.validation';
@@ -58,6 +59,7 @@ import { StringOrNumberOrBooleanConstraint } from './validation/request.string-o
         StringOrNumberOrBooleanConstraint,
         SafeStringConstraint,
         IsOnlyDigitsConstraint,
+        MinDateTodayEqualConstraint,
     ],
     imports: [],
 })
