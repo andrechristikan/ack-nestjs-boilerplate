@@ -14,12 +14,12 @@ export class UserEntity {
     firstName: string;
 
     @Prop({
-        required: false,
+        required: true,
         index: true,
         lowercase: true,
         trim: true,
     })
-    lastName?: string;
+    lastName: string;
 
     @Prop({
         required: true,

@@ -7,7 +7,7 @@ export interface IUserDocument extends Omit<UserDocument, 'role'> {
 
 export interface IUserCreate {
     firstName: string;
-    lastName?: string;
+    lastName: string;
     password: string;
     passwordExpired: Date;
     email: string;

@@ -1,11 +1,5 @@
 import { Type } from 'class-transformer';
-import {
-    IsString,
-    IsNotEmpty,
-    MaxLength,
-    IsOptional,
-    ValidateIf,
-} from 'class-validator';
+import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
 
 export class UserUpdateDto {
     @IsString()
@@ -15,9 +9,8 @@ export class UserUpdateDto {
     readonly firstName: string;
 
     @IsString()
-    @IsOptional()
-    @ValidateIf((e) => e.lastName !== '')
+    @IsNotEmpty()
     @MaxLength(30)
     @Type(() => String)
-    readonly lastName?: string;
+    readonly lastName: string;
 }
