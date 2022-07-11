@@ -33,7 +33,6 @@ import { PermissionUpdateDto } from '../dto/permission.update.dto';
 import { PermissionListSerialization } from '../serialization/permission.list.serialization';
 import { RequestParamGuard } from 'src/utils/request/request.decorator';
 import { PermissionRequestDto } from '../dto/permissions.request.dto';
-import { ErrorMeta } from 'src/utils/error/error.decorator';
 
 @Controller({
     version: '1',
@@ -47,7 +46,6 @@ export class PermissionAdminController {
 
     @ResponsePaging('permission.list')
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.PERMISSION_READ)
-    @ErrorMeta(PermissionAdminController.name, 'list')
     @Get('/list')
     async list(
         @Query()
@@ -109,7 +107,6 @@ export class PermissionAdminController {
     @PermissionGetGuard()
     @RequestParamGuard(PermissionRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.PERMISSION_READ)
-    @ErrorMeta(PermissionAdminController.name, 'get')
     @Get('/get/:permission')
     async get(
         @GetPermission() permission: PermissionDocument
@@ -125,7 +122,6 @@ export class PermissionAdminController {
         ENUM_PERMISSIONS.PERMISSION_UPDATE
     )
     @Put('/update/:permission')
-    @ErrorMeta(PermissionAdminController.name, 'ErrorMeta')
     async update(
         @GetPermission() permission: PermissionDocument,
         @Body() body: PermissionUpdateDto
@@ -151,7 +147,6 @@ export class PermissionAdminController {
         ENUM_PERMISSIONS.PERMISSION_READ,
         ENUM_PERMISSIONS.PERMISSION_UPDATE
     )
-    @ErrorMeta(PermissionAdminController.name, 'inactive')
     @Patch('/update/:permission/inactive')
     async inactive(
         @GetPermission() permission: PermissionDocument
@@ -175,7 +170,6 @@ export class PermissionAdminController {
         ENUM_PERMISSIONS.PERMISSION_READ,
         ENUM_PERMISSIONS.PERMISSION_UPDATE
     )
-    @ErrorMeta(PermissionAdminController.name, 'active')
     @Patch('/update/:permission/active')
     async active(
         @GetPermission() permission: PermissionDocument

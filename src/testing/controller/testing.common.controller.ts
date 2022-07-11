@@ -28,7 +28,6 @@ export class TestingCommonController {
     @Response('test.hello')
     @AuthExcludeApiKey()
     @Logger(ENUM_LOGGER_ACTION.TEST, { tags: ['test'] })
-    @ErrorMeta(TestingCommonController.name, 'hello')
     @Get('/hello')
     async hello(
         @RequestUserAgent() userAgent: IResult,
@@ -53,7 +52,7 @@ export class TestingCommonController {
     @Response('test.helloTimeout')
     @AuthExcludeApiKey()
     @ResponseTimeout('10s')
-    @ErrorMeta(TestingCommonController.name, 'helloTimeout')
+    @ErrorMeta(TestingCommonController.name, 'helloTimeoutCustom')
     @Get('/hello/timeout')
     async helloTimeout(): Promise<IResponse> {
         await this.helperService.delay(60000);

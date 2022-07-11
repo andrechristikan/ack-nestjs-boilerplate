@@ -2,7 +2,6 @@ import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 import { SettingService } from 'src/setting/service/setting.service';
 import { SettingBulkService } from 'src/setting/service/setting.bulk.service';
-import { ErrorMeta } from 'src/utils/error/error.decorator';
 
 @Injectable()
 export class SettingSeed {
@@ -11,7 +10,6 @@ export class SettingSeed {
         private readonly settingBulkService: SettingBulkService
     ) {}
 
-    @ErrorMeta(SettingSeed.name, 'insert')
     @Command({
         command: 'insert:setting',
         describe: 'insert settings',
@@ -30,7 +28,6 @@ export class SettingSeed {
         return;
     }
 
-    @ErrorMeta(SettingSeed.name, 'remove')
     @Command({
         command: 'remove:setting',
         describe: 'remove settings',

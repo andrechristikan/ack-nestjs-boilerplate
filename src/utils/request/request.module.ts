@@ -5,7 +5,8 @@ import {
     ValidationError,
     ValidationPipe,
 } from '@nestjs/common';
-import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { RequestControllerGuard } from './guard/request.controller.guard';
 import { RequestTimestampInterceptor } from './interceptor/request.timestamp.interceptor';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from './request.constant';
 import { IsPasswordMediumConstraint } from './validation/request.is-password-medium.validation';
@@ -46,6 +47,10 @@ import { StringOrNumberOrBooleanConstraint } from './validation/request.string-o
         {
             provide: APP_INTERCEPTOR,
             useClass: RequestTimestampInterceptor,
+        },
+        {
+            provide: APP_GUARD,
+            useClass: RequestControllerGuard,
         },
         IsPasswordStrongConstraint,
         IsPasswordMediumConstraint,

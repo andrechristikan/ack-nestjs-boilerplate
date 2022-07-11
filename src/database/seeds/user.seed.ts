@@ -5,7 +5,6 @@ import { UserBulkService } from 'src/user/service/user.bulk.service';
 import { RoleService } from 'src/role/service/role.service';
 import { AuthService } from 'src/auth/service/auth.service';
 import { RoleDocument } from 'src/role/schema/role.schema';
-import { ErrorMeta } from 'src/utils/error/error.decorator';
 
 @Injectable()
 export class UserSeed {
@@ -16,7 +15,6 @@ export class UserSeed {
         private readonly roleService: RoleService
     ) {}
 
-    @ErrorMeta(UserSeed.name, 'insert')
     @Command({
         command: 'insert:user',
         describe: 'insert users',
@@ -50,7 +48,6 @@ export class UserSeed {
         return;
     }
 
-    @ErrorMeta(UserSeed.name, 'remove')
     @Command({
         command: 'remove:user',
         describe: 'remove users',

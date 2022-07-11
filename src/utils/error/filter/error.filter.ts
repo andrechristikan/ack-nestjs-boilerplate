@@ -3,63 +3,95 @@ import {
     Catch,
     ArgumentsHost,
     HttpException,
+    HttpStatus,
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
+import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { IMessage } from 'src/message/message.interface';
 import { MessageService } from 'src/message/service/message.service';
 import { IRequestApp } from 'src/utils/request/request.interface';
 import { IErrorException } from '../error.interface';
 
-@Catch(HttpException)
-export class ErrorHttpFilter implements ExceptionFilter {
-    constructor(private readonly messageService: MessageService) {}
+@Catch()
+export class ErrorFilter implements ExceptionFilter {
+    constructor(
+        private readonly messageService: MessageService,
+        private readonly debuggerService: DebuggerService
+    ) {}
 
     async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
         const ctx: HttpArgumentsHost = host.switchToHttp();
-        const statusHttp: number = exception.getStatus();
-        const responseExpress: Response = ctx.getResponse<Response>();
+        const statusHttp: number =
+            exception instanceof HttpException
+                ? exception.getStatus()
+                : HttpStatus.INTERNAL_SERVER_ERROR;
+        const request = ctx.getRequest<IRequestApp>();
+        const response = exception.getResponse() as IErrorException;
         const { customLang } = ctx.getRequest<IRequestApp>();
         const customLanguages: string[] = customLang.split(',');
+        const responseExpress: Response = ctx.getResponse<Response>();
 
-        // Restructure
-        const response = exception.getResponse() as IErrorException;
-        if (typeof response === 'object') {
-            const { statusCode, message, errors, data, properties } = response;
-            const rErrors = errors
-                ? await this.messageService.getRequestErrorsMessage(
-                      errors,
-                      customLanguages
-                  )
-                : undefined;
+        // Debugger
+        this.debuggerService.error(
+            exception instanceof HttpException ? request.id : ErrorFilter.name,
+            {
+                description: exception.message,
+                class: request.__class,
+                function: request.__function,
+            },
+            exception
+        );
 
-            let rMessage: string | IMessage = await this.messageService.get(
-                message,
+        if (!(exception instanceof HttpException)) {
+            const rMessage: string | IMessage = await this.messageService.get(
+                'http.serverError.internalServerError',
                 { customLanguages }
             );
-
-            if (properties) {
-                rMessage = await this.messageService.get(message, {
-                    customLanguages,
-                    properties,
-                });
-            }
-
             responseExpress.status(statusHttp).json({
-                statusCode,
+                statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
                 message: rMessage,
-                errors: rErrors,
-                data,
             });
         } else {
-            const rMessage: string | IMessage = await this.messageService.get(
-                'response.error.structure',
-                { customLanguages }
-            );
-            responseExpress.status(statusHttp).json({
-                statusCode: 500,
-                message: rMessage,
-            });
+            // Restructure
+            if (typeof response === 'object') {
+                const { statusCode, message, errors, data, properties } =
+                    response;
+                const rErrors = errors
+                    ? await this.messageService.getRequestErrorsMessage(
+                          errors,
+                          customLanguages
+                      )
+                    : undefined;
+
+                let rMessage: string | IMessage = await this.messageService.get(
+                    message,
+                    { customLanguages }
+                );
+
+                if (properties) {
+                    rMessage = await this.messageService.get(message, {
+                        customLanguages,
+                        properties,
+                    });
+                }
+
+                responseExpress.status(statusHttp).json({
+                    statusCode,
+                    message: rMessage,
+                    errors: rErrors,
+                    data,
+                });
+            } else {
+                const rMessage: string | IMessage =
+                    await this.messageService.get('response.error.structure', {
+                        customLanguages,
+                    });
+                responseExpress.status(statusHttp).json({
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    message: rMessage,
+                });
+            }
         }
     }
 }

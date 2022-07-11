@@ -18,8 +18,8 @@ import { ErrorModule } from 'src/utils/error/error.module';
 import { SettingModule } from 'src/setting/setting.module';
 import { VersionModule } from 'src/utils/version/version.module';
 import { ResponseModule } from 'src/utils/response/response.module';
-import { CacheModule } from 'src/cache/cache.module';
 import { DatabaseModule } from 'src/database/database.module';
+import { CacheModule } from 'src/cache/cache.module';
 
 @Module({
     controllers: [],
