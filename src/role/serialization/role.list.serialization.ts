@@ -7,7 +7,7 @@ export class RoleListSerialization {
 
     readonly isActive: boolean;
     readonly name: string;
-    readonly accessFor: ENUM_ROLE_ACCESS_FOR[];
+    readonly accessFor: ENUM_ROLE_ACCESS_FOR;
 
     @Exclude()
     readonly permissions: number;

@@ -9,7 +9,7 @@ import {
     IsArray,
     ArrayNotEmpty,
 } from 'class-validator';
-import { ENUM_ROLE_ACCESS_FOR } from '../role.constant';
+import { ENUM_ROLE_ACCESS_FOR_DEFAULT } from '../role.constant';
 
 export class RoleCreateDto {
     @IsString()
@@ -20,12 +20,12 @@ export class RoleCreateDto {
     readonly name: string;
 
     @IsMongoId({ each: true })
+    @ArrayNotEmpty()
+    @IsArray()
     @IsNotEmpty()
     readonly permissions: string[];
 
-    @IsEnum(ENUM_ROLE_ACCESS_FOR, { each: true })
-    @IsArray()
-    @ArrayNotEmpty()
+    @IsEnum(ENUM_ROLE_ACCESS_FOR_DEFAULT)
     @IsNotEmpty()
-    readonly accessFor: ENUM_ROLE_ACCESS_FOR[];
+    readonly accessFor: ENUM_ROLE_ACCESS_FOR_DEFAULT;
 }

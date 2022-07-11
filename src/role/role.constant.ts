@@ -15,7 +15,20 @@ export enum ENUM_ROLE_STATUS_CODE_ERROR {
 export const ROLE_ACTIVE_META_KEY = 'RoleActiveMetaKey';
 export const ROLE_ACCESS_FOR_META_KEY = 'RoleAccessForMetaKey';
 
-export enum ENUM_ROLE_ACCESS_FOR {
+export enum ENUM_ROLE_ACCESS_FOR_SUPER_ADMIN {
+    SUPER_ADMIN = 'SUPER_ADMIN',
+}
+
+export enum ENUM_ROLE_ACCESS_FOR_DEFAULT {
     USER = 'USER',
     ADMIN = 'ADMIN',
 }
+
+export const ENUM_ROLE_ACCESS_FOR = {
+    ...ENUM_ROLE_ACCESS_FOR_SUPER_ADMIN,
+    ...ENUM_ROLE_ACCESS_FOR_DEFAULT,
+};
+
+export type ENUM_ROLE_ACCESS_FOR =
+    | ENUM_ROLE_ACCESS_FOR_SUPER_ADMIN
+    | ENUM_ROLE_ACCESS_FOR_DEFAULT;

@@ -20,16 +20,30 @@ export class UserSeed {
         describe: 'insert users',
     })
     async insert(): Promise<void> {
-        const role: RoleDocument = await this.roleService.findOne<RoleDocument>(
-            {
+        const superadminRole: RoleDocument =
+            await this.roleService.findOne<RoleDocument>({
+                name: 'superadmin',
+            });
+        const adminRole: RoleDocument =
+            await this.roleService.findOne<RoleDocument>({
                 name: 'admin',
-            }
-        );
+            });
 
         try {
             const password = await this.authService.createPassword(
                 'aaAA@@123444'
             );
+
+            await this.userService.create({
+                firstName: 'superadmin',
+                lastName: 'test',
+                email: 'superadmin@mail.com',
+                password: password.passwordHash,
+                passwordExpired: password.passwordExpired,
+                mobileNumber: '08111111222',
+                role: superadminRole._id,
+                salt: password.salt,
+            });
 
             await this.userService.create({
                 firstName: 'admin',
@@ -38,7 +52,7 @@ export class UserSeed {
                 password: password.passwordHash,
                 passwordExpired: password.passwordExpired,
                 mobileNumber: '08111111111',
-                role: role._id,
+                role: adminRole._id,
                 salt: password.salt,
             });
         } catch (e) {

@@ -24,7 +24,12 @@ export function RoleGetGuard(): any {
 
 export function RoleUpdateGuard(): any {
     return applyDecorators(
-        UseGuards(RolePutToRequestGuard, RoleNotFoundGuard, RoleActiveGuard),
+        UseGuards(
+            RolePutToRequestGuard,
+            RoleNotFoundGuard,
+            RoleActiveGuard,
+            RoleUsedGuard
+        ),
         SetMetadata(ROLE_ACTIVE_META_KEY, [true])
     );
 }

@@ -10,6 +10,7 @@ import {
     ENUM_PERMISSIONS,
     PERMISSION_META_KEY,
 } from 'src/permission/permission.constant';
+import { RolePayloadAccessForGuard } from 'src/role/guard/payload/role.payload.access-for.guard';
 import {
     ENUM_ROLE_ACCESS_FOR,
     ROLE_ACCESS_FOR_META_KEY,
@@ -19,7 +20,6 @@ import { BasicGuard } from './guard/basic/auth.basic.guard';
 import { JwtRefreshGuard } from './guard/jwt-refresh/auth.jwt-refresh.guard';
 import { JwtGuard } from './guard/jwt/auth.jwt.guard';
 import { AuthPayloadDefaultGuard } from './guard/payload/auth.payload.default.guard';
-import { AuthPayloadAccessForGuard } from './guard/payload/auth.payload.access-for.guard';
 import { AuthPayloadPasswordExpiredGuard } from './guard/payload/auth.payload.password-expired.guard';
 
 export function AuthJwtGuard(...permissions: ENUM_PERMISSIONS[]): any {
@@ -39,7 +39,7 @@ export function AuthPublicJwtGuard(...permissions: ENUM_PERMISSIONS[]): any {
             JwtGuard,
             AuthPayloadDefaultGuard,
             AuthPayloadPasswordExpiredGuard,
-            AuthPayloadAccessForGuard,
+            RolePayloadAccessForGuard,
             PermissionPayloadDefaultGuard
         ),
         SetMetadata(PERMISSION_META_KEY, permissions),
@@ -53,11 +53,14 @@ export function AuthAdminJwtGuard(...permissions: ENUM_PERMISSIONS[]) {
             JwtGuard,
             AuthPayloadDefaultGuard,
             AuthPayloadPasswordExpiredGuard,
-            AuthPayloadAccessForGuard,
+            RolePayloadAccessForGuard,
             PermissionPayloadDefaultGuard
         ),
         SetMetadata(PERMISSION_META_KEY, permissions),
-        SetMetadata(ROLE_ACCESS_FOR_META_KEY, [ENUM_ROLE_ACCESS_FOR.ADMIN])
+        SetMetadata(ROLE_ACCESS_FOR_META_KEY, [
+            ENUM_ROLE_ACCESS_FOR.SUPER_ADMIN,
+            ENUM_ROLE_ACCESS_FOR.ADMIN,
+        ])
     );
 }
 

@@ -11,10 +11,15 @@ import {
     PERMISSION_META_KEY,
 } from 'src/permission/permission.constant';
 import { IPermission } from 'src/permission/permission.interface';
+import { ENUM_ROLE_ACCESS_FOR } from 'src/role/role.constant';
+import { HelperArrayService } from 'src/utils/helper/service/helper.array.service';
 
 @Injectable()
 export class PermissionPayloadDefaultGuard implements CanActivate {
-    constructor(private reflector: Reflector) {}
+    constructor(
+        private reflector: Reflector,
+        private readonly helperArrayService: HelperArrayService
+    ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredPermission: ENUM_PERMISSIONS[] =
@@ -25,8 +30,13 @@ export class PermissionPayloadDefaultGuard implements CanActivate {
         if (!requiredPermission) {
             return true;
         }
+
         const { user } = context.switchToHttp().getRequest();
         const { role } = user;
+        if (role.accessFor === ENUM_ROLE_ACCESS_FOR.SUPER_ADMIN) {
+            return true;
+        }
+
         const permissions: string[] = role.permissions
             .filter((val: IPermission) => val.isActive)
             .map((val: IPermission) => val.code);

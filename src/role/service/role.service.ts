@@ -9,10 +9,11 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
 } from 'src/database/database.interface';
-import { RoleCreateDto } from '../dto/role.create.dto';
 import { RoleUpdateDto } from '../dto/role.update.dto';
 import { RoleGetSerialization } from '../serialization/role.get.serialization';
 import { RoleListSerialization } from '../serialization/role.list.serialization';
+import { ENUM_ROLE_ACCESS_FOR } from '../role.constant';
+import { RoleCreateDto } from '../dto/role.create.dto';
 
 @Injectable()
 export class RoleService {
@@ -104,14 +105,25 @@ export class RoleService {
         return create.save();
     }
 
+    async createSuperAdmin(): Promise<RoleDocument> {
+        const create: RoleDocument = new this.roleModel({
+            name: 'superadmin',
+            permissions: [],
+            isActive: true,
+            accessFor: ENUM_ROLE_ACCESS_FOR.SUPER_ADMIN,
+        });
+
+        return create.save();
+    }
+
     async update(
         _id: string,
         { name, permissions, accessFor }: RoleUpdateDto
     ): Promise<RoleDocument> {
         const update: RoleDocument = await this.roleModel.findById(_id);
         update.name = name;
-        update.permissions = permissions.map((val) => new Types.ObjectId(val));
         update.accessFor = accessFor;
+        update.permissions = permissions.map((val) => new Types.ObjectId(val));
 
         return update.save();
     }

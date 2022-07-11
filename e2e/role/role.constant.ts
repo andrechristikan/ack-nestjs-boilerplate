@@ -10,35 +10,10 @@ export const E2E_ROLE_ADMIN_ACTIVE_URL = '/admin/role/update/:_id/active';
 
 export const E2E_ROLE_PAYLOAD_TEST = {
     role: {
-        name: 'admin',
+        name: 'superadmin',
         isActive: true,
-        accessFor: [ENUM_ROLE_ACCESS_FOR.ADMIN],
-        permissions: [
-            {
-                code: 'ROLE_READ',
-                isActive: true,
-            },
-            {
-                code: 'ROLE_UPDATE',
-                isActive: true,
-            },
-            {
-                code: 'ROLE_CREATE',
-                isActive: true,
-            },
-            {
-                code: 'ROLE_DELETE',
-                isActive: true,
-            },
-            {
-                code: 'ROLE_ACTIVE',
-                isActive: true,
-            },
-            {
-                code: 'ROLE_INACTIVE',
-                isActive: true,
-            },
-        ],
+        accessFor: ENUM_ROLE_ACCESS_FOR.SUPER_ADMIN,
+        permissions: [],
     },
     phoneNumber: '628123123112',
     email: 'test@kadence.com',
