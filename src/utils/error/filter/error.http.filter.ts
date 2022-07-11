@@ -3,7 +3,6 @@ import {
     Catch,
     ArgumentsHost,
     HttpException,
-    HttpStatus,
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
@@ -31,7 +30,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
 
         // Debugger
         this.debuggerService.error(
-            request.id ? request.id : ErrorHttpFilter.name,
+            request && request.id ? request.id : ErrorHttpFilter.name,
             {
                 description: exception.message,
                 class: request.__class,
@@ -43,6 +42,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
         // Restructure
         if (typeof response === 'object') {
             const { statusCode, message, errors, data, properties } = response;
+
             const rErrors = errors
                 ? await this.messageService.getRequestErrorsMessage(
                       errors,
@@ -63,7 +63,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
             }
 
             responseExpress.status(statusHttp).json({
-                statusCode,
+                statusCode: statusCode || statusHttp,
                 message: rMessage,
                 errors: rErrors,
                 data,
@@ -76,7 +76,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 }
             );
             responseExpress.status(statusHttp).json({
-                statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                statusCode: statusHttp,
                 message: rMessage,
             });
         }
