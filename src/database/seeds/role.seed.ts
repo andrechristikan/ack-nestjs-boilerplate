@@ -5,12 +5,14 @@ import { PermissionService } from 'src/permission/service/permission.service';
 import { RoleBulkService } from 'src/role/service/role.bulk.service';
 import { PermissionDocument } from 'src/permission/schema/permission.schema';
 import { ENUM_ROLE_ACCESS_FOR } from 'src/role/role.constant';
+import { RoleService } from 'src/role/service/role.service';
 
 @Injectable()
 export class RoleSeed {
     constructor(
         private readonly permissionService: PermissionService,
-        private readonly roleBulkService: RoleBulkService
+        private readonly roleBulkService: RoleBulkService,
+        private readonly roleService: RoleService
     ) {}
 
     @Command({
@@ -25,16 +27,17 @@ export class RoleSeed {
 
         try {
             const permissionsMap = permissions.map((val) => val._id);
+            await this.roleService.createSuperAdmin();
             await this.roleBulkService.createMany([
                 {
                     name: 'admin',
                     permissions: permissionsMap,
-                    accessFor: [ENUM_ROLE_ACCESS_FOR.ADMIN],
+                    accessFor: ENUM_ROLE_ACCESS_FOR.ADMIN,
                 },
                 {
                     name: 'user',
                     permissions: [],
-                    accessFor: [ENUM_ROLE_ACCESS_FOR.USER],
+                    accessFor: ENUM_ROLE_ACCESS_FOR.USER,
                 },
             ]);
         } catch (e) {

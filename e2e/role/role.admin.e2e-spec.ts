@@ -83,25 +83,25 @@ describe('E2E Role Admin', () => {
         successData = {
             name: 'testRole1',
             permissions: permissions.map((val) => `${val._id}`),
-            accessFor: [ENUM_ROLE_ACCESS_FOR.ADMIN],
+            accessFor: ENUM_ROLE_ACCESS_FOR.ADMIN,
         };
 
         roleUpdate = await roleService.create({
             name: 'testRole2',
             permissions: permissions.map((val) => `${val._id}`),
-            accessFor: [ENUM_ROLE_ACCESS_FOR.ADMIN],
+            accessFor: ENUM_ROLE_ACCESS_FOR.ADMIN,
         });
 
         updateData = {
             name: 'testRole3',
             permissions: permissions.map((val) => `${val._id}`),
-            accessFor: [ENUM_ROLE_ACCESS_FOR.ADMIN],
+            accessFor: ENUM_ROLE_ACCESS_FOR.ADMIN,
         };
 
         existData = {
             name: 'testRole',
             permissions: permissions.map((val) => `${val._id}`),
-            accessFor: [ENUM_ROLE_ACCESS_FOR.ADMIN],
+            accessFor: ENUM_ROLE_ACCESS_FOR.ADMIN,
         };
 
         role = await roleService.create(existData as RoleCreateDto);

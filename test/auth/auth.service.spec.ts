@@ -21,7 +21,7 @@ describe('AuthService', () => {
             '$2b$08$GZfqgaDMPpWQ3lJEGQ8Ueu1vJ3C6G3stnkS/5e61bK/4f1.Fuw2Eq',
         role: {
             _id: '623cb7f7965a74bf7a0e9e53',
-            accessFor: [ENUM_ROLE_ACCESS_FOR.ADMIN],
+            accessFor: ENUM_ROLE_ACCESS_FOR.SUPER_ADMIN,
             isActive: true,
             permissions: [],
             name: 'admin',

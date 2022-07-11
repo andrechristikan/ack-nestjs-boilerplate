@@ -10,6 +10,269 @@
 			"name": "test",
 			"item": [
 				{
+					"name": "microservice",
+					"item": [
+						{
+							"name": "hello kafka",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"// Set Function",
+											"const cryptoJs = require('crypto-js');",
+											"const { AES, enc, mode, pad } = cryptoJs;",
+											"const setUtils = {",
+											"    getCurrentTimestamp: function() {",
+											"        return Date.now();",
+											"    },",
+											"    createXApiKey: function (data, key, iv){",
+											"        const cIv = enc.Utf8.parse(iv);",
+											"        const cipher = AES.encrypt(",
+											"            JSON.stringify(data), ",
+											"            key, ",
+											"            {",
+											"                mode: mode.CBC,",
+											"                padding: pad.Pkcs7,",
+											"                iv: cIv,",
+											"            }",
+											"        );",
+											"",
+											"        return cipher.toString();",
+											"    }",
+											"}",
+											"pm.globals.set('utils', setUtils);",
+											"let utils = eval(pm.globals.get(\"utils\"));",
+											"",
+											"// Set x-timestamp",
+											"pm.environment.set(\"xTimestamp\", utils.getCurrentTimestamp());",
+											"",
+											"// Set x-api-key",
+											"const xTimestamp = pm.environment.get(\"xTimestamp\");",
+											"const apiKey = pm.environment.get(\"ApiKey\");",
+											"const apiHash = pm.environment.get(\"ApiHash\");",
+											"const apiEncryptionKey = pm.environment.get(\"ApiEncryptionKey\");",
+											"const apiPassphrase = pm.environment.get(\"ApiPassphrase\");",
+											"const apiPayload = {",
+											"    \"key\": apiKey,",
+											"    \"timestamp\": parseInt(xTimestamp),",
+											"    \"hash\": apiHash",
+											"}",
+											"const apiEncrypted = utils.createXApiKey(apiPayload, apiEncryptionKey, apiPassphrase);",
+											"const xApiKey = `${apiKey}:${apiEncrypted}`;",
+											"pm.environment.set(\"ApiEncrypted\", apiEncrypted);",
+											"pm.environment.set(\"xApiKey\", xApiKey);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-timestamp",
+										"value": "{{xTimestamp}}",
+										"type": "text"
+									},
+									{
+										"key": "x-custom-lang",
+										"value": "en,id",
+										"type": "text"
+									},
+									{
+										"key": "x-timezone",
+										"value": "Asia/Jakarta",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello/kafka",
+									"host": [
+										"{{BaseUrl}}{{PrefixUrl}}"
+									],
+									"path": [
+										"test",
+										"hello",
+										"kafka"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "success",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-timestamp",
+												"value": "{{xTimestamp}}",
+												"type": "text"
+											},
+											{
+												"key": "User-Agent",
+												"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
+												"type": "text"
+											},
+											{
+												"key": "x-custom-lang",
+												"value": "en",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello/kafka",
+											"host": [
+												"{{BaseUrl}}{{PrefixUrl}}"
+											],
+											"path": [
+												"test",
+												"hello",
+												"kafka"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"This is test endpoint.\",\n    \"data\": {\n        \"userAgent\": {\n            \"ua\": \"PostmanRuntime/7.29.0\",\n            \"browser\": {},\n            \"engine\": {},\n            \"os\": {},\n            \"device\": {},\n            \"cpu\": {}\n        },\n        \"date\": \"2022-06-17T17:20:13.018Z\",\n        \"format\": \"2022-06-18T00:20:13+07:00\",\n        \"timestamp\": 1655486413018\n    }\n}"
+								}
+							]
+						},
+						{
+							"name": "hello kafka error",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"// Set Function",
+											"const cryptoJs = require('crypto-js');",
+											"const { AES, enc, mode, pad } = cryptoJs;",
+											"const setUtils = {",
+											"    getCurrentTimestamp: function() {",
+											"        return Date.now();",
+											"    },",
+											"    createXApiKey: function (data, key, iv){",
+											"        const cIv = enc.Utf8.parse(iv);",
+											"        const cipher = AES.encrypt(",
+											"            JSON.stringify(data), ",
+											"            key, ",
+											"            {",
+											"                mode: mode.CBC,",
+											"                padding: pad.Pkcs7,",
+											"                iv: cIv,",
+											"            }",
+											"        );",
+											"",
+											"        return cipher.toString();",
+											"    }",
+											"}",
+											"pm.globals.set('utils', setUtils);",
+											"let utils = eval(pm.globals.get(\"utils\"));",
+											"",
+											"// Set x-timestamp",
+											"pm.environment.set(\"xTimestamp\", utils.getCurrentTimestamp());",
+											"",
+											"// Set x-api-key",
+											"const xTimestamp = pm.environment.get(\"xTimestamp\");",
+											"const apiKey = pm.environment.get(\"ApiKey\");",
+											"const apiHash = pm.environment.get(\"ApiHash\");",
+											"const apiEncryptionKey = pm.environment.get(\"ApiEncryptionKey\");",
+											"const apiPassphrase = pm.environment.get(\"ApiPassphrase\");",
+											"const apiPayload = {",
+											"    \"key\": apiKey,",
+											"    \"timestamp\": parseInt(xTimestamp),",
+											"    \"hash\": apiHash",
+											"}",
+											"const apiEncrypted = utils.createXApiKey(apiPayload, apiEncryptionKey, apiPassphrase);",
+											"const xApiKey = `${apiKey}:${apiEncrypted}`;",
+											"pm.environment.set(\"ApiEncrypted\", apiEncrypted);",
+											"pm.environment.set(\"xApiKey\", xApiKey);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "x-timestamp",
+										"value": "{{xTimestamp}}",
+										"type": "text"
+									},
+									{
+										"key": "x-custom-lang",
+										"value": "en,id",
+										"type": "text"
+									},
+									{
+										"key": "x-timezone",
+										"value": "Asia/Jakarta",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello/kafka-error",
+									"host": [
+										"{{BaseUrl}}{{PrefixUrl}}"
+									],
+									"path": [
+										"test",
+										"hello",
+										"kafka-error"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "error",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "x-timestamp",
+												"value": "{{xTimestamp}}",
+												"type": "text"
+											},
+											{
+												"key": "User-Agent",
+												"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
+												"type": "text"
+											},
+											{
+												"key": "x-custom-lang",
+												"value": "en",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello/kafka-error",
+											"host": [
+												"{{BaseUrl}}{{PrefixUrl}}"
+											],
+											"path": [
+												"test",
+												"hello",
+												"kafka-error"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": null,
+									"cookie": [],
+									"body": "{\n    \"statusCode\": 200,\n    \"message\": \"This is test endpoint.\",\n    \"data\": {\n        \"userAgent\": {\n            \"ua\": \"PostmanRuntime/7.29.0\",\n            \"browser\": {},\n            \"engine\": {},\n            \"os\": {},\n            \"device\": {},\n            \"cpu\": {}\n        },\n        \"date\": \"2022-06-17T17:20:13.018Z\",\n        \"format\": \"2022-06-18T00:20:13+07:00\",\n        \"timestamp\": 1655486413018\n    }\n}"
+								}
+							]
+						}
+					]
+				},
+				{
 					"name": "hello",
 					"event": [
 						{
@@ -172,264 +435,6 @@
 							"header": null,
 							"cookie": [],
 							"body": "{\n    \"statusCode\": 200,\n    \"message\": {\n        \"en\": \"This is test endpoint.\",\n        \"id\": \"Ini adalah endpoint test\"\n    },\n    \"data\": {\n        \"userAgent\": {\n            \"ua\": \"PostmanRuntime/7.29.0\",\n            \"browser\": {},\n            \"engine\": {},\n            \"os\": {},\n            \"device\": {},\n            \"cpu\": {}\n        },\n        \"date\": \"2022-06-17T17:20:13.018Z\",\n        \"format\": \"2022-06-18T00:20:13+07:00\",\n        \"timestamp\": 1655486413018\n    }\n}"
-						}
-					]
-				},
-				{
-					"name": "hello kafka",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"// Set Function",
-									"const cryptoJs = require('crypto-js');",
-									"const { AES, enc, mode, pad } = cryptoJs;",
-									"const setUtils = {",
-									"    getCurrentTimestamp: function() {",
-									"        return Date.now();",
-									"    },",
-									"    createXApiKey: function (data, key, iv){",
-									"        const cIv = enc.Utf8.parse(iv);",
-									"        const cipher = AES.encrypt(",
-									"            JSON.stringify(data), ",
-									"            key, ",
-									"            {",
-									"                mode: mode.CBC,",
-									"                padding: pad.Pkcs7,",
-									"                iv: cIv,",
-									"            }",
-									"        );",
-									"",
-									"        return cipher.toString();",
-									"    }",
-									"}",
-									"pm.globals.set('utils', setUtils);",
-									"let utils = eval(pm.globals.get(\"utils\"));",
-									"",
-									"// Set x-timestamp",
-									"pm.environment.set(\"xTimestamp\", utils.getCurrentTimestamp());",
-									"",
-									"// Set x-api-key",
-									"const xTimestamp = pm.environment.get(\"xTimestamp\");",
-									"const apiKey = pm.environment.get(\"ApiKey\");",
-									"const apiHash = pm.environment.get(\"ApiHash\");",
-									"const apiEncryptionKey = pm.environment.get(\"ApiEncryptionKey\");",
-									"const apiPassphrase = pm.environment.get(\"ApiPassphrase\");",
-									"const apiPayload = {",
-									"    \"key\": apiKey,",
-									"    \"timestamp\": parseInt(xTimestamp),",
-									"    \"hash\": apiHash",
-									"}",
-									"const apiEncrypted = utils.createXApiKey(apiPayload, apiEncryptionKey, apiPassphrase);",
-									"const xApiKey = `${apiKey}:${apiEncrypted}`;",
-									"pm.environment.set(\"ApiEncrypted\", apiEncrypted);",
-									"pm.environment.set(\"xApiKey\", xApiKey);"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-timestamp",
-								"value": "{{xTimestamp}}",
-								"type": "text"
-							},
-							{
-								"key": "x-custom-lang",
-								"value": "en,id",
-								"type": "text"
-							},
-							{
-								"key": "x-timezone",
-								"value": "Asia/Jakarta",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello/kafka",
-							"host": [
-								"{{BaseUrl}}{{PrefixUrl}}"
-							],
-							"path": [
-								"test",
-								"hello",
-								"kafka"
-							]
-						}
-					},
-					"response": [
-						{
-							"name": "success",
-							"originalRequest": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "x-timestamp",
-										"value": "{{xTimestamp}}",
-										"type": "text"
-									},
-									{
-										"key": "User-Agent",
-										"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
-										"type": "text"
-									},
-									{
-										"key": "x-custom-lang",
-										"value": "en",
-										"type": "text"
-									}
-								],
-								"url": {
-									"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello/kafka",
-									"host": [
-										"{{BaseUrl}}{{PrefixUrl}}"
-									],
-									"path": [
-										"test",
-										"hello",
-										"kafka"
-									]
-								}
-							},
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": null,
-							"cookie": [],
-							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"This is test endpoint.\",\n    \"data\": {\n        \"userAgent\": {\n            \"ua\": \"PostmanRuntime/7.29.0\",\n            \"browser\": {},\n            \"engine\": {},\n            \"os\": {},\n            \"device\": {},\n            \"cpu\": {}\n        },\n        \"date\": \"2022-06-17T17:20:13.018Z\",\n        \"format\": \"2022-06-18T00:20:13+07:00\",\n        \"timestamp\": 1655486413018\n    }\n}"
-						}
-					]
-				},
-				{
-					"name": "hello kafka error",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"// Set Function",
-									"const cryptoJs = require('crypto-js');",
-									"const { AES, enc, mode, pad } = cryptoJs;",
-									"const setUtils = {",
-									"    getCurrentTimestamp: function() {",
-									"        return Date.now();",
-									"    },",
-									"    createXApiKey: function (data, key, iv){",
-									"        const cIv = enc.Utf8.parse(iv);",
-									"        const cipher = AES.encrypt(",
-									"            JSON.stringify(data), ",
-									"            key, ",
-									"            {",
-									"                mode: mode.CBC,",
-									"                padding: pad.Pkcs7,",
-									"                iv: cIv,",
-									"            }",
-									"        );",
-									"",
-									"        return cipher.toString();",
-									"    }",
-									"}",
-									"pm.globals.set('utils', setUtils);",
-									"let utils = eval(pm.globals.get(\"utils\"));",
-									"",
-									"// Set x-timestamp",
-									"pm.environment.set(\"xTimestamp\", utils.getCurrentTimestamp());",
-									"",
-									"// Set x-api-key",
-									"const xTimestamp = pm.environment.get(\"xTimestamp\");",
-									"const apiKey = pm.environment.get(\"ApiKey\");",
-									"const apiHash = pm.environment.get(\"ApiHash\");",
-									"const apiEncryptionKey = pm.environment.get(\"ApiEncryptionKey\");",
-									"const apiPassphrase = pm.environment.get(\"ApiPassphrase\");",
-									"const apiPayload = {",
-									"    \"key\": apiKey,",
-									"    \"timestamp\": parseInt(xTimestamp),",
-									"    \"hash\": apiHash",
-									"}",
-									"const apiEncrypted = utils.createXApiKey(apiPayload, apiEncryptionKey, apiPassphrase);",
-									"const xApiKey = `${apiKey}:${apiEncrypted}`;",
-									"pm.environment.set(\"ApiEncrypted\", apiEncrypted);",
-									"pm.environment.set(\"xApiKey\", xApiKey);"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "x-timestamp",
-								"value": "{{xTimestamp}}",
-								"type": "text"
-							},
-							{
-								"key": "x-custom-lang",
-								"value": "en,id",
-								"type": "text"
-							},
-							{
-								"key": "x-timezone",
-								"value": "Asia/Jakarta",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello/kafka-error",
-							"host": [
-								"{{BaseUrl}}{{PrefixUrl}}"
-							],
-							"path": [
-								"test",
-								"hello",
-								"kafka-error"
-							]
-						}
-					},
-					"response": [
-						{
-							"name": "error",
-							"originalRequest": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "x-timestamp",
-										"value": "{{xTimestamp}}",
-										"type": "text"
-									},
-									{
-										"key": "User-Agent",
-										"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
-										"type": "text"
-									},
-									{
-										"key": "x-custom-lang",
-										"value": "en",
-										"type": "text"
-									}
-								],
-								"url": {
-									"raw": "{{BaseUrl}}{{PrefixUrl}}/test/hello/kafka-error",
-									"host": [
-										"{{BaseUrl}}{{PrefixUrl}}"
-									],
-									"path": [
-										"test",
-										"hello",
-										"kafka-error"
-									]
-								}
-							},
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": null,
-							"cookie": [],
-							"body": "{\n    \"statusCode\": 200,\n    \"message\": \"This is test endpoint.\",\n    \"data\": {\n        \"userAgent\": {\n            \"ua\": \"PostmanRuntime/7.29.0\",\n            \"browser\": {},\n            \"engine\": {},\n            \"os\": {},\n            \"device\": {},\n            \"cpu\": {}\n        },\n        \"date\": \"2022-06-17T17:20:13.018Z\",\n        \"format\": \"2022-06-18T00:20:13+07:00\",\n        \"timestamp\": 1655486413018\n    }\n}"
 						}
 					]
 				},
@@ -1021,10 +1026,10 @@
 			]
 		},
 		{
-			"name": "authenticated",
+			"name": "public",
 			"item": [
 				{
-					"name": "public",
+					"name": "authenticated",
 					"item": [
 						{
 							"name": "profile",
@@ -1498,10 +1503,50 @@
 									]
 								}
 							]
+						}
+					]
+				},
+				{
+					"name": "sign up",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-timestamp",
+								"value": "{{xTimestamp}}",
+								"type": "text"
+							},
+							{
+								"key": "x-api-key",
+								"value": "{{xApiKey}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"user@mail.com\",\n    \"mobileNumber\": \"628123121111\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
 						},
+						"url": {
+							"raw": "{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}/public/auth/sign-up",
+							"host": [
+								"{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}"
+							],
+							"path": [
+								"public",
+								"auth",
+								"sign-up"
+							]
+						}
+					},
+					"response": [
 						{
-							"name": "sign up",
-							"request": {
+							"name": "error request",
+							"originalRequest": {
 								"method": "POST",
 								"header": [
 									{
@@ -1513,11 +1558,26 @@
 										"key": "x-api-key",
 										"value": "{{xApiKey}}",
 										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{AccessToken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "User-Agent",
+										"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
+										"type": "text"
 									}
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"email\": \"user@mail.com\",\n    \"mobileNumber\": \"628123121111\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+									"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -1536,387 +1596,337 @@
 									]
 								}
 							},
-							"response": [
-								{
-									"name": "error request",
-									"originalRequest": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "x-timestamp",
-												"value": "{{xTimestamp}}",
-												"type": "text"
-											},
-											{
-												"key": "x-api-key",
-												"value": "{{xApiKey}}",
-												"type": "text"
-											},
-											{
-												"key": "Authorization",
-												"value": "Bearer {{AccessToken}}",
-												"type": "text"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json",
-												"type": "text"
-											},
-											{
-												"key": "User-Agent",
-												"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
-												"type": "text"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
-											"options": {
-												"raw": {
-													"language": "json"
-												}
-											}
-										},
-										"url": {
-											"raw": "{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}/public/auth/sign-up",
-											"host": [
-												"{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}"
-											],
-											"path": [
-												"public",
-												"auth",
-												"sign-up"
-											]
-										}
-									},
-									"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
-									"code": 422,
-									"_postman_previewlanguage": "json",
-									"header": null,
-									"cookie": [],
-									"body": "{\n    \"statusCode\": 5981,\n    \"message\": \"Unprocessable Entity\",\n    \"errors\": [\n        {\n            \"property\": \"email\",\n            \"message\": \"email should be a type of email.\"\n        }\n    ]\n}"
-								},
-								{
-									"name": "not found",
-									"originalRequest": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "x-timestamp",
-												"value": "{{xTimestamp}}",
-												"type": "text"
-											},
-											{
-												"key": "x-api-key",
-												"value": "{{xApiKey}}",
-												"type": "text"
-											},
-											{
-												"key": "Authorization",
-												"value": "Bearer {{AccessToken}}",
-												"type": "text"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json",
-												"type": "text"
-											},
-											{
-												"key": "User-Agent",
-												"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
-												"type": "text"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
-											"options": {
-												"raw": {
-													"language": "json"
-												}
-											}
-										},
-										"url": {
-											"raw": "{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}/public/auth/sign-up",
-											"host": [
-												"{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}"
-											],
-											"path": [
-												"public",
-												"auth",
-												"sign-up"
-											]
-										}
-									},
-									"status": "Not Found",
-									"code": 404,
-									"_postman_previewlanguage": "json",
-									"header": null,
-									"cookie": [],
-									"body": "{\n    \"statusCode\": 5501,\n    \"message\": \"Role not found.\"\n}"
-								},
-								{
-									"name": "user exist",
-									"originalRequest": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "x-timestamp",
-												"value": "{{xTimestamp}}",
-												"type": "text"
-											},
-											{
-												"key": "x-api-key",
-												"value": "{{xApiKey}}",
-												"type": "text"
-											},
-											{
-												"key": "Authorization",
-												"value": "Bearer {{AccessToken}}",
-												"type": "text"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json",
-												"type": "text"
-											},
-											{
-												"key": "User-Agent",
-												"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
-												"type": "text"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
-											"options": {
-												"raw": {
-													"language": "json"
-												}
-											}
-										},
-										"url": {
-											"raw": "{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}/public/auth/sign-up",
-											"host": [
-												"{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}"
-											],
-											"path": [
-												"public",
-												"auth",
-												"sign-up"
-											]
-										}
-									},
-									"status": "Bad Request",
-									"code": 400,
-									"_postman_previewlanguage": "json",
-									"header": null,
-									"cookie": [],
-									"body": "{\n    \"statusCode\": 5401,\n    \"message\": \"User exist.\"\n}"
-								},
-								{
-									"name": "email exist",
-									"originalRequest": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "x-timestamp",
-												"value": "{{xTimestamp}}",
-												"type": "text"
-											},
-											{
-												"key": "x-api-key",
-												"value": "{{xApiKey}}",
-												"type": "text"
-											},
-											{
-												"key": "Authorization",
-												"value": "Bearer {{AccessToken}}",
-												"type": "text"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json",
-												"type": "text"
-											},
-											{
-												"key": "User-Agent",
-												"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
-												"type": "text"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
-											"options": {
-												"raw": {
-													"language": "json"
-												}
-											}
-										},
-										"url": {
-											"raw": "{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}/public/auth/sign-up",
-											"host": [
-												"{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}"
-											],
-											"path": [
-												"public",
-												"auth",
-												"sign-up"
-											]
-										}
-									},
-									"status": "Bad Request",
-									"code": 400,
-									"_postman_previewlanguage": "json",
-									"header": null,
-									"cookie": [],
-									"body": "{\n    \"statusCode\": 5403,\n    \"message\": \"Email user used\"\n}"
-								},
-								{
-									"name": "mobile number exist",
-									"originalRequest": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "x-timestamp",
-												"value": "{{xTimestamp}}",
-												"type": "text"
-											},
-											{
-												"key": "x-api-key",
-												"value": "{{xApiKey}}",
-												"type": "text"
-											},
-											{
-												"key": "Authorization",
-												"value": "Bearer {{AccessToken}}",
-												"type": "text"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json",
-												"type": "text"
-											},
-											{
-												"key": "User-Agent",
-												"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
-												"type": "text"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
-											"options": {
-												"raw": {
-													"language": "json"
-												}
-											}
-										},
-										"url": {
-											"raw": "{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}/public/auth/sign-up",
-											"host": [
-												"{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}"
-											],
-											"path": [
-												"public",
-												"auth",
-												"sign-up"
-											]
-										}
-									},
-									"status": "Bad Request",
-									"code": 400,
-									"_postman_previewlanguage": "json",
-									"header": null,
-									"cookie": [],
-									"body": "{\n    \"statusCode\": 5404,\n    \"message\": \"Mobile Number user used\"\n}"
-								},
-								{
-									"name": "success",
-									"originalRequest": {
-										"method": "POST",
-										"header": [
-											{
-												"key": "x-timestamp",
-												"value": "{{xTimestamp}}",
-												"type": "text"
-											},
-											{
-												"key": "x-api-key",
-												"value": "{{xApiKey}}",
-												"type": "text"
-											},
-											{
-												"key": "Authorization",
-												"value": "Bearer {{AccessToken}}",
-												"type": "text"
-											},
-											{
-												"key": "Content-Type",
-												"value": "application/json",
-												"type": "text"
-											},
-											{
-												"key": "User-Agent",
-												"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
-												"type": "text"
-											}
-										],
-										"body": {
-											"mode": "raw",
-											"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
-											"options": {
-												"raw": {
-													"language": "json"
-												}
-											}
-										},
-										"url": {
-											"raw": "{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}/public/auth/sign-up",
-											"host": [
-												"{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}"
-											],
-											"path": [
-												"public",
-												"auth",
-												"sign-up"
-											]
-										}
-									},
-									"status": "Created",
-									"code": 201,
-									"_postman_previewlanguage": "json",
-									"header": null,
-									"cookie": [],
-									"body": "{\n    \"statusCode\": 201,\n    \"message\": \"Sign up Success\",\n    \"data\": {\n        \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2Mjk4ZDQ0Y2Y1MGU1OTFmOTM2OWUyZTgiLCJtb2JpbGVOdW1iZXIiOiI2MjgxMjMxMjExMTEiLCJlbWFpbCI6InVzZXJAbWFpbC5jb20iLCJyb2xlIjp7Im5hbWUiOiJ1c2VyIiwicGVybWlzc2lvbnMiOltdLCJpc0FjdGl2ZSI6dHJ1ZSwiaXNBZG1pbiI6ZmFsc2V9LCJwYXNzd29yZEV4cGlyZWQiOiIyMDIyLTEyLTAxVDE1OjE2OjI4LjY1N1oiLCJpc0FjdGl2ZSI6dHJ1ZSwicmVtZW1iZXJNZSI6ZmFsc2UsImxvZ2luRGF0ZSI6IjIwMjItMDYtMDJUMTU6MTY6MjguNzAwWiIsImlhdCI6MTY1NDE4Mjk4OCwibmJmIjoxNjU0MTgyOTg4LCJleHAiOjE2NTQxODQ3ODh9.sSUTgrv0dCa9cRLlg7qemHs31vQXRGSgwAQJuaf1yMw\",\n        \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2Mjk4ZDQ0Y2Y1MGU1OTFmOTM2OWUyZTgiLCJyZW1lbWJlck1lIjpmYWxzZSwibG9naW5EYXRlIjoiMjAyMi0wNi0wMlQxNToxNjoyOC43MDBaIiwiaWF0IjoxNjU0MTgyOTg4LCJuYmYiOjE2NTQxODQ3ODgsImV4cCI6MTY1NDc4Nzc4OH0.0PH0R_JLRtRc2GEjwC-27ygmrPy_kUKBBrZ-RBMJO04\"\n    }\n}"
-								}
-							]
-						}
-					],
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
+							"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+							"code": 422,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 5981,\n    \"message\": \"Unprocessable Entity\",\n    \"errors\": [\n        {\n            \"property\": \"email\",\n            \"message\": \"email should be a type of email.\"\n        }\n    ]\n}"
 						},
 						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									""
-								]
-							}
+							"name": "not found",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-timestamp",
+										"value": "{{xTimestamp}}",
+										"type": "text"
+									},
+									{
+										"key": "x-api-key",
+										"value": "{{xApiKey}}",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{AccessToken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "User-Agent",
+										"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}/public/auth/sign-up",
+									"host": [
+										"{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}"
+									],
+									"path": [
+										"public",
+										"auth",
+										"sign-up"
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 5501,\n    \"message\": \"Role not found.\"\n}"
+						},
+						{
+							"name": "user exist",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-timestamp",
+										"value": "{{xTimestamp}}",
+										"type": "text"
+									},
+									{
+										"key": "x-api-key",
+										"value": "{{xApiKey}}",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{AccessToken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "User-Agent",
+										"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}/public/auth/sign-up",
+									"host": [
+										"{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}"
+									],
+									"path": [
+										"public",
+										"auth",
+										"sign-up"
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 5401,\n    \"message\": \"User exist.\"\n}"
+						},
+						{
+							"name": "email exist",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-timestamp",
+										"value": "{{xTimestamp}}",
+										"type": "text"
+									},
+									{
+										"key": "x-api-key",
+										"value": "{{xApiKey}}",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{AccessToken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "User-Agent",
+										"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}/public/auth/sign-up",
+									"host": [
+										"{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}"
+									],
+									"path": [
+										"public",
+										"auth",
+										"sign-up"
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 5403,\n    \"message\": \"Email user used\"\n}"
+						},
+						{
+							"name": "mobile number exist",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-timestamp",
+										"value": "{{xTimestamp}}",
+										"type": "text"
+									},
+									{
+										"key": "x-api-key",
+										"value": "{{xApiKey}}",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{AccessToken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "User-Agent",
+										"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}/public/auth/sign-up",
+									"host": [
+										"{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}"
+									],
+									"path": [
+										"public",
+										"auth",
+										"sign-up"
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 5404,\n    \"message\": \"Mobile Number user used\"\n}"
+						},
+						{
+							"name": "success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "x-timestamp",
+										"value": "{{xTimestamp}}",
+										"type": "text"
+									},
+									{
+										"key": "x-api-key",
+										"value": "{{xApiKey}}",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{AccessToken}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "User-Agent",
+										"value": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.9.8; rv:15.6) Gecko/20100101 Firefox/15.6.6",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"andreck@mail.com\",\n    \"mobileNumber\": \"628123123311\",\n    \"firstName\": \"test\",\n    \"lastName\": \"aaa\",\n    \"password\": \"aaAA@@123444\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}/public/auth/sign-up",
+									"host": [
+										"{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}"
+									],
+									"path": [
+										"public",
+										"auth",
+										"sign-up"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": null,
+							"cookie": [],
+							"body": "{\n    \"statusCode\": 201,\n    \"message\": \"Sign up Success\",\n    \"data\": {\n        \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2Mjk4ZDQ0Y2Y1MGU1OTFmOTM2OWUyZTgiLCJtb2JpbGVOdW1iZXIiOiI2MjgxMjMxMjExMTEiLCJlbWFpbCI6InVzZXJAbWFpbC5jb20iLCJyb2xlIjp7Im5hbWUiOiJ1c2VyIiwicGVybWlzc2lvbnMiOltdLCJpc0FjdGl2ZSI6dHJ1ZSwiaXNBZG1pbiI6ZmFsc2V9LCJwYXNzd29yZEV4cGlyZWQiOiIyMDIyLTEyLTAxVDE1OjE2OjI4LjY1N1oiLCJpc0FjdGl2ZSI6dHJ1ZSwicmVtZW1iZXJNZSI6ZmFsc2UsImxvZ2luRGF0ZSI6IjIwMjItMDYtMDJUMTU6MTY6MjguNzAwWiIsImlhdCI6MTY1NDE4Mjk4OCwibmJmIjoxNjU0MTgyOTg4LCJleHAiOjE2NTQxODQ3ODh9.sSUTgrv0dCa9cRLlg7qemHs31vQXRGSgwAQJuaf1yMw\",\n        \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2Mjk4ZDQ0Y2Y1MGU1OTFmOTM2OWUyZTgiLCJyZW1lbWJlck1lIjpmYWxzZSwibG9naW5EYXRlIjoiMjAyMi0wNi0wMlQxNToxNjoyOC43MDBaIiwiaWF0IjoxNjU0MTgyOTg4LCJuYmYiOjE2NTQxODQ3ODgsImV4cCI6MTY1NDc4Nzc4OH0.0PH0R_JLRtRc2GEjwC-27ygmrPy_kUKBBrZ-RBMJO04\"\n    }\n}"
 						}
 					]
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
 				},
 				{
-					"name": "admin",
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "admin",
+			"item": [
+				{
+					"name": "authenticated",
 					"item": [
 						{
 							"name": "user",
@@ -2175,7 +2185,7 @@
 											"_postman_previewlanguage": "json",
 											"header": null,
 											"cookie": [],
-											"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Get User Success.\",\n    \"data\": {\n        \"_id\": \"6298cb32bd530c9c84266c40\",\n        \"firstName\": \"admin@mail.com\",\n        \"lastName\": \"test\",\n        \"mobileNumber\": \"08111111111\",\n        \"email\": \"admin@mail.com\",\n        \"role\": {\n            \"name\": \"admin\",\n            \"permissions\": [\n                {\n                    \"name\": \"permission read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"role create\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"permission test\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"role read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"role update\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"setting read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"setting update\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"user create\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"user delete\",\n                    \"isActive\": false\n                },\n                {\n                    \"name\": \"user read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"user update\",\n                    \"isActive\": true\n                }\n            ],\n            \"accessFor\": [\n                \"ADMIN\"\n            ],\n            \"isActive\": true\n        },\n        \"passwordExpired\": \"2022-12-01T14:37:38.705Z\",\n        \"isActive\": true,\n        \"createdAt\": \"2022-06-02T14:37:38.729Z\"\n    }\n}"
+											"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Get User Success.\",\n    \"data\": {\n        \"_id\": \"6298cb32bd530c9c84266c40\",\n        \"firstName\": \"admin@mail.com\",\n        \"lastName\": \"test\",\n        \"mobileNumber\": \"08111111111\",\n        \"email\": \"admin@mail.com\",\n        \"role\": {\n            \"name\": \"admin\",\n            \"permissions\": [\n                {\n                    \"name\": \"permission read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"role create\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"permission test\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"role read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"role update\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"setting read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"setting update\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"user create\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"user delete\",\n                    \"isActive\": false\n                },\n                {\n                    \"name\": \"user read\",\n                    \"isActive\": true\n                },\n                {\n                    \"name\": \"user update\",\n                    \"isActive\": true\n                }\n            ],\n            \"accessFor\": \"ADMIN\",\n            \"isActive\": true\n        },\n        \"passwordExpired\": \"2022-12-01T14:37:38.705Z\",\n        \"isActive\": true,\n        \"createdAt\": \"2022-06-02T14:37:38.729Z\"\n    }\n}"
 										}
 									]
 								},
@@ -2789,6 +2799,7 @@
 													},
 													{
 														"key": "Content-Type",
+														"name": "Content-Type",
 														"value": "application/json",
 														"type": "text"
 													},
@@ -2798,6 +2809,15 @@
 														"type": "text"
 													}
 												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n    \"firstName\": \"asdasda\",\n    \"lastName\": \"kan\"\n}",
+													"options": {
+														"raw": {
+															"language": "json"
+														}
+													}
+												},
 												"url": {
 													"raw": "{{BaseUrl}}{{PrefixUrl}}{{VersionUrl}}/admin/user/update/:user",
 													"host": [
@@ -3425,7 +3445,7 @@
 											"_postman_previewlanguage": "json",
 											"header": null,
 											"cookie": [],
-											"body": "{\n    \"statusCode\": 200,\n    \"message\": \"List Role Success.\",\n    \"totalData\": 2,\n    \"totalPage\": 1,\n    \"currentPage\": 1,\n    \"perPage\": 10,\n    \"availableSort\": [\n        \"name\",\n        \"createdAt\"\n    ],\n    \"availableSearch\": [\n        \"name\"\n    ],\n    \"data\": [\n        {\n            \"_id\": \"6298cb290280eeabb17f9d32\",\n            \"name\": \"admin\",\n            \"isActive\": true,\n            \"accessFor\": [\n                \"ADMIN\"\n            ],\n            \"createdAt\": \"2022-06-02T14:37:29.771Z\"\n        },\n        {\n            \"_id\": \"6298cb290280eeabb17f9d33\",\n            \"name\": \"user\",\n            \"isActive\": true,\n            \"accessFor\": [\n                \"USER\"\n            ],\n            \"createdAt\": \"2022-06-02T14:37:29.772Z\"\n        }\n    ]\n}"
+											"body": "{\n    \"statusCode\": 200,\n    \"message\": \"List Role Success.\",\n    \"totalData\": 2,\n    \"totalPage\": 1,\n    \"currentPage\": 1,\n    \"perPage\": 10,\n    \"availableSort\": [\n        \"name\",\n        \"createdAt\"\n    ],\n    \"availableSearch\": [\n        \"name\"\n    ],\n    \"data\": [\n        {\n            \"_id\": \"6298cb290280eeabb17f9d32\",\n            \"name\": \"admin\",\n            \"isActive\": true,\n            \"accessFor\": \"ADMIN\",\n            \"createdAt\": \"2022-06-02T14:37:29.771Z\"\n        },\n        {\n            \"_id\": \"6298cb290280eeabb17f9d33\",\n            \"name\": \"user\",\n            \"isActive\": true,\n            \"accessFor\": \"USER\",\n            \"createdAt\": \"2022-06-02T14:37:29.772Z\"\n        }\n    ]\n}"
 										}
 									]
 								},
@@ -3546,7 +3566,7 @@
 											"_postman_previewlanguage": "json",
 											"header": null,
 											"cookie": [],
-											"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Get Role Success.\",\n    \"data\": {\n        \"_id\": \"6298cb290280eeabb17f9d32\",\n        \"name\": \"admin\",\n        \"permissions\": [\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08bb\",\n                \"code\": \"PERMISSION_READ\",\n                \"name\": \"permission read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b7\",\n                \"code\": \"ROLE_CREATE\",\n                \"name\": \"role create\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08ba\",\n                \"code\": \"ROLE_DELETE\",\n                \"name\": \"permission test\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b9\",\n                \"code\": \"ROLE_READ\",\n                \"name\": \"role read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b8\",\n                \"code\": \"ROLE_UPDATE\",\n                \"name\": \"role update\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08bd\",\n                \"code\": \"SETTING_READ\",\n                \"name\": \"setting read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08be\",\n                \"code\": \"SETTING_UPDATE\",\n                \"name\": \"setting update\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b3\",\n                \"code\": \"USER_CREATE\",\n                \"name\": \"user create\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b6\",\n                \"code\": \"USER_DELETE\",\n                \"name\": \"user delete\",\n                \"isActive\": false\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b5\",\n                \"code\": \"USER_READ\",\n                \"name\": \"user read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b4\",\n                \"code\": \"USER_UPDATE\",\n                \"name\": \"user update\",\n                \"isActive\": true\n            }\n        ],\n        \"isActive\": true,\n        \"accessFor\": [\n            \"ADMIN\"\n        ],\n        \"createdAt\": \"2022-06-02T14:37:29.771Z\"\n    }\n}"
+											"body": "{\n    \"statusCode\": 200,\n    \"message\": \"Get Role Success.\",\n    \"data\": {\n        \"_id\": \"6298cb290280eeabb17f9d32\",\n        \"name\": \"admin\",\n        \"permissions\": [\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08bb\",\n                \"code\": \"PERMISSION_READ\",\n                \"name\": \"permission read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b7\",\n                \"code\": \"ROLE_CREATE\",\n                \"name\": \"role create\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08ba\",\n                \"code\": \"ROLE_DELETE\",\n                \"name\": \"permission test\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b9\",\n                \"code\": \"ROLE_READ\",\n                \"name\": \"role read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b8\",\n                \"code\": \"ROLE_UPDATE\",\n                \"name\": \"role update\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08bd\",\n                \"code\": \"SETTING_READ\",\n                \"name\": \"setting read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08be\",\n                \"code\": \"SETTING_UPDATE\",\n                \"name\": \"setting update\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b3\",\n                \"code\": \"USER_CREATE\",\n                \"name\": \"user create\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b6\",\n                \"code\": \"USER_DELETE\",\n                \"name\": \"user delete\",\n                \"isActive\": false\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b5\",\n                \"code\": \"USER_READ\",\n                \"name\": \"user read\",\n                \"isActive\": true\n            },\n            {\n                \"_id\": \"6298cb21094ec30dfa5d08b4\",\n                \"code\": \"USER_UPDATE\",\n                \"name\": \"user update\",\n                \"isActive\": true\n            }\n        ],\n        \"isActive\": true,\n        \"accessFor\": \"ADMIN\",\n        \"createdAt\": \"2022-06-02T14:37:29.771Z\"\n    }\n}"
 										}
 									]
 								},
@@ -3568,7 +3588,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n    \"name\": \"RRQasdass\",\n    \"permissions\": [\n        \"6298cb21094ec30dfa5d081b\"\n    ],\n    \"accessFor\": [\n        \"USER\"\n    ]\n}",
+											"raw": "{\n    \"name\": \"RRQasdass\",\n    \"permissions\": [\n        \"6298cb21094ec30dfa5d081b\"\n    ],\n    \"accessFor\": \"USER\"\n    \n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -3680,7 +3700,7 @@
 												],
 												"body": {
 													"mode": "raw",
-													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"accessFor\": [\n        \"USER\"\n    ]\n}",
+													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"accessFor\": \"USER\"\n}",
 													"options": {
 														"raw": {
 															"language": "json"
@@ -3739,7 +3759,7 @@
 												],
 												"body": {
 													"mode": "raw",
-													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"accessFor\": [\n        \"USER\"\n    ]\n}",
+													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"accessFor\": \"USER\"\n}",
 													"options": {
 														"raw": {
 															"language": "json"
@@ -3798,7 +3818,7 @@
 												],
 												"body": {
 													"mode": "raw",
-													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"accessFor\": [\n        \"USER\"\n    ]\n}",
+													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"accessFor\": \"USER\"\n}",
 													"options": {
 														"raw": {
 															"language": "json"
@@ -4038,7 +4058,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"6298cb21094ec30dfa5d08bb\"\n    ],\n    \"isAdmin\": false\n}",
+											"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"6298cb21094ec30dfa5d08bb\"\n    ],\n    \"accessFor\": [\n        \"USER\"\n    ]\n}",
 											"options": {
 												"raw": {
 													"language": "json"
@@ -4098,7 +4118,7 @@
 												],
 												"body": {
 													"mode": "raw",
-													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439d9aa\"\n    ],\n    \"isAdmin\": false\n}",
+													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439d9aa\"\n    ],\n    \"accessFor\": \"USER\"\n}",
 													"options": {
 														"raw": {
 															"language": "json"
@@ -4164,7 +4184,7 @@
 												],
 												"body": {
 													"mode": "raw",
-													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61d6fafa5a9afd84238e65d3\"\n    ],\n    \"isAdmin\": false\n}",
+													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61d6fafa5a9afd84238e65d3\"\n    ],\n    \"accessFor\": \"USER\"\n}",
 													"options": {
 														"raw": {
 															"language": "json"
@@ -4230,7 +4250,7 @@
 												],
 												"body": {
 													"mode": "raw",
-													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"isAdmin\": false\n}",
+													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"accessFor\": \"USER\"\n}",
 													"options": {
 														"raw": {
 															"language": "json"
@@ -4296,7 +4316,7 @@
 												],
 												"body": {
 													"mode": "raw",
-													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"isAdmin\": false\n}",
+													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61572e95439bca2c0f28d9aa\",\n        \"61572e95439bca2c0f28d9a9\"\n    ],\n    \"accessFor\": \"USER\"\n}",
 													"options": {
 														"raw": {
 															"language": "json"
@@ -4362,7 +4382,7 @@
 												],
 												"body": {
 													"mode": "raw",
-													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61d6fafa5a9afd84238e65d3\"\n    ],\n    \"isAdmin\": false\n}",
+													"raw": "{\n    \"name\": \"user\",\n    \"permissions\": [\n        \"61d6fafa5a9afd84238e65d3\"\n    ],\n    \"accessFor\": \"USER\"\n}",
 													"options": {
 														"raw": {
 															"language": "json"
@@ -6213,6 +6233,16 @@
 							]
 						}
 					],
+					"auth": {
+						"type": "bearer",
+						"bearer": [
+							{
+								"key": "token",
+								"value": "{{AccessToken}}",
+								"type": "string"
+							}
+						]
+					},
 					"event": [
 						{
 							"listen": "prerequest",
@@ -6235,16 +6265,6 @@
 					]
 				}
 			],
-			"auth": {
-				"type": "bearer",
-				"bearer": [
-					{
-						"key": "token",
-						"value": "{{AccessToken}}",
-						"type": "string"
-					}
-				]
-			},
 			"event": [
 				{
 					"listen": "prerequest",

@@ -8,7 +8,7 @@ export class RoleGetSerialization {
 
     readonly isActive: boolean;
     readonly name: string;
-    readonly accessFor: ENUM_ROLE_ACCESS_FOR[];
+    readonly accessFor: ENUM_ROLE_ACCESS_FOR;
 
     @Transform(({ obj }) =>
         obj.permissions.map((val) => ({

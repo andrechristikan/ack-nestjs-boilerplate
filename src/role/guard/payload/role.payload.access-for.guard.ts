@@ -10,10 +10,14 @@ import {
     ENUM_ROLE_ACCESS_FOR,
     ROLE_ACCESS_FOR_META_KEY,
 } from 'src/role/role.constant';
+import { HelperArrayService } from 'src/utils/helper/service/helper.array.service';
 
 @Injectable()
-export class AuthPayloadAccessForGuard implements CanActivate {
-    constructor(private reflector: Reflector) {}
+export class RolePayloadAccessForGuard implements CanActivate {
+    constructor(
+        private reflector: Reflector,
+        private readonly helperArrayService: HelperArrayService
+    ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredFor: ENUM_ROLE_ACCESS_FOR[] =
@@ -28,9 +32,9 @@ export class AuthPayloadAccessForGuard implements CanActivate {
 
         const { user } = context.switchToHttp().getRequest();
         const { role } = user;
-        const roleFor = role.accessFor;
-        const hasFor: boolean = requiredFor.every((rFor) =>
-            roleFor.includes(rFor)
+        const hasFor: boolean = this.helperArrayService.includes(
+            requiredFor,
+            role.accessFor
         );
 
         if (!hasFor) {

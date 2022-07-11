@@ -10,35 +10,10 @@ export const E2E_PERMISSION_ADMIN_INACTIVE_URL =
 
 export const E2E_PERMISSION_PAYLOAD_TEST = {
     role: {
-        name: 'admin',
+        name: 'superadmin',
         isActive: true,
-        accessFor: [ENUM_ROLE_ACCESS_FOR.ADMIN],
-        permissions: [
-            {
-                code: 'PERMISSION_READ',
-                isActive: true,
-            },
-            {
-                code: 'PERMISSION_UPDATE',
-                isActive: true,
-            },
-            {
-                code: 'PERMISSION_DELETE',
-                isActive: true,
-            },
-            {
-                code: 'PERMISSION_CREATE',
-                isActive: true,
-            },
-            {
-                code: 'PERMISSION_INACTIVE',
-                isActive: true,
-            },
-            {
-                code: 'PERMISSION_ACTIVE',
-                isActive: true,
-            },
-        ],
+        accessFor: ENUM_ROLE_ACCESS_FOR.SUPER_ADMIN,
+        permissions: [],
     },
     phoneNumber: '628123123112',
     email: 'test@kadence.com',

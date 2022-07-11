@@ -22,7 +22,8 @@
         "deadcode",
         "authapis",
         "headerapikey",
-        "jenkinsfile"
+        "jenkinsfile",
+        "superadmin"
     ],
     "ignoreWords": [
         "psheon",

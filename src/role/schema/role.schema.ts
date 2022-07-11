@@ -30,9 +30,9 @@ export class RoleEntity {
 
     @Prop({
         required: true,
-        type: Array,
+        enum: ENUM_ROLE_ACCESS_FOR,
     })
-    accessFor: ENUM_ROLE_ACCESS_FOR[];
+    accessFor: ENUM_ROLE_ACCESS_FOR;
 }
 
 export const RoleDatabaseName = 'roles';
