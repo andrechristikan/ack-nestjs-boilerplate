@@ -11,7 +11,6 @@ import { AuthPublicJwtGuard } from 'src/auth/auth.decorator';
 import { IAwsS3Response } from 'src/aws/aws.interface';
 import { AwsS3Service } from 'src/aws/service/aws.s3.service';
 import { ENUM_STATUS_CODE_ERROR } from 'src/utils/error/error.constant';
-import { ErrorMeta } from 'src/utils/error/error.decorator';
 import { ENUM_FILE_TYPE } from 'src/utils/file/file.constant';
 import { UploadFileSingle } from 'src/utils/file/file.decorator';
 import { Response } from 'src/utils/response/response.decorator';
@@ -33,7 +32,6 @@ export class UserPublicController {
     @Response('user.profile')
     @UserProfileGuard()
     @AuthPublicJwtGuard()
-    @ErrorMeta(UserPublicController.name, 'profile')
     @Get('/profile')
     async profile(@GetUser() user: IUserDocument): Promise<IResponse> {
         return this.userService.serializationProfile(user);
@@ -44,7 +42,6 @@ export class UserPublicController {
     @AuthPublicJwtGuard()
     @UploadFileSingle('file', ENUM_FILE_TYPE.IMAGE)
     @HttpCode(HttpStatus.OK)
-    @ErrorMeta(UserPublicController.name, 'upload')
     @Post('/profile/upload')
     async upload(
         @GetUser() user: IUserDocument,

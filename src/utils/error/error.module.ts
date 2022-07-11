@@ -1,18 +1,13 @@
 import { Module } from '@nestjs/common';
-import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
-import { ErrorHttpFilter } from './filter/error.filter';
-import { ErrorLogInterceptor } from './interceptor/error.log.interceptor';
+import { APP_FILTER } from '@nestjs/core';
+import { ErrorFilter } from './filter/error.filter';
 
 @Module({
     controllers: [],
     providers: [
         {
             provide: APP_FILTER,
-            useClass: ErrorHttpFilter,
-        },
-        {
-            provide: APP_INTERCEPTOR,
-            useClass: ErrorLogInterceptor,
+            useClass: ErrorFilter,
         },
     ],
     imports: [],

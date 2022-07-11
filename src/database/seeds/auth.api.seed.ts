@@ -2,7 +2,6 @@ import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 import { AuthApiService } from 'src/auth/service/auth.api.service';
 import { AuthApiBulkService } from 'src/auth/service/auth.api.bulk.service';
-import { ErrorMeta } from 'src/utils/error/error.decorator';
 
 @Injectable()
 export class AuthApiSeed {
@@ -11,7 +10,6 @@ export class AuthApiSeed {
         private readonly authApiBulkService: AuthApiBulkService
     ) {}
 
-    @ErrorMeta(AuthApiSeed.name, 'insert')
     @Command({
         command: 'insert:authapis',
         describe: 'insert authapiss',
@@ -29,11 +27,10 @@ export class AuthApiSeed {
         } catch (e) {
             throw new Error(e.message);
         }
-        
+
         return;
     }
 
-    @ErrorMeta(AuthApiSeed.name, 'remove')
     @Command({
         command: 'remove:authapis',
         describe: 'remove authapis',
@@ -44,7 +41,7 @@ export class AuthApiSeed {
         } catch (e) {
             throw new Error(e.message);
         }
-        
+
         return;
     }
 }

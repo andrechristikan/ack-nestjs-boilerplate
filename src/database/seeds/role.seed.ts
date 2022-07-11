@@ -4,7 +4,6 @@ import { ENUM_PERMISSIONS } from 'src/permission/permission.constant';
 import { PermissionService } from 'src/permission/service/permission.service';
 import { RoleBulkService } from 'src/role/service/role.bulk.service';
 import { PermissionDocument } from 'src/permission/schema/permission.schema';
-import { ErrorMeta } from 'src/utils/error/error.decorator';
 import { ENUM_ROLE_ACCESS_FOR } from 'src/role/role.constant';
 
 @Injectable()
@@ -14,7 +13,6 @@ export class RoleSeed {
         private readonly roleBulkService: RoleBulkService
     ) {}
 
-    @ErrorMeta(RoleSeed.name, 'insert')
     @Command({
         command: 'insert:role',
         describe: 'insert roles',
@@ -46,7 +44,6 @@ export class RoleSeed {
         return;
     }
 
-    @ErrorMeta(RoleSeed.name, 'remove')
     @Command({
         command: 'remove:role',
         describe: 'remove roles',

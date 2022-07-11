@@ -34,7 +34,6 @@ import { AuthLoginDto } from '../dto/auth.login.dto';
 import { AuthChangePasswordDto } from '../dto/auth.change-password.dto';
 import { AuthLoginSerialization } from '../serialization/auth.login.serialization';
 import { SuccessException } from 'src/utils/error/exception/error.success.exception';
-import { ErrorMeta } from 'src/utils/error/error.decorator';
 import { Logger } from 'src/logger/logger.decorator';
 
 @Controller({
@@ -52,7 +51,6 @@ export class AuthCommonController {
     })
     @Logger(ENUM_LOGGER_ACTION.LOGIN, { tags: ['login', 'withEmail'] })
     @HttpCode(HttpStatus.OK)
-    @ErrorMeta(AuthCommonController.name, 'login')
     @Post('/login')
     async login(@Body() body: AuthLoginDto): Promise<IResponse> {
         const rememberMe: boolean = body.rememberMe ? true : false;
@@ -142,7 +140,6 @@ export class AuthCommonController {
     @Response('auth.refresh')
     @AuthRefreshJwtGuard()
     @HttpCode(HttpStatus.OK)
-    @ErrorMeta(AuthCommonController.name, 'refresh')
     @Post('/refresh')
     async refresh(
         @User()
@@ -204,7 +201,6 @@ export class AuthCommonController {
 
     @Response('auth.changePassword')
     @AuthJwtGuard()
-    @ErrorMeta(AuthCommonController.name, 'changePassword')
     @Patch('/change-password')
     async changePassword(
         @Body() body: AuthChangePasswordDto,

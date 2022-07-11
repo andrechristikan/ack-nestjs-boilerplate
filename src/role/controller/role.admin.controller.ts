@@ -46,7 +46,6 @@ import { RoleUpdateDto } from '../dto/role.update.dto';
 import { RoleListSerialization } from '../serialization/role.list.serialization';
 import { RoleRequestDto } from '../dto/role.request.dto';
 import { RequestParamGuard } from 'src/utils/request/request.decorator';
-import { ErrorMeta } from 'src/utils/error/error.decorator';
 
 @Controller({
     version: '1',
@@ -61,7 +60,6 @@ export class RoleAdminController {
 
     @ResponsePaging('role.list')
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ)
-    @ErrorMeta(RoleAdminController.name, 'list')
     @Get('/list')
     async list(
         @Query()
@@ -117,7 +115,6 @@ export class RoleAdminController {
     @RoleGetGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ)
-    @ErrorMeta(RoleAdminController.name, 'get')
     @Get('get/:role')
     async get(@GetRole() role: IRoleDocument): Promise<IResponse> {
         return this.roleService.serializationGet(role);
@@ -125,7 +122,6 @@ export class RoleAdminController {
 
     @Response('role.create')
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_CREATE)
-    @ErrorMeta(RoleAdminController.name, 'create')
     @Post('/create')
     async create(
         @Body()
@@ -174,7 +170,6 @@ export class RoleAdminController {
     @RoleUpdateGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_UPDATE)
-    @ErrorMeta(RoleAdminController.name, 'update')
     @Put('/update/:role')
     async update(
         @GetRole() role: RoleDocument,
@@ -224,7 +219,6 @@ export class RoleAdminController {
     @RoleDeleteGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_DELETE)
-    @ErrorMeta(RoleAdminController.name, 'delete')
     @Delete('/delete/:role')
     async delete(@GetRole() role: IRoleDocument): Promise<void> {
         try {
@@ -242,7 +236,6 @@ export class RoleAdminController {
     @RoleUpdateInactiveGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_UPDATE)
-    @ErrorMeta(RoleAdminController.name, 'inactive')
     @Patch('/update/:role/inactive')
     async inactive(@GetRole() role: IRoleDocument): Promise<void> {
         try {
@@ -261,7 +254,6 @@ export class RoleAdminController {
     @RoleUpdateActiveGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.ROLE_READ, ENUM_PERMISSIONS.ROLE_UPDATE)
-    @ErrorMeta(RoleAdminController.name, 'active')
     @Patch('/update/:role/active')
     async active(@GetRole() role: IRoleDocument): Promise<void> {
         try {

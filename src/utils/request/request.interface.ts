@@ -11,4 +11,6 @@ export interface IRequestApp extends Request {
     apiKey?: IAuthApiPayload;
     user?: Record<string, any>;
     version?: string;
+    __class: string;
+    __function: string;
 }

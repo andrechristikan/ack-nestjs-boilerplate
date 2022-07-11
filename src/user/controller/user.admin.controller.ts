@@ -43,7 +43,6 @@ import { UserCreateDto } from '../dto/user.create.dto';
 import { UserUpdateDto } from '../dto/user.update.dto';
 import { RequestParamGuard } from 'src/utils/request/request.decorator';
 import { UserRequestDto } from '../dto/user.request.dto';
-import { ErrorMeta } from 'src/utils/error/error.decorator';
 
 @Controller({
     version: '1',
@@ -59,7 +58,6 @@ export class UserAdminController {
 
     @ResponsePaging('user.list')
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ)
-    @ErrorMeta(UserAdminController.name, 'list')
     @Get('/list')
     async list(
         @Query()
@@ -123,7 +121,6 @@ export class UserAdminController {
     @UserGetGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ)
-    @ErrorMeta(UserAdminController.name, 'get')
     @Get('get/:user')
     async get(@GetUser() user: IUserDocument): Promise<IResponse> {
         return this.userService.serializationGet(user);
@@ -131,7 +128,6 @@ export class UserAdminController {
 
     @Response('user.create')
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_CREATE)
-    @ErrorMeta(UserAdminController.name, 'create')
     @Post('/create')
     async create(
         @Body()
@@ -199,7 +195,6 @@ export class UserAdminController {
     @UserDeleteGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_DELETE)
-    @ErrorMeta(UserAdminController.name, 'delete')
     @Delete('/delete/:user')
     async delete(@GetUser() user: IUserDocument): Promise<void> {
         try {
@@ -218,7 +213,6 @@ export class UserAdminController {
     @UserUpdateGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
-    @ErrorMeta(UserAdminController.name, 'update')
     @Put('/update/:user')
     async update(
         @GetUser() user: IUserDocument,
@@ -243,7 +237,6 @@ export class UserAdminController {
     @UserUpdateInactiveGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
-    @ErrorMeta(UserAdminController.name, 'inactive')
     @Patch('/update/:user/inactive')
     async inactive(@GetUser() user: IUserDocument): Promise<void> {
         try {
@@ -262,7 +255,6 @@ export class UserAdminController {
     @UserUpdateActiveGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_PERMISSIONS.USER_READ, ENUM_PERMISSIONS.USER_UPDATE)
-    @ErrorMeta(UserAdminController.name, 'active')
     @Patch('/update/:user/active')
     async active(@GetUser() user: IUserDocument): Promise<void> {
         try {
