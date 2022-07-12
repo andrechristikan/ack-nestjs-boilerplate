@@ -12,14 +12,10 @@ import {
 } from 'src/permission/permission.constant';
 import { IPermission } from 'src/permission/permission.interface';
 import { ENUM_ROLE_ACCESS_FOR } from 'src/role/role.constant';
-import { HelperArrayService } from 'src/utils/helper/service/helper.array.service';
 
 @Injectable()
 export class PermissionPayloadDefaultGuard implements CanActivate {
-    constructor(
-        private reflector: Reflector,
-        private readonly helperArrayService: HelperArrayService
-    ) {}
+    constructor(private reflector: Reflector) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredPermission: ENUM_PERMISSIONS[] =

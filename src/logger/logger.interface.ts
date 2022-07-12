@@ -4,7 +4,7 @@ import { ENUM_LOGGER_ACTION, ENUM_LOGGER_LEVEL } from './logger.constant';
 
 export interface ILoggerRole {
     _id: string;
-    accessFor: ENUM_ROLE_ACCESS_FOR[];
+    accessFor: ENUM_ROLE_ACCESS_FOR;
 }
 
 export interface ILogger {

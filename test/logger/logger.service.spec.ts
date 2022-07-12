@@ -24,7 +24,7 @@ describe('LoggerService', () => {
         requestId: v4(),
         role: {
             _id: `${new Types.ObjectId()}`,
-            accessFor: [ENUM_ROLE_ACCESS_FOR.SUPER_ADMIN],
+            accessFor: ENUM_ROLE_ACCESS_FOR.SUPER_ADMIN,
         },
         method: ENUM_REQUEST_METHOD.GET,
         statusCode: 10000,
