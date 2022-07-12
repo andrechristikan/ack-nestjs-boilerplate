@@ -155,4 +155,8 @@ export class RoleService {
     ): Promise<RoleListSerialization[]> {
         return plainToInstance(RoleListSerialization, data);
     }
+
+    async getAccessFor(): Promise<string[]> {
+        return Object.values(ENUM_ROLE_ACCESS_FOR);
+    }
 }
