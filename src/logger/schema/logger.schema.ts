@@ -58,9 +58,9 @@ export class LoggerEntity {
 
     @Prop({
         required: false,
-        type: Array,
+        enum: ENUM_ROLE_ACCESS_FOR,
     })
-    accessFor?: ENUM_ROLE_ACCESS_FOR[];
+    accessFor?: ENUM_ROLE_ACCESS_FOR;
 
     @Prop({
         required: true,
