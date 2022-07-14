@@ -284,4 +284,24 @@ export class HelperDateService {
             .startOf('year')
             .toDate();
     }
+
+    endOfDay(date?: Date, options?: IHelperDateOptions): Date {
+        return moment
+            .tz(
+                date,
+                options && options.timezone ? options.timezone : this.timezone
+            )
+            .endOf('day')
+            .toDate();
+    }
+
+    startOfDay(date?: Date, options?: IHelperDateOptions): Date {
+        return moment
+            .tz(
+                date,
+                options && options.timezone ? options.timezone : this.timezone
+            )
+            .startOf('day')
+            .toDate();
+    }
 }
