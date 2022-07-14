@@ -15,7 +15,7 @@ export class MinDateTodayEqualConstraint
     constructor(private readonly helperDateService: HelperDateService) {}
 
     validate(value: string): boolean {
-        const todayDate = this.helperDateService.create();
+        const todayDate = this.helperDateService.startOfDay();
         const valueDate = this.helperDateService.create({ date: value });
         return valueDate >= todayDate;
     }
