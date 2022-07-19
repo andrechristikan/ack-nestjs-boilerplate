@@ -23,7 +23,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
         const ctx: HttpArgumentsHost = host.switchToHttp();
         const statusHttp: number = exception.getStatus();
         const request = ctx.getRequest<IRequestApp>();
-        const response = exception.getResponse() as IErrorException;
+        const response = exception.getResponse();
         const { customLang } = ctx.getRequest<IRequestApp>();
         const customLanguages: string[] = customLang.split(',');
         const responseExpress: Response = ctx.getResponse<Response>();
@@ -40,8 +40,14 @@ export class ErrorHttpFilter implements ExceptionFilter {
         );
 
         // Restructure
-        if (typeof response === 'object') {
-            const { statusCode, message, errors, data, properties } = response;
+        if (
+            typeof response === 'object' &&
+            'statusCode' in response &&
+            'message' in response
+        ) {
+            const responseError = response as IErrorException;
+            const { statusCode, message, errors, data, properties } =
+                responseError;
 
             const rErrors = errors
                 ? await this.messageService.getRequestErrorsMessage(
@@ -69,15 +75,17 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 data,
             });
         } else {
-            const rMessage: string | IMessage = await this.messageService.get(
-                'response.error.structure',
+            const message = await this.messageService.get(
+                `http.${statusHttp}`,
                 {
                     customLanguages,
                 }
             );
+
             responseExpress.status(statusHttp).json({
                 statusCode: statusHttp,
-                message: rMessage,
+                message,
+                data: response,
             });
         }
     }

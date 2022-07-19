@@ -54,15 +54,16 @@ export class MessageService {
             }
 
             for (const constraint of constraints) {
+                const message = await this.get(`request.${constraint}`, {
+                    customLanguages,
+                    properties: {
+                        property,
+                        value: propertyValue,
+                    },
+                });
                 errors.push({
-                    property: property,
-                    message: (await this.get(`request.${constraint}`, {
-                        customLanguages,
-                        properties: {
-                            property,
-                            value: propertyValue,
-                        },
-                    })) as string,
+                    property,
+                    message,
                 });
             }
 
@@ -114,7 +115,7 @@ export class MessageService {
         options?: IMessageSetOptions
     ): any {
         return this.i18n.translate(key, {
-            lang: lang,
+            lang: lang || this.defaultLanguage,
             args:
                 options && options.properties ? options.properties : undefined,
         });

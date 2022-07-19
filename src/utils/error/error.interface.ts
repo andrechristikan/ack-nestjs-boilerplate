@@ -1,7 +1,10 @@
-import { IMessageOptionsProperties } from 'src/message/message.interface';
+import {
+    IMessage,
+    IMessageOptionsProperties,
+} from 'src/message/message.interface';
 
 export interface IErrors {
-    readonly message: string;
+    readonly message: string | IMessage;
     readonly property: string;
 }
 

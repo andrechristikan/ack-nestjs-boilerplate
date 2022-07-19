@@ -66,9 +66,10 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
                     authApi.passphrase
                 );
 
-            const keys: string[] = ['key', 'timestamp', 'hash'];
-            const deKeys: string[] = Object.keys(decrypted);
-            const hasKey: boolean = keys.every((key) => deKeys.includes(key));
+            const hasKey: boolean =
+                'key' in decrypted &&
+                'timestamp' in decrypted &&
+                'hash' in decrypted;
 
             const timestamp: number = this.helperNumberService.create(
                 req.headers['x-timestamp'] as string

@@ -179,6 +179,24 @@ describe('MessageService', () => {
             ).toBe(message);
         });
 
+        it('multi message if there has some undefined value should be success', async () => {
+            const message = await messageService.getRequestErrorsMessage(
+                validationError,
+                [undefined, 'id']
+            );
+            jest.spyOn(
+                messageService,
+                'getRequestErrorsMessage'
+            ).mockImplementation(async () => message);
+
+            expect(
+                await messageService.getRequestErrorsMessage(validationError, [
+                    undefined,
+                    'id',
+                ])
+            ).toBe(message);
+        });
+
         it('should be success', async () => {
             const message = await messageService.getRequestErrorsMessage(
                 validationError

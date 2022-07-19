@@ -47,12 +47,9 @@ export function ResponseDefaultInterceptor(
                             : responseExpress.statusCode;
                         const data: Record<string, any> = await response;
                         const message: string | IMessage =
-                            (await this.messageService.get(messagePath, {
+                            await this.messageService.get(messagePath, {
                                 customLanguages,
-                            })) ||
-                            (await this.messageService.get('response.default', {
-                                customLanguages,
-                            }));
+                            });
 
                         return {
                             statusCode: newStatusCode,
