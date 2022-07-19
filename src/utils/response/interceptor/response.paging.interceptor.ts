@@ -66,12 +66,9 @@ export function ResponsePagingInterceptor(
                                 : totalPage;
 
                         const message: string | IMessage =
-                            (await this.messageService.get(messagePath, {
+                            await this.messageService.get(messagePath, {
                                 customLanguages,
-                            })) ||
-                            (await this.messageService.get('response.default', {
-                                customLanguages,
-                            }));
+                            });
 
                         if (
                             options &&
