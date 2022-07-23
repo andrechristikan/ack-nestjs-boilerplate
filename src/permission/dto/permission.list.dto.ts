@@ -19,8 +19,8 @@ import {
 } from '../permission.constant';
 
 export class PermissionListDto implements PaginationListAbstract {
-    @PaginationSearch()
-    readonly search: string;
+    @PaginationSearch(PERMISSION_DEFAULT_AVAILABLE_SEARCH)
+    readonly search: Record<string, any>;
 
     @PaginationAvailableSearch(PERMISSION_DEFAULT_AVAILABLE_SEARCH)
     readonly availableSearch: string[];

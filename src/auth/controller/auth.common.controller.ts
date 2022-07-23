@@ -33,7 +33,6 @@ import { UserDocument } from 'src/user/schema/user.schema';
 import { AuthLoginDto } from '../dto/auth.login.dto';
 import { AuthChangePasswordDto } from '../dto/auth.change-password.dto';
 import { AuthLoginSerialization } from '../serialization/auth.login.serialization';
-import { SuccessException } from 'src/utils/error/exception/error.success.exception';
 import { Logger } from 'src/logger/logger.decorator';
 
 @Controller({
@@ -46,9 +45,7 @@ export class AuthCommonController {
         private readonly authService: AuthService
     ) {}
 
-    @Response('auth.login', {
-        statusCode: ENUM_AUTH_STATUS_CODE_SUCCESS.AUTH_LOGIN_SUCCESS,
-    })
+    @Response('auth.login')
     @Logger(ENUM_LOGGER_ACTION.LOGIN, { tags: ['login', 'withEmail'] })
     @HttpCode(HttpStatus.OK)
     @Post('/login')
@@ -120,18 +117,21 @@ export class AuthCommonController {
             await this.authService.checkPasswordExpired(user.passwordExpired);
 
         if (checkPasswordExpired) {
-            throw new SuccessException({
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR,
-                message: 'auth.error.passwordExpired',
-                data: {
-                    accessToken,
-                    refreshToken,
+            return {
+                metadata: {
+                    statusCode:
+                        ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR,
+                    message: 'auth.error.passwordExpired',
                 },
-            });
+                accessToken,
+                refreshToken,
+            };
         }
 
         return {
+            metadata: {
+                statusCode: ENUM_AUTH_STATUS_CODE_SUCCESS.AUTH_LOGIN_SUCCESS,
+            },
             accessToken,
             refreshToken,
         };

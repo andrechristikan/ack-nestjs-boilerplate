@@ -17,8 +17,8 @@ import {
 } from '../setting.constant';
 
 export class SettingListDto implements PaginationListAbstract {
-    @PaginationSearch()
-    readonly search: string;
+    @PaginationSearch(SETTING_DEFAULT_AVAILABLE_SEARCH)
+    readonly search: Record<string, any>;
 
     @PaginationAvailableSearch(SETTING_DEFAULT_AVAILABLE_SEARCH)
     readonly availableSearch: string[];

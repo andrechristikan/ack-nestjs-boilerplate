@@ -36,6 +36,7 @@ export class TestingCommonController {
         const newDate = this.helperDateService.create({
             timezone: timezone,
         });
+
         return {
             userAgent,
             date: newDate,

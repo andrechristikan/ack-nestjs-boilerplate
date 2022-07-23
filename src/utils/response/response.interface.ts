@@ -1,6 +1,14 @@
 import { ENUM_PAGINATION_TYPE } from 'src/pagination/pagination.constant';
 
-export type IResponse = Record<string, any>;
+export interface IResponseMetadata {
+    statusCode?: number;
+    message?: string;
+    [key: string]: any;
+}
+export interface IResponse {
+    metadata?: IResponseMetadata;
+    [key: string]: any;
+}
 
 export interface IResponsePaging {
     totalData: number;
@@ -9,15 +17,10 @@ export interface IResponsePaging {
     perPage?: number;
     availableSearch?: string[];
     availableSort?: string[];
-    metadata?: Record<string, any>;
+    metadata?: IResponseMetadata;
     data: Record<string, any>[];
 }
 
-export interface IResponseOptions {
-    statusCode?: number;
-}
-
 export interface IResponsePagingOptions {
-    statusCode?: number;
     type?: ENUM_PAGINATION_TYPE;
 }

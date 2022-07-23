@@ -3,11 +3,11 @@ import { ResponseDefaultInterceptor } from './interceptor/response.default.inter
 import { ResponsePagingInterceptor } from './interceptor/response.paging.interceptor';
 import { ResponseTimeoutInterceptor } from './interceptor/response.timeout.interceptor';
 import { RESPONSE_CUSTOM_TIMEOUT_META_KEY } from './response.constant';
-import { IResponseOptions, IResponsePagingOptions } from './response.interface';
+import { IResponsePagingOptions } from './response.interface';
 
-export function Response(messagePath: string, options?: IResponseOptions): any {
+export function Response(messagePath: string): any {
     return applyDecorators(
-        UseInterceptors(ResponseDefaultInterceptor(messagePath, options))
+        UseInterceptors(ResponseDefaultInterceptor(messagePath))
     );
 }
 

@@ -11,13 +11,12 @@ import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { IMessage } from 'src/message/message.interface';
 import { MessageService } from 'src/message/service/message.service';
-import { IResponseOptions } from '../response.interface';
 import { Response } from 'express';
 import { IRequestApp } from 'src/utils/request/request.interface';
+import { IResponse } from '../response.interface';
 
 export function ResponseDefaultInterceptor(
-    messagePath: string,
-    options?: IResponseOptions
+    messagePath: string
 ): Type<NestInterceptor> {
     @Injectable()
     class MixinResponseDefaultInterceptor
@@ -30,31 +29,54 @@ export function ResponseDefaultInterceptor(
             next: CallHandler
         ): Promise<Observable<Promise<any> | string>> {
             if (context.getType() === 'http') {
-                const statusCode: number =
-                    options && options.statusCode
-                        ? options.statusCode
-                        : undefined;
-
                 return next.handle().pipe(
-                    map(async (response: Promise<Record<string, any>>) => {
+                    map(async (responseData: Promise<Record<string, any>>) => {
                         const ctx: HttpArgumentsHost = context.switchToHttp();
-                        const responseExpress: Response = ctx.getResponse();
+                        const response: Response = ctx.getResponse();
                         const { customLang } = ctx.getRequest<IRequestApp>();
-                        const customLanguages = customLang.split(',');
-
-                        const newStatusCode = statusCode
-                            ? statusCode
-                            : responseExpress.statusCode;
-                        const data: Record<string, any> = await response;
-                        const message: string | IMessage =
+                        const customLanguages = customLang
+                            ? customLang.split(',')
+                            : [];
+                        let resStatusCode = response.statusCode;
+                        let resMessage: string | IMessage =
                             await this.messageService.get(messagePath, {
                                 customLanguages,
                             });
+                        const resData = (await responseData) as IResponse;
+                        if (resData) {
+                            const { metadata, ...data } = resData;
+
+                            // metadata
+                            let resMetadata = {};
+                            if (metadata) {
+                                const {
+                                    statusCode,
+                                    message,
+                                    ...metadataOthers
+                                } = metadata;
+                                resStatusCode = statusCode || resStatusCode;
+                                resMessage = message
+                                    ? await this.messageService.get(message, {
+                                          customLanguages,
+                                      })
+                                    : resMessage;
+                                resMetadata = metadataOthers;
+                            }
+
+                            return {
+                                statusCode: resStatusCode,
+                                message: resMessage,
+                                metadata:
+                                    Object.keys(resMetadata).length > 0
+                                        ? resMetadata
+                                        : undefined,
+                                data,
+                            };
+                        }
 
                         return {
-                            statusCode: newStatusCode,
-                            message,
-                            data,
+                            statusCode: resStatusCode,
+                            message: resMessage,
                         };
                     })
                 );

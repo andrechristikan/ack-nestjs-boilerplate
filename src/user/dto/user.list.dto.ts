@@ -17,8 +17,8 @@ import {
 } from '../user.constant';
 
 export class UserListDto implements PaginationListAbstract {
-    @PaginationSearch()
-    readonly search: string;
+    @PaginationSearch(USER_DEFAULT_AVAILABLE_SEARCH)
+    readonly search: Record<string, any>;
 
     @PaginationAvailableSearch(USER_DEFAULT_AVAILABLE_SEARCH)
     readonly availableSearch: string[];

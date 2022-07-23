@@ -25,7 +25,9 @@ export class ErrorHttpFilter implements ExceptionFilter {
         const request = ctx.getRequest<IRequestApp>();
         const response = exception.getResponse();
         const { customLang } = ctx.getRequest<IRequestApp>();
-        const customLanguages: string[] = customLang.split(',');
+        const customLanguages: string[] = customLang
+            ? customLang.split(',')
+            : [];
         const responseExpress: Response = ctx.getResponse<Response>();
 
         // Debugger

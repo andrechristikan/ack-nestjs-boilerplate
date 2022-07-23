@@ -17,8 +17,8 @@ import {
 } from '../role.constant';
 
 export class RoleListDto implements PaginationListAbstract {
-    @PaginationSearch()
-    readonly search: string;
+    @PaginationSearch(ROLE_DEFAULT_AVAILABLE_SEARCH)
+    readonly search: Record<string, any>;
 
     @PaginationAvailableSearch(ROLE_DEFAULT_AVAILABLE_SEARCH)
     readonly availableSearch: string[];
