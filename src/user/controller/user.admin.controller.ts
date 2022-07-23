@@ -175,6 +175,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
+                cause: err.message,
             });
         }
     }
@@ -191,6 +192,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
+                cause: err.message,
             });
         }
 
@@ -213,6 +215,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
+                cause: err.message,
             });
         }
 
@@ -229,10 +232,11 @@ export class UserAdminController {
     async inactive(@GetUser() user: IUserDocument): Promise<void> {
         try {
             await this.userService.inactive(user._id);
-        } catch (e) {
+        } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
+                cause: err.message,
             });
         }
 
@@ -247,10 +251,11 @@ export class UserAdminController {
     async active(@GetUser() user: IUserDocument): Promise<void> {
         try {
             await this.userService.active(user._id);
-        } catch (e) {
+        } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
+                cause: err.message,
             });
         }
 

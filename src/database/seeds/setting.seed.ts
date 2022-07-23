@@ -21,8 +21,8 @@ export class SettingSeed {
                 description: 'Maintenance Mode',
                 value: 'false',
             });
-        } catch (e) {
-            throw new Error(e.message);
+        } catch (err: any) {
+            throw new Error(err.message);
         }
 
         return;
@@ -35,8 +35,8 @@ export class SettingSeed {
     async remove(): Promise<void> {
         try {
             await this.settingBulkService.deleteMany({});
-        } catch (e) {
-            throw new Error(e.message);
+        } catch (err: any) {
+            throw new Error(err.message);
         }
 
         return;

@@ -76,6 +76,15 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 errors: rErrors,
                 data,
             });
+        } else if (typeof response === 'string') {
+            const message = await this.messageService.get(response, {
+                customLanguages,
+            });
+
+            responseExpress.status(statusHttp).json({
+                statusCode: statusHttp,
+                message,
+            });
         } else {
             const message = await this.messageService.get(
                 `http.${statusHttp}`,

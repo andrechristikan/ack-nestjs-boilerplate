@@ -24,8 +24,8 @@ export class AuthApiSeed {
                 passphrase: 'cuwakimacojulawu',
                 encryptionKey: 'opbUwdiS1FBsrDUoPgZdx',
             });
-        } catch (e) {
-            throw new Error(e.message);
+        } catch (err: any) {
+            throw new Error(err.message);
         }
 
         return;
@@ -38,8 +38,8 @@ export class AuthApiSeed {
     async remove(): Promise<void> {
         try {
             await this.authApiBulkService.deleteMany({});
-        } catch (e) {
-            throw new Error(e.message);
+        } catch (err: any) {
+            throw new Error(err.message);
         }
 
         return;

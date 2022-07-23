@@ -11,6 +11,7 @@ export interface IErrors {
 export interface IErrorException {
     statusCode: number;
     message: string;
+    cause?: string;
     errors?: IErrors[];
     data?: Record<string, any>;
     properties?: IMessageOptionsProperties;

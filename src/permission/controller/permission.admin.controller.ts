@@ -124,10 +124,11 @@ export class PermissionAdminController {
     ): Promise<IResponse> {
         try {
             await this.permissionService.update(permission._id, body);
-        } catch (e) {
+        } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
+                cause: err.message,
             });
         }
 
@@ -149,10 +150,11 @@ export class PermissionAdminController {
     ): Promise<void> {
         try {
             await this.permissionService.inactive(permission._id);
-        } catch (e) {
+        } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
+                cause: err.message,
             });
         }
 
@@ -172,10 +174,11 @@ export class PermissionAdminController {
     ): Promise<void> {
         try {
             await this.permissionService.active(permission._id);
-        } catch (e) {
+        } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
+                cause: err.message,
             });
         }
 
