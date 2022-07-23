@@ -15,8 +15,9 @@ import {
     ENUM_PAGINATION_TYPE,
     PAGINATION_DEFAULT_MAX_PAGE,
 } from 'src/pagination/pagination.constant';
-import { IResponsePagingOptions } from '../response.interface';
+import { IResponsePaging, IResponsePagingOptions } from '../response.interface';
 import { Response } from 'express';
+import { IRequestApp } from 'src/utils/request/request.interface';
 
 // This interceptor for restructure response success
 export function ResponsePagingInterceptor(
@@ -32,82 +33,108 @@ export function ResponsePagingInterceptor(
             next: CallHandler
         ): Promise<Observable<Promise<any> | string>> {
             if (context.getType() === 'http') {
-                const statusCode: number =
-                    options && options.statusCode
-                        ? options.statusCode
-                        : undefined;
-
                 return next.handle().pipe(
-                    map(async (response: Promise<Record<string, any>>) => {
+                    map(async (responseData: Promise<Record<string, any>>) => {
                         const ctx: HttpArgumentsHost = context.switchToHttp();
-                        const responseExpress: Response = ctx.getResponse();
-                        const { headers } = ctx.getRequest();
-                        const customLanguages = headers['x-custom-lang'];
+                        const response: Response = ctx.getResponse();
+                        const { customLang } = ctx.getRequest<IRequestApp>();
+                        const customLanguages = customLang
+                            ? customLang.split(',')
+                            : [];
 
-                        const newStatusCode = statusCode
-                            ? statusCode
-                            : responseExpress.statusCode;
-                        const responseData: Record<string, any> =
-                            await response;
-                        const {
-                            totalData,
-                            currentPage,
-                            perPage,
-                            data,
-                            metadata,
-                            availableSort,
-                            availableSearch,
-                        } = responseData;
-
-                        let { totalPage } = responseData;
-                        totalPage =
-                            totalPage > PAGINATION_DEFAULT_MAX_PAGE
-                                ? PAGINATION_DEFAULT_MAX_PAGE
-                                : totalPage;
-
-                        const message: string | IMessage =
+                        let resStatusCode = response.statusCode;
+                        let resMessage: string | IMessage =
                             await this.messageService.get(messagePath, {
                                 customLanguages,
                             });
+                        const resData = (await responseData) as IResponsePaging;
 
-                        if (
-                            options &&
-                            options.type === ENUM_PAGINATION_TYPE.SIMPLE
-                        ) {
-                            return {
-                                statusCode: newStatusCode,
-                                message,
+                        if (resData) {
+                            const {
                                 totalData,
-                                totalPage,
                                 currentPage,
                                 perPage,
-                                metadata,
                                 data,
-                            };
-                        } else if (
-                            options &&
-                            options.type === ENUM_PAGINATION_TYPE.MINI
-                        ) {
-                            return {
-                                statusCode: newStatusCode,
-                                message,
-                                totalData,
                                 metadata,
+                                availableSort,
+                                availableSearch,
+                                totalPage,
+                            } = resData;
+
+                            // metadata
+                            let resMetadata = {};
+                            const resTotalPage =
+                                totalPage > PAGINATION_DEFAULT_MAX_PAGE
+                                    ? PAGINATION_DEFAULT_MAX_PAGE
+                                    : totalPage;
+                            if (metadata) {
+                                const {
+                                    statusCode,
+                                    message,
+                                    ...metadataOthers
+                                } = metadata;
+                                resStatusCode = statusCode || resStatusCode;
+                                resMessage = message
+                                    ? await this.messageService.get(message, {
+                                          customLanguages,
+                                      })
+                                    : resMessage;
+                                resMetadata = metadataOthers;
+                            }
+
+                            if (
+                                options &&
+                                options.type === ENUM_PAGINATION_TYPE.SIMPLE
+                            ) {
+                                return {
+                                    statusCode: resStatusCode,
+                                    message: resMessage,
+                                    totalData,
+                                    totalPage: resTotalPage,
+                                    currentPage,
+                                    perPage,
+                                    metadata:
+                                        Object.keys(resMetadata).length > 0
+                                            ? resMetadata
+                                            : undefined,
+                                    data,
+                                };
+                            } else if (
+                                options &&
+                                options.type === ENUM_PAGINATION_TYPE.MINI
+                            ) {
+                                return {
+                                    statusCode: resStatusCode,
+                                    message: resMessage,
+                                    totalData,
+                                    metadata:
+                                        Object.keys(resMetadata).length > 0
+                                            ? resMetadata
+                                            : undefined,
+                                    data,
+                                };
+                            }
+
+                            return {
+                                statusCode: resStatusCode,
+                                message: resMessage,
+                                totalData,
+                                totalPage: resTotalPage,
+                                currentPage,
+                                perPage,
+                                availableSort,
+                                availableSearch,
+                                metadata:
+                                    Object.keys(resMetadata).length > 0
+                                        ? resMetadata
+                                        : undefined,
                                 data,
                             };
                         }
 
                         return {
-                            statusCode: newStatusCode,
-                            message,
-                            totalData,
-                            totalPage,
-                            currentPage,
-                            perPage,
-                            availableSort,
-                            availableSearch,
-                            metadata,
-                            data,
+                            statusCode: resStatusCode,
+                            message: resMessage,
                         };
                     })
                 );

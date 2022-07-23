@@ -22,7 +22,6 @@ ack-nestjs-boilerplate-mongoose is a [NestJs](http://nestjs.com) Boilerplate wit
 Made with following
 - [nodejs-best-practice](https://github.com/goldbergyoni/nodebestpractices)
 - [The Twelve-Factor App](https://12factor.net)
-- [Microservice Architecture](https://microservices.io)
 - NestJs Habit.
 
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
@@ -42,7 +41,7 @@ You can see our `e2e testing file` or read the documentation on [section environ
 
 ## Build with
 
-Describes which version of the main packages and main tools.
+Describes which version .
 
 | Name       | Version  |
 | ---------- | -------- |
@@ -69,13 +68,14 @@ ack-nestjs-boilerplate-mongoose have some objective.
 
 ## Features
 
-- NestJs v8.x 🥳
+- NestJs v9.x 🥳
 - Production Ready 🔥
 - Typescript 🚀
 - Authentication and Authorization (JWT, OAuth2, API Key, Basic Auth, Role Management) 💪
-- Mongodb Integrate by Using Mongoose Package 🎉
+- User Agent Check
+- MongoDB Integrate by Using Mongoose Package 🎉
 - Database Migration (NestJs-Command)
-- Storage Management with AWS (S3), and can switch with Internal Storage using FS Package
+- Storage with AWS (S3)
 - Server Side Pagination (3 Types)
 - Url Versioning
 - Request Validation Pipe with Custom Message 🛑
@@ -85,16 +85,15 @@ ack-nestjs-boilerplate-mongoose have some objective.
 - Centralize Exception Filter, and Custom Error Structure
 - Multi-language (i18n) 🗣
 - Timezone Awareness, and Custom Timezone
-- Request Timeout, and Custom Timeout (Override) ⌛️
+- Request Timeout, and Request Custom Timeout (Override) ⌛️
 - Dynamic Setting from Database 🗿
 - Maintenance Mode on / off 🐤
-- Cache Manager Implementation, can switch with Redis, Memcached, or anything else
-- Advance Example 🥶
+- Server Side Pagination
+- Cache Manager Implementation
 - Support Docker Installation
 - Support CI/CD with Github Action or Jenkins
 - Husky GitHook For Check Source Code, and Run Test Before Commit 🐶
 - Linter with EsLint for Typescript
-- Etc.
 
 ## Prerequisites
 
@@ -112,32 +111,22 @@ We assume that everyone who comes here is _**`programmer with intermediate knowl
 
 Next development
 
-- [x] Pagination Optimization, Pagination Category
-- [x] Default Timezone, and custom timezone (by `x-timezone`)
-- [x] Add response header `x-custom-lang`, `x-timestamp`, and `x-timezone`, and `x-request-id`
-- [x] Add `x-request-id` middleware
-- [x] Add `x-request-id` per debugger log, to make more specific log per request
-- [x] Cors optimization allowed header, and allowed method
-- [x] Implement Cache Manager for response (for improve performance)
-- [x] Response Timeout, custom timeout with decorator
-- [x] Convert time using `ms package` in Config Module. Centralize
-- [x] Add `cSpell`
-- [x] Add `ErrorLogInterceptor`
-- [x] Add `LoggerInterceptor`
 - [ ] Utils unit test
-- [ ] Add `Redis` Configuration
 - [ ] Update Documentation
 - [ ] Timezone in serialization and dto
 - [ ] Versioning Serialization
 - [ ] Docker Compose File Mongodb Replication Set (Low Priority)
 - [ ] Swagger (Low Priority)
 
+## Example
+
+ack-nestjs-boilerplate-mongoose has advance example. Feel free to check it by yourself.
+
 ## Documentation
 
 Let's go into deep ! 🚀
 
 - [Documentation][ack-docs]
-- [Example][ack-docs-example]
 - [Tips][ack-docs-tips]
 
 ## Endpoints

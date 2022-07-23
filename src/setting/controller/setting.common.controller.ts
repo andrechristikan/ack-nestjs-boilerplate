@@ -44,17 +44,13 @@ export class SettingCommonController {
         }: SettingListDto
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
-        const find: Record<string, any> = {};
+        let find: Record<string, any> = {};
 
         if (search) {
-            find['$or'] = [
-                {
-                    name: {
-                        $regex: new RegExp(search),
-                        $options: 'i',
-                    },
-                },
-            ];
+            find = {
+                ...find,
+                ...search,
+            };
         }
         const settings: SettingDocument[] = await this.settingService.findAll(
             find,

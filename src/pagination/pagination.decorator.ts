@@ -9,6 +9,7 @@ import {
     IsNotEmpty,
     IsDate,
     IsString,
+    IsObject,
 } from 'class-validator';
 import { RequestAddDatePipe } from 'src/utils/request/pipe/request.add-date.pipe';
 import { MinGreaterThan } from 'src/utils/request/validation/request.min-greater-than.validation';
@@ -28,12 +29,24 @@ import {
     IPaginationFilterStringOptions,
 } from './pagination.interface';
 
-export function PaginationSearch(): any {
+export function PaginationSearch(availableSearch: string[]): any {
     return applyDecorators(
         Expose(),
         IsOptional(),
-        IsString(),
-        Transform(({ value }) => (value ? value : undefined))
+        IsObject(),
+        ValidateIf((e) => e.search !== ''),
+        Transform(({ value }) =>
+            value
+                ? {
+                      $or: availableSearch.map((val) => ({
+                          [val]: {
+                              $regex: new RegExp(value),
+                              $options: 'i',
+                          },
+                      })),
+                  }
+                : undefined
+        )
     );
 }
 
