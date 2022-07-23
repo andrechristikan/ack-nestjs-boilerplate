@@ -158,6 +158,7 @@ export class RoleAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
+                cause: err.message,
             });
         }
     }
@@ -199,10 +200,11 @@ export class RoleAdminController {
                 permissions,
                 accessFor,
             });
-        } catch (e) {
+        } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
+                cause: err.message,
             });
         }
 
@@ -223,6 +225,7 @@ export class RoleAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
+                cause: err.message,
             });
         }
         return;
@@ -236,10 +239,11 @@ export class RoleAdminController {
     async inactive(@GetRole() role: IRoleDocument): Promise<void> {
         try {
             await this.roleService.inactive(role._id);
-        } catch (e) {
+        } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
+                cause: err.message,
             });
         }
 
@@ -254,10 +258,11 @@ export class RoleAdminController {
     async active(@GetRole() role: IRoleDocument): Promise<void> {
         try {
             await this.roleService.active(role._id);
-        } catch (e) {
+        } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
+                cause: err.message,
             });
         }
 

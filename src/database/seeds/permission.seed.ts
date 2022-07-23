@@ -21,8 +21,8 @@ export class PermissionSeed {
             }));
 
             await this.permissionBulkService.createMany(permissions);
-        } catch (e) {
-            throw new Error(e.message);
+        } catch (err: any) {
+            throw new Error(err.message);
         }
 
         return;
@@ -35,8 +35,8 @@ export class PermissionSeed {
     async remove(): Promise<void> {
         try {
             await this.permissionBulkService.deleteMany({});
-        } catch (e) {
-            throw new Error(e.message);
+        } catch (err: any) {
+            throw new Error(err.message);
         }
 
         return;

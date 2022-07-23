@@ -244,10 +244,11 @@ export class AuthCommonController {
             );
 
             await this.userService.updatePassword(user._id, password);
-        } catch (e) {
+        } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_STATUS_CODE_ERROR.UNKNOWN_ERROR,
                 message: 'http.serverError.internalServerError',
+                cause: err.message,
             });
         }
 

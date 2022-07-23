@@ -68,7 +68,7 @@ export class HelperEncryptionService {
                 secret: options.secretKey,
             });
             return true;
-        } catch (e) {
+        } catch (err: any) {
             return false;
         }
     }

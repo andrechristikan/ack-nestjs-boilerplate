@@ -55,8 +55,8 @@ export class UserSeed {
                 role: adminRole._id,
                 salt: password.salt,
             });
-        } catch (e) {
-            throw new Error(e.message);
+        } catch (err: any) {
+            throw new Error(err.message);
         }
 
         return;
@@ -69,8 +69,8 @@ export class UserSeed {
     async remove(): Promise<void> {
         try {
             await this.userBulkService.deleteMany({});
-        } catch (e) {
-            throw new Error(e.message);
+        } catch (err: any) {
+            throw new Error(err.message);
         }
 
         return;

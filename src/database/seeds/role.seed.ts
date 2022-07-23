@@ -40,8 +40,8 @@ export class RoleSeed {
                     accessFor: ENUM_ROLE_ACCESS_FOR.USER,
                 },
             ]);
-        } catch (e) {
-            throw new Error(e.message);
+        } catch (err: any) {
+            throw new Error(err.message);
         }
 
         return;
@@ -54,8 +54,8 @@ export class RoleSeed {
     async remove(): Promise<void> {
         try {
             await this.roleBulkService.deleteMany({});
-        } catch (e) {
-            throw new Error(e.message);
+        } catch (err: any) {
+            throw new Error(err.message);
         }
 
         return;
