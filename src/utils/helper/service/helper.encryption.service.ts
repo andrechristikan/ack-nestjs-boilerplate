@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AES, enc, mode, pad } from 'crypto-js';
-import { IHelperJwtOptions } from '../helper.interface';
+import {
+    IHelperJwtOptions,
+    IHelperJwtVerifyOptions,
+} from '../helper.interface';
 
 @Injectable()
 export class HelperEncryptionService {
@@ -62,7 +65,7 @@ export class HelperEncryptionService {
         return this.jwtService.decode(token) as Record<string, any>;
     }
 
-    jwtVerify(token: string, options?: IHelperJwtOptions): boolean {
+    jwtVerify(token: string, options: IHelperJwtVerifyOptions): boolean {
         try {
             this.jwtService.verify(token, {
                 secret: options.secretKey,

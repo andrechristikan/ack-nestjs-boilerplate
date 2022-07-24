@@ -9,6 +9,10 @@ export interface IHelperJwtOptions {
     secretKey: string;
 }
 
+export interface IHelperJwtVerifyOptions {
+    secretKey: string;
+}
+
 export interface IHelperStringRandomOptions {
     upperCase?: boolean;
     safe?: boolean;

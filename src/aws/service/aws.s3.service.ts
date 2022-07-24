@@ -143,7 +143,7 @@ export class AwsS3Service {
             await this.s3Client.send(command);
             return true;
         } catch (err: any) {
-            return false;
+            throw err;
         }
     }
 
@@ -162,7 +162,7 @@ export class AwsS3Service {
             await this.s3Client.send(command);
             return true;
         } catch (err: any) {
-            return false;
+            throw err;
         }
     }
 
@@ -195,7 +195,7 @@ export class AwsS3Service {
 
             return true;
         } catch (err: any) {
-            return false;
+            throw err;
         }
     }
 }
