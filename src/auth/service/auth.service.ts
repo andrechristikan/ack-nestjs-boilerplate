@@ -64,7 +64,6 @@ export class AuthService {
     async validateAccessToken(token: string): Promise<boolean> {
         return this.helperEncryptionService.jwtVerify(token, {
             secretKey: this.accessTokenSecretToken,
-            expiredIn: this.accessTokenExpirationTime,
         });
     }
 
@@ -89,7 +88,6 @@ export class AuthService {
     async validateRefreshToken(token: string): Promise<boolean> {
         return this.helperEncryptionService.jwtVerify(token, {
             secretKey: this.refreshTokenSecretToken,
-            expiredIn: this.accessTokenExpirationTime,
         });
     }
 
