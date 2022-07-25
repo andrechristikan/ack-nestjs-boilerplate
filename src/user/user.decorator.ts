@@ -18,6 +18,7 @@ export const GetUser = createParamDecorator(
     }
 );
 
+// admin
 export function UserGetGuard(): any {
     return applyDecorators(UseGuards(UserPutToRequestGuard, UserNotFoundGuard));
 }
@@ -28,12 +29,6 @@ export function UserDeleteGuard(): any {
 
 export function UserUpdateGuard(): any {
     return applyDecorators(UseGuards(UserPutToRequestGuard, UserNotFoundGuard));
-}
-
-export function UserProfileGuard(): any {
-    return applyDecorators(
-        UseGuards(UserPayloadPutToRequestGuard, UserNotFoundGuard)
-    );
 }
 
 export function UserUpdateInactiveGuard(): any {
@@ -47,5 +42,12 @@ export function UserUpdateActiveGuard(): any {
     return applyDecorators(
         UseGuards(UserPutToRequestGuard, UserNotFoundGuard, UserActiveGuard),
         SetMetadata(USER_ACTIVE_META_KEY, [false])
+    );
+}
+
+// public
+export function UserProfileGuard(): any {
+    return applyDecorators(
+        UseGuards(UserPayloadPutToRequestGuard, UserNotFoundGuard)
     );
 }

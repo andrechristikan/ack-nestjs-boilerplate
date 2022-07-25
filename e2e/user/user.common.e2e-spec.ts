@@ -4,8 +4,8 @@ import request from 'supertest';
 import { faker } from '@faker-js/faker';
 import { IUserDocument } from 'src/user/user.interface';
 import {
-    E2E_USER_PUBLIC_PROFILE_UPLOAD_URL,
-    E2E_USER_PUBLIC_PROFILE_URL,
+    E2E_USER_PROFILE_UPLOAD_URL,
+    E2E_USER_PROFILE_URL,
 } from './user.constant';
 import { Types, connection } from 'mongoose';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
@@ -15,14 +15,14 @@ import { UserService } from 'src/user/service/user.service';
 import { AuthService } from 'src/auth/service/auth.service';
 import { RoleService } from 'src/role/service/role.service';
 import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/utils/file/file.constant';
-import { RouterPublicModule } from 'src/router/router.public.module';
 import { RoleDocument } from 'src/role/schema/role.schema';
 import { UserDocument } from 'src/user/schema/user.schema';
 import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { useContainer } from 'class-validator';
 import { AuthApiService } from 'src/auth/service/auth.api.service';
+import { RouterCommonModule } from 'src/router/router.common.module';
 
-describe('E2E User Public', () => {
+describe('E2E User Common', () => {
     let app: INestApplication;
     let userService: UserService;
     let authService: AuthService;
@@ -43,11 +43,11 @@ describe('E2E User Public', () => {
         const modRef = await Test.createTestingModule({
             imports: [
                 CoreModule,
-                RouterPublicModule,
+                RouterCommonModule,
                 RouterModule.register([
                     {
-                        path: '/public',
-                        module: RouterPublicModule,
+                        path: '/',
+                        module: RouterCommonModule,
                     },
                 ]),
             ],
@@ -117,9 +117,9 @@ describe('E2E User Public', () => {
         await app.init();
     });
 
-    it(`GET ${E2E_USER_PUBLIC_PROFILE_URL} Profile Not Found`, async () => {
+    it(`GET ${E2E_USER_PROFILE_URL} Profile Not Found`, async () => {
         const response = await request(app.getHttpServer())
-            .get(E2E_USER_PUBLIC_PROFILE_URL)
+            .get(E2E_USER_PROFILE_URL)
             .set('Authorization', `Bearer ${accessTokenNotFound}`)
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
@@ -133,9 +133,9 @@ describe('E2E User Public', () => {
         return;
     });
 
-    it(`GET ${E2E_USER_PUBLIC_PROFILE_URL} Profile`, async () => {
+    it(`GET ${E2E_USER_PROFILE_URL} Profile`, async () => {
         const response = await request(app.getHttpServer())
-            .get(E2E_USER_PUBLIC_PROFILE_URL)
+            .get(E2E_USER_PROFILE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
@@ -147,9 +147,9 @@ describe('E2E User Public', () => {
         return;
     });
 
-    it(`POST ${E2E_USER_PUBLIC_PROFILE_UPLOAD_URL} Profile Upload Error Request`, async () => {
+    it(`POST ${E2E_USER_PROFILE_UPLOAD_URL} Profile Upload Error Request`, async () => {
         const response = await request(app.getHttpServer())
-            .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
+            .post(E2E_USER_PROFILE_UPLOAD_URL)
             .attach('file', './e2e/user/files/test.txt')
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data')
@@ -165,9 +165,9 @@ describe('E2E User Public', () => {
         return;
     });
 
-    it(`POST ${E2E_USER_PUBLIC_PROFILE_UPLOAD_URL} Profile Upload Not Found`, async () => {
+    it(`POST ${E2E_USER_PROFILE_UPLOAD_URL} Profile Upload Not Found`, async () => {
         const response = await request(app.getHttpServer())
-            .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
+            .post(E2E_USER_PROFILE_UPLOAD_URL)
             .attach('file', './e2e/user/files/test.txt')
             .set('Authorization', `Bearer ${accessTokenNotFound}`)
             .set('Content-Type', 'multipart/form-data')
@@ -183,9 +183,9 @@ describe('E2E User Public', () => {
         return;
     });
 
-    it(`POST ${E2E_USER_PUBLIC_PROFILE_UPLOAD_URL} Profile Upload File Too Large`, async () => {
+    it(`POST ${E2E_USER_PROFILE_UPLOAD_URL} Profile Upload File Too Large`, async () => {
         const response = await request(app.getHttpServer())
-            .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
+            .post(E2E_USER_PROFILE_UPLOAD_URL)
             .send()
             .attach('file', './e2e/user/files/medium.jpg')
             .set('Authorization', `Bearer ${accessToken}`)
@@ -202,9 +202,9 @@ describe('E2E User Public', () => {
         return;
     });
 
-    it(`POST ${E2E_USER_PUBLIC_PROFILE_UPLOAD_URL} Profile Upload Success`, async () => {
+    it(`POST ${E2E_USER_PROFILE_UPLOAD_URL} Profile Upload Success`, async () => {
         const response = await request(app.getHttpServer())
-            .post(E2E_USER_PUBLIC_PROFILE_UPLOAD_URL)
+            .post(E2E_USER_PROFILE_UPLOAD_URL)
             .send()
             .attach('file', './e2e/user/files/small.jpg')
             .set('Authorization', `Bearer ${accessToken}`)

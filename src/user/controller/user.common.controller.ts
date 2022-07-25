@@ -23,7 +23,7 @@ import { IUserDocument } from '../user.interface';
     version: '1',
     path: 'user',
 })
-export class UserPublicController {
+export class UserCommonController {
     constructor(
         private readonly userService: UserService,
         private readonly awsService: AwsS3Service
