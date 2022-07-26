@@ -40,7 +40,7 @@ export class UserCommonController {
     @Response('user.upload')
     @UserProfileGuard()
     @AuthPublicJwtGuard()
-    @UploadFileSingle('file', ENUM_FILE_TYPE.IMAGE)
+    @UploadFileSingle('file', { type: ENUM_FILE_TYPE.IMAGE })
     @HttpCode(HttpStatus.OK)
     @Post('/profile/upload')
     async upload(

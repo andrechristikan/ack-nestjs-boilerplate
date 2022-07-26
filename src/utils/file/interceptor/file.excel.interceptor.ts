@@ -13,16 +13,16 @@ import { Observable } from 'rxjs';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import {
-    ENUM_FILE_IMAGE_MIME,
+    ENUM_FILE_EXCEL_MIME,
     ENUM_FILE_STATUS_CODE_ERROR,
 } from '../file.constant';
 import { IFile } from '../file.interface';
 
-export function FileImageInterceptor(
+export function FileExcelInterceptor(
     required?: boolean
 ): Type<NestInterceptor> {
     @Injectable()
-    class MixinFileImageInterceptor implements NestInterceptor<Promise<any>> {
+    class MixinFileExcelInterceptor implements NestInterceptor<Promise<any>> {
         constructor(private readonly configService: ConfigService) {}
 
         async intercept(
@@ -37,7 +37,7 @@ export function FileImageInterceptor(
 
                 if (Array.isArray(finalFiles)) {
                     const maxFiles = this.configService.get<number>(
-                        'file.image.maxFiles'
+                        'file.excel.maxFiles'
                     );
 
                     if (required && finalFiles.length === 0) {
@@ -75,10 +75,10 @@ export function FileImageInterceptor(
                 const { size, mimetype } = file;
 
                 const maxSize = this.configService.get<number>(
-                    'file.image.maxFileSize'
+                    'file.excel.maxFileSize'
                 );
                 if (
-                    !Object.values(ENUM_FILE_IMAGE_MIME).find(
+                    !Object.values(ENUM_FILE_EXCEL_MIME).find(
                         (val) => val === mimetype.toLowerCase()
                     )
                 ) {
@@ -98,5 +98,5 @@ export function FileImageInterceptor(
         }
     }
 
-    return mixin(MixinFileImageInterceptor);
+    return mixin(MixinFileExcelInterceptor);
 }

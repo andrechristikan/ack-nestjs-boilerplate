@@ -53,3 +53,5 @@ export type IHelperDateOptionsBackward = IHelperDateOptionsForward;
 export interface IHelperDateOptionsMonth extends IHelperDateOptions {
     year?: number;
 }
+
+export type IHelperFileExcelRows = Record<string, string | number>;

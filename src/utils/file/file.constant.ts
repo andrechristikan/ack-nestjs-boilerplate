@@ -4,8 +4,13 @@ export enum ENUM_FILE_IMAGE_MIME {
     PNG = 'image/png',
 }
 
+export enum ENUM_FILE_EXCEL_MIME {
+    XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+}
+
 export enum ENUM_FILE_TYPE {
     IMAGE = 'IMAGE',
+    EXCEL = 'EXCEL',
 }
 
 export enum ENUM_FILE_STATUS_CODE_ERROR {

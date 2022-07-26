@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CoreModule } from 'src/core/core.module';
-import { TaskModule } from 'src/task/task.module';
+import { TaskScheduleModule } from 'src/task-schedule/task-schedule.module';
 import { AppRouterModule } from './app.router.module';
 @Module({
     controllers: [],
@@ -10,7 +10,7 @@ import { AppRouterModule } from './app.router.module';
         CoreModule,
 
         // Task
-        TaskModule.register(),
+        TaskScheduleModule.register(),
 
         // Router
         AppRouterModule.register(),
