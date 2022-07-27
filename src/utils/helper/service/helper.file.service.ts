@@ -2,7 +2,8 @@
 
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import excelJs from 'exceljs';
+import excelJs, { CellValue } from 'exceljs';
+import { IHelperFileExcelRows } from '../helper.interface';
 import { HelperDateService } from './helper.date.service';
 
 @Injectable()
@@ -16,10 +17,11 @@ export class HelperFileService {
         this.appName = this.configService.get<string>('app.name');
     }
 
-    async writeExcel(
-        headers: string[],
-        rows: Record<string, string>[]
-    ): Promise<Buffer> {
+    async writeExcel(rows: IHelperFileExcelRows[]): Promise<Buffer> {
+        if (rows.length === 0) {
+            throw new Error('Rows Empty');
+        }
+
         const workbook = new excelJs.Workbook();
         workbook.creator = this.appName;
         workbook.lastModifiedBy = this.appName;
@@ -43,11 +45,41 @@ export class HelperFileService {
             views: [{ state: 'frozen', xSplit: 1 }, { showGridLines: true }],
         });
 
+        // set header
+        const headers = Object.keys(rows[0]);
         worksheet.columns = headers.map((val) => ({
             header: val,
+            key: val,
         }));
+
         worksheet.addRows(rows);
 
         return (await workbook.xlsx.writeBuffer()) as Buffer;
+    }
+
+    async readExcel(file: Buffer): Promise<IHelperFileExcelRows[]> {
+        const workbook = new excelJs.Workbook();
+        await workbook.xlsx.load(file);
+
+        const worksheet = workbook.getWorksheet(1);
+
+        const headers: string[] = worksheet.getRow(1).values as string[];
+        headers.shift();
+
+        const rows: any[] = worksheet
+            .getRows(2, worksheet.lastRow.number)
+            .map((val) => {
+                const row: CellValue[] = val.values as CellValue[];
+                row.shift();
+
+                const newRow = {};
+                row.forEach((l, i) => {
+                    newRow[headers[i]] = l;
+                });
+
+                return newRow;
+            });
+
+        return rows;
     }
 }

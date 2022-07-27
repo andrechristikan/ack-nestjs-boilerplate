@@ -29,11 +29,11 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
         );
     }
 
-    async validate<TUser = any>(
+    async validate(
         apiKey: string,
         verified: (
             error: Error,
-            user?: TUser,
+            user?: AuthApiDocument,
             info?: string | number
         ) => Promise<void>,
         req: any
@@ -113,7 +113,7 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
                     name: authApi.name,
                     description: authApi.description,
                 };
-                verified(null, authApi as any);
+                verified(null, authApi);
             }
         }
     }
