@@ -16,10 +16,10 @@ import {
     ENUM_FILE_IMAGE_MIME,
     ENUM_FILE_STATUS_CODE_ERROR,
 } from '../file.constant';
-import { IFile } from '../file.interface';
+import { IFile, IFileImageOptions } from '../file.interface';
 
 export function FileImageInterceptor(
-    required?: boolean
+    options?: IFileImageOptions
 ): Type<NestInterceptor> {
     @Injectable()
     class MixinFileImageInterceptor implements NestInterceptor<Promise<any>> {
@@ -40,7 +40,11 @@ export function FileImageInterceptor(
                         'file.image.maxFiles'
                     );
 
-                    if (required && finalFiles.length === 0) {
+                    if (
+                        options &&
+                        options.required &&
+                        finalFiles.length === 0
+                    ) {
                         throw new UnprocessableEntityException({
                             statusCode:
                                 ENUM_FILE_STATUS_CODE_ERROR.FILE_NEEDED_ERROR,
@@ -66,7 +70,7 @@ export function FileImageInterceptor(
         }
 
         async validate(file: IFile): Promise<void> {
-            if (required && !file) {
+            if (options && options.required && !file) {
                 throw new UnprocessableEntityException({
                     statusCode: ENUM_FILE_STATUS_CODE_ERROR.FILE_NEEDED_ERROR,
                     message: 'file.error.notFound',

@@ -5,12 +5,13 @@ import {
     HttpException,
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
+import { ValidationError } from 'class-validator';
 import { Response } from 'express';
 import { DebuggerService } from 'src/debugger/service/debugger.service';
 import { IMessage } from 'src/message/message.interface';
 import { MessageService } from 'src/message/service/message.service';
 import { IRequestApp } from 'src/utils/request/request.interface';
-import { IErrorException } from '../error.interface';
+import { IErrorException, IValidationErrorImport } from '../error.interface';
 
 @Catch(HttpException)
 export class ErrorHttpFilter implements ExceptionFilter {
@@ -48,14 +49,26 @@ export class ErrorHttpFilter implements ExceptionFilter {
             'message' in response
         ) {
             const responseError = response as IErrorException;
-            const { statusCode, message, errors, data, properties } =
-                responseError;
+
+            const {
+                statusCode,
+                message,
+                errors,
+                errorFromImport,
+                data,
+                properties,
+            } = responseError;
 
             const rErrors = errors
-                ? await this.messageService.getRequestErrorsMessage(
-                      errors,
-                      customLanguages
-                  )
+                ? errorFromImport
+                    ? await this.messageService.getImportErrorsMessage(
+                          errors as IValidationErrorImport[],
+                          customLanguages
+                      )
+                    : await this.messageService.getRequestErrorsMessage(
+                          errors as ValidationError[],
+                          customLanguages
+                      )
                 : undefined;
 
             let rMessage: string | IMessage = await this.messageService.get(
