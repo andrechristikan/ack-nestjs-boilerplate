@@ -8,9 +8,19 @@ export enum ENUM_FILE_EXCEL_MIME {
     XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 }
 
+export enum ENUM_FILE_AUDIO_MIME {
+    MP3 = 'audio/mpeg',
+}
+
+export enum ENUM_FILE_VIDEO_MIME {
+    MP4 = 'video/mp4',
+}
+
 export enum ENUM_FILE_TYPE {
     IMAGE = 'IMAGE',
     EXCEL = 'EXCEL',
+    VIDEO = 'VIDEO',
+    AUDIO = 'AUDIO',
 }
 
 export enum ENUM_FILE_STATUS_CODE_ERROR {
