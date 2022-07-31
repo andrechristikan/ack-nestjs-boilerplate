@@ -111,6 +111,7 @@ We assume that everyone who comes here is _**`programmer with intermediate knowl
 
 Next development
 
+- [x] Import data form excel
 - [ ] Utils unit test
 - [ ] Update Documentation
 - [ ] Timezone in serialization and dto

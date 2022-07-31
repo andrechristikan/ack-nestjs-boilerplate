@@ -8,7 +8,11 @@ import {
 } from '../message.interface';
 import { isArray, ValidationError } from 'class-validator';
 import { I18nService } from 'nestjs-i18n';
-import { IErrors } from 'src/utils/error/error.interface';
+import {
+    IErrors,
+    IErrorsImport,
+    IValidationErrorImport,
+} from 'src/utils/error/error.interface';
 
 @Injectable()
 export class MessageService {
@@ -107,6 +111,25 @@ export class MessageService {
         return this.setMessage(this.defaultLanguage, key, {
             properties,
         });
+    }
+
+    async getImportErrorsMessage(
+        errors: IValidationErrorImport[],
+        customLanguages?: string[]
+    ): Promise<IErrorsImport[]> {
+        const newErrors: IErrorsImport[] = [];
+        for (const error of errors) {
+            newErrors.push({
+                row: error.row,
+                file: error.file,
+                errors: await this.getRequestErrorsMessage(
+                    error.errors,
+                    customLanguages
+                ),
+            });
+        }
+
+        return newErrors;
     }
 
     private setMessage(

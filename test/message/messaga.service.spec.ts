@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { ValidationError } from 'class-validator';
 import { CoreModule } from 'src/core/core.module';
 import { MessageService } from 'src/message/service/message.service';
+import { IValidationErrorImport } from 'src/utils/error/error.interface';
 
 describe('MessageService', () => {
     let messageService: MessageService;
@@ -10,6 +11,7 @@ describe('MessageService', () => {
     let validationErrorTwo: ValidationError[];
     let validationErrorThree: ValidationError[];
     let validationErrorConstrainEmpty: ValidationError[];
+    let validationErrorImport: IValidationErrorImport[];
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
@@ -112,6 +114,169 @@ describe('MessageService', () => {
                 value: 'admin-mail.com',
                 property: 'email',
                 children: [],
+            },
+        ];
+
+        validationErrorImport = [
+            {
+                row: 0,
+                file: 'error.xlsx',
+                errors: [
+                    {
+                        target: {
+                            number: 1,
+                            area: 'area',
+                            city: 'area timur',
+                            gps: { latitude: 6.1754, longitude: 106.8272 },
+                            address: 'address 1',
+                            tags: ['test', 'lala'],
+                        },
+                        property: 'mainBranch',
+                        children: [],
+                        constraints: {
+                            isNotEmpty: 'mainBranch should not be empty',
+                            isString: 'mainBranch must be a string',
+                        },
+                    },
+                ],
+            },
+            {
+                row: 1,
+                file: 'error.xlsx',
+                errors: [
+                    {
+                        target: {
+                            number: 2,
+                            area: 'area',
+                            city: 'area timur',
+                            tags: [],
+                        },
+                        property: 'mainBranch',
+                        children: [],
+                        constraints: {
+                            isNotEmpty: 'mainBranch should not be empty',
+                            isString: 'mainBranch must be a string',
+                        },
+                    },
+                ],
+            },
+            {
+                row: 2,
+                file: 'error.xlsx',
+                errors: [
+                    {
+                        target: {
+                            number: null,
+                            area: 'area',
+                            city: 'area timur',
+                            address: 'address 3',
+                            tags: ['test'],
+                        },
+                        value: null,
+                        property: 'number',
+                        children: [],
+                        constraints: {
+                            min: 'number must not be less than 0',
+                            isNumber:
+                                'number must be a number conforming to the specified constraints',
+                        },
+                    },
+                    {
+                        target: {
+                            number: null,
+                            area: 'area',
+                            city: 'area timur',
+                            address: 'address 3',
+                            tags: ['test'],
+                        },
+                        property: 'mainBranch',
+                        children: [],
+                        constraints: {
+                            isNotEmpty: 'mainBranch should not be empty',
+                            isString: 'mainBranch must be a string',
+                        },
+                    },
+                ],
+            },
+            {
+                row: 3,
+                file: 'error.xlsx',
+                errors: [
+                    {
+                        target: {
+                            number: 4,
+                            area: 'area',
+                            city: 'area timur',
+                            gps: { latitude: 6.1754, longitude: 106.8273 },
+                            address: 'address 4',
+                            tags: ['hand', 'test'],
+                        },
+                        property: 'mainBranch',
+                        children: [],
+                        constraints: {
+                            isNotEmpty: 'mainBranch should not be empty',
+                            isString: 'mainBranch must be a string',
+                        },
+                    },
+                ],
+            },
+            {
+                row: 4,
+                file: 'error.xlsx',
+                errors: [
+                    {
+                        target: {
+                            number: null,
+                            area: 'area',
+                            city: 'area timur',
+                            tags: ['lala'],
+                        },
+                        value: null,
+                        property: 'number',
+                        children: [],
+                        constraints: {
+                            min: 'number must not be less than 0',
+                            isNumber:
+                                'number must be a number conforming to the specified constraints',
+                        },
+                    },
+                    {
+                        target: {
+                            number: null,
+                            area: 'area',
+                            city: 'area timur',
+                            tags: ['lala'],
+                        },
+                        property: 'mainBranch',
+                        children: [],
+                        constraints: {
+                            isNotEmpty: 'mainBranch should not be empty',
+                            isString: 'mainBranch must be a string',
+                        },
+                    },
+                ],
+            },
+            {
+                row: 5,
+                file: 'error.xlsx',
+                errors: [
+                    {
+                        target: {
+                            number: 6,
+                            area: 'area',
+                            city: 'area timur',
+                            gps: { latitude: 6.1754, longitude: 106.8273 },
+                            address: 'address 6',
+                            tags: [],
+                        },
+                        property: 'mainBranch',
+                        children: [],
+                        constraints: {
+                            isNotEmpty: 'mainBranch should not be empty',
+                            isString: 'mainBranch must be a string',
+                        },
+                    },
+                ],
             },
         ];
     });
@@ -269,6 +434,47 @@ describe('MessageService', () => {
                     validationErrorConstrainEmpty
                 )
             ).toBe(message);
+        });
+    });
+
+    describe('getImportErrorsMessage', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(messageService, 'getImportErrorsMessage');
+
+            await messageService.getImportErrorsMessage(validationErrorImport);
+            expect(test).toHaveBeenCalled();
+        });
+
+        it('should be success', async () => {
+            const languages = messageService.getImportErrorsMessage(
+                validationErrorImport
+            );
+            jest.spyOn(
+                messageService,
+                'getImportErrorsMessage'
+            ).mockImplementation(() => languages);
+
+            expect(
+                messageService.getImportErrorsMessage(validationErrorImport)
+            ).toBe(languages);
+        });
+
+        it('should be success with options', async () => {
+            const languages = messageService.getImportErrorsMessage(
+                validationErrorImport,
+                ['en', 'id']
+            );
+            jest.spyOn(
+                messageService,
+                'getImportErrorsMessage'
+            ).mockImplementation(() => languages);
+
+            expect(
+                messageService.getImportErrorsMessage(validationErrorImport, [
+                    'en',
+                    'id',
+                ])
+            ).toBe(languages);
         });
     });
 

@@ -16,14 +16,21 @@ import {
     ENUM_FILE_EXCEL_MIME,
     ENUM_FILE_STATUS_CODE_ERROR,
 } from '../file.constant';
-import { IFile } from '../file.interface';
+import { IFile, IFileExcelOptions } from '../file.interface';
+import { HelperFileService } from 'src/utils/helper/service/helper.file.service';
+import { validate, ValidationError } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
+import { IValidationErrorImport } from 'src/utils/error/error.interface';
 
 export function FileExcelInterceptor(
-    required?: boolean
+    options?: IFileExcelOptions
 ): Type<NestInterceptor> {
     @Injectable()
     class MixinFileExcelInterceptor implements NestInterceptor<Promise<any>> {
-        constructor(private readonly configService: ConfigService) {}
+        constructor(
+            private readonly configService: ConfigService,
+            private readonly helperFileService: HelperFileService
+        ) {}
 
         async intercept(
             context: ExecutionContext,
@@ -31,7 +38,8 @@ export function FileExcelInterceptor(
         ): Promise<Observable<Promise<any> | string>> {
             if (context.getType() === 'http') {
                 const ctx: HttpArgumentsHost = context.switchToHttp();
-                const { file, files } = ctx.getRequest();
+                const request = ctx.getRequest();
+                const { file, files } = request;
 
                 const finalFiles = files || file;
 
@@ -40,7 +48,11 @@ export function FileExcelInterceptor(
                         'file.excel.maxFiles'
                     );
 
-                    if (required && finalFiles.length === 0) {
+                    if (
+                        options &&
+                        options.required &&
+                        finalFiles.length === 0
+                    ) {
                         throw new UnprocessableEntityException({
                             statusCode:
                                 ENUM_FILE_STATUS_CODE_ERROR.FILE_NEEDED_ERROR,
@@ -57,8 +69,72 @@ export function FileExcelInterceptor(
                     for (const file of finalFiles) {
                         await this.validate(file);
                     }
+
+                    if (options && options.extract) {
+                        let extractFiles = [];
+                        let rawExtractFiles = [];
+                        let errors: IValidationErrorImport[] = [];
+
+                        for (const file of finalFiles) {
+                            const extract =
+                                await this.helperFileService.readExcel(
+                                    file.buffer
+                                );
+                            rawExtractFiles = [...rawExtractFiles, ...extract];
+
+                            try {
+                                const serialization = await this.excelValidate(
+                                    extract,
+                                    file.originalname
+                                );
+                                extractFiles = [
+                                    ...extractFiles,
+                                    ...serialization,
+                                ];
+                            } catch (err: any) {
+                                errors = [...errors, ...err];
+                            }
+                        }
+
+                        if (errors.length > 0) {
+                            throw new UnprocessableEntityException({
+                                statusCode:
+                                    ENUM_FILE_STATUS_CODE_ERROR.FILE_VALIDATION_DTO_ERROR,
+                                message: 'file.error.validationDto',
+                                errors,
+                                errorFromImport: true,
+                            });
+                        }
+
+                        request.__extractFiles = extractFiles;
+                        request.__rawExtractFiles = rawExtractFiles;
+                    }
                 } else {
                     await this.validate(finalFiles);
+
+                    if (options && options.extract) {
+                        const extract = await this.helperFileService.readExcel(
+                            file.buffer
+                        );
+
+                        try {
+                            const serialization: Record<string, any>[] =
+                                await this.excelValidate(
+                                    extract,
+                                    file.originalname
+                                );
+                            request.__extractFile = serialization;
+                            request.__rawExtractFile = extract;
+                        } catch (err: any) {
+                            throw new UnprocessableEntityException({
+                                statusCode:
+                                    ENUM_FILE_STATUS_CODE_ERROR.FILE_VALIDATION_DTO_ERROR,
+                                message: 'file.error.validationDto',
+                                errors: err,
+                                errorFromImport: true,
+                            });
+                        }
+                    }
                 }
             }
 
@@ -66,7 +142,7 @@ export function FileExcelInterceptor(
         }
 
         async validate(file: IFile): Promise<void> {
-            if (required && !file) {
+            if (options && options.required && !file) {
                 throw new UnprocessableEntityException({
                     statusCode: ENUM_FILE_STATUS_CODE_ERROR.FILE_NEEDED_ERROR,
                     message: 'file.error.notFound',
@@ -94,6 +170,44 @@ export function FileExcelInterceptor(
                         message: 'file.error.maxSize',
                     });
                 }
+            }
+        }
+
+        async excelValidate(
+            extract: Record<string, any>[],
+            fileName: string
+        ): Promise<Record<string, any>[]> {
+            if (options && options.dto) {
+                const data: Record<string, any>[] = [];
+                const errors: IValidationErrorImport[] = [];
+
+                for (const [index, ext] of extract.entries()) {
+                    const classDto = plainToInstance<any, any>(
+                        options.dto,
+                        ext
+                    );
+
+                    const validator: ValidationError[] = await validate(
+                        classDto
+                    );
+                    if (validator.length > 0) {
+                        errors.push({
+                            row: index,
+                            file: fileName,
+                            errors: validator,
+                        });
+                    } else if (errors.length > 0) {
+                        continue;
+                    } else {
+                        data.push(classDto);
+                    }
+                }
+
+                if (errors.length > 0) {
+                    throw errors;
+                }
+
+                return data;
             }
         }
     }

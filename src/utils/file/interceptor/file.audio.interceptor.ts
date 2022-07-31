@@ -13,13 +13,13 @@ import { Observable } from 'rxjs';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import {
-    ENUM_FILE_IMAGE_MIME,
+    ENUM_FILE_AUDIO_MIME,
     ENUM_FILE_STATUS_CODE_ERROR,
 } from '../file.constant';
-import { IFile, IFileImageOptions } from '../file.interface';
+import { IFile, IFileAudioOptions } from '../file.interface';
 
-export function FileImageInterceptor(
-    options?: IFileImageOptions
+export function FileAudioInterceptor(
+    options?: IFileAudioOptions
 ): Type<NestInterceptor> {
     @Injectable()
     class MixinFileImageInterceptor implements NestInterceptor<Promise<any>> {
@@ -37,7 +37,7 @@ export function FileImageInterceptor(
 
                 if (Array.isArray(finalFiles)) {
                     const maxFiles = this.configService.get<number>(
-                        'file.image.maxFiles'
+                        'file.audio.maxFiles'
                     );
 
                     if (
@@ -79,10 +79,10 @@ export function FileImageInterceptor(
                 const { size, mimetype } = file;
 
                 const maxSize = this.configService.get<number>(
-                    'file.image.maxFileSize'
+                    'file.audio.maxFileSize'
                 );
                 if (
-                    !Object.values(ENUM_FILE_IMAGE_MIME).find(
+                    !Object.values(ENUM_FILE_AUDIO_MIME).find(
                         (val) => val === mimetype.toLowerCase()
                     )
                 ) {

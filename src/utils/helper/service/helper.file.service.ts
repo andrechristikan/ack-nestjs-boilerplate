@@ -67,7 +67,7 @@ export class HelperFileService {
         headers.shift();
 
         const rows: any[] = worksheet
-            .getRows(2, worksheet.lastRow.number)
+            .getRows(2, worksheet.lastRow.number - 1)
             .map((val) => {
                 const row: CellValue[] = val.values as CellValue[];
                 row.shift();
