@@ -1,0 +1,4 @@
+{
+    "hello": "This is test endpoint service {serviceName}.",
+    "helloTimeout": "This is test endpoint service {serviceName} timeout."
+}

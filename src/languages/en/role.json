@@ -8,10 +8,9 @@
     "active": "Active Succeed",
     "error": {
         "notFound": "Role not found",
-        "inactive": "Role inactive",
-        "forbidden": "Role invalid",
         "exist": "Role exist",
-        "active": "Role status active invalid",
-        "used": "Role in used"
+        "active": "Role active invalid",
+        "used": "Role in used",
+        "inactive": "Role is inactive"
     }
 }

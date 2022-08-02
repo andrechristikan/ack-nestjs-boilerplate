@@ -14,13 +14,18 @@ import {
 } from '../response.interface';
 import { Response } from 'express';
 import { IRequestApp } from 'src/common/request/request.interface';
-import { IMessage } from 'src/common/message/message.interface';
+import {
+    IMessage,
+    IMessageOptionsProperties,
+} from 'src/common/message/message.interface';
 import { MessageService } from 'src/common/message/services/message.service';
 import { ENUM_PAGINATION_TYPE } from 'src/common/pagination/constants/pagination.constant';
 import {
     RESPONSE_MESSAGE_PATH_META_KEY,
     RESPONSE_PAGING_TYPE_META_KEY,
     RESPONSE_SERIALIZATION_META_KEY,
+    RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
+    RESPONSE_SERIALIZATION_PROPERTIES_META_KEY,
 } from '../constants/response.constant';
 import { Reflector } from '@nestjs/core';
 import {
@@ -66,7 +71,12 @@ export class ResponsePagingInterceptor
                         );
                     const classSerializationOptions: ClassTransformOptions =
                         this.reflector.get<ClassTransformOptions>(
-                            'class_serializer:options',
+                            RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
+                            context.getHandler()
+                        );
+                    const classSerializationProperties: IMessageOptionsProperties =
+                        this.reflector.get<IMessageOptionsProperties>(
+                            RESPONSE_SERIALIZATION_PROPERTIES_META_KEY,
                             context.getHandler()
                         );
 
@@ -86,18 +96,26 @@ export class ResponsePagingInterceptor
                         totalPage,
                     } = response;
                     let statusCode: number = responseExpress.statusCode;
-                    const serialization = plainToInstance(
-                        classSerialization,
-                        data,
-                        classSerializationOptions
-                    );
+                    let properties: IMessageOptionsProperties =
+                        classSerializationProperties;
+                    let serialization = data;
+
+                    if (classSerialization) {
+                        serialization = plainToInstance(
+                            classSerialization,
+                            data,
+                            classSerializationOptions
+                        );
+                    }
 
                     if (metadata) {
                         statusCode = metadata.statusCode || statusCode;
                         messagePath = metadata.message || messagePath;
+                        properties = metadata.properties || properties;
 
                         delete metadata.statusCode;
                         delete metadata.message;
+                        delete metadata.properties;
                     }
 
                     // metadata
@@ -123,6 +141,7 @@ export class ResponsePagingInterceptor
                     const message: string | IMessage =
                         await this.messageService.get(messagePath, {
                             customLanguages: customLang,
+                            properties,
                         });
 
                     const responseHttp: IResponsePagingHttp = {

@@ -1,4 +1,5 @@
 import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AuthExcludeApiKey } from 'src/common/auth/auth.decorator';
 import { ErrorMeta } from 'src/common/error/error.decorator';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
@@ -23,6 +24,7 @@ import { IResult } from 'ua-parser-js';
 })
 export class AppController {
     constructor(
+        private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
         private readonly helperService: HelperService
     ) {}
@@ -36,11 +38,17 @@ export class AppController {
         @RequestUserAgent() userAgent: IResult,
         @RequestTimezone() timezone: string
     ): Promise<IResponse> {
+        const serviceName = this.configService.get<string>('app.name');
         const newDate = this.helperDateService.create({
             timezone: timezone,
         });
 
         return {
+            metadata: {
+                properties: {
+                    serviceName,
+                },
+            },
             userAgent,
             date: newDate,
             format: this.helperDateService.format(newDate, {
@@ -60,8 +68,16 @@ export class AppController {
     @ErrorMeta(AppController.name, 'helloTimeoutCustom')
     @Get('/hello/timeout')
     async helloTimeout(): Promise<IResponse> {
+        const serviceName = this.configService.get<string>('app.name');
+
         await this.helperService.delay(60000);
 
-        return;
+        return {
+            metadata: {
+                properties: {
+                    serviceName,
+                },
+            },
+        };
     }
 }

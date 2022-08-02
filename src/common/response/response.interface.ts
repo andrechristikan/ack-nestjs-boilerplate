@@ -1,8 +1,13 @@
-import { IMessage } from '../message/message.interface';
+import { ClassConstructor } from 'class-transformer';
+import {
+    IMessage,
+    IMessageOptionsProperties,
+} from '../message/message.interface';
 
 export interface IResponseMetadata {
     statusCode?: number;
     message?: string;
+    properties?: IMessageOptionsProperties;
     [key: string]: any;
 }
 
@@ -10,6 +15,11 @@ export interface IResponseMetadata {
 export interface IResponse {
     metadata?: IResponseMetadata;
     [key: string]: any;
+}
+
+export interface IResponseOptions {
+    classSerialization: ClassConstructor<any>;
+    properties?: IMessageOptionsProperties;
 }
 
 export interface IResponsePaging {

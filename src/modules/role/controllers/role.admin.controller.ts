@@ -57,7 +57,9 @@ export class RoleAdminController {
         private readonly permissionService: PermissionService
     ) {}
 
-    @ResponsePaging('role.list', RoleListSerialization)
+    @ResponsePaging('role.list', {
+        classSerialization: RoleListSerialization,
+    })
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.ROLE_READ)
     @Get('/list')
     async list(
@@ -103,7 +105,9 @@ export class RoleAdminController {
         };
     }
 
-    @Response('role.get', RoleGetSerialization)
+    @Response('role.get', {
+        classSerialization: RoleGetSerialization,
+    })
     @RoleGetGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.ROLE_READ)

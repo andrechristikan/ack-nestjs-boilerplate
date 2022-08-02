@@ -8,12 +8,18 @@
     "upload": "Upload Success",
     "inactive": "Inactive Succeed",
     "active": "Active Succeed",
+    "login": "Login success.",
+    "refresh": "Refresh token success",
+    "signUp": "Sign up Success",
     "error": {
         "notFound": "User not found.",
-        "inactive": "User inactive",
         "emailExist": "Email user used",
         "mobileNumberExist": "Mobile Number user used",
         "active": "User status active invalid",
-        "exist": "User exist"
+        "exist": "User exist",
+        "passwordNotMatch": "Password not match",
+        "newPasswordMustDifference": "Old password must difference",
+        "inactive": "User is inactive",
+        "passwordExpired": "User password expired"
     }
 }

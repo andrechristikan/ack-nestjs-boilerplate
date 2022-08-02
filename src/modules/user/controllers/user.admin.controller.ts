@@ -11,7 +11,6 @@ import {
     Patch,
     NotFoundException,
     UploadedFile,
-    SerializeOptions,
 } from '@nestjs/common';
 import { AuthAdminJwtGuard } from 'src/common/auth/auth.decorator';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.permission.constant';
@@ -66,7 +65,9 @@ export class UserAdminController {
         private readonly roleService: RoleService
     ) {}
 
-    @ResponsePaging('user.list', UserListSerialization)
+    @ResponsePaging('user.list', {
+        classSerialization: UserListSerialization,
+    })
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.USER_READ)
     @Get('/list')
     async list(
@@ -112,7 +113,9 @@ export class UserAdminController {
         };
     }
 
-    @Response('user.get', UserGetSerialization)
+    @Response('user.get', {
+        classSerialization: UserGetSerialization,
+    })
     @UserGetGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.USER_READ)

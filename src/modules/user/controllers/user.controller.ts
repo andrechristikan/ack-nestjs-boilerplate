@@ -55,7 +55,9 @@ export class UserController {
         private readonly awsService: AwsS3Service
     ) {}
 
-    @Response('user.profile', UserProfileSerialization)
+    @Response('user.profile', {
+        classSerialization: UserProfileSerialization,
+    })
     @UserProfileGuard()
     @AuthJwtGuard()
     @Get('/profile')

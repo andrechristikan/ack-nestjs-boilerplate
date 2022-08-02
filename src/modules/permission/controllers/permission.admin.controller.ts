@@ -45,7 +45,9 @@ export class PermissionAdminController {
         private readonly permissionService: PermissionService
     ) {}
 
-    @ResponsePaging('permission.list', PermissionListSerialization)
+    @ResponsePaging('permission.list', {
+        classSerialization: PermissionListSerialization,
+    })
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
     @Get('/list')
     async list(
@@ -97,7 +99,9 @@ export class PermissionAdminController {
         };
     }
 
-    @Response('permission.get', PermissionGetSerialization)
+    @Response('permission.get', {
+        classSerialization: PermissionGetSerialization,
+    })
     @PermissionGetGuard()
     @RequestParamGuard(PermissionRequestDto)
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)

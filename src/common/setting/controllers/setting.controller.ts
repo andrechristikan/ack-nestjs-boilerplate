@@ -31,7 +31,9 @@ export class SettingController {
         private readonly paginationService: PaginationService
     ) {}
 
-    @ResponsePaging('setting.list', SettingListSerialization)
+    @ResponsePaging('setting.list', {
+        classSerialization: SettingListSerialization,
+    })
     @Get('/list')
     async list(
         @Query()
@@ -78,7 +80,9 @@ export class SettingController {
         };
     }
 
-    @Response('setting.get', SettingGetSerialization)
+    @Response('setting.get', {
+        classSerialization: SettingGetSerialization,
+    })
     @SettingGetGuard()
     @RequestParamGuard(SettingRequestDto)
     @Get('get/:setting')
@@ -86,7 +90,9 @@ export class SettingController {
         return setting;
     }
 
-    @Response('setting.getByName', SettingGetSerialization)
+    @Response('setting.getByName', {
+        classSerialization: SettingGetSerialization,
+    })
     @SettingGetByNameGuard()
     @Get('get/name/:settingName')
     async getByName(
