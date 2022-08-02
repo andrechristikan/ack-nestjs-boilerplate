@@ -8,7 +8,6 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ValidationError } from 'class-validator';
 import { Response } from 'express';
 import { DebuggerService } from 'src/common/debugger/services/debugger.service';
-import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
 import { IMessage } from 'src/common/message/message.interface';
 import { MessageService } from 'src/common/message/services/message.service';
 import { IRequestApp } from 'src/common/request/request.interface';

@@ -5,7 +5,7 @@ import {
     IMessageOptions,
     IMessageSetOptions,
 } from '../message.interface';
-import { isArray, ValidationError } from 'class-validator';
+import { ValidationError } from 'class-validator';
 import { I18nService } from 'nestjs-i18n';
 import {
     IErrors,
