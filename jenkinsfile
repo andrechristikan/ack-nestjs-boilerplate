@@ -23,6 +23,7 @@ pipeline {
         GIT = 'Default' // depends with our jenkins setting
         GIT_BRANCH = 'main' // git branch
         GIT_CREDENTIAL = '86535ad6-5d74-48c0-9852-bddbe1fbaff6' // depends with our credentials jenkins 
+        GIT_URL = 'git@github.com:andrechristikan/ack-nestjs-mongoose.git'
     }
     tools {
         nodejs NODE_JS

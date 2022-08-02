@@ -20,41 +20,6 @@ import {
 export class ResponseTimeoutInterceptor
     implements NestInterceptor<Promise<any>>
 {
-    constructor(private readonly reflector: Reflector) {}
-
-    async intercept(
-        context: ExecutionContext,
-        next: CallHandler
-    ): Promise<Observable<Promise<any> | string>> {
-        if (context.getType() === 'http') {
-            const seconds: string = this.reflector.get<string>(
-                RESPONSE_CUSTOM_TIMEOUT_META_VALUE_KEY,
-                context.getHandler()
-            );
-
-            return next.handle().pipe(
-                timeout(ms(seconds)),
-                catchError((err) => {
-                    if (err instanceof TimeoutError) {
-                        throw new RequestTimeoutException({
-                            statusCode:
-                                ENUM_ERROR_STATUS_CODE_ERROR.ERROR_REQUEST_TIMEOUT,
-                            message: 'http.clientError.requestTimeOut',
-                        });
-                    }
-                    return throwError(() => err);
-                })
-            );
-        }
-
-        return next.handle();
-    }
-}
-
-@Injectable()
-export class ResponseTimeoutDefaultInterceptor
-    implements NestInterceptor<Promise<any>>
-{
     constructor(
         private readonly configService: ConfigService,
         private readonly reflector: Reflector
@@ -70,7 +35,26 @@ export class ResponseTimeoutDefaultInterceptor
                 context.getHandler()
             );
 
-            if (!customTimeout) {
+            if (customTimeout) {
+                const seconds: string = this.reflector.get<string>(
+                    RESPONSE_CUSTOM_TIMEOUT_META_VALUE_KEY,
+                    context.getHandler()
+                );
+
+                return next.handle().pipe(
+                    timeout(ms(seconds)),
+                    catchError((err) => {
+                        if (err instanceof TimeoutError) {
+                            throw new RequestTimeoutException({
+                                statusCode:
+                                    ENUM_ERROR_STATUS_CODE_ERROR.ERROR_REQUEST_TIMEOUT,
+                                message: 'http.clientError.requestTimeOut',
+                            });
+                        }
+                        return throwError(() => err);
+                    })
+                );
+            } else {
                 const defaultTimeout: number = this.configService.get<number>(
                     'middleware.timeout.in'
                 );

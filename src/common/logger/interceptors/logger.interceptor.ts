@@ -55,88 +55,22 @@ export class LoggerInterceptor implements NestInterceptor<any> {
                             context.getHandler()
                         );
 
-                    switch (loggerOptions.level) {
-                        case ENUM_LOGGER_LEVEL.FATAL:
-                            await this.loggerService.fatal({
-                                action: loggerAction,
-                                description: loggerOptions.description
-                                    ? loggerOptions.description
-                                    : `Request ${method} called, url ${originalUrl}, and action ${loggerAction}`,
-                                apiKey: apiKey ? apiKey._id : undefined,
-                                user: user ? user._id : undefined,
-                                requestId: id,
-                                method: method as ENUM_REQUEST_METHOD,
-                                role: user ? user.role : undefined,
-                                params,
-                                bodies: body,
-                                statusCode,
-                                tags: loggerOptions.tags
-                                    ? loggerOptions.tags
-                                    : [],
-                            });
-
-                            break;
-                        case ENUM_LOGGER_LEVEL.DEBUG:
-                            await this.loggerService.debug({
-                                action: loggerAction,
-                                description: loggerOptions.description
-                                    ? loggerOptions.description
-                                    : `Request ${method} called, url ${originalUrl}, and action ${loggerAction}`,
-                                apiKey: apiKey ? apiKey._id : undefined,
-                                user: user ? user._id : undefined,
-                                requestId: id,
-                                method: method as ENUM_REQUEST_METHOD,
-                                role: user ? user.role : undefined,
-                                params,
-                                bodies: body,
-                                statusCode,
-                                tags: loggerOptions.tags
-                                    ? loggerOptions.tags
-                                    : [],
-                            });
-
-                            break;
-                        case ENUM_LOGGER_LEVEL.WARM:
-                            await this.loggerService.warning({
-                                action: loggerAction,
-                                description: loggerOptions.description
-                                    ? loggerOptions.description
-                                    : `Request ${method} called, url ${originalUrl}, and action ${loggerAction}`,
-                                apiKey: apiKey ? apiKey._id : undefined,
-                                user: user ? user._id : undefined,
-                                requestId: id,
-                                method: method as ENUM_REQUEST_METHOD,
-                                role: user ? user.role : undefined,
-                                params,
-                                bodies: body,
-                                statusCode,
-                                tags: loggerOptions.tags
-                                    ? loggerOptions.tags
-                                    : [],
-                            });
-
-                            break;
-                        default:
-                            await this.loggerService.info({
-                                action: loggerAction,
-                                description: loggerOptions.description
-                                    ? loggerOptions.description
-                                    : `Request ${method} called, url ${originalUrl}, and action ${loggerAction}`,
-                                apiKey: apiKey ? apiKey._id : undefined,
-                                user: user ? user._id : undefined,
-                                requestId: id,
-                                method: method as ENUM_REQUEST_METHOD,
-                                role: user ? user.role : undefined,
-                                params,
-                                bodies: body,
-                                statusCode,
-                                tags: loggerOptions.tags
-                                    ? loggerOptions.tags
-                                    : [],
-                            });
-
-                            break;
-                    }
+                    await this.loggerService.raw({
+                        level: loggerOptions.level || ENUM_LOGGER_LEVEL.INFO,
+                        action: loggerAction,
+                        description: loggerOptions.description
+                            ? loggerOptions.description
+                            : `Request ${method} called, url ${originalUrl}, and action ${loggerAction}`,
+                        apiKey: apiKey ? apiKey._id : undefined,
+                        user: user ? user._id : undefined,
+                        requestId: id,
+                        method: method as ENUM_REQUEST_METHOD,
+                        role: user ? user.role : undefined,
+                        params,
+                        bodies: body,
+                        statusCode,
+                        tags: loggerOptions.tags ? loggerOptions.tags : [],
+                    });
                 })
             );
         }

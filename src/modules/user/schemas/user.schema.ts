@@ -90,9 +90,7 @@ export type UserDocument = UserEntity & Document;
 UserSchema.pre<UserDocument>('save', function (next) {
     this.email = this.email.toLowerCase();
     this.firstName = this.firstName.toLowerCase();
+    this.lastName = this.lastName.toLowerCase();
 
-    if (this.lastName) {
-        this.lastName = this.lastName.toLowerCase();
-    }
     next();
 });

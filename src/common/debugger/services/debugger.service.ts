@@ -14,6 +14,7 @@ export class DebuggerService {
             _id,
             class: log.class,
             function: log.function,
+            path: log.path,
             data,
         });
     }
@@ -23,6 +24,17 @@ export class DebuggerService {
             _id,
             class: log.class,
             function: log.function,
+            path: log.path,
+            data,
+        });
+    }
+
+    warn(_id: string, log: IDebuggerLog, data?: any): void {
+        this.logger.warn(log.description, {
+            _id,
+            class: log.class,
+            function: log.function,
+            path: log.path,
             data,
         });
     }
@@ -32,6 +44,7 @@ export class DebuggerService {
             _id,
             class: log.class,
             function: log.function,
+            path: log.path,
             data,
         });
     }

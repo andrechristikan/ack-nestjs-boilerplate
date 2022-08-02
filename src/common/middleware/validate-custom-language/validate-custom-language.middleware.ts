@@ -6,7 +6,7 @@ import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.cons
 import { IRequestApp } from 'src/common/request/request.interface';
 
 @Injectable()
-export class CustomLanguageMiddleware implements NestMiddleware {
+export class ValidateCustomLanguageMiddleware implements NestMiddleware {
     constructor(
         private readonly helperArrayService: HelperArrayService,
         private readonly configService: ConfigService
@@ -18,24 +18,28 @@ export class CustomLanguageMiddleware implements NestMiddleware {
         next: NextFunction
     ): Promise<void> {
         let language: string = this.configService.get<string>('app.language');
+        let customLang: string[] = [language];
+
         const reqLanguages: string = req.headers['x-custom-lang'] as string;
         const enumLanguage: string[] = Object.values(ENUM_MESSAGE_LANGUAGE);
         if (reqLanguages) {
-            const languages: string[] = this.helperArrayService.unique(
-                reqLanguages
-                    .split(',')
-                    .filter((val) =>
-                        this.helperArrayService.includes(enumLanguage, val)
-                    )
+            const splitLanguage: string[] = reqLanguages
+                .split(',')
+                .map((val) => val.toLowerCase());
+            const uniqueLanguage =
+                this.helperArrayService.unique(splitLanguage);
+            const languages: string[] = uniqueLanguage.filter((val) =>
+                this.helperArrayService.includes(enumLanguage, val)
             );
 
             if (languages.length > 0) {
                 language = languages.join(',');
+                customLang = languages;
             }
         }
 
         req.headers['x-custom-lang'] = language;
-        req.customLang = language;
+        req.customLang = customLang;
 
         next();
     }

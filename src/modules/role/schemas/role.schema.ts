@@ -43,5 +43,6 @@ export type RoleDocument = RoleEntity & Document;
 // Hooks
 RoleSchema.pre<RoleDocument>('save', function (next) {
     this.name = this.name.toLowerCase();
+
     next();
 });

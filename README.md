@@ -114,9 +114,10 @@ Next development
 - [x] Import data form excel
 - [x] Version 2. New folder structure, new file upload decorator
 - [x] Reduce mixin usage
-- [ ] Rename repo from `ack-nestjs-boilerplate-mongoose` to `ack-nestjs-mongoose`
+- [ ] Upload file multiple update
+- [x] Rename repo from `ack-nestjs-boilerplate-mongoose` to `ack-nestjs-mongoose`
 - [ ] Message en,id
-- [ ] Optimize code, remove unnecessary code
+- [x] Optimize code, remove unnecessary code
 - [ ] Swagger, this will replace postman
 - [ ] Update Unit test
 - [ ] Update E2E test

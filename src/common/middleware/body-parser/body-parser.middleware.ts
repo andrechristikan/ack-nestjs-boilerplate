@@ -29,10 +29,3 @@ export class TextBodyParserMiddleware implements NestMiddleware {
         bodyParser.text()(req, res, next);
     }
 }
-
-@Injectable()
-export class HtmlBodyParserMiddleware implements NestMiddleware {
-    use(req: Request, res: Response, next: NextFunction): void {
-        bodyParser.raw({ type: 'text/html' })(req, res, next);
-    }
-}

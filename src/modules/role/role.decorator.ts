@@ -10,9 +10,10 @@ import { RoleActiveGuard } from './guards/role.active.guard';
 import { RoleNotFoundGuard } from './guards/role.not-found.guard';
 import { RolePutToRequestGuard } from './guards/role.put-to-request.guard';
 import { RoleUsedGuard } from './guards/role.used.guard';
+import { IRoleDocument } from './role.interface';
 
 export const GetRole = createParamDecorator(
-    (data: string, ctx: ExecutionContext) => {
+    (data: string, ctx: ExecutionContext): IRoleDocument => {
         const { __role } = ctx.switchToHttp().getRequest();
         return __role;
     }

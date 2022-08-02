@@ -9,9 +9,10 @@ import {
     SettingPutToRequestByNameGuard,
     SettingPutToRequestGuard,
 } from './guards/setting.put-to-request.guard';
+import { SettingDocument } from './schemas/setting.schema';
 
 export const GetSetting = createParamDecorator(
-    (data: string, ctx: ExecutionContext) => {
+    (data: string, ctx: ExecutionContext): SettingDocument => {
         const { __setting } = ctx.switchToHttp().getRequest();
         return __setting;
     }

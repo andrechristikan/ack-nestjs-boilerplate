@@ -5,6 +5,7 @@ import { HelperFileService } from 'src/common/helper/services/helper.file.servic
 import { ENUM_FILE_STATUS_CODE_ERROR } from '../constants/file.status-code.constant';
 import { ENUM_FILE_EXCEL_MIME } from '../constants/file.constant';
 
+// only for excel
 @Injectable()
 export class FileExtractPipe implements PipeTransform {
     constructor(private readonly helperFileService: HelperFileService) {}

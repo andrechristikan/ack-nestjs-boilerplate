@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CommandModule } from 'nestjs-command';
-import { AppModule } from 'src/app/app.module';
 import { AuthModule } from 'src/common/auth/auth.module';
+import { CommonModule } from 'src/common/common.module';
 import { PermissionModule } from 'src/modules/permission/permission.module';
 import { RoleModule } from 'src/modules/role/role.module';
 import { UserModule } from 'src/modules/user/user.module';
@@ -13,7 +13,7 @@ import { UserSeed } from './seeds/user.seed';
 
 @Module({
     imports: [
-        AppModule,
+        CommonModule,
         CommandModule,
         AuthModule,
         PermissionModule,

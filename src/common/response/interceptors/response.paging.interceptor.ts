@@ -7,7 +7,12 @@ import {
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
-import { IResponsePaging, IResponsePagingOptions } from '../response.interface';
+import {
+    IResponsePaging,
+    IResponsePagingHttp,
+    IResponsePagingMetadataHttp,
+    IResponsePagingOptions,
+} from '../response.interface';
 import { Response } from 'express';
 import { IRequestApp } from 'src/common/request/request.interface';
 import { IMessage } from 'src/common/message/message.interface';
@@ -36,9 +41,11 @@ export class ResponsePagingInterceptor
             return next.handle().pipe(
                 map(async (responseData: Promise<Record<string, any>>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
-                    const response: Response = ctx.getResponse();
+                    const responseExpress: Response = ctx.getResponse();
+                    const requestExpress: IRequestApp =
+                        ctx.getRequest<IRequestApp>();
 
-                    const messagePath: string = this.reflector.get<string>(
+                    let messagePath: string = this.reflector.get<string>(
                         RESPONSE_MESSAGE_PATH_META_KEY,
                         context.getHandler()
                     );
@@ -50,92 +57,82 @@ export class ResponsePagingInterceptor
 
                     // message base on language
                     const { customLang } = ctx.getRequest<IRequestApp>();
-                    const customLanguages = customLang
-                        ? customLang.split(',')
-                        : [];
 
                     // response
-                    let resStatusCode = response.statusCode;
-                    let resMessage: string | IMessage =
-                        await this.messageService.get(messagePath, {
-                            customLanguages,
-                        });
-                    const resData = (await responseData) as IResponsePaging;
+                    const response = (await responseData) as IResponsePaging;
+                    const {
+                        metadata,
+                        totalData,
+                        currentPage,
+                        perPage,
+                        data,
+                        availableSort,
+                        availableSearch,
+                        totalPage,
+                    } = response;
+                    let statusCode: number = responseExpress.statusCode;
 
-                    if (resData) {
-                        const {
-                            totalData,
-                            currentPage,
-                            perPage,
-                            data,
-                            metadata,
-                            availableSort,
-                            availableSearch,
-                            totalPage,
-                        } = resData;
+                    if (metadata) {
+                        statusCode = metadata.statusCode || statusCode;
+                        messagePath = metadata.message || messagePath;
 
-                        // metadata
-                        let resMetadata = {};
-                        if (metadata) {
-                            const { statusCode, message, ...metadataOthers } =
-                                metadata;
-                            resStatusCode = statusCode || resStatusCode;
-                            resMessage = message
-                                ? await this.messageService.get(message, {
-                                      customLanguages,
-                                  })
-                                : resMessage;
-                            resMetadata = metadataOthers;
-                        }
-
-                        if (options.type === ENUM_PAGINATION_TYPE.SIMPLE) {
-                            return {
-                                statusCode: resStatusCode,
-                                message: resMessage,
-                                totalData,
-                                totalPage,
-                                currentPage,
-                                perPage,
-                                metadata:
-                                    Object.keys(resMetadata).length > 0
-                                        ? resMetadata
-                                        : undefined,
-                                data,
-                            };
-                        } else if (options.type === ENUM_PAGINATION_TYPE.MINI) {
-                            return {
-                                statusCode: resStatusCode,
-                                message: resMessage,
-                                totalData,
-                                metadata:
-                                    Object.keys(resMetadata).length > 0
-                                        ? resMetadata
-                                        : undefined,
-                                data,
-                            };
-                        }
-
-                        return {
-                            statusCode: resStatusCode,
-                            message: resMessage,
-                            totalData,
-                            totalPage,
-                            currentPage,
-                            perPage,
-                            availableSort,
-                            availableSearch,
-                            metadata:
-                                Object.keys(resMetadata).length > 0
-                                    ? resMetadata
-                                    : undefined,
-                            data,
-                        };
+                        delete metadata.statusCode;
+                        delete metadata.message;
                     }
 
-                    return {
-                        statusCode: resStatusCode,
-                        message: resMessage,
+                    // metadata
+                    const path = requestExpress.path;
+                    const addMetadata: IResponsePagingMetadataHttp = {
+                        nextPage:
+                            currentPage < totalPage
+                                ? `${path}?perPage=${perPage}&page=${
+                                      currentPage + 1
+                                  }`
+                                : undefined,
+                        previousPage:
+                            currentPage > 1
+                                ? `${path}?perPage=${perPage}&page=${
+                                      currentPage - 1
+                                  }`
+                                : undefined,
+                        firstPage: `${path}?perPage=${perPage}&page=${totalPage}`,
+                        lastPage: `${path}?perPage=${perPage}&page=${1}`,
                     };
+
+                    // message
+                    const message: string | IMessage =
+                        await this.messageService.get(messagePath, {
+                            customLanguages: customLang,
+                        });
+
+                    const responseHttp: IResponsePagingHttp = {
+                        statusCode,
+                        message,
+                        totalData,
+                        totalPage,
+                        currentPage,
+                        perPage,
+                        availableSort,
+                        availableSearch,
+                        metadata: {
+                            ...addMetadata,
+                            ...metadata,
+                        },
+                        data,
+                    };
+
+                    if (options.type === ENUM_PAGINATION_TYPE.SIMPLE) {
+                        delete responseHttp.totalPage;
+                        delete responseHttp.currentPage;
+                        delete responseHttp.perPage;
+                    }
+
+                    if (options.type === ENUM_PAGINATION_TYPE.SIMPLE) {
+                        delete responseHttp.availableSort;
+                        delete responseHttp.availableSearch;
+                    }
+
+                    return responseHttp;
                 })
             );
         }

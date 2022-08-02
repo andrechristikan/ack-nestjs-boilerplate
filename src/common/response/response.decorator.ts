@@ -1,4 +1,5 @@
 import { applyDecorators, SetMetadata, UseInterceptors } from '@nestjs/common';
+import { ENUM_PAGINATION_TYPE } from '../pagination/constants/pagination.constant';
 import {
     RESPONSE_CUSTOM_TIMEOUT_META_KEY,
     RESPONSE_CUSTOM_TIMEOUT_META_VALUE_KEY,
@@ -7,7 +8,6 @@ import {
 } from './constants/response.constant';
 import { ResponseDefaultInterceptor } from './interceptors/response.default.interceptor';
 import { ResponsePagingInterceptor } from './interceptors/response.paging.interceptor';
-import { ResponseTimeoutInterceptor } from './interceptors/response.timeout.interceptor';
 import { IResponsePagingOptions } from './response.interface';
 
 export function Response(messagePath: string): any {
@@ -24,13 +24,15 @@ export function ResponsePaging(
     return applyDecorators(
         UseInterceptors(ResponsePagingInterceptor),
         SetMetadata(RESPONSE_MESSAGE_PATH_META_KEY, messagePath),
-        SetMetadata(RESPONSE_PAGING_OPTIONS_META_KEY, options ? options : {})
+        SetMetadata(
+            RESPONSE_PAGING_OPTIONS_META_KEY,
+            options ? options : { type: ENUM_PAGINATION_TYPE.FULL }
+        )
     );
 }
 
 export function ResponseTimeout(seconds: string): any {
     return applyDecorators(
-        UseInterceptors(ResponseTimeoutInterceptor),
         SetMetadata(RESPONSE_CUSTOM_TIMEOUT_META_KEY, true),
         SetMetadata(RESPONSE_CUSTOM_TIMEOUT_META_VALUE_KEY, seconds)
     );

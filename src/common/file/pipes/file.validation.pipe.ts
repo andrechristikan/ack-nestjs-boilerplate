@@ -11,6 +11,8 @@ import { IValidationErrorImport } from 'src/common/error/error.interface';
 import { ENUM_FILE_STATUS_CODE_ERROR } from '../constants/file.status-code.constant';
 import { ENUM_FILE_EXCEL_MIME } from '../constants/file.constant';
 
+// only for excel
+// must use after FileExtractPipe
 @Injectable()
 export class FileValidationPipe<T> implements PipeTransform {
     constructor(private readonly dto: ClassConstructor<T>) {}
@@ -25,6 +27,12 @@ export class FileValidationPipe<T> implements PipeTransform {
                 statusCode: ENUM_FILE_STATUS_CODE_ERROR.FILE_EXTENSION_ERROR,
                 message: 'file.error.mimeInvalid',
             });
+        } else if (!value.extract) {
+            throw new UnprocessableEntityException({
+                statusCode:
+                    ENUM_FILE_STATUS_CODE_ERROR.FILE_NEED_EXTRACT_FIRST_ERROR,
+                message: 'file.error.needExtractFirst',
+            });
         }
 
         const classDtos: T[] = plainToInstance(this.dto, value.extract);
@@ -37,7 +45,7 @@ export class FileValidationPipe<T> implements PipeTransform {
                     ENUM_FILE_STATUS_CODE_ERROR.FILE_VALIDATION_DTO_ERROR,
                 message: 'file.error.validationDto',
                 errors: err,
-                errorFromImport: true,
+                errorType: 'import',
             });
         }
 

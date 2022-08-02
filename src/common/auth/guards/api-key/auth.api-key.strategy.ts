@@ -111,7 +111,6 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
                     _id: authApi._id,
                     key: authApi.key,
                     name: authApi.name,
-                    description: authApi.description,
                 };
                 verified(null, authApi);
             }

@@ -39,5 +39,6 @@ export type PermissionDocument = PermissionEntity & Document;
 PermissionSchema.pre<PermissionDocument>('save', function (next) {
     this.code = this.code.toUpperCase();
     this.name = this.name.toLowerCase();
+
     next();
 });

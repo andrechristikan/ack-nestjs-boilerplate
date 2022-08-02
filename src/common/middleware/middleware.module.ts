@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { CorsMiddleware } from './cors/cors.middleware';
 import {
-    HtmlBodyParserMiddleware,
     JsonBodyParserMiddleware,
     RawBodyParserMiddleware,
     TextBodyParserMiddleware,
@@ -23,9 +22,10 @@ import { CompressionMiddleware } from './compression/compression.middleware';
 import { MaintenanceMiddleware } from './maintenance/maintenance.middleware';
 import { RequestIdMiddleware } from './request-id/request-id.middleware';
 import { TimezoneMiddleware } from './timezone/timezone.middleware';
-import { CustomLanguageMiddleware } from './custom-language/custom-language.middleware';
 import { ResponseTimeMiddleware } from './response-time/response-time.middleware';
 import { TimestampMiddleware } from './timestamp/timestamp.middleware';
+import { ValidateCustomLanguageMiddleware } from './validate-custom-language/validate-custom-language.middleware';
+import { VersionMiddleware } from './version/version.middleware';
 
 @Module({})
 export class MiddlewareModule implements NestModule {
@@ -36,7 +36,6 @@ export class MiddlewareModule implements NestModule {
                 TimezoneMiddleware,
                 JsonBodyParserMiddleware,
                 RawBodyParserMiddleware,
-                HtmlBodyParserMiddleware,
                 TextBodyParserMiddleware,
                 UrlencodedBodyParserMiddleware,
                 CompressionMiddleware,
@@ -46,9 +45,10 @@ export class MiddlewareModule implements NestModule {
                 HelmetMiddleware,
                 RateLimitMiddleware,
                 UserAgentMiddleware,
-                CustomLanguageMiddleware,
+                ValidateCustomLanguageMiddleware,
                 ResponseTimeMiddleware,
-                TimestampMiddleware
+                TimestampMiddleware,
+                VersionMiddleware
             )
             .forRoutes('*');
 

@@ -3,11 +3,7 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { plainToInstance } from 'class-transformer';
-import {
-    IAuthApiDocument,
-    IAuthApiRequestHashedData,
-    IAuthApiCreate,
-} from '../auth.interface';
+import { IAuthApi, IAuthApiRequestHashedData } from '../auth.interface';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseEntity } from 'src/common/database/database.decorator';
 import { AuthApiDocument, AuthApiEntity } from '../schemas/auth.api.schema';
@@ -18,6 +14,10 @@ import { IDatabaseFindAllOptions } from 'src/common/database/database.interface'
 import { AuthApiListSerialization } from '../serializations/auth.api.list.serialization';
 import { AuthApiGetSerialization } from '../serializations/auth.api.get.serialization';
 import { AuthApiUpdateDto } from '../dtos/auth.api.update.dto';
+import {
+    AuthApiCreateDto,
+    AuthApiCreateRawDto,
+} from '../dtos/auth.api.create.dto';
 
 @Injectable()
 export class AuthApiService {
@@ -98,20 +98,41 @@ export class AuthApiService {
         return authApi.save();
     }
 
-    async create({
+    async create({ name, description }: AuthApiCreateDto): Promise<IAuthApi> {
+        const key = await this.createKey();
+        const secret = await this.createSecret();
+        const passphrase = await this.createPassphrase();
+        const encryptionKey = await this.createEncryptionKey();
+        const hash: string = await this.createHashApiKey(key, secret);
+
+        const create: AuthApiDocument = new this.authApiModel({
+            name,
+            description,
+            key,
+            hash,
+            passphrase,
+            encryptionKey,
+            isActive: true,
+        });
+
+        await create.save();
+
+        return {
+            _id: create._id,
+            secret,
+            passphrase,
+            encryptionKey,
+        };
+    }
+
+    async createRaw({
         name,
         description,
         key,
         secret,
         passphrase,
         encryptionKey,
-    }: IAuthApiCreate): Promise<IAuthApiDocument> {
-        key = key ? key : await this.createKey();
-        secret = secret ? secret : await this.createSecret();
-        passphrase = passphrase ? passphrase : await this.createPassphrase();
-        encryptionKey = encryptionKey
-            ? encryptionKey
-            : await this.createEncryptionKey();
+    }: AuthApiCreateRawDto): Promise<IAuthApi> {
         const hash: string = await this.createHashApiKey(key, secret);
 
         const create: AuthApiDocument = new this.authApiModel({
@@ -146,7 +167,7 @@ export class AuthApiService {
         return authApi.save();
     }
 
-    async updateHashById(_id: string): Promise<IAuthApiDocument> {
+    async updateHashById(_id: string): Promise<IAuthApi> {
         const authApi: AuthApiDocument = await this.authApiModel.findById(_id);
         const secret: string = await this.createSecret();
         const hash: string = await this.createHashApiKey(authApi.key, secret);

@@ -8,6 +8,7 @@ import { map, Observable } from 'rxjs';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 
+// only for response success and error in controller
 @Injectable()
 export class ResponseCustomHeadersInterceptor
     implements NestInterceptor<Promise<any>>
@@ -38,6 +39,10 @@ export class ResponseCustomHeadersInterceptor
                     responseExpress.setHeader(
                         'x-request-id',
                         headers['x-request-id']
+                    );
+                    responseExpress.setHeader(
+                        'x-api-version',
+                        headers['x-api-version']
                     );
 
                     return response;

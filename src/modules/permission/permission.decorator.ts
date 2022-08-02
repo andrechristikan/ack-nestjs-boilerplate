@@ -9,9 +9,10 @@ import { PERMISSION_ACTIVE_META_KEY } from './constants/permission.constant';
 import { PermissionActiveGuard } from './guards/permission.active.guard';
 import { PermissionNotFoundGuard } from './guards/permission.not-found.guard';
 import { PermissionPutToRequestGuard } from './guards/permission.put-to-request.guard';
+import { PermissionDocument } from './schemas/permission.schema';
 
 export const GetPermission = createParamDecorator(
-    (data: string, ctx: ExecutionContext) => {
+    (data: string, ctx: ExecutionContext): PermissionDocument => {
         const { __permission } = ctx.switchToHttp().getRequest();
         return __permission;
     }

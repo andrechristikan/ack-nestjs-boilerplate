@@ -30,7 +30,6 @@ import { StringOrNumberOrBooleanConstraint } from './validations/request.string-
             useFactory: () =>
                 new ValidationPipe({
                     transform: true,
-                    whitelist: true,
                     skipNullProperties: false,
                     skipUndefinedProperties: false,
                     skipMissingProperties: false,

@@ -16,7 +16,7 @@ export class AuthApiSeed {
     })
     async insert(): Promise<void> {
         try {
-            await this.authApiService.create({
+            await this.authApiService.createRaw({
                 name: 'Auth Api Key Migration',
                 description: 'From migration',
                 key: 'qwertyuiop12345zxcvbnmkjh',

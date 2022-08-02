@@ -85,12 +85,13 @@ export class HttpDebuggerResponseMiddleware implements NestMiddleware {
         const send: any = res.send;
         const resOld: any = res;
 
-        // Add response data to response
+        // Add response data to request
         // this is for morgan
         resOld.send = (body: any) => {
             resOld.body = body;
             resOld.send = send;
             resOld.send(body);
+
             res = resOld as Response;
         };
 

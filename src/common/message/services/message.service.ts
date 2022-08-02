@@ -24,6 +24,18 @@ export class MessageService {
         this.defaultLanguage = this.configService.get<string>('app.language');
     }
 
+    private setMessage(
+        lang: string,
+        key: string,
+        options?: IMessageSetOptions
+    ): any {
+        return this.i18n.translate(key, {
+            lang: lang || this.defaultLanguage,
+            args:
+                options && options.properties ? options.properties : undefined,
+        });
+    }
+
     async getRequestErrorsMessage(
         requestErrors: ValidationError[],
         customLanguages?: string[]
@@ -76,42 +88,6 @@ export class MessageService {
         return messages.flat(1) as IErrors[];
     }
 
-    async get(
-        key: string,
-        options?: IMessageOptions
-    ): Promise<string | IMessage> {
-        const { properties, customLanguages } = options
-            ? options
-            : { properties: undefined, customLanguages: undefined };
-
-        if (
-            customLanguages &&
-            isArray(customLanguages) &&
-            customLanguages.length > 0
-        ) {
-            const messages: IMessage = {};
-            for (const customLanguage of customLanguages) {
-                messages[customLanguage] = await this.setMessage(
-                    customLanguage,
-                    key,
-                    {
-                        properties,
-                    }
-                );
-            }
-
-            if (Object.keys(messages).length === 1) {
-                return messages[customLanguages[0]];
-            }
-
-            return messages;
-        }
-
-        return this.setMessage(this.defaultLanguage, key, {
-            properties,
-        });
-    }
-
     async getImportErrorsMessage(
         errors: IValidationErrorImport[],
         customLanguages?: string[]
@@ -131,15 +107,34 @@ export class MessageService {
         return newErrors;
     }
 
-    private setMessage(
-        lang: string,
+    async get(
         key: string,
-        options?: IMessageSetOptions
-    ): any {
-        return this.i18n.translate(key, {
-            lang: lang || this.defaultLanguage,
-            args:
-                options && options.properties ? options.properties : undefined,
-        });
+        options?: IMessageOptions
+    ): Promise<string | IMessage> {
+        const properties =
+            options && options.properties ? options.properties : undefined;
+        const customLanguages =
+            options &&
+            options.customLanguages &&
+            options.customLanguages.length > 0
+                ? options.customLanguages
+                : [this.defaultLanguage];
+
+        const messages: IMessage = {};
+        for (const customLanguage of customLanguages) {
+            messages[customLanguage] = await this.setMessage(
+                customLanguage,
+                key,
+                {
+                    properties,
+                }
+            );
+        }
+
+        if (customLanguages.length <= 1) {
+            return messages[customLanguages[0]];
+        }
+
+        return messages;
     }
 }

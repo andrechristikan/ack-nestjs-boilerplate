@@ -1,20 +1,4 @@
-import {
-    IsNotEmpty,
-    IsOptional,
-    IsString,
-    MaxLength,
-    ValidateIf,
-} from 'class-validator';
+import { PartialType } from '@nestjs/mapped-types';
+import { AuthApiCreateDto } from './auth.api.create.dto';
 
-export class AuthApiUpdateDto {
-    @IsNotEmpty()
-    @IsString()
-    @MaxLength(50)
-    name: string;
-
-    @IsOptional()
-    @ValidateIf((e) => e.description !== '')
-    @IsString()
-    @MaxLength(100)
-    description?: string;
-}
+export class AuthApiUpdateDto extends PartialType(AuthApiCreateDto) {}

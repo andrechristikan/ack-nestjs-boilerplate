@@ -11,7 +11,7 @@ export enum ENUM_PAGINATION_AVAILABLE_SORT_TYPE {
 }
 
 export enum ENUM_PAGINATION_TYPE {
-    FUL = 'FUL',
+    FULL = 'FULL',
     SIMPLE = 'SIMPLE',
     MINI = 'MINI',
 }

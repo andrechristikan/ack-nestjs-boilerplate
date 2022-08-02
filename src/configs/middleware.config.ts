@@ -40,6 +40,7 @@ export default registerAs(
                 'x-timezone',
                 'x-request-id',
                 'X-Response-Time',
+                'x-api-version',
                 'user-agent',
             ],
         },
@@ -60,6 +61,27 @@ export default registerAs(
             in: process.env.MIDDLEWARE_TIMEOUT
                 ? ms(process.env.MIDDLEWARE_TIMEOUT)
                 : ms('30s'), // 30s based on ms module
+        },
+        userAgent: {
+            os: [
+                'Mobile',
+                'Mac OS',
+                'Windows',
+                'UNIX',
+                'Linux',
+                'iOS',
+                'Android',
+            ],
+            browser: [
+                'IE',
+                'Safari',
+                'Edge',
+                'Opera',
+                'Chrome',
+                'Firefox',
+                'Samsung Browser',
+                'UCBrowser',
+            ],
         },
     })
 );

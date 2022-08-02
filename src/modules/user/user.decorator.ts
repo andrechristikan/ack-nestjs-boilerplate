@@ -10,9 +10,10 @@ import { UserPayloadPutToRequestGuard } from './guards/payload/user.payload.put-
 import { UserActiveGuard } from './guards/user.active.guard';
 import { UserNotFoundGuard } from './guards/user.not-found.guard';
 import { UserPutToRequestGuard } from './guards/user.put-to-request.guard';
+import { IUserDocument } from './user.interface';
 
 export const GetUser = createParamDecorator(
-    (data: string, ctx: ExecutionContext) => {
+    (data: string, ctx: ExecutionContext): IUserDocument => {
         const { __user } = ctx.switchToHttp().getRequest();
         return __user;
     }

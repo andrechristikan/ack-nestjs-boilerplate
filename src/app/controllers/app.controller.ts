@@ -1,4 +1,10 @@
-import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
+import {
+    BadRequestException,
+    Controller,
+    Get,
+    VERSION_NEUTRAL,
+} from '@nestjs/common';
+import { BadRequestError } from 'passport-headerapikey';
 import { AuthExcludeApiKey } from 'src/common/auth/auth.decorator';
 import { ErrorMeta } from 'src/common/error/error.decorator';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';

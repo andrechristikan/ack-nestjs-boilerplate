@@ -4,10 +4,6 @@ import { Response, NextFunction } from 'express';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { IRequestApp } from 'src/common/request/request.interface';
 import userAgentParserJs from 'ua-parser-js';
-import {
-    ENUM_USER_AGENT_BROWSER,
-    ENUM_USER_AGENT_OS,
-} from './constants/user-agent.constant';
 
 @Injectable()
 export class UserAgentMiddleware implements NestMiddleware {
@@ -15,6 +11,12 @@ export class UserAgentMiddleware implements NestMiddleware {
 
     use(req: IRequestApp, res: Response, next: NextFunction): void {
         const mode: string = this.configService.get<string>('app.mode');
+        const os: string[] = this.configService.get<string[]>(
+            'middleware.userAgent.os'
+        );
+        const browser: string[] = this.configService.get<string[]>(
+            'middleware.userAgent.browser'
+        );
 
         if (mode === 'secure') {
             // Put your specific user agent
@@ -32,7 +34,7 @@ export class UserAgentMiddleware implements NestMiddleware {
             );
 
             if (
-                !Object.values(ENUM_USER_AGENT_OS).some((val) =>
+                !os.some((val) =>
                     val.match(new RegExp(userAgentParser.os.name))
                 )
             ) {
@@ -44,7 +46,7 @@ export class UserAgentMiddleware implements NestMiddleware {
             }
 
             if (
-                !Object.values(ENUM_USER_AGENT_BROWSER).some((val) =>
+                !browser.some((val) =>
                     val.match(new RegExp(userAgentParser.browser.name))
                 )
             ) {

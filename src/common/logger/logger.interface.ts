@@ -22,6 +22,10 @@ export interface ILogger {
     statusCode?: number;
 }
 
+export interface ILoggerRaw extends ILogger {
+    level: ENUM_LOGGER_LEVEL;
+}
+
 export interface ILoggerOptions {
     description?: string;
     tags?: string[];

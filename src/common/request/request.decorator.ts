@@ -36,14 +36,14 @@ export const RequestTimezone = createParamDecorator(
 );
 
 export const RequestTimestamp = createParamDecorator(
-    (data: string, ctx: ExecutionContext): string => {
+    (data: string, ctx: ExecutionContext): number => {
         const { timestamp } = ctx.switchToHttp().getRequest() as IRequestApp;
         return timestamp;
     }
 );
 
 export const RequestCustomLang = createParamDecorator(
-    (data: string, ctx: ExecutionContext): string => {
+    (data: string, ctx: ExecutionContext): string[] => {
         const { customLang } = ctx.switchToHttp().getRequest() as IRequestApp;
         return customLang;
     }

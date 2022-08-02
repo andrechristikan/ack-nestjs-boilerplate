@@ -5,6 +5,7 @@ import {
     applyDecorators,
     SetMetadata,
 } from '@nestjs/common';
+import { IAuthApi, IAuthApiPayload } from './auth.interface';
 import {
     AUTH_ACCESS_FOR_META_KEY,
     AUTH_EXCLUDE_API_KEY_META_KEY,
@@ -83,7 +84,7 @@ export const User = createParamDecorator(
 );
 
 export const ApiKey = createParamDecorator(
-    (data: string, ctx: ExecutionContext): Record<string, any> => {
+    (data: string, ctx: ExecutionContext): IAuthApiPayload => {
         const { apiKey } = ctx.switchToHttp().getRequest();
         return data ? apiKey[data] : apiKey;
     }

@@ -50,3 +50,10 @@ export const AuthApiDatabaseName = 'authapis';
 export const AuthApiSchema = SchemaFactory.createForClass(AuthApiEntity);
 
 export type AuthApiDocument = AuthApiEntity & Document;
+
+// Hooks
+AuthApiSchema.pre<AuthApiDocument>('save', function (next) {
+    this.name = this.name.toLowerCase();
+
+    next();
+});
