@@ -7,7 +7,6 @@ export function RequestAddDatePipe(days: number): Type<PipeTransform> {
         constructor(private readonly helperDateService: HelperDateService) {}
 
         async transform(value: any) {
-            // no need timezone because convert a date
             return this.helperDateService.forwardInDays(days, {
                 fromDate: this.helperDateService.create({
                     date: value,

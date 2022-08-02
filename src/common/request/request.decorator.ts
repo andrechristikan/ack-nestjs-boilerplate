@@ -7,7 +7,10 @@ import {
 } from '@nestjs/common';
 import { ClassConstructor } from 'class-transformer';
 import { IResult } from 'ua-parser-js';
-import { REQUEST_EXCLUDE_TIMESTAMP_META_KEY } from './constants/request.constant';
+import {
+    REQUEST_EXCLUDE_TIMESTAMP_META_KEY,
+    REQUEST_PARAM_CLASS_DTOS_META_KEY,
+} from './constants/request.constant';
 import { RequestParamRawGuard } from './guards/request.param.guard';
 import { IRequestApp } from './request.interface';
 
@@ -49,7 +52,10 @@ export const RequestCustomLang = createParamDecorator(
 export function RequestParamGuard(
     ...classValidation: ClassConstructor<any>[]
 ): any {
-    return applyDecorators(UseGuards(RequestParamRawGuard(classValidation)));
+    return applyDecorators(
+        UseGuards(RequestParamRawGuard),
+        SetMetadata(REQUEST_PARAM_CLASS_DTOS_META_KEY, classValidation)
+    );
 }
 
 export const RequestExcludeTimestamp = () =>
