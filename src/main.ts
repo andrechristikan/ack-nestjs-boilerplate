@@ -37,55 +37,58 @@ async function bootstrap() {
     }
 
     // Swagger
-    const swaggerVersion: string = configService.get<string>('swagger.version');
     const swaggerPrefix: string = configService.get<string>('swagger.prefix');
-    const swaggerTitle = `${name.toUpperCase()} API Spec`;
-    const swaggerLicense = configService.get<string>('swagger.licenseUrl');
-    const config = new DocumentBuilder()
-        .setTitle(swaggerTitle)
-        .setDescription(`This docs will describe the API.`)
-        .setVersion(swaggerVersion)
-        .addTag(name)
-        .setLicense('MIT', swaggerLicense)
-        .addBearerAuth(
-            {
-                type: 'http',
-                scheme: 'bearer',
-                bearerFormat: 'JWT',
-                name: 'Access Token',
-                description: 'Enter Access Token token',
-                in: 'header',
-            },
-            'jwt-access-token'
-        )
-        .addBearerAuth(
-            {
-                type: 'http',
-                scheme: 'bearer',
-                bearerFormat: 'JWT',
-                name: 'Refresh Token',
-                description: 'Enter Refresh Token token',
-                in: 'header',
-            },
-            'jwt-refresh-token'
-        )
-        .addApiKey(
-            {
-                type: 'apiKey',
-                name: 'ApiKey',
-                description: 'Enter Api Key Hash',
-                in: 'header',
-            },
-            'api-key'
-        )
-        .build();
-    const document = SwaggerModule.createDocument(app, config, {
-        deepScanRoutes: true,
-    });
-    SwaggerModule.setup(swaggerPrefix, app, document, {
-        explorer: true,
-        customSiteTitle: swaggerTitle,
-    });
+    if (env !== 'production') {
+        const swaggerVersion: string =
+            configService.get<string>('swagger.version');
+        const swaggerTitle = `${name.toUpperCase()} API Spec`;
+        const swaggerLicense = configService.get<string>('swagger.licenseUrl');
+        const config = new DocumentBuilder()
+            .setTitle(swaggerTitle)
+            .setDescription(`This docs will describe the API.`)
+            .setVersion(swaggerVersion)
+            .addTag(name)
+            .setLicense('MIT', swaggerLicense)
+            .addBearerAuth(
+                {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT',
+                    name: 'Access Token',
+                    description: 'Enter Access Token token',
+                    in: 'header',
+                },
+                'jwt-access-token'
+            )
+            .addBearerAuth(
+                {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT',
+                    name: 'Refresh Token',
+                    description: 'Enter Refresh Token token',
+                    in: 'header',
+                },
+                'jwt-refresh-token'
+            )
+            .addApiKey(
+                {
+                    type: 'apiKey',
+                    name: 'ApiKey',
+                    description: 'Enter Api Key Hash',
+                    in: 'header',
+                },
+                'api-key'
+            )
+            .build();
+        const document = SwaggerModule.createDocument(app, config, {
+            deepScanRoutes: true,
+        });
+        SwaggerModule.setup(swaggerPrefix, app, document, {
+            explorer: true,
+            customSiteTitle: swaggerTitle,
+        });
+    }
 
     // Listen
     await app.listen(port, host);
@@ -106,7 +109,7 @@ async function bootstrap() {
         'NestApplication'
     );
     logger.log(
-        `App Task is ${configService.get<boolean>('app.taskOn')}`,
+        `App Task is ${configService.get<boolean>('app.jobOn')}`,
         'NestApplication'
     );
     logger.log(`App Timezone is ${tz}`, 'NestApplication');
@@ -124,14 +127,12 @@ async function bootstrap() {
         'NestApplication'
     );
     logger.log(`Server running on ${await app.getUrl()}`, 'NestApplication');
-
-    logger.log(`==========================================================`);
-
     logger.log(
-        `Swagger running on ${await app.getUrl()}${swaggerPrefix}`,
+        `Swagger is ${
+            env !== 'production' ? 'running on ' + swaggerPrefix : 'off'
+        }`,
         'NestApplication'
     );
-    logger.log(`Swagger version ${swaggerVersion}`, 'NestApplication');
 
     logger.log(`==========================================================`);
 }
