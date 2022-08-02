@@ -11,7 +11,6 @@ import {
     IResponsePaging,
     IResponsePagingHttp,
     IResponsePagingMetadataHttp,
-    IResponsePagingOptions,
 } from '../response.interface';
 import { Response } from 'express';
 import { IRequestApp } from 'src/common/request/request.interface';
@@ -20,9 +19,15 @@ import { MessageService } from 'src/common/message/services/message.service';
 import { ENUM_PAGINATION_TYPE } from 'src/common/pagination/constants/pagination.constant';
 import {
     RESPONSE_MESSAGE_PATH_META_KEY,
-    RESPONSE_PAGING_OPTIONS_META_KEY,
+    RESPONSE_PAGING_TYPE_META_KEY,
+    RESPONSE_SERIALIZATION_META_KEY,
 } from '../constants/response.constant';
 import { Reflector } from '@nestjs/core';
+import {
+    ClassConstructor,
+    ClassTransformOptions,
+    plainToInstance,
+} from 'class-transformer';
 
 @Injectable()
 export class ResponsePagingInterceptor
@@ -49,9 +54,19 @@ export class ResponsePagingInterceptor
                         RESPONSE_MESSAGE_PATH_META_KEY,
                         context.getHandler()
                     );
-                    const options: IResponsePagingOptions =
-                        this.reflector.get<IResponsePagingOptions>(
-                            RESPONSE_PAGING_OPTIONS_META_KEY,
+                    const type: ENUM_PAGINATION_TYPE =
+                        this.reflector.get<ENUM_PAGINATION_TYPE>(
+                            RESPONSE_PAGING_TYPE_META_KEY,
+                            context.getHandler()
+                        );
+                    const classSerialization: ClassConstructor<any> =
+                        this.reflector.get<ClassConstructor<any>>(
+                            RESPONSE_SERIALIZATION_META_KEY,
+                            context.getHandler()
+                        );
+                    const classSerializationOptions: ClassTransformOptions =
+                        this.reflector.get<ClassTransformOptions>(
+                            'class_serializer:options',
                             context.getHandler()
                         );
 
@@ -71,6 +86,11 @@ export class ResponsePagingInterceptor
                         totalPage,
                     } = response;
                     let statusCode: number = responseExpress.statusCode;
+                    const serialization = plainToInstance(
+                        classSerialization,
+                        data,
+                        classSerializationOptions
+                    );
 
                     if (metadata) {
                         statusCode = metadata.statusCode || statusCode;
@@ -118,16 +138,19 @@ export class ResponsePagingInterceptor
                             ...addMetadata,
                             ...metadata,
                         },
-                        data,
+                        data: serialization,
                     };
 
-                    if (options.type === ENUM_PAGINATION_TYPE.SIMPLE) {
+                    if (
+                        type === ENUM_PAGINATION_TYPE.SIMPLE ||
+                        type === ENUM_PAGINATION_TYPE.MINI
+                    ) {
                         delete responseHttp.totalPage;
                         delete responseHttp.currentPage;
                         delete responseHttp.perPage;
                     }
 
-                    if (options.type === ENUM_PAGINATION_TYPE.SIMPLE) {
+                    if (type === ENUM_PAGINATION_TYPE.MINI) {
                         delete responseHttp.availableSort;
                         delete responseHttp.availableSearch;
                     }

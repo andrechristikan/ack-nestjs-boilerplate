@@ -11,6 +11,7 @@ import {
     Patch,
     NotFoundException,
     UploadedFile,
+    SerializeOptions,
 } from '@nestjs/common';
 import { AuthAdminJwtGuard } from 'src/common/auth/auth.decorator';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.permission.constant';
@@ -40,6 +41,7 @@ import { UserImportDto } from '../dtos/user.import.dto';
 import { UserListDto } from '../dtos/user.list.dto';
 import { UserRequestDto } from '../dtos/user.request.dto';
 import { UserUpdateDto } from '../dtos/user.update.dto';
+import { UserGetSerialization } from '../serializations/user.get.serialization';
 import { UserListSerialization } from '../serializations/user.list.serialization';
 import { UserService } from '../services/user.service';
 import {
@@ -64,7 +66,7 @@ export class UserAdminController {
         private readonly roleService: RoleService
     ) {}
 
-    @ResponsePaging('user.list')
+    @ResponsePaging('user.list', UserListSerialization)
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.USER_READ)
     @Get('/list')
     async list(
@@ -99,9 +101,6 @@ export class UserAdminController {
             perPage
         );
 
-        const data: UserListSerialization[] =
-            await this.userService.serializationList(users);
-
         return {
             totalData,
             totalPage,
@@ -109,17 +108,17 @@ export class UserAdminController {
             perPage,
             availableSearch,
             availableSort,
-            data,
+            data: users,
         };
     }
 
-    @Response('user.get')
+    @Response('user.get', UserGetSerialization)
     @UserGetGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.USER_READ)
     @Get('get/:user')
     async get(@GetUser() user: IUserDocument): Promise<IResponse> {
-        return this.userService.serializationGet(user);
+        return user;
     }
 
     @Response('user.create')

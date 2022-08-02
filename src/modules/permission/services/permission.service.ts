@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
 import { Model } from 'mongoose';
 import { DatabaseEntity } from 'src/common/database/database.decorator';
 import { IDatabaseFindAllOptions } from 'src/common/database/database.interface';
@@ -9,8 +8,6 @@ import {
     PermissionDocument,
     PermissionEntity,
 } from '../schemas/permission.schema';
-import { PermissionGetSerialization } from '../serializations/permission.get.serialization';
-import { PermissionListSerialization } from '../serializations/permission.list.serialization';
 
 @Injectable()
 export class PermissionService {
@@ -75,18 +72,6 @@ export class PermissionService {
         permission.name = name;
         permission.description = description;
         return permission.save();
-    }
-
-    async serializationGet(
-        data: PermissionDocument
-    ): Promise<PermissionGetSerialization> {
-        return plainToInstance(PermissionGetSerialization, data);
-    }
-
-    async serializationList(
-        data: PermissionDocument[]
-    ): Promise<PermissionListSerialization[]> {
-        return plainToInstance(PermissionListSerialization, data);
     }
 
     async inactive(_id: string): Promise<PermissionDocument> {

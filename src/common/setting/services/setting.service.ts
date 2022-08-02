@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
 import { Model } from 'mongoose';
 import { DatabaseEntity } from 'src/common/database/database.decorator';
 import { IDatabaseFindAllOptions } from 'src/common/database/database.interface';
@@ -7,8 +6,6 @@ import { HelperStringService } from 'src/common/helper/services/helper.string.se
 import { SettingCreateDto } from '../dtos/setting.create.dto';
 import { SettingUpdateDto } from '../dtos/setting.update.dto';
 import { SettingDocument, SettingEntity } from '../schemas/setting.schema';
-import { SettingGetSerialization } from '../serializations/setting.get.serialization';
-import { SettingListSerialization } from '../serializations/setting.list.serialization';
 
 @Injectable()
 export class SettingService {
@@ -83,18 +80,6 @@ export class SettingService {
         update.description = description;
         update.value = convertValue;
         return update.save();
-    }
-
-    async serializationList(
-        data: SettingDocument[]
-    ): Promise<SettingListSerialization[]> {
-        return plainToInstance(SettingListSerialization, data);
-    }
-
-    async serializationGet(
-        data: SettingDocument
-    ): Promise<SettingGetSerialization> {
-        return plainToInstance(SettingGetSerialization, data);
     }
 
     async deleteOne(find: Record<string, any>): Promise<SettingDocument> {

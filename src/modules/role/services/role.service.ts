@@ -1,7 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
-import { plainToInstance } from 'class-transformer';
-import { IRoleDocument } from '../role.interface';
 import { DatabaseEntity } from 'src/common/database/database.decorator';
 import { RoleDocument, RoleEntity } from '../schemas/role.schema';
 import {
@@ -11,8 +9,6 @@ import {
 import { PermissionEntity } from 'src/modules/permission/schemas/permission.schema';
 import { RoleCreateDto } from '../dtos/role.create.dto';
 import { RoleUpdateDto } from '../dtos/role.update.dto';
-import { RoleGetSerialization } from '../serializations/role.get.serialization';
-import { RoleListSerialization } from '../serializations/role.list.serialization';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.constant';
 
 @Injectable()
@@ -145,15 +141,5 @@ export class RoleService {
 
     async deleteOneById(_id: string): Promise<RoleDocument> {
         return this.roleModel.findByIdAndDelete(_id);
-    }
-
-    async serializationGet(data: IRoleDocument): Promise<RoleGetSerialization> {
-        return plainToInstance(RoleGetSerialization, data);
-    }
-
-    async serializationList(
-        data: RoleDocument[]
-    ): Promise<RoleListSerialization[]> {
-        return plainToInstance(RoleListSerialization, data);
     }
 }

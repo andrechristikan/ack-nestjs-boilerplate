@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { Types } from 'mongoose';
-import { plainToInstance } from 'class-transformer';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseEntity } from 'src/common/database/database.decorator';
 import { UserDocument, UserEntity } from '../schemas/user.schema';
@@ -12,10 +11,6 @@ import {
 } from 'src/common/database/database.interface';
 import { IUserCheckExist, IUserCreate, IUserDocument } from '../user.interface';
 import { RoleEntity } from 'src/modules/role/schemas/role.schema';
-import { UserProfileSerialization } from '../serializations/user.profile.serialization';
-import { UserListSerialization } from '../serializations/user.list.serialization';
-import { UserGetSerialization } from '../serializations/user.get.serialization';
-import { UserLoginSerialization } from '../serializations/user.login.serialization';
 import { PermissionEntity } from 'src/modules/permission/schemas/permission.schema';
 import { UserUpdateDto } from '../dtos/user.update.dto';
 import { IAwsS3Response } from 'src/modules/aws/aws.interface';
@@ -60,28 +55,6 @@ export class UserService {
 
     async getTotal(find?: Record<string, any>): Promise<number> {
         return this.userModel.countDocuments(find);
-    }
-
-    async serializationProfile(
-        data: IUserDocument
-    ): Promise<UserProfileSerialization> {
-        return plainToInstance(UserProfileSerialization, data);
-    }
-
-    async serializationList(
-        data: IUserDocument[]
-    ): Promise<UserListSerialization[]> {
-        return plainToInstance(UserListSerialization, data);
-    }
-
-    async serializationGet(data: IUserDocument): Promise<UserGetSerialization> {
-        return plainToInstance(UserGetSerialization, data);
-    }
-
-    async serializationLogin(
-        data: IUserDocument
-    ): Promise<UserLoginSerialization> {
-        return plainToInstance(UserLoginSerialization, data);
     }
 
     async findOneById<T>(

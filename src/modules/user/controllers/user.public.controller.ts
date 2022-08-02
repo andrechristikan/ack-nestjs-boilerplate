@@ -15,7 +15,6 @@ import { RoleDocument } from 'src/modules/role/schemas/role.schema';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from '../constants/user.status-code.constant';
 import { UserSignUpDto } from '../dtos/user.sign-up.dto';
-import { UserLoginSerialization } from '../serializations/user.login.serialization';
 import { UserService } from '../services/user.service';
 import { IUserCheckExist, IUserDocument } from '../user.interface';
 
@@ -94,14 +93,12 @@ export class UserPublicController {
                         permission: true,
                     },
                 });
-            const safe: UserLoginSerialization =
-                await this.userService.serializationLogin(user);
 
             const payloadAccessToken: Record<string, any> =
-                await this.authService.createPayloadAccessToken(safe, false);
+                await this.authService.createPayloadAccessToken(user, false);
             const payloadRefreshToken: Record<string, any> =
                 await this.authService.createPayloadRefreshToken(
-                    safe._id,
+                    user._id,
                     false,
                     {
                         loginDate: payloadAccessToken.loginDate,

@@ -2,7 +2,6 @@
 
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { plainToInstance } from 'class-transformer';
 import { IAuthApi, IAuthApiRequestHashedData } from '../auth.interface';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseEntity } from 'src/common/database/database.decorator';
@@ -11,8 +10,6 @@ import { HelperStringService } from 'src/common/helper/services/helper.string.se
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
 import { IDatabaseFindAllOptions } from 'src/common/database/database.interface';
-import { AuthApiListSerialization } from '../serializations/auth.api.list.serialization';
-import { AuthApiGetSerialization } from '../serializations/auth.api.get.serialization';
 import { AuthApiUpdateDto } from '../dtos/auth.api.update.dto';
 import {
     AuthApiCreateDto,
@@ -70,18 +67,6 @@ export class AuthApiService {
 
     async findOneByKey(key: string): Promise<AuthApiDocument> {
         return this.authApiModel.findOne({ key }).lean();
-    }
-
-    async serializationList(
-        data: AuthApiDocument[]
-    ): Promise<AuthApiListSerialization[]> {
-        return plainToInstance(AuthApiListSerialization, data);
-    }
-
-    async serializationGet(
-        data: AuthApiDocument
-    ): Promise<AuthApiGetSerialization> {
-        return plainToInstance(AuthApiGetSerialization, data);
     }
 
     async inactive(_id: string): Promise<AuthApiDocument> {

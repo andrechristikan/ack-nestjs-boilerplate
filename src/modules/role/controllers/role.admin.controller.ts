@@ -42,6 +42,7 @@ import {
 } from '../role.decorator';
 import { IRoleDocument } from '../role.interface';
 import { RoleDocument } from '../schemas/role.schema';
+import { RoleGetSerialization } from '../serializations/role.get.serialization';
 import { RoleListSerialization } from '../serializations/role.list.serialization';
 import { RoleService } from '../services/role.service';
 
@@ -56,7 +57,7 @@ export class RoleAdminController {
         private readonly permissionService: PermissionService
     ) {}
 
-    @ResponsePaging('role.list')
+    @ResponsePaging('role.list', RoleListSerialization)
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.ROLE_READ)
     @Get('/list')
     async list(
@@ -91,9 +92,6 @@ export class RoleAdminController {
             perPage
         );
 
-        const data: RoleListSerialization[] =
-            await this.roleService.serializationList(roles);
-
         return {
             totalData,
             totalPage,
@@ -101,17 +99,17 @@ export class RoleAdminController {
             perPage,
             availableSearch,
             availableSort,
-            data,
+            data: roles,
         };
     }
 
-    @Response('role.get')
+    @Response('role.get', RoleGetSerialization)
     @RoleGetGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.ROLE_READ)
     @Get('get/:role')
     async get(@GetRole() role: IRoleDocument): Promise<IResponse> {
-        return this.roleService.serializationGet(role);
+        return role;
     }
 
     @Response('role.create')

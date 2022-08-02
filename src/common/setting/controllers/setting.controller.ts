@@ -12,6 +12,7 @@ import {
 import { SettingListDto } from '../dtos/setting.list.dto';
 import { SettingRequestDto } from '../dtos/setting.request.dto';
 import { SettingDocument } from '../schemas/setting.schema';
+import { SettingGetSerialization } from '../serializations/setting.get.serialization';
 import { SettingListSerialization } from '../serializations/setting.list.serialization';
 import { SettingService } from '../services/setting.service';
 import {
@@ -30,7 +31,7 @@ export class SettingController {
         private readonly paginationService: PaginationService
     ) {}
 
-    @ResponsePaging('setting.list')
+    @ResponsePaging('setting.list', SettingListSerialization)
     @Get('/list')
     async list(
         @Query()
@@ -66,9 +67,6 @@ export class SettingController {
             perPage
         );
 
-        const data: SettingListSerialization[] =
-            await this.settingService.serializationList(settings);
-
         return {
             totalData,
             totalPage,
@@ -76,24 +74,24 @@ export class SettingController {
             perPage,
             availableSearch,
             availableSort,
-            data,
+            data: settings,
         };
     }
 
-    @Response('setting.get')
+    @Response('setting.get', SettingGetSerialization)
     @SettingGetGuard()
     @RequestParamGuard(SettingRequestDto)
     @Get('get/:setting')
     async get(@GetSetting() setting: SettingDocument): Promise<IResponse> {
-        return this.settingService.serializationGet(setting);
+        return setting;
     }
 
-    @Response('setting.getByName')
+    @Response('setting.getByName', SettingGetSerialization)
     @SettingGetByNameGuard()
     @Get('get/name/:settingName')
     async getByName(
         @GetSetting() setting: SettingDocument
     ): Promise<IResponse> {
-        return this.settingService.serializationGet(setting);
+        return setting;
     }
 }

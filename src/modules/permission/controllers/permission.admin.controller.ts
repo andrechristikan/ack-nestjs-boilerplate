@@ -31,6 +31,7 @@ import {
     PermissionUpdateInactiveGuard,
 } from '../permission.decorator';
 import { PermissionDocument } from '../schemas/permission.schema';
+import { PermissionGetSerialization } from '../serializations/permission.get.serialization';
 import { PermissionListSerialization } from '../serializations/permission.list.serialization';
 import { PermissionService } from '../services/permission.service';
 
@@ -44,7 +45,7 @@ export class PermissionAdminController {
         private readonly permissionService: PermissionService
     ) {}
 
-    @ResponsePaging('permission.list')
+    @ResponsePaging('permission.list', PermissionListSerialization)
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
     @Get('/list')
     async list(
@@ -85,9 +86,6 @@ export class PermissionAdminController {
             perPage
         );
 
-        const data: PermissionListSerialization[] =
-            await this.permissionService.serializationList(permissions);
-
         return {
             totalData,
             totalPage,
@@ -95,11 +93,11 @@ export class PermissionAdminController {
             perPage,
             availableSearch,
             availableSort,
-            data,
+            data: permissions,
         };
     }
 
-    @Response('permission.get')
+    @Response('permission.get', PermissionGetSerialization)
     @PermissionGetGuard()
     @RequestParamGuard(PermissionRequestDto)
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
@@ -107,7 +105,7 @@ export class PermissionAdminController {
     async get(
         @GetPermission() permission: PermissionDocument
     ): Promise<IResponse> {
-        return this.permissionService.serializationGet(permission);
+        return permission;
     }
 
     @Response('permission.update')

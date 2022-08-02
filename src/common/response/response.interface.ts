@@ -1,5 +1,4 @@
 import { IMessage } from '../message/message.interface';
-import { ENUM_PAGINATION_TYPE } from '../pagination/constants/pagination.constant';
 
 export interface IResponseMetadata {
     statusCode?: number;
@@ -22,10 +21,6 @@ export interface IResponsePaging {
     availableSort?: string[];
     metadata?: IResponseMetadata;
     data: Record<string, any>[];
-}
-
-export interface IResponsePagingOptions {
-    type?: ENUM_PAGINATION_TYPE;
 }
 
 // response for client

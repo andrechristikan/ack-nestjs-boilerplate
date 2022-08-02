@@ -13,7 +13,15 @@ import { IRequestApp } from 'src/common/request/request.interface';
 import { IMessage } from 'src/common/message/message.interface';
 import { MessageService } from 'src/common/message/services/message.service';
 import { Reflector } from '@nestjs/core';
-import { RESPONSE_MESSAGE_PATH_META_KEY } from '../constants/response.constant';
+import {
+    RESPONSE_MESSAGE_PATH_META_KEY,
+    RESPONSE_SERIALIZATION_META_KEY,
+} from '../constants/response.constant';
+import {
+    ClassConstructor,
+    ClassTransformOptions,
+    plainToInstance,
+} from 'class-transformer';
 
 @Injectable()
 export class ResponseDefaultInterceptor
@@ -38,6 +46,16 @@ export class ResponseDefaultInterceptor
                         RESPONSE_MESSAGE_PATH_META_KEY,
                         context.getHandler()
                     );
+                    const classSerialization: ClassConstructor<any> =
+                        this.reflector.get<ClassConstructor<any>>(
+                            RESPONSE_SERIALIZATION_META_KEY,
+                            context.getHandler()
+                        );
+                    const classSerializationOptions: ClassTransformOptions =
+                        this.reflector.get<ClassTransformOptions>(
+                            'class_serializer:options',
+                            context.getHandler()
+                        );
 
                     // message base on language
                     const { customLang } = ctx.getRequest<IRequestApp>();
@@ -45,6 +63,11 @@ export class ResponseDefaultInterceptor
                     // response
                     const response = (await responseData) as IResponse;
                     const { metadata, ...data } = response;
+                    const serialization = plainToInstance(
+                        classSerialization,
+                        data,
+                        classSerializationOptions
+                    );
                     let statusCode: number = responseExpress.statusCode;
 
                     if (metadata) {
@@ -65,7 +88,7 @@ export class ResponseDefaultInterceptor
                         statusCode,
                         message,
                         metadata,
-                        data,
+                        data: serialization,
                     };
                     return responseHttp;
                 })
