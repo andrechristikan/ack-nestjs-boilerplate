@@ -1957,7 +1957,7 @@
     "@types/jsonwebtoken" "8.5.8"
     jsonwebtoken "8.5.1"
 
-"@nestjs/mapped-types@^1.1.0":
+"@nestjs/mapped-types@1.1.0", "@nestjs/mapped-types@^1.1.0":
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/@nestjs/mapped-types/-/mapped-types-1.1.0.tgz#54a9fa61079635dd6c3c75fd9593f20b2302a55b"
   integrity sha512-+2kSly4P1QI+9eGt+/uGyPdEG1hVz7nbpqPHWZVYgoqz8eOHljpXPag+UCVRw9zo2XCu4sgNUIGe8Uk0+OvUQg==
@@ -2001,6 +2001,17 @@
     fs-extra "10.1.0"
     jsonc-parser "3.0.0"
     pluralize "8.0.0"
+
+"@nestjs/swagger@^6.0.4":
+  version "6.0.4"
+  resolved "https://registry.yarnpkg.com/@nestjs/swagger/-/swagger-6.0.4.tgz#36c472c92f12b0af5094a5b54dbf1ac81e5b3640"
+  integrity sha512-YKf9RvCYHAgqkMvUG3xRr0zAcnuN8JsWPfvi7h0hzEXLRhNxByj2FT8Rzj+0fPAe6VZioWXBDpLzshO2PjE48Q==
+  dependencies:
+    "@nestjs/mapped-types" "1.1.0"
+    js-yaml "4.1.0"
+    lodash "4.17.21"
+    path-to-regexp "3.2.0"
+    swagger-ui-dist "4.12.0"
 
 "@nestjs/terminus@^9.1.0":
   version "9.1.0"
@@ -5635,13 +5646,6 @@ jest@^28.1.3:
     import-local "^3.0.2"
     jest-cli "^28.1.3"
 
-joi-tz@^4.1.0:
-  version "4.1.0"
-  resolved "https://registry.yarnpkg.com/joi-tz/-/joi-tz-4.1.0.tgz#8ab1bd87107afa3a2a229422724d7533f89f4fc9"
-  integrity sha512-HY86wV6cGi1BURL3lbZn3O1K+oYI3rqKdglu9ZlNeilRb2AMoDRHX73ljfkGIC1C4VcumtfsdUvSwaW+SSXzHQ==
-  dependencies:
-    moment-timezone "^0.5.33"
-
 joi@^17.6.0:
   version "17.6.0"
   resolved "https://registry.yarnpkg.com/joi/-/joi-17.6.0.tgz#0bb54f2f006c09a96e75ce687957bd04290054b2"
@@ -5658,6 +5662,13 @@ js-tokens@^4.0.0:
   resolved "https://registry.yarnpkg.com/js-tokens/-/js-tokens-4.0.0.tgz#19203fb59991df98e3a287050d4647cdeaf32499"
   integrity sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==
 
+js-yaml@4.1.0, js-yaml@^4.1.0:
+  version "4.1.0"
+  resolved "https://registry.yarnpkg.com/js-yaml/-/js-yaml-4.1.0.tgz#c1fb65f8f5017901cdd2c951864ba18458a10602"
+  integrity sha512-wpxZs9NoxZaJESJGIZTyDEaYpl0FKSA+FB9aJiyemKhMwkxQg63h4T1KJgUGHpTqPDNRcmmYLugrRjJlBtWvRA==
+  dependencies:
+    argparse "^2.0.1"
+
 js-yaml@^3.13.1:
   version "3.14.1"
   resolved "https://registry.yarnpkg.com/js-yaml/-/js-yaml-3.14.1.tgz#dae812fdb3825fa306609a8717383c50c36a0537"
@@ -5665,13 +5676,6 @@ js-yaml@^3.13.1:
   dependencies:
     argparse "^1.0.7"
     esprima "^4.0.0"
-
-js-yaml@^4.1.0:
-  version "4.1.0"
-  resolved "https://registry.yarnpkg.com/js-yaml/-/js-yaml-4.1.0.tgz#c1fb65f8f5017901cdd2c951864ba18458a10602"
-  integrity sha512-wpxZs9NoxZaJESJGIZTyDEaYpl0FKSA+FB9aJiyemKhMwkxQg63h4T1KJgUGHpTqPDNRcmmYLugrRjJlBtWvRA==
-  dependencies:
-    argparse "^2.0.1"
 
 jsesc@^2.5.1:
   version "2.5.2"
@@ -6146,7 +6150,7 @@ mkdirp@^1.0.3, mkdirp@^1.0.4:
   resolved "https://registry.yarnpkg.com/mkdirp/-/mkdirp-1.0.4.tgz#3eb5ed62622756d79a5f0e2a221dfebad75c2f7e"
   integrity sha512-vVqVZQyf3WLx2Shd0qJ9xuvqgAyKPLAiqITEtqW0oIUjzo3PePDd6fW9iFz30ef7Ysp/oiWqbhszeGWW2T6Gzw==
 
-moment-timezone@^0.5.33, moment-timezone@^0.5.34:
+moment-timezone@^0.5.34:
   version "0.5.34"
   resolved "https://registry.yarnpkg.com/moment-timezone/-/moment-timezone-0.5.34.tgz#a75938f7476b88f155d3504a9343f7519d9a405c"
   integrity sha512-3zAEHh2hKUs3EXLESx/wsgw6IQdusOT8Bxm3D9UrHPQR7zlMmzwybC8zHEM1tQ4LJwP7fcxrWr8tuBg05fFCbg==
@@ -7352,6 +7356,11 @@ supports-preserve-symlinks-flag@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz#6eda4bd344a3c94aea376d4cc31bc77311039e09"
   integrity sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==
+
+swagger-ui-dist@4.12.0:
+  version "4.12.0"
+  resolved "https://registry.yarnpkg.com/swagger-ui-dist/-/swagger-ui-dist-4.12.0.tgz#986d90f05e81fb9db3ca40372278a5d8ce71db3a"
+  integrity sha512-B0Iy2ueXtbByE6OOyHTi3lFQkpPi/L7kFOKFeKTr44za7dJIELa9kzaca6GkndCgpK1QTjArnoXG+aUy0XQp1w==
 
 symbol-observable@4.0.0:
   version "4.0.0"

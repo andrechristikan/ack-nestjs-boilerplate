@@ -36,9 +36,11 @@ import {
     ENUM_USER_STATUS_CODE_ERROR,
     ENUM_USER_STATUS_CODE_SUCCESS,
 } from '../constants/user.status-code.constant';
+import { UserLoginDoc } from '../docs/docs.login';
 import { UserChangePasswordDto } from '../dtos/user.change-password.dto';
 import { UserLoginDto } from '../dtos/user.login.dto';
 import { UserDocument } from '../schemas/user.schema';
+import { UserLoginSerialization } from '../serializations/user.login.serialization';
 import { UserProfileSerialization } from '../serializations/user.profile.serialization';
 import { UserService } from '../services/user.service';
 import { GetUser, UserProfileGuard } from '../user.decorator';
@@ -161,7 +163,8 @@ export class UserController {
         return;
     }
 
-    @Response('user.login')
+    @UserLoginDoc()
+    @Response('user.login', { classSerialization: UserLoginSerialization })
     @Logger(ENUM_LOGGER_ACTION.LOGIN, { tags: ['login', 'withEmail'] })
     @HttpCode(HttpStatus.OK)
     @Post('/login')

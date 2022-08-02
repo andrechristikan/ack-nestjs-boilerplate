@@ -3,7 +3,10 @@
   "sourceRoot": "src",
   "compilerOptions": {
     "assets": [
-      { "include": "message/languages/**/*", "watchAssets": true }
+      { "include": "languages/**/*", "watchAssets": true }
+    ],
+    "plugins": [
+      "@nestjs/swagger"
     ]
   }
 }

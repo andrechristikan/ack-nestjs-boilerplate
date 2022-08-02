@@ -6,6 +6,7 @@ import AwsConfig from './aws.config';
 import UserConfig from './user.config';
 import FileConfig from './file.config';
 import MiddlewareConfig from './middleware.config';
+import SwaggerConfig from './swagger.config';
 
 export default [
     AppConfig,
@@ -16,4 +17,5 @@ export default [
     UserConfig,
     MiddlewareConfig,
     FileConfig,
+    SwaggerConfig,
 ];

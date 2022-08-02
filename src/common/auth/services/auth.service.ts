@@ -4,7 +4,7 @@ import { plainToInstance } from 'class-transformer';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
-import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
+import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { IAuthPassword, IAuthPayloadOptions } from '../auth.interface';
 
 @Injectable()
@@ -108,10 +108,10 @@ export class AuthService {
         rememberMe: boolean,
         options?: IAuthPayloadOptions
     ): Promise<Record<string, any>> {
-        const safe = plainToInstance(UserLoginSerialization, data);
+        const payload = plainToInstance(UserPayloadSerialization, data);
 
         return {
-            ...safe,
+            ...payload,
             rememberMe,
             loginDate:
                 options && options.loginDate
