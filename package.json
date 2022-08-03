@@ -47,7 +47,7 @@
     "spell": "cspell lint --config cspell.json {src,test,e2e,integration}/**/*.ts prod/* readme.md tsconfig*.json docker* package.json nodemon.json license.md .github/* .husky/* --color --gitignore --no-must-find-files --no-summary --no-progress || true"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.137.0",
+    "@aws-sdk/client-s3": "^3.142.0",
     "@faker-js/faker": "^7.3.0",
     "@joi/date": "^2.1.0",
     "@nestjs/axios": "^0.1.0",
@@ -119,8 +119,8 @@
     "@types/ua-parser-js": "^0.7.36",
     "@types/uuid": "^8.3.4",
     "@types/ws": "^8.5.3",
-    "@typescript-eslint/eslint-plugin": "^5.31.0",
-    "@typescript-eslint/parser": "^5.31.0",
+    "@typescript-eslint/eslint-plugin": "^5.32.0",
+    "@typescript-eslint/parser": "^5.32.0",
     "cspell": "^6.5.0",
     "eslint": "^8.21.0",
     "eslint-config-prettier": "^8.5.0",
