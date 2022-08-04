@@ -1,5 +1,3 @@
-/* istanbul ignore file */
-
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { IAuthApi, IAuthApiRequestHashedData } from '../auth.interface';
@@ -185,7 +183,7 @@ export class AuthApiService {
         return this.helperStringService.random(25, {
             safe: false,
             upperCase: true,
-            prefix: this.env === 'production' ? 'production_' : 'development_',
+            prefix: `${this.env}_`,
         });
     }
 
@@ -193,7 +191,7 @@ export class AuthApiService {
         return this.helperStringService.random(15, {
             safe: false,
             upperCase: true,
-            prefix: this.env === 'production' ? 'production_' : 'development_',
+            prefix: `${this.env}_`,
         });
     }
 

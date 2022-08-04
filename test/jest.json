@@ -6,21 +6,20 @@
     ],
     "testEnvironment": "node",
     "testMatch": [
-        "<rootDir>/test/**/*.spec.ts"
+        "<rootDir>/test/auth/**/*.spec.ts"
     ],
     "collectCoverage": true,
     "coverageDirectory": "coverage",
     "collectCoverageFrom": [
-        "./src/auth/service/**",
-        "./src/cache/service/**",
-        "./src/config/service/**",
-        "./src/database/service/**",
-        "./src/debugger/service/**",
-        "./src/logger/service/**",
-        "./src/message/service/**",
-        "./src/pagination/service/**",
-        "./src/setting/service/**",
-        "./src/utils/helper/service/**"
+        "./src/common/auth/services/**",
+        "./src/config/services/**",
+        "./src/database/services/**",
+        "./src/debugger/services/**",
+        "./src/logger/services/**",
+        "./src/message/services/**",
+        "./src/pagination/services/**",
+        "./src/setting/services/**",
+        "./src/utils/helper/services/**"
     ],
     "coverageThreshold": {
       "global": {
