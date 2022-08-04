@@ -7,29 +7,29 @@ import {
     Put,
     Query,
 } from '@nestjs/common';
-import { AuthAdminJwtGuard } from 'src/common/auth/auth.decorator';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.permission.constant';
+import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import { RequestParamGuard } from 'src/common/request/request.decorator';
+import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
     Response,
     ResponsePaging,
-} from 'src/common/response/response.decorator';
+} from 'src/common/response/decorators/response.decorator';
 import {
     IResponse,
     IResponsePaging,
 } from 'src/common/response/response.interface';
-import { PermissionListDto } from '../dtos/permission.list.dto';
-import { PermissionUpdateDto } from '../dtos/permission.update.dto';
-import { PermissionRequestDto } from '../dtos/permissions.request.dto';
 import {
-    GetPermission,
     PermissionGetGuard,
     PermissionUpdateActiveGuard,
     PermissionUpdateGuard,
     PermissionUpdateInactiveGuard,
-} from '../permission.decorator';
+} from '../decorators/permission.admin.decorator';
+import { GetPermission } from '../decorators/permission.decorator';
+import { PermissionListDto } from '../dtos/permission.list.dto';
+import { PermissionUpdateDto } from '../dtos/permission.update.dto';
+import { PermissionRequestDto } from '../dtos/permissions.request.dto';
 import { PermissionDocument } from '../schemas/permission.schema';
 import { PermissionGetSerialization } from '../serializations/permission.get.serialization';
 import { PermissionListSerialization } from '../serializations/permission.list.serialization';

@@ -3,9 +3,9 @@ import {
     ENUM_LOGGER_ACTION,
     LOGGER_ACTION_META_KEY,
     LOGGER_OPTIONS_META_KEY,
-} from './constants/logger.constant';
-import { LoggerInterceptor } from './interceptors/logger.interceptor';
-import { ILoggerOptions } from './logger.interface';
+} from '../constants/logger.constant';
+import { LoggerInterceptor } from '../interceptors/logger.interceptor';
+import { ILoggerOptions } from '../logger.interface';
 
 export function Logger(
     action: ENUM_LOGGER_ACTION,

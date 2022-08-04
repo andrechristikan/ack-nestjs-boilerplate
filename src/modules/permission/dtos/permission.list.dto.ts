@@ -7,7 +7,7 @@ import {
     PaginationPerPage,
     PaginationSearch,
     PaginationSort,
-} from 'src/common/pagination/pagination.decorator';
+} from 'src/common/pagination/decorators/pagination.decorator';
 import { IPaginationSort } from 'src/common/pagination/pagination.interface';
 import {
     PERMISSION_DEFAULT_ACTIVE,

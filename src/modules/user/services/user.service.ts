@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { Types } from 'mongoose';
 import { ConfigService } from '@nestjs/config';
-import { DatabaseEntity } from 'src/common/database/database.decorator';
 import { UserDocument, UserEntity } from '../schemas/user.schema';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import {
@@ -15,6 +14,7 @@ import { PermissionEntity } from 'src/modules/permission/schemas/permission.sche
 import { UserUpdateDto } from '../dtos/user.update.dto';
 import { IAwsS3Response } from 'src/modules/aws/aws.interface';
 import { IAuthPassword } from 'src/common/auth/auth.interface';
+import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 
 @Injectable()
 export class UserService {

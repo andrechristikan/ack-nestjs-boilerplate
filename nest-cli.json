@@ -4,9 +4,6 @@
   "compilerOptions": {
     "assets": [
       { "include": "languages/**/*", "watchAssets": true }
-    ],
-    "plugins": [
-      "@nestjs/swagger"
     ]
   }
 }

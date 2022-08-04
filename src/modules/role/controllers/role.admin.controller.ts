@@ -11,15 +11,15 @@ import {
     Put,
     Query,
 } from '@nestjs/common';
-import { AuthAdminJwtGuard } from 'src/common/auth/auth.decorator';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.permission.constant';
+import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import { RequestParamGuard } from 'src/common/request/request.decorator';
+import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
     Response,
     ResponsePaging,
-} from 'src/common/response/response.decorator';
+} from 'src/common/response/decorators/response.decorator';
 import {
     IResponse,
     IResponsePaging,
@@ -28,18 +28,18 @@ import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/consta
 import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from '../constants/role.status-code.constant';
-import { RoleCreateDto } from '../dtos/role.create.dto';
-import { RoleListDto } from '../dtos/role.list.dto';
-import { RoleRequestDto } from '../dtos/role.request.dto';
-import { RoleUpdateDto } from '../dtos/role.update.dto';
 import {
-    GetRole,
     RoleDeleteGuard,
     RoleGetGuard,
     RoleUpdateActiveGuard,
     RoleUpdateGuard,
     RoleUpdateInactiveGuard,
-} from '../role.decorator';
+} from '../decorators/role.admin.decorator';
+import { GetRole } from '../decorators/role.decorator';
+import { RoleCreateDto } from '../dtos/role.create.dto';
+import { RoleListDto } from '../dtos/role.list.dto';
+import { RoleRequestDto } from '../dtos/role.request.dto';
+import { RoleUpdateDto } from '../dtos/role.update.dto';
 import { IRoleDocument } from '../role.interface';
 import { RoleDocument } from '../schemas/role.schema';
 import { RoleGetSerialization } from '../serializations/role.get.serialization';

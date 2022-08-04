@@ -12,22 +12,22 @@ import {
     NotFoundException,
     UploadedFile,
 } from '@nestjs/common';
-import { AuthAdminJwtGuard } from 'src/common/auth/auth.decorator';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.permission.constant';
+import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
-import { UploadFileSingle } from 'src/common/file/file.decorator';
+import { UploadFileSingle } from 'src/common/file/decorators/file.decorator';
 import { FileExtractPipe } from 'src/common/file/pipes/file.extract.pipe';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
 import { FileSizePipe } from 'src/common/file/pipes/file.size.pipe';
 import { FileTypeExcelPipe } from 'src/common/file/pipes/file.type.pipe';
 import { FileValidationPipe } from 'src/common/file/pipes/file.validation.pipe';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import { RequestParamGuard } from 'src/common/request/request.decorator';
+import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
     Response,
     ResponsePaging,
-} from 'src/common/response/response.decorator';
+} from 'src/common/response/decorators/response.decorator';
 import {
     IResponse,
     IResponsePaging,
@@ -35,6 +35,14 @@ import {
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from '../constants/user.status-code.constant';
+import {
+    UserDeleteGuard,
+    UserGetGuard,
+    UserUpdateActiveGuard,
+    UserUpdateGuard,
+    UserUpdateInactiveGuard,
+} from '../decorators/user.admin.decorator';
+import { GetUser } from '../decorators/user.decorator';
 import { UserCreateDto } from '../dtos/user.create.dto';
 import { UserImportDto } from '../dtos/user.import.dto';
 import { UserListDto } from '../dtos/user.list.dto';
@@ -43,14 +51,6 @@ import { UserUpdateDto } from '../dtos/user.update.dto';
 import { UserGetSerialization } from '../serializations/user.get.serialization';
 import { UserListSerialization } from '../serializations/user.list.serialization';
 import { UserService } from '../services/user.service';
-import {
-    GetUser,
-    UserDeleteGuard,
-    UserGetGuard,
-    UserUpdateActiveGuard,
-    UserUpdateGuard,
-    UserUpdateInactiveGuard,
-} from '../user.decorator';
 import { IUserCheckExist, IUserDocument } from '../user.interface';
 
 @Controller({

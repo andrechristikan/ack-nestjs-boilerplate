@@ -7,11 +7,7 @@ import {
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
-import {
-    IResponsePaging,
-    IResponsePagingHttp,
-    IResponsePagingMetadataHttp,
-} from '../response.interface';
+import { IResponsePaging } from '../response.interface';
 import { Response } from 'express';
 import { IRequestApp } from 'src/common/request/request.interface';
 import {
@@ -33,6 +29,10 @@ import {
     ClassTransformOptions,
     plainToInstance,
 } from 'class-transformer';
+import {
+    ResponsePagingDto,
+    ResponsePagingMetadataDto,
+} from '../dtos/response.paging.dto';
 
 @Injectable()
 export class ResponsePagingInterceptor
@@ -46,10 +46,10 @@ export class ResponsePagingInterceptor
     async intercept(
         context: ExecutionContext,
         next: CallHandler
-    ): Promise<Observable<Promise<any> | string>> {
+    ): Promise<Observable<Promise<ResponsePagingDto>>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
-                map(async (responseData: Promise<Record<string, any>>) => {
+                map(async (responseData: Promise<ResponsePagingDto>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
                     const responseExpress: Response = ctx.getResponse();
                     const requestExpress: IRequestApp =
@@ -120,7 +120,7 @@ export class ResponsePagingInterceptor
 
                     // metadata
                     const path = requestExpress.path;
-                    const addMetadata: IResponsePagingMetadataHttp = {
+                    const addMetadata: ResponsePagingMetadataDto = {
                         nextPage:
                             currentPage < totalPage
                                 ? `${path}?perPage=${perPage}&page=${
@@ -144,7 +144,7 @@ export class ResponsePagingInterceptor
                             properties,
                         });
 
-                    const responseHttp: IResponsePagingHttp = {
+                    const responseHttp: ResponsePagingDto = {
                         statusCode,
                         message,
                         totalData,

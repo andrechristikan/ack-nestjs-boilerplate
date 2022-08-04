@@ -40,10 +40,6 @@ export class ResponseCustomHeadersInterceptor
                         'x-request-id',
                         headers['x-request-id']
                     );
-                    responseExpress.setHeader(
-                        'x-api-version',
-                        headers['x-api-version']
-                    );
 
                     return response;
                 })

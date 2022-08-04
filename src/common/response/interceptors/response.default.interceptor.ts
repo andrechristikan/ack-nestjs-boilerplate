@@ -8,7 +8,7 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
-import { IResponse, IResponseHttp } from '../response.interface';
+import { IResponse } from '../response.interface';
 import { IRequestApp } from 'src/common/request/request.interface';
 import {
     IMessage,
@@ -27,6 +27,7 @@ import {
     ClassTransformOptions,
     plainToInstance,
 } from 'class-transformer';
+import { ResponseDefaultDto } from '../dtos/response.default.dto';
 
 @Injectable()
 export class ResponseDefaultInterceptor
@@ -40,7 +41,7 @@ export class ResponseDefaultInterceptor
     async intercept(
         context: ExecutionContext,
         next: CallHandler
-    ): Promise<Observable<Promise<IResponseHttp>>> {
+    ): Promise<Observable<Promise<ResponseDefaultDto>>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
                 map(async (responseData: Promise<Record<string, any>>) => {
@@ -103,7 +104,9 @@ export class ResponseDefaultInterceptor
                             properties,
                         });
 
-                    const responseHttp: IResponseHttp = {
+                    const responseHttp: ResponseDefaultDto<
+                        Record<string, any>
+                    > = {
                         statusCode,
                         message,
                         metadata:

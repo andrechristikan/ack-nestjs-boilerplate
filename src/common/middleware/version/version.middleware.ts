@@ -33,7 +33,6 @@ export class VersionMiddleware implements NestMiddleware {
             apiVersion = url[2].replace(versioningPrefix, '');
         }
 
-        req.headers['x-api-version'] = apiVersion;
         req.apiVersion = this.helperNumberService.create(apiVersion);
 
         next();

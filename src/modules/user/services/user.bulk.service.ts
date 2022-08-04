@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { DeleteResult } from 'mongodb';
 import { UserDocument, UserEntity } from '../schemas/user.schema';
-import { DatabaseEntity } from 'src/common/database/database.decorator';
+import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 
 @Injectable()
 export class UserBulkService {

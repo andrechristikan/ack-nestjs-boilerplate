@@ -5,8 +5,8 @@ import {
     PermissionDocument,
     PermissionEntity,
 } from '../schemas/permission.schema';
-import { DatabaseEntity } from 'src/common/database/database.decorator';
 import { IAuthPermission } from 'src/common/auth/auth.interface';
+import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 
 @Injectable()
 export class PermissionBulkService {

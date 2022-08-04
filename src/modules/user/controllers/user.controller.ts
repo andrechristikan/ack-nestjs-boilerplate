@@ -12,22 +12,21 @@ import {
     Post,
     UploadedFile,
 } from '@nestjs/common';
+import { Token, User } from 'src/common/auth/decorators/auth.decorator';
 import {
     AuthJwtGuard,
     AuthRefreshJwtGuard,
-    Token,
-    User,
-} from 'src/common/auth/auth.decorator';
+} from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
-import { UploadFileSingle } from 'src/common/file/file.decorator';
+import { UploadFileSingle } from 'src/common/file/decorators/file.decorator';
 import { IFile } from 'src/common/file/file.interface';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
 import { FileSizePipe } from 'src/common/file/pipes/file.size.pipe';
 import { FileTypeImagePipe } from 'src/common/file/pipes/file.type.pipe';
 import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.constant';
-import { Logger } from 'src/common/logger/logger.decorator';
-import { Response } from 'src/common/response/response.decorator';
+import { Logger } from 'src/common/logger/decorators/logger.decorator';
+import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/response.interface';
 import { IAwsS3Response } from 'src/modules/aws/aws.interface';
 import { AwsS3Service } from 'src/modules/aws/services/aws.s3.service';
@@ -36,14 +35,14 @@ import {
     ENUM_USER_STATUS_CODE_ERROR,
     ENUM_USER_STATUS_CODE_SUCCESS,
 } from '../constants/user.status-code.constant';
-import { UserLoginDoc } from '../docs/docs.login';
+import { GetUser } from '../decorators/user.decorator';
+import { UserProfileGuard } from '../decorators/user.public.decorator';
 import { UserChangePasswordDto } from '../dtos/user.change-password.dto';
 import { UserLoginDto } from '../dtos/user.login.dto';
 import { UserDocument } from '../schemas/user.schema';
 import { UserLoginSerialization } from '../serializations/user.login.serialization';
 import { UserProfileSerialization } from '../serializations/user.profile.serialization';
 import { UserService } from '../services/user.service';
-import { GetUser, UserProfileGuard } from '../user.decorator';
 import { IUserDocument } from '../user.interface';
 
 @Controller({
@@ -163,7 +162,6 @@ export class UserController {
         return;
     }
 
-    @UserLoginDoc()
     @Response('user.login', { classSerialization: UserLoginSerialization })
     @Logger(ENUM_LOGGER_ACTION.LOGIN, { tags: ['login', 'withEmail'] })
     @HttpCode(HttpStatus.OK)

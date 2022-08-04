@@ -40,7 +40,6 @@ export default registerAs(
                 'x-timezone',
                 'x-request-id',
                 'X-Response-Time',
-                'x-api-version',
                 'user-agent',
             ],
         },

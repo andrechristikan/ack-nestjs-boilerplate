@@ -118,7 +118,6 @@ Next development
 - [x] Rename repo from `ack-nestjs-boilerplate-mongoose` to `ack-nestjs-mongoose`
 - [x] Message en,id
 - [x] Optimize code, remove unnecessary code
-- [ ] Swagger, this will replace postman
 - [ ] Update Unit test
 - [ ] Update E2E test
 - [ ] Update Documentation

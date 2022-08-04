@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
 import { ILogger, ILoggerRaw } from '../logger.interface';
 import { LoggerDocument, LoggerEntity } from '../schemas/logger.schema';
-import { DatabaseEntity } from 'src/common/database/database.decorator';
 import { ENUM_LOGGER_LEVEL } from '../constants/logger.constant';
+import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 
 @Injectable()
 export class LoggerService {

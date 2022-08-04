@@ -10,9 +10,9 @@ import { IResult } from 'ua-parser-js';
 import {
     REQUEST_EXCLUDE_TIMESTAMP_META_KEY,
     REQUEST_PARAM_CLASS_DTOS_META_KEY,
-} from './constants/request.constant';
-import { RequestParamRawGuard } from './guards/request.param.guard';
-import { IRequestApp } from './request.interface';
+} from '../constants/request.constant';
+import { RequestParamRawGuard } from '../guards/request.param.guard';
+import { IRequestApp } from '../request.interface';
 
 export const RequestUserAgent = createParamDecorator(
     (data: string, ctx: ExecutionContext): IResult => {

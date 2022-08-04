@@ -44,7 +44,6 @@ export class ErrorHttpFilter implements ExceptionFilter {
         const __class = request.__class;
         const __function = request.__function;
         const __path = request.path;
-        const __version = request.apiVersion;
         const __requestId = request.id;
         const __timestamp = request.timestamp;
         const __timezone = request.timezone;
@@ -108,7 +107,6 @@ export class ErrorHttpFilter implements ExceptionFilter {
             timestamp: __timestamp,
             timezone: __timezone,
             requestId: __requestId,
-            apiVersion: __version,
             path: __path,
             ...metadata,
         };
@@ -127,7 +125,6 @@ export class ErrorHttpFilter implements ExceptionFilter {
             .setHeader('x-timestamp', __timestamp)
             .setHeader('x-timezone', __timezone)
             .setHeader('x-request-id', __requestId)
-            .setHeader('x-api-version', __version)
             .status(statusHttp)
             .json(resResponse);
 

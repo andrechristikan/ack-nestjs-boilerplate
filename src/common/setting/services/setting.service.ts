@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { DatabaseEntity } from 'src/common/database/database.decorator';
 import { IDatabaseFindAllOptions } from 'src/common/database/database.interface';
+import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { SettingCreateDto } from '../dtos/setting.create.dto';
 import { SettingUpdateDto } from '../dtos/setting.update.dto';

@@ -1,20 +1,20 @@
 import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AuthExcludeApiKey } from 'src/common/auth/auth.decorator';
-import { ErrorMeta } from 'src/common/error/error.decorator';
+import { AuthExcludeApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
+import { ErrorMeta } from 'src/common/error/decorators/error.decorator';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperService } from 'src/common/helper/services/helper.service';
 import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.constant';
-import { Logger } from 'src/common/logger/logger.decorator';
+import { Logger } from 'src/common/logger/decorators/logger.decorator';
 import {
     RequestExcludeTimestamp,
     RequestTimezone,
     RequestUserAgent,
-} from 'src/common/request/request.decorator';
+} from 'src/common/request/decorators/request.decorator';
 import {
     Response,
     ResponseTimeout,
-} from 'src/common/response/response.decorator';
+} from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/response.interface';
 import { IResult } from 'ua-parser-js';
 

@@ -2,7 +2,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { DatabaseEntity } from 'src/common/database/database.decorator';
+import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import { AuthApiDocument, AuthApiEntity } from '../schemas/auth.api.schema';
 
 @Injectable()

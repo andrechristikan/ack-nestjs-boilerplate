@@ -1,23 +1,9 @@
-import {
-    applyDecorators,
-    createParamDecorator,
-    ExecutionContext,
-    SetMetadata,
-    UseGuards,
-} from '@nestjs/common';
-import { ROLE_ACTIVE_META_KEY } from './constants/role.constant';
-import { RoleActiveGuard } from './guards/role.active.guard';
-import { RoleNotFoundGuard } from './guards/role.not-found.guard';
-import { RolePutToRequestGuard } from './guards/role.put-to-request.guard';
-import { RoleUsedGuard } from './guards/role.used.guard';
-import { IRoleDocument } from './role.interface';
-
-export const GetRole = createParamDecorator(
-    (data: string, ctx: ExecutionContext): IRoleDocument => {
-        const { __role } = ctx.switchToHttp().getRequest();
-        return __role;
-    }
-);
+import { applyDecorators, SetMetadata, UseGuards } from '@nestjs/common';
+import { ROLE_ACTIVE_META_KEY } from '../constants/role.constant';
+import { RoleActiveGuard } from '../guards/role.active.guard';
+import { RoleNotFoundGuard } from '../guards/role.not-found.guard';
+import { RolePutToRequestGuard } from '../guards/role.put-to-request.guard';
+import { RoleUsedGuard } from '../guards/role.used.guard';
 
 export function RoleGetGuard(): any {
     return applyDecorators(UseGuards(RolePutToRequestGuard, RoleNotFoundGuard));

@@ -4,7 +4,6 @@ import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { IAuthApi, IAuthApiRequestHashedData } from '../auth.interface';
 import { ConfigService } from '@nestjs/config';
-import { DatabaseEntity } from 'src/common/database/database.decorator';
 import { AuthApiDocument, AuthApiEntity } from '../schemas/auth.api.schema';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
@@ -15,6 +14,7 @@ import {
     AuthApiCreateDto,
     AuthApiCreateRawDto,
 } from '../dtos/auth.api.create.dto';
+import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 
 @Injectable()
 export class AuthApiService {

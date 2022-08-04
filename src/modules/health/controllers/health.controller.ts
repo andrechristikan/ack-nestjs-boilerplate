@@ -7,8 +7,8 @@ import {
     MongooseHealthIndicator,
 } from '@nestjs/terminus';
 import { Connection } from 'mongoose';
-import { DatabaseConnection } from 'src/common/database/database.decorator';
-import { Response } from 'src/common/response/response.decorator';
+import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/response.interface';
 import { AwsHealthIndicator } from '../indicators/health.aws.indicator';
 

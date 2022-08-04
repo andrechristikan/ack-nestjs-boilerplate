@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
-import { DatabaseEntity } from 'src/common/database/database.decorator';
 import { RoleDocument, RoleEntity } from '../schemas/role.schema';
 import {
     IDatabaseFindAllOptions,
@@ -10,6 +9,7 @@ import { PermissionEntity } from 'src/modules/permission/schemas/permission.sche
 import { RoleCreateDto } from '../dtos/role.create.dto';
 import { RoleUpdateDto } from '../dtos/role.update.dto';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.constant';
+import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 
 @Injectable()
 export class RoleService {

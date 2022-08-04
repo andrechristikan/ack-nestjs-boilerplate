@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
 import { DeleteResult } from 'mongodb';
-import { DatabaseEntity } from 'src/common/database/database.decorator';
 import { RoleDocument, RoleEntity } from '../schemas/role.schema';
 import { RoleCreateDto } from '../dtos/role.create.dto';
+import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 
 @Injectable()
 export class RoleBulkService {
