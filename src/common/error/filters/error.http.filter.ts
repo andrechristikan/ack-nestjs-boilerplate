@@ -47,6 +47,8 @@ export class ErrorHttpFilter implements ExceptionFilter {
         const __requestId = request.id;
         const __timestamp = request.timestamp;
         const __timezone = request.timezone;
+        const __version = request.version;
+        const __repoVersion = request.repoVersion;
 
         // message base in language
         const { customLang } = ctx.getRequest<IRequestApp>();
@@ -108,6 +110,8 @@ export class ErrorHttpFilter implements ExceptionFilter {
             timezone: __timezone,
             requestId: __requestId,
             path: __path,
+            version: __version,
+            repoVersion: __repoVersion,
             ...metadata,
         };
 
@@ -125,6 +129,8 @@ export class ErrorHttpFilter implements ExceptionFilter {
             .setHeader('x-timestamp', __timestamp)
             .setHeader('x-timezone', __timezone)
             .setHeader('x-request-id', __requestId)
+            .setHeader('x-version', __version)
+            .setHeader('x-repo-version', __repoVersion)
             .status(statusHttp)
             .json(resResponse);
 

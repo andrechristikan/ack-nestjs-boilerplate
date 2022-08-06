@@ -1,14 +1,14 @@
 import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { CoreModule } from 'src/core/core.module';
-import { HealthCommonController } from 'src/health/controller/health.common.controller';
-import { HealthModule } from 'src/health/health.module';
 import { INTEGRATION_AWS_URL } from './aws.s3.constant';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
 import { TerminusModule } from '@nestjs/terminus';
-import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
-import { AuthApiService } from 'src/auth/service/auth.api.service';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { AuthApiService } from 'src/common/auth/services/auth.api.service';
+import { HealthModule } from 'src/modules/health/health.module';
+import { HealthController } from 'src/modules/health/controllers/health.controller';
+import { CommonModule } from 'src/common/common.module';
 
 describe('Aws S3 Integration', () => {
     let app: INestApplication;
@@ -21,8 +21,8 @@ describe('Aws S3 Integration', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule, HealthModule, TerminusModule],
-            controllers: [HealthCommonController],
+            imports: [CommonModule, HealthModule, TerminusModule],
+            controllers: [HealthController],
         }).compile();
 
         app = moduleRef.createNestApplication();

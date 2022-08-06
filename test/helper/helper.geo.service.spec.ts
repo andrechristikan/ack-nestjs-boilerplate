@@ -1,13 +1,13 @@
 import { Test } from '@nestjs/testing';
-import { CoreModule } from 'src/core/core.module';
-import { HelperGeoService } from 'src/utils/helper/service/helper.geo.service';
+import { CommonModule } from 'src/common/common.module';
+import { HelperGeoService } from 'src/common/helper/services/helper.geo.service';
 
 describe('HelperGeoService', () => {
     let helperGeoService: HelperGeoService;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule],
+            imports: [CommonModule],
         }).compile();
 
         helperGeoService = moduleRef.get<HelperGeoService>(HelperGeoService);

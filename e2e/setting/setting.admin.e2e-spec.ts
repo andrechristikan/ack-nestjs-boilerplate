@@ -2,21 +2,23 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { RouterModule } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { useContainer } from 'class-validator';
-import { AuthApiService } from 'src/auth/service/auth.api.service';
-import { AuthService } from 'src/auth/service/auth.service';
-import { CoreModule } from 'src/core/core.module';
-import { RouterAdminModule } from 'src/router/router.admin.module';
-import { SettingService } from 'src/setting/service/setting.service';
-import { UserService } from 'src/user/service/user.service';
-import { IUserDocument } from 'src/user/user.interface';
-import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { connection, Types } from 'mongoose';
 import { E2E_SETTING_ADMIN_UPDATE_URL } from './setting.constant';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
-import { SettingDocument } from 'src/setting/schema/setting.schema';
-import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/setting/setting.constant';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/utils/request/request.constant';
+import { SettingService } from 'src/common/setting/services/setting.service';
+import { UserService } from 'src/modules/user/services/user.service';
+import { AuthService } from 'src/common/auth/services/auth.service';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { AuthApiService } from 'src/common/auth/services/auth.api.service';
+import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
+import { CommonModule } from 'src/common/common.module';
+import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
+import { IUserDocument } from 'src/modules/user/user.interface';
+import { plainToInstance } from 'class-transformer';
+import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/common/setting/constants/setting.status-error.constant';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
+import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 
 describe('E2E Setting Admin', () => {
     let app: INestApplication;
@@ -31,25 +33,26 @@ describe('E2E Setting Admin', () => {
     let timestamp: number;
 
     let setting: SettingDocument;
+    const settingName: string = faker.random.alphaNumeric(10);
 
     let accessToken: string;
 
     beforeAll(async () => {
         const modRef = await Test.createTestingModule({
             imports: [
-                CoreModule,
-                RouterAdminModule,
+                CommonModule,
+                RoutesAdminModule,
                 RouterModule.register([
                     {
                         path: '/admin',
-                        module: RouterAdminModule,
+                        module: RoutesAdminModule,
                     },
                 ]),
             ],
         }).compile();
 
         app = modRef.createNestApplication();
-        useContainer(app.select(CoreModule), { fallbackOnErrors: true });
+        useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
         authService = app.get(AuthService);
         settingService = app.get(SettingService);
@@ -68,11 +71,12 @@ describe('E2E Setting Admin', () => {
             }
         );
 
-        const map = await authService.serializationLogin(user);
+        const map = plainToInstance(UserPayloadSerialization, user);
         const payload = await authService.createPayloadAccessToken(map, false);
         accessToken = await authService.createAccessToken(payload);
 
-        setting = await settingService.findOneByName('maintenance');
+        await settingService.create({ name: settingName, value: true });
+        setting = await settingService.findOneByName(settingName);
 
         timestamp = helperDateService.timestamp();
         const apiEncryption = await authApiService.encryptApiKey(
@@ -193,6 +197,12 @@ describe('E2E Setting Admin', () => {
     });
 
     afterAll(async () => {
+        try {
+            await settingService.deleteOne({ name: settingName });
+        } catch (e) {
+            console.error(e);
+        }
+
         connection.close();
         await app.close();
     });

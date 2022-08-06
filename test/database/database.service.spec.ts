@@ -1,13 +1,13 @@
 import { Test } from '@nestjs/testing';
-import { CoreModule } from 'src/core/core.module';
-import { DatabaseOptionsService } from 'src/database/service/database.options.service';
+import { CommonModule } from 'src/common/common.module';
+import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
 
 describe('DatabaseOptionsService', () => {
     let databaseOptionsService: DatabaseOptionsService;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule],
+            imports: [CommonModule],
         }).compile();
 
         databaseOptionsService = moduleRef.get<DatabaseOptionsService>(
@@ -28,6 +28,18 @@ describe('DatabaseOptionsService', () => {
 
             databaseOptionsService.createMongooseOptions();
             expect(test).toHaveBeenCalled();
+        });
+
+        it('should be success', async () => {
+            const options = databaseOptionsService.createMongooseOptions();
+            jest.spyOn(
+                databaseOptionsService,
+                'createMongooseOptions'
+            ).mockImplementation(() => options);
+
+            expect(databaseOptionsService.createMongooseOptions()).toBe(
+                options
+            );
         });
 
         it('should be success', async () => {

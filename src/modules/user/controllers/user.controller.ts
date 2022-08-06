@@ -41,6 +41,7 @@ import { UserChangePasswordDto } from '../dtos/user.change-password.dto';
 import { UserLoginDto } from '../dtos/user.login.dto';
 import { UserDocument } from '../schemas/user.schema';
 import { UserLoginSerialization } from '../serializations/user.login.serialization';
+import { UserPayloadSerialization } from '../serializations/user.payload.serialization';
 import { UserProfileSerialization } from '../serializations/user.profile.serialization';
 import { UserService } from '../services/user.service';
 import { IUserDocument } from '../user.interface';
@@ -211,11 +212,16 @@ export class UserController {
             });
         }
 
+        const payload: UserPayloadSerialization =
+            await this.userService.payloadSerialization(user);
         const payloadAccessToken: Record<string, any> =
-            await this.authService.createPayloadAccessToken(user, rememberMe);
+            await this.authService.createPayloadAccessToken(
+                payload,
+                rememberMe
+            );
         const payloadRefreshToken: Record<string, any> =
             await this.authService.createPayloadRefreshToken(
-                user._id,
+                payload._id,
                 rememberMe,
                 {
                     loginDate: payloadAccessToken.loginDate,
@@ -300,10 +306,16 @@ export class UserController {
             });
         }
 
+        const payload: UserPayloadSerialization =
+            await this.userService.payloadSerialization(user);
         const payloadAccessToken: Record<string, any> =
-            await this.authService.createPayloadAccessToken(user, rememberMe, {
-                loginDate,
-            });
+            await this.authService.createPayloadAccessToken(
+                payload,
+                rememberMe,
+                {
+                    loginDate,
+                }
+            );
 
         const accessToken: string = await this.authService.createAccessToken(
             payloadAccessToken

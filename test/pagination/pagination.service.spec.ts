@@ -1,13 +1,13 @@
 import { Test } from '@nestjs/testing';
-import { CoreModule } from 'src/core/core.module';
-import { PaginationService } from 'src/pagination/service/pagination.service';
+import { CommonModule } from 'src/common/common.module';
+import { PaginationService } from 'src/common/pagination/services/pagination.service';
 
 describe('PaginationService', () => {
     let paginationService: PaginationService;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule],
+            imports: [CommonModule],
         }).compile();
 
         paginationService = moduleRef.get<PaginationService>(PaginationService);
@@ -68,6 +68,15 @@ describe('PaginationService', () => {
             );
 
             expect(paginationService.totalPage(100, 10)).toBe(totalPage);
+        });
+
+        it('should be success with max page', async () => {
+            const totalPage = paginationService.totalPage(10000, 10);
+            jest.spyOn(paginationService, 'totalPage').mockImplementation(
+                () => totalPage
+            );
+
+            expect(paginationService.totalPage(10000, 10)).toBe(totalPage);
         });
     });
 });

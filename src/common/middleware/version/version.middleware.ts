@@ -23,17 +23,25 @@ export class VersionMiddleware implements NestMiddleware {
         const versioningPrefix: string = this.configService.get<string>(
             'app.versioning.prefix'
         );
+        const versionConfig: string =
+            this.configService.get<string>('app.version');
+        const repoVersionConfig: string =
+            this.configService.get<string>('app.repoVersion');
+
         const originalUrl: string = req.originalUrl;
-        let apiVersion = '1';
+        let version = versionConfig;
         if (
             versioning &&
             originalUrl.startsWith(`${globalPrefix}/${versioningPrefix}`)
         ) {
             const url: string[] = originalUrl.split('/');
-            apiVersion = url[2].replace(versioningPrefix, '');
+            version = url[2].replace(versioningPrefix, '');
         }
 
-        req.apiVersion = this.helperNumberService.create(apiVersion);
+        req.version = version;
+        req.headers['x-version'] = version;
+        req.repoVersion = repoVersionConfig;
+        req.headers['x-repo-version'] = repoVersionConfig;
 
         next();
     }

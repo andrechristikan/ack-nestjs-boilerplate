@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
-import { CoreModule } from 'src/core/core.module';
-import { DebuggerService } from 'src/debugger/service/debugger.service';
+import { CommonModule } from 'src/common/common.module';
+import { DebuggerService } from 'src/common/debugger/services/debugger.service';
 
 describe('DebuggerService', () => {
     let debuggerService: DebuggerService;
@@ -12,7 +12,7 @@ describe('DebuggerService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule],
+            imports: [CommonModule],
         }).compile();
 
         debuggerService = moduleRef.get<DebuggerService>(DebuggerService);
@@ -122,6 +122,46 @@ describe('DebuggerService', () => {
             const test = jest.spyOn(debuggerService, 'error');
 
             debuggerService.error(
+                'DebuggerService',
+                {
+                    description: sDescription,
+                    class: sClass,
+                    function: cFunction,
+                },
+                data
+            );
+            expect(test).toHaveBeenCalledWith(
+                'DebuggerService',
+                {
+                    description: sDescription,
+                    class: sClass,
+                    function: cFunction,
+                },
+                data
+            );
+        });
+    });
+
+    describe('warn', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(debuggerService, 'warn');
+
+            debuggerService.warn('DebuggerService', {
+                description: sDescription,
+                class: sClass,
+                function: cFunction,
+            });
+            expect(test).toHaveBeenCalledWith('DebuggerService', {
+                description: sDescription,
+                class: sClass,
+                function: cFunction,
+            });
+        });
+
+        it('should be called with data', async () => {
+            const test = jest.spyOn(debuggerService, 'warn');
+
+            debuggerService.warn(
                 'DebuggerService',
                 {
                     description: sDescription,

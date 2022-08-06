@@ -11,18 +11,18 @@ import {
     E2E_PERMISSION_PAYLOAD_TEST,
 } from './permission.constant';
 import { Types, connection } from 'mongoose';
-import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/permission/permission.constant';
-import { CoreModule } from 'src/core/core.module';
 import { RouterModule } from '@nestjs/core';
-import { PermissionService } from 'src/permission/service/permission.service';
-import { AuthService } from 'src/auth/service/auth.service';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/utils/request/request.constant';
-import { RouterAdminModule } from 'src/router/router.admin.module';
-import { PermissionDocument } from 'src/permission/schema/permission.schema';
-import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
-import { PermissionUpdateDto } from 'src/permission/dto/permission.update.dto';
 import { useContainer } from 'class-validator';
-import { AuthApiService } from 'src/auth/service/auth.api.service';
+import { AuthService } from 'src/common/auth/services/auth.service';
+import { PermissionService } from 'src/modules/permission/services/permission.service';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { AuthApiService } from 'src/common/auth/services/auth.api.service';
+import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
+import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
+import { CommonModule } from 'src/common/common.module';
+import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
+import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/constants/permission.status-code.constant';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 
 describe('E2E Permission Admin', () => {
     let app: INestApplication;
@@ -46,19 +46,19 @@ describe('E2E Permission Admin', () => {
     beforeAll(async () => {
         const modRef = await Test.createTestingModule({
             imports: [
-                CoreModule,
-                RouterAdminModule,
+                CommonModule,
+                RoutesAdminModule,
                 RouterModule.register([
                     {
                         path: '/admin',
-                        module: RouterAdminModule,
+                        module: RoutesAdminModule,
                     },
                 ]),
             ],
         }).compile();
 
         app = modRef.createNestApplication();
-        useContainer(app.select(CoreModule), { fallbackOnErrors: true });
+        useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         authService = app.get(AuthService);
         permissionService = app.get(PermissionService);
         helperDateService = app.get(HelperDateService);

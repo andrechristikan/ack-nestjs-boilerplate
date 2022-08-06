@@ -18,6 +18,8 @@ describe('AuthApiBulkService', () => {
     let authApiBulkService: AuthApiBulkService;
     let authApiService: AuthApiService;
 
+    const authApiName: string = faker.random.alphaNumeric(5);
+
     let authApi: IAuthApi;
 
     beforeEach(async () => {
@@ -43,7 +45,7 @@ describe('AuthApiBulkService', () => {
         authApiService = moduleRef.get<AuthApiService>(AuthApiService);
 
         authApi = await authApiService.create({
-            name: faker.random.alphaNumeric(),
+            name: authApiName,
             description: faker.random.alphaNumeric(),
         });
     });
@@ -74,6 +76,9 @@ describe('AuthApiBulkService', () => {
         try {
             await authApiBulkService.deleteMany({
                 _id: new Types.ObjectId(authApi._id),
+            });
+            await authApiService.deleteOne({
+                name: authApiName,
             });
         } catch (e) {
             console.error(e);

@@ -220,13 +220,13 @@ export class AuthApiService {
     }
 
     async decryptApiKey(
-        apiKeyHashed: string,
-        secretKey: string,
+        encryptedApiKey: string,
+        encryptionKey: string,
         passphrase: string
     ): Promise<IAuthApiRequestHashedData> {
         const decrypted = this.helperEncryptionService.aes256Decrypt(
-            apiKeyHashed,
-            secretKey,
+            encryptedApiKey,
+            encryptionKey,
             passphrase
         );
 
@@ -235,12 +235,12 @@ export class AuthApiService {
 
     async encryptApiKey(
         data: IAuthApiRequestHashedData,
-        secretKey: string,
+        encryptionKey: string,
         passphrase: string
     ): Promise<string> {
         return this.helperEncryptionService.aes256Encrypt(
             data,
-            secretKey,
+            encryptionKey,
             passphrase
         );
     }

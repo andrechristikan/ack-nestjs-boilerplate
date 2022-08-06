@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
-import { CoreModule } from 'src/core/core.module';
-import { HelperHashService } from 'src/utils/helper/service/helper.hash.service';
+import { CommonModule } from 'src/common/common.module';
+import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
 
 describe('HelperHashService', () => {
     let helperHashService: HelperHashService;
@@ -8,7 +8,7 @@ describe('HelperHashService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule],
+            imports: [CommonModule],
         }).compile();
 
         helperHashService = moduleRef.get<HelperHashService>(HelperHashService);

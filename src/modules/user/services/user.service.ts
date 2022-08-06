@@ -15,6 +15,8 @@ import { UserUpdateDto } from '../dtos/user.update.dto';
 import { IAwsS3Response } from 'src/modules/aws/aws.interface';
 import { IAuthPassword } from 'src/common/auth/auth.interface';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+import { plainToInstance } from 'class-transformer';
+import { UserPayloadSerialization } from '../serializations/user.payload.serialization';
 
 @Injectable()
 export class UserService {
@@ -63,22 +65,25 @@ export class UserService {
     ): Promise<T> {
         const user = this.userModel.findById(_id);
 
-        if (options && options.populate && options.populate.role) {
+        if (
+            options &&
+            options.populate &&
+            options.populate.role &&
+            options.populate.permission
+        ) {
+            user.populate({
+                path: 'role',
+                model: RoleEntity.name,
+                populate: {
+                    path: 'permissions',
+                    model: PermissionEntity.name,
+                },
+            });
+        } else if (options && options.populate && options.populate.role) {
             user.populate({
                 path: 'role',
                 model: RoleEntity.name,
             });
-
-            if (options.populate.permission) {
-                user.populate({
-                    path: 'role',
-                    model: RoleEntity.name,
-                    populate: {
-                        path: 'permissions',
-                        model: PermissionEntity.name,
-                    },
-                });
-            }
         }
 
         return user.lean();
@@ -90,22 +95,25 @@ export class UserService {
     ): Promise<T> {
         const user = this.userModel.findOne(find);
 
-        if (options && options.populate && options.populate.role) {
+        if (
+            options &&
+            options.populate &&
+            options.populate.role &&
+            options.populate.permission
+        ) {
+            user.populate({
+                path: 'role',
+                model: RoleEntity.name,
+                populate: {
+                    path: 'permissions',
+                    model: PermissionEntity.name,
+                },
+            });
+        } else if (options && options.populate && options.populate.role) {
             user.populate({
                 path: 'role',
                 model: RoleEntity.name,
             });
-
-            if (options.populate.permission) {
-                user.populate({
-                    path: 'role',
-                    model: RoleEntity.name,
-                    populate: {
-                        path: 'permissions',
-                        model: PermissionEntity.name,
-                    },
-                });
-            }
         }
 
         return user.lean();
@@ -233,5 +241,11 @@ export class UserService {
 
         user.isActive = true;
         return user.save();
+    }
+
+    async payloadSerialization(
+        data: IUserDocument
+    ): Promise<UserPayloadSerialization> {
+        return plainToInstance(UserPayloadSerialization, data);
     }
 }

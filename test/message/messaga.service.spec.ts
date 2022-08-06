@@ -1,8 +1,8 @@
 import { Test } from '@nestjs/testing';
 import { ValidationError } from 'class-validator';
-import { CoreModule } from 'src/core/core.module';
-import { MessageService } from 'src/message/service/message.service';
-import { IValidationErrorImport } from 'src/utils/error/error.interface';
+import { CommonModule } from 'src/common/common.module';
+import { IValidationErrorImport } from 'src/common/error/error.interface';
+import { MessageService } from 'src/common/message/services/message.service';
 
 describe('MessageService', () => {
     let messageService: MessageService;
@@ -15,7 +15,7 @@ describe('MessageService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule],
+            imports: [CommonModule],
         }).compile();
 
         messageService = moduleRef.get<MessageService>(MessageService);
@@ -475,24 +475,6 @@ describe('MessageService', () => {
                     'id',
                 ])
             ).toBe(languages);
-        });
-    });
-
-    describe('getLanguages', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(messageService, 'getLanguages');
-
-            await messageService.getLanguages();
-            expect(test).toHaveBeenCalled();
-        });
-
-        it('should be success', async () => {
-            const languages = messageService.getLanguages();
-            jest.spyOn(messageService, 'getLanguages').mockImplementation(
-                () => languages
-            );
-
-            expect(messageService.getLanguages()).toBe(languages);
         });
     });
 });

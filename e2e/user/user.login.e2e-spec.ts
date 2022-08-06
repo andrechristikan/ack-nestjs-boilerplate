@@ -2,28 +2,27 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
-import { E2E_AUTH_LOGIN_URL } from './auth.constant';
-import { UserDocument } from 'src/user/schema/user.schema';
-import { RoleDocument } from 'src/role/schema/role.schema';
-import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
-import {
-    ENUM_AUTH_STATUS_CODE_ERROR,
-    ENUM_AUTH_STATUS_CODE_SUCCESS,
-} from 'src/auth/auth.constant';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/role/role.constant';
-import { CoreModule } from 'src/core/core.module';
 import { RouterModule } from '@nestjs/core';
 import { connection } from 'mongoose';
-import { RoleService } from 'src/role/service/role.service';
-import { UserService } from 'src/user/service/user.service';
-import { AuthService } from 'src/auth/service/auth.service';
-import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/utils/request/request.constant';
-import { RouterCommonModule } from 'src/router/router.common.module';
 import { useContainer } from 'class-validator';
-import { AuthApiService } from 'src/auth/service/auth.api.service';
+import { E2E_USER_LOGIN_URL } from './user.constant';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
+import {
+    ENUM_USER_STATUS_CODE_ERROR,
+    ENUM_USER_STATUS_CODE_SUCCESS,
+} from 'src/modules/user/constants/user.status-code.constant';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
+import { CommonModule } from 'src/common/common.module';
+import { RoutesModule } from 'src/router/routes/routes.module';
+import { UserDocument } from 'src/modules/user/schemas/user.schema';
+import { UserService } from 'src/modules/user/services/user.service';
+import { AuthService } from 'src/common/auth/services/auth.service';
+import { RoleService } from 'src/modules/role/services/role.service';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { AuthApiService } from 'src/common/auth/services/auth.api.service';
+import { RoleDocument } from 'src/modules/role/schemas/role.schema';
 
-describe('E2E Login', () => {
+describe('E2E User Login', () => {
     let app: INestApplication;
     let userService: UserService;
     let authService: AuthService;
@@ -46,19 +45,19 @@ describe('E2E Login', () => {
     beforeAll(async () => {
         const modRef = await Test.createTestingModule({
             imports: [
-                CoreModule,
-                RouterCommonModule,
+                CommonModule,
+                RoutesModule,
                 RouterModule.register([
                     {
                         path: '/',
-                        module: RouterCommonModule,
+                        module: RoutesModule,
                     },
                 ]),
             ],
         }).compile();
 
         app = modRef.createNestApplication();
-        useContainer(app.select(CoreModule), { fallbackOnErrors: true });
+        useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
@@ -99,9 +98,9 @@ describe('E2E Login', () => {
         await app.init();
     });
 
-    it(`POST ${E2E_AUTH_LOGIN_URL} Error Request`, async () => {
+    it(`POST ${E2E_USER_LOGIN_URL} Error Request`, async () => {
         const response = await request(app.getHttpServer())
-            .post(E2E_AUTH_LOGIN_URL)
+            .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
@@ -120,9 +119,9 @@ describe('E2E Login', () => {
         return;
     });
 
-    it(`POST ${E2E_AUTH_LOGIN_URL} Not Found`, async () => {
+    it(`POST ${E2E_USER_LOGIN_URL} Not Found`, async () => {
         const response = await request(app.getHttpServer())
-            .post(E2E_AUTH_LOGIN_URL)
+            .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
@@ -141,9 +140,9 @@ describe('E2E Login', () => {
         return;
     });
 
-    it(`POST ${E2E_AUTH_LOGIN_URL} Password Not Match`, async () => {
+    it(`POST ${E2E_USER_LOGIN_URL} Password Not Match`, async () => {
         const response = await request(app.getHttpServer())
-            .post(E2E_AUTH_LOGIN_URL)
+            .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
@@ -156,17 +155,17 @@ describe('E2E Login', () => {
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
-            ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_NOT_MATCH_ERROR
+            ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_NOT_MATCH_ERROR
         );
 
         return;
     });
 
-    it(`POST ${E2E_AUTH_LOGIN_URL} Inactive`, async () => {
+    it(`POST ${E2E_USER_LOGIN_URL} Inactive`, async () => {
         await userService.inactive(user._id);
 
         const response = await request(app.getHttpServer())
-            .post(E2E_AUTH_LOGIN_URL)
+            .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
@@ -186,11 +185,11 @@ describe('E2E Login', () => {
         return;
     });
 
-    it(`POST ${E2E_AUTH_LOGIN_URL} Role Inactive`, async () => {
+    it(`POST ${E2E_USER_LOGIN_URL} Role Inactive`, async () => {
         await roleService.inactive(`${user.role}`);
 
         const response = await request(app.getHttpServer())
-            .post(E2E_AUTH_LOGIN_URL)
+            .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
@@ -210,9 +209,9 @@ describe('E2E Login', () => {
         return;
     });
 
-    it(`POST ${E2E_AUTH_LOGIN_URL} Success`, async () => {
+    it(`POST ${E2E_USER_LOGIN_URL} Success`, async () => {
         const response = await request(app.getHttpServer())
-            .post(E2E_AUTH_LOGIN_URL)
+            .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
@@ -225,16 +224,16 @@ describe('E2E Login', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(
-            ENUM_AUTH_STATUS_CODE_SUCCESS.AUTH_LOGIN_SUCCESS
+            ENUM_USER_STATUS_CODE_SUCCESS.USER_LOGIN_SUCCESS
         );
 
         return;
     });
 
-    it(`POST ${E2E_AUTH_LOGIN_URL} Password Expired`, async () => {
+    it(`POST ${E2E_USER_LOGIN_URL} Password Expired`, async () => {
         await userService.updatePasswordExpired(user._id, passwordExpired);
         const response = await request(app.getHttpServer())
-            .post(E2E_AUTH_LOGIN_URL)
+            .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
@@ -247,7 +246,7 @@ describe('E2E Login', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(
-            ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR
+            ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR
         );
 
         return;

@@ -7,7 +7,7 @@ import { MessageEnumService } from '../services/message.enum.service';
 
 @Controller({
     version: VERSION_NEUTRAL,
-    path: '/',
+    path: '/message',
 })
 export class MessageEnumController {
     constructor(private readonly messageEnumService: MessageEnumService) {}

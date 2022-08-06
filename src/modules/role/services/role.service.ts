@@ -90,12 +90,11 @@ export class RoleService {
         name,
         permissions,
         accessFor,
-        isActive,
     }: RoleCreateDto): Promise<RoleDocument> {
         const create: RoleDocument = new this.roleModel({
             name: name,
             permissions: permissions.map((val) => new Types.ObjectId(val)),
-            isActive: isActive || true,
+            isActive: true,
             accessFor,
         });
 

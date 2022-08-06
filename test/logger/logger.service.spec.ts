@@ -1,15 +1,19 @@
 import { Test } from '@nestjs/testing';
 import { Types } from 'mongoose';
-import { CoreModule } from 'src/core/core.module';
-import { ENUM_LOGGER_ACTION } from 'src/logger/logger.constant';
-import { ILogger } from 'src/logger/logger.interface';
-import { LoggerService } from 'src/logger/service/logger.service';
-import { ENUM_ROLE_ACCESS_FOR } from 'src/role/role.constant';
-import { ENUM_REQUEST_METHOD } from 'src/utils/request/request.constant';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.constant';
+import { CommonModule } from 'src/common/common.module';
+import {
+    ENUM_LOGGER_ACTION,
+    ENUM_LOGGER_LEVEL,
+} from 'src/common/logger/constants/logger.constant';
+import { ILogger } from 'src/common/logger/logger.interface';
+import { LoggerService } from 'src/common/logger/services/logger.service';
+import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.constant';
 import { v4 } from 'uuid';
 
 describe('LoggerService', () => {
     let loggerService: LoggerService;
+    const loggerLevel: ENUM_LOGGER_LEVEL = ENUM_LOGGER_LEVEL.INFO;
     const logger: ILogger = {
         action: ENUM_LOGGER_ACTION.TEST,
         description: 'test aaa',
@@ -24,7 +28,7 @@ describe('LoggerService', () => {
         requestId: v4(),
         role: {
             _id: `${new Types.ObjectId()}`,
-            accessFor: ENUM_ROLE_ACCESS_FOR.SUPER_ADMIN,
+            accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
         },
         method: ENUM_REQUEST_METHOD.GET,
         statusCode: 10000,
@@ -39,7 +43,7 @@ describe('LoggerService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule],
+            imports: [CommonModule],
         }).compile();
 
         loggerService = moduleRef.get<LoggerService>(LoggerService);
@@ -142,6 +146,39 @@ describe('LoggerService', () => {
             jest.spyOn(loggerService, 'fatal').mockImplementation(() => result);
 
             expect(loggerService.fatal(loggerComplete)).toBe(result);
+        });
+    });
+
+    describe('raw', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(loggerService, 'raw');
+
+            loggerService.raw({ level: loggerLevel, ...logger });
+            expect(test).toHaveBeenCalledWith({
+                level: loggerLevel,
+                ...logger,
+            });
+        });
+
+        it('should be success', async () => {
+            const result = loggerService.raw({ level: loggerLevel, ...logger });
+            jest.spyOn(loggerService, 'raw').mockImplementation(() => result);
+
+            expect(loggerService.raw({ level: loggerLevel, ...logger })).toBe(
+                result
+            );
+        });
+
+        it('should be success complete', async () => {
+            const result = loggerService.raw({
+                level: loggerLevel,
+                ...loggerComplete,
+            });
+            jest.spyOn(loggerService, 'raw').mockImplementation(() => result);
+
+            expect(
+                loggerService.raw({ level: loggerLevel, ...loggerComplete })
+            ).toBe(result);
         });
     });
 });

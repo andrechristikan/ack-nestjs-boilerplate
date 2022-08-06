@@ -124,7 +124,7 @@ export class RoleAdminController {
     @Post('/create')
     async create(
         @Body()
-        { name, permissions, accessFor, isActive }: RoleCreateDto
+        { name, permissions, accessFor }: RoleCreateDto
     ): Promise<IResponse> {
         const exist: boolean = await this.roleService.exists(name);
         if (exist) {
@@ -152,7 +152,6 @@ export class RoleAdminController {
                 name,
                 permissions,
                 accessFor,
-                isActive,
             });
 
             return {

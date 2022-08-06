@@ -1,4 +1,4 @@
-import { ENUM_ROLE_ACCESS_FOR } from 'src/role/role.constant';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.constant';
 
 export const E2E_ROLE_ADMIN_LIST_URL = '/admin/role/list';
 export const E2E_ROLE_ADMIN_GET_BY_ID_URL = '/admin/role/get/:_id';
@@ -12,7 +12,7 @@ export const E2E_ROLE_PAYLOAD_TEST = {
     role: {
         name: 'superadmin',
         isActive: true,
-        accessFor: ENUM_ROLE_ACCESS_FOR.SUPER_ADMIN,
+        accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
         permissions: [],
     },
     phoneNumber: '628123123112',

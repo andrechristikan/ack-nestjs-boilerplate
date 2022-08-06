@@ -1,13 +1,13 @@
 import { Test } from '@nestjs/testing';
-import { CoreModule } from 'src/core/core.module';
-import { HelperStringService } from 'src/utils/helper/service/helper.string.service';
+import { CommonModule } from 'src/common/common.module';
+import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 
 describe('HelperStringService', () => {
     let helperStringService: HelperStringService;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule],
+            imports: [CommonModule],
         }).compile();
 
         helperStringService =

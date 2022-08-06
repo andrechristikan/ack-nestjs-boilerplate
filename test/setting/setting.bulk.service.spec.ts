@@ -1,13 +1,13 @@
 import { Test } from '@nestjs/testing';
-import { CoreModule } from 'src/core/core.module';
-import { SettingBulkService } from 'src/setting/service/setting.bulk.service';
+import { CommonModule } from 'src/common/common.module';
+import { SettingBulkService } from 'src/common/setting/services/setting.bulk.service';
 
 describe('SettingBulkService', () => {
     let settingBulkService: SettingBulkService;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule],
+            imports: [CommonModule],
         }).compile();
 
         settingBulkService =

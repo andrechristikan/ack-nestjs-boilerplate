@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
 import { Test } from '@nestjs/testing';
 import { Types } from 'mongoose';
-import { CoreModule } from 'src/core/core.module';
-import { SettingService } from 'src/setting/service/setting.service';
+import { CommonModule } from 'src/common/common.module';
+import { SettingService } from 'src/common/setting/services/setting.service';
 
 describe('SettingService', () => {
     let settingService: SettingService;
@@ -11,7 +11,7 @@ describe('SettingService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule],
+            imports: [CommonModule],
         }).compile();
 
         settingService = moduleRef.get<SettingService>(SettingService);
@@ -243,66 +243,6 @@ describe('SettingService', () => {
                     value: '2',
                 })
             ).toBe(result);
-
-            await settingService.deleteOne({ _id: setting._id });
-        });
-    });
-
-    describe('serializationList', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(settingService, 'serializationList');
-
-            const settings = await settingService.findAll(
-                {},
-                { limit: 1, skip: 0 }
-            );
-            await settingService.serializationList(settings);
-            expect(test).toHaveBeenCalledWith(settings);
-        });
-
-        it('should be success', async () => {
-            const settings = await settingService.findAll(
-                {},
-                { limit: 1, skip: 0 }
-            );
-            const result = await settingService.serializationList(settings);
-            jest.spyOn(settingService, 'serializationList').mockImplementation(
-                async () => result
-            );
-
-            expect(await settingService.serializationList(settings)).toBe(
-                result
-            );
-        });
-    });
-
-    describe('serializationGet', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(settingService, 'serializationGet');
-
-            const setting = await settingService.create({
-                name: faker.name.firstName(),
-                description: 'test',
-                value: 1,
-            });
-            await settingService.serializationGet(setting);
-            expect(test).toHaveBeenCalledWith(setting);
-
-            await settingService.deleteOne({ _id: setting._id });
-        });
-
-        it('should be success', async () => {
-            const setting = await settingService.create({
-                name: faker.name.firstName(),
-                description: 'test',
-                value: 1,
-            });
-            const result = await settingService.serializationGet(setting);
-            jest.spyOn(settingService, 'serializationGet').mockImplementation(
-                async () => result
-            );
-
-            expect(await settingService.serializationGet(setting)).toBe(result);
 
             await settingService.deleteOne({ _id: setting._id });
         });

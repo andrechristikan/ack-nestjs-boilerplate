@@ -119,7 +119,8 @@ Next development
 - [x] Message en,id
 - [x] Optimize code, remove unnecessary code
 - [x] Update Unit test
-- [ ] Update E2E test
+- [x] Update E2E test
+- [ ] Repository Pattern
 - [ ] Update Documentation
 
 ## Example

@@ -8,8 +8,6 @@ import {
     IsEnum,
     IsArray,
     ArrayNotEmpty,
-    IsBoolean,
-    ValidateIf,
 } from 'class-validator';
 import { ENUM_AUTH_ACCESS_FOR_DEFAULT } from 'src/common/auth/constants/auth.constant';
 
@@ -30,9 +28,4 @@ export class RoleCreateDto {
     @IsEnum(ENUM_AUTH_ACCESS_FOR_DEFAULT)
     @IsNotEmpty()
     readonly accessFor: ENUM_AUTH_ACCESS_FOR_DEFAULT;
-
-    @IsBoolean()
-    @IsNotEmpty()
-    @ValidateIf((e) => e.isActive !== '')
-    readonly isActive?: boolean;
 }

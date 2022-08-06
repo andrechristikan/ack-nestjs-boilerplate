@@ -2,27 +2,29 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
-import { IUserDocument } from 'src/user/user.interface';
 import {
     E2E_USER_PROFILE_UPLOAD_URL,
     E2E_USER_PROFILE_URL,
 } from './user.constant';
 import { Types, connection } from 'mongoose';
-import { ENUM_USER_STATUS_CODE_ERROR } from 'src/user/user.constant';
-import { CoreModule } from 'src/core/core.module';
 import { RouterModule } from '@nestjs/core';
-import { UserService } from 'src/user/service/user.service';
-import { AuthService } from 'src/auth/service/auth.service';
-import { RoleService } from 'src/role/service/role.service';
-import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/utils/file/file.constant';
-import { RoleDocument } from 'src/role/schema/role.schema';
-import { UserDocument } from 'src/user/schema/user.schema';
-import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import { useContainer } from 'class-validator';
-import { AuthApiService } from 'src/auth/service/auth.api.service';
-import { RouterCommonModule } from 'src/router/router.common.module';
+import { UserService } from 'src/modules/user/services/user.service';
+import { AuthService } from 'src/common/auth/services/auth.service';
+import { RoleService } from 'src/modules/role/services/role.service';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { AuthApiService } from 'src/common/auth/services/auth.api.service';
+import { UserDocument } from 'src/modules/user/schemas/user.schema';
+import { CommonModule } from 'src/common/common.module';
+import { RoutesModule } from 'src/router/routes/routes.module';
+import { RoleDocument } from 'src/modules/role/schemas/role.schema';
+import { IUserDocument } from 'src/modules/user/user.interface';
+import { plainToInstance } from 'class-transformer';
+import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
+import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
+import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 
-describe('E2E User Common', () => {
+describe('E2E User', () => {
     let app: INestApplication;
     let userService: UserService;
     let authService: AuthService;
@@ -42,19 +44,19 @@ describe('E2E User Common', () => {
     beforeAll(async () => {
         const modRef = await Test.createTestingModule({
             imports: [
-                CoreModule,
-                RouterCommonModule,
+                CommonModule,
+                RoutesModule,
                 RouterModule.register([
                     {
                         path: '/',
-                        module: RouterCommonModule,
+                        module: RoutesModule,
                     },
                 ]),
             ],
         }).compile();
 
         app = modRef.createNestApplication();
-        useContainer(app.select(CoreModule), { fallbackOnErrors: true });
+        useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
@@ -90,7 +92,7 @@ describe('E2E User Common', () => {
             }
         );
 
-        const map = await authService.serializationLogin(userPopulate);
+        const map = plainToInstance(UserPayloadSerialization, userPopulate);
         const payload = await authService.createPayloadAccessToken(map, false);
         const payloadNotFound = {
             ...payload,

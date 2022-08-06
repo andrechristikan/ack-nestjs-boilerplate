@@ -1,14 +1,15 @@
 import { HttpStatus, INestApplication } from '@nestjs/common';
 import { TerminusModule } from '@nestjs/terminus';
 import { Test } from '@nestjs/testing';
-import { CoreModule } from 'src/core/core.module';
-import { HealthCommonController } from 'src/health/controller/health.common.controller';
-import { HealthModule } from 'src/health/health.module';
-import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
 import { INTEGRATION_DATABASE_URL } from './database.constant';
-import { AuthApiService } from 'src/auth/service/auth.api.service';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { AuthApiService } from 'src/common/auth/services/auth.api.service';
+import { HealthModule } from 'src/modules/health/health.module';
+import { CommonModule } from 'src/common/common.module';
+import { HealthController } from 'src/modules/health/controllers/health.controller';
+import { HttpModule } from '@nestjs/axios';
 
 describe('Database Integration', () => {
     let app: INestApplication;
@@ -21,8 +22,8 @@ describe('Database Integration', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule, HealthModule, TerminusModule],
-            controllers: [HealthCommonController],
+            imports: [CommonModule, HealthModule, TerminusModule, HttpModule],
+            controllers: [HealthController],
         }).compile();
 
         app = moduleRef.createNestApplication();

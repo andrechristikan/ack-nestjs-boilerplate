@@ -56,19 +56,19 @@ export class MiddlewareModule implements NestModule {
             .apply(MaintenanceMiddleware)
             .exclude(
                 {
-                    path: 'api/v:version*/auth/login',
+                    path: 'api/v:version*/user/login',
                     method: RequestMethod.POST,
                 },
                 {
-                    path: 'api/auth/login',
+                    path: 'api/user/login',
                     method: RequestMethod.POST,
                 },
                 {
-                    path: 'api/v:version*/auth/refresh',
+                    path: 'api/v:version*/user/refresh',
                     method: RequestMethod.POST,
                 },
                 {
-                    path: 'api/auth/refresh',
+                    path: 'api/user/refresh',
                     method: RequestMethod.POST,
                 },
                 {

@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { Test } from '@nestjs/testing';
-import { CoreModule } from 'src/core/core.module';
-import { HelperEncryptionService } from 'src/utils/helper/service/helper.encryption.service';
+import { CommonModule } from 'src/common/common.module';
+import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
 
 describe('HelperEncryptionService', () => {
     let helperEncryptionService: HelperEncryptionService;
@@ -10,7 +10,7 @@ describe('HelperEncryptionService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CoreModule],
+            imports: [CommonModule],
         }).compile();
 
         helperEncryptionService = moduleRef.get<HelperEncryptionService>(

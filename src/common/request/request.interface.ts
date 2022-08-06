@@ -8,7 +8,8 @@ export interface IRequestApp extends Request {
     timestamp: number;
     customLang: string[];
     apiKey?: IAuthApiPayload;
-    apiVersion?: number;
+    version: string;
+    repoVersion: string;
     userAgent?: IResult;
 
     user?: Record<string, any>;

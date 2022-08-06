@@ -13,24 +13,22 @@ import {
     E2E_ROLE_PAYLOAD_TEST,
 } from './role.constant';
 import { connection, Types } from 'mongoose';
-import {
-    ENUM_ROLE_ACCESS_FOR,
-    ENUM_ROLE_STATUS_CODE_ERROR,
-} from 'src/role/role.constant';
 import { RouterModule } from '@nestjs/core';
-import { CoreModule } from 'src/core/core.module';
-import { AuthService } from 'src/auth/service/auth.service';
-import { RoleService } from 'src/role/service/role.service';
-import { PermissionService } from 'src/permission/service/permission.service';
-import { RoleBulkService } from 'src/role/service/role.bulk.service';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/utils/request/request.constant';
-import { RouterAdminModule } from 'src/router/router.admin.module';
-import { RoleDocument } from 'src/role/schema/role.schema';
-import { PermissionDocument } from 'src/permission/schema/permission.schema';
-import { HelperDateService } from 'src/utils/helper/service/helper.date.service';
-import { RoleCreateDto } from 'src/role/dto/role.create.dto';
 import { useContainer } from 'class-validator';
-import { AuthApiService } from 'src/auth/service/auth.api.service';
+import { AuthService } from 'src/common/auth/services/auth.service';
+import { RoleService } from 'src/modules/role/services/role.service';
+import { PermissionService } from 'src/modules/permission/services/permission.service';
+import { RoleBulkService } from 'src/modules/role/services/role.bulk.service';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { AuthApiService } from 'src/common/auth/services/auth.api.service';
+import { RoleDocument } from 'src/modules/role/schemas/role.schema';
+import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
+import { CommonModule } from 'src/common/common.module';
+import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
+import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.constant';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 
 describe('E2E Role Admin', () => {
     let app: INestApplication;
@@ -57,19 +55,19 @@ describe('E2E Role Admin', () => {
     beforeAll(async () => {
         const modRef = await Test.createTestingModule({
             imports: [
-                CoreModule,
-                RouterAdminModule,
+                CommonModule,
+                RoutesAdminModule,
                 RouterModule.register([
                     {
                         path: '/admin',
-                        module: RouterAdminModule,
+                        module: RoutesAdminModule,
                     },
                 ]),
             ],
         }).compile();
 
         app = modRef.createNestApplication();
-        useContainer(app.select(CoreModule), { fallbackOnErrors: true });
+        useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
         roleBulkService = app.get(RoleBulkService);
@@ -83,28 +81,28 @@ describe('E2E Role Admin', () => {
         successData = {
             name: 'testRole1',
             permissions: permissions.map((val) => `${val._id}`),
-            accessFor: ENUM_ROLE_ACCESS_FOR.ADMIN,
+            accessFor: ENUM_AUTH_ACCESS_FOR.ADMIN,
         };
 
         roleUpdate = await roleService.create({
             name: 'testRole2',
             permissions: permissions.map((val) => `${val._id}`),
-            accessFor: ENUM_ROLE_ACCESS_FOR.ADMIN,
+            accessFor: ENUM_AUTH_ACCESS_FOR.ADMIN,
         });
 
         updateData = {
             name: 'testRole3',
             permissions: permissions.map((val) => `${val._id}`),
-            accessFor: ENUM_ROLE_ACCESS_FOR.ADMIN,
+            accessFor: ENUM_AUTH_ACCESS_FOR.ADMIN,
         };
 
         existData = {
             name: 'testRole',
             permissions: permissions.map((val) => `${val._id}`),
-            accessFor: ENUM_ROLE_ACCESS_FOR.ADMIN,
+            accessFor: ENUM_AUTH_ACCESS_FOR.ADMIN,
         };
 
-        role = await roleService.create(existData as RoleCreateDto);
+        role = await roleService.create(existData);
 
         accessToken = await authService.createAccessToken({
             ...E2E_ROLE_PAYLOAD_TEST,

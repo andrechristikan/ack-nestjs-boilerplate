@@ -4,4 +4,4 @@
 yarn lint
 yarn deadcode
 yarn spell
-# yarn test
+yarn test
