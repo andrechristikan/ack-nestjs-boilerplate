@@ -29,6 +29,7 @@ import { PermissionDocument } from 'src/modules/permission/schemas/permission.sc
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
+import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.permission.constant';
 
 describe('E2E Role Admin', () => {
     let app: INestApplication;
@@ -76,7 +77,20 @@ describe('E2E Role Admin', () => {
         authApiService = app.get(AuthApiService);
 
         const permissions: PermissionDocument[] =
-            await permissionService.findAll();
+            await permissionService.findAll({
+                code: {
+                    $in: [
+                        ENUM_AUTH_PERMISSIONS.ROLE_READ,
+                        ENUM_AUTH_PERMISSIONS.ROLE_CREATE,
+                        ENUM_AUTH_PERMISSIONS.ROLE_UPDATE,
+                        ENUM_AUTH_PERMISSIONS.ROLE_DELETE,
+                        ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
+                        ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
+                        ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
+                        ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
+                    ],
+                },
+            });
 
         successData = {
             name: 'testRole1',
@@ -449,9 +463,7 @@ describe('E2E Role Admin', () => {
             await roleBulkService.deleteMany({
                 name: 'testRole3',
             });
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) {}
 
         connection.close();
         await app.close();

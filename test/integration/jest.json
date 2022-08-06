@@ -1,17 +1,17 @@
 {
     "testTimeout": 5000,
-    "rootDir": "..",
+    "rootDir": "../../",
     "modulePaths": [
         "."
     ],
     "testEnvironment": "node",
     "testMatch": [
-        "<rootDir>/e2e/**/*.e2e-spec.ts"
+        "<rootDir>/test/integration/**/*.spec.ts"
     ],
     "collectCoverage": true,
-    "coverageDirectory": "e2e-coverage",
+    "coverageDirectory": "integration-coverage",
     "collectCoverageFrom": [
-        "./e2e"
+        "./integration"
     ],
     "coverageThreshold": {
       "global": {

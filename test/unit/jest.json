@@ -1,12 +1,12 @@
 {
     "testTimeout": 5000,
-    "rootDir": "..",
+    "rootDir": "../../",
     "modulePaths": [
         "."
     ],
     "testEnvironment": "node",
     "testMatch": [
-        "<rootDir>/test/**/*.spec.ts"
+        "<rootDir>/test/unit/**/*.spec.ts"
     ],
     "collectCoverage": true,
     "coverageDirectory": "coverage",

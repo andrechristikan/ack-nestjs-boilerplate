@@ -5,7 +5,7 @@ import { HelperFileService } from 'src/common/helper/services/helper.file.servic
 
 describe('HelperFileService', () => {
     let helperFileService: HelperFileService;
-    const file = readFileSync('./test/helper/data/test.xlsx');
+    const file = readFileSync('./test/unit/helper/data/test.xlsx');
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({

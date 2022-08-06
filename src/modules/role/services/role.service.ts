@@ -141,4 +141,7 @@ export class RoleService {
     async deleteOneById(_id: string): Promise<RoleDocument> {
         return this.roleModel.findByIdAndDelete(_id);
     }
+    async deleteOne(find: Record<string, any>): Promise<RoleDocument> {
+        return this.roleModel.findOneAndDelete(find);
+    }
 }

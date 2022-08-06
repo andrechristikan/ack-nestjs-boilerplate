@@ -152,7 +152,7 @@ describe('E2E User', () => {
     it(`POST ${E2E_USER_PROFILE_UPLOAD_URL} Profile Upload Error Request`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PROFILE_UPLOAD_URL)
-            .attach('file', './e2e/user/files/test.txt')
+            .attach('file', './test/e2e/user/files/test.txt')
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data')
             .set('user-agent', faker.internet.userAgent())
@@ -170,7 +170,7 @@ describe('E2E User', () => {
     it(`POST ${E2E_USER_PROFILE_UPLOAD_URL} Profile Upload Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PROFILE_UPLOAD_URL)
-            .attach('file', './e2e/user/files/test.txt')
+            .attach('file', './test/e2e/user/files/test.txt')
             .set('Authorization', `Bearer ${accessTokenNotFound}`)
             .set('Content-Type', 'multipart/form-data')
             .set('user-agent', faker.internet.userAgent())
@@ -189,7 +189,7 @@ describe('E2E User', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PROFILE_UPLOAD_URL)
             .send()
-            .attach('file', './e2e/user/files/medium.jpg')
+            .attach('file', './test/e2e/user/files/medium.jpg')
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data')
             .set('user-agent', faker.internet.userAgent())
@@ -208,7 +208,7 @@ describe('E2E User', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PROFILE_UPLOAD_URL)
             .send()
-            .attach('file', './e2e/user/files/small.jpg')
+            .attach('file', './test/e2e/user/files/small.jpg')
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data')
             .set('user-agent', faker.internet.userAgent())
@@ -219,7 +219,7 @@ describe('E2E User', () => {
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
 
         return;
-    }, 10000);
+    });
 
     afterAll(async () => {
         try {

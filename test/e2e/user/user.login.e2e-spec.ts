@@ -21,6 +21,7 @@ import { RoleService } from 'src/modules/role/services/role.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
 import { RoleDocument } from 'src/modules/role/schemas/role.schema';
+import { ENUM_AUTH_ACCESS_FOR_DEFAULT } from 'src/common/auth/constants/auth.constant';
 
 describe('E2E User Login', () => {
     let app: INestApplication;
@@ -39,6 +40,8 @@ describe('E2E User Login', () => {
     let timestamp: number;
 
     let user: UserDocument;
+
+    const roleName = faker.random.alphaNumeric(5);
 
     let passwordExpired: Date;
 
@@ -64,8 +67,13 @@ describe('E2E User Login', () => {
         helperDateService = app.get(HelperDateService);
         authApiService = app.get(AuthApiService);
 
+        await roleService.create({
+            name: roleName,
+            accessFor: ENUM_AUTH_ACCESS_FOR_DEFAULT.USER,
+            permissions: [],
+        });
         const role: RoleDocument = await roleService.findOne({
-            name: 'user',
+            name: roleName,
         });
 
         passwordExpired = helperDateService.backwardInDays(5);
@@ -255,6 +263,7 @@ describe('E2E User Login', () => {
     afterAll(async () => {
         try {
             await userService.deleteOneById(user._id);
+            await roleService.deleteOne({ name: roleName });
         } catch (e) {
             console.error(e);
         }

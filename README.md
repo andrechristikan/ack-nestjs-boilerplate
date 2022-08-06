@@ -132,11 +132,6 @@ ack-nestjs-mongoose has advance example. Feel free to check it by yourself.
 Let's go into deep ! 🚀
 
 - [Documentation][ack-docs]
-- [Tips][ack-docs-tips]
-
-## Endpoints
-
-Import [endpoints.json][ack-endpoint] into postman or see our [e2e testing][ack-e2e]
 
 ## License
 
@@ -226,21 +221,15 @@ Thanks goes to these wonderful people
 [ack-forks]: https://github.com/andrechristikan/ack-nestjs-mongoose/network/members
 [ack-contributors]: https://github.com/andrechristikan/ack-nestjs-mongoose/graphs/contributors
 [ack-history]: https://github.com/andrechristikan/ack-nestjs-mongoose/commits/main
-[ack-endpoint]: /endpoints/endpoints.json
 
 <!-- ack microservice -->
-[ack-microservice-repo]: https://github.com/andrechristikan/ack-microservice-nestjs-mongoose
+[ack-microservice-repo]: https://github.com/andrechristikan/ack-microservice-mongoose
 
 <!-- license -->
 [license]: LICENSE.md
-[endpoints]: endpoints.json
 
 <!-- Documents -->
 [ack-docs]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/
-[ack-docs-features]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/features/readme
-[ack-docs-example]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/example
-[ack-docs-tips]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/tips/readme
-[ack-doc-env]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/#/features/readme
 
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com
