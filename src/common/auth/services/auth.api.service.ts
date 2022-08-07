@@ -40,7 +40,7 @@ export class AuthApiService {
             createdAt: 1,
         });
 
-        if (options && options.limit && options.skip) {
+        if (options && options.limit !== undefined && options.skip) {
             users.limit(options.limit).skip(options.skip);
         }
 

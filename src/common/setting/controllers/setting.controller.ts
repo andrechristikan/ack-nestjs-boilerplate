@@ -47,14 +47,10 @@ export class SettingController {
         }: SettingListDto
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
-        let find: Record<string, any> = {};
+        const find: Record<string, any> = {
+            ...search,
+        };
 
-        if (search) {
-            find = {
-                ...find,
-                ...search,
-            };
-        }
         const settings: SettingDocument[] = await this.settingService.findAll(
             find,
             {

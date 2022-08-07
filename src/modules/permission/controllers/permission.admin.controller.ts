@@ -63,17 +63,12 @@ export class PermissionAdminController {
         }: PermissionListDto
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
-        let find: Record<string, any> = {
+        const find: Record<string, any> = {
             isActive: {
                 $in: isActive,
             },
+            ...search,
         };
-        if (search) {
-            find = {
-                ...find,
-                ...search,
-            };
-        }
 
         const permissions: PermissionDocument[] =
             await this.permissionService.findAll(find, {

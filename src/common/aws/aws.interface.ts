@@ -1,6 +1,6 @@
 import { ObjectCannedACL } from '@aws-sdk/client-s3';
 
-export interface IAwsS3Response {
+export interface IAwsS3 {
     path: string;
     pathWithFilename: string;
     filename: string;

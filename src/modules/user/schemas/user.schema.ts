@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types, Document } from 'mongoose';
-import { IAwsS3Response } from 'src/modules/aws/aws.interface';
+import { IAwsS3 } from 'src/common/aws/aws.interface';
 import { RoleEntity } from 'src/modules/role/schemas/role.schema';
 
 @Schema({ timestamps: true, versionKey: false })
@@ -78,7 +78,7 @@ export class UserEntity {
             mime: String,
         },
     })
-    photo?: IAwsS3Response;
+    photo?: IAwsS3;
 }
 
 export const UserDatabaseName = 'users';

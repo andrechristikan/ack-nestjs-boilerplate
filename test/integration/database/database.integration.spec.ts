@@ -6,10 +6,10 @@ import { faker } from '@faker-js/faker';
 import { INTEGRATION_DATABASE_URL } from './database.constant';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { HealthModule } from 'src/modules/health/health.module';
 import { CommonModule } from 'src/common/common.module';
-import { HealthController } from 'src/modules/health/controllers/health.controller';
 import { HttpModule } from '@nestjs/axios';
+import { HealthModule } from 'src/health/health.module';
+import { HealthController } from 'src/health/controllers/health.controller';
 
 describe('Database Integration', () => {
     let app: INestApplication;

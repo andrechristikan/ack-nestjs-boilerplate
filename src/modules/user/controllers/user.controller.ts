@@ -18,6 +18,8 @@ import {
     AuthRefreshJwtGuard,
 } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
+import { IAwsS3 } from 'src/common/aws/aws.interface';
+import { AwsS3Service } from 'src/common/aws/services/aws.s3.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { UploadFileSingle } from 'src/common/file/decorators/file.decorator';
 import { IFile } from 'src/common/file/file.interface';
@@ -28,8 +30,6 @@ import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.constant'
 import { Logger } from 'src/common/logger/decorators/logger.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/response.interface';
-import { IAwsS3Response } from 'src/modules/aws/aws.interface';
-import { AwsS3Service } from 'src/modules/aws/services/aws.s3.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import {
     ENUM_USER_STATUS_CODE_ERROR,
@@ -87,7 +87,7 @@ export class UserController {
         const path = await this.userService.createRandomFilename();
 
         try {
-            const aws: IAwsS3Response = await this.awsService.putItemInBucket(
+            const aws: IAwsS3 = await this.awsService.putItemInBucket(
                 `${path.filename}.${mime}`,
                 content,
                 {

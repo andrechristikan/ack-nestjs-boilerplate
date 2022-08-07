@@ -82,14 +82,9 @@ export class UserAdminController {
         }: UserListDto
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
-        let find: Record<string, any> = {};
-
-        if (search) {
-            find = {
-                ...find,
-                ...search,
-            };
-        }
+        const find: Record<string, any> = {
+            ...search,
+        };
 
         const users: IUserDocument[] = await this.userService.findAll(find, {
             limit: perPage,
@@ -291,8 +286,8 @@ export class UserAdminController {
     @UploadFileSingle('file')
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.USER_READ,
-        ENUM_AUTH_PERMISSIONS.USER_CREATE
-        // ENUM_AUTH_PERMISSIONS.USER_IMPORT
+        ENUM_AUTH_PERMISSIONS.USER_CREATE,
+        ENUM_AUTH_PERMISSIONS.USER_IMPORT
     )
     @Post('/import')
     async import(

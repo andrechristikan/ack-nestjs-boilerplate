@@ -74,13 +74,9 @@ export class RoleAdminController {
         }: RoleListDto
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
-        let find: Record<string, any> = {};
-        if (search) {
-            find = {
-                ...find,
-                ...search,
-            };
-        }
+        const find: Record<string, any> = {
+            ...search,
+        };
 
         const roles: RoleDocument[] = await this.roleService.findAll(find, {
             skip: skip,

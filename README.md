@@ -15,7 +15,7 @@
 
 # ACK NestJs Boilerplate Mongoose  🔥 🚀
 
-> Best uses for Restful API, Microservice, or SaaS Project
+> Standard architecture for nestjs
 
 ack-nestjs-mongoose is a [NestJs](http://nestjs.com) Boilerplate with [Mongoose](https://mongoosejs.com) and [MongoDB](https://docs.mongodb.com) as Database.
 
@@ -114,13 +114,13 @@ Next development
 - [x] Import data form excel
 - [x] Version 2. New folder structure, new file upload decorator
 - [x] Reduce mixin usage
-- [x] Upload file multiple update
+- [ ] Upload file multiple update
+- [ ] File streaming for video and audio
 - [x] Rename repo from `ack-nestjs-boilerplate-mongoose` to `ack-nestjs-mongoose`
 - [x] Message en,id
 - [x] Optimize code, remove unnecessary code
 - [x] Update Unit test
 - [x] Update E2E test
-- [ ] Repository Pattern
 - [ ] Update Documentation
 
 ## Example

@@ -1,7 +1,7 @@
 import { OmitType } from '@nestjs/mapped-types';
 import { Exclude } from 'class-transformer';
 import { Types } from 'mongoose';
-import { IAwsS3Response } from 'src/modules/aws/aws.interface';
+import { IAwsS3 } from 'src/common/aws/aws.interface';
 import { UserGetSerialization } from './user.get.serialization';
 
 export class UserListSerialization extends OmitType(UserGetSerialization, [
@@ -13,7 +13,7 @@ export class UserListSerialization extends OmitType(UserGetSerialization, [
     readonly role: Types.ObjectId;
 
     @Exclude()
-    readonly photo?: IAwsS3Response;
+    readonly photo?: IAwsS3;
 
     @Exclude()
     readonly passwordExpired: Date;

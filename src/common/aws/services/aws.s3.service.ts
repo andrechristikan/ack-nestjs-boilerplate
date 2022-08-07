@@ -11,7 +11,7 @@ import {
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Readable } from 'stream';
-import { IAwsS3PutItemOptions, IAwsS3Response } from '../aws.interface';
+import { IAwsS3PutItemOptions, IAwsS3 } from '../aws.interface';
 
 @Injectable()
 export class AwsS3Service {
@@ -43,7 +43,7 @@ export class AwsS3Service {
         return listBucket.Buckets.map((val: Record<string, any>) => val.Name);
     }
 
-    async listItemInBucket(prefix?: string): Promise<IAwsS3Response[]> {
+    async listItemInBucket(prefix?: string): Promise<IAwsS3[]> {
         const command: ListObjectsV2Command = new ListObjectsV2Command({
             Bucket: this.bucket,
             Prefix: prefix,
@@ -102,7 +102,7 @@ export class AwsS3Service {
             | ReadableStream
             | Blob,
         options?: IAwsS3PutItemOptions
-    ): Promise<IAwsS3Response> {
+    ): Promise<IAwsS3> {
         let path: string = options && options.path ? options.path : undefined;
         const acl: string =
             options && options.acl ? options.acl : 'public-read';

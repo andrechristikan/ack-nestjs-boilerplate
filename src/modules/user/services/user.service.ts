@@ -12,11 +12,11 @@ import { IUserCheckExist, IUserCreate, IUserDocument } from '../user.interface';
 import { RoleEntity } from 'src/modules/role/schemas/role.schema';
 import { PermissionEntity } from 'src/modules/permission/schemas/permission.schema';
 import { UserUpdateDto } from '../dtos/user.update.dto';
-import { IAwsS3Response } from 'src/modules/aws/aws.interface';
 import { IAuthPassword } from 'src/common/auth/auth.interface';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import { plainToInstance } from 'class-transformer';
 import { UserPayloadSerialization } from '../serializations/user.payload.serialization';
+import { IAwsS3 } from 'src/common/aws/aws.interface';
 
 @Injectable()
 export class UserService {
@@ -190,7 +190,7 @@ export class UserService {
         };
     }
 
-    async updatePhoto(_id: string, aws: IAwsS3Response): Promise<UserDocument> {
+    async updatePhoto(_id: string, aws: IAwsS3): Promise<UserDocument> {
         const user: UserDocument = await this.userModel.findById(_id);
         user.photo = aws;
 

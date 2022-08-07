@@ -6,9 +6,9 @@ import { faker } from '@faker-js/faker';
 import { TerminusModule } from '@nestjs/terminus';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { HealthModule } from 'src/modules/health/health.module';
-import { HealthController } from 'src/modules/health/controllers/health.controller';
 import { CommonModule } from 'src/common/common.module';
+import { HealthModule } from 'src/health/health.module';
+import { HealthController } from 'src/health/controllers/health.controller';
 
 describe('Aws S3 Integration', () => {
     let app: INestApplication;
