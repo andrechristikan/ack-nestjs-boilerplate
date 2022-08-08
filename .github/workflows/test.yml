@@ -36,9 +36,6 @@ jobs:
       - name: Install dependencies
         run: yarn --frozen-lockfile
 
-      - name: Migration
-        run: yarn migrate
-
       - name: Create env file
         run: |
           touch .env
@@ -79,6 +76,9 @@ jobs:
           AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
           AWS_S3_REGION: ${{ secrets.AWS_S3_REGION }}
           
+      - name: Migration
+        run: yarn migrate
+
       - name: Unit Test
         run: yarn test:unit
 
