@@ -1,22 +1,3 @@
-export const AUTH_EXCLUDE_API_KEY_META_KEY = 'AuthExcludeApiKeyMetaKey';
-
-export enum ENUM_AUTH_ACCESS_FOR_SUPER_ADMIN {
-    SUPER_ADMIN = 'SUPER_ADMIN',
-}
-
-export enum ENUM_AUTH_ACCESS_FOR_DEFAULT {
-    USER = 'USER',
-    ADMIN = 'ADMIN',
-}
-
-export const ENUM_AUTH_ACCESS_FOR = {
-    ...ENUM_AUTH_ACCESS_FOR_SUPER_ADMIN,
-    ...ENUM_AUTH_ACCESS_FOR_DEFAULT,
-};
-
-export type ENUM_AUTH_ACCESS_FOR =
-    | ENUM_AUTH_ACCESS_FOR_SUPER_ADMIN
-    | ENUM_AUTH_ACCESS_FOR_DEFAULT;
-
 export const AUTH_ACCESS_FOR_META_KEY = 'AuthAccessForMetaKey';
 export const AUTH_PERMISSION_META_KEY = 'AuthPermissionMetaKey';
+export const AUTH_EXCLUDE_API_KEY_META_KEY = 'AuthExcludeApiKeyMetaKey';

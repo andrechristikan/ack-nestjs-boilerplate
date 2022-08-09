@@ -1,3 +1,4 @@
+import { IErrorHttpFilterMetadata } from 'src/common/error/error.interface';
 import { IMessage } from 'src/common/message/message.interface';
 
 export class ResponsePagingMetadataDto {
@@ -16,6 +17,6 @@ export class ResponsePagingDto<T = Record<string, any>> {
     perPage?: number;
     availableSearch?: string[];
     availableSort?: string[];
-    readonly metadata?: Record<string, any> & ResponsePagingMetadataDto;
+    readonly metadata?: IErrorHttpFilterMetadata & ResponsePagingMetadataDto;
     readonly data?: T[];
 }

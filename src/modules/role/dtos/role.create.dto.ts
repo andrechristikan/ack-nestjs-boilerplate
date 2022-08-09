@@ -9,7 +9,7 @@ import {
     IsArray,
     ArrayNotEmpty,
 } from 'class-validator';
-import { ENUM_AUTH_ACCESS_FOR_DEFAULT } from 'src/common/auth/constants/auth.constant';
+import { ENUM_AUTH_ACCESS_FOR_DEFAULT } from 'src/common/auth/constants/auth.enum.constant';
 
 export class RoleCreateDto {
     @IsString()

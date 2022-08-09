@@ -1,5 +1,5 @@
 import { Exclude, Transform, Type } from 'class-transformer';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.constant';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
 
 export class RoleGetSerialization {

@@ -21,7 +21,7 @@ import { RoleService } from 'src/modules/role/services/role.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
 import { RoleDocument } from 'src/modules/role/schemas/role.schema';
-import { ENUM_AUTH_ACCESS_FOR_DEFAULT } from 'src/common/auth/constants/auth.constant';
+import { ENUM_AUTH_ACCESS_FOR_DEFAULT } from 'src/common/auth/constants/auth.enum.constant';
 
 describe('E2E User Login', () => {
     let app: INestApplication;

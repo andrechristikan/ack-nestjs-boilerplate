@@ -16,7 +16,7 @@ import { AuthApiService } from 'src/common/auth/services/auth.api.service';
 import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
-import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/common/setting/constants/setting.status-error.constant';
+import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/common/setting/constants/setting.status-code.constant';
 
 describe('E2E Setting', () => {
     let app: INestApplication;

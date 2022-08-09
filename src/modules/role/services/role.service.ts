@@ -8,8 +8,8 @@ import {
 import { PermissionEntity } from 'src/modules/permission/schemas/permission.schema';
 import { RoleCreateDto } from '../dtos/role.create.dto';
 import { RoleUpdateDto } from '../dtos/role.update.dto';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.constant';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 
 @Injectable()
 export class RoleService {

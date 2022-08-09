@@ -4,7 +4,7 @@ import { CommonModule } from 'src/common/common.module';
 import {
     ENUM_HELPER_DATE_DIFF,
     ENUM_HELPER_DATE_FORMAT,
-} from 'src/common/helper/constants/helper.constant';
+} from 'src/common/helper/constants/helper.enum.constant';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 describe('HelperDateService', () => {
     let helperDateService: HelperDateService;

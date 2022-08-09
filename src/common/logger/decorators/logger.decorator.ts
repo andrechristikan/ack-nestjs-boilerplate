@@ -1,9 +1,9 @@
 import { applyDecorators, SetMetadata, UseInterceptors } from '@nestjs/common';
 import {
-    ENUM_LOGGER_ACTION,
     LOGGER_ACTION_META_KEY,
     LOGGER_OPTIONS_META_KEY,
 } from '../constants/logger.constant';
+import { ENUM_LOGGER_ACTION } from '../constants/logger.enum.constant';
 import { LoggerInterceptor } from '../interceptors/logger.interceptor';
 import { ILoggerOptions } from '../logger.interface';
 

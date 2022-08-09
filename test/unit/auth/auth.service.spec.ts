@@ -1,8 +1,8 @@
 import { Test } from '@nestjs/testing';
 import { faker } from '@faker-js/faker';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.constant';
 import { CommonModule } from 'src/common/common.module';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 
 describe('AuthService', () => {
     let authService: AuthService;

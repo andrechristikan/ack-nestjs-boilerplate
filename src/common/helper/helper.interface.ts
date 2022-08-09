@@ -1,7 +1,7 @@
 import {
     ENUM_HELPER_DATE_DIFF,
     ENUM_HELPER_DATE_FORMAT,
-} from './constants/helper.constant';
+} from './constants/helper.enum.constant';
 
 // Helper Encryption
 export interface IHelperJwtVerifyOptions {

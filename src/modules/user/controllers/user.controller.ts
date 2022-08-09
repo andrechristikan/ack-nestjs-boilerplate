@@ -26,7 +26,7 @@ import { IFile } from 'src/common/file/file.interface';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
 import { FileSizeImagePipe } from 'src/common/file/pipes/file.size.pipe';
 import { FileTypeImagePipe } from 'src/common/file/pipes/file.type.pipe';
-import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.constant';
+import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.enum.constant';
 import { Logger } from 'src/common/logger/decorators/logger.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/response.interface';

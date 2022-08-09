@@ -15,7 +15,6 @@ import {
     IMessageOptionsProperties,
 } from 'src/common/message/message.interface';
 import { MessageService } from 'src/common/message/services/message.service';
-import { ENUM_PAGINATION_TYPE } from 'src/common/pagination/constants/pagination.constant';
 import {
     RESPONSE_MESSAGE_PATH_META_KEY,
     RESPONSE_PAGING_TYPE_META_KEY,
@@ -33,6 +32,8 @@ import {
     ResponsePagingDto,
     ResponsePagingMetadataDto,
 } from '../dtos/response.paging.dto';
+import { ENUM_PAGINATION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { IErrorHttpFilterMetadata } from 'src/common/error/error.interface';
 
 @Injectable()
 export class ResponsePagingInterceptor
@@ -108,6 +109,14 @@ export class ResponsePagingInterceptor
                         );
                     }
 
+                    // get metadata
+                    const __path = requestExpress.path;
+                    const __requestId = requestExpress.id;
+                    const __timestamp = requestExpress.timestamp;
+                    const __timezone = requestExpress.timezone;
+                    const __version = requestExpress.version;
+                    const __repoVersion = requestExpress.repoVersion;
+
                     if (metadata) {
                         statusCode = metadata.statusCode || statusCode;
                         messagePath = metadata.message || messagePath;
@@ -118,7 +127,6 @@ export class ResponsePagingInterceptor
                         delete metadata.properties;
                     }
 
-                    // metadata
                     const path = requestExpress.path;
                     const addMetadata: ResponsePagingMetadataDto = {
                         nextPage:
@@ -135,6 +143,16 @@ export class ResponsePagingInterceptor
                                 : undefined,
                         firstPage: `${path}?perPage=${perPage}&page=${totalPage}`,
                         lastPage: `${path}?perPage=${perPage}&page=${1}`,
+                    };
+
+                    const resMetadata: IErrorHttpFilterMetadata = {
+                        languages: customLang,
+                        timestamp: __timestamp,
+                        timezone: __timezone,
+                        requestId: __requestId,
+                        path: __path,
+                        version: __version,
+                        repoVersion: __repoVersion,
                     };
 
                     // message
@@ -155,6 +173,7 @@ export class ResponsePagingInterceptor
                         availableSearch,
                         metadata: {
                             ...addMetadata,
+                            ...resMetadata,
                             ...metadata,
                         },
                         data: serialization,

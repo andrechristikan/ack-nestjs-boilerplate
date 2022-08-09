@@ -1,5 +1,5 @@
 import { applyDecorators, SetMetadata, UseInterceptors } from '@nestjs/common';
-import { ENUM_PAGINATION_TYPE } from 'src/common/pagination/constants/pagination.constant';
+import { ENUM_PAGINATION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import {
     RESPONSE_CUSTOM_TIMEOUT_META_KEY,
     RESPONSE_CUSTOM_TIMEOUT_META_VALUE_KEY,

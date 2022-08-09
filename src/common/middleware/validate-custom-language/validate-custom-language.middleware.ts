@@ -2,7 +2,7 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Response, NextFunction } from 'express';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.constant';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 import { IRequestApp } from 'src/common/request/request.interface';
 
 @Injectable()

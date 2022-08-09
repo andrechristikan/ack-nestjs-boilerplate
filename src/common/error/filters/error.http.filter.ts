@@ -11,7 +11,7 @@ import { DebuggerService } from 'src/common/debugger/services/debugger.service';
 import { IMessage } from 'src/common/message/message.interface';
 import { MessageService } from 'src/common/message/services/message.service';
 import { IRequestApp } from 'src/common/request/request.interface';
-import { ERROR_TYPE } from '../constants/error.constant';
+import { ERROR_TYPE } from '../constants/error.enum.constant';
 import {
     IErrorException,
     IErrorHttpFilter,
@@ -40,7 +40,6 @@ export class ErrorHttpFilter implements ExceptionFilter {
         const reqCustomLang = request.header('x-custom-lang');
 
         // get metadata
-
         const __class = request.__class;
         const __function = request.__function;
         const __path = request.path;

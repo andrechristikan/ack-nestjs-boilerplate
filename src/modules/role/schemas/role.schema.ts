@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types, Document } from 'mongoose';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.constant';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { PermissionEntity } from 'src/modules/permission/schemas/permission.schema';
 
 @Schema({ timestamps: true, versionKey: false })

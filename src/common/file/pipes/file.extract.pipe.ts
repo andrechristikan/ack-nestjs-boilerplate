@@ -3,7 +3,7 @@ import { PipeTransform } from '@nestjs/common/interfaces';
 import { IFile, IFileExtract } from '../file.interface';
 import { HelperFileService } from 'src/common/helper/services/helper.file.service';
 import { ENUM_FILE_STATUS_CODE_ERROR } from '../constants/file.status-code.constant';
-import { ENUM_FILE_EXCEL_MIME } from '../constants/file.constant';
+import { ENUM_FILE_EXCEL_MIME } from '../constants/file.enum.constant';
 
 // only for excel
 @Injectable()

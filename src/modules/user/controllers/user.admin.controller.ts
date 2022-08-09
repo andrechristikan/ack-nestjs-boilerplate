@@ -12,7 +12,7 @@ import {
     NotFoundException,
     UploadedFile,
 } from '@nestjs/common';
-import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.permission.constant';
+import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';

@@ -9,7 +9,7 @@ import { validate, ValidationError } from 'class-validator';
 import { ClassConstructor, plainToInstance } from 'class-transformer';
 import { IValidationErrorImport } from 'src/common/error/error.interface';
 import { ENUM_FILE_STATUS_CODE_ERROR } from '../constants/file.status-code.constant';
-import { ENUM_FILE_EXCEL_MIME } from '../constants/file.constant';
+import { ENUM_FILE_EXCEL_MIME } from '../constants/file.enum.constant';
 
 // only for excel
 // must use after FileExtractPipe

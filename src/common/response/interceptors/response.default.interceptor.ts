@@ -25,6 +25,7 @@ import {
     plainToInstance,
 } from 'class-transformer';
 import { ResponseDefaultDto } from '../dtos/response.default.dto';
+import { IErrorHttpFilterMetadata } from 'src/common/error/error.interface';
 
 @Injectable()
 export class ResponseDefaultInterceptor
@@ -44,6 +45,8 @@ export class ResponseDefaultInterceptor
                 map(async (responseData: Promise<Record<string, any>>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
                     const responseExpress: Response = ctx.getResponse();
+                    const requestExpress: IRequestApp =
+                        ctx.getRequest<IRequestApp>();
 
                     let messagePath: string = this.reflector.get<string>(
                         RESPONSE_MESSAGE_PATH_META_KEY,
@@ -73,6 +76,24 @@ export class ResponseDefaultInterceptor
                     let message = await this.messageService.get(messagePath, {
                         customLanguages: customLang,
                     });
+
+                    // get metadata
+                    const __path = requestExpress.path;
+                    const __requestId = requestExpress.id;
+                    const __timestamp = requestExpress.timestamp;
+                    const __timezone = requestExpress.timezone;
+                    const __version = requestExpress.version;
+                    const __repoVersion = requestExpress.repoVersion;
+
+                    const resMetadata: IErrorHttpFilterMetadata = {
+                        languages: customLang,
+                        timestamp: __timestamp,
+                        timezone: __timezone,
+                        requestId: __requestId,
+                        path: __path,
+                        version: __version,
+                        repoVersion: __repoVersion,
+                    };
 
                     // response
                     const response = (await responseData) as IResponse;
@@ -109,10 +130,7 @@ export class ResponseDefaultInterceptor
                         return {
                             statusCode,
                             message,
-                            metadata:
-                                metadata && Object.keys(metadata).length > 0
-                                    ? metadata
-                                    : undefined,
+                            metadata: { ...resMetadata, ...metadata },
                             data:
                                 serialization &&
                                 Object.keys(serialization).length > 0
@@ -124,6 +142,7 @@ export class ResponseDefaultInterceptor
                     return {
                         statusCode,
                         message,
+                        metadata: resMetadata,
                     };
                 })
             );

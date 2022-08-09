@@ -8,7 +8,7 @@ import {
     ENUM_FILE_EXCEL_MIME,
     ENUM_FILE_IMAGE_MIME,
     ENUM_FILE_VIDEO_MIME,
-} from '../constants/file.constant';
+} from '../constants/file.enum.constant';
 import { ENUM_FILE_STATUS_CODE_ERROR } from '../constants/file.status-code.constant';
 import { IFile } from '../file.interface';
 

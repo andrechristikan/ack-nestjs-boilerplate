@@ -4,7 +4,7 @@ import { AuthExcludeApiKey } from 'src/common/auth/decorators/auth.api-key.decor
 import { ErrorMeta } from 'src/common/error/decorators/error.decorator';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperService } from 'src/common/helper/services/helper.service';
-import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.constant';
+import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.enum.constant';
 import { Logger } from 'src/common/logger/decorators/logger.decorator';
 import {
     RequestExcludeTimestamp,

@@ -4,8 +4,8 @@ import { RoleService } from 'src/modules/role/services/role.service';
 import { RoleBulkService } from 'src/modules/role/services/role.bulk.service';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
 import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
-import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.permission.constant';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.constant';
+import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 
 @Injectable()
 export class RoleSeed {

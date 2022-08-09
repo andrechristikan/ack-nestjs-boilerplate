@@ -1,14 +1,14 @@
 import { Test } from '@nestjs/testing';
 import { Types } from 'mongoose';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.constant';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { CommonModule } from 'src/common/common.module';
 import {
     ENUM_LOGGER_ACTION,
     ENUM_LOGGER_LEVEL,
-} from 'src/common/logger/constants/logger.constant';
+} from 'src/common/logger/constants/logger.enum.constant';
 import { ILogger } from 'src/common/logger/logger.interface';
 import { LoggerService } from 'src/common/logger/services/logger.service';
-import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.constant';
+import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
 import { v4 } from 'uuid';
 
 describe('LoggerService', () => {
@@ -19,6 +19,7 @@ describe('LoggerService', () => {
         description: 'test aaa',
         method: ENUM_REQUEST_METHOD.GET,
         tags: [],
+        path: '/path',
     };
     const loggerComplete: ILogger = {
         action: ENUM_LOGGER_ACTION.TEST,
@@ -38,6 +39,7 @@ describe('LoggerService', () => {
         params: {
             test: 'bbb',
         },
+        path: '/path',
         tags: [],
     };
 

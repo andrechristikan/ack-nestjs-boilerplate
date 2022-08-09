@@ -6,10 +6,8 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
-import {
-    AUTH_ACCESS_FOR_META_KEY,
-    ENUM_AUTH_ACCESS_FOR,
-} from '../../constants/auth.constant';
+import { AUTH_ACCESS_FOR_META_KEY } from '../../constants/auth.constant';
+import { ENUM_AUTH_ACCESS_FOR } from '../../constants/auth.enum.constant';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from '../../constants/auth.status-code.constant';
 
 @Injectable()

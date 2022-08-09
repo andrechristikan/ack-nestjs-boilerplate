@@ -3,8 +3,8 @@ import * as path from 'path';
 import { I18nModule, HeaderResolver, I18nJsonLoader } from 'nestjs-i18n';
 import { ConfigService } from '@nestjs/config';
 import { MessageService } from './services/message.service';
-import { ENUM_MESSAGE_LANGUAGE } from './constants/message.constant';
 import { MessageEnumService } from './services/message.enum.service';
+import { ENUM_MESSAGE_LANGUAGE } from './constants/message.enum.constant';
 
 @Global()
 @Module({

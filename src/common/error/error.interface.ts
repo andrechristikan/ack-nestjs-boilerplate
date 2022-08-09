@@ -3,7 +3,7 @@ import {
     IMessage,
     IMessageOptionsProperties,
 } from '../message/message.interface';
-import { ERROR_TYPE } from './constants/error.constant';
+import { ERROR_TYPE } from './constants/error.enum.constant';
 
 // error default
 export interface IErrors {

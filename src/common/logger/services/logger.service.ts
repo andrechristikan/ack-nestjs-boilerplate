@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
 import { ILogger, ILoggerRaw } from '../logger.interface';
 import { LoggerDocument, LoggerEntity } from '../schemas/logger.schema';
-import { ENUM_LOGGER_LEVEL } from '../constants/logger.constant';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+import { ENUM_LOGGER_LEVEL } from '../constants/logger.enum.constant';
 
 @Injectable()
 export class LoggerService {
@@ -22,6 +22,7 @@ export class LoggerService {
         role,
         params,
         bodies,
+        path,
         statusCode,
         tags,
     }: ILogger): Promise<LoggerDocument> {
@@ -38,6 +39,7 @@ export class LoggerService {
             accessFor: role && role.accessFor ? role.accessFor : undefined,
             params,
             bodies,
+            path,
             statusCode,
             tags,
         });
@@ -54,6 +56,7 @@ export class LoggerService {
         role,
         params,
         bodies,
+        path,
         statusCode,
         tags,
     }: ILogger): Promise<LoggerDocument> {
@@ -70,6 +73,7 @@ export class LoggerService {
             accessFor: role && role.accessFor ? role.accessFor : undefined,
             params,
             bodies,
+            path,
             statusCode,
             tags,
         });
@@ -86,6 +90,7 @@ export class LoggerService {
         role,
         params,
         bodies,
+        path,
         statusCode,
         tags,
     }: ILogger): Promise<LoggerDocument> {
@@ -102,6 +107,7 @@ export class LoggerService {
             accessFor: role && role.accessFor ? role.accessFor : undefined,
             params,
             bodies,
+            path,
             statusCode,
             tags,
         });
@@ -118,6 +124,7 @@ export class LoggerService {
         role,
         params,
         bodies,
+        path,
         statusCode,
         tags,
     }: ILogger): Promise<LoggerDocument> {
@@ -134,6 +141,7 @@ export class LoggerService {
             accessFor: role && role.accessFor ? role.accessFor : undefined,
             params,
             bodies,
+            path,
             statusCode,
             tags,
         });
@@ -151,6 +159,7 @@ export class LoggerService {
         role,
         params,
         bodies,
+        path,
         statusCode,
         tags,
     }: ILoggerRaw): Promise<LoggerDocument> {
@@ -167,6 +176,7 @@ export class LoggerService {
             accessFor: role && role.accessFor ? role.accessFor : undefined,
             params,
             bodies,
+            path,
             statusCode,
             tags,
         });

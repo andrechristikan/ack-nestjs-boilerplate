@@ -18,8 +18,8 @@ import { LoggerModule } from 'src/common/logger/logger.module';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { PaginationModule } from 'src/common/pagination/pagination.module';
 import { SettingModule } from 'src/common/setting/setting.module';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.constant';
 import Joi from 'joi';
+import { ENUM_MESSAGE_LANGUAGE } from './message/constants/message.enum.constant';
 
 @Module({
     controllers: [],

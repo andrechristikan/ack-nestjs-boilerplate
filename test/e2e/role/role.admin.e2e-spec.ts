@@ -26,10 +26,10 @@ import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
 import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
-import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.permission.constant';
+import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 
 describe('E2E Role Admin', () => {
     let app: INestApplication;

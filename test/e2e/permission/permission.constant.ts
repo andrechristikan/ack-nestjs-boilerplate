@@ -1,4 +1,4 @@
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.constant';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 
 export const E2E_PERMISSION_ADMIN_LIST_URL = '/admin/permission/list';
 export const E2E_PERMISSION_ADMIN_GET_URL = '/admin/permission/get/:_id';

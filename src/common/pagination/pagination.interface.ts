@@ -1,4 +1,4 @@
-import { ENUM_PAGINATION_AVAILABLE_SORT_TYPE } from './constants/pagination.constant';
+import { ENUM_PAGINATION_AVAILABLE_SORT_TYPE } from './constants/pagination.enum.constant';
 
 export type IPaginationSort = Record<
     string,

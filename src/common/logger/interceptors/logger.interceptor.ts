@@ -10,14 +10,16 @@ import { Response } from 'express';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { IRequestApp } from 'src/common/request/request.interface';
 import { LoggerService } from '../services/logger.service';
+import { Reflector } from '@nestjs/core';
 import {
     ENUM_LOGGER_ACTION,
     ENUM_LOGGER_LEVEL,
+} from '../constants/logger.enum.constant';
+import {
     LOGGER_ACTION_META_KEY,
     LOGGER_OPTIONS_META_KEY,
 } from '../constants/logger.constant';
-import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.constant';
-import { Reflector } from '@nestjs/core';
+import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
 
 @Injectable()
 export class LoggerInterceptor implements NestInterceptor<any> {
@@ -32,8 +34,16 @@ export class LoggerInterceptor implements NestInterceptor<any> {
     ): Promise<Observable<Promise<any> | string>> {
         if (context.getType() === 'http') {
             const ctx: HttpArgumentsHost = context.switchToHttp();
-            const { apiKey, method, originalUrl, user, id, body, params } =
-                ctx.getRequest<IRequestApp>();
+            const {
+                apiKey,
+                method,
+                originalUrl,
+                user,
+                id,
+                body,
+                params,
+                path,
+            } = ctx.getRequest<IRequestApp>();
             const responseExpress = ctx.getResponse<Response>();
             return next.handle().pipe(
                 tap(async (response: Promise<Record<string, any>>) => {
@@ -68,6 +78,7 @@ export class LoggerInterceptor implements NestInterceptor<any> {
                         role: user ? user.role : undefined,
                         params,
                         bodies: body,
+                        path: path ? path : undefined,
                         statusCode,
                         tags: loggerOptions.tags ? loggerOptions.tags : [],
                     });

@@ -16,9 +16,9 @@ import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
 import { IUserDocument } from 'src/modules/user/user.interface';
 import { plainToInstance } from 'class-transformer';
-import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/common/setting/constants/setting.status-error.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
+import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/common/setting/constants/setting.status-code.constant';
 
 describe('E2E Setting Admin', () => {
     let app: INestApplication;
