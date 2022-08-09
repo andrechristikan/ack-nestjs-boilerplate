@@ -19,7 +19,7 @@ import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.s
 import { UploadFileSingle } from 'src/common/file/decorators/file.decorator';
 import { FileExtractPipe } from 'src/common/file/pipes/file.extract.pipe';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
-import { FileSizePipe } from 'src/common/file/pipes/file.size.pipe';
+import { FileSizeExcelPipe } from 'src/common/file/pipes/file.size.pipe';
 import { FileTypeExcelPipe } from 'src/common/file/pipes/file.type.pipe';
 import { FileValidationPipe } from 'src/common/file/pipes/file.validation.pipe';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
@@ -293,7 +293,7 @@ export class UserAdminController {
     async import(
         @UploadedFile(
             FileRequiredPipe,
-            FileSizePipe,
+            FileSizeExcelPipe,
             FileTypeExcelPipe,
             FileExtractPipe,
             new FileValidationPipe<UserImportDto>(UserImportDto)

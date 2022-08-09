@@ -10,10 +10,32 @@ import { ENUM_FILE_EXCEL_MIME } from '../constants/file.constant';
 export class FileExtractPipe implements PipeTransform {
     constructor(private readonly helperFileService: HelperFileService) {}
 
-    async transform(value: IFile): Promise<IFileExtract> {
+    async transform(
+        value: IFile | IFile[]
+    ): Promise<IFileExtract | IFileExtract[]> {
+        if (Array.isArray(value)) {
+            const extracts: IFileExtract[] = [];
+
+            for (const val of value) {
+                await this.validate(val.mimetype);
+
+                const extract: IFileExtract = await this.extract(val);
+                extracts.push(extract);
+            }
+
+            return extracts;
+        }
+
+        const file: IFile = value as IFile;
+        await this.validate(file.mimetype);
+
+        return this.extract(file);
+    }
+
+    async validate(mimetype: string): Promise<void> {
         if (
             !Object.values(ENUM_FILE_EXCEL_MIME).find(
-                (val) => val === value.mimetype.toLowerCase()
+                (val) => val === mimetype.toLowerCase()
             )
         ) {
             throw new UnsupportedMediaTypeException({
@@ -21,7 +43,9 @@ export class FileExtractPipe implements PipeTransform {
                 message: 'file.error.mimeInvalid',
             });
         }
+    }
 
+    async extract(value: IFile): Promise<IFileExtract> {
         const extract = await this.helperFileService.readExcel(value.buffer);
 
         return {

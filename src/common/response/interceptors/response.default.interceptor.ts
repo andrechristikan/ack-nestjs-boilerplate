@@ -113,7 +113,11 @@ export class ResponseDefaultInterceptor
                                 metadata && Object.keys(metadata).length > 0
                                     ? metadata
                                     : undefined,
-                            data: serialization,
+                            data:
+                                serialization &&
+                                Object.keys(serialization).length > 0
+                                    ? serialization
+                                    : undefined,
                         };
                     }
 

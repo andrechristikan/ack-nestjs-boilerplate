@@ -472,24 +472,6 @@ describe('HelperArrayService', () => {
         });
     });
 
-    describe('notIn', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'notIn');
-
-            helperArrayService.notIn(arrays, arrays);
-            expect(test).toHaveBeenCalledWith(arrays, arrays);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.notIn(arrays, arrays);
-            jest.spyOn(helperArrayService, 'notIn').mockImplementation(
-                () => result
-            );
-
-            expect(helperArrayService.notIn(arrays, arrays)).toBe(result);
-        });
-    });
-
     describe('includes', () => {
         it('should be called', async () => {
             const test = jest.spyOn(helperArrayService, 'includes');

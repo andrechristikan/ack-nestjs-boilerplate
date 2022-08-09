@@ -24,7 +24,7 @@ import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.s
 import { UploadFileSingle } from 'src/common/file/decorators/file.decorator';
 import { IFile } from 'src/common/file/file.interface';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
-import { FileSizePipe } from 'src/common/file/pipes/file.size.pipe';
+import { FileSizeImagePipe } from 'src/common/file/pipes/file.size.pipe';
 import { FileTypeImagePipe } from 'src/common/file/pipes/file.type.pipe';
 import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.constant';
 import { Logger } from 'src/common/logger/decorators/logger.decorator';
@@ -75,7 +75,7 @@ export class UserController {
     @Post('/profile/upload')
     async upload(
         @GetUser() user: IUserDocument,
-        @UploadedFile(FileRequiredPipe, FileSizePipe, FileTypeImagePipe)
+        @UploadedFile(FileRequiredPipe, FileSizeImagePipe, FileTypeImagePipe)
         file: IFile
     ): Promise<void> {
         const filename: string = file.originalname;

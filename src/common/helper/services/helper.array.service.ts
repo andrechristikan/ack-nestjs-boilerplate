@@ -97,10 +97,6 @@ export class HelperArrayService {
         return _.intersection(a, b).length > 0;
     }
 
-    notIn<T>(a: T[], b: T[]): boolean {
-        return _.xor(a, b).length > 0;
-    }
-
     includes<T>(a: T[], b: T): boolean {
         return _.includes(a, b);
     }

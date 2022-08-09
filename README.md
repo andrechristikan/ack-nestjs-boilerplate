@@ -114,8 +114,8 @@ Next development
 - [x] Import data form excel
 - [x] Version 2. New folder structure, new file upload decorator
 - [x] Reduce mixin usage
-- [ ] Upload file multiple update
-- [ ] File streaming for video and audio
+- [x] Upload file multiple update
+- [ ] File large upload into s3 for video and audio. using array of chunk
 - [x] Rename repo from `ack-nestjs-boilerplate-mongoose` to `ack-nestjs-mongoose`
 - [x] Message en,id
 - [x] Optimize code, remove unnecessary code
