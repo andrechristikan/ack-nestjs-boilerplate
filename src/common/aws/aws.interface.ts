@@ -9,6 +9,16 @@ export interface IAwsS3 {
     mime: string;
 }
 
+export interface IAwsS3MultiPart {
+    path: string;
+    uploadId: string;
+    pathWithFilename: string;
+    filename: string;
+    completedUrl: string;
+    baseUrl: string;
+    mime: string;
+}
+
 export interface IAwsS3PutItemOptions {
     path: string;
     acl?: ObjectCannedACL;
