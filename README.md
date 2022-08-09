@@ -49,7 +49,7 @@ Describes which version .
 | NodeJs     | v18.x    |
 | Typescript | v4.x     |
 | Mongoose   | v6.x     |
-| MongoDB    | v5.x     |
+| MongoDB    | v6.x     |
 | Yarn       | v1.x     |
 | NPM        | v8.x     |
 | Docker     | v20.x    |
