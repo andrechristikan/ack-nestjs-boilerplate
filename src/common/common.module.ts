@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { WinstonModule } from 'nest-winston';
-import { DebuggerOptionsModule } from 'src/common/debugger/debugger.module';
+import {
+    DebuggerModule,
+    DebuggerOptionsModule,
+} from 'src/common/debugger/debugger.module';
 import { DebuggerOptionService } from 'src/common/debugger/services/debugger.option.service';
 import Configs from '../configs';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -124,6 +127,7 @@ import { ENUM_MESSAGE_LANGUAGE } from './message/constants/message.enum.constant
         PaginationModule,
         ErrorModule,
         LoggerModule,
+        DebuggerModule,
         ResponseModule,
         RequestModule,
         MiddlewareModule,

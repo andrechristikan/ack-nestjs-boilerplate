@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { DebuggerOptionService } from './services/debugger.option.service';
 import { DebuggerService } from './services/debugger.service';
 
@@ -9,6 +9,7 @@ import { DebuggerService } from './services/debugger.service';
 })
 export class DebuggerOptionsModule {}
 
+@Global()
 @Module({
     providers: [DebuggerService],
     exports: [DebuggerService],
