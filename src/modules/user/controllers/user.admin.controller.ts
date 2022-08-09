@@ -183,7 +183,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                cause: err.message,
+                error: err.message,
             });
         }
     }
@@ -199,11 +199,11 @@ export class UserAdminController {
     async delete(@GetUser() user: IUserDocument): Promise<void> {
         try {
             await this.userService.deleteOneById(user._id);
-        } catch (err) {
+        } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                cause: err.message,
+                error: err.message,
             });
         }
 
@@ -229,7 +229,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                cause: err.message,
+                error: err.message,
             });
         }
 
@@ -253,7 +253,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                cause: err.message,
+                error: err.message,
             });
         }
 
@@ -275,7 +275,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                cause: err.message,
+                error: err.message,
             });
         }
 

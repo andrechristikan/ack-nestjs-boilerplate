@@ -96,11 +96,11 @@ export class UserController {
             );
 
             await this.userService.updatePhoto(user._id, aws);
-        } catch (err) {
+        } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                cause: err.message,
+                error: err.message,
             });
         }
 
@@ -156,7 +156,7 @@ export class UserController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                cause: err.message,
+                error: err.message,
             });
         }
 

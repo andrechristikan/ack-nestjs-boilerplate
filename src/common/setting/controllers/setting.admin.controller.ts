@@ -43,7 +43,7 @@ export class SettingAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                cause: err.message,
+                error: err.message,
             });
         }
 
