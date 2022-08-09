@@ -36,12 +36,36 @@ jobs:
       - name: Install dependencies
         run: yarn --frozen-lockfile
 
-      - name: Migration
-        run: yarn migrate
-
       - name: Create env file
         run: |
           touch .env
+          echo APP_NAME="ack" >> .env
+          echo APP_ENV="development" >> .env
+          echo APP_MODE="secure" >> .env
+          echo APP_LANGUAGE="en" >> .env
+          echo APP_TZ="Asia/Jakarta" >> .env
+          echo APP_HOST="localhost" >> .env
+          echo APP_PORT=" 3000" >> .env
+          echo APP_DEBUG="false" >> .env
+          echo APP_VERSIONING="true" >> .env
+          echo APP_VERSION="1" >> .env
+          echo APP_HTTP_ON="true" >> .env
+          echo APP_JOB_ON="true" >> .env
+          echo DATABASE_HOST="mongodb://localhost:27017" >> .env
+          echo DATABASE_NAME="ack" >> .env
+          echo DATABASE_USER="" >> .env
+          echo DATABASE_PASSWORD="" >> .env
+          echo DATABASE_DEBUG="false" >> .env
+          echo DATABASE_OPTIONS="" >> .env
+          echo MIDDLEWARE_TOLERANCE_TIMESTAMP="5m" >> .env
+          echo MIDDLEWARE_TIMEOUT="30s" >> .env
+          echo AUTH_JWT_ACCESS_TOKEN_SECRET_KEY="123456" >> .env
+          echo AUTH_JWT_ACCESS_TOKEN_EXPIRED="30m" >> .env
+          echo AUTH_JWT_REFRESH_TOKEN_SECRET_KEY="01001231" >> .env
+          echo AUTH_JWT_REFRESH_TOKEN_EXPIRED="7d" >> .env
+          echo AUTH_JWT_REFRESH_TOKEN_REMEMBER_ME_EXPIRED="30d" >> .env
+          echo AUTH_BASIC_TOKEN_CLIENT_ID="asdzxc" >> .env
+          echo AUTH_BASIC_TOKEN_CLIENT_SECRET="1234567890" >> .env
           echo AWS_CREDENTIAL_KEY="$AWS_CREDENTIAL_KEY" >> .env
           echo AWS_CREDENTIAL_SECRET="$AWS_CREDENTIAL_SECRET" >> .env
           echo AWS_S3_BUCKET="$AWS_S3_BUCKET" >> .env
@@ -52,6 +76,9 @@ jobs:
           AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
           AWS_S3_REGION: ${{ secrets.AWS_S3_REGION }}
           
+      - name: Migration
+        run: yarn migrate
+
       - name: Unit Test
         run: yarn test:unit
 

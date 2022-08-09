@@ -1,0 +1,32 @@
+{
+    "testTimeout": 5000,
+    "rootDir": "../../",
+    "modulePaths": [
+        "."
+    ],
+    "testEnvironment": "node",
+    "testMatch": [
+        "<rootDir>/test/integration/**/*.spec.ts"
+    ],
+    "collectCoverage": true,
+    "coverageDirectory": "integration-coverage",
+    "collectCoverageFrom": [
+        "./integration"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 90,
+        "functions": 90,
+        "lines": 90,
+        "statements": 90
+      }
+    },
+    "moduleFileExtensions": [
+        "js", 
+        "ts", 
+        "json"
+    ],
+    "transform": {
+        "^.+\\.(t|j)s$": "ts-jest"
+    }
+}

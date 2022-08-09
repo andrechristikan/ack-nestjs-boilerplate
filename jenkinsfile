@@ -1,0 +1,238 @@
+pipeline {
+    agent any
+    options {
+        skipDefaultCheckout true
+    }
+    environment {
+        BASE_IMAGE='node:lts-alpine' // change this with same version of container image
+
+        APP_NAME = 'ack' // this will be container name
+        APP_NETWORK = 'app-network' // this network name
+        APP_PORT = 3000 // this project will serve in port 0.0.0.0:3000
+        
+        NODE_JS = 'lts' // depends with our jenkins setting 
+
+        HOST_IP = 'xx.xx.xx.xx' // this server ip for your production server
+        HOST_CREDENTIAL = '2637b88f-8dc8-4395-bd6b-0c6127720a89' // depends with our credentials jenkins
+        
+        DOCKER_CREDENTIAL = 'ef108994-1241-4614-aab5-2aadd7a72284' // depends with our credentials jenkins
+        DOCKER_FILE= './prod/dockerfile'
+        DOCKER_USERNAME = 'ack' // docker hub username
+        DOCKER_REGISTRY = 'https://index.docker.io/v1/' 
+
+        GIT = 'Default' // depends with our jenkins setting
+        GIT_BRANCH = 'main' // git branch
+        GIT_CREDENTIAL = '86535ad6-5d74-48c0-9852-bddbe1fbaff6' // depends with our credentials jenkins 
+        GIT_URL = 'git@github.com:andrechristikan/ack-nestjs-mongoose.git'
+    }
+    tools {
+        nodejs NODE_JS
+        git GIT
+    }
+    stages {
+        stage('Prepare') {
+            steps {
+                cleanWs()
+                checkout scm
+
+                sh 'node --version && npm --version && yarn --version'
+                sh 'docker --version'
+                sh 'docker ps -a'
+                
+                script{
+                    def nodeContainer = docker.image(BASE_IMAGE)
+                    nodeContainer.pull()
+                    nodeContainer.inside {
+                        sh 'node --version'
+                        sh 'npm --version'
+                        sh 'yarn --version'
+                    }
+                }
+            }
+        }
+        stage('Clone') {
+            steps {
+                git branch: GIT_BRANCH,
+                credentialsId: GIT_CREDENTIAL,
+                url: GIT_URL
+
+                sh "git rev-parse --short HEAD > .git/commit-id"
+                sh "grep -o '\"version\": \"[^\"]*' package.json | grep -o '[^\"]*\$' > .git/version-id"
+            }
+        }
+        stage('Build'){
+            steps{
+                script{
+                    def commit_id = readFile('.git/commit-id').trim()
+                    def app_image = "${DOCKER_USERNAME}/${APP_NAME}-builder:${commit_id}"
+                    docker.build(app_image, "--target builder -f ${DOCKER_FILE} .")
+                }
+            }
+        }
+        stage('Unit Test') {
+            steps {
+                script{
+                    def commit_id = readFile('.git/commit-id').trim()
+                    def app_image = "${DOCKER_USERNAME}/${APP_NAME}-builder:${commit_id}"
+                    def container_testing = "${APP_NAME}-testing"
+
+                    try{
+                        sh "docker stop ${container_testing} && docker rm ${container_testing}"
+                    }catch(e){}
+
+                    try{
+                        sh "docker network create ${APP_NETWORK} --driver=bridge"
+                    }catch(e){}
+
+                    sh "docker run --rm --network ${APP_NETWORK} \
+                        --volume /app/${APP_NAME}/.env:/app/.env \
+                        --name ${container_testing} \
+                        ${app_image} \
+                        sh -c 'yarn test:unit'"
+                }
+                
+            }
+        }
+        stage('Integration Test') {
+            steps {
+                script{
+                    def commit_id = readFile('.git/commit-id').trim()
+                    def app_image = "${DOCKER_USERNAME}/${APP_NAME}-builder:${commit_id}"
+                    def container_testing = "${APP_NAME}-testing"
+
+                    try{
+                        sh "docker stop ${container_testing} && docker rm ${container_testing}"
+                    }catch(e){}
+
+                    try{
+                        sh "docker network create ${APP_NETWORK} --driver=bridge"
+                    }catch(e){}
+
+                    sh "docker run --rm --network ${APP_NETWORK} \
+                        --volume /app/${APP_NAME}/.env:/app/.env \
+                        --name ${container_testing} \
+                        ${app_image} \
+                        sh -c 'yarn test:integration'"
+                }
+                
+            }
+        }
+        stage('E2E Test') {
+            steps {
+                script{
+                    def commit_id = readFile('.git/commit-id').trim()
+                    def app_image = "${DOCKER_USERNAME}/${APP_NAME}-builder:${commit_id}"
+                    def container_testing = "${APP_NAME}-testing"
+
+                    try{
+                        sh "docker stop ${container_testing} && docker rm ${container_testing}"
+                    }catch(e){}
+
+                    try{
+                        sh "docker network create ${APP_NETWORK} --driver=bridge"
+                    }catch(e){}
+
+                    sh "docker run --rm --network ${APP_NETWORK} \
+                        --volume /app/${APP_NAME}/.env:/app/.env \
+                        --name ${container_testing} \
+                        ${app_image} \
+                        sh -c 'yarn test:e2e'"
+                }
+                
+            }
+        }
+        stage('Push') {
+            steps {
+                script{
+                    def commit_id = readFile('.git/commit-id').trim()
+                    def version_id = readFile('.git/version-id').trim()
+                    def app_image = "${DOCKER_USERNAME}/${APP_NAME}:${commit_id}"
+                    
+                    def app = docker.build(app_image, "--target main -f ${DOCKER_FILE} .")
+                    docker.withRegistry(DOCKER_REGISTRY, DOCKER_CREDENTIAL) {
+                        app.push('latest')
+                        app.push("v${version_id}")
+                        app.push("v${version_id}_sha-${commit_id}")
+                    }
+                }
+                
+            }
+        }
+        stage('Deploy') {
+            steps {
+                script{
+                    def commit_id = readFile('.git/commit-id').trim()
+                    def version_id = readFile('.git/version-id').trim()
+                    def app_image = "${DOCKER_USERNAME}/${APP_NAME}:v${version_id}_sha-${commit_id}"
+
+                    def remote = [:]
+                    remote.name = APP_NAME
+                    remote.host = HOST_IP
+                    remote.allowAnyHosts = true
+                    withCredentials([sshUserPrivateKey(credentialsId: HOST_CREDENTIAL, keyFileVariable: 'IDENTITY', usernameVariable: 'USERNAME')]) {
+
+                        remote.user = USERNAME
+                        remote.identityFile = IDENTITY
+
+                        try{
+                            sshCommand remote: remote, command: "docker stop ${APP_NAME} && docker rm ${APP_NAME}"
+                        }catch(e){}
+
+                        try{
+                            sshCommand remote: remote, command: "docker network create ${APP_NETWORK} --driver=bridge"
+                        }catch(e){}
+
+                        sshCommand remote: remote, command: "docker run -itd  \
+                            --hostname ${APP_NAME} \
+                            --publish ${APP_PORT}:${APP_PORT} \
+                            --network ${APP_NETWORK} \
+                            --volume /app/${APP_NAME}/logs/:/app/logs/ \
+                            --volume /app/${APP_NAME}/.env:/app/.env \
+                            --restart unless-stopped \
+                            --name ${APP_NAME} ${app_image}"
+                    }
+                }
+            }
+        }
+        stage('Clean'){
+            steps {
+                script{
+                    def remote = [:]
+                    remote.name = APP_NAME
+                    remote.host = HOST_IP
+                    remote.allowAnyHosts = true
+                    withCredentials([sshUserPrivateKey(credentialsId: HOST_CREDENTIAL, keyFileVariable: 'IDENTITY', usernameVariable: 'USERNAME')]) {
+
+                        remote.user = USERNAME
+                        remote.identityFile = IDENTITY
+
+                        try{
+                            sshCommand remote: remote, command: "docker container prune --force"
+                        }catch(e){}
+
+                        try{
+                            sshCommand remote: remote, command: "docker image prune --force"
+                        }catch(e){}
+
+                        try{
+                            sshCommand remote: remote, command: "docker rmi \$(docker images **/${APP_NAME} -q) --force"
+                        }catch(e){}
+                    }
+
+                    try{
+                        sh "docker container prune --force"
+                    }catch(e){}
+
+                    try{
+                        sh "docker image prune --force"
+                    }catch(e){}
+
+                    try{
+                        sh "docker rmi \$(docker images **/${APP_NAME} -q) --force"
+                    }catch(e){}
+                    
+                }
+            }
+        }
+    }
+}

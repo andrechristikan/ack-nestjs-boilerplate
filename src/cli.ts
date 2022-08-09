@@ -1,10 +1,10 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { CommandModule, CommandService } from 'nestjs-command';
-import { SeedsModule } from './database/seeds/seeds.module';
+import { MigrationModule } from './migration/migration.module';
 
 async function bootstrap() {
-    const app = await NestFactory.createApplicationContext(SeedsModule, {
+    const app = await NestFactory.createApplicationContext(MigrationModule, {
         logger: ['error'],
     });
 
@@ -14,7 +14,7 @@ async function bootstrap() {
         await app.select(CommandModule).get(CommandService).exec();
         await app.close();
     } catch (error) {
-        logger.error(error, 'NestJsCommand');
+        logger.error(error, 'Migration');
         await app.close();
         process.exit(1);
     }

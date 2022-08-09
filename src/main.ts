@@ -1,5 +1,5 @@
 import { NestApplication, NestFactory } from '@nestjs/core';
-import { Logger, VersioningType, VERSION_NEUTRAL } from '@nestjs/common';
+import { Logger, VersioningType } from '@nestjs/common';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
 import { useContainer } from 'class-validator';
@@ -16,6 +16,7 @@ async function bootstrap() {
     const versioningPrefix: string = configService.get<string>(
         'app.versioning.prefix'
     );
+    const version: string = configService.get<string>('app.version');
 
     const logger = new Logger();
     process.env.TZ = tz;
@@ -29,7 +30,7 @@ async function bootstrap() {
     if (versioning) {
         app.enableVersioning({
             type: VersioningType.URI,
-            defaultVersion: VERSION_NEUTRAL,
+            defaultVersion: version,
             prefix: versioningPrefix,
         });
     }
@@ -53,7 +54,7 @@ async function bootstrap() {
         'NestApplication'
     );
     logger.log(
-        `App Task is ${configService.get<boolean>('app.taskOn')}`,
+        `App Task is ${configService.get<boolean>('app.jobOn')}`,
         'NestApplication'
     );
     logger.log(`App Timezone is ${tz}`, 'NestApplication');

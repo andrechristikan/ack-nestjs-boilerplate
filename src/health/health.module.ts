@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { AwsModule } from 'src/aws/aws.module';
-import { AwsHealthIndicator } from './indicator/health.aws.indicator';
+import { AwsModule } from 'src/common/aws/aws.module';
+import { AwsHealthIndicator } from './indicators/health.aws.indicator';
 
 @Module({
     providers: [AwsHealthIndicator],

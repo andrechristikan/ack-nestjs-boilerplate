@@ -23,7 +23,9 @@
         "authapis",
         "headerapikey",
         "jenkinsfile",
-        "superadmin"
+        "superadmin",
+        "alphanum",
+        "dtos"
     ],
     "ignoreWords": [
         "psheon",
