@@ -157,7 +157,7 @@ export class RoleAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                cause: err.message,
+                error: err.message,
             });
         }
     }
@@ -206,7 +206,7 @@ export class RoleAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                cause: err.message,
+                error: err.message,
             });
         }
 
@@ -226,11 +226,11 @@ export class RoleAdminController {
     async delete(@GetRole() role: IRoleDocument): Promise<void> {
         try {
             await this.roleService.deleteOneById(role._id);
-        } catch (err) {
+        } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                cause: err.message,
+                error: err.message,
             });
         }
         return;
@@ -251,7 +251,7 @@ export class RoleAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                cause: err.message,
+                error: err.message,
             });
         }
 
@@ -273,7 +273,7 @@ export class RoleAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                cause: err.message,
+                error: err.message,
             });
         }
 
