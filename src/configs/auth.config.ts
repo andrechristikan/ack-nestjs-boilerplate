@@ -26,8 +26,11 @@ export default registerAs(
                     ? ms(process.env.AUTH_JWT_REFRESH_TOKEN_REMEMBER_ME_EXPIRED)
                     : ms('30d'), // recommendation for production is 30d
                 notBeforeExpirationTime: process.env
-                    .AUTH_JWT_ACCESS_TOKEN_EXPIRED
-                    ? ms(process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED)
+                    .AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION
+                    ? ms(
+                          process.env
+                              .AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION
+                      )
                     : ms('30m'), // recommendation for production is 30m
             },
         },
