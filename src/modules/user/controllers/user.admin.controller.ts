@@ -17,6 +17,7 @@ import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { UploadFileSingle } from 'src/common/file/decorators/file.decorator';
+import { IFileExtract } from 'src/common/file/file.interface';
 import { FileExtractPipe } from 'src/common/file/pipes/file.extract.pipe';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
 import { FileSizeExcelPipe } from 'src/common/file/pipes/file.size.pipe';
@@ -298,7 +299,7 @@ export class UserAdminController {
             FileExtractPipe,
             new FileValidationPipe<UserImportDto>(UserImportDto)
         )
-        file: UserImportDto[]
+        file: IFileExtract<UserImportDto>
     ): Promise<IResponse> {
         return { file };
     }
