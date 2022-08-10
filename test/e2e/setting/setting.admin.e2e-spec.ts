@@ -3,27 +3,25 @@ import { RouterModule } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { useContainer } from 'class-validator';
 import { connection, Types } from 'mongoose';
-import { E2E_SETTING_ADMIN_UPDATE_URL } from './setting.constant';
+import {
+    E2E_SETTING_ADMIN_PAYLOAD_TEST,
+    E2E_SETTING_ADMIN_UPDATE_URL,
+} from './setting.constant';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
 import { SettingService } from 'src/common/setting/services/setting.service';
-import { UserService } from 'src/modules/user/services/user.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
 import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
-import { IUserDocument } from 'src/modules/user/user.interface';
-import { plainToInstance } from 'class-transformer';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
-import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/common/setting/constants/setting.status-code.constant';
 
 describe('E2E Setting Admin', () => {
     let app: INestApplication;
     let settingService: SettingService;
-    let userService: UserService;
     let authService: AuthService;
     let helperDateService: HelperDateService;
     let authApiService: AuthApiService;
@@ -53,26 +51,15 @@ describe('E2E Setting Admin', () => {
 
         app = modRef.createNestApplication();
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
-        userService = app.get(UserService);
         authService = app.get(AuthService);
         settingService = app.get(SettingService);
         helperDateService = app.get(HelperDateService);
         authApiService = app.get(AuthApiService);
 
-        const user = await userService.findOne<IUserDocument>(
-            {
-                email: 'admin@mail.com',
-            },
-            {
-                populate: {
-                    role: true,
-                    permission: true,
-                },
-            }
+        const payload = await authService.createPayloadAccessToken(
+            E2E_SETTING_ADMIN_PAYLOAD_TEST,
+            false
         );
-
-        const map = plainToInstance(UserPayloadSerialization, user);
-        const payload = await authService.createPayloadAccessToken(map, false);
         accessToken = await authService.createAccessToken(payload);
 
         await settingService.create({ name: settingName, value: true });
