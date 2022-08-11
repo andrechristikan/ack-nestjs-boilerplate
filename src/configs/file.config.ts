@@ -9,7 +9,7 @@ export default registerAs(
             maxFiles: 3, // 3 files
         },
         excel: {
-            maxFileSize: bytes('2mb'), // 2mb
+            maxFileSize: bytes('5mb'), // 5mb
             maxFiles: 1, // 1 files
         },
         audio: {
@@ -17,7 +17,7 @@ export default registerAs(
             maxFiles: 1, // 1 files
         },
         video: {
-            maxFileSize: bytes('50mb'), // 10mb
+            maxFileSize: bytes('25mb'), // 25mb
             maxFiles: 1, // 1 files
         },
     })
