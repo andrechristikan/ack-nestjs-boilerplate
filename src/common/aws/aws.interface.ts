@@ -12,7 +12,7 @@ export interface IAwsS3 {
 export interface IAwsS3MultiPart {
     path: string;
     uploadId: string;
-    pathNumber?: number;
+    partNumber?: number;
     maxPartNumber?: number;
     pathWithFilename: string;
     filename: string;
