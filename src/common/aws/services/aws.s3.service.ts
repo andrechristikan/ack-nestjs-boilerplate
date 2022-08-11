@@ -11,14 +11,20 @@ import {
     CreateMultipartUploadCommandInput,
     UploadPartCommandInput,
     UploadPartCommand,
+    CompleteMultipartUploadCommandInput,
+    CompleteMultipartUploadCommand,
+    CompletedPart,
+    GetObjectCommandInput,
+    AbortMultipartUploadCommand,
+    AbortMultipartUploadCommandInput,
 } from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Readable } from 'stream';
 import {
-    IAwsS3PutItemOptions,
     IAwsS3,
     IAwsS3MultiPart,
+    IAwsS3PutItemOptions,
 } from '../aws.interface';
 
 @Injectable()
@@ -111,10 +117,11 @@ export class AwsS3Service {
             path = path.startsWith('/') ? path.replace('/', '') : `${path}`;
 
         const key: string = path ? `${path}/${filename}` : filename;
-        const command: GetObjectCommand = new GetObjectCommand({
+        const input: GetObjectCommandInput = {
             Bucket: this.bucket,
             Key: key,
-        });
+        };
+        const command: GetObjectCommand = new GetObjectCommand(input);
 
         try {
             const item: Record<string, any> = await this.s3Client.send(command);
@@ -278,22 +285,14 @@ export class AwsS3Service {
     }
 
     async uploadPart(
-        filename: string,
+        path: string,
         content: Buffer,
         uploadId: string,
-        partNumber: number,
-        options?: IAwsS3PutItemOptions
-    ): Promise<void> {
-        let path: string = options && options.path ? options.path : undefined;
-
-        if (path)
-            path = path.startsWith('/') ? path.replace('/', '') : `${path}`;
-
-        const key: string = path ? `${path}/${filename}` : filename;
-
+        partNumber: number
+    ): Promise<CompletedPart> {
         const uploadPartInput: UploadPartCommandInput = {
             Bucket: this.bucket,
-            Key: key,
+            Key: path,
             Body: content,
             PartNumber: partNumber,
             UploadId: uploadId,
@@ -303,7 +302,55 @@ export class AwsS3Service {
         );
 
         try {
-            await this.s3Client.send(uploadPartCommand);
+            const { ETag } = await this.s3Client.send(uploadPartCommand);
+
+            return {
+                ETag,
+                PartNumber: partNumber,
+            };
+        } catch (err: any) {
+            throw err;
+        }
+    }
+
+    async completeMultipart(
+        path: string,
+        uploadId: string,
+        parts: CompletedPart[]
+    ): Promise<void> {
+        const completeMultipartInput: CompleteMultipartUploadCommandInput = {
+            Bucket: this.bucket,
+            Key: path,
+            UploadId: uploadId,
+            MultipartUpload: {
+                Parts: parts,
+            },
+        };
+
+        const completeMultipartCommand: CompleteMultipartUploadCommand =
+            new CompleteMultipartUploadCommand(completeMultipartInput);
+
+        try {
+            await this.s3Client.send(completeMultipartCommand);
+
+            return;
+        } catch (err: any) {
+            throw err;
+        }
+    }
+
+    async abortMultipart(path: string, uploadId: string): Promise<void> {
+        const abortMultipartInput: AbortMultipartUploadCommandInput = {
+            Bucket: this.bucket,
+            Key: path,
+            UploadId: uploadId,
+        };
+
+        const abortMultipartCommand: AbortMultipartUploadCommand =
+            new AbortMultipartUploadCommand(abortMultipartInput);
+
+        try {
+            await this.s3Client.send(abortMultipartCommand);
 
             return;
         } catch (err: any) {

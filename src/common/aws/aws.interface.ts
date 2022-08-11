@@ -1,4 +1,4 @@
-import { ObjectCannedACL } from '@aws-sdk/client-s3';
+import { CompletedPart, ObjectCannedACL } from '@aws-sdk/client-s3';
 
 export interface IAwsS3 {
     path: string;
@@ -14,6 +14,7 @@ export interface IAwsS3MultiPart {
     uploadId: string;
     partNumber?: number;
     maxPartNumber?: number;
+    parts?: CompletedPart[];
     pathWithFilename: string;
     filename: string;
     completedUrl: string;
