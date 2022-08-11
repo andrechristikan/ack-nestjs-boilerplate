@@ -12,6 +12,8 @@ export interface IAwsS3 {
 export interface IAwsS3MultiPart {
     path: string;
     uploadId: string;
+    pathNumber?: number;
+    maxPartNumber?: number;
     pathWithFilename: string;
     filename: string;
     completedUrl: string;
