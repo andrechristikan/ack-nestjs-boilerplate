@@ -6,9 +6,10 @@ import {
     RESPONSE_MESSAGE_PATH_META_KEY,
     RESPONSE_PAGING_TYPE_META_KEY,
     RESPONSE_SERIALIZATION_META_KEY,
-    RESPONSE_SERIALIZATION_PROPERTIES_META_KEY,
+    RESPONSE_MESSAGE_PROPERTIES_META_KEY,
 } from '../constants/response.constant';
 import { ResponseDefaultInterceptor } from '../interceptors/response.default.interceptor';
+import { ResponseExcelInterceptor } from '../interceptors/response.excel.interceptor';
 import { ResponsePagingInterceptor } from '../interceptors/response.paging.interceptor';
 import { IResponseOptions } from '../response.interface';
 
@@ -21,14 +22,28 @@ export function Response(messagePath: string, options?: IResponseOptions): any {
             options ? options.classSerialization : undefined
         ),
         SetMetadata(
-            RESPONSE_SERIALIZATION_PROPERTIES_META_KEY,
-            options ? options.properties : undefined
+            RESPONSE_MESSAGE_PROPERTIES_META_KEY,
+            options ? options.messageProperties : undefined
         )
     );
 }
 
 export function ResponsePagingType(type: ENUM_PAGINATION_TYPE) {
     return applyDecorators(SetMetadata(RESPONSE_PAGING_TYPE_META_KEY, type));
+}
+
+export function ResponseExcel(options?: IResponseOptions) {
+    return applyDecorators(
+        UseInterceptors(ResponseExcelInterceptor),
+        SetMetadata(
+            RESPONSE_SERIALIZATION_META_KEY,
+            options ? options.classSerialization : undefined
+        ),
+        SetMetadata(
+            RESPONSE_MESSAGE_PROPERTIES_META_KEY,
+            options ? options.messageProperties : undefined
+        )
+    );
 }
 
 export function ResponsePaging(
@@ -43,8 +58,8 @@ export function ResponsePaging(
             options ? options.classSerialization : undefined
         ),
         SetMetadata(
-            RESPONSE_SERIALIZATION_PROPERTIES_META_KEY,
-            options ? options.properties : undefined
+            RESPONSE_MESSAGE_PROPERTIES_META_KEY,
+            options ? options.messageProperties : undefined
         )
     );
 }

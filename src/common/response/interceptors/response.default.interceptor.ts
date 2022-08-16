@@ -17,7 +17,7 @@ import {
     RESPONSE_MESSAGE_PATH_META_KEY,
     RESPONSE_SERIALIZATION_META_KEY,
     RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
-    RESPONSE_SERIALIZATION_PROPERTIES_META_KEY,
+    RESPONSE_MESSAGE_PROPERTIES_META_KEY,
 } from '../constants/response.constant';
 import {
     ClassConstructor,
@@ -62,9 +62,9 @@ export class ResponseDefaultInterceptor
                             RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
                             context.getHandler()
                         );
-                    const classSerializationProperties: IMessageOptionsProperties =
+                    const messageProperties: IMessageOptionsProperties =
                         this.reflector.get<IMessageOptionsProperties>(
-                            RESPONSE_SERIALIZATION_PROPERTIES_META_KEY,
+                            RESPONSE_MESSAGE_PROPERTIES_META_KEY,
                             context.getHandler()
                         );
 
@@ -100,7 +100,7 @@ export class ResponseDefaultInterceptor
                     if (response) {
                         const { metadata, ...data } = response;
                         let properties: IMessageOptionsProperties =
-                            classSerializationProperties;
+                            messageProperties;
                         let serialization = data;
 
                         if (classSerialization) {
@@ -127,15 +127,17 @@ export class ResponseDefaultInterceptor
                             properties,
                         });
 
+                        serialization =
+                            serialization &&
+                            Object.keys(serialization).length > 0
+                                ? serialization
+                                : undefined;
+
                         return {
                             statusCode,
                             message,
                             metadata: { ...resMetadata, ...metadata },
-                            data:
-                                serialization &&
-                                Object.keys(serialization).length > 0
-                                    ? serialization
-                                    : undefined,
+                            data: serialization,
                         };
                     }
 
