@@ -1,84 +1,51 @@
 /* istanbul ignore file */
 
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import excelJs, { CellValue } from 'exceljs';
 import { IHelperFileExcelRows } from '../helper.interface';
-import { HelperDateService } from './helper.date.service';
+import XLSX from 'xlsx';
 
 @Injectable()
 export class HelperFileService {
-    private readonly appName: string;
+    async writeExcel(
+        rows: IHelperFileExcelRows[],
+        options?: Record<string, any>
+    ): Promise<Buffer> {
+        // headers
+        const headers = Object.keys(rows[0]);
 
-    constructor(
-        private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService
-    ) {
-        this.appName = this.configService.get<string>('app.name');
-    }
+        // worksheet
+        const worksheet = XLSX.utils.json_to_sheet(rows);
 
-    async writeExcel(rows: IHelperFileExcelRows[]): Promise<Buffer> {
-        if (rows.length === 0) {
-            throw new Error('Rows Empty');
-        }
+        // workbook
+        const workbook = XLSX.utils.book_new();
 
-        const workbook = new excelJs.Workbook();
-        workbook.creator = this.appName;
-        workbook.lastModifiedBy = this.appName;
-        workbook.created = this.helperDateService.create();
-        workbook.modified = this.helperDateService.create();
-        workbook.properties.date1904 = true;
-        workbook.views = [
-            {
-                x: 0,
-                y: 0,
-                width: 10000,
-                height: 20000,
-                firstSheet: 0,
-                activeTab: 1,
-                visibility: 'visible',
-            },
-        ];
+        XLSX.utils.sheet_add_aoa(worksheet, [headers], { origin: 'A1' });
+        XLSX.utils.book_append_sheet(
+            workbook,
+            worksheet,
+            options && options.sheetName ? options.sheetName : 'Sheet 1'
+        );
 
-        // sheet
-        const worksheet = workbook.addWorksheet('Sheet 1', {
-            views: [{ state: 'frozen', xSplit: 1 }, { showGridLines: true }],
+        // create buffer
+        const buff: Buffer = XLSX.write(workbook, {
+            type: 'buffer',
+            bookType: 'xlsx',
         });
 
-        // set header
-        const headers = Object.keys(rows[0]);
-        worksheet.columns = headers.map((val) => ({
-            header: val,
-            key: val,
-        }));
-
-        worksheet.addRows(rows);
-
-        return (await workbook.xlsx.writeBuffer()) as Buffer;
+        return buff;
     }
 
     async readExcel(file: Buffer): Promise<IHelperFileExcelRows[]> {
-        const workbook = new excelJs.Workbook();
-        await workbook.xlsx.load(file);
+        // workbook
+        const workbook = XLSX.read(file);
 
-        const worksheet = workbook.getWorksheet(1);
+        // worksheet
+        const worksheetName = workbook.SheetNames;
+        const worksheet = workbook.Sheets[worksheetName[0]];
 
-        const headers: string[] = worksheet.getRow(1).values as string[];
-        headers.shift();
-
-        const rows: any[] = worksheet
-            .getRows(2, worksheet.lastRow.number - 1)
-            .map((val) => {
-                const row: CellValue[] = val.values as CellValue[];
-                row.shift();
-
-                const newRow = {};
-                row.forEach((l, i) => {
-                    newRow[headers[i]] = l;
-                });
-
-                return newRow;
-            });
+        // rows=
+        const rows: IHelperFileExcelRows[] =
+            XLSX.utils.sheet_to_json(worksheet);
 
         return rows;
     }

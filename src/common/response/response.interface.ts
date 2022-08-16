@@ -1,17 +1,20 @@
 import { ClassConstructor } from 'class-transformer';
+import { IHelperFileExcelRows } from '../helper/helper.interface';
 import { IMessageOptionsProperties } from '../message/message.interface';
 
 export interface IResponseMetadata {
     statusCode?: number;
     message?: string;
-    properties?: IMessageOptionsProperties;
+    messageProperties?: IMessageOptionsProperties;
     [key: string]: any;
 }
 
 export interface IResponseOptions {
     classSerialization: ClassConstructor<any>;
-    properties?: IMessageOptionsProperties;
+    messageProperties?: IMessageOptionsProperties;
 }
+
+export type IResponseExcel = IHelperFileExcelRows[];
 
 export interface IResponse {
     metadata?: IResponseMetadata;

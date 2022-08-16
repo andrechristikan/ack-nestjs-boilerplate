@@ -20,7 +20,7 @@ import {
     RESPONSE_PAGING_TYPE_META_KEY,
     RESPONSE_SERIALIZATION_META_KEY,
     RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
-    RESPONSE_SERIALIZATION_PROPERTIES_META_KEY,
+    RESPONSE_MESSAGE_PROPERTIES_META_KEY,
 } from '../constants/response.constant';
 import { Reflector } from '@nestjs/core';
 import {
@@ -75,9 +75,9 @@ export class ResponsePagingInterceptor
                             RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
                             context.getHandler()
                         );
-                    const classSerializationProperties: IMessageOptionsProperties =
+                    const messageProperties: IMessageOptionsProperties =
                         this.reflector.get<IMessageOptionsProperties>(
-                            RESPONSE_SERIALIZATION_PROPERTIES_META_KEY,
+                            RESPONSE_MESSAGE_PROPERTIES_META_KEY,
                             context.getHandler()
                         );
 
@@ -98,7 +98,7 @@ export class ResponsePagingInterceptor
                     } = response;
                     let statusCode: number = responseExpress.statusCode;
                     let properties: IMessageOptionsProperties =
-                        classSerializationProperties;
+                        messageProperties;
                     let serialization = data;
 
                     if (classSerialization) {
