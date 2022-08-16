@@ -240,7 +240,7 @@ Detail information about the environment
 
 | Key | Type | Description |
 | ---- | ---- | ---- | 
-| APP\_NAME | `string` | Free text | 
+| APP\_NAME | `string` | Application name | 
 | APP\_ENV | `string` | <ul><li>production</li><li>development</li></ul> |
 | APP\_MODE | `string` | <ul><li>secure</li><li>simple</li></ul> |
 | APP\_LANGUAGE | `string` | Enum languages, separator `,` |
