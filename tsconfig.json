@@ -21,12 +21,10 @@
   "include": [
     "src",
     "test",
-    "e2e",
-    "integration"
   ],
   "exclude": [
     "node_modules",
     "dist", 
-    "prod"
+    "docker"
   ]
 }
