@@ -3,7 +3,11 @@
   "sourceRoot": "src",
   "compilerOptions": {
     "assets": [
-      { "include": "languages/**/*", "watchAssets": true }
-    ]
+      { 
+        "include": "languages/**/*", 
+        "outDir": "dist/src" 
+      }
+    ],
+    "watchAssets": true
   }
 }
