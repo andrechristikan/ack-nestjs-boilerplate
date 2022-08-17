@@ -19,7 +19,7 @@ import { ENUM_MESSAGE_LANGUAGE } from './constants/message.enum.constant';
                     {}
                 ),
                 loaderOptions: {
-                    path: path.join('src/languages/'),
+                    path: path.join(__dirname, '../../languages'),
                     watch: true,
                 },
             }),
