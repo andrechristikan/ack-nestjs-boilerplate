@@ -20,6 +20,10 @@ export class FileValidationPipe<T> implements PipeTransform {
     async transform(
         value: IFileExtract<T> | IFileExtract<T>[]
     ): Promise<IFileExtract<T> | IFileExtract<T>[]> {
+        if (!value) {
+            return;
+        }
+
         if (Array.isArray(value)) {
             const classTransforms: IFileExtract<T>[] = [];
             for (const val of value) {
