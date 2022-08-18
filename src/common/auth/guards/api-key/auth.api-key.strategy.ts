@@ -29,6 +29,8 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
         );
     }
 
+    // you can change the logic
+    // difference app - difference logic
     async validate(
         apiKey: string,
         verified: (

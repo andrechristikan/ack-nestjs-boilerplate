@@ -13,6 +13,10 @@ export class FileExtractPipe implements PipeTransform {
     async transform(
         value: IFile | IFile[]
     ): Promise<IFileExtract | IFileExtract[]> {
+        if (!value) {
+            return;
+        }
+
         if (Array.isArray(value)) {
             const extracts: IFileExtract[] = [];
 

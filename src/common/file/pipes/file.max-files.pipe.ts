@@ -13,6 +13,10 @@ export class FileMaxFilesImagePipe implements PipeTransform {
     constructor(private readonly configService: ConfigService) {}
 
     async transform(value: IFile[]): Promise<IFile[]> {
+        if (!value) {
+            return value;
+        }
+
         await this.validate(value);
 
         return value;

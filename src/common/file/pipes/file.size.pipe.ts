@@ -12,6 +12,10 @@ export class FileSizeImagePipe implements PipeTransform {
     constructor(private readonly configService: ConfigService) {}
 
     async transform(value: IFile | IFile[]): Promise<IFile | IFile[]> {
+        if (!value) {
+            return;
+        }
+
         if (Array.isArray(value)) {
             for (const val of value) {
                 await this.validate(val.size);
