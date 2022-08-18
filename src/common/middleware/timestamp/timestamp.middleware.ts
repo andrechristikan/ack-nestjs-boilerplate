@@ -23,7 +23,7 @@ export class TimestampMiddleware implements NestMiddleware {
 
         const currentTimestamp: number = this.helperDateService.timestamp();
 
-        if (mode !== 'secure' && !reqTs) {
+        if (mode !== 'secure' || !reqTs) {
             reqTs = `${currentTimestamp}`;
         }
 
