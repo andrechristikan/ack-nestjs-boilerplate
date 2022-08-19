@@ -17,7 +17,8 @@ export class PaginationService {
     }
 
     async totalPage(totalData: number, limit: number): Promise<number> {
-        const totalPage = Math.ceil(totalData / limit);
+        let totalPage = Math.ceil(totalData / limit);
+        totalPage = totalPage === 0 ? 1 : totalPage;
         return totalPage > PAGINATION_MAX_PAGE
             ? PAGINATION_MAX_PAGE
             : totalPage;

@@ -141,8 +141,14 @@ export class ResponsePagingInterceptor
                                       currentPage - 1
                                   }`
                                 : undefined,
-                        firstPage: `${path}?perPage=${perPage}&page=${totalPage}`,
-                        lastPage: `${path}?perPage=${perPage}&page=${1}`,
+                        firstPage:
+                            totalPage > 1
+                                ? `${path}?perPage=${perPage}&page=${1}`
+                                : undefined,
+                        lastPage:
+                            totalPage > 1
+                                ? `${path}?perPage=${perPage}&page=${totalPage}`
+                                : undefined,
                     };
 
                     const resMetadata: IErrorHttpFilterMetadata = {
