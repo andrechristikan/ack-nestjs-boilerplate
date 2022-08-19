@@ -4,8 +4,8 @@ import { IMessage } from 'src/common/message/message.interface';
 export class ResponsePagingMetadataDto {
     nextPage?: string;
     previousPage?: string;
-    firstPage: string;
-    lastPage: string;
+    firstPage?: string;
+    lastPage?: string;
 }
 
 export class ResponsePagingDto<T = Record<string, any>> {
