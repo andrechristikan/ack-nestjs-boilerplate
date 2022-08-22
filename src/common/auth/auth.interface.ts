@@ -37,3 +37,9 @@ export interface IAuthPermission {
     description?: string;
     isActive?: boolean;
 }
+
+export interface IAuthRefreshTokenOptions {
+    // in milis
+    notBeforeExpirationTime?: number | string;
+    rememberMe?: boolean;
+}

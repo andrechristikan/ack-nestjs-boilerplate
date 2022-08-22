@@ -4,33 +4,34 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
 import { useContainer } from 'class-validator';
-import {
-    E2E_ENUM_AUTH_ACCESS_FOR_URL,
-    E2E_ENUM_MESSAGE_LANGUAGE_URL,
-} from './enum.constant';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
 import { CommonModule } from 'src/common/common.module';
-import { RoutesEnumModule } from 'src/router/routes/routes.enum.module';
+import { RoutesModule } from '../../../src/router/routes/routes.module';
+import { E2E_AUTH_INFO_URL, E2E_AUTH_PAYLOAD_TEST } from './auth.constant';
+import { AuthService } from 'src/common/auth/services/auth.service';
 
-describe('E2E Enum', () => {
+describe('E2E Auth', () => {
     let app: INestApplication;
     let helperDateService: HelperDateService;
     let authApiService: AuthApiService;
+    let authService: AuthService;
 
     const apiKey = 'qwertyuiop12345zxcvbnmkjh';
     let xApiKey: string;
     let timestamp: number;
 
+    let accessToken: string;
+
     beforeAll(async () => {
         const modRef = await Test.createTestingModule({
             imports: [
                 CommonModule,
-                RoutesEnumModule,
+                RoutesModule,
                 RouterModule.register([
                     {
-                        path: '/enum',
-                        module: RoutesEnumModule,
+                        path: '/',
+                        module: RoutesModule,
                     },
                 ]),
             ],
@@ -40,6 +41,13 @@ describe('E2E Enum', () => {
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         helperDateService = app.get(HelperDateService);
         authApiService = app.get(AuthApiService);
+        authService = app.get(AuthService);
+
+        const payload = await authService.createPayloadAccessToken(
+            E2E_AUTH_PAYLOAD_TEST,
+            false
+        );
+        accessToken = await authService.createAccessToken(payload);
 
         timestamp = helperDateService.timestamp();
         const apiEncryption = await authApiService.encryptApiKey(
@@ -57,22 +65,12 @@ describe('E2E Enum', () => {
         await app.init();
     });
 
-    it(`GET ${E2E_ENUM_AUTH_ACCESS_FOR_URL} Success`, async () => {
+    it(`GET ${E2E_AUTH_INFO_URL} Success`, async () => {
         const response = await request(app.getHttpServer())
-            .get(E2E_ENUM_AUTH_ACCESS_FOR_URL)
+            .get(E2E_AUTH_INFO_URL)
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
-            .set('x-api-key', xApiKey);
-
-        expect(response.status).toEqual(HttpStatus.OK);
-        expect(response.body.statusCode).toEqual(HttpStatus.OK);
-    });
-
-    it(`GET ${E2E_ENUM_MESSAGE_LANGUAGE_URL} Success`, async () => {
-        const response = await request(app.getHttpServer())
-            .get(E2E_ENUM_MESSAGE_LANGUAGE_URL)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
+            .set('Authorization', `Bearer ${accessToken}`)
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);

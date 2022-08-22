@@ -13,7 +13,7 @@ import ms from 'ms';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import {
     RESPONSE_CUSTOM_TIMEOUT_META_KEY,
-    RESPONSE_CUSTOM_TIMEOUT_META_VALUE_KEY,
+    RESPONSE_CUSTOM_TIMEOUT_VALUE_META_KEY,
 } from '../constants/response.constant';
 
 @Injectable()
@@ -37,7 +37,7 @@ export class ResponseTimeoutInterceptor
 
             if (customTimeout) {
                 const seconds: string = this.reflector.get<string>(
-                    RESPONSE_CUSTOM_TIMEOUT_META_VALUE_KEY,
+                    RESPONSE_CUSTOM_TIMEOUT_VALUE_META_KEY,
                     context.getHandler()
                 );
 

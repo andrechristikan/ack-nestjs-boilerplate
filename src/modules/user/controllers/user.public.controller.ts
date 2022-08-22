@@ -112,10 +112,9 @@ export class UserPublicController {
                 await this.authService.createAccessToken(payloadAccessToken);
 
             const refreshToken: string =
-                await this.authService.createRefreshToken(
-                    payloadRefreshToken,
-                    false
-                );
+                await this.authService.createRefreshToken(payloadRefreshToken, {
+                    rememberMe: false,
+                });
 
             return {
                 accessToken,

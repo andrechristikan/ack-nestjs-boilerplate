@@ -3,18 +3,23 @@ import { ConfigService } from '@nestjs/config';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
+import { IAuthRefreshTokenOptions } from '../auth.interface';
 import { IAuthPassword, IAuthPayloadOptions } from '../auth.interface';
 
 @Injectable()
 export class AuthService {
     private readonly accessTokenSecretToken: string;
-    private readonly accessTokenExpirationTime: string;
-    private readonly accessTokenNotBeforeExpirationTime: string;
+    private readonly accessTokenExpirationTime: number;
+    private readonly accessTokenNotBeforeExpirationTime: number;
 
     private readonly refreshTokenSecretToken: string;
-    private readonly refreshTokenExpirationTime: string;
-    private readonly refreshTokenExpirationTimeRememberMe: string;
-    private readonly refreshTokenNotBeforeExpirationTime: string;
+    private readonly refreshTokenExpirationTime: number;
+    private readonly refreshTokenExpirationTimeRememberMe: number;
+    private readonly refreshTokenNotBeforeExpirationTime: number;
+
+    private readonly prefixAuthorization: string;
+    private readonly audience: string;
+    private readonly issuer: string;
 
     constructor(
         private readonly helperHashService: HelperHashService,
@@ -25,28 +30,34 @@ export class AuthService {
         this.accessTokenSecretToken = this.configService.get<string>(
             'auth.jwt.accessToken.secretKey'
         );
-        this.accessTokenExpirationTime = this.configService.get<string>(
+        this.accessTokenExpirationTime = this.configService.get<number>(
             'auth.jwt.accessToken.expirationTime'
         );
         this.accessTokenNotBeforeExpirationTime =
-            this.configService.get<string>(
+            this.configService.get<number>(
                 'auth.jwt.accessToken.notBeforeExpirationTime'
             );
 
         this.refreshTokenSecretToken = this.configService.get<string>(
             'auth.jwt.refreshToken.secretKey'
         );
-        this.refreshTokenExpirationTime = this.configService.get<string>(
+        this.refreshTokenExpirationTime = this.configService.get<number>(
             'auth.jwt.refreshToken.expirationTime'
         );
         this.refreshTokenExpirationTimeRememberMe =
-            this.configService.get<string>(
+            this.configService.get<number>(
                 'auth.jwt.refreshToken.expirationTimeRememberMe'
             );
         this.refreshTokenNotBeforeExpirationTime =
-            this.configService.get<string>(
+            this.configService.get<number>(
                 'auth.jwt.refreshToken.notBeforeExpirationTime'
             );
+
+        this.prefixAuthorization = this.configService.get<string>(
+            'auth.jwt.prefixAuthorization'
+        );
+        this.audience = this.configService.get<string>('auth.jwt.audience');
+        this.issuer = this.configService.get<string>('auth.jwt.issuer');
     }
 
     async createAccessToken(payload: Record<string, any>): Promise<string> {
@@ -54,12 +65,16 @@ export class AuthService {
             secretKey: this.accessTokenSecretToken,
             expiredIn: this.accessTokenExpirationTime,
             notBefore: this.accessTokenNotBeforeExpirationTime,
+            audience: this.audience,
+            issuer: this.issuer,
         });
     }
 
     async validateAccessToken(token: string): Promise<boolean> {
         return this.helperEncryptionService.jwtVerify(token, {
             secretKey: this.accessTokenSecretToken,
+            audience: this.audience,
+            issuer: this.issuer,
         });
     }
 
@@ -69,21 +84,28 @@ export class AuthService {
 
     async createRefreshToken(
         payload: Record<string, any>,
-        rememberMe: boolean,
-        test?: boolean
+        options?: IAuthRefreshTokenOptions
     ): Promise<string> {
         return this.helperEncryptionService.jwtEncrypt(payload, {
             secretKey: this.refreshTokenSecretToken,
-            expiredIn: rememberMe
-                ? this.refreshTokenExpirationTimeRememberMe
-                : this.refreshTokenExpirationTime,
-            notBefore: test ? '0' : this.refreshTokenNotBeforeExpirationTime,
+            expiredIn:
+                options && options.rememberMe
+                    ? this.refreshTokenExpirationTimeRememberMe
+                    : this.refreshTokenExpirationTime,
+            notBefore:
+                options && options.notBeforeExpirationTime
+                    ? options.notBeforeExpirationTime
+                    : this.refreshTokenNotBeforeExpirationTime,
+            audience: this.audience,
+            issuer: this.issuer,
         });
     }
 
     async validateRefreshToken(token: string): Promise<boolean> {
         return this.helperEncryptionService.jwtVerify(token, {
             secretKey: this.refreshTokenSecretToken,
+            audience: this.audience,
+            issuer: this.issuer,
         });
     }
 
@@ -160,5 +182,27 @@ export class AuthService {
         }
 
         return false;
+    }
+
+    async getTokenType(): Promise<string> {
+        return this.prefixAuthorization;
+    }
+
+    async getAccessTokenExpirationTime(): Promise<number> {
+        return this.accessTokenExpirationTime;
+    }
+
+    async getRefreshTokenExpirationTime(rememberMe?: boolean): Promise<number> {
+        return rememberMe
+            ? this.refreshTokenExpirationTime
+            : this.refreshTokenExpirationTimeRememberMe;
+    }
+
+    async getIssuer(): Promise<string> {
+        return this.issuer;
+    }
+
+    async getAudience(): Promise<string> {
+        return this.audience;
     }
 }

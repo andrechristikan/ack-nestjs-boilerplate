@@ -10,9 +10,15 @@ import { PermissionModule } from 'src/modules/permission/permission.module';
 import { RoleModule } from 'src/modules/role/role.module';
 import { UserController } from 'src/modules/user/controllers/user.controller';
 import { UserModule } from 'src/modules/user/user.module';
+import { AuthController } from '../../common/auth/controllers/auth.controller';
 
 @Module({
-    controllers: [SettingController, UserController, HealthController],
+    controllers: [
+        SettingController,
+        UserController,
+        HealthController,
+        AuthController,
+    ],
     providers: [],
     exports: [],
     imports: [

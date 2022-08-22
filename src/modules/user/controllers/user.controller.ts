@@ -168,7 +168,6 @@ export class UserController {
     @HttpCode(HttpStatus.OK)
     @Post('/login')
     async login(@Body() body: UserLoginDto): Promise<IResponse> {
-        const rememberMe: boolean = body.rememberMe ? true : false;
         const user: IUserDocument =
             await this.userService.findOne<IUserDocument>(
                 {
@@ -214,6 +213,10 @@ export class UserController {
 
         const payload: UserPayloadSerialization =
             await this.userService.payloadSerialization(user);
+        const tokenType: string = await this.authService.getTokenType();
+        const expiresIn: number =
+            await this.authService.getAccessTokenExpirationTime();
+        const rememberMe: boolean = body.rememberMe ? true : false;
         const payloadAccessToken: Record<string, any> =
             await this.authService.createPayloadAccessToken(
                 payload,
@@ -234,7 +237,7 @@ export class UserController {
 
         const refreshToken: string = await this.authService.createRefreshToken(
             payloadRefreshToken,
-            rememberMe
+            { rememberMe }
         );
 
         const checkPasswordExpired: boolean =
@@ -243,10 +246,13 @@ export class UserController {
         if (checkPasswordExpired) {
             return {
                 metadata: {
+                    // override status code and message
                     statusCode:
                         ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
                     message: 'user.error.passwordExpired',
                 },
+                tokenType,
+                expiresIn,
                 accessToken,
                 refreshToken,
             };
@@ -254,8 +260,11 @@ export class UserController {
 
         return {
             metadata: {
+                // override status code
                 statusCode: ENUM_USER_STATUS_CODE_SUCCESS.USER_LOGIN_SUCCESS,
             },
+            tokenType,
+            expiresIn,
             accessToken,
             refreshToken,
         };
@@ -308,6 +317,9 @@ export class UserController {
 
         const payload: UserPayloadSerialization =
             await this.userService.payloadSerialization(user);
+        const tokenType: string = await this.authService.getTokenType();
+        const expiresIn: number =
+            await this.authService.getAccessTokenExpirationTime();
         const payloadAccessToken: Record<string, any> =
             await this.authService.createPayloadAccessToken(
                 payload,
@@ -322,6 +334,8 @@ export class UserController {
         );
 
         return {
+            tokenType,
+            expiresIn,
             accessToken,
             refreshToken,
         };

@@ -5,13 +5,14 @@ import {
 
 // Helper Encryption
 export interface IHelperJwtVerifyOptions {
+    audience: string;
+    issuer: string;
     secretKey: string;
 }
 
-export interface IHelperJwtOptions {
-    expiredIn: string;
-    notBefore?: string;
-    secretKey: string;
+export interface IHelperJwtOptions extends IHelperJwtVerifyOptions {
+    expiredIn: number | string;
+    notBefore?: number | string;
 }
 
 // Helper String
