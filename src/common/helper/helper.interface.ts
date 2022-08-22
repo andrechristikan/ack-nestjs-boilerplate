@@ -7,6 +7,7 @@ import {
 export interface IHelperJwtVerifyOptions {
     audience: string;
     issuer: string;
+    subject: string;
     secretKey: string;
 }
 
