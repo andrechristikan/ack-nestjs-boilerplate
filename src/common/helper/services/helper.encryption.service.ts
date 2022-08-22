@@ -58,6 +58,7 @@ export class HelperEncryptionService {
             secret: options.secretKey,
             expiresIn: options.expiredIn,
             notBefore: options.notBefore || 0,
+            audience: options.audience,
         });
     }
 
@@ -69,6 +70,7 @@ export class HelperEncryptionService {
         try {
             this.jwtService.verify(token, {
                 secret: options.secretKey,
+                audience: options.audience,
             });
             return true;
         } catch (err: any) {

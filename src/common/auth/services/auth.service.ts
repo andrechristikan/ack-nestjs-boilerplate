@@ -3,6 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
+import {
+    IAuthRefreshTokenOptions,
+    IAuthAccessTokenOptions,
+} from '../auth.interface';
 import { IAuthPassword, IAuthPayloadOptions } from '../auth.interface';
 
 @Injectable()
@@ -15,6 +19,9 @@ export class AuthService {
     private readonly refreshTokenExpirationTime: string;
     private readonly refreshTokenExpirationTimeRememberMe: string;
     private readonly refreshTokenNotBeforeExpirationTime: string;
+
+    private readonly prefixAuthorization: string;
+    private readonly audience: string;
 
     constructor(
         private readonly helperHashService: HelperHashService,
@@ -47,19 +54,32 @@ export class AuthService {
             this.configService.get<string>(
                 'auth.jwt.refreshToken.notBeforeExpirationTime'
             );
+
+        this.prefixAuthorization = this.configService.get<string>(
+            'auth.jwt.prefixAuthorization'
+        );
+        this.audience = this.configService.get<string>('auth.jwt.audience');
     }
 
-    async createAccessToken(payload: Record<string, any>): Promise<string> {
+    async createAccessToken(
+        payload: Record<string, any>,
+        options?: IAuthAccessTokenOptions
+    ): Promise<string> {
         return this.helperEncryptionService.jwtEncrypt(payload, {
             secretKey: this.accessTokenSecretToken,
             expiredIn: this.accessTokenExpirationTime,
             notBefore: this.accessTokenNotBeforeExpirationTime,
+            audience: options ? options.audience : this.audience,
         });
     }
 
-    async validateAccessToken(token: string): Promise<boolean> {
+    async validateAccessToken(
+        token: string,
+        options?: IAuthAccessTokenOptions
+    ): Promise<boolean> {
         return this.helperEncryptionService.jwtVerify(token, {
             secretKey: this.accessTokenSecretToken,
+            audience: options ? options.audience : this.audience,
         });
     }
 
@@ -69,21 +89,29 @@ export class AuthService {
 
     async createRefreshToken(
         payload: Record<string, any>,
-        rememberMe: boolean,
-        test?: boolean
+        options?: IAuthRefreshTokenOptions
     ): Promise<string> {
         return this.helperEncryptionService.jwtEncrypt(payload, {
             secretKey: this.refreshTokenSecretToken,
-            expiredIn: rememberMe
-                ? this.refreshTokenExpirationTimeRememberMe
-                : this.refreshTokenExpirationTime,
-            notBefore: test ? '0' : this.refreshTokenNotBeforeExpirationTime,
+            expiredIn:
+                options && options.rememberMe
+                    ? this.refreshTokenExpirationTimeRememberMe
+                    : this.refreshTokenExpirationTime,
+            notBefore:
+                options && options.notBeforeExpirationTime
+                    ? options.notBeforeExpirationTime
+                    : this.refreshTokenNotBeforeExpirationTime,
+            audience: options ? options.audience : this.audience,
         });
     }
 
-    async validateRefreshToken(token: string): Promise<boolean> {
+    async validateRefreshToken(
+        token: string,
+        options?: IAuthRefreshTokenOptions
+    ): Promise<boolean> {
         return this.helperEncryptionService.jwtVerify(token, {
             secretKey: this.refreshTokenSecretToken,
+            audience: options ? options.audience : this.audience,
         });
     }
 
@@ -160,5 +188,25 @@ export class AuthService {
         }
 
         return false;
+    }
+
+    async getTokenType(): Promise<string> {
+        return this.prefixAuthorization;
+    }
+
+    async getAccessTokenExpirationTime(): Promise<string> {
+        return this.accessTokenExpirationTime;
+    }
+
+    async getRefreshTokenExpirationTime(rememberMe?: boolean): Promise<string> {
+        return rememberMe
+            ? this.refreshTokenExpirationTime
+            : this.refreshTokenExpirationTimeRememberMe;
+    }
+
+    async getScope(payload: Record<string, any>): Promise<string> {
+        return payload.role.permissions
+            .map((a: Record<string, any>) => a.code)
+            .join(' ');
     }
 }

@@ -106,15 +106,18 @@ describe('E2E User Refresh', () => {
             _id: `${new Types.ObjectId()}`,
         };
 
-        refreshToken = await authService.createRefreshToken(
-            payload,
-            false,
-            true
-        );
+        refreshToken = await authService.createRefreshToken(payload, {
+            rememberMe: false,
+            notBeforeExpirationTime: '0',
+            audience: 'localhost',
+        });
         refreshTokenNotFound = await authService.createRefreshToken(
             payloadNotFound,
-            false,
-            true
+            {
+                rememberMe: false,
+                notBeforeExpirationTime: '0',
+                audience: 'localhost',
+            }
         );
 
         timestamp = helperDateService.timestamp();

@@ -10,6 +10,7 @@ import {
     NotFoundException,
     Patch,
     Post,
+    Req,
     UploadedFile,
 } from '@nestjs/common';
 import { Token, User } from 'src/common/auth/decorators/auth.decorator';
@@ -45,6 +46,7 @@ import { UserPayloadSerialization } from '../serializations/user.payload.seriali
 import { UserProfileSerialization } from '../serializations/user.profile.serialization';
 import { UserService } from '../services/user.service';
 import { IUserDocument } from '../user.interface';
+import { IRequestApp } from '../../../common/request/request.interface';
 
 @Controller({
     version: '1',
@@ -167,8 +169,14 @@ export class UserController {
     @Logger(ENUM_LOGGER_ACTION.LOGIN, { tags: ['login', 'withEmail'] })
     @HttpCode(HttpStatus.OK)
     @Post('/login')
-    async login(@Body() body: UserLoginDto): Promise<IResponse> {
+    async login(
+        @Req() { hostname }: IRequestApp,
+        @Body() body: UserLoginDto
+    ): Promise<IResponse> {
         const rememberMe: boolean = body.rememberMe ? true : false;
+        const tokenType: string = await this.authService.getTokenType();
+        const expiresIn: string =
+            await this.authService.getAccessTokenExpirationTime();
         const user: IUserDocument =
             await this.userService.findOne<IUserDocument>(
                 {
@@ -214,6 +222,7 @@ export class UserController {
 
         const payload: UserPayloadSerialization =
             await this.userService.payloadSerialization(user);
+        const scope: string = await this.authService.getScope(payload);
         const payloadAccessToken: Record<string, any> =
             await this.authService.createPayloadAccessToken(
                 payload,
@@ -229,12 +238,13 @@ export class UserController {
             );
 
         const accessToken: string = await this.authService.createAccessToken(
-            payloadAccessToken
+            payloadAccessToken,
+            { audience: hostname }
         );
 
         const refreshToken: string = await this.authService.createRefreshToken(
             payloadRefreshToken,
-            rememberMe
+            { rememberMe, audience: hostname }
         );
 
         const checkPasswordExpired: boolean =
@@ -243,10 +253,13 @@ export class UserController {
         if (checkPasswordExpired) {
             return {
                 metadata: {
+                    // override status code and message
                     statusCode:
                         ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
                     message: 'user.error.passwordExpired',
                 },
+                tokenType,
+                expiresIn,
                 accessToken,
                 refreshToken,
             };
@@ -254,8 +267,12 @@ export class UserController {
 
         return {
             metadata: {
+                // override status code
                 statusCode: ENUM_USER_STATUS_CODE_SUCCESS.USER_LOGIN_SUCCESS,
             },
+            scope,
+            tokenType,
+            expiresIn,
             accessToken,
             refreshToken,
         };
@@ -266,10 +283,14 @@ export class UserController {
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
     async refresh(
+        @Req() { hostname }: IRequestApp,
         @User()
         { _id, rememberMe, loginDate }: Record<string, any>,
         @Token() refreshToken: string
     ): Promise<IResponse> {
+        const tokenType: string = await this.authService.getTokenType();
+        const expiresIn: string =
+            await this.authService.getAccessTokenExpirationTime();
         const user: IUserDocument =
             await this.userService.findOneById<IUserDocument>(_id, {
                 populate: {
@@ -308,6 +329,7 @@ export class UserController {
 
         const payload: UserPayloadSerialization =
             await this.userService.payloadSerialization(user);
+        const scope: string = await this.authService.getScope(payload);
         const payloadAccessToken: Record<string, any> =
             await this.authService.createPayloadAccessToken(
                 payload,
@@ -318,10 +340,14 @@ export class UserController {
             );
 
         const accessToken: string = await this.authService.createAccessToken(
-            payloadAccessToken
+            payloadAccessToken,
+            { audience: hostname }
         );
 
         return {
+            tokenType,
+            scope,
+            expiresIn,
             accessToken,
             refreshToken,
         };
