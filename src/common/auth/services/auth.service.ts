@@ -20,6 +20,7 @@ export class AuthService {
     private readonly prefixAuthorization: string;
     private readonly audience: string;
     private readonly issuer: string;
+    private readonly subject: string;
 
     constructor(
         private readonly helperHashService: HelperHashService,
@@ -58,6 +59,7 @@ export class AuthService {
         );
         this.audience = this.configService.get<string>('auth.jwt.audience');
         this.issuer = this.configService.get<string>('auth.jwt.issuer');
+        this.subject = this.configService.get<string>('app.name');
     }
 
     async createAccessToken(payload: Record<string, any>): Promise<string> {
@@ -67,6 +69,7 @@ export class AuthService {
             notBefore: this.accessTokenNotBeforeExpirationTime,
             audience: this.audience,
             issuer: this.issuer,
+            subject: this.subject,
         });
     }
 
@@ -75,6 +78,7 @@ export class AuthService {
             secretKey: this.accessTokenSecretToken,
             audience: this.audience,
             issuer: this.issuer,
+            subject: this.subject,
         });
     }
 
@@ -98,6 +102,7 @@ export class AuthService {
                     : this.refreshTokenNotBeforeExpirationTime,
             audience: this.audience,
             issuer: this.issuer,
+            subject: this.subject,
         });
     }
 
@@ -106,6 +111,7 @@ export class AuthService {
             secretKey: this.refreshTokenSecretToken,
             audience: this.audience,
             issuer: this.issuer,
+            subject: this.subject,
         });
     }
 
