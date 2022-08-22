@@ -34,9 +34,8 @@ export default registerAs(
                     : ms('30m'), // recommendation for production is 30m
             },
 
-            audience: 'localhost',
-            // audience: [/example\.com(\:\d{1,4})?$/], // allow all subdomain, and all port
-            // audience: [/example\.com$/], // allow all subdomain without port
+            audience: process.env.AUTH_JWT_AUDIENCE || 'localhost',
+            issuer: process.env.AUTH_JWT_ISSUER || 'ack',
             prefixAuthorization: 'Bearer',
         },
 

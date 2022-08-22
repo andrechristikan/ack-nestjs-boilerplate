@@ -5,11 +5,9 @@ import {
     InternalServerErrorException,
     NotFoundException,
     Post,
-    Req,
 } from '@nestjs/common';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
-import { IRequestApp } from 'src/common/request/request.interface';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/response.interface';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
@@ -35,7 +33,6 @@ export class UserPublicController {
     @Response('auth.signUp')
     @Post('/sign-up')
     async signUp(
-        @Req() { hostname }: IRequestApp,
         @Body()
         { email, mobileNumber, ...body }: UserSignUpDto
     ): Promise<IResponse> {
@@ -112,14 +109,11 @@ export class UserPublicController {
                 );
 
             const accessToken: string =
-                await this.authService.createAccessToken(payloadAccessToken, {
-                    audience: hostname,
-                });
+                await this.authService.createAccessToken(payloadAccessToken);
 
             const refreshToken: string =
                 await this.authService.createRefreshToken(payloadRefreshToken, {
                     rememberMe: false,
-                    audience: hostname,
                 });
 
             return {

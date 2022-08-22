@@ -5,6 +5,8 @@ import { HelperEncryptionService } from 'src/common/helper/services/helper.encry
 
 describe('HelperEncryptionService', () => {
     let helperEncryptionService: HelperEncryptionService;
+    const audience = 'https://example.com';
+    const issuer = 'ack';
     const data = 'aaaa';
     const dataObject = { test: 'aaaa' };
 
@@ -187,18 +189,18 @@ describe('HelperEncryptionService', () => {
 
             helperEncryptionService.jwtEncrypt(
                 { data },
-                { expiredIn: '1h', secretKey: data, audience: 'localhost' }
+                { expiredIn: '1h', secretKey: data, audience, issuer }
             );
             expect(test).toHaveBeenCalledWith(
                 { data },
-                { expiredIn: '1h', secretKey: data, audience: 'localhost' }
+                { expiredIn: '1h', secretKey: data, audience, issuer }
             );
         });
 
         it('should be success', async () => {
             const result = helperEncryptionService.jwtEncrypt(
                 { data },
-                { expiredIn: '1h', secretKey: data, audience: 'localhost' }
+                { expiredIn: '1h', secretKey: data, audience, issuer }
             );
             jest.spyOn(
                 helperEncryptionService,
@@ -208,7 +210,7 @@ describe('HelperEncryptionService', () => {
             expect(
                 helperEncryptionService.jwtEncrypt(
                     { data },
-                    { expiredIn: '1h', secretKey: data, audience: 'localhost' }
+                    { expiredIn: '1h', secretKey: data, audience, issuer }
                 )
             ).toBe(result);
         });
@@ -220,7 +222,7 @@ describe('HelperEncryptionService', () => {
 
             const result = helperEncryptionService.jwtEncrypt(
                 { data },
-                { expiredIn: '1h', secretKey: data, audience: 'localhost' }
+                { expiredIn: '1h', secretKey: data, audience, issuer }
             );
             helperEncryptionService.jwtDecrypt(result);
             expect(test).toHaveBeenCalledWith(result);
@@ -229,7 +231,7 @@ describe('HelperEncryptionService', () => {
         it('should be success', async () => {
             const result = helperEncryptionService.jwtEncrypt(
                 { data },
-                { expiredIn: '1h', secretKey: data, audience: 'localhost' }
+                { expiredIn: '1h', secretKey: data, audience, issuer }
             );
             const decrypt = helperEncryptionService.jwtDecrypt(result);
             jest.spyOn(
@@ -247,26 +249,29 @@ describe('HelperEncryptionService', () => {
 
             const result = helperEncryptionService.jwtEncrypt(
                 { data },
-                { expiredIn: '1h', secretKey: data, audience: 'localhost' }
+                { expiredIn: '1h', secretKey: data, audience, issuer }
             );
             helperEncryptionService.jwtVerify(result, {
                 secretKey: data,
-                audience: 'localhost',
+                audience,
+                issuer,
             });
             expect(test).toHaveBeenCalledWith(result, {
                 secretKey: data,
-                audience: 'localhost',
+                audience,
+                issuer,
             });
         });
 
         it('should be success', async () => {
             const result = helperEncryptionService.jwtEncrypt(
                 { data },
-                { expiredIn: '1h', secretKey: data, audience: 'localhost' }
+                { expiredIn: '1h', secretKey: data, audience, issuer }
             );
             const verify = helperEncryptionService.jwtVerify(result, {
                 secretKey: data,
-                audience: 'localhost',
+                audience,
+                issuer,
             });
             jest.spyOn(helperEncryptionService, 'jwtVerify').mockImplementation(
                 () => verify
@@ -275,7 +280,8 @@ describe('HelperEncryptionService', () => {
             expect(
                 helperEncryptionService.jwtVerify(result, {
                     secretKey: data,
-                    audience: 'localhost',
+                    audience,
+                    issuer,
                 })
             ).toBe(verify);
         });
@@ -283,11 +289,12 @@ describe('HelperEncryptionService', () => {
         it('should be failed', async () => {
             const result = helperEncryptionService.jwtEncrypt(
                 { data },
-                { expiredIn: '1h', secretKey: data, audience: 'localhost' }
+                { expiredIn: '1h', secretKey: data, audience, issuer }
             );
             const verify = helperEncryptionService.jwtVerify(result, {
                 secretKey: faker.random.alpha(5),
-                audience: 'localhost',
+                audience,
+                issuer,
             });
             jest.spyOn(helperEncryptionService, 'jwtVerify').mockImplementation(
                 () => verify
@@ -296,7 +303,8 @@ describe('HelperEncryptionService', () => {
             expect(
                 helperEncryptionService.jwtVerify(result, {
                     secretKey: faker.random.alpha(5),
-                    audience: 'localhost',
+                    audience,
+                    issuer,
                 })
             ).toBe(verify);
         });

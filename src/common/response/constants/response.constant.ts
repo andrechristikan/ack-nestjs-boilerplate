@@ -1,5 +1,5 @@
 export const RESPONSE_CUSTOM_TIMEOUT_META_KEY = 'ResponseCustomTimeoutMetaKey';
-export const RESPONSE_CUSTOM_TIMEOUT_META_VALUE_KEY =
+export const RESPONSE_CUSTOM_TIMEOUT_VALUE_META_KEY =
     'ResponseCustomTimeoutValueMetaKey';
 
 export const RESPONSE_SERIALIZATION_META_KEY = 'ResponseSerializationMetaKey';

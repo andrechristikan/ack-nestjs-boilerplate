@@ -109,9 +109,7 @@ describe('E2E User Change Password', () => {
             _id: `${new Types.ObjectId()}`,
         };
 
-        accessToken = await authService.createAccessToken(payload, {
-            audience: 'localhost',
-        });
+        accessToken = await authService.createAccessToken(payload);
         accessTokenNotFound = await authService.createAccessToken(
             payloadNotFound
         );

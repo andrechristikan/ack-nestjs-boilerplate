@@ -17,6 +17,8 @@ export class JwtRefreshStrategy extends PassportStrategy(
             jsonWebTokenOptions: {
                 ignoreNotBefore: false,
                 audience: configService.get<string>('auth.jwt.audience'),
+                issuer: configService.get<string>('auth.jwt.issuer'),
+                subject: configService.get<string>('app.name'),
             },
             secretOrKey: configService.get<string>(
                 'auth.jwt.refreshToken.secretKey'

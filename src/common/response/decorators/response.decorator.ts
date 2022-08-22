@@ -2,7 +2,7 @@ import { applyDecorators, SetMetadata, UseInterceptors } from '@nestjs/common';
 import { ENUM_PAGINATION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import {
     RESPONSE_CUSTOM_TIMEOUT_META_KEY,
-    RESPONSE_CUSTOM_TIMEOUT_META_VALUE_KEY,
+    RESPONSE_CUSTOM_TIMEOUT_VALUE_META_KEY,
     RESPONSE_MESSAGE_PATH_META_KEY,
     RESPONSE_PAGING_TYPE_META_KEY,
     RESPONSE_SERIALIZATION_META_KEY,
@@ -67,6 +67,6 @@ export function ResponsePaging(
 export function ResponseTimeout(seconds: string): any {
     return applyDecorators(
         SetMetadata(RESPONSE_CUSTOM_TIMEOUT_META_KEY, true),
-        SetMetadata(RESPONSE_CUSTOM_TIMEOUT_META_VALUE_KEY, seconds)
+        SetMetadata(RESPONSE_CUSTOM_TIMEOUT_VALUE_META_KEY, seconds)
     );
 }

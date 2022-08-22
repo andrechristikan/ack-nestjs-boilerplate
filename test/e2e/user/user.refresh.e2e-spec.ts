@@ -109,14 +109,12 @@ describe('E2E User Refresh', () => {
         refreshToken = await authService.createRefreshToken(payload, {
             rememberMe: false,
             notBeforeExpirationTime: '0',
-            audience: 'localhost',
         });
         refreshTokenNotFound = await authService.createRefreshToken(
             payloadNotFound,
             {
                 rememberMe: false,
                 notBeforeExpirationTime: '0',
-                audience: 'localhost',
             }
         );
 

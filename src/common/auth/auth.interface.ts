@@ -38,11 +38,8 @@ export interface IAuthPermission {
     isActive?: boolean;
 }
 
-export interface IAuthAccessTokenOptions {
-    audience: string;
-}
-export interface IAuthRefreshTokenOptions extends IAuthAccessTokenOptions {
+export interface IAuthRefreshTokenOptions {
     // in milis
-    notBeforeExpirationTime?: string;
+    notBeforeExpirationTime?: number | string;
     rememberMe?: boolean;
 }

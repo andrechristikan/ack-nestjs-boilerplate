@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AES, enc, mode, pad } from 'crypto-js';
+import { ConfigService } from '@nestjs/config';
 import {
     IHelperJwtOptions,
     IHelperJwtVerifyOptions,
@@ -8,7 +9,14 @@ import {
 
 @Injectable()
 export class HelperEncryptionService {
-    constructor(private readonly jwtService: JwtService) {}
+    private readonly appName: string;
+
+    constructor(
+        private readonly jwtService: JwtService,
+        private readonly configService: ConfigService
+    ) {
+        this.appName = this.configService.get<string>('app.name');
+    }
 
     base64Encrypt(data: string): string {
         const buff: Buffer = Buffer.from(data, 'utf8');
@@ -59,6 +67,8 @@ export class HelperEncryptionService {
             expiresIn: options.expiredIn,
             notBefore: options.notBefore || 0,
             audience: options.audience,
+            issuer: options.issuer,
+            subject: this.appName,
         });
     }
 
@@ -71,6 +81,8 @@ export class HelperEncryptionService {
             this.jwtService.verify(token, {
                 secret: options.secretKey,
                 audience: options.audience,
+                issuer: options.issuer,
+                subject: this.appName,
             });
             return true;
         } catch (err: any) {
