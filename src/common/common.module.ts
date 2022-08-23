@@ -76,6 +76,8 @@ import { ENUM_MESSAGE_LANGUAGE } from './message/constants/message.enum.constant
                     .required(),
                 MIDDLEWARE_TIMEOUT: Joi.string().default('30s').required(),
 
+                AUTH_JWT_AUDIENCE: Joi.string().required(),
+                AUTH_JWT_ISSUER: Joi.string().required(),
                 AUTH_JWT_ACCESS_TOKEN_SECRET_KEY: Joi.string()
                     .alphanum()
                     .min(5)
@@ -95,6 +97,8 @@ import { ENUM_MESSAGE_LANGUAGE } from './message/constants/message.enum.constant
                 AUTH_JWT_REFRESH_TOKEN_REMEMBER_ME_EXPIRED: Joi.string()
                     .default('30d')
                     .required(),
+                AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION:
+                    Joi.string().required(),
 
                 AUTH_BASIC_TOKEN_CLIENT_ID: Joi.string().optional(),
                 AUTH_BASIC_TOKEN_CLIENT_SECRET: Joi.string().optional(),
