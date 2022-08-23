@@ -59,11 +59,14 @@ jobs:
           echo DATABASE_OPTIONS="" >> .env
           echo MIDDLEWARE_TOLERANCE_TIMESTAMP="5m" >> .env
           echo MIDDLEWARE_TIMEOUT="30s" >> .env
+          echo AUTH_JWT_AUDIENCE="https://example.com" >> .env
+          echo AUTH_JWT_ISSUER="ack" >> .env
           echo AUTH_JWT_ACCESS_TOKEN_SECRET_KEY="123456" >> .env
           echo AUTH_JWT_ACCESS_TOKEN_EXPIRED="30m" >> .env
           echo AUTH_JWT_REFRESH_TOKEN_SECRET_KEY="01001231" >> .env
           echo AUTH_JWT_REFRESH_TOKEN_EXPIRED="7d" >> .env
           echo AUTH_JWT_REFRESH_TOKEN_REMEMBER_ME_EXPIRED="30d" >> .env
+          echo AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION="0" >> .env
           echo AUTH_BASIC_TOKEN_CLIENT_ID="asdzxc" >> .env
           echo AUTH_BASIC_TOKEN_CLIENT_SECRET="1234567890" >> .env
           echo AWS_CREDENTIAL_KEY="$AWS_CREDENTIAL_KEY" >> .env
