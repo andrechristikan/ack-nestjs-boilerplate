@@ -1,6 +1,7 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
+git pull origin main
 yarn lint
 yarn deadcode
 yarn spell
