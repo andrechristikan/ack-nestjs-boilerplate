@@ -215,7 +215,7 @@ pipeline {
                         }catch(e){}
 
                         try{
-                            sshCommand remote: remote, command: "docker rmi \$(docker images **/${APP_NAME} -q) --force"
+                            sshCommand remote: remote, command: "docker rmi \$(docker images **/${APP_NAME}** -q) --force"
                         }catch(e){}
                     }
 
@@ -228,7 +228,7 @@ pipeline {
                     }catch(e){}
 
                     try{
-                        sh "docker rmi \$(docker images **/${APP_NAME} -q) --force"
+                        sh "docker rmi \$(docker images **/${APP_NAME}** -q) --force"
                     }catch(e){}
                     
                 }
