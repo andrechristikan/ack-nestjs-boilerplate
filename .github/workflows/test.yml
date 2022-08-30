@@ -11,18 +11,8 @@ jobs:
 
     strategy:
       matrix:
-        node-version: ['17.x']
-
-    services:
-      mongodb:
-        image: mongo:latest
-        options: >-
-          --health-cmd mongo
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 27017:27017
+        node-version: ['18.x']
+        mongodb-version: ['5.0', '6.0']
 
     steps:
       - name: Git checkout
@@ -32,6 +22,13 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
+
+      - name: Start MongoDB ${{ matrix.mongodb-version }}
+        uses: supercharge/mongodb-github-action@1.8.0
+        with:
+          mongodb-version: ${{ matrix.mongodb-version }}
+          mongodb-db: ack
+          mongodb-port: 27017
 
       - name: Install dependencies
         run: yarn --frozen-lockfile
@@ -45,7 +42,7 @@ jobs:
           echo APP_LANGUAGE="en" >> .env
           echo APP_TZ="Asia/Jakarta" >> .env
           echo APP_HOST="localhost" >> .env
-          echo APP_PORT=" 3000" >> .env
+          echo APP_PORT="3000" >> .env
           echo APP_DEBUG="false" >> .env
           echo APP_VERSIONING="true" >> .env
           echo APP_VERSION="1" >> .env
@@ -84,6 +81,8 @@ jobs:
 
       - name: Unit Test
         run: yarn test:unit
+        env:
+          CI: true
 
       - name: Unit Integration
         run: yarn test:integration
