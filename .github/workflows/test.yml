@@ -30,9 +30,6 @@ jobs:
           mongodb-db: ack
           mongodb-port: 27017
 
-      - name: Check mongodb connection
-        run: curl http://localhost:27017
-
       - name: Install dependencies
         run: yarn --frozen-lockfile
 
