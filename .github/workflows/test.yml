@@ -30,6 +30,8 @@ jobs:
           mongodb-username: root
           mongodb-password: 123456
           mongodb-db: ack
+          mongodb-replica-set: ack-rs
+          mongodb-port: 27017
 
 
       - name: Install dependencies
@@ -50,7 +52,7 @@ jobs:
           echo APP_VERSION="1" >> .env
           echo APP_HTTP_ON="true" >> .env
           echo APP_JOB_ON="true" >> .env
-          echo DATABASE_HOST="mongodb://localhost:27017" >> .env
+          echo DATABASE_HOST="mongodb://localhost:27017?replicaSet=ack-rs" >> .env
           echo DATABASE_NAME="ack" >> .env
           echo DATABASE_USER="root" >> .env
           echo DATABASE_PASSWORD="123456" >> .env
