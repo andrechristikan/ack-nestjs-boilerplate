@@ -49,12 +49,12 @@ jobs:
           echo APP_VERSION="1" >> .env
           echo APP_HTTP_ON="true" >> .env
           echo APP_JOB_ON="true" >> .env
-          echo DATABASE_HOST="mongodb://localhost:27017?replicaSet=test-rs" >> .env
+          echo DATABASE_HOST="mongodb://localhost:27017" >> .env
           echo DATABASE_NAME="ack" >> .env
           echo DATABASE_USER="" >> .env
           echo DATABASE_PASSWORD="" >> .env
           echo DATABASE_DEBUG="false" >> .env
-          echo DATABASE_OPTIONS="" >> .env
+          echo DATABASE_OPTIONS="replicaSet=test-rs" >> .env
           echo MIDDLEWARE_TOLERANCE_TIMESTAMP="5m" >> .env
           echo MIDDLEWARE_TIMEOUT="30s" >> .env
           echo AUTH_JWT_AUDIENCE="https://example.com" >> .env
