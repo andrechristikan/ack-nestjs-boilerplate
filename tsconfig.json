@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "declaration": false,
+    "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
@@ -11,9 +11,9 @@
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
-    "allowJs": false,
     "incremental": true,
     "skipLibCheck": true,
+    "allowJs": false,
     "esModuleInterop": true,
     "moduleResolution": "node",     
     "resolveJsonModule": true

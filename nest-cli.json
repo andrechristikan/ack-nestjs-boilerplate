@@ -1,5 +1,4 @@
 {
-  "language": "ts",
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
   "compilerOptions": {
@@ -9,6 +8,8 @@
         "outDir": "dist/src" 
       }
     ],
+    "webpack": false,
+    "deleteOutDir": true,
     "watchAssets": true
   }
 }

@@ -11,18 +11,8 @@ jobs:
 
     strategy:
       matrix:
-        node-version: ['17.x']
-
-    services:
-      mongodb:
-        image: mongo:latest
-        options: >-
-          --health-cmd mongo
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 27017:27017
+        node-version: [17.x, 18.x]
+        mongodb-version: ['5.0', '6.0']
 
     steps:
       - name: Git checkout
@@ -32,6 +22,15 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
+
+      - name: Start MongoDB ${{ matrix.mongodb-version }}
+        uses: supercharge/mongodb-github-action@1.8.0
+        with:
+          mongodb-version: ${{ matrix.mongodb-version }}
+          mongodb-username: root
+          mongodb-password: 123456
+          mongodb-db: ack
+
 
       - name: Install dependencies
         run: yarn --frozen-lockfile
@@ -53,8 +52,8 @@ jobs:
           echo APP_JOB_ON="true" >> .env
           echo DATABASE_HOST="mongodb://localhost:27017" >> .env
           echo DATABASE_NAME="ack" >> .env
-          echo DATABASE_USER="" >> .env
-          echo DATABASE_PASSWORD="" >> .env
+          echo DATABASE_USER="root" >> .env
+          echo DATABASE_PASSWORD="123456" >> .env
           echo DATABASE_DEBUG="false" >> .env
           echo DATABASE_OPTIONS="" >> .env
           echo MIDDLEWARE_TOLERANCE_TIMESTAMP="5m" >> .env
