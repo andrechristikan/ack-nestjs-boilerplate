@@ -27,12 +27,10 @@ jobs:
         uses: supercharge/mongodb-github-action@1.8.0
         with:
           mongodb-version: ${{ matrix.mongodb-version }}
+          mongodb-port: 27017
           mongodb-username: root
           mongodb-password: 123456
           mongodb-db: ack
-          mongodb-replica-set: ack-rs
-          mongodb-port: 42069
-
 
       - name: Install dependencies
         run: yarn --frozen-lockfile
@@ -46,13 +44,13 @@ jobs:
           echo APP_LANGUAGE="en" >> .env
           echo APP_TZ="Asia/Jakarta" >> .env
           echo APP_HOST="localhost" >> .env
-          echo APP_PORT=" 3000" >> .env
+          echo APP_PORT="3000" >> .env
           echo APP_DEBUG="false" >> .env
           echo APP_VERSIONING="true" >> .env
           echo APP_VERSION="1" >> .env
           echo APP_HTTP_ON="true" >> .env
           echo APP_JOB_ON="true" >> .env
-          echo DATABASE_HOST="mongodb://localhost:42069?replicaSet=ack-rs" >> .env
+          echo DATABASE_HOST="mongodb://localhost:27017" >> .env
           echo DATABASE_NAME="ack" >> .env
           echo DATABASE_USER="root" >> .env
           echo DATABASE_PASSWORD="123456" >> .env
