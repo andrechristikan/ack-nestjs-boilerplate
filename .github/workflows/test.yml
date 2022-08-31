@@ -27,6 +27,7 @@ jobs:
         uses: supercharge/mongodb-github-action@1.8.0
         with:
           mongodb-version: ${{ matrix.mongodb-version }}
+          mongodb-replica-set: test-rs
           mongodb-db: ack
           mongodb-port: 27017
 
@@ -53,7 +54,7 @@ jobs:
           echo DATABASE_USER="" >> .env
           echo DATABASE_PASSWORD="" >> .env
           echo DATABASE_DEBUG="false" >> .env
-          echo DATABASE_OPTIONS="" >> .env
+          echo DATABASE_OPTIONS="replicaSet=test-rs" >> .env
           echo MIDDLEWARE_TOLERANCE_TIMESTAMP="5m" >> .env
           echo MIDDLEWARE_TIMEOUT="30s" >> .env
           echo AUTH_JWT_AUDIENCE="https://example.com" >> .env
