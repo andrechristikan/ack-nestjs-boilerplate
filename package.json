@@ -53,7 +53,7 @@
     "rollback:user": "nestjs-command remove:user"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.161.0",
+    "@aws-sdk/client-s3": "^3.162.0",
     "@faker-js/faker": "^7.5.0",
     "@joi/date": "^2.1.0",
     "@nestjs/axios": "^0.1.0",
