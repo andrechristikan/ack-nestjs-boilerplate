@@ -1,6 +1,6 @@
 {
   "name": "ack-nestjs-mongoose",
-  "version": "2.2.4",
+  "version": "2.2.5",
   "description": "Ack NestJs Mongoose",
   "repository": {
     "type": "git",
@@ -53,7 +53,7 @@
     "rollback:user": "nestjs-command remove:user"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.161.0",
+    "@aws-sdk/client-s3": "^3.163.0",
     "@faker-js/faker": "^7.5.0",
     "@joi/date": "^2.1.0",
     "@nestjs/axios": "^0.1.0",
@@ -102,7 +102,7 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^9.0.0",
-    "@nestjs/schematics": "^9.0.1",
+    "@nestjs/schematics": "^9.0.2",
     "@nestjs/testing": "^9.0.11",
     "@types/bcrypt": "^5.0.0",
     "@types/bytes": "^3.1.1",
@@ -130,7 +130,7 @@
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-import": "^2.26.0",
     "husky": "^8.0.1",
-    "jest": "^29.0.1",
+    "jest": "^29.0.2",
     "prettier": "^2.7.1",
     "supertest": "^6.2.4",
     "ts-jest": "^28.0.8",
