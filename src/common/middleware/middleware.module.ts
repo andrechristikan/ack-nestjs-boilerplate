@@ -78,6 +78,14 @@ export class MiddlewareModule implements NestModule {
                 {
                     path: 'api/admin/setting/(.*)',
                     method: RequestMethod.ALL,
+                },
+                {
+                    path: 'api/v:version*/setting/(.*)',
+                    method: RequestMethod.ALL,
+                },
+                {
+                    path: 'api/setting/(.*)',
+                    method: RequestMethod.ALL,
                 }
             )
             .forRoutes('*');
