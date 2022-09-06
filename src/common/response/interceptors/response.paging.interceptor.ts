@@ -34,6 +34,7 @@ import {
 } from '../dtos/response.paging.dto';
 import { ENUM_PAGINATION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { IErrorHttpFilterMetadata } from 'src/common/error/error.interface';
+import qs from 'qs';
 
 @Injectable()
 export class ResponsePagingInterceptor
@@ -128,26 +129,31 @@ export class ResponsePagingInterceptor
                     }
 
                     const path = requestExpress.path;
+                    const { query } = requestExpress;
+                    delete query.perPage;
+                    delete query.page;
+                    const queryString = qs.stringify(query);
+
                     const addMetadata: ResponsePagingMetadataDto = {
                         nextPage:
                             currentPage < totalPage
                                 ? `${path}?perPage=${perPage}&page=${
                                       currentPage + 1
-                                  }`
+                                  }&${queryString}`
                                 : undefined,
                         previousPage:
                             currentPage > 1
                                 ? `${path}?perPage=${perPage}&page=${
                                       currentPage - 1
-                                  }`
+                                  }&${queryString}`
                                 : undefined,
                         firstPage:
                             totalPage > 1
-                                ? `${path}?perPage=${perPage}&page=${1}`
+                                ? `${path}?perPage=${perPage}&page=${1}&${queryString}`
                                 : undefined,
                         lastPage:
                             totalPage > 1
-                                ? `${path}?perPage=${perPage}&page=${totalPage}`
+                                ? `${path}?perPage=${perPage}&page=${totalPage}&${queryString}`
                                 : undefined,
                     };
 
