@@ -15,14 +15,14 @@
 
 # ACK NestJs Boilerplate Mongoose  🔥 🚀
 
-> Standard architecture for nestjs
-
 ack-nestjs-mongoose is a [NestJs](http://nestjs.com) Boilerplate with [Mongoose](https://mongoosejs.com) and [MongoDB](https://docs.mongodb.com) as Database.
 
 Made with following
-- [nodejs-best-practice](https://github.com/goldbergyoni/nodebestpractices)
-- [The Twelve-Factor App](https://12factor.net)
+
+- Repository Design Pattern
+- Microservice Architecture
 - NestJs Habit.
+- [The Twelve-Factor App](https://12factor.net)
 
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
 
@@ -35,7 +35,11 @@ If you change env value of `APP_MODE` to `secure` that will trigger more `Middle
 1. `TimestampMiddleware`, tolerant 5 minutes of request.
 2. `UserAgentMiddleware`, whitelist of user agent.
 3. `ApiKeyGuard`, check api key based on database.
-4. `CorsMiddleware`, check cors based on configs.
+
+If you change env value of `APP_ENV` to `production` that will
+1. Do not write into console `Database debug` even when `DATABASE_DEBUG` is `true`
+2. Do not write into console for `DebuggerService` even when `APP_DEBUG` is `true`
+3. `CorsMiddleware` on.
 
 You can see our `e2e testing file` or read the documentation on [section environment][ack-doc-env].
 
@@ -122,6 +126,7 @@ Next development
 - [x] Update Unit test
 - [x] Update E2E test
 - [x] Response Excel, convert response from controller into excel `res.send()`
+- [ ] Implement Repository Design Pattern
 - [ ] Basic Token as ApiKey
 - [ ] Update Documentation
 
@@ -230,7 +235,6 @@ yarn start:dev
 ```bash
 docker-compose up -d
 ```
-
 
 ## Environment
 

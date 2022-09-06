@@ -8,10 +8,10 @@ export class CorsMiddleware implements NestMiddleware {
     constructor(private readonly configService: ConfigService) {}
 
     use(req: Request, res: Response, next: NextFunction): void {
-        const mode: string = this.configService.get<string>('app.mode');
+        const env: string = this.configService.get<string>('app.env');
 
         const allowOrigin =
-            mode === 'secure'
+            env === 'production'
                 ? this.configService.get<string | boolean | string[]>(
                       'middleware.cors.allowOrigin'
                   )
