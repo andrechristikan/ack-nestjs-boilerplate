@@ -1,6 +1,6 @@
 {
   "name": "ack-nestjs-mongoose",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "Ack NestJs Mongoose",
   "repository": {
     "type": "git",
@@ -53,7 +53,7 @@
     "rollback:user": "nestjs-command remove:user"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.163.0",
+    "@aws-sdk/client-s3": "^3.165.0",
     "@faker-js/faker": "^7.5.0",
     "@joi/date": "^2.1.0",
     "@nestjs/axios": "^0.1.0",
@@ -80,11 +80,11 @@
     "joi": "^17.6.0",
     "moment": "^2.29.4",
     "moment-timezone": "^0.5.37",
-    "mongoose": "^6.5.4",
+    "mongoose": "^6.5.5",
     "morgan": "^1.10.0",
     "nest-winston": "^1.7.0",
     "nestjs-command": "^3.1.2",
-    "nestjs-i18n": "^9.1.8",
+    "nestjs-i18n": "^9.1.10",
     "passport": "^0.6.0",
     "passport-headerapikey": "^1.2.2",
     "passport-jwt": "^4.0.0",
@@ -94,7 +94,7 @@
     "rotating-file-stream": "^3.0.4",
     "rxjs": "^7.5.6",
     "ua-parser-js": "^1.0.2",
-    "winston": "^3.8.1",
+    "winston": "^3.8.2",
     "winston-daily-rotate-file": "^4.7.1",
     "xlsx": "^0.18.5",
     "yargs": "^17.5.1",
