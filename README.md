@@ -127,6 +127,7 @@ Next development
 - [x] Update E2E test
 - [x] Response Excel, convert response from controller into excel `res.send()`
 - [ ] Implement Repository Design Pattern
+- [ ] Swagger for API Documentation
 - [ ] Basic Token as ApiKey
 - [ ] Update Documentation
 

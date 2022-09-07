@@ -132,7 +132,7 @@ export class ResponsePagingInterceptor
                     const { query } = requestExpress;
                     delete query.perPage;
                     delete query.page;
-                    const queryString = qs.stringify(query);
+                    const queryString = qs.stringify(query, { encode: false });
 
                     const addMetadata: ResponsePagingMetadataDto = {
                         nextPage:
