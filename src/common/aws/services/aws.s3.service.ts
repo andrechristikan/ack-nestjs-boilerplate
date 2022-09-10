@@ -20,12 +20,12 @@ import {
 } from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Readable } from 'stream';
 import {
     IAwsS3,
     IAwsS3MultiPart,
     IAwsS3PutItemOptions,
-} from '../aws.interface';
+} from 'src/common/aws/interfaces/aws.interface';
+import { Readable } from 'stream';
 
 @Injectable()
 export class AwsS3Service {

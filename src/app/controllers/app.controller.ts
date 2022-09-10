@@ -15,7 +15,7 @@ import {
     Response,
     ResponseTimeout,
 } from 'src/common/response/decorators/response.decorator';
-import { IResponse } from 'src/common/response/response.interface';
+import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { IResult } from 'ua-parser-js';
 
 @Controller({

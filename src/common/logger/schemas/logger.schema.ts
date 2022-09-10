@@ -2,11 +2,11 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { AuthApiEntity } from 'src/common/auth/schemas/auth.api.schema';
-import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
 import {
     ENUM_LOGGER_ACTION,
     ENUM_LOGGER_LEVEL,
-} from '../constants/logger.enum.constant';
+} from 'src/common/logger/constants/logger.enum.constant';
+import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
 
 @Schema({ timestamps: true, versionKey: false })
 export class LoggerEntity {

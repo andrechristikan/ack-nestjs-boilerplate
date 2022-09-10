@@ -4,8 +4,8 @@ import {
     UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ENUM_FILE_STATUS_CODE_ERROR } from '../constants/file.status-code.constant';
-import { IFile } from '../file.interface';
+import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
+import { IFile } from 'src/common/file/interfaces/file.interface';
 
 // only for multiple upload
 @Injectable()

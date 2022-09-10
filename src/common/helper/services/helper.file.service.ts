@@ -1,7 +1,7 @@
 /* istanbul ignore file */
 
 import { Injectable } from '@nestjs/common';
-import { IHelperFileExcelRows } from '../helper.interface';
+import { IHelperFileExcelRows } from 'src/common/helper/interfaces/helper.interface';
 import XLSX from 'xlsx';
 
 @Injectable()

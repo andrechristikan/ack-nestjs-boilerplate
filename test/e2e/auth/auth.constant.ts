@@ -1,4 +1,5 @@
-import { ENUM_AUTH_ACCESS_FOR } from '../../../src/common/auth/constants/auth.enum.constant';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+
 export const E2E_AUTH_INFO_URL = '/auth/info';
 
 export const E2E_AUTH_PAYLOAD_TEST = {

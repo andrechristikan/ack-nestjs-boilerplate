@@ -7,9 +7,9 @@ import { useContainer } from 'class-validator';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
 import { CommonModule } from 'src/common/common.module';
-import { RoutesModule } from '../../../src/router/routes/routes.module';
 import { E2E_AUTH_INFO_URL, E2E_AUTH_PAYLOAD_TEST } from './auth.constant';
 import { AuthService } from 'src/common/auth/services/auth.service';
+import { RoutesModule } from 'src/router/routes/routes.module';
 
 describe('E2E Auth', () => {
     let app: INestApplication;

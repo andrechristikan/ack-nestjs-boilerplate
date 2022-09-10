@@ -1,6 +1,6 @@
-import { IRoleDocument } from '../role/role.interface';
-import { UserCreateDto } from './dtos/user.create.dto';
-import { UserDocument } from './schemas/user.schema';
+import { IRoleDocument } from 'src/modules/role/interfaces/role.interface';
+import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
+import { UserDocument } from 'src/modules/user/schemas/user.schema';
 
 export interface IUserDocument extends Omit<UserDocument, 'role'> {
     role: IRoleDocument;

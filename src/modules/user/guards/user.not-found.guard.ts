@@ -4,7 +4,7 @@ import {
     ExecutionContext,
     NotFoundException,
 } from '@nestjs/common';
-import { ENUM_USER_STATUS_CODE_ERROR } from '../constants/user.status-code.constant';
+import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 
 @Injectable()
 export class UserNotFoundGuard implements CanActivate {

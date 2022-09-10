@@ -1,8 +1,8 @@
 import { ClientSession } from 'mongoose';
-import { IPaginationOptions } from '../pagination/pagination.interface';
+import { IPaginationOptions } from 'src/common/pagination/interfaces/pagination.interface';
 
 export interface IDatabaseFindOneOptions {
-    populate?: Record<string, boolean>;
+    populate?: boolean;
     session?: ClientSession;
 }
 

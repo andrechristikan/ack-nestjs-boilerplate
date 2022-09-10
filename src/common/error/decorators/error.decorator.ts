@@ -2,7 +2,7 @@ import { applyDecorators, SetMetadata } from '@nestjs/common';
 import {
     ERROR_META_CLASS_KEY,
     ERROR_META_FUNCTION_KEY,
-} from '../constants/error.constant';
+} from 'src/common/error/constants/error.constant';
 
 export function ErrorMeta(cls: string, func: string): any {
     return applyDecorators(

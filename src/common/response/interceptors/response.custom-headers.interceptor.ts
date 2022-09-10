@@ -7,7 +7,7 @@ import {
 import { map, Observable } from 'rxjs';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
-import { IRequestApp } from 'src/common/request/request.interface';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 // only for response success and error in controller
 @Injectable()

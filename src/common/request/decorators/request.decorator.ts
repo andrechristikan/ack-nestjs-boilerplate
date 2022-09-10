@@ -6,13 +6,13 @@ import {
     UseGuards,
 } from '@nestjs/common';
 import { ClassConstructor } from 'class-transformer';
-import { IResult } from 'ua-parser-js';
 import {
     REQUEST_EXCLUDE_TIMESTAMP_META_KEY,
     REQUEST_PARAM_CLASS_DTOS_META_KEY,
-} from '../constants/request.constant';
-import { RequestParamRawGuard } from '../guards/request.param.guard';
-import { IRequestApp } from '../request.interface';
+} from 'src/common/request/constants/request.constant';
+import { RequestParamRawGuard } from 'src/common/request/guards/request.param.guard';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+import { IResult } from 'ua-parser-js';
 
 export const RequestUserAgent = createParamDecorator(
     (data: string, ctx: ExecutionContext): IResult => {

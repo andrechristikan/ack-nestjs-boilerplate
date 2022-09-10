@@ -6,7 +6,7 @@ import {
     ENUM_LOGGER_ACTION,
     ENUM_LOGGER_LEVEL,
 } from 'src/common/logger/constants/logger.enum.constant';
-import { ILogger } from 'src/common/logger/logger.interface';
+import { ILogger } from 'src/common/logger/interfaces/logger.interface';
 import { LoggerService } from 'src/common/logger/services/logger.service';
 import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
 import { v4 } from 'uuid';

@@ -1,92 +1,105 @@
 import { Injectable } from '@nestjs/common';
-import { Model } from 'mongoose';
-import { IDatabaseFindAllOptions } from 'src/common/database/database.interface';
-import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
-import { PermissionCreateDto } from '../dtos/permission.create.dto';
-import { PermissionUpdateDto } from '../dtos/permission.update.dto';
+import {
+    IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
+    IDatabaseOptions,
+} from 'src/common/database/interfaces/database.interface';
+import { PermissionActiveDto } from 'src/modules/permission/dtos/permission.active.dto';
+import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
+import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
+import { IPermissionService } from 'src/modules/permission/interfaces/permission.service.interface';
+import { PermissionRepository } from 'src/modules/permission/repositories/permission.repository';
 import {
     PermissionDocument,
     PermissionEntity,
-} from '../schemas/permission.schema';
+} from 'src/modules/permission/schemas/permission.schema';
 
 @Injectable()
-export class PermissionService {
-    constructor(
-        @DatabaseEntity(PermissionEntity.name)
-        private readonly permissionModel: Model<PermissionDocument>
-    ) {}
+export class PermissionService implements IPermissionService {
+    constructor(private readonly permissionRepository: PermissionRepository) {}
 
     async findAll(
-        find?: Record<string, any>,
+        find: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<PermissionDocument[]> {
-        const findAll = this.permissionModel.find(find);
-        if (
-            options &&
-            options.limit !== undefined &&
-            options.skip !== undefined
-        ) {
-            findAll.limit(options.limit).skip(options.skip);
-        }
-
-        if (options && options.sort) {
-            findAll.sort(options.sort);
-        }
-
-        return findAll.lean();
+        return this.permissionRepository.findAll(find, options);
     }
 
-    async findOneById(_id: string): Promise<PermissionDocument> {
-        return this.permissionModel.findById(_id).lean();
+    async findOneById(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<PermissionDocument> {
+        return this.permissionRepository.findOneById(_id, options);
     }
 
-    async findOne(find?: Record<string, any>): Promise<PermissionDocument> {
-        return this.permissionModel.findOne(find).lean();
+    async findOne(
+        find: Record<string, any>,
+        options?: IDatabaseFindOneOptions
+    ): Promise<PermissionDocument> {
+        return this.permissionRepository.findOne(find, options);
     }
 
-    async getTotal(find?: Record<string, any>): Promise<number> {
-        return this.permissionModel.countDocuments(find);
+    async getTotal(find: Record<string, any>): Promise<number> {
+        return this.permissionRepository.getTotal(find);
     }
 
-    async deleteOne(find: Record<string, any>): Promise<PermissionDocument> {
-        return this.permissionModel.findOneAndDelete(find);
+    async deleteOne(
+        find: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<PermissionDocument> {
+        return this.permissionRepository.deleteOne(find, options);
     }
 
-    async create(data: PermissionCreateDto): Promise<PermissionDocument> {
-        const create: PermissionDocument = new this.permissionModel({
-            name: data.name,
-            code: data.code,
-            description: data.description,
-            isActive: data.isActive || true,
-        });
+    async create(
+        data: PermissionCreateDto,
+        options?: IDatabaseOptions
+    ): Promise<PermissionDocument> {
+        const create: PermissionEntity = {
+            ...data,
+            isActive: data.isActive || false,
+        };
 
-        return create.save();
+        return this.permissionRepository.create<PermissionEntity>(
+            create,
+            options
+        );
     }
 
     async update(
         _id: string,
-        { name, description }: PermissionUpdateDto
+        data: PermissionUpdateDto,
+        options?: IDatabaseOptions
     ): Promise<PermissionDocument> {
-        const permission = await this.permissionModel.findById(_id);
-
-        permission.name = name;
-        permission.description = description;
-        return permission.save();
+        return this.permissionRepository.updateOneById<PermissionUpdateDto>(
+            _id,
+            data,
+            options
+        );
     }
 
-    async inactive(_id: string): Promise<PermissionDocument> {
-        const permission: PermissionDocument =
-            await this.permissionModel.findById(_id);
-
-        permission.isActive = false;
-        return permission.save();
+    async inactive(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<PermissionDocument> {
+        return this.permissionRepository.updateOneById<PermissionActiveDto>(
+            _id,
+            {
+                isActive: false,
+            },
+            options
+        );
     }
 
-    async active(_id: string): Promise<PermissionDocument> {
-        const permission: PermissionDocument =
-            await this.permissionModel.findById(_id);
-
-        permission.isActive = true;
-        return permission.save();
+    async active(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<PermissionDocument> {
+        return this.permissionRepository.updateOneById<PermissionActiveDto>(
+            _id,
+            {
+                isActive: true,
+            },
+            options
+        );
     }
 }

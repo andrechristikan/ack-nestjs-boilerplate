@@ -7,14 +7,14 @@ import {
     PaginationSearch,
     PaginationSort,
 } from 'src/common/pagination/decorators/pagination.decorator';
-import { IPaginationSort } from 'src/common/pagination/pagination.interface';
+import { IPaginationSort } from 'src/common/pagination/interfaces/pagination.interface';
 import {
     USER_DEFAULT_AVAILABLE_SEARCH,
     USER_DEFAULT_AVAILABLE_SORT,
     USER_DEFAULT_PAGE,
     USER_DEFAULT_PER_PAGE,
     USER_DEFAULT_SORT,
-} from '../constants/user.list.constant';
+} from 'src/modules/user/constants/user.list.constant';
 
 export class UserListDto implements PaginationListAbstract {
     @PaginationSearch(USER_DEFAULT_AVAILABLE_SEARCH)

@@ -23,28 +23,28 @@ import {
 import {
     IResponse,
     IResponsePaging,
-} from 'src/common/response/response.interface';
+} from 'src/common/response/interfaces/response.interface';
 import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/constants/permission.status-code.constant';
 import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from '../constants/role.status-code.constant';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import {
     RoleDeleteGuard,
     RoleGetGuard,
     RoleUpdateActiveGuard,
     RoleUpdateGuard,
     RoleUpdateInactiveGuard,
-} from '../decorators/role.admin.decorator';
-import { GetRole } from '../decorators/role.decorator';
-import { RoleCreateDto } from '../dtos/role.create.dto';
-import { RoleListDto } from '../dtos/role.list.dto';
-import { RoleRequestDto } from '../dtos/role.request.dto';
-import { RoleUpdateDto } from '../dtos/role.update.dto';
-import { IRoleDocument } from '../role.interface';
-import { RoleDocument } from '../schemas/role.schema';
-import { RoleGetSerialization } from '../serializations/role.get.serialization';
-import { RoleListSerialization } from '../serializations/role.list.serialization';
-import { RoleService } from '../services/role.service';
+} from 'src/modules/role/decorators/role.admin.decorator';
+import { GetRole } from 'src/modules/role/decorators/role.decorator';
+import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
+import { RoleListDto } from 'src/modules/role/dtos/role.list.dto';
+import { RoleRequestDto } from 'src/modules/role/dtos/role.request.dto';
+import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
+import { IRoleDocument } from 'src/modules/role/interfaces/role.interface';
+import { RoleDocument } from 'src/modules/role/schemas/role.schema';
+import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
+import { RoleListSerialization } from 'src/modules/role/serializations/role.list.serialization';
+import { RoleService } from 'src/modules/role/services/role.service';
 
 @Controller({
     version: '1',

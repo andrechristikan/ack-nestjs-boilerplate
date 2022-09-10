@@ -5,11 +5,11 @@ import {
     ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { IAuthPermission } from '../../auth.interface';
-import { AUTH_PERMISSION_META_KEY } from '../../constants/auth.constant';
-import { ENUM_AUTH_ACCESS_FOR } from '../../constants/auth.enum.constant';
-import { ENUM_AUTH_PERMISSIONS } from '../../constants/auth.enum.permission.constant';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from '../../constants/auth.status-code.constant';
+import { AUTH_PERMISSION_META_KEY } from 'src/common/auth/constants/auth.constant';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
+import { IAuthPermission } from 'src/common/auth/interfaces/auth.interface';
 
 @Injectable()
 export class AuthPayloadPermissionGuard implements CanActivate {

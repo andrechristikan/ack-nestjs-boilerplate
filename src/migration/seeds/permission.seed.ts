@@ -1,8 +1,8 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 import { PermissionBulkService } from 'src/modules/permission/services/permission.bulk.service';
-import { IAuthPermission } from 'src/common/auth/auth.interface';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
+import { IAuthPermission } from 'src/common/auth/interfaces/auth.interface';
 
 @Injectable()
 export class PermissionSeed {

@@ -1,7 +1,7 @@
 import { OmitType } from '@nestjs/mapped-types';
 import { Exclude } from 'class-transformer';
 import { Types } from 'mongoose';
-import { IAwsS3 } from 'src/common/aws/aws.interface';
+import { IAwsS3 } from 'src/common/aws/interfaces/aws.interface';
 import { UserGetSerialization } from './user.get.serialization';
 
 export class UserListSerialization extends OmitType(UserGetSerialization, [

@@ -1,17 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { Model } from 'mongoose';
-import { DeleteResult } from 'mongodb';
-import { UserDocument, UserEntity } from '../schemas/user.schema';
-import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+import { IUserBulkService } from 'src/modules/user/interfaces/user.bulk-service.interface';
+import { UserBulkRepository } from 'src/modules/user/repositories/user.bulk.repository';
 
 @Injectable()
-export class UserBulkService {
-    constructor(
-        @DatabaseEntity(UserEntity.name)
-        private readonly userModel: Model<UserDocument>
-    ) {}
+export class UserBulkService implements IUserBulkService {
+    constructor(private readonly userBulkRepository: UserBulkRepository) {}
 
-    async deleteMany(find: Record<string, any>): Promise<DeleteResult> {
-        return this.userModel.deleteMany(find);
+    async deleteMany(find: Record<string, any>): Promise<boolean> {
+        return this.userBulkRepository.deleteMany(find);
     }
 }

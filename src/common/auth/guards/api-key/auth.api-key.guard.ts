@@ -7,8 +7,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
-import { AUTH_EXCLUDE_API_KEY_META_KEY } from '../../constants/auth.constant';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from '../../constants/auth.status-code.constant';
+import { AUTH_EXCLUDE_API_KEY_META_KEY } from 'src/common/auth/constants/auth.constant';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
 
 @Injectable()
 export class ApiKeyGuard extends AuthGuard('api-key') {

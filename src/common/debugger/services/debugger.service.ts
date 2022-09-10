@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { IDebuggerLog } from '../debugger.interface';
+import { IDebuggerLog } from 'src/common/debugger/interfaces/debugger.interface';
 
 @Injectable()
 export class DebuggerService {

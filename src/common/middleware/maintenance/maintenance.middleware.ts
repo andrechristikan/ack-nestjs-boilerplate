@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { Response, NextFunction } from 'express';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
-import { IRequestApp } from 'src/common/request/request.interface';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
 import { SettingService } from 'src/common/setting/services/setting.service';
 

@@ -8,9 +8,9 @@ import {
     ENUM_FILE_EXCEL_MIME,
     ENUM_FILE_IMAGE_MIME,
     ENUM_FILE_VIDEO_MIME,
-} from '../constants/file.enum.constant';
-import { ENUM_FILE_STATUS_CODE_ERROR } from '../constants/file.status-code.constant';
-import { IFile } from '../file.interface';
+} from 'src/common/file/constants/file.enum.constant';
+import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
+import { IFile } from 'src/common/file/interfaces/file.interface';
 
 @Injectable()
 export class FileTypeImagePipe implements PipeTransform {

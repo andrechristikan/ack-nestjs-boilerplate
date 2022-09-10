@@ -5,8 +5,8 @@ import {
     BadRequestException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { USER_ACTIVE_META_KEY } from '../constants/user.constant';
-import { ENUM_USER_STATUS_CODE_ERROR } from '../constants/user.status-code.constant';
+import { USER_ACTIVE_META_KEY } from 'src/modules/user/constants/user.constant';
+import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 
 @Injectable()
 export class UserActiveGuard implements CanActivate {

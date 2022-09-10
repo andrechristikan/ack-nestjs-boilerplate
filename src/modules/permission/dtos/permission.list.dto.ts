@@ -8,7 +8,7 @@ import {
     PaginationSearch,
     PaginationSort,
 } from 'src/common/pagination/decorators/pagination.decorator';
-import { IPaginationSort } from 'src/common/pagination/pagination.interface';
+import { IPaginationSort } from 'src/common/pagination/interfaces/pagination.interface';
 import {
     PERMISSION_DEFAULT_ACTIVE,
     PERMISSION_DEFAULT_AVAILABLE_SEARCH,
@@ -16,7 +16,7 @@ import {
     PERMISSION_DEFAULT_PAGE,
     PERMISSION_DEFAULT_PER_PAGE,
     PERMISSION_DEFAULT_SORT,
-} from '../constants/permission.list.constant';
+} from 'src/modules/permission/constants/permission.list.constant';
 
 export class PermissionListDto implements PaginationListAbstract {
     @PaginationSearch(PERMISSION_DEFAULT_AVAILABLE_SEARCH)

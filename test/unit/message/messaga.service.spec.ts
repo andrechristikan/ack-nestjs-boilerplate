@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { ValidationError } from 'class-validator';
 import { CommonModule } from 'src/common/common.module';
-import { IValidationErrorImport } from 'src/common/error/error.interface';
+import { IValidationErrorImport } from 'src/common/error/interfaces/error.interface';
 import { MessageService } from 'src/common/message/services/message.service';
 
 describe('MessageService', () => {

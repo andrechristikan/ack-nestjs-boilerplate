@@ -1,9 +1,9 @@
-import { ENUM_AUTH_ACCESS_FOR } from '../auth/constants/auth.enum.constant';
-import { ENUM_REQUEST_METHOD } from '../request/constants/request.enum.constant';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import {
     ENUM_LOGGER_ACTION,
     ENUM_LOGGER_LEVEL,
-} from './constants/logger.enum.constant';
+} from 'src/common/logger/constants/logger.enum.constant';
+import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
 
 export interface ILogger {
     action: ENUM_LOGGER_ACTION;

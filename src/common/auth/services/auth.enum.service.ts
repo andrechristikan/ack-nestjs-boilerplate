@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ENUM_AUTH_ACCESS_FOR } from '../constants/auth.enum.constant';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 
 @Injectable()
 export class AuthEnumService {

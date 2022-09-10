@@ -6,7 +6,6 @@ import {
     DebuggerOptionsModule,
 } from 'src/common/debugger/debugger.module';
 import { DebuggerOptionService } from 'src/common/debugger/services/debugger.option.service';
-import Configs from '../configs';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DatabaseOptionsModule } from 'src/common/database/database.module';
 import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
@@ -23,13 +22,14 @@ import { PaginationModule } from 'src/common/pagination/pagination.module';
 import { SettingModule } from 'src/common/setting/setting.module';
 import Joi from 'joi';
 import { ENUM_MESSAGE_LANGUAGE } from './message/constants/message.enum.constant';
+import configs from 'src/configs';
 
 @Module({
     controllers: [],
     providers: [],
     imports: [
         ConfigModule.forRoot({
-            load: Configs,
+            load: configs,
             ignoreEnvFile: false,
             isGlobal: true,
             cache: true,

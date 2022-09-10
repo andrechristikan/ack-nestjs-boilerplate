@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
-import { AuthApiDocument, AuthApiEntity } from '../schemas/auth.api.schema';
 import { DeleteResult } from 'mongodb';
+import {
+    AuthApiDocument,
+    AuthApiEntity,
+} from 'src/common/auth/schemas/auth.api.schema';
 
 @Injectable()
 export class AuthApiBulkService {

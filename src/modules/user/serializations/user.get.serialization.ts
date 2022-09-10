@@ -1,6 +1,6 @@
 import { Exclude, Expose, Transform, Type } from 'class-transformer';
-import { IAwsS3 } from 'src/common/aws/aws.interface';
-import { IRoleDocument } from 'src/modules/role/role.interface';
+import { IAwsS3 } from 'src/common/aws/interfaces/aws.interface';
+import { IRoleDocument } from 'src/modules/role/interfaces/role.interface';
 
 export class UserGetSerialization {
     @Type(() => String)

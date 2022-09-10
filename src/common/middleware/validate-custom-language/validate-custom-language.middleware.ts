@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Response, NextFunction } from 'express';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
 import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
-import { IRequestApp } from 'src/common/request/request.interface';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
 export class ValidateCustomLanguageMiddleware implements NestMiddleware {

@@ -1,9 +1,9 @@
 import { ValidationError } from 'class-validator';
+import { ERROR_TYPE } from 'src/common/error/constants/error.enum.constant';
 import {
     IMessage,
     IMessageOptionsProperties,
-} from '../message/message.interface';
-import { ERROR_TYPE } from './constants/error.enum.constant';
+} from 'src/common/message/interfaces/message.interface';
 
 // error default
 export interface IErrors {

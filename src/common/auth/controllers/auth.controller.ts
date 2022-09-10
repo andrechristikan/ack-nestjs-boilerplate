@@ -1,8 +1,8 @@
 import { Controller, Get } from '@nestjs/common';
+import { User } from 'src/common/auth/decorators/auth.decorator';
+import { AuthJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
-import { IResponse } from 'src/common/response/response.interface';
-import { User } from '../decorators/auth.decorator';
-import { AuthJwtGuard } from '../decorators/auth.jwt.decorator';
+import { IResponse } from 'src/common/response/interfaces/response.interface';
 
 @Controller({
     version: '1',

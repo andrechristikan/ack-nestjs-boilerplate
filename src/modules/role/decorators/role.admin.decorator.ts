@@ -1,9 +1,9 @@
 import { applyDecorators, SetMetadata, UseGuards } from '@nestjs/common';
-import { ROLE_ACTIVE_META_KEY } from '../constants/role.constant';
-import { RoleActiveGuard } from '../guards/role.active.guard';
-import { RoleNotFoundGuard } from '../guards/role.not-found.guard';
-import { RolePutToRequestGuard } from '../guards/role.put-to-request.guard';
-import { RoleUsedGuard } from '../guards/role.used.guard';
+import { ROLE_ACTIVE_META_KEY } from 'src/modules/role/constants/role.constant';
+import { RoleActiveGuard } from 'src/modules/role/guards/role.active.guard';
+import { RoleNotFoundGuard } from 'src/modules/role/guards/role.not-found.guard';
+import { RolePutToRequestGuard } from 'src/modules/role/guards/role.put-to-request.guard';
+import { RoleUsedGuard } from 'src/modules/role/guards/role.used.guard';
 
 export function RoleGetGuard(): any {
     return applyDecorators(UseGuards(RolePutToRequestGuard, RoleNotFoundGuard));

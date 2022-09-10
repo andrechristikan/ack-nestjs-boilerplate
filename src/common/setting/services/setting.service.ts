@@ -1,11 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { IDatabaseFindAllOptions } from 'src/common/database/database.interface';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+import { IDatabaseFindAllOptions } from 'src/common/database/interfaces/database.interface';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
-import { SettingCreateDto } from '../dtos/setting.create.dto';
-import { SettingUpdateDto } from '../dtos/setting.update.dto';
-import { SettingDocument, SettingEntity } from '../schemas/setting.schema';
+import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
+import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
+import {
+    SettingDocument,
+    SettingEntity,
+} from 'src/common/setting/schemas/setting.schema';
 
 @Injectable()
 export class SettingService {

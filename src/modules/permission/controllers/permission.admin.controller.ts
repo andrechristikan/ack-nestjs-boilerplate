@@ -19,21 +19,21 @@ import {
 import {
     IResponse,
     IResponsePaging,
-} from 'src/common/response/response.interface';
+} from 'src/common/response/interfaces/response.interface';
 import {
     PermissionGetGuard,
     PermissionUpdateActiveGuard,
     PermissionUpdateGuard,
     PermissionUpdateInactiveGuard,
-} from '../decorators/permission.admin.decorator';
-import { GetPermission } from '../decorators/permission.decorator';
-import { PermissionListDto } from '../dtos/permission.list.dto';
-import { PermissionUpdateDto } from '../dtos/permission.update.dto';
-import { PermissionRequestDto } from '../dtos/permissions.request.dto';
-import { PermissionDocument } from '../schemas/permission.schema';
-import { PermissionGetSerialization } from '../serializations/permission.get.serialization';
-import { PermissionListSerialization } from '../serializations/permission.list.serialization';
-import { PermissionService } from '../services/permission.service';
+} from 'src/modules/permission/decorators/permission.admin.decorator';
+import { GetPermission } from 'src/modules/permission/decorators/permission.decorator';
+import { PermissionListDto } from 'src/modules/permission/dtos/permission.list.dto';
+import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
+import { PermissionRequestDto } from 'src/modules/permission/dtos/permissions.request.dto';
+import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
+import { PermissionGetSerialization } from 'src/modules/permission/serializations/permission.get.serialization';
+import { PermissionListSerialization } from 'src/modules/permission/serializations/permission.list.serialization';
+import { PermissionService } from 'src/modules/permission/services/permission.service';
 
 @Controller({
     version: '1',

@@ -1,15 +1,11 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Response, NextFunction } from 'express';
-import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
-import { IRequestApp } from 'src/common/request/request.interface';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
 export class VersionMiddleware implements NestMiddleware {
-    constructor(
-        private readonly configService: ConfigService,
-        private readonly helperNumberService: HelperNumberService
-    ) {}
+    constructor(private readonly configService: ConfigService) {}
 
     async use(
         req: IRequestApp,

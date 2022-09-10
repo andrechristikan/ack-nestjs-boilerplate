@@ -3,8 +3,8 @@ import {
     ExecutionContext,
     SetMetadata,
 } from '@nestjs/common';
-import { IAuthApiPayload } from '../auth.interface';
-import { AUTH_EXCLUDE_API_KEY_META_KEY } from '../constants/auth.constant';
+import { AUTH_EXCLUDE_API_KEY_META_KEY } from 'src/common/auth/constants/auth.constant';
+import { IAuthApiPayload } from 'src/common/auth/interfaces/auth.interface';
 
 export const ApiKey = createParamDecorator(
     (data: string, ctx: ExecutionContext): IAuthApiPayload => {

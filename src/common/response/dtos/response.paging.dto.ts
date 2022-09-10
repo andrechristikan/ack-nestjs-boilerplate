@@ -1,5 +1,5 @@
-import { IErrorHttpFilterMetadata } from 'src/common/error/error.interface';
-import { IMessage } from 'src/common/message/message.interface';
+import { IErrorHttpFilterMetadata } from 'src/common/error/interfaces/error.interface';
+import { IMessage } from 'src/common/message/interfaces/message.interface';
 
 export class ResponsePagingMetadataDto {
     nextPage?: string;

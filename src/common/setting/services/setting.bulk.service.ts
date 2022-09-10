@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { DeleteResult } from 'mongodb';
-import { SettingDocument, SettingEntity } from '../schemas/setting.schema';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+import {
+    SettingDocument,
+    SettingEntity,
+} from 'src/common/setting/schemas/setting.schema';
 
 @Injectable()
 export class SettingBulkService {

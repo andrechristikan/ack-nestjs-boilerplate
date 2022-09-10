@@ -1,10 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { CommonModule } from 'src/common/common.module';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import {
-    IAuthApi,
-    IAuthApiRequestHashedData,
-} from 'src/common/auth/auth.interface';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
     AuthApiDatabaseName,
@@ -16,6 +12,10 @@ import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database
 import { faker } from '@faker-js/faker';
 import { Types } from 'mongoose';
 import { AuthApiBulkService } from 'src/common/auth/services/auth.api.bulk.service';
+import {
+    IAuthApi,
+    IAuthApiRequestHashedData,
+} from 'src/common/auth/interfaces/auth.interface';
 
 describe('AuthApiService', () => {
     let authApiService: AuthApiService;

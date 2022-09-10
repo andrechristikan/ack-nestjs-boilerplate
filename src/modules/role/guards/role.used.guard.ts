@@ -5,9 +5,9 @@ import {
     BadRequestException,
 } from '@nestjs/common';
 import { Types } from 'mongoose';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { UserDocument } from 'src/modules/user/schemas/user.schema';
 import { UserService } from 'src/modules/user/services/user.service';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from '../constants/role.status-code.constant';
 
 @Injectable()
 export class RoleUsedGuard implements CanActivate {

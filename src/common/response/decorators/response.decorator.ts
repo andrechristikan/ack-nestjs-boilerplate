@@ -4,14 +4,14 @@ import {
     RESPONSE_CUSTOM_TIMEOUT_META_KEY,
     RESPONSE_CUSTOM_TIMEOUT_VALUE_META_KEY,
     RESPONSE_MESSAGE_PATH_META_KEY,
+    RESPONSE_MESSAGE_PROPERTIES_META_KEY,
     RESPONSE_PAGING_TYPE_META_KEY,
     RESPONSE_SERIALIZATION_META_KEY,
-    RESPONSE_MESSAGE_PROPERTIES_META_KEY,
-} from '../constants/response.constant';
-import { ResponseDefaultInterceptor } from '../interceptors/response.default.interceptor';
-import { ResponseExcelInterceptor } from '../interceptors/response.excel.interceptor';
-import { ResponsePagingInterceptor } from '../interceptors/response.paging.interceptor';
-import { IResponseOptions } from '../response.interface';
+} from 'src/common/response/constants/response.constant';
+import { ResponseDefaultInterceptor } from 'src/common/response/interceptors/response.default.interceptor';
+import { ResponseExcelInterceptor } from 'src/common/response/interceptors/response.excel.interceptor';
+import { ResponsePagingInterceptor } from 'src/common/response/interceptors/response.paging.interceptor';
+import { IResponseOptions } from 'src/common/response/interfaces/response.interface';
 
 export function Response(messagePath: string, options?: IResponseOptions): any {
     return applyDecorators(

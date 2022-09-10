@@ -1,5 +1,5 @@
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { DATABASE_CONNECTION_NAME } from '../constants/database.constant';
+import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 
 export function DatabaseConnection(
     connectionName?: string

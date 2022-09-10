@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ENUM_MESSAGE_LANGUAGE } from '../constants/message.enum.constant';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 
 @Injectable()
 export class MessageEnumService {

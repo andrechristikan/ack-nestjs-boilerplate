@@ -1,9 +1,9 @@
 import { applyDecorators, UseGuards } from '@nestjs/common';
-import { SettingNotFoundGuard } from '../guards/setting.not-found.guard';
+import { SettingNotFoundGuard } from 'src/common/setting/guards/setting.not-found.guard';
 import {
     SettingPutToRequestByNameGuard,
     SettingPutToRequestGuard,
-} from '../guards/setting.put-to-request.guard';
+} from 'src/common/setting/guards/setting.put-to-request.guard';
 
 export function SettingGetGuard(): any {
     return applyDecorators(

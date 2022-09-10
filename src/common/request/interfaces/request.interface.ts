@@ -1,6 +1,6 @@
 import { Request } from 'express';
+import { IAuthApiPayload } from 'src/common/auth/interfaces/auth.interface';
 import { IResult } from 'ua-parser-js';
-import { IAuthApiPayload } from '../auth/auth.interface';
 
 export interface IRequestApp extends Request {
     id?: string;

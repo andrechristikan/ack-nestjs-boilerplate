@@ -14,7 +14,7 @@ import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.s
 import {
     RESPONSE_CUSTOM_TIMEOUT_META_KEY,
     RESPONSE_CUSTOM_TIMEOUT_VALUE_META_KEY,
-} from '../constants/response.constant';
+} from 'src/common/response/constants/response.constant';
 
 @Injectable()
 export class ResponseTimeoutInterceptor

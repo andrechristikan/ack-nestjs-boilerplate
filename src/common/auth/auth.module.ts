@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
-import { DATABASE_CONNECTION_NAME } from '../database/constants/database.constant';
+import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { ApiKeyGuard } from './guards/api-key/auth.api-key.guard';
 import { ApiKeyStrategy } from './guards/api-key/auth.api-key.strategy';
 import { JwtRefreshStrategy } from './guards/jwt-refresh/auth.jwt-refresh.strategy';

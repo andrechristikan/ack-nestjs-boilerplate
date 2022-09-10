@@ -2,7 +2,7 @@ import { ForbiddenException, Injectable, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Response, NextFunction } from 'express';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
-import { IRequestApp } from 'src/common/request/request.interface';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import userAgentParserJs from 'ua-parser-js';
 
 @Injectable()

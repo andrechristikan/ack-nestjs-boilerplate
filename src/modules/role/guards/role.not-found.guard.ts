@@ -4,7 +4,7 @@ import {
     ExecutionContext,
     NotFoundException,
 } from '@nestjs/common';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from '../constants/role.status-code.constant';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 
 @Injectable()
 export class RoleNotFoundGuard implements CanActivate {

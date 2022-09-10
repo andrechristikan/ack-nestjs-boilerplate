@@ -4,7 +4,7 @@ import { AES, enc, mode, pad } from 'crypto-js';
 import {
     IHelperJwtOptions,
     IHelperJwtVerifyOptions,
-} from '../helper.interface';
+} from 'src/common/helper/interfaces/helper.interface';
 
 @Injectable()
 export class HelperEncryptionService {

@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { isPointWithinRadius } from 'geolib';
-import { IHelperGeoCurrent, IHelperGeoRules } from '../helper.interface';
+import {
+    IHelperGeoCurrent,
+    IHelperGeoRules,
+} from 'src/common/helper/interfaces/helper.interface';
 
 @Injectable()
 export class HelperGeoService {

@@ -1,9 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
+import { AuthExcludeApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
+import { AuthEnumService } from 'src/common/auth/services/auth.enum.service';
 import { RequestExcludeTimestamp } from 'src/common/request/decorators/request.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
-import { IResponse } from 'src/common/response/response.interface';
-import { AuthExcludeApiKey } from '../decorators/auth.api-key.decorator';
-import { AuthEnumService } from '../services/auth.enum.service';
+import { IResponse } from 'src/common/response/interfaces/response.interface';
 
 @Controller({
     version: '1',

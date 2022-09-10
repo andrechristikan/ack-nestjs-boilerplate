@@ -8,18 +8,18 @@ import {
 import {
     IResponse,
     IResponsePaging,
-} from 'src/common/response/response.interface';
-import { GetSetting } from '../decorators/setting.decorator';
+} from 'src/common/response/interfaces/response.interface';
+import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
 import {
     SettingGetByNameGuard,
     SettingGetGuard,
-} from '../decorators/setting.public.decorator';
-import { SettingListDto } from '../dtos/setting.list.dto';
-import { SettingRequestDto } from '../dtos/setting.request.dto';
-import { SettingDocument } from '../schemas/setting.schema';
-import { SettingGetSerialization } from '../serializations/setting.get.serialization';
-import { SettingListSerialization } from '../serializations/setting.list.serialization';
-import { SettingService } from '../services/setting.service';
+} from 'src/common/setting/decorators/setting.public.decorator';
+import { SettingListDto } from 'src/common/setting/dtos/setting.list.dto';
+import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
+import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
+import { SettingGetSerialization } from 'src/common/setting/serializations/setting.get.serialization';
+import { SettingListSerialization } from 'src/common/setting/serializations/setting.list.serialization';
+import { SettingService } from 'src/common/setting/services/setting.service';
 
 @Controller({
     version: '1',

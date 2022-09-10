@@ -9,13 +9,13 @@ import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
-import { IResponse } from 'src/common/response/response.interface';
-import { SettingUpdateGuard } from '../decorators/setting.admin.decorator';
-import { GetSetting } from '../decorators/setting.decorator';
-import { SettingRequestDto } from '../dtos/setting.request.dto';
-import { SettingUpdateDto } from '../dtos/setting.update.dto';
-import { SettingDocument } from '../schemas/setting.schema';
-import { SettingService } from '../services/setting.service';
+import { IResponse } from 'src/common/response/interfaces/response.interface';
+import { SettingUpdateGuard } from 'src/common/setting/decorators/setting.admin.decorator';
+import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
+import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
+import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
+import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
+import { SettingService } from 'src/common/setting/services/setting.service';
 
 @Controller({
     version: '1',

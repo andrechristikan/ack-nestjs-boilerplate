@@ -5,21 +5,21 @@ import {
     CallHandler,
 } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
-import { ILoggerOptions } from '../logger.interface';
 import { Response } from 'express';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
-import { IRequestApp } from 'src/common/request/request.interface';
-import { LoggerService } from '../services/logger.service';
 import { Reflector } from '@nestjs/core';
+import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+import { LoggerService } from 'src/common/logger/services/logger.service';
 import {
     ENUM_LOGGER_ACTION,
     ENUM_LOGGER_LEVEL,
-} from '../constants/logger.enum.constant';
+} from 'src/common/logger/constants/logger.enum.constant';
 import {
     LOGGER_ACTION_META_KEY,
     LOGGER_OPTIONS_META_KEY,
-} from '../constants/logger.constant';
-import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
+} from 'src/common/logger/constants/logger.constant';
+import { ILoggerOptions } from 'src/common/logger/interfaces/logger.interface';
 
 @Injectable()
 export class LoggerInterceptor implements NestInterceptor<any> {

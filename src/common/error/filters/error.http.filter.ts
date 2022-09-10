@@ -8,10 +8,7 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ValidationError } from 'class-validator';
 import { Response } from 'express';
 import { DebuggerService } from 'src/common/debugger/services/debugger.service';
-import { IMessage } from 'src/common/message/message.interface';
-import { MessageService } from 'src/common/message/services/message.service';
-import { IRequestApp } from 'src/common/request/request.interface';
-import { ERROR_TYPE } from '../constants/error.enum.constant';
+import { ERROR_TYPE } from 'src/common/error/constants/error.enum.constant';
 import {
     IErrorException,
     IErrorHttpFilter,
@@ -19,7 +16,10 @@ import {
     IErrors,
     IErrorsImport,
     IValidationErrorImport,
-} from '../error.interface';
+} from 'src/common/error/interfaces/error.interface';
+import { IMessage } from 'src/common/message/interfaces/message.interface';
+import { MessageService } from 'src/common/message/services/message.service';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 // If we throw error with HttpException, there will always return object
 // The exception filter only catch HttpException

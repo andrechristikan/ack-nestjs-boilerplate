@@ -8,11 +8,11 @@ import {
     AuthApiSchema,
 } from 'src/common/auth/schemas/auth.api.schema';
 import { faker } from '@faker-js/faker';
-import { IAuthApi } from 'src/common/auth/auth.interface';
 import { Types } from 'mongoose';
 import { DeleteResult } from 'mongodb';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { IAuthApi } from 'src/common/auth/interfaces/auth.interface';
 
 describe('AuthApiBulkService', () => {
     let authApiBulkService: AuthApiBulkService;

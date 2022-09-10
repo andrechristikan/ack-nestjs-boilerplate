@@ -1,4 +1,4 @@
-import { IMessage } from 'src/common/message/message.interface';
+import { IMessage } from 'src/common/message/interfaces/message.interface';
 
 export class ResponseDefaultDto<T = Record<string, any>> {
     readonly statusCode: number;

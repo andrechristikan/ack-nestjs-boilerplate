@@ -1,6 +1,6 @@
 import { ClassConstructor } from 'class-transformer';
-import { IHelperFileExcelRows } from '../helper/helper.interface';
-import { IMessageOptionsProperties } from '../message/message.interface';
+import { IHelperFileExcelRows } from 'src/common/helper/interfaces/helper.interface';
+import { IMessageOptionsProperties } from 'src/common/message/interfaces/message.interface';
 
 export interface IResponseMetadata {
     statusCode?: number;

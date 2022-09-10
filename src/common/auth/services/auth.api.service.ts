@@ -1,18 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { IAuthApi, IAuthApiRequestHashedData } from '../auth.interface';
 import { ConfigService } from '@nestjs/config';
-import { AuthApiDocument, AuthApiEntity } from '../schemas/auth.api.schema';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
-import { IDatabaseFindAllOptions } from 'src/common/database/database.interface';
-import { AuthApiUpdateDto } from '../dtos/auth.api.update.dto';
+import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+import { IDatabaseFindAllOptions } from 'src/common/database/interfaces/database.interface';
+import {
+    AuthApiDocument,
+    AuthApiEntity,
+} from 'src/common/auth/schemas/auth.api.schema';
+import {
+    IAuthApi,
+    IAuthApiRequestHashedData,
+} from 'src/common/auth/interfaces/auth.interface';
+import { AuthApiUpdateDto } from 'src/common/auth/dtos/auth.api.update.dto';
 import {
     AuthApiCreateDto,
     AuthApiCreateRawDto,
-} from '../dtos/auth.api.create.dto';
-import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+} from 'src/common/auth/dtos/auth.api.create.dto';
 
 @Injectable()
 export class AuthApiService {
