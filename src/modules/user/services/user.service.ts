@@ -17,9 +17,13 @@ import {
 } from 'src/modules/user/interfaces/user.interface';
 import { UserDocument, UserEntity } from 'src/modules/user/schemas/user.schema';
 import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
-import { IAwsS3 } from 'src/common/aws/interfaces/aws.interface';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
+import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
+import { UserPhotoDto } from 'src/modules/user/dtos/user.photo.dto';
+import { UserPasswordDto } from 'src/modules/user/dtos/user.password.dto';
+import { UserPasswordExpiredDto } from 'src/modules/user/dtos/user.password-expired.dto';
+import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -34,7 +38,7 @@ export class UserService implements IUserService {
     }
 
     async findAll<T>(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<T[]> {
         return this.userRepository.findAll<T>(find, options);
@@ -54,7 +58,7 @@ export class UserService implements IUserService {
         return this.userRepository.findOne<T>(find, options);
     }
 
-    async getTotal(find: Record<string, any>): Promise<number> {
+    async getTotal(find?: Record<string, any>): Promise<number> {
         return this.userRepository.getTotal(find);
     }
 
@@ -102,15 +106,14 @@ export class UserService implements IUserService {
 
     async updateOneById(
         _id: string,
-        { firstName, lastName }: UserUpdateDto,
+        data: UserUpdateDto,
         options?: IDatabaseOptions
     ): Promise<UserDocument> {
-        const update = {
-            firstName,
-            lastName: lastName || undefined,
-        };
-
-        return this.userRepository.updateOneById(_id, update, options);
+        return this.userRepository.updateOneById<UserUpdateDto>(
+            _id,
+            data,
+            options
+        );
     }
 
     async checkExist(
@@ -143,14 +146,18 @@ export class UserService implements IUserService {
 
     async updatePhoto(
         _id: string,
-        aws: IAwsS3,
+        aws: AwsS3Serialization,
         options?: IDatabaseOptions
     ): Promise<UserDocument> {
-        const update = {
+        const update: UserPhotoDto = {
             photo: aws,
         };
 
-        return this.userRepository.updateOneById(_id, update, options);
+        return this.userRepository.updateOneById<UserPhotoDto>(
+            _id,
+            update,
+            options
+        );
     }
 
     async createRandomFilename(): Promise<Record<string, any>> {
@@ -167,13 +174,17 @@ export class UserService implements IUserService {
         { salt, passwordHash, passwordExpired }: IAuthPassword,
         options?: IDatabaseOptions
     ): Promise<UserDocument> {
-        const update = {
+        const update: UserPasswordDto = {
             password: passwordHash,
             passwordExpired: passwordExpired,
             salt: salt,
         };
 
-        return this.userRepository.updateOneById(_id, update, options);
+        return this.userRepository.updateOneById<UserPasswordDto>(
+            _id,
+            update,
+            options
+        );
     }
 
     async updatePasswordExpired(
@@ -181,7 +192,7 @@ export class UserService implements IUserService {
         passwordExpired: Date,
         options?: IDatabaseOptions
     ): Promise<UserDocument> {
-        const update = {
+        const update: UserPasswordExpiredDto = {
             passwordExpired: passwordExpired,
         };
 
@@ -192,7 +203,7 @@ export class UserService implements IUserService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<UserDocument> {
-        const update = {
+        const update: UserActiveDto = {
             isActive: false,
         };
 
@@ -203,7 +214,7 @@ export class UserService implements IUserService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<UserDocument> {
-        const update = {
+        const update: UserActiveDto = {
             isActive: true,
         };
 

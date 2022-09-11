@@ -1,5 +1,5 @@
 import { Exclude, Expose, Transform, Type } from 'class-transformer';
-import { IAwsS3 } from 'src/common/aws/interfaces/aws.interface';
+import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { IRoleDocument } from 'src/modules/role/interfaces/role.interface';
 
 export class UserGetSerialization {
@@ -23,7 +23,7 @@ export class UserGetSerialization {
     readonly isActive: boolean;
     readonly firstName: string;
     readonly lastName: string;
-    readonly photo?: IAwsS3;
+    readonly photo?: AwsS3Serialization;
 
     @Expose()
     get fullName(): string {

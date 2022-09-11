@@ -1,5 +1,5 @@
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
-import { IAwsS3 } from 'src/common/aws/interfaces/aws.interface';
+import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
@@ -12,7 +12,7 @@ import { IUserCheckExist, IUserCreate, IUserDocument } from './user.interface';
 
 export interface IUserService {
     findAll<T>(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<T[]>;
 
@@ -23,7 +23,7 @@ export interface IUserService {
         options?: IDatabaseFindOneOptions
     ): Promise<T>;
 
-    getTotal(find: Record<string, any>): Promise<number>;
+    getTotal(find?: Record<string, any>): Promise<number>;
 
     create(
         data: IUserCreate,
@@ -54,7 +54,7 @@ export interface IUserService {
 
     updatePhoto(
         _id: string,
-        aws: IAwsS3,
+        aws: AwsS3Serialization,
         options?: IDatabaseOptions
     ): Promise<UserDocument>;
 

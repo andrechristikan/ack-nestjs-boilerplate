@@ -6,7 +6,7 @@ import {
 } from 'src/common/database/interfaces/database.interface';
 import { IDatabaseRepositoryAbstract } from 'src/common/database/interfaces/database.repository.interface';
 
-export abstract class DatabaseMongooseRepositoryAbstract<T>
+export abstract class DatabaseMongoRepositoryAbstract<T>
     implements IDatabaseRepositoryAbstract<T>
 {
     protected _repository: Model<T>;
@@ -21,10 +21,15 @@ export abstract class DatabaseMongooseRepositoryAbstract<T>
     }
 
     async findAll<Y = T>(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<Y[]> {
         const findAll = this._repository.find(find);
+
+        if (options && options.select) {
+            findAll.select(options.select);
+        }
+
         if (
             options &&
             options.limit !== undefined &&
@@ -56,6 +61,10 @@ export abstract class DatabaseMongooseRepositoryAbstract<T>
     ): Promise<Y> {
         const findOne = this._repository.findOne(find);
 
+        if (options && options.select) {
+            findOne.select(options.select);
+        }
+
         if (options && options.populate) {
             if (Array.isArray(this._populateOnFind)) {
                 for (const populate of this._populateOnFind) {
@@ -75,6 +84,10 @@ export abstract class DatabaseMongooseRepositoryAbstract<T>
     ): Promise<Y> {
         const findOne = this._repository.findById(_id);
 
+        if (options && options.select) {
+            findOne.select(options.select);
+        }
+
         if (options && options.populate) {
             if (Array.isArray(this._populateOnFind)) {
                 for (const populate of this._populateOnFind) {
@@ -88,7 +101,7 @@ export abstract class DatabaseMongooseRepositoryAbstract<T>
         return findOne.lean();
     }
 
-    async getTotal(find: Record<string, any>): Promise<number> {
+    async getTotal(find?: Record<string, any>): Promise<number> {
         return this._repository.countDocuments(find);
     }
 

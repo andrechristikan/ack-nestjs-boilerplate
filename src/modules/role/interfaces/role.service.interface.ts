@@ -9,7 +9,7 @@ import { RoleDocument } from 'src/modules/role/schemas/role.schema';
 
 export interface IRoleService {
     findAll<T>(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<T[]>;
 
@@ -20,7 +20,7 @@ export interface IRoleService {
         options?: IDatabaseFindOneOptions
     ): Promise<T>;
 
-    getTotal(find: Record<string, any>): Promise<number>;
+    getTotal(find?: Record<string, any>): Promise<number>;
 
     exists(name: string, excludeId?: string): Promise<boolean>;
 

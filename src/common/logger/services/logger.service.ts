@@ -6,13 +6,14 @@ import {
     ILogger,
     ILoggerRaw,
 } from 'src/common/logger/interfaces/logger.interface';
+import { ILoggerService } from 'src/common/logger/interfaces/logger.service.interface';
 import {
     LoggerDocument,
     LoggerEntity,
 } from 'src/common/logger/schemas/logger.schema';
 
 @Injectable()
-export class LoggerService {
+export class LoggerService implements ILoggerService {
     constructor(
         @DatabaseEntity(LoggerEntity.name)
         private readonly loggerModel: Model<LoggerDocument>

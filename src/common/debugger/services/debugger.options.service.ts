@@ -4,9 +4,10 @@ import { LoggerOptions } from 'winston';
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import { DEBUGGER_NAME } from 'src/common/debugger/constants/debugger.constant';
+import { IDebuggerOptionService } from 'src/common/debugger/interfaces/debugger.options-service.interface';
 
 @Injectable()
-export class DebuggerOptionService {
+export class DebuggerOptionService implements IDebuggerOptionService {
     private readonly env: string;
     private readonly debug: boolean;
     private readonly logger: boolean;

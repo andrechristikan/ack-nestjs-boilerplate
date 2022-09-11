@@ -2,7 +2,7 @@ import { Model, Types } from 'mongoose';
 import { IDatabaseBulkRepositoryAbstract } from 'src/common/database/interfaces/database.bulk.repository.interface';
 import { IDatabaseOptions } from 'src/common/database/interfaces/database.interface';
 
-export abstract class DatabaseMongooseBulkRepositoryAbstract<T>
+export abstract class DatabaseMongoBulkRepositoryAbstract<T>
     implements IDatabaseBulkRepositoryAbstract
 {
     protected _repository: Model<T>;

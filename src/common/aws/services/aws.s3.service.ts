@@ -20,15 +20,17 @@ import {
 } from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { IAwsS3PutItemOptions } from 'src/common/aws/interfaces/aws.interface';
+import { IAwsS3Service } from 'src/common/aws/interfaces/aws.s3-service.interface';
 import {
-    IAwsS3,
-    IAwsS3MultiPart,
-    IAwsS3PutItemOptions,
-} from 'src/common/aws/interfaces/aws.interface';
+    AwsS3MultipartPartsSerialization,
+    AwsS3MultipartSerialization,
+} from 'src/common/aws/serializations/aws.s3-multipart.serialization';
+import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { Readable } from 'stream';
 
 @Injectable()
-export class AwsS3Service {
+export class AwsS3Service implements IAwsS3Service {
     private readonly s3Client: S3Client;
     private readonly bucket: string;
     private readonly baseUrl: string;
@@ -66,7 +68,7 @@ export class AwsS3Service {
         }
     }
 
-    async listItemInBucket(prefix?: string): Promise<IAwsS3[]> {
+    async listItemInBucket(prefix?: string): Promise<AwsS3Serialization[]> {
         const command: ListObjectsV2Command = new ListObjectsV2Command({
             Bucket: this.bucket,
             Prefix: prefix,
@@ -142,7 +144,7 @@ export class AwsS3Service {
             | ReadableStream
             | Blob,
         options?: IAwsS3PutItemOptions
-    ): Promise<IAwsS3> {
+    ): Promise<AwsS3Serialization> {
         let path: string = options && options.path ? options.path : undefined;
         const acl: string =
             options && options.acl ? options.acl : 'public-read';
@@ -246,7 +248,7 @@ export class AwsS3Service {
     async createMultiPart(
         filename: string,
         options?: IAwsS3PutItemOptions
-    ): Promise<IAwsS3MultiPart> {
+    ): Promise<AwsS3MultipartSerialization> {
         let path: string = options && options.path ? options.path : undefined;
         const acl: string =
             options && options.acl ? options.acl : 'public-read';
@@ -289,7 +291,7 @@ export class AwsS3Service {
         content: Buffer,
         uploadId: string,
         partNumber: number
-    ): Promise<CompletedPart> {
+    ): Promise<AwsS3MultipartPartsSerialization> {
         const uploadPartInput: UploadPartCommandInput = {
             Bucket: this.bucket,
             Key: path,

@@ -2,9 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { faker } from '@faker-js/faker';
 import { HelperDateService } from './helper.date.service';
 import { IHelperStringRandomOptions } from 'src/common/helper/interfaces/helper.interface';
+import { IHelperStringService } from 'src/common/helper/interfaces/helper.string-service.interface';
 
 @Injectable()
-export class HelperStringService {
+export class HelperStringService implements IHelperStringService {
     constructor(private readonly helperDateService: HelperDateService) {}
 
     checkEmail(email: string): boolean {
@@ -55,7 +56,7 @@ export class HelperStringService {
         return `${censorString}${visibleString}`;
     }
 
-    checkStringOrNumber(text: string) {
+    checkStringOrNumber(text: string): boolean {
         const regex = new RegExp(/^[\w.-]+$/);
 
         return regex.test(text);

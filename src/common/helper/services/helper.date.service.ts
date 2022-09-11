@@ -5,6 +5,7 @@ import {
     ENUM_HELPER_DATE_DIFF,
     ENUM_HELPER_DATE_FORMAT,
 } from 'src/common/helper/constants/helper.enum.constant';
+import { IHelperDateService } from 'src/common/helper/interfaces/helper.date-service.interface';
 import {
     IHelperDateOptions,
     IHelperDateOptionsBackward,
@@ -16,7 +17,7 @@ import {
 } from 'src/common/helper/interfaces/helper.interface';
 
 @Injectable()
-export class HelperDateService {
+export class HelperDateService implements IHelperDateService {
     private readonly timezone: string;
 
     constructor(private readonly configService: ConfigService) {

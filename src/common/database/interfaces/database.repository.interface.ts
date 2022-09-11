@@ -6,7 +6,7 @@ import {
 
 export interface IDatabaseRepositoryAbstract<T> {
     findAll<Y = T>(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<Y[]>;
 
@@ -20,7 +20,7 @@ export interface IDatabaseRepositoryAbstract<T> {
         options?: IDatabaseFindOneOptions
     ): Promise<Y>;
 
-    getTotal(find: Record<string, any>): Promise<number>;
+    getTotal(find?: Record<string, any>): Promise<number>;
 
     aggregate<N>(pipeline: Record<string, any>[]): Promise<N[]>;
 

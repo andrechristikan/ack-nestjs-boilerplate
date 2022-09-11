@@ -1,20 +1,23 @@
 import { Injectable } from '@nestjs/common';
-import { Model } from 'mongoose';
-import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
-import { IDatabaseFindAllOptions } from 'src/common/database/interfaces/database.interface';
+import {
+    IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
+    IDatabaseOptions,
+} from 'src/common/database/interfaces/database.interface';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
 import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
+import { ISettingService } from 'src/common/setting/interfaces/setting.service.interface';
+import { SettingRepository } from 'src/common/setting/repositories/setting.repository';
 import {
     SettingDocument,
     SettingEntity,
 } from 'src/common/setting/schemas/setting.schema';
 
 @Injectable()
-export class SettingService {
+export class SettingService implements ISettingService {
     constructor(
-        @DatabaseEntity(SettingEntity.name)
-        private readonly settingModel: Model<SettingDocument>,
+        private readonly settingRepository: SettingRepository,
         private readonly helperStringService: HelperStringService
     ) {}
 
@@ -22,71 +25,78 @@ export class SettingService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<SettingDocument[]> {
-        const settings = this.settingModel.find(find);
+        return this.settingRepository.findAll<SettingDocument>(find, options);
+    }
 
-        if (
-            options &&
-            options.limit !== undefined &&
-            options.skip !== undefined
-        ) {
-            settings.limit(options.limit).skip(options.skip);
-        }
+    async findOneById(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<SettingDocument> {
+        return this.settingRepository.findOneById<SettingDocument>(
+            _id,
+            options
+        );
+    }
 
-        if (options && options.sort) {
-            settings.sort(options.sort);
-        }
-
-        return settings.lean();
+    async findOneByName(
+        name: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<SettingDocument> {
+        return this.settingRepository.findOne<SettingDocument>(
+            { name },
+            options
+        );
     }
 
     async getTotal(find?: Record<string, any>): Promise<number> {
-        return this.settingModel.countDocuments(find);
+        return this.settingRepository.getTotal(find);
     }
 
-    async findOneById(_id: string): Promise<SettingDocument> {
-        return this.settingModel.findById(_id).lean();
-    }
-
-    async findOneByName(name: string): Promise<SettingDocument> {
-        return this.settingModel.findOne({ name }).lean();
-    }
-
-    async create({
-        name,
-        description,
-        value,
-    }: SettingCreateDto): Promise<SettingDocument> {
-        const create: SettingDocument = new this.settingModel();
-
+    async create(
+        { name, description, value }: SettingCreateDto,
+        options?: IDatabaseOptions
+    ): Promise<SettingDocument> {
         let convertValue = value;
         if (typeof value === 'string') {
             convertValue = await this.convertValue(value as string);
         }
 
-        create.name = name;
-        create.description = description;
-        create.value = convertValue;
-        return create.save();
+        const create: SettingEntity = {
+            name,
+            description,
+            value: convertValue,
+        };
+
+        return this.settingRepository.create<SettingEntity>(create, options);
     }
 
     async updateOneById(
         _id: string,
-        { description, value }: SettingUpdateDto
+        { description, value }: SettingUpdateDto,
+        options?: IDatabaseOptions
     ): Promise<SettingDocument> {
-        const update: SettingDocument = await this.settingModel.findById(_id);
-
         let convertValue = value;
         if (typeof value === 'string') {
             convertValue = await this.convertValue(value as string);
         }
 
-        update.description = description;
-        update.value = convertValue;
-        return update.save();
+        const update: SettingUpdateDto = {
+            description,
+            value: convertValue,
+        };
+
+        return this.settingRepository.updateOneById<SettingUpdateDto>(
+            _id,
+            update,
+            options
+        );
     }
 
-    async deleteOne(find: Record<string, any>): Promise<SettingDocument> {
-        return this.settingModel.findOneAndDelete(find);
+    async deleteOne(
+        find: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<SettingDocument> {
+        return this.settingRepository.deleteOne(find, options);
     }
 
     async convertValue(value: string): Promise<string | number | boolean> {

@@ -6,8 +6,10 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { RoleActiveDto } from 'src/modules/role/dtos/role.active.dto';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
+import { IRoleUpdate } from 'src/modules/role/interfaces/role.interface';
 import { IRoleService } from 'src/modules/role/interfaces/role.service.interface';
 import { RoleRepository } from 'src/modules/role/repositories/role.repository';
 import { RoleDocument, RoleEntity } from 'src/modules/role/schemas/role.schema';
@@ -17,7 +19,7 @@ export class RoleService implements IRoleService {
     constructor(private readonly roleRepository: RoleRepository) {}
 
     async findAll<T>(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<T[]> {
         return this.roleRepository.findAll<T>(find, options);
@@ -37,7 +39,7 @@ export class RoleService implements IRoleService {
         return this.roleRepository.findOne<T>(find, options);
     }
 
-    async getTotal(find: Record<string, any>): Promise<number> {
+    async getTotal(find?: Record<string, any>): Promise<number> {
         return this.roleRepository.getTotal(find);
     }
 
@@ -83,39 +85,39 @@ export class RoleService implements IRoleService {
         { name, permissions, accessFor }: RoleUpdateDto,
         options?: IDatabaseOptions
     ): Promise<RoleDocument> {
-        const update = {
+        const update: IRoleUpdate = {
             name,
             accessFor,
             permissions: permissions.map((val) => new Types.ObjectId(val)),
         };
 
-        return this.roleRepository.updateOneById(_id, update, options);
+        return this.roleRepository.updateOneById<IRoleUpdate>(
+            _id,
+            update,
+            options
+        );
     }
 
     async inactive(
         _id: string,
         options?: IDatabaseOptions
     ): Promise<RoleDocument> {
-        return this.roleRepository.updateOneById(
-            _id,
-            {
-                isActive: false,
-            },
-            options
-        );
+        const update: RoleActiveDto = {
+            isActive: false,
+        };
+
+        return this.roleRepository.updateOneById(_id, update, options);
     }
 
     async active(
         _id: string,
         options?: IDatabaseOptions
     ): Promise<RoleDocument> {
-        return this.roleRepository.updateOneById(
-            _id,
-            {
-                isActive: true,
-            },
-            options
-        );
+        const update: RoleActiveDto = {
+            isActive: true,
+        };
+
+        return this.roleRepository.updateOneById(_id, update, options);
     }
 
     async deleteOneById(

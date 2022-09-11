@@ -1,20 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { Model } from 'mongoose';
-import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
-import { DeleteResult } from 'mongodb';
-import {
-    AuthApiDocument,
-    AuthApiEntity,
-} from 'src/common/auth/schemas/auth.api.schema';
+import { IDatabaseOptions } from 'src/common/database/interfaces/database.interface';
+import { IAuthApiBulkService } from 'src/common/auth/interfaces/auth.api.bulk-service.interface';
+import { AuthApiBulkRepository } from 'src/common/auth/repositories/auth.api.bulk.repository';
 
 @Injectable()
-export class AuthApiBulkService {
+export class AuthApiBulkService implements IAuthApiBulkService {
     constructor(
-        @DatabaseEntity(AuthApiEntity.name)
-        private readonly authApiModel: Model<AuthApiDocument>
+        private readonly authApiBulkRepository: AuthApiBulkRepository
     ) {}
 
-    async deleteMany(find: Record<string, any>): Promise<DeleteResult> {
-        return this.authApiModel.deleteMany(find);
+    async deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<boolean> {
+        return this.authApiBulkRepository.deleteMany(find, options);
     }
 }

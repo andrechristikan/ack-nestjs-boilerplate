@@ -1,11 +1,11 @@
 import { OmitType } from '@nestjs/mapped-types';
 import { Exclude } from 'class-transformer';
-import { IAwsS3 } from 'src/common/aws/interfaces/aws.interface';
+import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { UserGetSerialization } from './user.get.serialization';
 
 export class UserPayloadSerialization extends OmitType(UserGetSerialization, [
     'photo',
 ] as const) {
     @Exclude()
-    readonly photo?: IAwsS3;
+    readonly photo?: AwsS3Serialization;
 }

@@ -1,6 +1,5 @@
 import {
     IDatabaseFindAllOptions,
-    IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
@@ -9,21 +8,15 @@ import { PermissionDocument } from 'src/modules/permission/schemas/permission.sc
 
 export interface IPermissionService {
     findAll(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<PermissionDocument[]>;
 
-    findOneById(
-        _id: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<PermissionDocument>;
+    findOneById(_id: string): Promise<PermissionDocument>;
 
-    findOne(
-        find: Record<string, any>,
-        options?: IDatabaseFindOneOptions
-    ): Promise<PermissionDocument>;
+    findOne(find: Record<string, any>): Promise<PermissionDocument>;
 
-    getTotal(find: Record<string, any>): Promise<number>;
+    getTotal(find?: Record<string, any>): Promise<number>;
 
     deleteOne(
         find: Record<string, any>,

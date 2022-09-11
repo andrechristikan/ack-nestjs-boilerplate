@@ -77,7 +77,7 @@ ack-nestjs-mongoose have some objective.
 - Production Ready 🔥
 - Typescript 🚀
 - Authentication and Authorization (JWT, OAuth2, API Key, Basic Auth, Role Management) 💪
-- User Agent Check
+- User Agent Awareness
 - MongoDB Integrate by Using Mongoose Package 🎉
 - Database Migration (NestJs-Command)
 - Storage with AWS (S3)
@@ -94,7 +94,6 @@ ack-nestjs-mongoose have some objective.
 - Dynamic Setting from Database 🗿
 - Maintenance Mode on / off 🐤
 - Server Side Pagination
-- Cache Manager Implementation
 - Support Docker Installation
 - Support CI/CD with Github Action or Jenkins
 - Husky GitHook For Check Source Code, and Run Test Before Commit 🐶
@@ -108,9 +107,10 @@ We assume that everyone who comes here is **`programmer with intermediate knowle
 2. Understand[Typescript Fundamental](https://www.typescriptlang.org), Programming Language. It will help us to write and read the code.
 3. Understand [ExpressJs Fundamental](https://nodejs.org), NodeJs Base Framework. It will help us in understanding how the NestJs Framework works.
 4. Understand what NoSql is and how it works as a database, especially [MongoDB.](https://docs.mongodb.com)
-5. Optional, Understand [Microservice Architecture](https://microservices.io) and the design pattern.
-6. Optional,[The Twelve Factor Apps](https://12factor.net)
-7. Optional, Understand [Docker](ref-docker) that can help you to run the project
+5. Understand Repository Design Pattern or Data Access Object Design Pattern. It will help us to read the source code
+6. Optional, Understand [Microservice Architecture](https://microservices.io) and the design pattern.
+7. Optional,[The Twelve Factor Apps](https://12factor.net)
+8. Optional, Understand [Docker](ref-docker) that can help you to run the project
 
 ## Todo
 
@@ -128,9 +128,13 @@ Next development
 - [x] Update E2E test
 - [x] Response Excel, convert response from controller into excel `res.send()`
 - [x] Implement Repository Design Pattern / Data Access Object Design Pattern
-- [ ] Swagger for API Documentation
-- [ ] Basic Token as ApiKey
+- [ ] AuthApi Controller (ongoing)
+- [ ] Swagger for API Documentation (ongoing)
 - [ ] Update Documentation
+- [ ] Export to excel and Import from excel add options to background process
+- [ ] Basic Token as ApiKey
+- [ ] OAuth2 Client Credentials
+- [ ] Maybe in the feature will use DDD Design Pattern
 
 ## Documentation
 

@@ -5,7 +5,6 @@ import {
     DebuggerModule,
     DebuggerOptionsModule,
 } from 'src/common/debugger/debugger.module';
-import { DebuggerOptionService } from 'src/common/debugger/services/debugger.option.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DatabaseOptionsModule } from 'src/common/database/database.module';
 import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
@@ -23,6 +22,7 @@ import { SettingModule } from 'src/common/setting/setting.module';
 import Joi from 'joi';
 import { ENUM_MESSAGE_LANGUAGE } from './message/constants/message.enum.constant';
 import configs from 'src/configs';
+import { DebuggerOptionService } from 'src/common/debugger/services/debugger.options.service';
 
 @Module({
     controllers: [],
@@ -56,8 +56,13 @@ import configs from 'src/configs';
                     Joi.valid('localhost').required(),
                 ],
                 APP_PORT: Joi.number().default(3000).required(),
-                APP_VERSIONING: Joi.boolean().default(true).required(),
                 APP_DEBUG: Joi.boolean().default(true).required(),
+
+                APP_VERSIONING: Joi.boolean().default(true).required(),
+                APP_VERSION: Joi.number().required(),
+
+                APP_DOC_NAME: Joi.string().required(),
+                APP_DOC_VERSION: Joi.number().required(),
 
                 APP_HTTP_ON: Joi.boolean().default(true).required(),
                 APP_JOB_ON: Joi.boolean().default(false).required(),
@@ -76,6 +81,7 @@ import configs from 'src/configs';
                     .required(),
                 MIDDLEWARE_TIMEOUT: Joi.string().default('30s').required(),
 
+                AUTH_JWT_SUBJECT: Joi.string().required(),
                 AUTH_JWT_AUDIENCE: Joi.string().required(),
                 AUTH_JWT_ISSUER: Joi.string().required(),
                 AUTH_JWT_ACCESS_TOKEN_SECRET_KEY: Joi.string()

@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { Model } from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
-import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
-import { IDatabaseFindAllOptions } from 'src/common/database/interfaces/database.interface';
+import {
+    IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
+    IDatabaseOptions,
+} from 'src/common/database/interfaces/database.interface';
 import {
     AuthApiDocument,
     AuthApiEntity,
@@ -19,14 +21,15 @@ import {
     AuthApiCreateDto,
     AuthApiCreateRawDto,
 } from 'src/common/auth/dtos/auth.api.create.dto';
+import { IAuthApiService } from 'src/common/auth/interfaces/auth.api.service.interface';
+import { AuthApiRepository } from 'src/common/auth/repositories/auth.api.repository';
 
 @Injectable()
-export class AuthApiService {
+export class AuthApiService implements IAuthApiService {
     private readonly env: string;
 
     constructor(
-        @DatabaseEntity(AuthApiEntity.name)
-        private readonly authApiModel: Model<AuthApiDocument>,
+        private readonly authApiRepository: AuthApiRepository,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService,
         private readonly helperHashService: HelperHashService,
@@ -39,62 +42,81 @@ export class AuthApiService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<AuthApiDocument[]> {
-        const users = this.authApiModel.find(find).select({
-            name: 1,
-            key: 1,
-            isActive: 1,
-            createdAt: 1,
+        return this.authApiRepository.findAll<AuthApiDocument>(find, {
+            ...options,
+            select: {
+                name: 1,
+                key: 1,
+                isActive: 1,
+                createdAt: 1,
+            },
         });
+    }
 
-        if (options && options.limit !== undefined && options.skip) {
-            users.limit(options.limit).skip(options.skip);
-        }
+    async findOneById(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<AuthApiDocument> {
+        return this.authApiRepository.findOneById<AuthApiDocument>(
+            _id,
+            options
+        );
+    }
 
-        if (options && options.sort) {
-            users.sort(options.sort);
-        }
+    async findOne(
+        find: Record<string, any>,
+        options?: IDatabaseFindOneOptions
+    ): Promise<AuthApiDocument> {
+        return this.authApiRepository.findOne<AuthApiDocument>(find, options);
+    }
 
-        return users.lean();
+    async findOneByKey(
+        key: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<AuthApiDocument> {
+        return this.authApiRepository.findOne<AuthApiDocument>(
+            { key },
+            options
+        );
     }
 
     async getTotal(find?: Record<string, any>): Promise<number> {
-        return this.authApiModel.countDocuments(find);
+        return this.authApiRepository.getTotal(find);
     }
 
-    async findOneById(_id: string): Promise<AuthApiDocument> {
-        return this.authApiModel.findById(_id).lean();
+    async inactive(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<AuthApiDocument> {
+        const update = {
+            isActive: false,
+        };
+
+        return this.authApiRepository.updateOneById(_id, update, options);
     }
 
-    async findOne(find?: Record<string, any>): Promise<AuthApiDocument> {
-        return this.authApiModel.findOne(find).lean();
+    async active(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<AuthApiDocument> {
+        const update = {
+            isActive: true,
+        };
+
+        return this.authApiRepository.updateOneById(_id, update, options);
     }
 
-    async findOneByKey(key: string): Promise<AuthApiDocument> {
-        return this.authApiModel.findOne({ key }).lean();
-    }
-
-    async inactive(_id: string): Promise<AuthApiDocument> {
-        const authApi: AuthApiDocument = await this.authApiModel.findById(_id);
-
-        authApi.isActive = false;
-        return authApi.save();
-    }
-
-    async active(_id: string): Promise<AuthApiDocument> {
-        const authApi: AuthApiDocument = await this.authApiModel.findById(_id);
-
-        authApi.isActive = true;
-        return authApi.save();
-    }
-
-    async create({ name, description }: AuthApiCreateDto): Promise<IAuthApi> {
+    async create(
+        { name, description }: AuthApiCreateDto,
+        options?: IDatabaseOptions
+    ): Promise<IAuthApi> {
         const key = await this.createKey();
         const secret = await this.createSecret();
         const passphrase = await this.createPassphrase();
         const encryptionKey = await this.createEncryptionKey();
         const hash: string = await this.createHashApiKey(key, secret);
 
-        const create: AuthApiDocument = new this.authApiModel({
+        const create: AuthApiEntity = {
             name,
             description,
             key,
@@ -102,29 +124,35 @@ export class AuthApiService {
             passphrase,
             encryptionKey,
             isActive: true,
-        });
+        };
 
-        await create.save();
+        const created = await this.authApiRepository.create<AuthApiEntity>(
+            create,
+            options
+        );
 
         return {
-            _id: create._id,
+            _id: created._id,
             secret,
             passphrase,
             encryptionKey,
         };
     }
 
-    async createRaw({
-        name,
-        description,
-        key,
-        secret,
-        passphrase,
-        encryptionKey,
-    }: AuthApiCreateRawDto): Promise<IAuthApi> {
+    async createRaw(
+        {
+            name,
+            description,
+            key,
+            secret,
+            passphrase,
+            encryptionKey,
+        }: AuthApiCreateRawDto,
+        options?: IDatabaseOptions
+    ): Promise<IAuthApi> {
         const hash: string = await this.createHashApiKey(key, secret);
 
-        const create: AuthApiDocument = new this.authApiModel({
+        const create: AuthApiEntity = {
             name,
             description,
             key,
@@ -132,12 +160,15 @@ export class AuthApiService {
             passphrase,
             encryptionKey,
             isActive: true,
-        });
+        };
 
-        await create.save();
+        const created = await this.authApiRepository.create<AuthApiEntity>(
+            create,
+            options
+        );
 
         return {
-            _id: create._id,
+            _id: created._id,
             secret,
             passphrase,
             encryptionKey,
@@ -146,28 +177,34 @@ export class AuthApiService {
 
     async updateOneById(
         _id: string,
-        { name, description }: AuthApiUpdateDto
+        data: AuthApiUpdateDto,
+        options?: IDatabaseOptions
     ): Promise<AuthApiDocument> {
-        const authApi: AuthApiDocument = await this.authApiModel.findById(_id);
-
-        authApi.name = name;
-        authApi.description = description;
-
-        return authApi.save();
+        return this.authApiRepository.updateOneById<AuthApiUpdateDto>(
+            _id,
+            data,
+            options
+        );
     }
 
-    async updateHashById(_id: string): Promise<IAuthApi> {
-        const authApi: AuthApiDocument = await this.authApiModel.findById(_id);
+    async updateHashById(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<IAuthApi> {
+        const authApi: AuthApiDocument =
+            await this.authApiRepository.findOneById(_id);
         const secret: string = await this.createSecret();
         const hash: string = await this.createHashApiKey(authApi.key, secret);
         const passphrase: string = await this.createPassphrase();
         const encryptionKey: string = await this.createEncryptionKey();
 
-        authApi.hash = hash;
-        authApi.passphrase = passphrase;
-        authApi.encryptionKey = encryptionKey;
+        const update = {
+            hash,
+            passphrase,
+            encryptionKey,
+        };
 
-        await authApi.save();
+        await this.authApiRepository.updateOneById(_id, update, options);
 
         return {
             _id: authApi._id,
@@ -177,12 +214,18 @@ export class AuthApiService {
         };
     }
 
-    async deleteOneById(_id: string): Promise<AuthApiDocument> {
-        return this.authApiModel.findByIdAndDelete(_id);
+    async deleteOneById(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<AuthApiDocument> {
+        return this.authApiRepository.deleteOneById(_id, options);
     }
 
-    async deleteOne(find: Record<string, any>): Promise<AuthApiDocument> {
-        return this.authApiModel.findOneAndDelete(find);
+    async deleteOne(
+        find: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<AuthApiDocument> {
+        return this.authApiRepository.deleteOne(find, options);
     }
 
     async createKey(): Promise<string> {

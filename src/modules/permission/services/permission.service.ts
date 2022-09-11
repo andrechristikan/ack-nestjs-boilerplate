@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
     IDatabaseFindAllOptions,
-    IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { PermissionActiveDto } from 'src/modules/permission/dtos/permission.active.dto';
@@ -19,27 +18,24 @@ export class PermissionService implements IPermissionService {
     constructor(private readonly permissionRepository: PermissionRepository) {}
 
     async findAll(
-        find: Record<string, any>,
+        find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<PermissionDocument[]> {
-        return this.permissionRepository.findAll(find, options);
+        return this.permissionRepository.findAll<PermissionDocument>(
+            find,
+            options
+        );
     }
 
-    async findOneById(
-        _id: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<PermissionDocument> {
-        return this.permissionRepository.findOneById(_id, options);
+    async findOneById(_id: string): Promise<PermissionDocument> {
+        return this.permissionRepository.findOneById<PermissionDocument>(_id);
     }
 
-    async findOne(
-        find: Record<string, any>,
-        options?: IDatabaseFindOneOptions
-    ): Promise<PermissionDocument> {
-        return this.permissionRepository.findOne(find, options);
+    async findOne(find: Record<string, any>): Promise<PermissionDocument> {
+        return this.permissionRepository.findOne<PermissionDocument>(find);
     }
 
-    async getTotal(find: Record<string, any>): Promise<number> {
+    async getTotal(find?: Record<string, any>): Promise<number> {
         return this.permissionRepository.getTotal(find);
     }
 

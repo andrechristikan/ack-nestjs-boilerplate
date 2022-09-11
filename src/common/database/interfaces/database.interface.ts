@@ -2,6 +2,7 @@ import { ClientSession } from 'mongoose';
 import { IPaginationOptions } from 'src/common/pagination/interfaces/pagination.interface';
 
 export interface IDatabaseFindOneOptions {
+    select?: Record<string, number> | Record<string, string>;
     populate?: boolean;
     session?: ClientSession;
 }

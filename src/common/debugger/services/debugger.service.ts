@@ -2,16 +2,17 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { IDebuggerLog } from 'src/common/debugger/interfaces/debugger.interface';
+import { IDebuggerService } from 'src/common/debugger/interfaces/debugger.service.interface';
 
 @Injectable()
-export class DebuggerService {
+export class DebuggerService implements IDebuggerService {
     constructor(
         @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
     ) {}
 
-    info(_id: string, log: IDebuggerLog, data?: any): void {
+    info(requestId: string, log: IDebuggerLog, data?: any): void {
         this.logger.info(log.description, {
-            _id,
+            _id: requestId,
             class: log.class,
             function: log.function,
             path: log.path,
@@ -19,9 +20,9 @@ export class DebuggerService {
         });
     }
 
-    debug(_id: string, log: IDebuggerLog, data?: any): void {
+    debug(requestId: string, log: IDebuggerLog, data?: any): void {
         this.logger.debug(log.description, {
-            _id,
+            _id: requestId,
             class: log.class,
             function: log.function,
             path: log.path,
@@ -29,9 +30,9 @@ export class DebuggerService {
         });
     }
 
-    warn(_id: string, log: IDebuggerLog, data?: any): void {
+    warn(requestId: string, log: IDebuggerLog, data?: any): void {
         this.logger.warn(log.description, {
-            _id,
+            _id: requestId,
             class: log.class,
             function: log.function,
             path: log.path,
@@ -39,9 +40,9 @@ export class DebuggerService {
         });
     }
 
-    error(_id: string, log: IDebuggerLog, data?: any): void {
+    error(requestId: string, log: IDebuggerLog, data?: any): void {
         this.logger.error(log.description, {
-            _id,
+            _id: requestId,
             class: log.class,
             function: log.function,
             path: log.path,

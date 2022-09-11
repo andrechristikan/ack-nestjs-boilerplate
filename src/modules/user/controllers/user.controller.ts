@@ -18,7 +18,7 @@ import {
     AuthRefreshJwtGuard,
 } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { IAwsS3 } from 'src/common/aws/interfaces/aws.interface';
+import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { AwsS3Service } from 'src/common/aws/services/aws.s3.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { UploadFileSingle } from 'src/common/file/decorators/file.decorator';
@@ -87,13 +87,14 @@ export class UserController {
         const path = await this.userService.createRandomFilename();
 
         try {
-            const aws: IAwsS3 = await this.awsService.putItemInBucket(
-                `${path.filename}.${mime}`,
-                content,
-                {
-                    path: `${path.path}/${user._id}`,
-                }
-            );
+            const aws: AwsS3Serialization =
+                await this.awsService.putItemInBucket(
+                    `${path.filename}.${mime}`,
+                    content,
+                    {
+                        path: `${path.path}/${user._id}`,
+                    }
+                );
 
             await this.userService.updatePhoto(user._id, aws);
         } catch (err: any) {

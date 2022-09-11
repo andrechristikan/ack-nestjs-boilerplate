@@ -12,9 +12,10 @@ import {
     IMessageOptions,
     IMessageSetOptions,
 } from 'src/common/message/interfaces/message.interface';
+import { IMessageService } from 'src/common/message/interfaces/message.service.interface';
 
 @Injectable()
-export class MessageService {
+export class MessageService implements IMessageService {
     private readonly defaultLanguage: string;
 
     constructor(
@@ -24,11 +25,7 @@ export class MessageService {
         this.defaultLanguage = this.configService.get<string>('app.language');
     }
 
-    private setMessage(
-        lang: string,
-        key: string,
-        options?: IMessageSetOptions
-    ): any {
+    setMessage(lang: string, key: string, options?: IMessageSetOptions): any {
         return this.i18n.translate(key, {
             lang: lang || this.defaultLanguage,
             args:

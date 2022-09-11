@@ -566,4 +566,23 @@ describe('AuthService', () => {
             expect(await authService.getAudience()).toBe(audiences);
         });
     });
+
+    describe('getSubject', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(authService, 'getSubject');
+            await authService.getSubject();
+
+            expect(test).toHaveBeenCalled();
+        });
+
+        it('should be success', async () => {
+            const audiences = await authService.getSubject();
+
+            jest.spyOn(authService, 'getSubject').mockImplementation(
+                async () => audiences
+            );
+
+            expect(await authService.getSubject()).toBe(audiences);
+        });
+    });
 });
