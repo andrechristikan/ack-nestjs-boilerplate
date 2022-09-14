@@ -18,7 +18,7 @@ import {
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { IMessageOptionsProperties } from 'src/common/message/interfaces/message.interface';
 import { IErrorHttpFilterMetadata } from 'src/common/error/interfaces/error.interface';
-import { ResponseDefaultDto } from 'src/common/response/dtos/response.default.dto';
+import { ResponseDefaultSerialization } from 'src/common/response/serializations/response.default.serialization';
 import {
     RESPONSE_MESSAGE_PATH_META_KEY,
     RESPONSE_MESSAGE_PROPERTIES_META_KEY,
@@ -39,7 +39,7 @@ export class ResponseDefaultInterceptor
     async intercept(
         context: ExecutionContext,
         next: CallHandler
-    ): Promise<Observable<Promise<ResponseDefaultDto>>> {
+    ): Promise<Observable<Promise<ResponseDefaultSerialization>>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
                 map(async (responseData: Promise<Record<string, any>>) => {

@@ -1,4 +1,5 @@
 import { Controller, Get, Query } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
@@ -9,6 +10,10 @@ import {
     IResponse,
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
+import {
+    SettingIdParamDoc,
+    SettingNameParamDoc,
+} from 'src/common/setting/constants/setting.doc.constant';
 import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
 import {
     SettingGetByNameGuard,
@@ -20,7 +25,9 @@ import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
 import { SettingGetSerialization } from 'src/common/setting/serializations/setting.get.serialization';
 import { SettingListSerialization } from 'src/common/setting/serializations/setting.list.serialization';
 import { SettingService } from 'src/common/setting/services/setting.service';
+import { Doc, DocPaging } from 'src/doc/decorators/doc.decorator';
 
+@ApiTags('setting')
 @Controller({
     version: '1',
     path: '/setting',
@@ -31,6 +38,10 @@ export class SettingController {
         private readonly paginationService: PaginationService
     ) {}
 
+    @DocPaging<SettingListSerialization>({
+        response: { serialization: SettingListSerialization },
+        apiKey: true,
+    })
     @ResponsePaging('setting.list', {
         classSerialization: SettingListSerialization,
     })
@@ -76,6 +87,11 @@ export class SettingController {
         };
     }
 
+    @Doc<SettingGetSerialization>({
+        response: { serialization: SettingGetSerialization },
+        params: [SettingIdParamDoc],
+        apiKey: true,
+    })
     @Response('setting.get', {
         classSerialization: SettingGetSerialization,
     })
@@ -86,6 +102,11 @@ export class SettingController {
         return setting;
     }
 
+    @Doc<SettingGetSerialization>({
+        response: { serialization: SettingGetSerialization },
+        params: [SettingNameParamDoc],
+        apiKey: true,
+    })
     @Response('setting.getByName', {
         classSerialization: SettingGetSerialization,
     })

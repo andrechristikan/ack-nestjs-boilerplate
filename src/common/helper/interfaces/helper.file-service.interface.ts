@@ -7,4 +7,6 @@ export interface IHelperFileService {
     ): Buffer;
 
     readExcel(file: Buffer): IHelperFileExcelRows[];
+
+    convertToBytes(megabytes: string): number;
 }

@@ -128,13 +128,12 @@ Next development
 - [x] Update E2E test
 - [x] Response Excel, convert response from controller into excel `res.send()`
 - [x] Implement Repository Design Pattern / Data Access Object Design Pattern
-- [ ] AuthApi Controller (ongoing)
 - [ ] Swagger for API Documentation (ongoing)
 - [ ] Update Documentation
 - [ ] Export to excel and Import from excel add options to background process
+- [ ] AuthApi Controller
 - [ ] Basic Token as ApiKey
 - [ ] OAuth2 Client Credentials
-- [ ] Maybe in the feature will use DDD Design Pattern
 
 ## Documentation
 

@@ -1,6 +1,7 @@
 /* istanbul ignore file */
 
 import { Injectable } from '@nestjs/common';
+import bytes from 'bytes';
 import { IHelperFileService } from 'src/common/helper/interfaces/helper.file-service.interface';
 import { IHelperFileExcelRows } from 'src/common/helper/interfaces/helper.interface';
 import XLSX from 'xlsx';
@@ -49,5 +50,9 @@ export class HelperFileService implements IHelperFileService {
             XLSX.utils.sheet_to_json(worksheet);
 
         return rows;
+    }
+
+    convertToBytes(megabytes: string): number {
+        return bytes(megabytes);
     }
 }

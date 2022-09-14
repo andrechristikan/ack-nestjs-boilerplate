@@ -59,4 +59,22 @@ describe('HelperFileService', () => {
             expect(helperFileService.readExcel(file)).toBe(result);
         });
     });
+
+    describe('convertToBytes', () => {
+        it('should be called', async () => {
+            const result = jest.spyOn(helperFileService, 'convertToBytes');
+
+            helperFileService.convertToBytes('1mb');
+            expect(result).toHaveBeenCalledWith('1mb');
+        });
+
+        it('should be success', async () => {
+            const result = helperFileService.convertToBytes('1mb');
+            jest.spyOn(helperFileService, 'convertToBytes').mockImplementation(
+                () => result
+            );
+
+            expect(helperFileService.convertToBytes('1mb')).toBe(result);
+        });
+    });
 });

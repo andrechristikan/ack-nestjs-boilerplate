@@ -48,9 +48,27 @@ async function bootstrap() {
             .setDescription(docDesc)
             .setVersion(docVersion)
             .addTag("API's")
+            .addBearerAuth(
+                { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+                'accessToken'
+            )
+            .addBearerAuth(
+                { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+                'refreshToken'
+            )
+            .addApiKey(
+                { type: 'apiKey', in: 'header', name: 'x-api-key' },
+                'apiKey'
+            )
             .build();
-        const document = SwaggerModule.createDocument(app, config);
-        SwaggerModule.setup(docPrefix, app, document);
+        const document = SwaggerModule.createDocument(app, config, {
+            deepScanRoutes: true,
+        });
+
+        SwaggerModule.setup(docPrefix, app, document, {
+            explorer: true,
+            customSiteTitle: docName,
+        });
     }
 
     // Listen
