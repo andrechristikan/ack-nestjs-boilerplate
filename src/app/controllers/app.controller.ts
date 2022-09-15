@@ -1,6 +1,6 @@
 import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AuthExcludeApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
+import { ApiTags } from '@nestjs/swagger';
 import { ErrorMeta } from 'src/common/error/decorators/error.decorator';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperService } from 'src/common/helper/services/helper.service';
@@ -18,6 +18,7 @@ import {
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { IResult } from 'ua-parser-js';
 
+@ApiTags('hello')
 @Controller({
     version: VERSION_NEUTRAL,
     path: '/',
@@ -30,7 +31,6 @@ export class AppController {
     ) {}
 
     @Response('app.hello')
-    @AuthExcludeApiKey()
     @RequestExcludeTimestamp()
     @Logger(ENUM_LOGGER_ACTION.TEST, { tags: ['test'] })
     @Get('/hello')
@@ -62,7 +62,6 @@ export class AppController {
     }
 
     @Response('app.helloTimeout')
-    @AuthExcludeApiKey()
     @RequestExcludeTimestamp()
     @ResponseTimeout('10s')
     @ErrorMeta(AppController.name, 'helloTimeoutCustom')

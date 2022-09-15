@@ -1,10 +1,15 @@
 import {
+    applyDecorators,
     createParamDecorator,
     ExecutionContext,
-    SetMetadata,
+    HttpStatus,
+    UseGuards,
 } from '@nestjs/common';
-import { AUTH_EXCLUDE_API_KEY_META_KEY } from 'src/common/auth/constants/auth.constant';
+import { ApiSecurity } from '@nestjs/swagger';
+import { ApiKeyGuard } from 'src/common/auth/guards/api-key/auth.api-key.guard';
 import { IAuthApiPayload } from 'src/common/auth/interfaces/auth.interface';
+import { ResponseDoc } from 'src/common/response/decorators/response.decorator';
+import 'dotenv/config';
 
 export const ApiKey = createParamDecorator(
     (data: string, ctx: ExecutionContext): IAuthApiPayload => {
@@ -13,5 +18,17 @@ export const ApiKey = createParamDecorator(
     }
 );
 
-export const AuthExcludeApiKey = () =>
-    SetMetadata(AUTH_EXCLUDE_API_KEY_META_KEY, true);
+export function AuthApiKey(): any {
+    const docs = [];
+
+    if (process.env.APP_MODE === 'secure') {
+        docs.push(
+            ApiSecurity('apiKey'),
+            ResponseDoc({
+                httpStatus: HttpStatus.UNAUTHORIZED,
+            })
+        );
+    }
+
+    return applyDecorators(UseGuards(ApiKeyGuard), ...docs);
+}

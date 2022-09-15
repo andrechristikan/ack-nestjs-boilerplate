@@ -37,8 +37,8 @@ import {
 import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
 
 @Injectable()
-export class ResponsePagingInterceptor
-    implements NestInterceptor<Promise<any>>
+export class ResponsePagingInterceptor<T>
+    implements NestInterceptor<Promise<T>>
 {
     constructor(
         private readonly reflector: Reflector,

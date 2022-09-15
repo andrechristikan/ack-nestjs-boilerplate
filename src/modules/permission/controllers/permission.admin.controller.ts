@@ -7,7 +7,9 @@ import {
     Put,
     Query,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
+import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
@@ -35,6 +37,7 @@ import { PermissionGetSerialization } from 'src/modules/permission/serialization
 import { PermissionListSerialization } from 'src/modules/permission/serializations/permission.list.serialization';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
 
+@ApiTags('permission')
 @Controller({
     version: '1',
     path: '/permission',
@@ -48,6 +51,7 @@ export class PermissionAdminController {
     @ResponsePaging('permission.list', {
         classSerialization: PermissionListSerialization,
     })
+    @AuthApiKey()
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
     @Get('/list')
     async list(
@@ -99,6 +103,7 @@ export class PermissionAdminController {
     })
     @PermissionGetGuard()
     @RequestParamGuard(PermissionRequestDto)
+    @AuthApiKey()
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
     @Get('/get/:permission')
     async get(
@@ -110,6 +115,7 @@ export class PermissionAdminController {
     @Response('permission.update')
     @PermissionUpdateGuard()
     @RequestParamGuard(PermissionRequestDto)
+    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
@@ -137,6 +143,7 @@ export class PermissionAdminController {
     @Response('permission.inactive')
     @PermissionUpdateInactiveGuard()
     @RequestParamGuard(PermissionRequestDto)
+    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
@@ -161,6 +168,7 @@ export class PermissionAdminController {
     @Response('permission.active')
     @PermissionUpdateActiveGuard()
     @RequestParamGuard(PermissionRequestDto)
+    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE

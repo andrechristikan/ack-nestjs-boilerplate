@@ -10,6 +10,7 @@ async function bootstrap() {
     const configService = app.get(ConfigService);
     const appName: string = configService.get<string>('app.name');
     const env: string = configService.get<string>('app.env');
+    const mode: string = configService.get<string>('app.namodeme');
     const tz: string = configService.get<string>('app.timezone');
     const host: string = configService.get<string>('app.http.host');
     const port: number = configService.get<number>('app.http.port');
@@ -43,7 +44,7 @@ async function bootstrap() {
     const docPrefix: string = configService.get<string>('doc.prefix');
 
     if (env !== 'production') {
-        const config = new DocumentBuilder()
+        const documentConfig = new DocumentBuilder()
             .setTitle(docName)
             .setDescription(docDesc)
             .setVersion(docVersion)
@@ -55,13 +56,17 @@ async function bootstrap() {
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
                 'refreshToken'
-            )
-            .addApiKey(
+            );
+
+        if (mode === 'secure') {
+            documentConfig.addApiKey(
                 { type: 'apiKey', in: 'header', name: 'x-api-key' },
                 'apiKey'
-            )
-            .build();
-        const document = SwaggerModule.createDocument(app, config, {
+            );
+        }
+        const documentBuild = documentConfig.build();
+
+        const document = SwaggerModule.createDocument(app, documentBuild, {
             deepScanRoutes: true,
         });
 

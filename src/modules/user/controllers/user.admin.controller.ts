@@ -12,7 +12,9 @@ import {
     NotFoundException,
     UploadedFile,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
+import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
@@ -57,6 +59,7 @@ import { UserGetSerialization } from 'src/modules/user/serializations/user.get.s
 import { UserListSerialization } from 'src/modules/user/serializations/user.list.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
 
+@ApiTags('user')
 @Controller({
     version: '1',
     path: '/user',
@@ -72,6 +75,7 @@ export class UserAdminController {
     @ResponsePaging('user.list', {
         classSerialization: UserListSerialization,
     })
+    @AuthApiKey()
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.USER_READ)
     @Get('/list')
     async list(
@@ -117,6 +121,7 @@ export class UserAdminController {
     })
     @UserGetGuard()
     @RequestParamGuard(UserRequestDto)
+    @AuthApiKey()
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.USER_READ)
     @Get('get/:user')
     async get(@GetUser() user: IUserDocument): Promise<IResponse> {
@@ -124,6 +129,7 @@ export class UserAdminController {
     }
 
     @Response('user.create')
+    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_CREATE
@@ -195,6 +201,7 @@ export class UserAdminController {
     @Response('user.delete')
     @UserDeleteGuard()
     @RequestParamGuard(UserRequestDto)
+    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_DELETE
@@ -217,6 +224,7 @@ export class UserAdminController {
     @Response('user.update')
     @UserUpdateGuard()
     @RequestParamGuard(UserRequestDto)
+    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_UPDATE
@@ -245,6 +253,7 @@ export class UserAdminController {
     @Response('user.inactive')
     @UserUpdateInactiveGuard()
     @RequestParamGuard(UserRequestDto)
+    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_UPDATE
@@ -267,6 +276,7 @@ export class UserAdminController {
     @Response('user.active')
     @UserUpdateActiveGuard()
     @RequestParamGuard(UserRequestDto)
+    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_UPDATE
@@ -288,6 +298,7 @@ export class UserAdminController {
 
     @Response('user.import')
     @UploadFileSingle('file')
+    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_CREATE,

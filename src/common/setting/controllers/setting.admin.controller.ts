@@ -6,20 +6,20 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
+import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
-import { SettingIdParamDoc } from 'src/common/setting/constants/setting.doc.constant';
+import { SettingDocParamsGet } from 'src/common/setting/constants/setting.doc.constant';
 import { SettingUpdateGuard } from 'src/common/setting/decorators/setting.admin.decorator';
 import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
 import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
 import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
 import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
 import { SettingService } from 'src/common/setting/services/setting.service';
-import { Doc } from 'src/doc/decorators/doc.decorator';
 
 @ApiTags('setting')
 @Controller({
@@ -29,17 +29,15 @@ import { Doc } from 'src/doc/decorators/doc.decorator';
 export class SettingAdminController {
     constructor(private readonly settingService: SettingService) {}
 
-    @Doc<ResponseIdSerialization>({
-        response: { serialization: ResponseIdSerialization },
-        params: [SettingIdParamDoc],
-        jwt: {
-            accessToken: true,
+    @Response('setting.update', {
+        classSerialization: ResponseIdSerialization,
+        doc: {
+            params: SettingDocParamsGet,
         },
-        apiKey: true,
     })
-    @Response('setting.update', { classSerialization: ResponseIdSerialization })
     @SettingUpdateGuard()
     @RequestParamGuard(SettingRequestDto)
+    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.SETTING_READ,
         ENUM_AUTH_PERMISSIONS.SETTING_UPDATE

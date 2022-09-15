@@ -12,6 +12,8 @@ import {
     Post,
     UploadedFile,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { Token, User } from 'src/common/auth/decorators/auth.decorator';
 import {
     AuthJwtGuard,
@@ -46,6 +48,7 @@ import { UserPayloadSerialization } from 'src/modules/user/serializations/user.p
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
 
+@ApiTags('user')
 @Controller({
     version: '1',
     path: '/user',
@@ -61,6 +64,7 @@ export class UserController {
         classSerialization: UserProfileSerialization,
     })
     @UserProfileGuard()
+    @AuthApiKey()
     @AuthJwtGuard()
     @Get('/profile')
     async profile(@GetUser() user: IUserDocument): Promise<IResponse> {
@@ -69,6 +73,7 @@ export class UserController {
 
     @Response('user.upload')
     @UserProfileGuard()
+    @AuthApiKey()
     @AuthJwtGuard()
     @UploadFileSingle('file')
     @HttpCode(HttpStatus.OK)

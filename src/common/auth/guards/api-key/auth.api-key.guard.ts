@@ -7,7 +7,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
-import { AUTH_EXCLUDE_API_KEY_META_KEY } from 'src/common/auth/constants/auth.constant';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
 
 @Injectable()
@@ -22,15 +21,11 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
 
     canActivate(context: ExecutionContext) {
         const mode = this.configService.get<string>('app.mode');
-        const excludeApiKey = this.reflector.get<boolean>(
-            AUTH_EXCLUDE_API_KEY_META_KEY,
-            context.getHandler()
-        );
 
         const request = context.switchToHttp().getRequest();
         request.apiKey = {};
 
-        if (excludeApiKey || mode !== 'secure') {
+        if (mode !== 'secure') {
             return true;
         }
 

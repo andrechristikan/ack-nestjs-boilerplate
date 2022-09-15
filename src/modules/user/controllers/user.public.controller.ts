@@ -6,6 +6,8 @@ import {
     NotFoundException,
     Post,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { Response } from 'src/common/response/decorators/response.decorator';
@@ -22,6 +24,7 @@ import {
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
 
+@ApiTags('user')
 @Controller({
     version: '1',
     path: '/user',
@@ -34,6 +37,7 @@ export class UserPublicController {
     ) {}
 
     @Response('auth.signUp')
+    @AuthApiKey()
     @Post('/sign-up')
     async signUp(
         @Body()

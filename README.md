@@ -128,7 +128,7 @@ Next development
 - [x] Update E2E test
 - [x] Response Excel, convert response from controller into excel `res.send()`
 - [x] Implement Repository Design Pattern / Data Access Object Design Pattern
-- [ ] Swagger for API Documentation (ongoing)
+- [ ] Swagger for API Documentation (ongoing), Set `StatusCode` and `message` for every example.
 - [ ] Update Documentation
 - [ ] Export to excel and Import from excel add options to background process
 - [ ] AuthApi Controller

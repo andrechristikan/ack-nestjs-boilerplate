@@ -1,4 +1,3 @@
-import { HttpStatus } from '@nestjs/common';
 import { ApiProperty } from '@nestjs/swagger';
 import { IMessage } from 'src/common/message/interfaces/message.interface';
 
@@ -8,7 +7,7 @@ export class ResponseDefaultSerialization<T = Record<string, any>> {
         type: Number,
         nullable: false,
         description: 'return specific status code for every endpoints',
-        example: HttpStatus.OK,
+        example: 200,
     })
     statusCode: number;
 
@@ -19,7 +18,7 @@ export class ResponseDefaultSerialization<T = Record<string, any>> {
         oneOf: [
             {
                 type: 'string',
-                example: 'endpoints success',
+                example: 'message endpoint',
             },
             {
                 type: 'object',

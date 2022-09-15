@@ -57,7 +57,6 @@ export class ResponsePagingSerialization<
         nullable: false,
         description:
             'Search will base on availableSearch with rule contains, and case insensitive',
-        example: ['name', 'phoneNumber'],
     })
     availableSearch?: string[];
 
@@ -66,7 +65,6 @@ export class ResponsePagingSerialization<
         type: 'array',
         nullable: false,
         description: 'Sort will base on availableSort',
-        example: ['name', 'phoneNumber'],
     })
     availableSort?: string[];
 

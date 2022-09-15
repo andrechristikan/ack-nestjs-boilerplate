@@ -28,8 +28,8 @@ import {
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 
 @Injectable()
-export class ResponseDefaultInterceptor
-    implements NestInterceptor<Promise<any>>
+export class ResponseDefaultInterceptor<T>
+    implements NestInterceptor<Promise<T>>
 {
     constructor(
         private readonly reflector: Reflector,

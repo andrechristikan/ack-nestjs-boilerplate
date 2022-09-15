@@ -1,4 +1,10 @@
-import { applyDecorators, SetMetadata, UseGuards } from '@nestjs/common';
+import {
+    applyDecorators,
+    HttpStatus,
+    SetMetadata,
+    UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import {
     AUTH_ACCESS_FOR_META_KEY,
     AUTH_PERMISSION_META_KEY,
@@ -11,9 +17,17 @@ import { AuthPayloadAccessForGuard } from 'src/common/auth/guards/payload/auth.p
 import { AuthPayloadDefaultGuard } from 'src/common/auth/guards/payload/auth.payload.default.guard';
 import { AuthPayloadPasswordExpiredGuard } from 'src/common/auth/guards/payload/auth.payload.password-expired.guard';
 import { AuthPayloadPermissionGuard } from 'src/common/auth/guards/payload/auth.payload.permission.guard';
+import { ResponseDoc } from 'src/common/response/decorators/response.decorator';
 
 export function AuthJwtGuard(...permissions: ENUM_AUTH_PERMISSIONS[]): any {
     return applyDecorators(
+        ApiBearerAuth('accessToken'),
+        ResponseDoc({
+            httpStatus: HttpStatus.UNAUTHORIZED,
+        }),
+        ResponseDoc({
+            httpStatus: HttpStatus.FORBIDDEN,
+        }),
         UseGuards(
             JwtGuard,
             AuthPayloadDefaultGuard,
@@ -27,6 +41,13 @@ export function AuthPublicJwtGuard(
     ...permissions: ENUM_AUTH_PERMISSIONS[]
 ): any {
     return applyDecorators(
+        ApiBearerAuth('accessToken'),
+        ResponseDoc({
+            httpStatus: HttpStatus.UNAUTHORIZED,
+        }),
+        ResponseDoc({
+            httpStatus: HttpStatus.FORBIDDEN,
+        }),
         UseGuards(
             JwtGuard,
             AuthPayloadDefaultGuard,
@@ -41,6 +62,13 @@ export function AuthPublicJwtGuard(
 
 export function AuthAdminJwtGuard(...permissions: ENUM_AUTH_PERMISSIONS[]) {
     return applyDecorators(
+        ApiBearerAuth('accessToken'),
+        ResponseDoc({
+            httpStatus: HttpStatus.UNAUTHORIZED,
+        }),
+        ResponseDoc({
+            httpStatus: HttpStatus.FORBIDDEN,
+        }),
         UseGuards(
             JwtGuard,
             AuthPayloadDefaultGuard,
@@ -57,5 +85,14 @@ export function AuthAdminJwtGuard(...permissions: ENUM_AUTH_PERMISSIONS[]) {
 }
 
 export function AuthRefreshJwtGuard(): any {
-    return applyDecorators(UseGuards(JwtRefreshGuard));
+    return applyDecorators(
+        ApiBearerAuth('refreshToken'),
+        ResponseDoc({
+            httpStatus: HttpStatus.UNAUTHORIZED,
+        }),
+        ResponseDoc({
+            httpStatus: HttpStatus.FORBIDDEN,
+        }),
+        UseGuards(JwtRefreshGuard)
+    );
 }

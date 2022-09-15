@@ -1,4 +1,5 @@
 import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import {
     DiskHealthIndicator,
     HealthCheck,
@@ -7,11 +8,13 @@ import {
     MongooseHealthIndicator,
 } from '@nestjs/terminus';
 import { Connection } from 'mongoose';
+import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { AwsHealthIndicator } from 'src/health/indicators/health.aws.indicator';
 
+@ApiTags('health')
 @Controller({
     version: VERSION_NEUTRAL,
     path: '/health',
@@ -28,6 +31,7 @@ export class HealthController {
 
     @Response('health.check')
     @HealthCheck()
+    @AuthApiKey()
     @Get('/aws')
     async checkAws(): Promise<IResponse> {
         return this.health.check([
@@ -37,6 +41,7 @@ export class HealthController {
 
     @Response('health.check')
     @HealthCheck()
+    @AuthApiKey()
     @Get('/database')
     async checkDatabase(): Promise<IResponse> {
         return this.health.check([
@@ -49,6 +54,7 @@ export class HealthController {
 
     @Response('health.check')
     @HealthCheck()
+    @AuthApiKey()
     @Get('/memory-heap')
     async checkMemoryHeap(): Promise<IResponse> {
         return this.health.check([
@@ -62,6 +68,7 @@ export class HealthController {
 
     @Response('health.check')
     @HealthCheck()
+    @AuthApiKey()
     @Get('/memory-rss')
     async checkMemoryRss(): Promise<IResponse> {
         return this.health.check([
@@ -75,6 +82,7 @@ export class HealthController {
 
     @Response('health.check')
     @HealthCheck()
+    @AuthApiKey()
     @Get('/storage')
     async checkStorage(): Promise<IResponse> {
         return this.health.check([
