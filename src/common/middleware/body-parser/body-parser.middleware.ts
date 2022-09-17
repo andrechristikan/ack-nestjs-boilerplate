@@ -1,31 +1,62 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import bodyParser from 'body-parser';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UrlencodedBodyParserMiddleware implements NestMiddleware {
+    constructor(private readonly configService: ConfigService) {}
+
     use(req: Request, res: Response, next: NextFunction): void {
-        bodyParser.urlencoded({ extended: false })(req, res, next);
+        bodyParser.urlencoded({
+            extended: false,
+            limit: this.configService.get<number>(
+                'request.urlencoded.maxFileSize'
+            ),
+        })(req, res, next);
     }
 }
 
 @Injectable()
 export class JsonBodyParserMiddleware implements NestMiddleware {
+    constructor(private readonly configService: ConfigService) {}
+
     use(req: Request, res: Response, next: NextFunction): void {
-        bodyParser.json()(req, res, next);
+        bodyParser.json({
+            limit: this.configService.get<number>('request.json.maxFileSize'),
+        })(req, res, next);
     }
 }
 
 @Injectable()
 export class RawBodyParserMiddleware implements NestMiddleware {
+    constructor(private readonly configService: ConfigService) {}
+
     use(req: Request, res: Response, next: NextFunction): void {
-        bodyParser.raw()(req, res, next);
+        bodyParser.raw({
+            limit: this.configService.get<number>('request.raw.maxFileSize'),
+        })(req, res, next);
+    }
+}
+
+@Injectable()
+export class RawBodyParserMultipartMiddleware implements NestMiddleware {
+    constructor(private readonly configService: ConfigService) {}
+
+    use(req: Request, res: Response, next: NextFunction): void {
+        bodyParser.raw({
+            limit: this.configService.get<number>('file.multipart.maxFileSize'),
+        })(req, res, next);
     }
 }
 
 @Injectable()
 export class TextBodyParserMiddleware implements NestMiddleware {
+    constructor(private readonly configService: ConfigService) {}
+
     use(req: Request, res: Response, next: NextFunction): void {
-        bodyParser.text()(req, res, next);
+        bodyParser.text({
+            limit: this.configService.get<number>('request.text.maxFileSize'),
+        })(req, res, next);
     }
 }

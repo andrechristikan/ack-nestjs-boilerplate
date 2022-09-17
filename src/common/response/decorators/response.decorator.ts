@@ -13,6 +13,7 @@ import {
     ApiResponse,
     getSchemaPath,
 } from '@nestjs/swagger';
+import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { ENUM_FILE_EXCEL_MIME } from 'src/common/file/constants/file.enum.constant';
 import { ENUM_PAGINATION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { RequestHeaderDoc } from 'src/common/request/decorators/request.decorator';
@@ -30,66 +31,178 @@ import { ResponsePagingInterceptor } from 'src/common/response/interceptors/resp
 import {
     IResponseDocOptions,
     IResponseDocPagingOptions,
-    IResponseDocResponseOptions,
+    IResponseDoc,
     IResponseOptions,
+    IResponseDocs,
 } from 'src/common/response/interfaces/response.interface';
 import { ResponseDefaultSerialization } from 'src/common/response/serializations/response.default.serialization';
 import { ResponsePagingSerialization } from 'src/common/response/serializations/response.paging.serialization';
-import { string } from 'yargs';
 
-export function ResponseDoc<T>(doc: IResponseDocResponseOptions): any {
+export function ResponseDoc<T>(document: IResponseDoc): any {
     const docs = [];
-    const allOf: Record<string, any>[] = [
-        {
-            $ref: getSchemaPath(ResponseDefaultSerialization<T>),
-        },
-        {
-            properties: {
-                statusCode: {
-                    type: 'number',
-                    example: doc.statusCode || HttpStatus.OK,
-                },
+    const schema: Record<string, any> = {
+        allOf: [{ $ref: getSchemaPath(ResponseDefaultSerialization<T>) }],
+        properties: {
+            message: {
+                example: document.messagePath,
+            },
+            statusCode: {
+                type: 'number',
+                example: document.statusCode || HttpStatus.OK,
             },
         },
-    ];
+    };
 
-    if (doc.statusCode) {
-        allOf.push({
-            properties: {
-                statusCode: {
-                    type: 'number',
-                    example: doc.statusCode || HttpStatus.OK,
-                },
+    if (document.serialization) {
+        docs.push(ApiExtraModels(document.serialization));
+        schema.properties = {
+            ...schema.properties,
+            data: {
+                $ref: getSchemaPath(document.serialization),
             },
-        });
-    }
-
-    if (doc.messagePath) {
-        allOf.push({
-            properties: {
-                statusCode: {
-                    type: 'string',
-                    example: doc.messagePath,
-                },
-            },
-        });
-    }
-
-    if (doc.serialization) {
-        docs.push(ApiExtraModels(doc.serialization));
-        allOf.push({
-            properties: {
-                data: {
-                    $ref: getSchemaPath(doc.serialization),
-                },
-            },
-        });
+        };
     }
 
     return applyDecorators(
         ApiExtraModels(ResponseDefaultSerialization<T>),
         ApiResponse({
-            status: doc.httpStatus,
+            status: document.httpStatus,
+            schema,
+        }),
+        ...docs
+    );
+}
+
+export function ResponseDocOneOf<T>(
+    httpStatus: HttpStatus,
+    ...documents: IResponseDocs[]
+): any {
+    const docs = [];
+    const oneOf = [];
+
+    for (const doc of documents) {
+        const oneOfSchema: Record<string, any> = {
+            allOf: [{ $ref: getSchemaPath(ResponseDefaultSerialization<T>) }],
+            properties: {
+                message: {
+                    example: doc.messagePath,
+                },
+                statusCode: {
+                    type: 'number',
+                    example: doc.statusCode || HttpStatus.OK,
+                },
+            },
+        };
+
+        if (doc.serialization) {
+            docs.push(ApiExtraModels(doc.serialization));
+            oneOfSchema.properties = {
+                ...oneOfSchema.properties,
+                data: {
+                    $ref: getSchemaPath(doc.serialization),
+                },
+            };
+        }
+
+        oneOf.push(oneOfSchema);
+    }
+
+    return applyDecorators(
+        ApiExtraModels(ResponseDefaultSerialization<T>),
+        ApiResponse({
+            status: httpStatus,
+            schema: {
+                oneOf,
+            },
+        }),
+        ...docs
+    );
+}
+
+export function ResponseDocAnyOf<T>(
+    httpStatus: HttpStatus,
+    ...documents: IResponseDocs[]
+): any {
+    const docs = [];
+    const anyOf = [];
+
+    for (const doc of documents) {
+        const anyOfSchema: Record<string, any> = {
+            allOf: [{ $ref: getSchemaPath(ResponseDefaultSerialization<T>) }],
+            properties: {
+                message: {
+                    example: doc.messagePath,
+                },
+                statusCode: {
+                    type: 'number',
+                    example: doc.statusCode || HttpStatus.OK,
+                },
+            },
+        };
+
+        if (doc.serialization) {
+            docs.push(ApiExtraModels(doc.serialization));
+            anyOfSchema.properties = {
+                ...anyOfSchema.properties,
+                data: {
+                    $ref: getSchemaPath(doc.serialization),
+                },
+            };
+        }
+
+        anyOf.push(anyOfSchema);
+    }
+
+    return applyDecorators(
+        ApiExtraModels(ResponseDefaultSerialization<T>),
+        ApiResponse({
+            status: httpStatus,
+            schema: {
+                anyOf,
+            },
+        }),
+        ...docs
+    );
+}
+
+export function ResponseDocAllOf<T>(
+    httpStatus: HttpStatus,
+    ...documents: IResponseDocs[]
+): any {
+    const docs = [];
+    const allOf = [];
+
+    for (const doc of documents) {
+        const allOfSchema: Record<string, any> = {
+            allOf: [{ $ref: getSchemaPath(ResponseDefaultSerialization<T>) }],
+            properties: {
+                message: {
+                    example: doc.messagePath,
+                },
+                statusCode: {
+                    type: 'number',
+                    example: doc.statusCode || HttpStatus.OK,
+                },
+            },
+        };
+
+        if (doc.serialization) {
+            docs.push(ApiExtraModels(doc.serialization));
+            allOfSchema.properties = {
+                ...allOfSchema.properties,
+                data: {
+                    $ref: getSchemaPath(doc.serialization),
+                },
+            };
+        }
+
+        allOf.push(allOfSchema);
+    }
+
+    return applyDecorators(
+        ApiExtraModels(ResponseDefaultSerialization<T>),
+        ApiResponse({
+            status: httpStatus,
             schema: {
                 allOf,
             },
@@ -166,9 +279,18 @@ export function Response<T>(
         RequestHeaderDoc(),
         ResponseDoc({
             httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+            messagePath: 'http.serverError.serviceUnavailable',
+            statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_SERVICE_UNAVAILABLE,
+        }),
+        ResponseDoc({
+            httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+            messagePath: 'http.serverError.internalServerError',
+            statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
         }),
         ResponseDoc({
             httpStatus: HttpStatus.REQUEST_TIMEOUT,
+            messagePath: 'http.serverError.requestTimeout',
+            statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_REQUEST_TIMEOUT,
         }),
         ApiExtraModels(ResponseDefaultSerialization),
         ApiResponse({
@@ -217,9 +339,18 @@ export function ResponseExcel(options?: IResponseOptions<void>) {
         RequestHeaderDoc(),
         ResponseDoc({
             httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+            messagePath: 'http.serverError.serviceUnavailable',
+            statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_SERVICE_UNAVAILABLE,
+        }),
+        ResponseDoc({
+            httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+            messagePath: 'http.serverError.internalServerError',
+            statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
         }),
         ResponseDoc({
             httpStatus: HttpStatus.REQUEST_TIMEOUT,
+            messagePath: 'http.serverError.requestTimeout',
+            statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_REQUEST_TIMEOUT,
         }),
         ApiOkResponse(),
         ApiProduces(ENUM_FILE_EXCEL_MIME.XLSX),
@@ -319,9 +450,18 @@ export function ResponsePaging<T>(
         RequestHeaderDoc(),
         ResponseDoc({
             httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+            messagePath: 'http.serverError.serviceUnavailable',
+            statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_SERVICE_UNAVAILABLE,
+        }),
+        ResponseDoc({
+            httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+            messagePath: 'http.serverError.internalServerError',
+            statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
         }),
         ResponseDoc({
             httpStatus: HttpStatus.REQUEST_TIMEOUT,
+            messagePath: 'http.serverError.requestTimeout',
+            statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_REQUEST_TIMEOUT,
         }),
         ApiQuery({
             name: 'search',

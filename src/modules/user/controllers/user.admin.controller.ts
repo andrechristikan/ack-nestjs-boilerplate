@@ -75,8 +75,8 @@ export class UserAdminController {
     @ResponsePaging('user.list', {
         classSerialization: UserListSerialization,
     })
-    @AuthApiKey()
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.USER_READ)
+    @AuthApiKey()
     @Get('/list')
     async list(
         @Query()
@@ -121,19 +121,19 @@ export class UserAdminController {
     })
     @UserGetGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthApiKey()
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.USER_READ)
+    @AuthApiKey()
     @Get('get/:user')
     async get(@GetUser() user: IUserDocument): Promise<IResponse> {
         return user;
     }
 
     @Response('user.create')
-    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_CREATE
     )
+    @AuthApiKey()
     @Post('/create')
     async create(
         @Body()
@@ -201,11 +201,11 @@ export class UserAdminController {
     @Response('user.delete')
     @UserDeleteGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_DELETE
     )
+    @AuthApiKey()
     @Delete('/delete/:user')
     async delete(@GetUser() user: IUserDocument): Promise<void> {
         try {
@@ -224,11 +224,11 @@ export class UserAdminController {
     @Response('user.update')
     @UserUpdateGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_UPDATE
     )
+    @AuthApiKey()
     @Put('/update/:user')
     async update(
         @GetUser() user: IUserDocument,
@@ -253,11 +253,11 @@ export class UserAdminController {
     @Response('user.inactive')
     @UserUpdateInactiveGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_UPDATE
     )
+    @AuthApiKey()
     @Patch('/update/:user/inactive')
     async inactive(@GetUser() user: IUserDocument): Promise<void> {
         try {
@@ -276,11 +276,11 @@ export class UserAdminController {
     @Response('user.active')
     @UserUpdateActiveGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_UPDATE
     )
+    @AuthApiKey()
     @Patch('/update/:user/active')
     async active(@GetUser() user: IUserDocument): Promise<void> {
         try {
@@ -298,12 +298,12 @@ export class UserAdminController {
 
     @Response('user.import')
     @UploadFileSingle('file')
-    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_CREATE,
         ENUM_AUTH_PERMISSIONS.USER_IMPORT
     )
+    @AuthApiKey()
     @Post('/import')
     async import(
         @UploadedFile(

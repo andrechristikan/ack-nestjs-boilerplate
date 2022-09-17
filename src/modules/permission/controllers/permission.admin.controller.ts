@@ -51,8 +51,8 @@ export class PermissionAdminController {
     @ResponsePaging('permission.list', {
         classSerialization: PermissionListSerialization,
     })
-    @AuthApiKey()
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
+    @AuthApiKey()
     @Get('/list')
     async list(
         @Query()
@@ -103,8 +103,8 @@ export class PermissionAdminController {
     })
     @PermissionGetGuard()
     @RequestParamGuard(PermissionRequestDto)
-    @AuthApiKey()
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
+    @AuthApiKey()
     @Get('/get/:permission')
     async get(
         @GetPermission() permission: PermissionDocument
@@ -115,11 +115,11 @@ export class PermissionAdminController {
     @Response('permission.update')
     @PermissionUpdateGuard()
     @RequestParamGuard(PermissionRequestDto)
-    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
+    @AuthApiKey()
     @Put('/update/:permission')
     async update(
         @GetPermission() permission: PermissionDocument,
@@ -143,11 +143,11 @@ export class PermissionAdminController {
     @Response('permission.inactive')
     @PermissionUpdateInactiveGuard()
     @RequestParamGuard(PermissionRequestDto)
-    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
+    @AuthApiKey()
     @Patch('/update/:permission/inactive')
     async inactive(
         @GetPermission() permission: PermissionDocument
@@ -168,11 +168,11 @@ export class PermissionAdminController {
     @Response('permission.active')
     @PermissionUpdateActiveGuard()
     @RequestParamGuard(PermissionRequestDto)
-    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
+    @AuthApiKey()
     @Patch('/update/:permission/active')
     async active(
         @GetPermission() permission: PermissionDocument

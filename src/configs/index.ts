@@ -6,6 +6,7 @@ import AwsConfig from './aws.config';
 import UserConfig from './user.config';
 import FileConfig from './file.config';
 import MiddlewareConfig from './middleware.config';
+import RequestConfig from './request.config';
 import DocConfig from './doc.config';
 
 export default [
@@ -16,6 +17,7 @@ export default [
     AwsConfig,
     UserConfig,
     MiddlewareConfig,
+    RequestConfig,
     FileConfig,
     DocConfig,
 ];

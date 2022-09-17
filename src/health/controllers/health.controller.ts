@@ -13,6 +13,7 @@ import { DatabaseConnection } from 'src/common/database/decorators/database.deco
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { AwsHealthIndicator } from 'src/health/indicators/health.aws.indicator';
+import { HealthSerialization } from 'src/health/serializations/health.serialization';
 
 @ApiTags('health')
 @Controller({
@@ -29,7 +30,7 @@ export class HealthController {
         private readonly awsIndicator: AwsHealthIndicator
     ) {}
 
-    @Response('health.check')
+    @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
     @AuthApiKey()
     @Get('/aws')
@@ -39,7 +40,7 @@ export class HealthController {
         ]);
     }
 
-    @Response('health.check')
+    @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
     @AuthApiKey()
     @Get('/database')
@@ -52,7 +53,7 @@ export class HealthController {
         ]);
     }
 
-    @Response('health.check')
+    @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
     @AuthApiKey()
     @Get('/memory-heap')
@@ -66,7 +67,7 @@ export class HealthController {
         ]);
     }
 
-    @Response('health.check')
+    @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
     @AuthApiKey()
     @Get('/memory-rss')
@@ -80,7 +81,7 @@ export class HealthController {
         ]);
     }
 
-    @Response('health.check')
+    @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
     @AuthApiKey()
     @Get('/storage')

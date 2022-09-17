@@ -64,8 +64,8 @@ export class UserController {
         classSerialization: UserProfileSerialization,
     })
     @UserProfileGuard()
-    @AuthApiKey()
     @AuthJwtGuard()
+    @AuthApiKey()
     @Get('/profile')
     async profile(@GetUser() user: IUserDocument): Promise<IResponse> {
         return user;
@@ -73,8 +73,8 @@ export class UserController {
 
     @Response('user.upload')
     @UserProfileGuard()
-    @AuthApiKey()
     @AuthJwtGuard()
+    @AuthApiKey()
     @UploadFileSingle('file')
     @HttpCode(HttpStatus.OK)
     @Post('/profile/upload')

@@ -42,7 +42,7 @@ export interface IAwsS3Service {
 
     uploadPart(
         path: string,
-        content: Buffer,
+        content: Buffer | Uint8Array,
         uploadId: string,
         partNumber: number
     ): Promise<AwsS3MultipartPartsSerialization>;

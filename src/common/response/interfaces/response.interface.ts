@@ -5,10 +5,16 @@ import { IHelperFileExcelRows } from 'src/common/helper/interfaces/helper.interf
 import { IMessageOptionsProperties } from 'src/common/message/interfaces/message.interface';
 
 // Doc
-export interface IResponseDocResponseOptions {
+export interface IResponseDoc {
     httpStatus: HttpStatus;
-    messagePath?: string;
-    statusCode?: number;
+    messagePath: string;
+    statusCode: number;
+    serialization?: ClassConstructor<any>;
+}
+
+export interface IResponseDocs {
+    messagePath: string;
+    statusCode: number;
     serialization?: ClassConstructor<any>;
 }
 
@@ -17,7 +23,7 @@ export interface IResponseDocOptions {
     statusCode?: number;
     params?: ApiParamOptions[];
     queries?: ApiQueryOptions[];
-    responses?: IResponseDocResponseOptions[];
+    responses?: IResponseDoc[];
 }
 
 export interface IResponseDocPagingOptions

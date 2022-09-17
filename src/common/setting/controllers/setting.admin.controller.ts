@@ -37,11 +37,11 @@ export class SettingAdminController {
     })
     @SettingUpdateGuard()
     @RequestParamGuard(SettingRequestDto)
-    @AuthApiKey()
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.SETTING_READ,
         ENUM_AUTH_PERMISSIONS.SETTING_UPDATE
     )
+    @AuthApiKey()
     @Put('/update/:setting')
     async update(
         @GetSetting() setting: SettingDocument,

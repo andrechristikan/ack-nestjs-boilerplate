@@ -1,6 +1,7 @@
 import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
+import { AppHelloSerialization } from 'src/app/serializations/app.hello.serialization';
 import { ErrorMeta } from 'src/common/error/decorators/error.decorator';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperService } from 'src/common/helper/services/helper.service';
@@ -30,7 +31,7 @@ export class AppController {
         private readonly helperService: HelperService
     ) {}
 
-    @Response('app.hello')
+    @Response('app.hello', { classSerialization: AppHelloSerialization })
     @RequestExcludeTimestamp()
     @Logger(ENUM_LOGGER_ACTION.TEST, { tags: ['test'] })
     @Get('/hello')

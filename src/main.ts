@@ -4,13 +4,20 @@ import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
 import { useContainer } from 'class-validator';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { ResponseDefaultSerialization } from 'src/common/response/serializations/response.default.serialization';
+import { ResponsePagingSerialization } from 'src/common/response/serializations/response.paging.serialization';
+import {
+    AwsS3MultipartPartsSerialization,
+    AwsS3MultipartSerialization,
+} from 'src/common/aws/serializations/aws.s3-multipart.serialization';
+import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
     const appName: string = configService.get<string>('app.name');
     const env: string = configService.get<string>('app.env');
-    const mode: string = configService.get<string>('app.namodeme');
+    const mode: string = configService.get<string>('app.mode');
     const tz: string = configService.get<string>('app.timezone');
     const host: string = configService.get<string>('app.http.host');
     const port: number = configService.get<number>('app.http.port');
@@ -68,6 +75,13 @@ async function bootstrap() {
 
         const document = SwaggerModule.createDocument(app, documentBuild, {
             deepScanRoutes: true,
+            extraModels: [
+                ResponseDefaultSerialization,
+                ResponsePagingSerialization,
+                AwsS3MultipartPartsSerialization,
+                AwsS3MultipartSerialization,
+                AwsS3Serialization,
+            ],
         });
 
         SwaggerModule.setup(docPrefix, app, document, {

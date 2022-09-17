@@ -18,10 +18,8 @@ import { UserDocument } from 'src/modules/user/schemas/user.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
 import { RoleDocument } from 'src/modules/role/schemas/role.schema';
-import { plainToInstance } from 'class-transformer';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
-import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { IUserDocument } from 'src/modules/user/interfaces/user.interface';
 
 describe('E2E User', () => {
@@ -89,7 +87,7 @@ describe('E2E User', () => {
             }
         );
 
-        const map = plainToInstance(UserPayloadSerialization, userPopulate);
+        const map = await userService.payloadSerialization(userPopulate);
         const payload = await authService.createPayloadAccessToken(map, false);
         const payloadNotFound = {
             ...payload,
@@ -221,9 +219,7 @@ describe('E2E User', () => {
     afterAll(async () => {
         try {
             await userService.deleteOneById(user._id);
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) {}
 
         connection.close();
         await app.close();

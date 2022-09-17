@@ -288,7 +288,7 @@ export class AwsS3Service implements IAwsS3Service {
 
     async uploadPart(
         path: string,
-        content: Buffer,
+        content: Buffer | Uint8Array,
         uploadId: string,
         partNumber: number
     ): Promise<AwsS3MultipartPartsSerialization> {

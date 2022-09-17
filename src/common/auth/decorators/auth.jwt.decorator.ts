@@ -11,23 +11,53 @@ import {
 } from 'src/common/auth/constants/auth.constant';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
 import { JwtRefreshGuard } from 'src/common/auth/guards/jwt-refresh/auth.jwt-refresh.guard';
 import { JwtGuard } from 'src/common/auth/guards/jwt/auth.jwt.guard';
 import { AuthPayloadAccessForGuard } from 'src/common/auth/guards/payload/auth.payload.access-for.guard';
 import { AuthPayloadDefaultGuard } from 'src/common/auth/guards/payload/auth.payload.default.guard';
 import { AuthPayloadPasswordExpiredGuard } from 'src/common/auth/guards/payload/auth.payload.password-expired.guard';
 import { AuthPayloadPermissionGuard } from 'src/common/auth/guards/payload/auth.payload.permission.guard';
-import { ResponseDoc } from 'src/common/response/decorators/response.decorator';
+import {
+    ResponseDoc,
+    ResponseDocOneOf,
+} from 'src/common/response/decorators/response.decorator';
 
 export function AuthJwtGuard(...permissions: ENUM_AUTH_PERMISSIONS[]): any {
     return applyDecorators(
         ApiBearerAuth('accessToken'),
         ResponseDoc({
             httpStatus: HttpStatus.UNAUTHORIZED,
+            messagePath: 'http.clientError.unauthorized',
+            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_JWT_ACCESS_TOKEN_ERROR,
         }),
-        ResponseDoc({
-            httpStatus: HttpStatus.FORBIDDEN,
-        }),
+        ResponseDocOneOf(
+            HttpStatus.FORBIDDEN,
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_INVALID_ERROR,
+                messagePath: 'auth.error.permissionForbidden',
+            },
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR,
+                messagePath: 'auth.error.passwordExpired',
+            },
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_ACCESS_FOR_INVALID_ERROR,
+                messagePath: 'auth.error.accessForForbidden',
+            },
+            {
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_INACTIVE_ERROR,
+                messagePath: 'auth.error.blocked',
+            },
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_ROLE_INACTIVE_ERROR,
+                messagePath: 'auth.error.roleBlocked',
+            }
+        ),
         UseGuards(
             JwtGuard,
             AuthPayloadDefaultGuard,
@@ -44,10 +74,36 @@ export function AuthPublicJwtGuard(
         ApiBearerAuth('accessToken'),
         ResponseDoc({
             httpStatus: HttpStatus.UNAUTHORIZED,
+            messagePath: 'http.clientError.unauthorized',
+            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_JWT_ACCESS_TOKEN_ERROR,
         }),
-        ResponseDoc({
-            httpStatus: HttpStatus.FORBIDDEN,
-        }),
+        ResponseDocOneOf(
+            HttpStatus.FORBIDDEN,
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_INVALID_ERROR,
+                messagePath: 'auth.error.permissionForbidden',
+            },
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR,
+                messagePath: 'auth.error.passwordExpired',
+            },
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_ACCESS_FOR_INVALID_ERROR,
+                messagePath: 'auth.error.accessForForbidden',
+            },
+            {
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_INACTIVE_ERROR,
+                messagePath: 'auth.error.blocked',
+            },
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_ROLE_INACTIVE_ERROR,
+                messagePath: 'auth.error.roleBlocked',
+            }
+        ),
         UseGuards(
             JwtGuard,
             AuthPayloadDefaultGuard,
@@ -65,10 +121,36 @@ export function AuthAdminJwtGuard(...permissions: ENUM_AUTH_PERMISSIONS[]) {
         ApiBearerAuth('accessToken'),
         ResponseDoc({
             httpStatus: HttpStatus.UNAUTHORIZED,
+            messagePath: 'http.clientError.unauthorized',
+            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_JWT_ACCESS_TOKEN_ERROR,
         }),
-        ResponseDoc({
-            httpStatus: HttpStatus.FORBIDDEN,
-        }),
+        ResponseDocOneOf(
+            HttpStatus.FORBIDDEN,
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_INVALID_ERROR,
+                messagePath: 'auth.error.permissionForbidden',
+            },
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PASSWORD_EXPIRED_ERROR,
+                messagePath: 'auth.error.passwordExpired',
+            },
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_ACCESS_FOR_INVALID_ERROR,
+                messagePath: 'auth.error.accessForForbidden',
+            },
+            {
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_INACTIVE_ERROR,
+                messagePath: 'auth.error.blocked',
+            },
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_ROLE_INACTIVE_ERROR,
+                messagePath: 'auth.error.roleBlocked',
+            }
+        ),
         UseGuards(
             JwtGuard,
             AuthPayloadDefaultGuard,
@@ -89,9 +171,9 @@ export function AuthRefreshJwtGuard(): any {
         ApiBearerAuth('refreshToken'),
         ResponseDoc({
             httpStatus: HttpStatus.UNAUTHORIZED,
-        }),
-        ResponseDoc({
-            httpStatus: HttpStatus.FORBIDDEN,
+            messagePath: 'http.clientError.unauthorized',
+            statusCode:
+                ENUM_AUTH_STATUS_CODE_ERROR.AUTH_JWT_REFRESH_TOKEN_ERROR,
         }),
         UseGuards(JwtRefreshGuard)
     );
