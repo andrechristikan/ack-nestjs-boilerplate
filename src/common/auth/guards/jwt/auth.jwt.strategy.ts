@@ -15,7 +15,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
                 ignoreNotBefore: false,
                 audience: configService.get<string>('auth.jwt.audience'),
                 issuer: configService.get<string>('auth.jwt.issuer'),
-                subject: configService.get<string>('app.name'),
+                subject: configService.get<string>('auth.jwt.subject'),
             },
             secretOrKey: configService.get<string>(
                 'auth.jwt.accessToken.secretKey'

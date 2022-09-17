@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types, Document } from 'mongoose';
-import { IAwsS3 } from 'src/common/aws/aws.interface';
+import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { RoleEntity } from 'src/modules/role/schemas/role.schema';
 
 @Schema({ timestamps: true, versionKey: false })
@@ -78,7 +78,7 @@ export class UserEntity {
             mime: String,
         },
     })
-    photo?: IAwsS3;
+    photo?: AwsS3Serialization;
 }
 
 export const UserDatabaseName = 'users';

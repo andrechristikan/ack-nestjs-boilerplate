@@ -4,7 +4,8 @@ import moment from 'moment-timezone';
 import {
     ENUM_HELPER_DATE_DIFF,
     ENUM_HELPER_DATE_FORMAT,
-} from '../constants/helper.enum.constant';
+} from 'src/common/helper/constants/helper.enum.constant';
+import { IHelperDateService } from 'src/common/helper/interfaces/helper.date-service.interface';
 import {
     IHelperDateOptions,
     IHelperDateOptionsBackward,
@@ -13,10 +14,10 @@ import {
     IHelperDateOptionsFormat,
     IHelperDateOptionsForward,
     IHelperDateOptionsMonth,
-} from '../helper.interface';
+} from 'src/common/helper/interfaces/helper.interface';
 
 @Injectable()
-export class HelperDateService {
+export class HelperDateService implements IHelperDateService {
     private readonly timezone: string;
 
     constructor(private readonly configService: ConfigService) {

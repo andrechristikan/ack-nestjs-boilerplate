@@ -37,11 +37,12 @@ If you change env value of `APP_MODE` to `secure` that will trigger more `Middle
 3. `ApiKeyGuard`, check api key based on database.
 
 If you change env value of `APP_ENV` to `production` that will
+
 1. Do not write into console `Database debug` even when `DATABASE_DEBUG` is `true`
 2. Do not write into console for `DebuggerService` even when `APP_DEBUG` is `true`
 3. `CorsMiddleware` on.
 
-You can see our `e2e testing file` or read the documentation on [section environment][ack-doc-env].
+You can see our `e2e testing file` or read the documentation on [section environment](ack-doc-env).
 
 ## Build with
 
@@ -76,7 +77,7 @@ ack-nestjs-mongoose have some objective.
 - Production Ready 🔥
 - Typescript 🚀
 - Authentication and Authorization (JWT, OAuth2, API Key, Basic Auth, Role Management) 💪
-- User Agent Check
+- User Agent Awareness
 - MongoDB Integrate by Using Mongoose Package 🎉
 - Database Migration (NestJs-Command)
 - Storage with AWS (S3)
@@ -93,7 +94,6 @@ ack-nestjs-mongoose have some objective.
 - Dynamic Setting from Database 🗿
 - Maintenance Mode on / off 🐤
 - Server Side Pagination
-- Cache Manager Implementation
 - Support Docker Installation
 - Support CI/CD with Github Action or Jenkins
 - Husky GitHook For Check Source Code, and Run Test Before Commit 🐶
@@ -101,15 +101,16 @@ ack-nestjs-mongoose have some objective.
 
 ## Prerequisites
 
-We assume that everyone who comes here is _**`programmer with intermediate knowledge`**_ and we also need to understand more before we begin in order to reduce the knowledge gap.
+We assume that everyone who comes here is **`programmer with intermediate knowledge`** and we also need to understand more before we begin in order to reduce the knowledge gap.
 
 1. Understand [NestJs Fundamental](http://nestjs.com), Main Framework. NodeJs Framework with support fully TypeScript.
 2. Understand[Typescript Fundamental](https://www.typescriptlang.org), Programming Language. It will help us to write and read the code.
 3. Understand [ExpressJs Fundamental](https://nodejs.org), NodeJs Base Framework. It will help us in understanding how the NestJs Framework works.
 4. Understand what NoSql is and how it works as a database, especially [MongoDB.](https://docs.mongodb.com)
-5. Optional, Understand [Microservice Architecture](https://microservices.io) and the design pattern.
-6. Optional,[The Twelve Factor Apps](https://12factor.net)
-7. Optional, Understand [Docker](ref-docker) that can help you to run the project
+5. Understand Repository Design Pattern or Data Access Object Design Pattern. It will help us to read the source code
+6. Optional, Understand [Microservice Architecture](https://microservices.io) and the design pattern.
+7. Optional,[The Twelve Factor Apps](https://12factor.net)
+8. Optional, Understand [Docker](ref-docker) that can help you to run the project
 
 ## Todo
 
@@ -126,10 +127,13 @@ Next development
 - [x] Update Unit test
 - [x] Update E2E test
 - [x] Response Excel, convert response from controller into excel `res.send()`
-- [ ] Implement Repository Design Pattern
-- [ ] Swagger for API Documentation
-- [ ] Basic Token as ApiKey
+- [x] Implement Repository Design Pattern / Data Access Object Design Pattern
+- [x] Swagger for API Documentation Common Module
 - [ ] Update Documentation
+- [ ] Export to excel and Import from excel add options to background process
+- [ ] AuthApi Controller
+- [ ] Basic Token as ApiKey
+- [ ] OAuth2 Client Credentials
 
 ## Documentation
 
@@ -138,11 +142,10 @@ Recommend version is LTS Version for every tool and package.
 
 > Make sure check that tools has been installed successfully.
 
-* [NodeJs](https://nodejs.org)
-* [MongoDB as Replication](https://docs.mongodb.com/manual/replication/)
-* [Yarn](https://yarnpkg.com)
-* [Git](https://git-scm.com)
-
+1. [NodeJs](https://nodejs.org)
+2. [MongoDB as Replication](https://docs.mongodb.com/manual/replication/)
+3. [Yarn](https://yarnpkg.com)
+4. [Git](https://git-scm.com)
 
 ### Getting Started
 
@@ -193,7 +196,7 @@ yarn rollback
 
 #### Test
 
-ack-nestjs-mongoose provide 3 automation testing `unit testing`, `integration testing`, and `e2e testing`. 
+ack-nestjs-mongoose provide 3 automation testing `unit testing`, `integration testing`, and `e2e testing`.
 
 ```bash
 yarn test
@@ -244,25 +247,24 @@ Detail information about the environment
 ### APP Environment
 
 | Key | Type | Description |
-| ---- | ---- | ---- | 
-| APP\_NAME | `string` | Application name and will be subject for jwt| 
+| ---- | ---- | ---- |
+| APP\_NAME | `string` | Application name and will be subject for jwt|
 | APP\_ENV | `string` | <ul><li>production</li><li>development</li></ul> |
 | APP\_MODE | `string` | <ul><li>secure</li><li>simple</li></ul> |
 | APP\_LANGUAGE | `string` | Enum languages, separator `,` |
 | APP\_TZ | `string` | Override timezone |
-| APP\_HOST | `string` | Application serve | 
-| APP\_PORT | `number` | Application serve | 
+| APP\_HOST | `string` | Application serve |
+| APP\_PORT | `number` | Application serve |
 | APP\_DEBUG | `boolean` | All logs will write into console |
-| APP\_VERSIONING | `boolean` | Application url versioning | 
-| APP\_VERSION | `number | string` | Application url versioning | 
-| APP\_HTTP\_ON | `boolean` | Application Http turn on | 
-| APP\_JOB\_ON | `boolean` | Application Job turn on | 
-
+| APP\_VERSIONING | `boolean` | Application url versioning |
+| APP\_VERSION | `number | string` | Application url versioning |
+| APP\_HTTP\_ON | `boolean` | Application Http turn on |
+| APP\_JOB\_ON | `boolean` | Application Job turn on |
 
 ### Database Environment
 
 | Key | Type | Description |
-| ---- | ---- | ---- | 
+| ---- | ---- | ---- |
 | DATABASE\_HOST | `string` | Mongodb URL. Support `standard url` `replication`, and `srv` |
 | DATABASE\_NAME | `string` | Database name |
 | DATABASE\_USER | `string` | Database user |
@@ -273,15 +275,14 @@ Detail information about the environment
 ### Middleware Environment
 
 | Key | Type | Description |
-| ---- | ---- | ---- | 
-| MIDDLEWARE\_TOLERANCE\_TIMESTAMP  | `string` | Tolerance timestamp `ApiKey`. `ms` package value | 
-| MIDDLEWARE\_TIMEOUT | `string` | Request timeout. `ms` package value  | 
-
+| ---- | ---- | ---- |
+| MIDDLEWARE\_TOLERANCE\_TIMESTAMP  | `string` | Tolerance timestamp `ApiKey`. `ms` package value |
+| MIDDLEWARE\_TIMEOUT | `string` | Request timeout. `ms` package value  |
 
 ### Auth Environment
 
 | Key | Type | Description |
-| ---- | ---- | ---- | 
+| ---- | ---- | ---- |
 | AUTH\_JWT\_AUDIENCE | `string` | Jwt audience |
 | AUTH\_JWT\_ISSUER| `string` | JWT issuer |
 | AUTH\_JWT\_ACCESS\_TOKEN\_SECRET\_KEY | `string` | Secret access token, free text. |
@@ -295,15 +296,15 @@ Detail information about the environment
 
 > Will implement as `ApiKey`
 
-| Key | Type | Description | 
-| ---- | ---- | ---- | 
-| AUTH\_BASIC\_TOKEN\_CLIENT\_ID  | `string` | Free text | 
-| AUTH\_BASIC\_TOKEN\_CLIENT\_SECRET | `string` | Free tex  | 
+| Key | Type | Description |
+| ---- | ---- | ---- |
+| AUTH\_BASIC\_TOKEN\_CLIENT\_ID  | `string` | Free text |
+| AUTH\_BASIC\_TOKEN\_CLIENT\_SECRET | `string` | Free tex  |
 
 ### AWS Environment
 
-| Key | Type | Description | 
-| ---- | ---- | ---- | 
+| Key | Type | Description |
+| ---- | ---- | ---- |
 | AWS\_CREDENTIAL\_KEY | `string` | AWS account credential key |
 | AWS\_CREDENTIAL\_SECRET | `string` |  AWS account credential secret |
 | AWS\_S3\_REGION | `string` | AWS S3 Region |

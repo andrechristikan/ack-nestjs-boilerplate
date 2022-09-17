@@ -1,20 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-    IMessage,
-    IMessageOptions,
-    IMessageSetOptions,
-} from '../message.interface';
 import { ValidationError } from 'class-validator';
 import { I18nService } from 'nestjs-i18n';
 import {
     IErrors,
     IErrorsImport,
     IValidationErrorImport,
-} from 'src/common/error/error.interface';
+} from 'src/common/error/interfaces/error.interface';
+import {
+    IMessage,
+    IMessageOptions,
+    IMessageSetOptions,
+} from 'src/common/message/interfaces/message.interface';
+import { IMessageService } from 'src/common/message/interfaces/message.service.interface';
 
 @Injectable()
-export class MessageService {
+export class MessageService implements IMessageService {
     private readonly defaultLanguage: string;
 
     constructor(
@@ -24,11 +25,7 @@ export class MessageService {
         this.defaultLanguage = this.configService.get<string>('app.language');
     }
 
-    private setMessage(
-        lang: string,
-        key: string,
-        options?: IMessageSetOptions
-    ): any {
+    setMessage(lang: string, key: string, options?: IMessageSetOptions): any {
         return this.i18n.translate(key, {
             lang: lang || this.defaultLanguage,
             args:

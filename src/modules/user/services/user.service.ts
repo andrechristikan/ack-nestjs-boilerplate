@@ -1,134 +1,80 @@
 import { Injectable } from '@nestjs/common';
-import { Model } from 'mongoose';
 import { Types } from 'mongoose';
 import { ConfigService } from '@nestjs/config';
-import { UserDocument, UserEntity } from '../schemas/user.schema';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
+import { plainToInstance } from 'class-transformer';
+import { IUserService } from 'src/modules/user/interfaces/user.service.interface';
+import { UserRepository } from 'src/modules/user/repositories/user.repository';
 import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
-} from 'src/common/database/database.interface';
-import { IUserCheckExist, IUserCreate, IUserDocument } from '../user.interface';
-import { RoleEntity } from 'src/modules/role/schemas/role.schema';
-import { PermissionEntity } from 'src/modules/permission/schemas/permission.schema';
-import { UserUpdateDto } from '../dtos/user.update.dto';
-import { IAuthPassword } from 'src/common/auth/auth.interface';
-import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
-import { plainToInstance } from 'class-transformer';
-import { UserPayloadSerialization } from '../serializations/user.payload.serialization';
-import { IAwsS3 } from 'src/common/aws/aws.interface';
+    IDatabaseOptions,
+} from 'src/common/database/interfaces/database.interface';
+import {
+    IUserCheckExist,
+    IUserCreate,
+    IUserDocument,
+} from 'src/modules/user/interfaces/user.interface';
+import { UserDocument, UserEntity } from 'src/modules/user/schemas/user.schema';
+import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
+import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
+import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
+import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
+import { UserPhotoDto } from 'src/modules/user/dtos/user.photo.dto';
+import { UserPasswordDto } from 'src/modules/user/dtos/user.password.dto';
+import { UserPasswordExpiredDto } from 'src/modules/user/dtos/user.password-expired.dto';
+import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
 
 @Injectable()
-export class UserService {
+export class UserService implements IUserService {
     private readonly uploadPath: string;
 
     constructor(
-        @DatabaseEntity(UserEntity.name)
-        private readonly userModel: Model<UserDocument>,
+        private readonly userRepository: UserRepository,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
         this.uploadPath = this.configService.get<string>('user.uploadPath');
     }
 
-    async findAll(
+    async findAll<T>(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<IUserDocument[]> {
-        const users = this.userModel.find(find).populate({
-            path: 'role',
-            model: RoleEntity.name,
-        });
-
-        if (
-            options &&
-            options.limit !== undefined &&
-            options.skip !== undefined
-        ) {
-            users.limit(options.limit).skip(options.skip);
-        }
-
-        if (options && options.sort) {
-            users.sort(options.sort);
-        }
-
-        return users.lean();
-    }
-
-    async getTotal(find?: Record<string, any>): Promise<number> {
-        return this.userModel.countDocuments(find);
+    ): Promise<T[]> {
+        return this.userRepository.findAll<T>(find, options);
     }
 
     async findOneById<T>(
         _id: string,
         options?: IDatabaseFindOneOptions
     ): Promise<T> {
-        const user = this.userModel.findById(_id);
-
-        if (
-            options &&
-            options.populate &&
-            options.populate.role &&
-            options.populate.permission
-        ) {
-            user.populate({
-                path: 'role',
-                model: RoleEntity.name,
-                populate: {
-                    path: 'permissions',
-                    model: PermissionEntity.name,
-                },
-            });
-        } else if (options && options.populate && options.populate.role) {
-            user.populate({
-                path: 'role',
-                model: RoleEntity.name,
-            });
-        }
-
-        return user.lean();
+        return this.userRepository.findOneById<T>(_id, options);
     }
 
     async findOne<T>(
-        find?: Record<string, any>,
+        find: Record<string, any>,
         options?: IDatabaseFindOneOptions
     ): Promise<T> {
-        const user = this.userModel.findOne(find);
-
-        if (
-            options &&
-            options.populate &&
-            options.populate.role &&
-            options.populate.permission
-        ) {
-            user.populate({
-                path: 'role',
-                model: RoleEntity.name,
-                populate: {
-                    path: 'permissions',
-                    model: PermissionEntity.name,
-                },
-            });
-        } else if (options && options.populate && options.populate.role) {
-            user.populate({
-                path: 'role',
-                model: RoleEntity.name,
-            });
-        }
-
-        return user.lean();
+        return this.userRepository.findOne<T>(find, options);
     }
 
-    async create({
-        firstName,
-        lastName,
-        password,
-        passwordExpired,
-        salt,
-        email,
-        mobileNumber,
-        role,
-    }: IUserCreate): Promise<UserDocument> {
+    async getTotal(find?: Record<string, any>): Promise<number> {
+        return this.userRepository.getTotal(find);
+    }
+
+    async create(
+        {
+            firstName,
+            lastName,
+            password,
+            passwordExpired,
+            salt,
+            email,
+            mobileNumber,
+            role,
+        }: IUserCreate,
+        options?: IDatabaseOptions
+    ): Promise<UserDocument> {
         const user: UserEntity = {
             firstName,
             email,
@@ -141,60 +87,77 @@ export class UserService {
             passwordExpired,
         };
 
-        const create: UserDocument = new this.userModel(user);
-        return create.save();
+        return this.userRepository.create<UserEntity>(user, options);
     }
 
-    async deleteOneById(_id: string): Promise<UserDocument> {
-        return this.userModel.findByIdAndDelete(_id);
+    async deleteOneById(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserDocument> {
+        return this.userRepository.deleteOneById(_id, options);
     }
 
-    async deleteOne(find: Record<string, any>): Promise<UserDocument> {
-        return this.userModel.findOneAndDelete(find);
+    async deleteOne(
+        find: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<UserDocument> {
+        return this.userRepository.deleteOne(find, options);
     }
 
     async updateOneById(
         _id: string,
-        { firstName, lastName }: UserUpdateDto
+        data: UserUpdateDto,
+        options?: IDatabaseOptions
     ): Promise<UserDocument> {
-        const user: UserDocument = await this.userModel.findById(_id);
-
-        user.firstName = firstName;
-        user.lastName = lastName || undefined;
-
-        return user.save();
+        return this.userRepository.updateOneById<UserUpdateDto>(
+            _id,
+            data,
+            options
+        );
     }
 
     async checkExist(
         email: string,
         mobileNumber: string,
-        _id?: string
+        excludeId?: string
     ): Promise<IUserCheckExist> {
-        const existEmail: Record<string, any> = await this.userModel.exists({
-            email: {
-                $regex: new RegExp(email),
-                $options: 'i',
+        const existEmail: boolean = await this.userRepository.exists(
+            {
+                email: {
+                    $regex: new RegExp(email),
+                    $options: 'i',
+                },
             },
-            _id: { $nin: [new Types.ObjectId(_id)] },
-        });
+            excludeId
+        );
 
-        const existMobileNumber: Record<string, any> =
-            await this.userModel.exists({
+        const existMobileNumber: boolean = await this.userRepository.exists(
+            {
                 mobileNumber,
-                _id: { $nin: [new Types.ObjectId(_id)] },
-            });
+            },
+            excludeId
+        );
 
         return {
-            email: existEmail ? true : false,
-            mobileNumber: existMobileNumber ? true : false,
+            email: existEmail,
+            mobileNumber: existMobileNumber,
         };
     }
 
-    async updatePhoto(_id: string, aws: IAwsS3): Promise<UserDocument> {
-        const user: UserDocument = await this.userModel.findById(_id);
-        user.photo = aws;
+    async updatePhoto(
+        _id: string,
+        aws: AwsS3Serialization,
+        options?: IDatabaseOptions
+    ): Promise<UserDocument> {
+        const update: UserPhotoDto = {
+            photo: aws,
+        };
 
-        return user.save();
+        return this.userRepository.updateOneById<UserPhotoDto>(
+            _id,
+            update,
+            options
+        );
     }
 
     async createRandomFilename(): Promise<Record<string, any>> {
@@ -208,39 +171,54 @@ export class UserService {
 
     async updatePassword(
         _id: string,
-        { salt, passwordHash, passwordExpired }: IAuthPassword
+        { salt, passwordHash, passwordExpired }: IAuthPassword,
+        options?: IDatabaseOptions
     ): Promise<UserDocument> {
-        const auth: UserDocument = await this.userModel.findById(_id);
+        const update: UserPasswordDto = {
+            password: passwordHash,
+            passwordExpired: passwordExpired,
+            salt: salt,
+        };
 
-        auth.password = passwordHash;
-        auth.passwordExpired = passwordExpired;
-        auth.salt = salt;
-
-        return auth.save();
+        return this.userRepository.updateOneById<UserPasswordDto>(
+            _id,
+            update,
+            options
+        );
     }
 
     async updatePasswordExpired(
         _id: string,
-        passwordExpired: Date
+        passwordExpired: Date,
+        options?: IDatabaseOptions
     ): Promise<UserDocument> {
-        const auth: UserDocument = await this.userModel.findById(_id);
-        auth.passwordExpired = passwordExpired;
+        const update: UserPasswordExpiredDto = {
+            passwordExpired: passwordExpired,
+        };
 
-        return auth.save();
+        return this.userRepository.updateOneById(_id, update, options);
     }
 
-    async inactive(_id: string): Promise<UserDocument> {
-        const user: UserDocument = await this.userModel.findById(_id);
+    async inactive(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserDocument> {
+        const update: UserActiveDto = {
+            isActive: false,
+        };
 
-        user.isActive = false;
-        return user.save();
+        return this.userRepository.updateOneById(_id, update, options);
     }
 
-    async active(_id: string): Promise<UserDocument> {
-        const user: UserDocument = await this.userModel.findById(_id);
+    async active(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserDocument> {
+        const update: UserActiveDto = {
+            isActive: true,
+        };
 
-        user.isActive = true;
-        return user.save();
+        return this.userRepository.updateOneById(_id, update, options);
     }
 
     async payloadSerialization(

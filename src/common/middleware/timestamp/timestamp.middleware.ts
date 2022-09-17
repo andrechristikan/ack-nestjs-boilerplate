@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Response, NextFunction } from 'express';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
-import { IRequestApp } from 'src/common/request/request.interface';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
 export class TimestampMiddleware implements NestMiddleware {

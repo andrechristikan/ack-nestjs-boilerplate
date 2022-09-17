@@ -6,19 +6,25 @@ import {
     NotFoundException,
     Post,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { Response } from 'src/common/response/decorators/response.decorator';
-import { IResponse } from 'src/common/response/response.interface';
+import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { RoleDocument } from 'src/modules/role/schemas/role.schema';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { ENUM_USER_STATUS_CODE_ERROR } from '../constants/user.status-code.constant';
-import { UserSignUpDto } from '../dtos/user.sign-up.dto';
-import { UserPayloadSerialization } from '../serializations/user.payload.serialization';
-import { UserService } from '../services/user.service';
-import { IUserCheckExist, IUserDocument } from '../user.interface';
+import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
+import { UserSignUpDto } from 'src/modules/user/dtos/user.sign-up.dto';
+import {
+    IUserCheckExist,
+    IUserDocument,
+} from 'src/modules/user/interfaces/user.interface';
+import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
+import { UserService } from 'src/modules/user/services/user.service';
 
+@ApiTags('user')
 @Controller({
     version: '1',
     path: '/user',
@@ -31,6 +37,7 @@ export class UserPublicController {
     ) {}
 
     @Response('auth.signUp')
+    @AuthApiKey()
     @Post('/sign-up')
     async signUp(
         @Body()
@@ -89,10 +96,7 @@ export class UserPublicController {
 
             const user: IUserDocument =
                 await this.userService.findOneById<IUserDocument>(create._id, {
-                    populate: {
-                        role: true,
-                        permission: true,
-                    },
+                    populate: true,
                 });
 
             const payload: UserPayloadSerialization =

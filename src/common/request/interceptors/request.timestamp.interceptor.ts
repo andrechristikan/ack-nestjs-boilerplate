@@ -10,9 +10,9 @@ import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
-import { REQUEST_EXCLUDE_TIMESTAMP_META_KEY } from '../constants/request.constant';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from '../constants/request.status-code.constant';
-import { IRequestApp } from '../request.interface';
+import { REQUEST_EXCLUDE_TIMESTAMP_META_KEY } from 'src/common/request/constants/request.constant';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
 export class RequestTimestampInterceptor

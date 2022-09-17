@@ -8,11 +8,12 @@ import {
     AuthApiSchema,
 } from 'src/common/auth/schemas/auth.api.schema';
 import { faker } from '@faker-js/faker';
-import { IAuthApi } from 'src/common/auth/auth.interface';
 import { Types } from 'mongoose';
-import { DeleteResult } from 'mongodb';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { IAuthApi } from 'src/common/auth/interfaces/auth.interface';
+import { AuthApiRepository } from 'src/common/auth/repositories/auth.api.repository';
+import { AuthApiBulkRepository } from 'src/common/auth/repositories/auth.api.bulk.repository';
 
 describe('AuthApiBulkService', () => {
     let authApiBulkService: AuthApiBulkService;
@@ -37,7 +38,12 @@ describe('AuthApiBulkService', () => {
                     DATABASE_CONNECTION_NAME
                 ),
             ],
-            providers: [AuthApiBulkService, AuthApiService],
+            providers: [
+                AuthApiBulkService,
+                AuthApiService,
+                AuthApiRepository,
+                AuthApiBulkRepository,
+            ],
         }).compile();
 
         authApiBulkService =
@@ -56,10 +62,7 @@ describe('AuthApiBulkService', () => {
 
     describe('deleteMany', () => {
         it('should return an success', async () => {
-            const result: DeleteResult = {
-                acknowledged: true,
-                deletedCount: 1,
-            };
+            const result = true;
             jest.spyOn(authApiBulkService, 'deleteMany').mockImplementation(
                 async () => result
             );

@@ -1,10 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { CommonModule } from 'src/common/common.module';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import {
-    IAuthApi,
-    IAuthApiRequestHashedData,
-} from 'src/common/auth/auth.interface';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
     AuthApiDatabaseName,
@@ -16,6 +12,11 @@ import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database
 import { faker } from '@faker-js/faker';
 import { Types } from 'mongoose';
 import { AuthApiBulkService } from 'src/common/auth/services/auth.api.bulk.service';
+import {
+    IAuthApi,
+    IAuthApiRequestHashedData,
+} from 'src/common/auth/interfaces/auth.interface';
+import { AuthApiRepository } from 'src/common/auth/repositories/auth.api.repository';
 
 describe('AuthApiService', () => {
     let authApiService: AuthApiService;
@@ -39,7 +40,7 @@ describe('AuthApiService', () => {
                     DATABASE_CONNECTION_NAME
                 ),
             ],
-            providers: [AuthApiService],
+            providers: [AuthApiService, AuthApiRepository],
         }).compile();
 
         authApiService = moduleRef.get<AuthApiService>(AuthApiService);
@@ -175,12 +176,17 @@ describe('AuthApiService', () => {
 
     describe('findAll', () => {
         it('should return an success', async () => {
-            const result: AuthApiDocument[] = await authApiService.findAll({});
+            const result: AuthApiDocument[] = await authApiService.findAll(
+                {},
+                { limit: 1, skip: 1 }
+            );
             jest.spyOn(authApiService, 'findAll').mockImplementation(
                 async () => result
             );
 
-            expect(await authApiService.findAll({})).toBe(result);
+            expect(
+                await authApiService.findAll({}, { limit: 1, skip: 1 })
+            ).toBe(result);
         });
 
         it('should return an success with limit and offset', async () => {

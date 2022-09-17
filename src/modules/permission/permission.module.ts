@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { PermissionBulkRepository } from './repositories/permission.bulk.repository';
+import { PermissionRepository } from './repositories/permission.repository';
 import {
     PermissionDatabaseName,
     PermissionEntity,
@@ -11,7 +13,12 @@ import { PermissionService } from './services/permission.service';
 
 @Module({
     controllers: [],
-    providers: [PermissionService, PermissionBulkService],
+    providers: [
+        PermissionService,
+        PermissionBulkService,
+        PermissionRepository,
+        PermissionBulkRepository,
+    ],
     exports: [PermissionService, PermissionBulkService],
     imports: [
         MongooseModule.forFeature(

@@ -5,9 +5,12 @@ import {
 } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
 import { ConfigService } from '@nestjs/config';
+import { IDatabaseOptionsService } from 'src/common/database/interfaces/database.options-service.interface';
 
 @Injectable()
-export class DatabaseOptionsService implements MongooseOptionsFactory {
+export class DatabaseOptionsService
+    implements MongooseOptionsFactory, IDatabaseOptionsService
+{
     private readonly host: string;
     private readonly database: string;
     private readonly user: string;

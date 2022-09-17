@@ -8,28 +8,28 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
-import { IResponse } from '../response.interface';
-import { IRequestApp } from 'src/common/request/request.interface';
-import { IMessageOptionsProperties } from 'src/common/message/message.interface';
 import { MessageService } from 'src/common/message/services/message.service';
 import { Reflector } from '@nestjs/core';
-import {
-    RESPONSE_MESSAGE_PATH_META_KEY,
-    RESPONSE_SERIALIZATION_META_KEY,
-    RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
-    RESPONSE_MESSAGE_PROPERTIES_META_KEY,
-} from '../constants/response.constant';
 import {
     ClassConstructor,
     ClassTransformOptions,
     plainToInstance,
 } from 'class-transformer';
-import { ResponseDefaultDto } from '../dtos/response.default.dto';
-import { IErrorHttpFilterMetadata } from 'src/common/error/error.interface';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+import { IMessageOptionsProperties } from 'src/common/message/interfaces/message.interface';
+import { IErrorHttpFilterMetadata } from 'src/common/error/interfaces/error.interface';
+import { ResponseDefaultSerialization } from 'src/common/response/serializations/response.default.serialization';
+import {
+    RESPONSE_MESSAGE_PATH_META_KEY,
+    RESPONSE_MESSAGE_PROPERTIES_META_KEY,
+    RESPONSE_SERIALIZATION_META_KEY,
+    RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
+} from 'src/common/response/constants/response.constant';
+import { IResponse } from 'src/common/response/interfaces/response.interface';
 
 @Injectable()
-export class ResponseDefaultInterceptor
-    implements NestInterceptor<Promise<any>>
+export class ResponseDefaultInterceptor<T>
+    implements NestInterceptor<Promise<T>>
 {
     constructor(
         private readonly reflector: Reflector,
@@ -39,7 +39,7 @@ export class ResponseDefaultInterceptor
     async intercept(
         context: ExecutionContext,
         next: CallHandler
-    ): Promise<Observable<Promise<ResponseDefaultDto>>> {
+    ): Promise<Observable<Promise<ResponseDefaultSerialization>>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
                 map(async (responseData: Promise<Record<string, any>>) => {

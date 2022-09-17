@@ -1,4 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
@@ -8,19 +10,28 @@ import {
 import {
     IResponse,
     IResponsePaging,
-} from 'src/common/response/response.interface';
-import { GetSetting } from '../decorators/setting.decorator';
+} from 'src/common/response/interfaces/response.interface';
+import {
+    SettingDocParamsGet,
+    SettingDocParamsGetByName,
+} from 'src/common/setting/constants/setting.doc.constant';
+import {
+    SETTING_DEFAULT_AVAILABLE_SEARCH,
+    SETTING_DEFAULT_AVAILABLE_SORT,
+} from 'src/common/setting/constants/setting.list.constant';
+import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
 import {
     SettingGetByNameGuard,
     SettingGetGuard,
-} from '../decorators/setting.public.decorator';
-import { SettingListDto } from '../dtos/setting.list.dto';
-import { SettingRequestDto } from '../dtos/setting.request.dto';
-import { SettingDocument } from '../schemas/setting.schema';
-import { SettingGetSerialization } from '../serializations/setting.get.serialization';
-import { SettingListSerialization } from '../serializations/setting.list.serialization';
-import { SettingService } from '../services/setting.service';
+} from 'src/common/setting/decorators/setting.public.decorator';
+import { SettingListDto } from 'src/common/setting/dtos/setting.list.dto';
+import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
+import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
+import { SettingGetSerialization } from 'src/common/setting/serializations/setting.get.serialization';
+import { SettingListSerialization } from 'src/common/setting/serializations/setting.list.serialization';
+import { SettingService } from 'src/common/setting/services/setting.service';
 
+@ApiTags('setting')
 @Controller({
     version: '1',
     path: '/setting',
@@ -33,7 +44,12 @@ export class SettingController {
 
     @ResponsePaging('setting.list', {
         classSerialization: SettingListSerialization,
+        doc: {
+            availableSearch: SETTING_DEFAULT_AVAILABLE_SEARCH,
+            availableSort: SETTING_DEFAULT_AVAILABLE_SORT,
+        },
     })
+    @AuthApiKey()
     @Get('/list')
     async list(
         @Query()
@@ -78,9 +94,13 @@ export class SettingController {
 
     @Response('setting.get', {
         classSerialization: SettingGetSerialization,
+        doc: {
+            params: SettingDocParamsGet,
+        },
     })
     @SettingGetGuard()
     @RequestParamGuard(SettingRequestDto)
+    @AuthApiKey()
     @Get('get/:setting')
     async get(@GetSetting() setting: SettingDocument): Promise<IResponse> {
         return setting;
@@ -88,8 +108,12 @@ export class SettingController {
 
     @Response('setting.getByName', {
         classSerialization: SettingGetSerialization,
+        doc: {
+            params: SettingDocParamsGetByName,
+        },
     })
     @SettingGetByNameGuard()
+    @AuthApiKey()
     @Get('get/name/:settingName')
     async getByName(
         @GetSetting() setting: SettingDocument

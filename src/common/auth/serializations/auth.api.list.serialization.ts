@@ -1,4 +1,4 @@
-import { PickType } from '@nestjs/mapped-types';
+import { PickType } from '@nestjs/swagger';
 import { AuthApiGetSerialization } from './auth.api.get.serialization';
 
 export class AuthApiListSerialization extends PickType(

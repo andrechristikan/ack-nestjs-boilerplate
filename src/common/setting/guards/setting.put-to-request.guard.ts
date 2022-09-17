@@ -1,6 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import { SettingDocument } from '../schemas/setting.schema';
-import { SettingService } from '../services/setting.service';
+import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
+import { SettingService } from 'src/common/setting/services/setting.service';
 
 @Injectable()
 export class SettingPutToRequestGuard implements CanActivate {

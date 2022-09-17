@@ -52,6 +52,12 @@ export class MiddlewareModule implements NestModule {
             )
             .forRoutes('*');
 
+        // route whitelist for multipart
+        // consumer.apply(RawBodyParserMultipartMiddleware).forRoutes({
+        //     path: 'api/v:version*/user/login',
+        //     method: RequestMethod.POST,
+        // });
+
         consumer
             .apply(MaintenanceMiddleware)
             .exclude(

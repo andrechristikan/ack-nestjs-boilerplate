@@ -5,8 +5,8 @@ import {
     BadRequestException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PERMISSION_ACTIVE_META_KEY } from '../constants/permission.constant';
-import { ENUM_PERMISSION_STATUS_CODE_ERROR } from '../constants/permission.status-code.constant';
+import { PERMISSION_ACTIVE_META_KEY } from 'src/modules/permission/constants/permission.constant';
+import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/constants/permission.status-code.constant';
 
 @Injectable()
 export class PermissionActiveGuard implements CanActivate {

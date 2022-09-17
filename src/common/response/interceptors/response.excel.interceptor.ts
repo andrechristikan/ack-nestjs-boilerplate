@@ -8,18 +8,18 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
-import { IResponseExcel } from '../response.interface';
 import { HelperFileService } from 'src/common/helper/services/helper.file.service';
 import {
     ClassConstructor,
     ClassTransformOptions,
     plainToInstance,
 } from 'class-transformer';
+import { Reflector } from '@nestjs/core';
+import { IResponseExcel } from 'src/common/response/interfaces/response.interface';
 import {
     RESPONSE_SERIALIZATION_META_KEY,
     RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
-} from '../constants/response.constant';
-import { Reflector } from '@nestjs/core';
+} from 'src/common/response/constants/response.constant';
 
 @Injectable()
 export class ResponseExcelInterceptor implements NestInterceptor<Promise<any>> {

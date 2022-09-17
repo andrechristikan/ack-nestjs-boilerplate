@@ -7,7 +7,9 @@ import {
     Put,
     Query,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
+import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
@@ -19,22 +21,23 @@ import {
 import {
     IResponse,
     IResponsePaging,
-} from 'src/common/response/response.interface';
+} from 'src/common/response/interfaces/response.interface';
 import {
     PermissionGetGuard,
     PermissionUpdateActiveGuard,
     PermissionUpdateGuard,
     PermissionUpdateInactiveGuard,
-} from '../decorators/permission.admin.decorator';
-import { GetPermission } from '../decorators/permission.decorator';
-import { PermissionListDto } from '../dtos/permission.list.dto';
-import { PermissionUpdateDto } from '../dtos/permission.update.dto';
-import { PermissionRequestDto } from '../dtos/permissions.request.dto';
-import { PermissionDocument } from '../schemas/permission.schema';
-import { PermissionGetSerialization } from '../serializations/permission.get.serialization';
-import { PermissionListSerialization } from '../serializations/permission.list.serialization';
-import { PermissionService } from '../services/permission.service';
+} from 'src/modules/permission/decorators/permission.admin.decorator';
+import { GetPermission } from 'src/modules/permission/decorators/permission.decorator';
+import { PermissionListDto } from 'src/modules/permission/dtos/permission.list.dto';
+import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
+import { PermissionRequestDto } from 'src/modules/permission/dtos/permissions.request.dto';
+import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
+import { PermissionGetSerialization } from 'src/modules/permission/serializations/permission.get.serialization';
+import { PermissionListSerialization } from 'src/modules/permission/serializations/permission.list.serialization';
+import { PermissionService } from 'src/modules/permission/services/permission.service';
 
+@ApiTags('permission')
 @Controller({
     version: '1',
     path: '/permission',
@@ -49,6 +52,7 @@ export class PermissionAdminController {
         classSerialization: PermissionListSerialization,
     })
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
+    @AuthApiKey()
     @Get('/list')
     async list(
         @Query()
@@ -100,6 +104,7 @@ export class PermissionAdminController {
     @PermissionGetGuard()
     @RequestParamGuard(PermissionRequestDto)
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
+    @AuthApiKey()
     @Get('/get/:permission')
     async get(
         @GetPermission() permission: PermissionDocument
@@ -114,6 +119,7 @@ export class PermissionAdminController {
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
+    @AuthApiKey()
     @Put('/update/:permission')
     async update(
         @GetPermission() permission: PermissionDocument,
@@ -141,6 +147,7 @@ export class PermissionAdminController {
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
+    @AuthApiKey()
     @Patch('/update/:permission/inactive')
     async inactive(
         @GetPermission() permission: PermissionDocument
@@ -165,6 +172,7 @@ export class PermissionAdminController {
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
+    @AuthApiKey()
     @Patch('/update/:permission/active')
     async active(
         @GetPermission() permission: PermissionDocument

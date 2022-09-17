@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { DebuggerOptionService } from './services/debugger.option.service';
+import { DebuggerOptionService } from 'src/common/debugger/services/debugger.options.service';
 import { DebuggerService } from './services/debugger.service';
 
 @Module({

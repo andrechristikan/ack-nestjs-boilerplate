@@ -1,13 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import {
+    IAuthPassword,
+    IAuthPayloadOptions,
+    IAuthRefreshTokenOptions,
+} from 'src/common/auth/interfaces/auth.interface';
+import { IAuthService } from 'src/common/auth/interfaces/auth.service.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
-import { IAuthRefreshTokenOptions } from '../auth.interface';
-import { IAuthPassword, IAuthPayloadOptions } from '../auth.interface';
 
 @Injectable()
-export class AuthService {
+export class AuthService implements IAuthService {
     private readonly accessTokenSecretToken: string;
     private readonly accessTokenExpirationTime: number;
     private readonly accessTokenNotBeforeExpirationTime: number;
@@ -57,9 +61,9 @@ export class AuthService {
         this.prefixAuthorization = this.configService.get<string>(
             'auth.jwt.prefixAuthorization'
         );
+        this.subject = this.configService.get<string>('auth.jwt.subject');
         this.audience = this.configService.get<string>('auth.jwt.audience');
         this.issuer = this.configService.get<string>('auth.jwt.issuer');
-        this.subject = this.configService.get<string>('app.name');
     }
 
     async createAccessToken(payload: Record<string, any>): Promise<string> {
@@ -210,5 +214,9 @@ export class AuthService {
 
     async getAudience(): Promise<string> {
         return this.audience;
+    }
+
+    async getSubject(): Promise<string> {
+        return this.subject;
     }
 }

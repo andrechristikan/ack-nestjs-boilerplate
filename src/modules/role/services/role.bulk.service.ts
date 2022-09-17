@@ -1,29 +1,24 @@
 import { Injectable } from '@nestjs/common';
-import { Model, Types } from 'mongoose';
-import { DeleteResult } from 'mongodb';
-import { RoleDocument, RoleEntity } from '../schemas/role.schema';
-import { RoleCreateDto } from '../dtos/role.create.dto';
-import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+import { IDatabaseOptions } from 'src/common/database/interfaces/database.interface';
+import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
+import { IRoleBulkService } from 'src/modules/role/interfaces/role.bulk-service.interface';
+import { RoleBulkRepository } from 'src/modules/role/repositories/role.bulk.repository';
 
 @Injectable()
-export class RoleBulkService {
-    constructor(
-        @DatabaseEntity(RoleEntity.name)
-        private readonly roleModel: Model<RoleDocument>
-    ) {}
+export class RoleBulkService implements IRoleBulkService {
+    constructor(private readonly roleBulkRepository: RoleBulkRepository) {}
 
-    async deleteMany(find: Record<string, any>): Promise<DeleteResult> {
-        return await this.roleModel.deleteMany(find);
+    async deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<boolean> {
+        return this.roleBulkRepository.deleteMany(find, options);
     }
 
-    async createMany(data: RoleCreateDto[]): Promise<RoleDocument[]> {
-        return this.roleModel.insertMany(
-            data.map(({ name, permissions, accessFor }) => ({
-                name,
-                isActive: true,
-                accessFor,
-                permissions: permissions.map((val) => new Types.ObjectId(val)),
-            }))
-        );
+    async createMany(
+        data: RoleCreateDto[],
+        options?: IDatabaseOptions
+    ): Promise<boolean> {
+        return this.roleBulkRepository.createMany<RoleCreateDto>(data, options);
     }
 }

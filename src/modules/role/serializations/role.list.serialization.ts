@@ -1,4 +1,4 @@
-import { OmitType } from '@nestjs/mapped-types';
+import { OmitType } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import { Types } from 'mongoose';
 import { RoleGetSerialization } from './role.get.serialization';

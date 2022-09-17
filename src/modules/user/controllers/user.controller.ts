@@ -12,40 +12,43 @@ import {
     Post,
     UploadedFile,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { Token, User } from 'src/common/auth/decorators/auth.decorator';
 import {
     AuthJwtGuard,
     AuthRefreshJwtGuard,
 } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { IAwsS3 } from 'src/common/aws/aws.interface';
+import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { AwsS3Service } from 'src/common/aws/services/aws.s3.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { UploadFileSingle } from 'src/common/file/decorators/file.decorator';
-import { IFile } from 'src/common/file/file.interface';
+import { IFile } from 'src/common/file/interfaces/file.interface';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
 import { FileSizeImagePipe } from 'src/common/file/pipes/file.size.pipe';
 import { FileTypeImagePipe } from 'src/common/file/pipes/file.type.pipe';
 import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.enum.constant';
 import { Logger } from 'src/common/logger/decorators/logger.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
-import { IResponse } from 'src/common/response/response.interface';
+import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import {
     ENUM_USER_STATUS_CODE_ERROR,
     ENUM_USER_STATUS_CODE_SUCCESS,
-} from '../constants/user.status-code.constant';
-import { GetUser } from '../decorators/user.decorator';
-import { UserProfileGuard } from '../decorators/user.public.decorator';
-import { UserChangePasswordDto } from '../dtos/user.change-password.dto';
-import { UserLoginDto } from '../dtos/user.login.dto';
-import { UserDocument } from '../schemas/user.schema';
-import { UserLoginSerialization } from '../serializations/user.login.serialization';
-import { UserPayloadSerialization } from '../serializations/user.payload.serialization';
-import { UserProfileSerialization } from '../serializations/user.profile.serialization';
-import { UserService } from '../services/user.service';
-import { IUserDocument } from '../user.interface';
+} from 'src/modules/user/constants/user.status-code.constant';
+import { GetUser } from 'src/modules/user/decorators/user.decorator';
+import { UserProfileGuard } from 'src/modules/user/decorators/user.public.decorator';
+import { UserChangePasswordDto } from 'src/modules/user/dtos/user.change-password.dto';
+import { UserLoginDto } from 'src/modules/user/dtos/user.login.dto';
+import { IUserDocument } from 'src/modules/user/interfaces/user.interface';
+import { UserDocument } from 'src/modules/user/schemas/user.schema';
+import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
+import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
+import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
+import { UserService } from 'src/modules/user/services/user.service';
 
+@ApiTags('user')
 @Controller({
     version: '1',
     path: '/user',
@@ -62,6 +65,7 @@ export class UserController {
     })
     @UserProfileGuard()
     @AuthJwtGuard()
+    @AuthApiKey()
     @Get('/profile')
     async profile(@GetUser() user: IUserDocument): Promise<IResponse> {
         return user;
@@ -70,6 +74,7 @@ export class UserController {
     @Response('user.upload')
     @UserProfileGuard()
     @AuthJwtGuard()
+    @AuthApiKey()
     @UploadFileSingle('file')
     @HttpCode(HttpStatus.OK)
     @Post('/profile/upload')
@@ -87,13 +92,14 @@ export class UserController {
         const path = await this.userService.createRandomFilename();
 
         try {
-            const aws: IAwsS3 = await this.awsService.putItemInBucket(
-                `${path.filename}.${mime}`,
-                content,
-                {
-                    path: `${path.path}/${user._id}`,
-                }
-            );
+            const aws: AwsS3Serialization =
+                await this.awsService.putItemInBucket(
+                    `${path.filename}.${mime}`,
+                    content,
+                    {
+                        path: `${path.path}/${user._id}`,
+                    }
+                );
 
             await this.userService.updatePhoto(user._id, aws);
         } catch (err: any) {
@@ -174,10 +180,7 @@ export class UserController {
                     email: body.email,
                 },
                 {
-                    populate: {
-                        role: true,
-                        permission: true,
-                    },
+                    populate: true,
                 }
             );
 
@@ -281,10 +284,7 @@ export class UserController {
     ): Promise<IResponse> {
         const user: IUserDocument =
             await this.userService.findOneById<IUserDocument>(_id, {
-                populate: {
-                    role: true,
-                    permission: true,
-                },
+                populate: true,
             });
 
         if (!user) {

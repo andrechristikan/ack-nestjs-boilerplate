@@ -14,12 +14,12 @@ import { UserDocument } from 'src/modules/user/schemas/user.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
 import { RoleDocument } from 'src/modules/role/schemas/role.schema';
-import { IUserDocument } from 'src/modules/user/user.interface';
 import { plainToInstance } from 'class-transformer';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { E2E_USER_REFRESH_URL } from './user.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
+import { IUserDocument } from 'src/modules/user/interfaces/user.interface';
 
 describe('E2E User Refresh', () => {
     let app: INestApplication;
@@ -89,10 +89,7 @@ describe('E2E User Refresh', () => {
         const userPopulate = await userService.findOneById<IUserDocument>(
             user._id,
             {
-                populate: {
-                    role: true,
-                    permission: true,
-                },
+                populate: true,
             }
         );
 

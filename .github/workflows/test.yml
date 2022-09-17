@@ -47,6 +47,8 @@ jobs:
           echo APP_DEBUG="false" >> .env
           echo APP_VERSIONING="true" >> .env
           echo APP_VERSION="1" >> .env
+          echo APP_DOC_NAME="ACK APIs Spec" >> .env
+          echo APP_DOC_VERSION="1" >> .env
           echo APP_HTTP_ON="true" >> .env
           echo APP_JOB_ON="true" >> .env
           echo DATABASE_HOST="mongodb://localhost:27017" >> .env
@@ -57,6 +59,7 @@ jobs:
           echo DATABASE_OPTIONS="replicaSet=test-rs" >> .env
           echo MIDDLEWARE_TOLERANCE_TIMESTAMP="5m" >> .env
           echo MIDDLEWARE_TIMEOUT="30s" >> .env
+          echo AUTH_JWT_SUBJECT="AckDevelopment" >> .env
           echo AUTH_JWT_AUDIENCE="https://example.com" >> .env
           echo AUTH_JWT_ISSUER="ack" >> .env
           echo AUTH_JWT_ACCESS_TOKEN_SECRET_KEY="123456" >> .env

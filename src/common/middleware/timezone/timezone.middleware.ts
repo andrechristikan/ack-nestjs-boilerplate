@@ -2,8 +2,7 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Response, NextFunction } from 'express';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { IRequestApp } from 'src/common/request/request.interface';
-
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 @Injectable()
 export class TimezoneMiddleware implements NestMiddleware {
     constructor(

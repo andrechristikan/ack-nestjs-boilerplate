@@ -1,6 +1,7 @@
 import { registerAs } from '@nestjs/config';
 import ms from 'ms';
 import { version } from 'package.json';
+import { AppLanguage } from 'src/app/constants/app.constant';
 
 export default registerAs(
     'app',
@@ -8,7 +9,7 @@ export default registerAs(
         name: process.env.APP_NAME || 'ack',
         env: process.env.APP_ENV || 'development',
         mode: process.env.APP_MODE || 'simple',
-        language: process.env.APP_LANGUAGE || 'en',
+        language: process.env.APP_LANGUAGE || AppLanguage,
         timezone: process.env.APP_TZ || 'Asia/Jakarta',
 
         version: process.env.APP_VERSION || '1',

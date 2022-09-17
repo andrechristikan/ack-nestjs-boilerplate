@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { CommonModule } from 'src/common/common.module';
-import { DebuggerOptionService } from 'src/common/debugger/services/debugger.option.service';
+import { DebuggerOptionService } from 'src/common/debugger/services/debugger.options.service';
 
 describe('DebuggerOptionService', () => {
     let debuggerOptionService: DebuggerOptionService;

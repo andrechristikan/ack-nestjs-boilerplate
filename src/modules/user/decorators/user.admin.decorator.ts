@@ -1,8 +1,8 @@
 import { applyDecorators, SetMetadata, UseGuards } from '@nestjs/common';
-import { USER_ACTIVE_META_KEY } from '../constants/user.constant';
-import { UserActiveGuard } from '../guards/user.active.guard';
-import { UserNotFoundGuard } from '../guards/user.not-found.guard';
-import { UserPutToRequestGuard } from '../guards/user.put-to-request.guard';
+import { USER_ACTIVE_META_KEY } from 'src/modules/user/constants/user.constant';
+import { UserActiveGuard } from 'src/modules/user/guards/user.active.guard';
+import { UserNotFoundGuard } from 'src/modules/user/guards/user.not-found.guard';
+import { UserPutToRequestGuard } from 'src/modules/user/guards/user.put-to-request.guard';
 
 export function UserGetGuard(): any {
     return applyDecorators(UseGuards(UserPutToRequestGuard, UserNotFoundGuard));

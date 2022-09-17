@@ -2,15 +2,24 @@ import {
     PipeTransform,
     Injectable,
     UnprocessableEntityException,
+    Scope,
+    Inject,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { REQUEST } from '@nestjs/core';
+import { Request } from 'express';
+import { IFile } from 'src/common/file/interfaces/file.interface';
 import { ENUM_FILE_STATUS_CODE_ERROR } from '../constants/file.status-code.constant';
-import { IFile } from '../file.interface';
 
 // only for multiple upload
-@Injectable()
+
+@Injectable({ scope: Scope.REQUEST })
 export class FileMaxFilesImagePipe implements PipeTransform {
-    constructor(private readonly configService: ConfigService) {}
+    constructor(
+        @Inject(REQUEST)
+        private readonly request: Request & { __customMaxFiles: number },
+        private readonly configService: ConfigService
+    ) {}
 
     async transform(value: IFile[]): Promise<IFile[]> {
         if (!value) {
@@ -23,7 +32,9 @@ export class FileMaxFilesImagePipe implements PipeTransform {
     }
 
     async validate(value: IFile[]): Promise<void> {
-        const maxFiles = this.configService.get<number>('file.image.maxFiles');
+        const maxFiles =
+            this.request.__customMaxFiles ||
+            this.configService.get<number>('file.image.maxFiles');
 
         if (value.length > maxFiles) {
             throw new UnprocessableEntityException({
@@ -36,9 +47,13 @@ export class FileMaxFilesImagePipe implements PipeTransform {
     }
 }
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class FileMaxFilesExcelPipe implements PipeTransform {
-    constructor(private readonly configService: ConfigService) {}
+    constructor(
+        @Inject(REQUEST)
+        private readonly request: Request & { __customMaxFiles: number },
+        private readonly configService: ConfigService
+    ) {}
 
     async transform(value: IFile[]): Promise<IFile[]> {
         await this.validate(value);
@@ -47,7 +62,9 @@ export class FileMaxFilesExcelPipe implements PipeTransform {
     }
 
     async validate(value: IFile[]): Promise<void> {
-        const maxFiles = this.configService.get<number>('file.excel.maxFiles');
+        const maxFiles =
+            this.request.__customMaxFiles ||
+            this.configService.get<number>('file.excel.maxFiles');
 
         if (value.length > maxFiles) {
             throw new UnprocessableEntityException({
@@ -60,9 +77,13 @@ export class FileMaxFilesExcelPipe implements PipeTransform {
     }
 }
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class FileMaxFilesVideoPipe implements PipeTransform {
-    constructor(private readonly configService: ConfigService) {}
+    constructor(
+        @Inject(REQUEST)
+        private readonly request: Request & { __customMaxFiles: number },
+        private readonly configService: ConfigService
+    ) {}
 
     async transform(value: IFile[]): Promise<IFile[]> {
         await this.validate(value);
@@ -71,7 +92,9 @@ export class FileMaxFilesVideoPipe implements PipeTransform {
     }
 
     async validate(value: IFile[]): Promise<void> {
-        const maxFiles = this.configService.get<number>('file.video.maxFiles');
+        const maxFiles =
+            this.request.__customMaxFiles ||
+            this.configService.get<number>('file.video.maxFiles');
 
         if (value.length > maxFiles) {
             throw new UnprocessableEntityException({
@@ -84,9 +107,13 @@ export class FileMaxFilesVideoPipe implements PipeTransform {
     }
 }
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class FileMaxFilesAudioPipe implements PipeTransform {
-    constructor(private readonly configService: ConfigService) {}
+    constructor(
+        @Inject(REQUEST)
+        private readonly request: Request & { __customMaxFiles: number },
+        private readonly configService: ConfigService
+    ) {}
 
     async transform(value: IFile[]): Promise<IFile[]> {
         await this.validate(value);
@@ -95,7 +122,9 @@ export class FileMaxFilesAudioPipe implements PipeTransform {
     }
 
     async validate(value: IFile[]): Promise<void> {
-        const maxFiles = this.configService.get<number>('file.audio.maxFiles');
+        const maxFiles =
+            this.request.__customMaxFiles ||
+            this.configService.get<number>('file.audio.maxFiles');
 
         if (value.length > maxFiles) {
             throw new UnprocessableEntityException({

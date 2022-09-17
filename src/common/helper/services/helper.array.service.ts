@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import _ from 'lodash';
+import { IHelperArrayService } from 'src/common/helper/interfaces/helper.array-service.interface';
 
 @Injectable()
-export class HelperArrayService {
+export class HelperArrayService implements IHelperArrayService {
     getLeftByIndex<T>(array: T[], index: number): T {
         return _.nth(array, index);
     }

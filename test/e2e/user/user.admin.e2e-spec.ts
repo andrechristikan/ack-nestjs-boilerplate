@@ -23,12 +23,12 @@ import { UserDocument } from 'src/modules/user/schemas/user.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
 import { RoleDocument } from 'src/modules/role/schemas/role.schema';
-import { IUserDocument } from 'src/modules/user/user.interface';
 import { plainToInstance } from 'class-transformer';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
+import { IUserDocument } from 'src/modules/user/interfaces/user.interface';
 
 describe('E2E User Admin', () => {
     let app: INestApplication;
@@ -106,10 +106,7 @@ describe('E2E User Admin', () => {
                 email: 'admin@mail.com',
             },
             {
-                populate: {
-                    role: true,
-                    permission: true,
-                },
+                populate: true,
             }
         );
 

@@ -11,9 +11,6 @@ import {
     IsString,
     IsObject,
 } from 'class-validator';
-import { RequestAddDatePipe } from 'src/common/request/pipes/request.add-date.pipe';
-import { MinGreaterThan } from 'src/common/request/validations/request.min-greater-than.validation';
-import { Skip } from 'src/common/request/validations/request.skip.validation';
 import {
     PAGINATION_AVAILABLE_SORT,
     PAGINATION_MAX_PAGE,
@@ -21,13 +18,16 @@ import {
     PAGINATION_PAGE,
     PAGINATION_PER_PAGE,
     PAGINATION_SORT,
-} from '../constants/pagination.constant';
-import { ENUM_PAGINATION_AVAILABLE_SORT_TYPE } from '../constants/pagination.enum.constant';
+} from 'src/common/pagination/constants/pagination.constant';
+import { ENUM_PAGINATION_AVAILABLE_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import {
     IPaginationFilterDateOptions,
     IPaginationFilterOptions,
     IPaginationFilterStringOptions,
-} from '../pagination.interface';
+} from 'src/common/pagination/interfaces/pagination.interface';
+import { RequestAddDatePipe } from 'src/common/request/pipes/request.add-date.pipe';
+import { MinGreaterThan } from 'src/common/request/validations/request.min-greater-than.validation';
+import { Skip } from 'src/common/request/validations/request.skip.validation';
 
 export function PaginationSearch(availableSearch: string[]): any {
     return applyDecorators(

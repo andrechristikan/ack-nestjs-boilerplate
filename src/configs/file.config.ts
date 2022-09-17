@@ -17,8 +17,11 @@ export default registerAs(
             maxFiles: 1, // 1 files
         },
         video: {
-            maxFileSize: bytes('25mb'), // 25mb
+            maxFileSize: bytes('50mb'), // 50mb
             maxFiles: 1, // 1 files
+        },
+        multipart: {
+            maxFileSize: bytes('20mb'), // 20mb
         },
     })
 );

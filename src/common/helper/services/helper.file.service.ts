@@ -1,15 +1,17 @@
 /* istanbul ignore file */
 
 import { Injectable } from '@nestjs/common';
-import { IHelperFileExcelRows } from '../helper.interface';
+import bytes from 'bytes';
+import { IHelperFileService } from 'src/common/helper/interfaces/helper.file-service.interface';
+import { IHelperFileExcelRows } from 'src/common/helper/interfaces/helper.interface';
 import XLSX from 'xlsx';
 
 @Injectable()
-export class HelperFileService {
-    async writeExcel(
+export class HelperFileService implements IHelperFileService {
+    writeExcel(
         rows: IHelperFileExcelRows[],
         options?: Record<string, any>
-    ): Promise<Buffer> {
+    ): Buffer {
         // headers
         const headers = Object.keys(rows[0]);
 
@@ -35,7 +37,7 @@ export class HelperFileService {
         return buff;
     }
 
-    async readExcel(file: Buffer): Promise<IHelperFileExcelRows[]> {
+    readExcel(file: Buffer): IHelperFileExcelRows[] {
         // workbook
         const workbook = XLSX.read(file);
 
@@ -48,5 +50,9 @@ export class HelperFileService {
             XLSX.utils.sheet_to_json(worksheet);
 
         return rows;
+    }
+
+    convertToBytes(megabytes: string): number {
+        return bytes(megabytes);
     }
 }
