@@ -52,7 +52,7 @@ export class PermissionService implements IPermissionService {
     ): Promise<PermissionDocument> {
         const create: PermissionEntity = {
             ...data,
-            isActive: data.isActive || false,
+            isActive: true,
         };
 
         return this.permissionRepository.create<PermissionEntity>(

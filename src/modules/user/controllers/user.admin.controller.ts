@@ -11,6 +11,7 @@ import {
     Patch,
     NotFoundException,
     UploadedFile,
+    HttpStatus,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
@@ -35,8 +36,10 @@ import {
     IResponse,
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
+import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
+import { UserDocParamsGet } from 'src/modules/user/constants/user.doc.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import {
     UserDeleteGuard,
@@ -56,10 +59,11 @@ import {
     IUserDocument,
 } from 'src/modules/user/interfaces/user.interface';
 import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
+import { UserImportSerialization } from 'src/modules/user/serializations/user.import.serialization';
 import { UserListSerialization } from 'src/modules/user/serializations/user.list.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
 
-@ApiTags('user')
+@ApiTags('admin.user')
 @Controller({
     version: '1',
     path: '/user',
@@ -118,6 +122,7 @@ export class UserAdminController {
 
     @Response('user.get', {
         classSerialization: UserGetSerialization,
+        doc: { params: UserDocParamsGet },
     })
     @UserGetGuard()
     @RequestParamGuard(UserRequestDto)
@@ -128,7 +133,9 @@ export class UserAdminController {
         return user;
     }
 
-    @Response('user.create')
+    @Response('user.create', {
+        classSerialization: ResponseIdSerialization,
+    })
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_CREATE
@@ -198,7 +205,7 @@ export class UserAdminController {
         }
     }
 
-    @Response('user.delete')
+    @Response('user.delete', { doc: { params: UserDocParamsGet } })
     @UserDeleteGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(
@@ -221,7 +228,10 @@ export class UserAdminController {
         return;
     }
 
-    @Response('user.update')
+    @Response('user.update', {
+        classSerialization: ResponseIdSerialization,
+        doc: { params: UserDocParamsGet },
+    })
     @UserUpdateGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(
@@ -250,7 +260,7 @@ export class UserAdminController {
         };
     }
 
-    @Response('user.inactive')
+    @Response('user.inactive', { doc: { params: UserDocParamsGet } })
     @UserUpdateInactiveGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(
@@ -273,7 +283,7 @@ export class UserAdminController {
         return;
     }
 
-    @Response('user.active')
+    @Response('user.active', { doc: { params: UserDocParamsGet } })
     @UserUpdateActiveGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(
@@ -296,7 +306,10 @@ export class UserAdminController {
         return;
     }
 
-    @Response('user.import')
+    @Response('user.import', {
+        classSerialization: UserImportSerialization,
+        doc: { httpStatus: HttpStatus.CREATED },
+    })
     @UploadFileSingle('file')
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.USER_READ,

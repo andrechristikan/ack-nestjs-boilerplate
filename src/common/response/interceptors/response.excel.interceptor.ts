@@ -62,7 +62,7 @@ export class ResponseExcelInterceptor implements NestInterceptor<Promise<any>> {
 
                     // create excel
                     const excel: Buffer =
-                        await this.helperFileService.writeExcel(serialization);
+                        this.helperFileService.writeExcel(serialization);
 
                     // set headers
                     responseExpress.setHeader(

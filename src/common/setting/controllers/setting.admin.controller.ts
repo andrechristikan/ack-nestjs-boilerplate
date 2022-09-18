@@ -21,7 +21,7 @@ import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
 import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
 import { SettingService } from 'src/common/setting/services/setting.service';
 
-@ApiTags('setting')
+@ApiTags('admin.setting')
 @Controller({
     version: '1',
     path: '/setting',

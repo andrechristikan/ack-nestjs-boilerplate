@@ -71,7 +71,6 @@ describe('E2E Permission Admin', () => {
         });
 
         permission = await permissionService.create({
-            isActive: true,
             name: 'testPermission',
             code: 'TEST_PERMISSION_XXXX',
             description: 'test description',
@@ -222,7 +221,7 @@ describe('E2E Permission Admin', () => {
         return;
     });
 
-    it(`PATCH ${E2E_PERMISSION_ADMIN_ACTIVE_URL} Active already Active`, async () => {
+    it(`PATCH ${E2E_PERMISSION_ADMIN_ACTIVE_URL} already Active`, async () => {
         const response = await request(app.getHttpServer())
             .patch(
                 E2E_PERMISSION_ADMIN_ACTIVE_URL.replace(':_id', permission._id)

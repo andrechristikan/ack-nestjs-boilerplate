@@ -5,6 +5,7 @@ import {
     UseInterceptors,
 } from '@nestjs/common';
 import {
+    ApiConsumes,
     ApiExtraModels,
     ApiOkResponse,
     ApiParam,
@@ -34,6 +35,8 @@ import {
     IResponseDoc,
     IResponseOptions,
     IResponseDocs,
+    IResponsePagingOptions,
+    IResponseExcelOptions,
 } from 'src/common/response/interfaces/response.interface';
 import { ResponseDefaultSerialization } from 'src/common/response/serializations/response.default.serialization';
 import { ResponsePagingSerialization } from 'src/common/response/serializations/response.paging.serialization';
@@ -227,7 +230,7 @@ export function Response<T>(
         },
     };
 
-    if (options) {
+    if (options && options.classSerialization) {
         docs.push(ApiExtraModels(options.classSerialization));
         schema.properties = {
             ...schema.properties,
@@ -235,6 +238,10 @@ export function Response<T>(
                 $ref: getSchemaPath(options.classSerialization),
             },
         };
+    }
+
+    if (!options || !options.excludeRequestBodyJson) {
+        docs.push(ApiConsumes('application/json'));
     }
 
     if (docOptions.statusCode) {
@@ -276,6 +283,7 @@ export function Response<T>(
         ),
 
         // doc
+        ApiProduces('application/json'),
         RequestHeaderDoc(),
         ResponseDoc({
             httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
@@ -292,7 +300,6 @@ export function Response<T>(
             messagePath: 'http.serverError.requestTimeout',
             statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_REQUEST_TIMEOUT,
         }),
-        ApiExtraModels(ResponseDefaultSerialization),
         ApiResponse({
             status: docOptions.httpStatus || HttpStatus.OK,
             schema,
@@ -305,10 +312,14 @@ export function ResponsePagingType(type: ENUM_PAGINATION_TYPE) {
     return applyDecorators(SetMetadata(RESPONSE_PAGING_TYPE_META_KEY, type));
 }
 
-export function ResponseExcel(options?: IResponseOptions<void>) {
+export function ResponseExcel(options?: IResponseExcelOptions<void>) {
     const docs = [];
     const docOptions =
         options && options.doc ? (options.doc as IResponseDocOptions) : {};
+
+    if (!options || !options.excludeRequestBodyJson) {
+        docs.push(ApiConsumes('application/json'));
+    }
 
     if (docOptions.responses) {
         docs.push(
@@ -360,7 +371,7 @@ export function ResponseExcel(options?: IResponseOptions<void>) {
 
 export function ResponsePaging<T>(
     messagePath: string,
-    options?: IResponseOptions<T>
+    options?: IResponsePagingOptions<T>
 ): any {
     const docs = [];
     const docOptions =
@@ -376,7 +387,7 @@ export function ResponsePaging<T>(
         },
     };
 
-    if (options) {
+    if (options && options.classSerialization) {
         docs.push(ApiExtraModels(options.classSerialization));
         schema.allOf.push({
             properties: {
@@ -447,6 +458,8 @@ export function ResponsePaging<T>(
         ),
 
         // doc
+        ApiProduces('application/json'),
+        ApiConsumes('application/json'),
         RequestHeaderDoc(),
         ResponseDoc({
             httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
@@ -495,7 +508,6 @@ export function ResponsePaging<T>(
             type: 'string',
             description: 'Sort base on availableSort, type is `asc` and `desc`',
         }),
-        ApiExtraModels(ResponsePagingSerialization),
         ApiResponse({
             status: HttpStatus.OK,
             schema,

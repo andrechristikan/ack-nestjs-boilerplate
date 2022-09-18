@@ -1,3 +1,4 @@
+import { ApiHideProperty } from '@nestjs/swagger';
 import { PaginationListAbstract } from 'src/common/pagination/abstracts/pagination.abstract';
 import {
     PaginationAvailableSearch,
@@ -22,6 +23,7 @@ export class PermissionListDto implements PaginationListAbstract {
     @PaginationSearch(PERMISSION_DEFAULT_AVAILABLE_SEARCH)
     readonly search: Record<string, any>;
 
+    @ApiHideProperty()
     @PaginationAvailableSearch(PERMISSION_DEFAULT_AVAILABLE_SEARCH)
     readonly availableSearch: string[];
 
@@ -34,6 +36,7 @@ export class PermissionListDto implements PaginationListAbstract {
     @PaginationSort(PERMISSION_DEFAULT_SORT, PERMISSION_DEFAULT_AVAILABLE_SORT)
     readonly sort: IPaginationSort;
 
+    @ApiHideProperty()
     @PaginationAvailableSort(PERMISSION_DEFAULT_AVAILABLE_SORT)
     readonly availableSort: string[];
 

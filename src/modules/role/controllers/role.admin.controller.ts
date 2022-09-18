@@ -4,6 +4,7 @@ import {
     Controller,
     Delete,
     Get,
+    HttpStatus,
     InternalServerErrorException,
     NotFoundException,
     Patch,
@@ -26,9 +27,11 @@ import {
     IResponse,
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
+import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/constants/permission.status-code.constant';
 import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
+import { RoleDocParamsGet } from 'src/modules/role/constants/role.doc.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import {
     RoleDeleteGuard,
@@ -48,7 +51,7 @@ import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.s
 import { RoleListSerialization } from 'src/modules/role/serializations/role.list.serialization';
 import { RoleService } from 'src/modules/role/services/role.service';
 
-@ApiTags('role')
+@ApiTags('admin.role')
 @Controller({
     version: '1',
     path: '/role',
@@ -107,6 +110,7 @@ export class RoleAdminController {
 
     @Response('role.get', {
         classSerialization: RoleGetSerialization,
+        doc: { params: RoleDocParamsGet },
     })
     @RoleGetGuard()
     @RequestParamGuard(RoleRequestDto)
@@ -117,7 +121,12 @@ export class RoleAdminController {
         return role;
     }
 
-    @Response('role.create')
+    @Response('role.create', {
+        classSerialization: ResponseIdSerialization,
+        doc: {
+            httpStatus: HttpStatus.CREATED,
+        },
+    })
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_CREATE
@@ -168,7 +177,10 @@ export class RoleAdminController {
         }
     }
 
-    @Response('role.update')
+    @Response('role.update', {
+        classSerialization: ResponseIdSerialization,
+        doc: { params: RoleDocParamsGet },
+    })
     @RoleUpdateGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(
@@ -222,7 +234,7 @@ export class RoleAdminController {
         };
     }
 
-    @Response('role.delete')
+    @Response('role.delete', { doc: { params: RoleDocParamsGet } })
     @RoleDeleteGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(
@@ -244,7 +256,7 @@ export class RoleAdminController {
         return;
     }
 
-    @Response('role.inactive')
+    @Response('role.inactive', { doc: { params: RoleDocParamsGet } })
     @RoleUpdateInactiveGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(
@@ -267,7 +279,7 @@ export class RoleAdminController {
         return;
     }
 
-    @Response('role.active')
+    @Response('role.active', { doc: { params: RoleDocParamsGet } })
     @RoleUpdateActiveGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(

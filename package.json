@@ -1,6 +1,6 @@
 {
   "name": "ack-nestjs-mongoose",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Ack NestJs Mongoose",
   "repository": {
     "type": "git",
@@ -126,7 +126,7 @@
     "@types/ws": "^8.5.3",
     "@typescript-eslint/eslint-plugin": "^5.37.0",
     "@typescript-eslint/parser": "^5.37.0",
-    "cspell": "^6.9.0",
+    "cspell": "^6.9.1",
     "eslint": "^8.23.1",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-import": "^2.26.0",

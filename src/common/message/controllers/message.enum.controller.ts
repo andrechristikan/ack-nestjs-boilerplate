@@ -6,7 +6,7 @@ import { RequestExcludeTimestamp } from 'src/common/request/decorators/request.d
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 
-@ApiTags('message')
+@ApiTags('enum.message')
 @Controller({
     version: VERSION_NEUTRAL,
     path: '/message',

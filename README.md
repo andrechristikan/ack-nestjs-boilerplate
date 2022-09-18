@@ -17,13 +17,6 @@
 
 ack-nestjs-mongoose is a [NestJs](http://nestjs.com) Boilerplate with [Mongoose](https://mongoosejs.com) and [MongoDB](https://docs.mongodb.com) as Database.
 
-Made with following
-
-- Repository Design Pattern
-- Microservice Architecture
-- NestJs Habit.
-- [The Twelve-Factor App](https://12factor.net)
-
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
 
 ## Important
@@ -40,9 +33,10 @@ If you change env value of `APP_ENV` to `production` that will
 
 1. Do not write into console `Database debug` even when `DATABASE_DEBUG` is `true`
 2. Do not write into console for `DebuggerService` even when `APP_DEBUG` is `true`
-3. `CorsMiddleware` on.
+3. `CorsMiddleware` on and follow the `src/configs/middleware.config.ts`.
+4. Documentation will `off`
 
-You can see our `e2e testing file` or read the documentation on [section environment](ack-doc-env).
+You can see our `e2e testing file` or read [section environment](ack-doc-env).
 
 ## Build with
 
@@ -64,23 +58,26 @@ Describes which version .
 
 ack-nestjs-mongoose have some objective.
 
-- Simple, scalable and secure
-- Avoid spaghetti code
-- Component based
-- Reusable component
+- Repository Design Pattern / Data Access Layer Design Pattern
+- Microservice Architecture
+- NestJs Habit.
+- [The Twelve-Factor App](https://12factor.net)
 - Easy to maintenance
-- Support for all microservice patterns
 
 ## Features
 
 - NestJs v9.x 🥳
-- Production Ready 🔥
 - Typescript 🚀
+- Production Ready 🔥
+- Support Serverless
 - Authentication and Authorization (JWT, OAuth2, API Key, Basic Auth, Role Management) 💪
 - User Agent Awareness
+- Timezone Awareness, and Custom Timezone
 - MongoDB Integrate by Using Mongoose Package 🎉
+- Import from excel and export data into excel just with decorator
 - Database Migration (NestJs-Command)
-- Storage with AWS (S3)
+- Storage integration with AWS (S3)
+- Upload file single and multipart for reduce the memory usage
 - Server Side Pagination (3 Types)
 - Url Versioning
 - Request Validation Pipe with Custom Message 🛑
@@ -89,11 +86,9 @@ ack-nestjs-mongoose have some objective.
 - Centralize Configuration 🤖
 - Centralize Exception Filter, and Custom Error Structure
 - Multi-language (i18n) 🗣
-- Timezone Awareness, and Custom Timezone
 - Request Timeout, and Request Custom Timeout (Override) ⌛️
 - Dynamic Setting from Database 🗿
 - Maintenance Mode on / off 🐤
-- Server Side Pagination
 - Support Docker Installation
 - Support CI/CD with Github Action or Jenkins
 - Husky GitHook For Check Source Code, and Run Test Before Commit 🐶
@@ -116,19 +111,8 @@ We assume that everyone who comes here is **`programmer with intermediate knowle
 
 Next development
 
-- [x] Import data form excel
-- [x] Version 2. New folder structure, new file upload decorator
-- [x] Reduce mixin usage
-- [x] Upload file multiple update
-- [x] File large upload into s3 for video and audio. using array of chunk
-- [x] Rename repo from `ack-nestjs-boilerplate-mongoose` to `ack-nestjs-mongoose`
-- [x] Message en,id
-- [x] Optimize code, remove unnecessary code
-- [x] Update Unit test
-- [x] Update E2E test
-- [x] Response Excel, convert response from controller into excel `res.send()`
 - [x] Implement Repository Design Pattern / Data Access Object Design Pattern
-- [x] Swagger for API Documentation Common Module
+- [x] Swagger for API Documentation
 - [ ] Update Documentation
 - [ ] Export to excel and Import from excel add options to background process
 - [ ] AuthApi Controller
@@ -178,7 +162,7 @@ cp .env.example .env
 
 #### Database Migration
 
-> If you want to to implement `transaction`, you must to install `Mongodb Replication Set`. You need to run `mongodb`. There are have so many options, you can do by your self with search on `google`.
+> If you want to to implement `transaction`, you must to install `Mongodb Replication Set`.
 
 Database migration ack-nestjs-mongoose used [NestJs-Command](https://gitlab.com/aa900031/nestjs-command)
 
@@ -261,6 +245,13 @@ Detail information about the environment
 | APP\_HTTP\_ON | `boolean` | Application Http turn on |
 | APP\_JOB\_ON | `boolean` | Application Job turn on |
 
+### App Documentation
+
+| Key | Type | Description |
+| ---- | ---- | ---- |
+| APP_DOC_NAME | `string` | Documentation tittle |
+| APP_DOC_VERSION | `number` | Documentation version |
+
 ### Database Environment
 
 | Key | Type | Description |
@@ -283,6 +274,7 @@ Detail information about the environment
 
 | Key | Type | Description |
 | ---- | ---- | ---- |
+| AUTH_JWT_SUBJECT | `setting` | Jwt subject |
 | AUTH\_JWT\_AUDIENCE | `string` | Jwt audience |
 | AUTH\_JWT\_ISSUER| `string` | JWT issuer |
 | AUTH\_JWT\_ACCESS\_TOKEN\_SECRET\_KEY | `string` | Secret access token, free text. |
@@ -366,7 +358,7 @@ Distributed under [MIT licensed][license].
 
 <!-- Repo LINKS -->
 [ack-repo]: https://github.com/andrechristikan/ack-nestjs-mongoose
-[ack-e2e]: /e2e
+[ack-e2e]: /test/e2e/
 [ack-issues]: https://github.com/andrechristikan/ack-nestjs-mongoose/issues
 [ack-stars]: https://github.com/andrechristikan/ack-nestjs-mongoose/stargazers
 [ack-forks]: https://github.com/andrechristikan/ack-nestjs-mongoose/network/members
