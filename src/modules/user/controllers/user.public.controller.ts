@@ -2,6 +2,7 @@ import {
     BadRequestException,
     Body,
     Controller,
+    HttpStatus,
     InternalServerErrorException,
     NotFoundException,
     Post,
@@ -17,14 +18,10 @@ import { RoleDocument } from 'src/modules/role/schemas/role.schema';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { UserSignUpDto } from 'src/modules/user/dtos/user.sign-up.dto';
-import {
-    IUserCheckExist,
-    IUserDocument,
-} from 'src/modules/user/interfaces/user.interface';
-import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
+import { IUserCheckExist } from 'src/modules/user/interfaces/user.interface';
 import { UserService } from 'src/modules/user/services/user.service';
 
-@ApiTags('user')
+@ApiTags('public.user')
 @Controller({
     version: '1',
     path: '/user',
@@ -36,7 +33,7 @@ export class UserPublicController {
         private readonly roleService: RoleService
     ) {}
 
-    @Response('auth.signUp')
+    @Response('auth.signUp', { doc: { httpStatus: HttpStatus.CREATED } })
     @AuthApiKey()
     @Post('/sign-up')
     async signUp(
@@ -83,7 +80,7 @@ export class UserPublicController {
                 body.password
             );
 
-            const create = await this.userService.create({
+            await this.userService.create({
                 firstName: body.firstName,
                 lastName: body.lastName,
                 email,
@@ -94,36 +91,7 @@ export class UserPublicController {
                 salt: password.salt,
             });
 
-            const user: IUserDocument =
-                await this.userService.findOneById<IUserDocument>(create._id, {
-                    populate: true,
-                });
-
-            const payload: UserPayloadSerialization =
-                await this.userService.payloadSerialization(user);
-            const payloadAccessToken: Record<string, any> =
-                await this.authService.createPayloadAccessToken(payload, false);
-            const payloadRefreshToken: Record<string, any> =
-                await this.authService.createPayloadRefreshToken(
-                    payload._id,
-                    false,
-                    {
-                        loginDate: payloadAccessToken.loginDate,
-                    }
-                );
-
-            const accessToken: string =
-                await this.authService.createAccessToken(payloadAccessToken);
-
-            const refreshToken: string =
-                await this.authService.createRefreshToken(payloadRefreshToken, {
-                    rememberMe: false,
-                });
-
-            return {
-                accessToken,
-                refreshToken,
-            };
+            return;
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

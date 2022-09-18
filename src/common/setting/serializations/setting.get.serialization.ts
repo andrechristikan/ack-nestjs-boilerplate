@@ -1,10 +1,11 @@
+import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Exclude, Type } from 'class-transformer';
 
 export class SettingGetSerialization {
     @ApiProperty({
         description: 'Id that representative with your target data',
-        example: '631d9f32a65cf07250b8938c',
+        example: faker.database.mongodbObjectId(),
         required: true,
     })
     @Type(() => String)
@@ -37,15 +38,11 @@ export class SettingGetSerialization {
 
     @ApiProperty({
         description: 'Date created at',
-        example: new Date(),
+        example: faker.date.recent(),
         required: false,
     })
     readonly createdAt: Date;
 
-    @ApiProperty({
-        description: 'Last date updated at',
-        example: new Date(),
-        required: false,
-    })
+    @Exclude()
     readonly updatedAt: Date;
 }

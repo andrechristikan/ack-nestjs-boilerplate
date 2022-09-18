@@ -71,7 +71,7 @@ export class UserController {
         return user;
     }
 
-    @Response('user.upload')
+    @Response('user.upload', { excludeRequestBodyJson: true })
     @UserProfileGuard()
     @AuthJwtGuard()
     @AuthApiKey()
@@ -169,7 +169,10 @@ export class UserController {
         return;
     }
 
-    @Response('user.login', { classSerialization: UserLoginSerialization })
+    @Response('user.login', {
+        classSerialization: UserLoginSerialization,
+        doc: { statusCode: ENUM_USER_STATUS_CODE_SUCCESS.USER_LOGIN_SUCCESS },
+    })
     @Logger(ENUM_LOGGER_ACTION.LOGIN, { tags: ['login', 'withEmail'] })
     @HttpCode(HttpStatus.OK)
     @Post('/login')
@@ -273,7 +276,7 @@ export class UserController {
         };
     }
 
-    @Response('user.refresh')
+    @Response('user.refresh', { classSerialization: UserLoginSerialization })
     @AuthRefreshJwtGuard()
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')

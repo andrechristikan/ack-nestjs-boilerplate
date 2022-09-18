@@ -40,10 +40,18 @@ export interface IResponseMetadata {
 }
 
 export interface IResponseOptions<T> {
-    classSerialization: ClassConstructor<T>;
+    classSerialization?: ClassConstructor<T>;
     messageProperties?: IMessageOptionsProperties;
-    doc?: IResponseDocOptions | IResponseDocPagingOptions;
+    doc?: IResponseDocOptions;
+    excludeRequestBodyJson?: boolean;
 }
+
+export interface IResponsePagingOptions<T>
+    extends Omit<IResponseOptions<T>, 'excludeRequestBodyJson' | 'doc'> {
+    doc?: IResponseDocPagingOptions;
+}
+
+export type IResponseExcelOptions<T> = IResponseOptions<T>;
 
 export type IResponseExcel = IHelperFileExcelRows[];
 
