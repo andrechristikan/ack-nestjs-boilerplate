@@ -25,12 +25,14 @@ export class RoleEntity {
     @Prop({
         required: true,
         default: true,
+        index: true,
     })
     isActive: boolean;
 
     @Prop({
         required: true,
         enum: ENUM_AUTH_ACCESS_FOR,
+        index: true,
     })
     accessFor: ENUM_AUTH_ACCESS_FOR;
 }

@@ -1,4 +1,5 @@
 import {
+    IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -26,7 +27,7 @@ export interface IRoleService {
 
     create(
         data: RoleCreateDto,
-        options?: IDatabaseOptions
+        options?: IDatabaseCreateOptions
     ): Promise<RoleDocument>;
 
     createSuperAdmin(options?: IDatabaseOptions): Promise<RoleDocument>;

@@ -40,17 +40,6 @@ export class RawBodyParserMiddleware implements NestMiddleware {
 }
 
 @Injectable()
-export class RawBodyParserMultipartMiddleware implements NestMiddleware {
-    constructor(private readonly configService: ConfigService) {}
-
-    use(req: Request, res: Response, next: NextFunction): void {
-        bodyParser.raw({
-            limit: this.configService.get<number>('file.multipart.maxFileSize'),
-        })(req, res, next);
-    }
-}
-
-@Injectable()
 export class TextBodyParserMiddleware implements NestMiddleware {
     constructor(private readonly configService: ConfigService) {}
 

@@ -17,22 +17,6 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { IResult } from 'ua-parser-js';
 import 'dotenv/config';
 
-export const RequestHeaderPartNumber = createParamDecorator(
-    (data: string, ctx: ExecutionContext): number => {
-        const request = ctx.switchToHttp().getRequest() as IRequestApp;
-        return request.headers['x-part-number']
-            ? parseInt(request.headers['x-part-number'] as string)
-            : 0;
-    }
-);
-
-export const RequestBodyAsBuffer = createParamDecorator(
-    (data: string, ctx: ExecutionContext): Buffer => {
-        const request = ctx.switchToHttp().getRequest() as IRequestApp;
-        return Buffer.from(request.body);
-    }
-);
-
 export const RequestUserAgent = createParamDecorator(
     (data: string, ctx: ExecutionContext): IResult => {
         const { userAgent } = ctx.switchToHttp().getRequest() as IRequestApp;

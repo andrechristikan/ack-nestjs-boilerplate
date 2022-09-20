@@ -1,5 +1,6 @@
 import { Model, PipelineStage, PopulateOptions, Types } from 'mongoose';
 import {
+    IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -121,8 +122,13 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         return this._repository.aggregate<N>(pipeline as PipelineStage[]);
     }
 
-    async create<N>(data: N, options?: IDatabaseOptions): Promise<T> {
-        const create = await this._repository.create([data], {
+    async create<N>(data: N, options?: IDatabaseCreateOptions): Promise<T> {
+        const dataCreate: Record<string, any> = data;
+        if (options && options._id) {
+            dataCreate._id = new Types.ObjectId(options._id);
+        }
+
+        const create = await this._repository.create([dataCreate], {
             session: options ? options.session : undefined,
         });
 

@@ -6,6 +6,7 @@ import { plainToInstance } from 'class-transformer';
 import { IUserService } from 'src/modules/user/interfaces/user.service.interface';
 import { UserRepository } from 'src/modules/user/repositories/user.repository';
 import {
+    IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -73,7 +74,7 @@ export class UserService implements IUserService {
             mobileNumber,
             role,
         }: IUserCreate,
-        options?: IDatabaseOptions
+        options?: IDatabaseCreateOptions
     ): Promise<UserDocument> {
         const user: UserEntity = {
             firstName,
@@ -153,9 +154,9 @@ export class UserService implements IUserService {
             photo: aws,
         };
 
-        return this.userRepository.updateOneById<UserPhotoDto>(
+        return this.userRepository.updateOneById<{ photo: UserPhotoDto }>(
             _id,
-            update,
+            { photo: update },
             options
         );
     }

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import {
+    IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -57,7 +58,7 @@ export class RoleService implements IRoleService {
 
     async create(
         { name, permissions, accessFor }: RoleCreateDto,
-        options?: IDatabaseOptions
+        options?: IDatabaseCreateOptions
     ): Promise<RoleDocument> {
         const create: RoleEntity = {
             name: name,
@@ -69,7 +70,9 @@ export class RoleService implements IRoleService {
         return this.roleRepository.create<RoleEntity>(create, options);
     }
 
-    async createSuperAdmin(options?: IDatabaseOptions): Promise<RoleDocument> {
+    async createSuperAdmin(
+        options?: IDatabaseCreateOptions
+    ): Promise<RoleDocument> {
         const create: RoleEntity = {
             name: 'superadmin',
             permissions: [],

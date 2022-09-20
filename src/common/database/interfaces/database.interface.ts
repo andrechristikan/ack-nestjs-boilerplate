@@ -12,3 +12,7 @@ export interface IDatabaseFindAllOptions
         IDatabaseFindOneOptions {}
 
 export type IDatabaseOptions = Pick<IDatabaseFindOneOptions, 'session'>;
+
+export interface IDatabaseCreateOptions extends IDatabaseOptions {
+    _id?: string;
+}
