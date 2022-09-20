@@ -11,7 +11,9 @@ export interface IDatabaseFindAllOptions
     extends IPaginationOptions,
         IDatabaseFindOneOptions {}
 
-export type IDatabaseOptions = Pick<IDatabaseFindOneOptions, 'session'>;
+export interface IDatabaseOptions {
+    session?: ClientSession;
+}
 
 export interface IDatabaseCreateOptions extends IDatabaseOptions {
     _id?: string;
