@@ -5,6 +5,7 @@ import { Document } from 'mongoose';
 export class AuthApiEntity {
     @Prop({
         required: true,
+        index: true,
     })
     name: string;
 
@@ -17,6 +18,7 @@ export class AuthApiEntity {
         required: true,
         trim: true,
         unique: true,
+        index: true,
     })
     key: string;
 
@@ -29,6 +31,7 @@ export class AuthApiEntity {
     @Prop({
         required: true,
         trim: true,
+        index: true,
     })
     encryptionKey: string;
 
@@ -42,6 +45,7 @@ export class AuthApiEntity {
 
     @Prop({
         required: true,
+        index: true,
     })
     isActive: boolean;
 }

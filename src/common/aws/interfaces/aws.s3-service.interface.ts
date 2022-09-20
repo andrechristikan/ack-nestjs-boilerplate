@@ -1,4 +1,4 @@
-import { CompletedPart } from '@aws-sdk/client-s3';
+import { CompletedPart, UploadPartRequest } from '@aws-sdk/client-s3';
 import { IAwsS3PutItemOptions } from 'src/common/aws/interfaces/aws.interface';
 import {
     AwsS3MultipartPartsSerialization,
@@ -42,7 +42,7 @@ export interface IAwsS3Service {
 
     uploadPart(
         path: string,
-        content: Buffer | Uint8Array,
+        content: UploadPartRequest['Body'] | string | Uint8Array | Buffer,
         uploadId: string,
         partNumber: number
     ): Promise<AwsS3MultipartPartsSerialization>;

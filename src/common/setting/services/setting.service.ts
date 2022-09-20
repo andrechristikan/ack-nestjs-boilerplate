@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+    IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -54,7 +55,7 @@ export class SettingService implements ISettingService {
 
     async create(
         { name, description, value }: SettingCreateDto,
-        options?: IDatabaseOptions
+        options?: IDatabaseCreateOptions
     ): Promise<SettingDocument> {
         let convertValue = value;
         if (typeof value === 'string') {

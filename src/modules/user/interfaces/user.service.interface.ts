@@ -1,6 +1,7 @@
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import {
+    IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -27,7 +28,7 @@ export interface IUserService {
 
     create(
         data: IUserCreate,
-        options?: IDatabaseOptions
+        options?: IDatabaseCreateOptions
     ): Promise<UserDocument>;
 
     deleteOneById(

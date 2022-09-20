@@ -17,6 +17,7 @@ import {
     GetObjectCommandInput,
     AbortMultipartUploadCommand,
     AbortMultipartUploadCommandInput,
+    UploadPartRequest,
 } from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -288,7 +289,7 @@ export class AwsS3Service implements IAwsS3Service {
 
     async uploadPart(
         path: string,
-        content: Buffer | Uint8Array,
+        content: UploadPartRequest['Body'] | string | Uint8Array | Buffer,
         uploadId: string,
         partNumber: number
     ): Promise<AwsS3MultipartPartsSerialization> {

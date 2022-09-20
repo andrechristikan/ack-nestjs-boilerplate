@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import {
+    IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { PermissionActiveDto } from 'src/modules/permission/dtos/permission.active.dto';
@@ -27,12 +29,24 @@ export class PermissionService implements IPermissionService {
         );
     }
 
-    async findOneById(_id: string): Promise<PermissionDocument> {
-        return this.permissionRepository.findOneById<PermissionDocument>(_id);
+    async findOneById(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<PermissionDocument> {
+        return this.permissionRepository.findOneById<PermissionDocument>(
+            _id,
+            options
+        );
     }
 
-    async findOne(find: Record<string, any>): Promise<PermissionDocument> {
-        return this.permissionRepository.findOne<PermissionDocument>(find);
+    async findOne(
+        find: Record<string, any>,
+        options?: IDatabaseFindOneOptions
+    ): Promise<PermissionDocument> {
+        return this.permissionRepository.findOne<PermissionDocument>(
+            find,
+            options
+        );
     }
 
     async getTotal(find?: Record<string, any>): Promise<number> {
@@ -48,7 +62,7 @@ export class PermissionService implements IPermissionService {
 
     async create(
         data: PermissionCreateDto,
-        options?: IDatabaseOptions
+        options?: IDatabaseCreateOptions
     ): Promise<PermissionDocument> {
         const create: PermissionEntity = {
             ...data,
@@ -77,11 +91,13 @@ export class PermissionService implements IPermissionService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<PermissionDocument> {
+        const update: PermissionActiveDto = {
+            isActive: false,
+        };
+
         return this.permissionRepository.updateOneById<PermissionActiveDto>(
             _id,
-            {
-                isActive: false,
-            },
+            update,
             options
         );
     }
@@ -90,11 +106,13 @@ export class PermissionService implements IPermissionService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<PermissionDocument> {
+        const update: PermissionActiveDto = {
+            isActive: true,
+        };
+
         return this.permissionRepository.updateOneById<PermissionActiveDto>(
             _id,
-            {
-                isActive: true,
-            },
+            update,
             options
         );
     }

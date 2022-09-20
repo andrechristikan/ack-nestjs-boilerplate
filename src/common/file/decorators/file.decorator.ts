@@ -1,4 +1,10 @@
-import { applyDecorators, SetMetadata, UseInterceptors } from '@nestjs/common';
+import {
+    applyDecorators,
+    createParamDecorator,
+    ExecutionContext,
+    SetMetadata,
+    UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes } from '@nestjs/swagger';
 import {
@@ -10,6 +16,7 @@ import { FileSingleDto } from 'src/common/file/dtos/file.single.dto';
 import { FileCustomMaxFilesInterceptor } from 'src/common/file/interceptors/file.custom-max-files.interceptor';
 import { FileCustomSizeInterceptor } from 'src/common/file/interceptors/file.custom-size.interceptor';
 import { IFileOptions } from 'src/common/file/interfaces/file.interface';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function UploadFileSingle(field: string, options?: IFileOptions): any {
     return applyDecorators(
@@ -50,3 +57,12 @@ export function FileCustomSize(customSize: string): any {
         SetMetadata(FILE_CUSTOM_SIZE_META_KEY, customSize)
     );
 }
+
+export const FilePartNumber = createParamDecorator(
+    (data: string, ctx: ExecutionContext): number => {
+        const request = ctx.switchToHttp().getRequest() as IRequestApp;
+        return request.headers['x-part-number']
+            ? parseInt(request.headers['x-part-number'] as string)
+            : 0;
+    }
+);

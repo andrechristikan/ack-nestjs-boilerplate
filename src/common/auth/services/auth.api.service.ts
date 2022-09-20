@@ -4,6 +4,7 @@ import { HelperStringService } from 'src/common/helper/services/helper.string.se
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
 import {
+    IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -108,7 +109,7 @@ export class AuthApiService implements IAuthApiService {
 
     async create(
         { name, description }: AuthApiCreateDto,
-        options?: IDatabaseOptions
+        options?: IDatabaseCreateOptions
     ): Promise<IAuthApi> {
         const key = await this.createKey();
         const secret = await this.createSecret();
@@ -148,7 +149,7 @@ export class AuthApiService implements IAuthApiService {
             passphrase,
             encryptionKey,
         }: AuthApiCreateRawDto,
-        options?: IDatabaseOptions
+        options?: IDatabaseCreateOptions
     ): Promise<IAuthApi> {
         const hash: string = await this.createHashApiKey(key, secret);
 

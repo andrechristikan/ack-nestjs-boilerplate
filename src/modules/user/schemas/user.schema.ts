@@ -42,6 +42,7 @@ export class UserEntity {
         required: true,
         type: Types.ObjectId,
         ref: RoleEntity.name,
+        index: true,
     })
     role: Types.ObjectId;
 
@@ -52,6 +53,7 @@ export class UserEntity {
 
     @Prop({
         required: true,
+        index: true,
     })
     passwordExpired: Date;
 
@@ -63,6 +65,7 @@ export class UserEntity {
     @Prop({
         required: true,
         default: true,
+        index: true,
     })
     isActive: boolean;
 

@@ -1,5 +1,7 @@
 import {
+    IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
@@ -12,9 +14,15 @@ export interface IPermissionService {
         options?: IDatabaseFindAllOptions
     ): Promise<PermissionDocument[]>;
 
-    findOneById(_id: string): Promise<PermissionDocument>;
+    findOneById(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<PermissionDocument>;
 
-    findOne(find: Record<string, any>): Promise<PermissionDocument>;
+    findOne(
+        find: Record<string, any>,
+        options?: IDatabaseFindOneOptions
+    ): Promise<PermissionDocument>;
 
     getTotal(find?: Record<string, any>): Promise<number>;
 
@@ -25,7 +33,7 @@ export interface IPermissionService {
 
     create(
         data: PermissionCreateDto,
-        options?: IDatabaseOptions
+        options?: IDatabaseCreateOptions
     ): Promise<PermissionDocument>;
 
     update(

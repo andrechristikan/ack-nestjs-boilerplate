@@ -35,8 +35,8 @@ export class MiddlewareModule implements NestModule {
                 RequestIdMiddleware,
                 TimezoneMiddleware,
                 JsonBodyParserMiddleware,
-                RawBodyParserMiddleware,
                 TextBodyParserMiddleware,
+                RawBodyParserMiddleware,
                 UrlencodedBodyParserMiddleware,
                 CompressionMiddleware,
                 CorsMiddleware,
@@ -50,15 +50,7 @@ export class MiddlewareModule implements NestModule {
                 TimestampMiddleware,
                 VersionMiddleware
             )
-            .forRoutes('*');
-
-        // route whitelist for multipart
-        // consumer.apply(RawBodyParserMultipartMiddleware).forRoutes({
-        //     path: 'api/v:version*/user/login',
-        //     method: RequestMethod.POST,
-        // });
-
-        consumer
+            .forRoutes('*')
             .apply(MaintenanceMiddleware)
             .exclude(
                 {

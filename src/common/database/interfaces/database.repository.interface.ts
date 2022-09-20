@@ -1,4 +1,5 @@
 import {
+    IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -26,7 +27,7 @@ export interface IDatabaseRepositoryAbstract<T> {
 
     exists(find: Record<string, any>, excludeId?: string): Promise<boolean>;
 
-    create<N>(data: N, options?: IDatabaseOptions): Promise<T>;
+    create<N>(data: N, options?: IDatabaseCreateOptions): Promise<T>;
 
     updateOne<N>(
         find: Record<string, any>,
