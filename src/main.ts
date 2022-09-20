@@ -11,10 +11,16 @@ import {
     AwsS3MultipartSerialization,
 } from 'src/common/aws/serializations/aws.s3-multipart.serialization';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
+import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
+    const databaseOptionsService: DatabaseOptionsService = app.get(
+        DatabaseOptionsService
+    );
+    const databaseUri: string =
+        databaseOptionsService.createMongooseOptions().uri;
     const appName: string = configService.get<string>('app.name');
     const env: string = configService.get<string>('app.env');
     const mode: string = configService.get<string>('app.mode');
@@ -124,13 +130,7 @@ async function bootstrap() {
     logger.log(`Docs version is ${docVersion}`);
 
     logger.log(`==========================================================`);
-
-    logger.log(
-        `Database running on ${configService.get<string>(
-            'database.host'
-        )}/${configService.get<string>('database.name')}`,
-        'NestApplication'
-    );
+    logger.log(`Database uri ${databaseUri}`, 'NestApplication');
     logger.log(`Server running on ${await app.getUrl()}`, 'NestApplication');
 
     logger.log(`==========================================================`);
