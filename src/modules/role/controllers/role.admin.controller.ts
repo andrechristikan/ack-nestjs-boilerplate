@@ -51,7 +51,7 @@ import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.s
 import { RoleListSerialization } from 'src/modules/role/serializations/role.list.serialization';
 import { RoleService } from 'src/modules/role/services/role.service';
 
-@ApiTags('admin.role')
+@ApiTags('modules.admin.role')
 @Controller({
     version: '1',
     path: '/role',

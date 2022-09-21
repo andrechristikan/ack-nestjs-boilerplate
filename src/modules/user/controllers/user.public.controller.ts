@@ -21,7 +21,7 @@ import { UserSignUpDto } from 'src/modules/user/dtos/user.sign-up.dto';
 import { IUserCheckExist } from 'src/modules/user/interfaces/user.interface';
 import { UserService } from 'src/modules/user/services/user.service';
 
-@ApiTags('public.user')
+@ApiTags('modules.public.user')
 @Controller({
     version: '1',
     path: '/user',
