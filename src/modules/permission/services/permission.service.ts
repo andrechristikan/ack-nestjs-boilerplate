@@ -49,8 +49,11 @@ export class PermissionService implements IPermissionService {
         );
     }
 
-    async getTotal(find?: Record<string, any>): Promise<number> {
-        return this.permissionRepository.getTotal(find);
+    async getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<number> {
+        return this.permissionRepository.getTotal(find, options);
     }
 
     async deleteOne(

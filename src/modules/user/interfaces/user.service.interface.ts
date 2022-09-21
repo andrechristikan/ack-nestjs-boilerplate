@@ -2,6 +2,7 @@ import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import {
     IDatabaseCreateOptions,
+    IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -24,7 +25,10 @@ export interface IUserService {
         options?: IDatabaseFindOneOptions
     ): Promise<T>;
 
-    getTotal(find?: Record<string, any>): Promise<number>;
+    getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<number>;
 
     create(
         data: IUserCreate,
@@ -50,7 +54,7 @@ export interface IUserService {
     checkExist(
         email: string,
         mobileNumber: string,
-        excludeId?: string
+        options?: IDatabaseExistOptions
     ): Promise<IUserCheckExist>;
 
     updatePhoto(

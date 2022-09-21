@@ -11,10 +11,12 @@ export interface IDatabaseFindAllOptions
     extends IPaginationOptions,
         IDatabaseFindOneOptions {}
 
-export interface IDatabaseOptions {
-    session?: ClientSession;
-}
+export type IDatabaseOptions = Pick<IDatabaseFindOneOptions, 'session'>;
 
 export interface IDatabaseCreateOptions extends IDatabaseOptions {
     _id?: string;
+}
+
+export interface IDatabaseExistOptions extends IDatabaseOptions {
+    excludeId?: string;
 }

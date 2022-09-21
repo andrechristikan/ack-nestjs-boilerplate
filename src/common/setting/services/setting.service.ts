@@ -49,8 +49,11 @@ export class SettingService implements ISettingService {
         );
     }
 
-    async getTotal(find?: Record<string, any>): Promise<number> {
-        return this.settingRepository.getTotal(find);
+    async getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<number> {
+        return this.settingRepository.getTotal(find, options);
     }
 
     async create(

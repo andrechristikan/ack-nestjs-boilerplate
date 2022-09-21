@@ -1,5 +1,6 @@
 import {
     IDatabaseCreateOptions,
+    IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -21,11 +22,20 @@ export interface IDatabaseRepositoryAbstract<T> {
         options?: IDatabaseFindOneOptions
     ): Promise<Y>;
 
-    getTotal(find?: Record<string, any>): Promise<number>;
+    getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<number>;
 
-    aggregate<N>(pipeline: Record<string, any>[]): Promise<N[]>;
+    aggregate<N>(
+        pipeline: Record<string, any>[],
+        options?: IDatabaseOptions
+    ): Promise<N[]>;
 
-    exists(find: Record<string, any>, excludeId?: string): Promise<boolean>;
+    exists(
+        find: Record<string, any>,
+        options?: IDatabaseExistOptions
+    ): Promise<boolean>;
 
     create<N>(data: N, options?: IDatabaseCreateOptions): Promise<T>;
 

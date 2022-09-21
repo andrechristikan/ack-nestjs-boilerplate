@@ -9,7 +9,9 @@ import {
 } from 'src/common/auth/interfaces/auth.interface';
 import { AuthApiDocument } from 'src/common/auth/schemas/auth.api.schema';
 import {
+    IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 
@@ -19,13 +21,25 @@ export interface IAuthApiService {
         options?: IDatabaseFindAllOptions
     ): Promise<AuthApiDocument[]>;
 
-    findOneById(_id: string): Promise<AuthApiDocument>;
+    findOneById(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<AuthApiDocument>;
 
-    findOne(find: Record<string, any>): Promise<AuthApiDocument>;
+    findOne(
+        find: Record<string, any>,
+        options?: IDatabaseFindOneOptions
+    ): Promise<AuthApiDocument>;
 
-    findOneByKey(key: string): Promise<AuthApiDocument>;
+    findOneByKey(
+        key: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<AuthApiDocument>;
 
-    getTotal(find?: Record<string, any>): Promise<number>;
+    getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<number>;
 
     inactive(_id: string, options?: IDatabaseOptions): Promise<AuthApiDocument>;
 
@@ -33,12 +47,12 @@ export interface IAuthApiService {
 
     create(
         data: AuthApiCreateDto,
-        options?: IDatabaseOptions
+        options?: IDatabaseCreateOptions
     ): Promise<IAuthApi>;
 
     createRaw(
         data: AuthApiCreateRawDto,
-        options?: IDatabaseOptions
+        options?: IDatabaseCreateOptions
     ): Promise<IAuthApi>;
 
     updateOneById(

@@ -1,4 +1,5 @@
 import {
+    IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -23,11 +24,14 @@ export interface ISettingService {
         options?: IDatabaseFindOneOptions
     ): Promise<SettingDocument>;
 
-    getTotal(find?: Record<string, any>): Promise<number>;
+    getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<number>;
 
     create(
         data: SettingCreateDto,
-        options?: IDatabaseOptions
+        options?: IDatabaseCreateOptions
     ): Promise<SettingDocument>;
 
     updateOneById(
