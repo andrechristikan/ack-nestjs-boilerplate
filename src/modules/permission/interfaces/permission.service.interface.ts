@@ -24,7 +24,10 @@ export interface IPermissionService {
         options?: IDatabaseFindOneOptions
     ): Promise<PermissionDocument>;
 
-    getTotal(find?: Record<string, any>): Promise<number>;
+    getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<number>;
 
     deleteOne(
         find: Record<string, any>,

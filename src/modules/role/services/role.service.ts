@@ -3,6 +3,7 @@ import { Types } from 'mongoose';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import {
     IDatabaseCreateOptions,
+    IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -40,11 +41,17 @@ export class RoleService implements IRoleService {
         return this.roleRepository.findOne<T>(find, options);
     }
 
-    async getTotal(find?: Record<string, any>): Promise<number> {
-        return this.roleRepository.getTotal(find);
+    async getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<number> {
+        return this.roleRepository.getTotal(find, options);
     }
 
-    async exists(name: string, excludeId?: string): Promise<boolean> {
+    async exists(
+        name: string,
+        options?: IDatabaseExistOptions
+    ): Promise<boolean> {
         return this.roleRepository.exists(
             {
                 name: {
@@ -52,7 +59,7 @@ export class RoleService implements IRoleService {
                     $options: 'i',
                 },
             },
-            excludeId
+            options
         );
     }
 

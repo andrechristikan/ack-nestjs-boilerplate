@@ -81,8 +81,11 @@ export class AuthApiService implements IAuthApiService {
         );
     }
 
-    async getTotal(find?: Record<string, any>): Promise<number> {
-        return this.authApiRepository.getTotal(find);
+    async getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<number> {
+        return this.authApiRepository.getTotal(find, options);
     }
 
     async inactive(

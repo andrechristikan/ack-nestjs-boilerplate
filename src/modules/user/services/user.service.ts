@@ -7,6 +7,7 @@ import { IUserService } from 'src/modules/user/interfaces/user.service.interface
 import { UserRepository } from 'src/modules/user/repositories/user.repository';
 import {
     IDatabaseCreateOptions,
+    IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -59,8 +60,11 @@ export class UserService implements IUserService {
         return this.userRepository.findOne<T>(find, options);
     }
 
-    async getTotal(find?: Record<string, any>): Promise<number> {
-        return this.userRepository.getTotal(find);
+    async getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<number> {
+        return this.userRepository.getTotal(find, options);
     }
 
     async create(
@@ -120,7 +124,7 @@ export class UserService implements IUserService {
     async checkExist(
         email: string,
         mobileNumber: string,
-        excludeId?: string
+        options?: IDatabaseExistOptions
     ): Promise<IUserCheckExist> {
         const existEmail: boolean = await this.userRepository.exists(
             {
@@ -129,14 +133,14 @@ export class UserService implements IUserService {
                     $options: 'i',
                 },
             },
-            excludeId
+            options
         );
 
         const existMobileNumber: boolean = await this.userRepository.exists(
             {
                 mobileNumber,
             },
-            excludeId
+            options
         );
 
         return {

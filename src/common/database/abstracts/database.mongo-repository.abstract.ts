@@ -1,6 +1,7 @@
 import { Model, PipelineStage, PopulateOptions, Types } from 'mongoose';
 import {
     IDatabaseCreateOptions,
+    IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -53,6 +54,10 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             }
         }
 
+        if (options && options.session) {
+            findAll.session(options.session);
+        }
+
         return findAll.lean();
     }
 
@@ -74,6 +79,10 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             } else {
                 findOne.populate(this._populateOnFind);
             }
+        }
+
+        if (options && options.session) {
+            findOne.session(options.session);
         }
 
         return findOne.lean();
@@ -99,27 +108,61 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             }
         }
 
+        if (options && options.session) {
+            findOne.session(options.session);
+        }
+
         return findOne.lean();
     }
 
-    async getTotal(find?: Record<string, any>): Promise<number> {
-        return this._repository.countDocuments(find);
+    async getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<number> {
+        const count = this._repository.countDocuments(find);
+
+        if (options && options.session) {
+            count.session(options.session);
+        }
+
+        return count;
     }
 
     async exists(
         find: Record<string, any>,
-        excludeId?: string
+        options?: IDatabaseExistOptions
     ): Promise<boolean> {
-        const exist = await this._repository.exists({
+        const exist = this._repository.exists({
             ...find,
-            _id: { $nin: new Types.ObjectId(excludeId) },
+            _id: {
+                $nin: new Types.ObjectId(
+                    options && options.excludeId ? options.excludeId : undefined
+                ),
+            },
         });
 
-        return exist ? true : false;
+        if (options && options.session) {
+            exist.session(options.session);
+        }
+
+        const result = await exist;
+
+        return result ? true : false;
     }
 
-    async aggregate<N>(pipeline: Record<string, any>[]): Promise<N[]> {
-        return this._repository.aggregate<N>(pipeline as PipelineStage[]);
+    async aggregate<N>(
+        pipeline: Record<string, any>[],
+        options?: IDatabaseOptions
+    ): Promise<N[]> {
+        const aggregate = this._repository.aggregate<N>(
+            pipeline as PipelineStage[]
+        );
+
+        if (options && options.session) {
+            aggregate.session(options.session);
+        }
+
+        return aggregate;
     }
 
     async create<N>(data: N, options?: IDatabaseCreateOptions): Promise<T> {

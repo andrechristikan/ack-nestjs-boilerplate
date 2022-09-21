@@ -1,5 +1,6 @@
 import {
     IDatabaseCreateOptions,
+    IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -21,9 +22,12 @@ export interface IRoleService {
         options?: IDatabaseFindOneOptions
     ): Promise<T>;
 
-    getTotal(find?: Record<string, any>): Promise<number>;
+    getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<number>;
 
-    exists(name: string, excludeId?: string): Promise<boolean>;
+    exists(name: string, options?: IDatabaseExistOptions): Promise<boolean>;
 
     create(
         data: RoleCreateDto,
