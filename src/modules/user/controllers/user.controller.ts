@@ -48,7 +48,7 @@ import { UserPayloadSerialization } from 'src/modules/user/serializations/user.p
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
 
-@ApiTags('user')
+@ApiTags('modules.user')
 @Controller({
     version: '1',
     path: '/user',

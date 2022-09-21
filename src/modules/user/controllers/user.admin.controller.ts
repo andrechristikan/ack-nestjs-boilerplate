@@ -63,7 +63,7 @@ import { UserImportSerialization } from 'src/modules/user/serializations/user.im
 import { UserListSerialization } from 'src/modules/user/serializations/user.list.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
 
-@ApiTags('admin.user')
+@ApiTags('modules.admin.user')
 @Controller({
     version: '1',
     path: '/user',

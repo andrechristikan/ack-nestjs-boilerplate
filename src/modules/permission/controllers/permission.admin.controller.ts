@@ -42,7 +42,7 @@ import { PermissionGetSerialization } from 'src/modules/permission/serialization
 import { PermissionListSerialization } from 'src/modules/permission/serializations/permission.list.serialization';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
 
-@ApiTags('admin.permission')
+@ApiTags('modules.admin.permission')
 @Controller({
     version: '1',
     path: '/permission',
