@@ -2,8 +2,11 @@ import { Model, PipelineStage, PopulateOptions, Types } from 'mongoose';
 import {
     IDatabaseCreateOptions,
     IDatabaseExistOptions,
+    IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneAggregateOptions,
     IDatabaseFindOneOptions,
+    IDatabaseGetTotalAggregateOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IDatabaseRepositoryAbstract } from 'src/common/database/interfaces/database.repository.interface';
@@ -61,6 +64,39 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         return findAll.lean();
     }
 
+    async findAllAggregate<N>(
+        pipeline: PipelineStage[],
+        options?: IDatabaseFindAllAggregateOptions
+    ): Promise<N[]> {
+        if (
+            options &&
+            options.limit !== undefined &&
+            options.skip !== undefined
+        ) {
+            pipeline.push({
+                $skip: options.skip,
+            });
+
+            pipeline.push({
+                $limit: options.limit,
+            });
+        }
+
+        if (options && options.sort) {
+            pipeline.push({
+                $sort: options.sort,
+            });
+        }
+
+        const aggregate = this._repository.aggregate<N>(pipeline);
+
+        if (options && options.session) {
+            aggregate.session(options.session);
+        }
+
+        return aggregate;
+    }
+
     async findOne<Y = T>(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
@@ -115,6 +151,24 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         return findOne.lean();
     }
 
+    async findOneAggregate<Y = T>(
+        pipeline: PipelineStage[],
+        options?: IDatabaseFindOneAggregateOptions
+    ): Promise<Y> {
+        pipeline.push({
+            $limit: 1,
+        });
+
+        const aggregate = this._repository.aggregate<Y>(pipeline);
+
+        if (options && options.session) {
+            aggregate.session(options.session);
+        }
+
+        const findOne = await aggregate;
+        return findOne && findOne.length > 0 ? findOne[0] : undefined;
+    }
+
     async getTotal(
         find?: Record<string, any>,
         options?: IDatabaseOptions
@@ -126,6 +180,26 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         }
 
         return count;
+    }
+    async getTotalAggregate(
+        pipeline: PipelineStage[],
+        options?: IDatabaseGetTotalAggregateOptions
+    ): Promise<number> {
+        pipeline.push({
+            $group: {
+                _id: null,
+                count: { $sum: options && options.field ? options.field : 1 },
+            },
+        });
+
+        const aggregate = this._repository.aggregate(pipeline);
+
+        if (options && options.session) {
+            aggregate.session(options.session);
+        }
+
+        const count = await aggregate;
+        return count && count.length > 0 ? count[0].count : 0;
     }
 
     async exists(

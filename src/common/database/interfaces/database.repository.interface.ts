@@ -1,8 +1,12 @@
+import { PipelineStage } from 'mongoose';
 import {
     IDatabaseCreateOptions,
     IDatabaseExistOptions,
+    IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
+    IDatabaseFindOneAggregateOptions,
     IDatabaseFindOneOptions,
+    IDatabaseGetTotalAggregateOptions,
     IDatabaseOptions,
 } from './database.interface';
 
@@ -10,6 +14,11 @@ export interface IDatabaseRepositoryAbstract<T> {
     findAll<Y = T>(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
+    ): Promise<Y[]>;
+
+    findAllAggregate<Y = T>(
+        pipeline: PipelineStage[],
+        options?: IDatabaseFindAllAggregateOptions
     ): Promise<Y[]>;
 
     findOne<Y = T>(
@@ -22,9 +31,19 @@ export interface IDatabaseRepositoryAbstract<T> {
         options?: IDatabaseFindOneOptions
     ): Promise<Y>;
 
+    findOneAggregate<Y = T>(
+        pipeline: PipelineStage[],
+        options?: IDatabaseFindOneAggregateOptions
+    ): Promise<Y[]>;
+
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseOptions
+    ): Promise<number>;
+
+    getTotalAggregate(
+        pipeline: PipelineStage[],
+        options?: IDatabaseGetTotalAggregateOptions
     ): Promise<number>;
 
     aggregate<N>(
