@@ -23,7 +23,6 @@ async function bootstrap() {
         databaseOptionsService.createMongooseOptions().uri;
     const appName: string = configService.get<string>('app.name');
     const env: string = configService.get<string>('app.env');
-    const mode: string = configService.get<string>('app.mode');
     const tz: string = configService.get<string>('app.timezone');
     const host: string = configService.get<string>('app.http.host');
     const port: number = configService.get<number>('app.http.port');
@@ -69,14 +68,12 @@ async function bootstrap() {
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
                 'refreshToken'
-            );
-
-        if (mode === 'secure') {
-            documentConfig.addApiKey(
+            )
+            .addApiKey(
                 { type: 'apiKey', in: 'header', name: 'x-api-key' },
                 'apiKey'
             );
-        }
+
         const documentBuild = documentConfig.build();
 
         const document = SwaggerModule.createDocument(app, documentBuild, {

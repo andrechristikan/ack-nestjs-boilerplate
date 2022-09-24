@@ -6,7 +6,7 @@ import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
-export class ValidateCustomLanguageMiddleware implements NestMiddleware {
+export class CustomLanguageMiddleware implements NestMiddleware {
     constructor(
         private readonly helperArrayService: HelperArrayService,
         private readonly configService: ConfigService

@@ -19,6 +19,7 @@ import {
     IErrorsImport,
     IValidationErrorImport,
 } from 'src/common/error/interfaces/error.interface';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { IMessage } from 'src/common/message/interfaces/message.interface';
 import { MessageService } from 'src/common/message/services/message.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
@@ -30,7 +31,8 @@ export class ErrorHttpFilter implements ExceptionFilter {
     constructor(
         private readonly messageService: MessageService,
         private readonly debuggerService: DebuggerService,
-        private readonly httpAdapterHost: HttpAdapterHost
+        private readonly httpAdapterHost: HttpAdapterHost,
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
@@ -49,7 +51,8 @@ export class ErrorHttpFilter implements ExceptionFilter {
             const __function = request.__function;
             const __path = request.path;
             const __requestId = request.id;
-            const __timestamp = request.timestamp;
+            const __timestamp =
+                request.timestamp || this.helperDateService.timestamp();
             const __timezone = request.timezone;
             const __version = request.version;
             const __repoVersion = request.repoVersion;

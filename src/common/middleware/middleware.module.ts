@@ -23,8 +23,7 @@ import { MaintenanceMiddleware } from './maintenance/maintenance.middleware';
 import { RequestIdMiddleware } from './request-id/request-id.middleware';
 import { TimezoneMiddleware } from './timezone/timezone.middleware';
 import { ResponseTimeMiddleware } from './response-time/response-time.middleware';
-import { TimestampMiddleware } from './timestamp/timestamp.middleware';
-import { ValidateCustomLanguageMiddleware } from './validate-custom-language/validate-custom-language.middleware';
+import { CustomLanguageMiddleware } from './custom-language/custom-language.middleware';
 import { VersionMiddleware } from './version/version.middleware';
 
 @Module({})
@@ -45,9 +44,8 @@ export class MiddlewareModule implements NestModule {
                 HelmetMiddleware,
                 RateLimitMiddleware,
                 UserAgentMiddleware,
-                ValidateCustomLanguageMiddleware,
+                CustomLanguageMiddleware,
                 ResponseTimeMiddleware,
-                TimestampMiddleware,
                 VersionMiddleware
             )
             .forRoutes('*')

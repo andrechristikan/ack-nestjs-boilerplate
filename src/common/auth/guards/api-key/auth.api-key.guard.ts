@@ -4,31 +4,17 @@ import {
     Injectable,
     UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Reflector } from '@nestjs/core';
 import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 
 @Injectable()
 export class ApiKeyGuard extends AuthGuard('api-key') {
-    constructor(
-        private readonly configService: ConfigService,
-        private readonly reflector: Reflector,
-        private readonly helperNumberService: HelperNumberService
-    ) {
+    constructor(private readonly helperNumberService: HelperNumberService) {
         super();
     }
 
     canActivate(context: ExecutionContext) {
-        const mode = this.configService.get<string>('app.mode');
-
-        const request = context.switchToHttp().getRequest();
-        request.apiKey = {};
-
-        if (mode !== 'secure') {
-            return true;
-        }
-
         return super.canActivate(context);
     }
 
@@ -81,6 +67,15 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
                     statusCode:
                         ENUM_AUTH_STATUS_CODE_ERROR.AUTH_API_KEY_TIMESTAMP_NOT_MATCH_WITH_REQUEST_ERROR,
                     message: 'auth.apiKey.error.timestampNotMatchWithRequest',
+                });
+            } else if (
+                statusCode ===
+                ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR
+            ) {
+                throw new UnauthorizedException({
+                    statusCode:
+                        ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
+                    message: 'auth.apiKey.error.timestampInvalid',
                 });
             } else if (
                 statusCode ===

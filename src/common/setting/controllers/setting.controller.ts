@@ -2,7 +2,10 @@ import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
+import {
+    RequestParamGuard,
+    RequestValidateUserAgent,
+} from 'src/common/request/decorators/request.decorator';
 import {
     Response,
     ResponsePaging,
@@ -50,6 +53,7 @@ export class SettingController {
         },
     })
     @AuthApiKey()
+    @RequestValidateUserAgent()
     @Get('/list')
     async list(
         @Query()
@@ -101,6 +105,7 @@ export class SettingController {
     @SettingGetGuard()
     @RequestParamGuard(SettingRequestDto)
     @AuthApiKey()
+    @RequestValidateUserAgent()
     @Get('get/:setting')
     async get(@GetSetting() setting: SettingDocument): Promise<IResponse> {
         return setting;
@@ -114,6 +119,7 @@ export class SettingController {
     })
     @SettingGetByNameGuard()
     @AuthApiKey()
+    @RequestValidateUserAgent()
     @Get('get/name/:settingName')
     async getByName(
         @GetSetting() setting: SettingDocument

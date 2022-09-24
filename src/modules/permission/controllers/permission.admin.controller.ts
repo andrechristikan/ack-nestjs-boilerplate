@@ -13,7 +13,10 @@ import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
+import {
+    RequestParamGuard,
+    RequestValidateUserAgent,
+} from 'src/common/request/decorators/request.decorator';
 import {
     Response,
     ResponsePaging,
@@ -61,6 +64,7 @@ export class PermissionAdminController {
     })
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
     @AuthApiKey()
+    @RequestValidateUserAgent()
     @Get('/list')
     async list(
         @Query()
@@ -116,6 +120,7 @@ export class PermissionAdminController {
     @RequestParamGuard(PermissionRequestDto)
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
     @AuthApiKey()
+    @RequestValidateUserAgent()
     @Get('/get/:permission')
     async get(
         @GetPermission() permission: PermissionDocument
@@ -136,6 +141,7 @@ export class PermissionAdminController {
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
     @AuthApiKey()
+    @RequestValidateUserAgent()
     @Put('/update/:permission')
     async update(
         @GetPermission() permission: PermissionDocument,
@@ -168,6 +174,7 @@ export class PermissionAdminController {
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
     @AuthApiKey()
+    @RequestValidateUserAgent()
     @Patch('/update/:permission/inactive')
     async inactive(
         @GetPermission() permission: PermissionDocument
@@ -197,6 +204,7 @@ export class PermissionAdminController {
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
     @AuthApiKey()
+    @RequestValidateUserAgent()
     @Patch('/update/:permission/active')
     async active(
         @GetPermission() permission: PermissionDocument

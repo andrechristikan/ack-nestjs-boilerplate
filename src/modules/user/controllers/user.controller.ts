@@ -30,6 +30,7 @@ import { FileSizeImagePipe } from 'src/common/file/pipes/file.size.pipe';
 import { FileTypeImagePipe } from 'src/common/file/pipes/file.type.pipe';
 import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.enum.constant';
 import { Logger } from 'src/common/logger/decorators/logger.decorator';
+import { RequestValidateUserAgent } from 'src/common/request/decorators/request.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
@@ -66,6 +67,7 @@ export class UserController {
     @UserProfileGuard()
     @AuthJwtGuard()
     @AuthApiKey()
+    @RequestValidateUserAgent()
     @Get('/profile')
     async profile(@GetUser() user: IUserDocument): Promise<IResponse> {
         return user;
@@ -75,6 +77,7 @@ export class UserController {
     @UserProfileGuard()
     @AuthJwtGuard()
     @AuthApiKey()
+    @RequestValidateUserAgent()
     @UploadFileSingle('file')
     @HttpCode(HttpStatus.OK)
     @Post('/profile/upload')

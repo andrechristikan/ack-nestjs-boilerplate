@@ -41,10 +41,6 @@ import { DebuggerOptionService } from 'src/common/debugger/services/debugger.opt
                     .valid('development', 'production')
                     .default('development')
                     .required(),
-                APP_MODE: Joi.string()
-                    .valid('simple', 'secure')
-                    .default('simple')
-                    .required(),
                 APP_LANGUAGE: Joi.string()
                     .valid(...Object.values(ENUM_MESSAGE_LANGUAGE))
                     .default('en')
@@ -105,9 +101,6 @@ import { DebuggerOptionService } from 'src/common/debugger/services/debugger.opt
                     .required(),
                 AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION:
                     Joi.string().required(),
-
-                AUTH_BASIC_TOKEN_CLIENT_ID: Joi.string().optional(),
-                AUTH_BASIC_TOKEN_CLIENT_SECRET: Joi.string().optional(),
 
                 AWS_CREDENTIAL_KEY: Joi.string().optional(),
                 AWS_CREDENTIAL_SECRET: Joi.string().optional(),

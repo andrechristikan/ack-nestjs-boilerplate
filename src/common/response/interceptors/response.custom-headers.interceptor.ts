@@ -8,12 +8,15 @@ import { map, Observable } from 'rxjs';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 
 // only for response success and error in controller
 @Injectable()
 export class ResponseCustomHeadersInterceptor
     implements NestInterceptor<Promise<any>>
 {
+    constructor(private readonly helperDateService: HelperDateService) {}
+
     async intercept(
         context: ExecutionContext,
         next: CallHandler
@@ -29,7 +32,10 @@ export class ResponseCustomHeadersInterceptor
                         'x-custom-lang',
                         request.customLang
                     );
-                    responseExpress.setHeader('x-timestamp', request.timestamp);
+                    responseExpress.setHeader(
+                        'x-timestamp',
+                        request.timestamp || this.helperDateService.timestamp()
+                    );
                     responseExpress.setHeader('x-timezone', request.timezone);
                     responseExpress.setHeader('x-request-id', request.id);
                     responseExpress.setHeader('x-version', request.version);

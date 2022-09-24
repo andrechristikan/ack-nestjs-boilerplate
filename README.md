@@ -231,7 +231,6 @@ Detail information about the environment
 | ---- | ---- | ---- |
 | APP\_NAME | `string` | Application name and will be subject for jwt|
 | APP\_ENV | `string` | <ul><li>production</li><li>development</li></ul> |
-| APP\_MODE | `string` | <ul><li>secure</li><li>simple</li></ul> |
 | APP\_LANGUAGE | `string` | Enum languages, separator `,` |
 | APP\_TZ | `string` | Override timezone |
 | APP\_HOST | `string` | Application serve |
@@ -280,15 +279,6 @@ Detail information about the environment
 | AUTH\_JWT\_REFRESH\_TOKEN\_EXPIRED | `string` | Expiration time for refresh token. `ms` package value |
 | AUTH\_JWT\_REFRESH\_TOKEN\_REMEMBER\_ME\_EXPIRED | `string` | Expiration time for refresh token when remember me is checked. `ms` package value |
 | AUTH\_JWT\_REFRESH\_TOKEN\_NOT\_BEFORE\_EXPIRATION | `string` | Token active for refresh token before `x` time. `ms` package value |
-
-### Basic Environment
-
-> Will implement as `ApiKey`
-
-| Key | Type | Description |
-| ---- | ---- | ---- |
-| AUTH\_BASIC\_TOKEN\_CLIENT\_ID  | `string` | Free text |
-| AUTH\_BASIC\_TOKEN\_CLIENT\_SECRET | `string` | Free tex  |
 
 ### AWS Environment
 

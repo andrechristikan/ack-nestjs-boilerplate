@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { LoggerRepository } from 'src/common/logger/repositories/logger.repository';
 import {
     LoggerDatabaseName,
     LoggerEntity,
@@ -10,7 +11,7 @@ import { LoggerService } from './services/logger.service';
 
 @Global()
 @Module({
-    providers: [LoggerService],
+    providers: [LoggerService, LoggerRepository],
     exports: [LoggerService],
     imports: [
         MongooseModule.forFeature(

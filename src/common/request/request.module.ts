@@ -5,9 +5,8 @@ import {
     ValidationError,
     ValidationPipe,
 } from '@nestjs/common';
-import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { APP_PIPE } from '@nestjs/core';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from './constants/request.status-code.constant';
-import { RequestTimestampInterceptor } from './interceptors/request.timestamp.interceptor';
 import { IsPasswordMediumConstraint } from './validations/request.is-password-medium.validation';
 import { IsPasswordStrongConstraint } from './validations/request.is-password-strong.validation';
 import { IsPasswordWeakConstraint } from './validations/request.is-password-weak.validation';
@@ -42,10 +41,6 @@ import { StringOrNumberOrBooleanConstraint } from './validations/request.string-
                             errors,
                         }),
                 }),
-        },
-        {
-            provide: APP_INTERCEPTOR,
-            useClass: RequestTimestampInterceptor,
         },
         IsPasswordStrongConstraint,
         IsPasswordMediumConstraint,

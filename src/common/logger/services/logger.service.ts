@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { Model, Types } from 'mongoose';
-import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+import { Types } from 'mongoose';
 import { ENUM_LOGGER_LEVEL } from 'src/common/logger/constants/logger.enum.constant';
 import {
     ILogger,
     ILoggerRaw,
 } from 'src/common/logger/interfaces/logger.interface';
 import { ILoggerService } from 'src/common/logger/interfaces/logger.service.interface';
+import { LoggerRepository } from 'src/common/logger/repositories/logger.repository';
 import {
     LoggerDocument,
     LoggerEntity,
@@ -14,10 +14,7 @@ import {
 
 @Injectable()
 export class LoggerService implements ILoggerService {
-    constructor(
-        @DatabaseEntity(LoggerEntity.name)
-        private readonly loggerModel: Model<LoggerDocument>
-    ) {}
+    constructor(private readonly loggerRepository: LoggerRepository) {}
 
     async info({
         action,
@@ -33,7 +30,7 @@ export class LoggerService implements ILoggerService {
         statusCode,
         tags,
     }: ILogger): Promise<LoggerDocument> {
-        const create = new this.loggerModel({
+        const create: LoggerEntity = {
             level: ENUM_LOGGER_LEVEL.INFO,
             user: user ? new Types.ObjectId(user) : undefined,
             apiKey: apiKey ? new Types.ObjectId(apiKey) : undefined,
@@ -49,8 +46,9 @@ export class LoggerService implements ILoggerService {
             path,
             statusCode,
             tags,
-        });
-        return create.save();
+        };
+
+        return this.loggerRepository.create(create);
     }
 
     async debug({
@@ -67,7 +65,7 @@ export class LoggerService implements ILoggerService {
         statusCode,
         tags,
     }: ILogger): Promise<LoggerDocument> {
-        const create = new this.loggerModel({
+        const create: LoggerEntity = {
             level: ENUM_LOGGER_LEVEL.DEBUG,
             user: user ? new Types.ObjectId(user) : undefined,
             apiKey: apiKey ? new Types.ObjectId(apiKey) : undefined,
@@ -83,8 +81,9 @@ export class LoggerService implements ILoggerService {
             path,
             statusCode,
             tags,
-        });
-        return create.save();
+        };
+
+        return this.loggerRepository.create(create);
     }
 
     async warning({
@@ -101,7 +100,7 @@ export class LoggerService implements ILoggerService {
         statusCode,
         tags,
     }: ILogger): Promise<LoggerDocument> {
-        const create = new this.loggerModel({
+        const create: LoggerEntity = {
             level: ENUM_LOGGER_LEVEL.WARM,
             user: user ? new Types.ObjectId(user) : undefined,
             apiKey: apiKey ? new Types.ObjectId(apiKey) : undefined,
@@ -117,8 +116,9 @@ export class LoggerService implements ILoggerService {
             path,
             statusCode,
             tags,
-        });
-        return create.save();
+        };
+
+        return this.loggerRepository.create(create);
     }
 
     async fatal({
@@ -135,7 +135,7 @@ export class LoggerService implements ILoggerService {
         statusCode,
         tags,
     }: ILogger): Promise<LoggerDocument> {
-        const create = new this.loggerModel({
+        const create: LoggerEntity = {
             level: ENUM_LOGGER_LEVEL.FATAL,
             user: user ? new Types.ObjectId(user) : undefined,
             apiKey: apiKey ? new Types.ObjectId(apiKey) : undefined,
@@ -151,8 +151,9 @@ export class LoggerService implements ILoggerService {
             path,
             statusCode,
             tags,
-        });
-        return create.save();
+        };
+
+        return this.loggerRepository.create(create);
     }
 
     async raw({
@@ -170,7 +171,7 @@ export class LoggerService implements ILoggerService {
         statusCode,
         tags,
     }: ILoggerRaw): Promise<LoggerDocument> {
-        const create = new this.loggerModel({
+        const create: LoggerEntity = {
             level,
             user: user ? new Types.ObjectId(user) : undefined,
             apiKey: apiKey ? new Types.ObjectId(apiKey) : undefined,
@@ -186,7 +187,8 @@ export class LoggerService implements ILoggerService {
             path,
             statusCode,
             tags,
-        });
-        return create.save();
+        };
+
+        return this.loggerRepository.create(create);
     }
 }

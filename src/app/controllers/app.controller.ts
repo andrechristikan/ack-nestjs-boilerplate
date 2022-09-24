@@ -8,7 +8,6 @@ import { HelperService } from 'src/common/helper/services/helper.service';
 import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.enum.constant';
 import { Logger } from 'src/common/logger/decorators/logger.decorator';
 import {
-    RequestExcludeTimestamp,
     RequestTimezone,
     RequestUserAgent,
 } from 'src/common/request/decorators/request.decorator';
@@ -32,7 +31,6 @@ export class AppController {
     ) {}
 
     @Response('app.hello', { classSerialization: AppHelloSerialization })
-    @RequestExcludeTimestamp()
     @Logger(ENUM_LOGGER_ACTION.TEST, { tags: ['test'] })
     @Get('/hello')
     async hello(
@@ -63,7 +61,6 @@ export class AppController {
     }
 
     @Response('app.helloTimeout')
-    @RequestExcludeTimestamp()
     @ResponseTimeout('10s')
     @ErrorMeta(AppController.name, 'helloTimeoutCustom')
     @Get('/hello/timeout')

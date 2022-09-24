@@ -10,6 +10,7 @@ import {
 import { Connection } from 'mongoose';
 import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { RequestValidateUserAgent } from 'src/common/request/decorators/request.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { AwsHealthIndicator } from 'src/health/indicators/health.aws.indicator';
@@ -33,6 +34,7 @@ export class HealthController {
     @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
     @AuthApiKey()
+    @RequestValidateUserAgent()
     @Get('/aws')
     async checkAws(): Promise<IResponse> {
         return this.health.check([
@@ -43,6 +45,7 @@ export class HealthController {
     @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
     @AuthApiKey()
+    @RequestValidateUserAgent()
     @Get('/database')
     async checkDatabase(): Promise<IResponse> {
         return this.health.check([
@@ -56,6 +59,7 @@ export class HealthController {
     @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
     @AuthApiKey()
+    @RequestValidateUserAgent()
     @Get('/memory-heap')
     async checkMemoryHeap(): Promise<IResponse> {
         return this.health.check([
@@ -70,6 +74,7 @@ export class HealthController {
     @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
     @AuthApiKey()
+    @RequestValidateUserAgent()
     @Get('/memory-rss')
     async checkMemoryRss(): Promise<IResponse> {
         return this.health.check([
@@ -84,6 +89,7 @@ export class HealthController {
     @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
     @AuthApiKey()
+    @RequestValidateUserAgent()
     @Get('/storage')
     async checkStorage(): Promise<IResponse> {
         return this.health.check([

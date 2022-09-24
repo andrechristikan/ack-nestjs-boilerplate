@@ -87,7 +87,7 @@ export class UserService implements IUserService {
             password,
             role: new Types.ObjectId(role),
             isActive: true,
-            lastName: lastName || undefined,
+            lastName,
             salt,
             passwordExpired,
         };

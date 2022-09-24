@@ -6,11 +6,9 @@ import {
     NestInterceptor,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
-import { REQUEST_EXCLUDE_TIMESTAMP_META_KEY } from 'src/common/request/constants/request.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
@@ -20,7 +18,6 @@ export class RequestTimestampInterceptor
 {
     constructor(
         private readonly configService: ConfigService,
-        private readonly reflector: Reflector,
         private readonly helperDateService: HelperDateService,
         private readonly helperNumberService: HelperNumberService
     ) {}
@@ -32,53 +29,49 @@ export class RequestTimestampInterceptor
         if (context.getType() === 'http') {
             const request: IRequestApp = context.switchToHttp().getRequest();
             const { headers } = request;
-            const mode: string = this.configService.get<string>('app.mode');
-            const reqTs: string = headers['x-timestamp'] as string;
-            const currentTimestamp: number = this.helperDateService.timestamp();
-            const excludeTimestamp = this.reflector.get<boolean>(
-                REQUEST_EXCLUDE_TIMESTAMP_META_KEY,
-                context.getHandler()
+            const requestTimestamp: string = headers['x-timestamp'] as string;
+
+            if (!requestTimestamp) {
+                throw new ForbiddenException({
+                    statusCode:
+                        ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
+                    message: 'auth.apiKey.error.timestampInvalid',
+                });
+            }
+
+            const timestamp = this.helperNumberService.create(requestTimestamp);
+            const checkTimestamp =
+                this.helperDateService.checkTimestamp(timestamp);
+
+            if (!timestamp || !checkTimestamp) {
+                throw new ForbiddenException({
+                    statusCode:
+                        ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
+                    message: 'middleware.error.timestampInvalid',
+                });
+            }
+
+            const timestampDate = this.helperDateService.create({
+                date: timestamp,
+            });
+
+            const toleranceTimeInMs = this.configService.get<number>(
+                'middleware.timestamp.toleranceTimeInMs'
             );
 
-            if (!excludeTimestamp && mode === 'secure') {
-                const toleranceTimeInMs = this.configService.get<number>(
-                    'middleware.timestamp.toleranceTimeInMs'
+            const toleranceMin =
+                this.helperDateService.backwardInMilliseconds(
+                    toleranceTimeInMs
                 );
-                const check: boolean = this.helperDateService.checkTimestamp(
-                    this.helperNumberService.create(reqTs)
-                );
-                if (!reqTs || !check) {
-                    throw new ForbiddenException({
-                        statusCode:
-                            ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
-                        message: 'middleware.error.timestampInvalid',
-                    });
-                }
+            const toleranceMax =
+                this.helperDateService.forwardInMilliseconds(toleranceTimeInMs);
 
-                const timestamp = this.helperDateService.create({
-                    date: this.helperNumberService.create(reqTs),
+            if (timestampDate < toleranceMin || timestampDate > toleranceMax) {
+                throw new ForbiddenException({
+                    statusCode:
+                        ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
+                    message: 'middleware.error.timestampInvalid',
                 });
-                const toleranceMin =
-                    this.helperDateService.backwardInMilliseconds(
-                        toleranceTimeInMs
-                    );
-                const toleranceMax =
-                    this.helperDateService.forwardInMilliseconds(
-                        toleranceTimeInMs
-                    );
-
-                if (timestamp < toleranceMin || timestamp > toleranceMax) {
-                    throw new ForbiddenException({
-                        statusCode:
-                            ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
-                        message: 'middleware.error.timestampInvalid',
-                    });
-                }
-            } else {
-                const newTimestamp = reqTs || `${currentTimestamp}`;
-                request.headers['x-timestamp'] = newTimestamp;
-                request.timestamp =
-                    this.helperNumberService.create(newTimestamp);
             }
         }
 

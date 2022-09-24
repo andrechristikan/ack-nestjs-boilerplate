@@ -9,7 +9,10 @@ import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permi
 import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
-import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
+import {
+    RequestParamGuard,
+    RequestValidateUserAgent,
+} from 'src/common/request/decorators/request.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
@@ -42,6 +45,7 @@ export class SettingAdminController {
         ENUM_AUTH_PERMISSIONS.SETTING_UPDATE
     )
     @AuthApiKey()
+    @RequestValidateUserAgent()
     @Put('/update/:setting')
     async update(
         @GetSetting() setting: SettingDocument,

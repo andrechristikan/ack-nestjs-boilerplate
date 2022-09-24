@@ -85,6 +85,11 @@ export class LoggerEntity {
 
     @Prop({
         required: false,
+    })
+    path?: string;
+
+    @Prop({
+        required: false,
         default: [],
     })
     tags: string[];
