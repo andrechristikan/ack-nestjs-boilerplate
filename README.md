@@ -247,13 +247,19 @@ Detail information about the environment
 | APP\_NAME | `string` | Application name and will be subject for jwt|
 | APP\_ENV | `string` | <ul><li>production</li><li>development</li></ul> |
 | APP\_LANGUAGE | `string` | Enum languages, separator `,` |
-| APP\_DEBUG | `boolean` | All logs will write into console |
+
+### HTTP Environment
 
 | HTTP\_HTTP\_ENABLE | `boolean` | Application Http turn on |
 | HTTP\_HOST | `string` | Application serve |
 | HTTP\_PORT | `number` | Application serve |
 | HTTP\_VERSIONING\_ENABLE | `boolean` | Application url versioning |
 | HTTP\_VERSION | `number | string` | Application url versioning |
+
+### Debugger Environment
+
+| DEBUGGER\_HTTP\_WRITE\_INTO\_FILE | `boolean` | Http debugger write into file |
+| DEBUGGER\_SYSTEM\_WRITE\_INTO\_FILE | `boolean` | System debugger write into file |
 
 ### Middleware Environment
 
