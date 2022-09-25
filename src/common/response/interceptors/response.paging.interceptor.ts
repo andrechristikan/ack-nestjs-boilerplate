@@ -118,7 +118,8 @@ export class ResponsePagingInterceptor<T>
                         const __path = requestExpress.path;
                         const __requestId = requestExpress.id;
                         const __timestamp = requestExpress.timestamp;
-                        const __timezone = requestExpress.timezone;
+                        const __timezone =
+                            Intl.DateTimeFormat().resolvedOptions().timeZone;
                         const __version = requestExpress.version;
                         const __repoVersion = requestExpress.repoVersion;
 

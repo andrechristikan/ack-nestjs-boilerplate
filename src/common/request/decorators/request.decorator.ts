@@ -87,13 +87,6 @@ export const RequestId = createParamDecorator(
     }
 );
 
-export const RequestTimezone = createParamDecorator(
-    (data: string, ctx: ExecutionContext): string => {
-        const { timezone } = ctx.switchToHttp().getRequest() as IRequestApp;
-        return timezone;
-    }
-);
-
 export const RequestTimestamp = createParamDecorator(
     (data: string, ctx: ExecutionContext): number => {
         const { timestamp } = ctx.switchToHttp().getRequest() as IRequestApp;
@@ -126,15 +119,6 @@ export function RequestHeaderDoc(): any {
             schema: {
                 default: AppLanguage,
                 example: AppLanguage,
-                type: 'string',
-            },
-        }),
-        ApiHeader({
-            name: 'x-timezone',
-            description: 'Custom timezone header',
-            required: false,
-            schema: {
-                example: 'Asia/Jakarta',
                 type: 'string',
             },
         }),

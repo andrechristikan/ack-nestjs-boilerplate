@@ -1,0 +1,125 @@
+service: ack
+
+frameworkVersion: '3'
+useDotenv: true
+
+plugins:
+  - serverless-offline
+  - serverless-dotenv-plugin
+  - serverless-plugin-optimize
+  - serverless-plugin-warmup
+
+package:
+  individually: true
+  patterns:
+    - '!.git/**'
+    - '!.scripts/**'
+    - '!.gitignore'
+    - '!.DS_Store'
+    - '!npm-debug.log'
+    - '!.serverless/**'
+    - '!.serverless_plugins/**'
+    - '!src/**'
+    - '!test/**'
+    - '!nodemon.json'
+    - '!cspell.json'
+    - '!docker*'
+    - '!LICENSE.md'
+    - '!README.md'
+    - '!tsconfig*'
+    - '!.github/**'
+    - '!.husky/**'
+    - '!.logs/**'
+    - '!.e2e-coverage/**'
+    - '!.coverage/**'
+    - '!.integration-coverage/**'
+
+custom:
+  serverless-offline:
+    httpPort: ${env:HTTP_PORT, 3000}
+    host: ${env:HTTP_HOST, 'localhost'}
+    lambdaPort: 3002
+
+  # Enable warmup on all functions (only for production and staging)
+  warmup:
+    officeHoursWarmer:
+      name: ${self:service}-${self:provider.stage}-officeHoursWarmer
+      enabled: 
+          - production
+          - staging
+      events:
+        - schedule: cron(0/5 8-17 ? * MON-FRI *)
+      concurrency: 5
+      memorySize: 128
+      timeout: 10
+      verbose: false
+      logRetentionInDays: 14
+
+    outOfOfficeHoursWarmer:
+      name: ${self:service}-${self:provider.stage}-outOfOfficeHoursWarmer
+      enabled: 
+          - production
+          - staging
+      events:
+        - schedule: cron(0/5 0-7 ? * MON-FRI *)
+        - schedule: cron(0/5 18-23 ? * MON-FRI *)
+        - schedule: cron(0/5 * ? * SAT-SUN *)
+      concurrency: 1
+      memorySize: 128
+      timeout: 10
+      verbose: false
+      logRetentionInDays: 14
+
+provider:
+  name: aws
+  stackName: ${self:service}
+  apiName: baibay
+  deploymentMethod: direct
+  runtime: nodejs16.x
+  endpointType: REGIONAL
+
+  stage: ${opt:stage,'development'}
+  region: ${opt:region, 'ap-southeast-3'}
+  profile: baibay
+
+  timeout: 30
+  logRetentionInDays: 90
+  memorySize: 1024
+
+  deploymentPrefix: serverless
+  deploymentBucket:
+    name: baibay-development
+    maxPreviousDeploymentArtifacts: 5
+    blockPublicAccess: true
+    skipPolicySetup: true
+    versioning: false
+    tags:
+      region: ${self:provider.region}
+      stage: ${self:provider.stage}
+
+  # API Gateway
+  apiGateway:
+    description: ${self:provider.stage} endpoints
+    shouldStartNameWithService: true
+    disableDefaultEndpoint: false
+    minimumCompressionSize: 1024
+    metrics: false
+
+    binaryMediaTypes:
+      - '*/*'
+      
+  logs:
+    accessLogging: true
+    fullExecutionData: true
+    level: INFO
+    
+functions:
+  main:
+    handler: dist/src/serverless.handler
+    events:
+      - http:
+          method: ANY
+          path: /${self:service}
+      - http:
+          method: ANY
+          path: '/${self:service}/{proxy+}'

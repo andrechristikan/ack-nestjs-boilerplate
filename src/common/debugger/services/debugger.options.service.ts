@@ -8,67 +8,66 @@ import { IDebuggerOptionService } from 'src/common/debugger/interfaces/debugger.
 
 @Injectable()
 export class DebuggerOptionService implements IDebuggerOptionService {
-    private readonly env: string;
-    private readonly debug: boolean;
-    private readonly logger: boolean;
+    private readonly writeIntoFile: boolean;
     private readonly maxSize: string;
     private readonly maxFiles: string;
 
     constructor(private configService: ConfigService) {
-        this.env = this.configService.get<string>('app.env');
-        this.debug = this.configService.get<boolean>('app.debug');
-        this.logger = this.configService.get<boolean>(
-            'app.debugger.system.active'
+        this.writeIntoFile = this.configService.get<boolean>(
+            'debugger.system.writeIntoFile'
         );
         this.maxSize = this.configService.get<string>(
-            'app.debugger.system.maxSize'
+            'debugger.system.maxSize'
         );
         this.maxFiles = this.configService.get<string>(
-            'app.debugger.system.maxFiles'
+            'debugger.system.maxFiles'
         );
     }
 
     createLogger(): LoggerOptions {
         const transports = [];
 
-        transports.push(
-            new DailyRotateFile({
-                filename: `%DATE%.log`,
-                dirname: `logs/${DEBUGGER_NAME}/error`,
-                datePattern: 'YYYY-MM-DD',
-                zippedArchive: true,
-                maxSize: this.maxSize,
-                maxFiles: this.maxFiles,
-                level: 'error',
-            })
-        );
-        transports.push(
-            new DailyRotateFile({
-                filename: `%DATE%.log`,
-                dirname: `logs/${DEBUGGER_NAME}/default`,
-                datePattern: 'YYYY-MM-DD',
-                zippedArchive: true,
-                maxSize: this.maxSize,
-                maxFiles: this.maxFiles,
-                level: 'info',
-            })
-        );
-        transports.push(
-            new DailyRotateFile({
-                filename: `%DATE%.log`,
-                dirname: `logs/${DEBUGGER_NAME}/debug`,
-                datePattern: 'YYYY-MM-DD',
-                zippedArchive: true,
-                maxSize: this.maxSize,
-                maxFiles: this.maxFiles,
-                level: 'debug',
-            })
-        );
-
         /* istanbul ignore next */
-        if ((this.debug || this.logger) && this.env !== 'production') {
-            transports.push(new winston.transports.Console());
+        if (this.writeIntoFile) {
+            /* istanbul ignore next */
+            transports.push(
+                new DailyRotateFile({
+                    filename: `%DATE%.log`,
+                    dirname: `logs/${DEBUGGER_NAME}/error`,
+                    datePattern: 'YYYY-MM-DD',
+                    zippedArchive: true,
+                    maxSize: this.maxSize,
+                    maxFiles: this.maxFiles,
+                    level: 'error',
+                })
+            );
+            /* istanbul ignore next */
+            transports.push(
+                new DailyRotateFile({
+                    filename: `%DATE%.log`,
+                    dirname: `logs/${DEBUGGER_NAME}/default`,
+                    datePattern: 'YYYY-MM-DD',
+                    zippedArchive: true,
+                    maxSize: this.maxSize,
+                    maxFiles: this.maxFiles,
+                    level: 'info',
+                })
+            );
+            /* istanbul ignore next */
+            transports.push(
+                new DailyRotateFile({
+                    filename: `%DATE%.log`,
+                    dirname: `logs/${DEBUGGER_NAME}/debug`,
+                    datePattern: 'YYYY-MM-DD',
+                    zippedArchive: true,
+                    maxSize: this.maxSize,
+                    maxFiles: this.maxFiles,
+                    level: 'debug',
+                })
+            );
         }
+
+        transports.push(new winston.transports.Console());
 
         const loggerOptions: LoggerOptions = {
             format: winston.format.combine(
@@ -77,6 +76,7 @@ export class DebuggerOptionService implements IDebuggerOptionService {
             ),
             transports,
         };
+
         return loggerOptions;
     }
 }

@@ -14,13 +14,15 @@ export class VersionMiddleware implements NestMiddleware {
     ): Promise<void> {
         const globalPrefix: boolean =
             this.configService.get<boolean>('app.globalPrefix');
-        const versioning: boolean =
-            this.configService.get<boolean>('app.versioning.on');
+        const versioning: boolean = this.configService.get<boolean>(
+            'app.versioning.enable'
+        );
         const versioningPrefix: string = this.configService.get<string>(
             'app.versioning.prefix'
         );
-        const versionConfig: string =
-            this.configService.get<string>('app.version');
+        const versionConfig: string = this.configService.get<string>(
+            'app.versioning.version'
+        );
         const repoVersionConfig: string =
             this.configService.get<string>('app.repoVersion');
 

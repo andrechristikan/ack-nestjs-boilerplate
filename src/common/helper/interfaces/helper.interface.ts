@@ -34,29 +34,25 @@ export interface IHelperGeoRules extends IHelperGeoCurrent {
 }
 
 // Helper Date
-export interface IHelperDateOptions {
-    timezone?: string;
-}
-
-export interface IHelperDateOptionsDiff extends IHelperDateOptions {
+export interface IHelperDateOptionsDiff {
     format?: ENUM_HELPER_DATE_DIFF;
 }
 
-export interface IHelperDateOptionsCreate extends IHelperDateOptions {
+export interface IHelperDateOptionsCreate {
     date?: string | number | Date;
 }
 
-export interface IHelperDateOptionsFormat extends IHelperDateOptions {
+export interface IHelperDateOptionsFormat {
     format?: ENUM_HELPER_DATE_FORMAT | string;
 }
 
-export interface IHelperDateOptionsForward extends IHelperDateOptions {
+export interface IHelperDateOptionsForward {
     fromDate?: Date;
 }
 
 export type IHelperDateOptionsBackward = IHelperDateOptionsForward;
 
-export interface IHelperDateOptionsMonth extends IHelperDateOptions {
+export interface IHelperDateOptionsMonth {
     year?: number;
 }
 

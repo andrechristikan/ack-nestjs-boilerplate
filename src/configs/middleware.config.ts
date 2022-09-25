@@ -50,8 +50,8 @@ export default registerAs(
             maxRequestPerId: 1, // max request per reset time
         },
         timestamp: {
-            toleranceTimeInMs: process.env.MIDDLEWARE_TOLERANCE_TIMESTAMP
-                ? ms(process.env.MIDDLEWARE_TOLERANCE_TIMESTAMP)
+            toleranceTimeInMs: process.env.MIDDLEWARE_TIMESTAMP_TOLERANCE
+                ? ms(process.env.MIDDLEWARE_TIMESTAMP_TOLERANCE)
                 : ms('5m'), // 5 mins
         },
         cache: {

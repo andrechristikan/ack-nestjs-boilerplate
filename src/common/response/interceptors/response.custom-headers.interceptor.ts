@@ -36,7 +36,10 @@ export class ResponseCustomHeadersInterceptor
                         'x-timestamp',
                         request.timestamp || this.helperDateService.timestamp()
                     );
-                    responseExpress.setHeader('x-timezone', request.timezone);
+                    responseExpress.setHeader(
+                        'x-timezone',
+                        Intl.DateTimeFormat().resolvedOptions().timeZone
+                    );
                     responseExpress.setHeader('x-request-id', request.id);
                     responseExpress.setHeader('x-version', request.version);
                     responseExpress.setHeader(

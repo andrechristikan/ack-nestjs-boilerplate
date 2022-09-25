@@ -16,6 +16,7 @@ import {
 
 @Injectable()
 export class HttpDebuggerMiddleware implements NestMiddleware {
+    private readonly writeIntoFile: boolean;
     private readonly maxSize: string;
     private readonly maxFiles: number;
 
@@ -23,11 +24,12 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
     ) {
-        this.maxSize = this.configService.get<string>(
-            'app.debugger.http.maxSize'
+        this.writeIntoFile = this.configService.get<boolean>(
+            'debugger.http.writeIntoFile'
         );
+        this.maxSize = this.configService.get<string>('debugger.http.maxSize');
         this.maxFiles = this.configService.get<number>(
-            'app.debugger.http.maxFiles'
+            'debugger.http.maxFiles'
         );
     }
 
@@ -52,19 +54,26 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
         const date: string = this.helperDateService.format(
             this.helperDateService.create()
         );
-        const HttpDebuggerOptions: IHttpDebuggerConfigOptions = {
-            stream: createStream(`${date}.log`, {
-                path: `./logs/${DEBUGGER_HTTP_NAME}/`,
-                maxSize: this.maxSize,
-                maxFiles: this.maxFiles,
-                compress: true,
-                interval: '1d',
-            }),
-        };
+
+        if (this.writeIntoFile) {
+            const HttpDebuggerOptions: IHttpDebuggerConfigOptions = {
+                stream: createStream(`${date}.log`, {
+                    path: `./logs/${DEBUGGER_HTTP_NAME}/`,
+                    maxSize: this.maxSize,
+                    maxFiles: this.maxFiles,
+                    compress: true,
+                    interval: '1d',
+                }),
+            };
+
+            return {
+                debuggerHttpFormat: DEBUGGER_HTTP_FORMAT,
+                HttpDebuggerOptions,
+            };
+        }
 
         return {
             debuggerHttpFormat: DEBUGGER_HTTP_FORMAT,
-            HttpDebuggerOptions,
         };
     }
 

@@ -4,7 +4,6 @@ import { IResult } from 'ua-parser-js';
 
 export interface IRequestApp extends Request {
     id?: string;
-    timezone: string;
     timestamp: number;
     customLang: string[];
     apiKey?: IAuthApiPayload;

@@ -1,5 +1,4 @@
 import {
-    IHelperDateOptions,
     IHelperDateOptionsBackward,
     IHelperDateOptionsCreate,
     IHelperDateOptionsDiff,
@@ -9,7 +8,7 @@ import {
 } from 'src/common/helper/interfaces/helper.interface';
 
 export interface IHelperDateService {
-    calculateAge(dateOfBirth: Date, options?: IHelperDateOptions): number;
+    calculateAge(dateOfBirth: Date): number;
 
     diff(
         dateOne: Date,
@@ -17,11 +16,9 @@ export interface IHelperDateService {
         options?: IHelperDateOptionsDiff
     ): number;
 
-    check(date: string | Date | number, options?: IHelperDateOptions): boolean;
+    check(date: string | Date | number): boolean;
 
-    checkTimestamp(timestamp: number, options?: IHelperDateOptions): boolean;
-
-    checkTimezone(timezone: string): boolean;
+    checkTimestamp(timestamp: number): boolean;
 
     create(options?: IHelperDateOptionsCreate): Date;
 
@@ -74,11 +71,11 @@ export interface IHelperDateService {
 
     startOfMonth(month: number, options?: IHelperDateOptionsMonth): Date;
 
-    endOfYear(year: number, options?: IHelperDateOptions): Date;
+    endOfYear(year: number): Date;
 
-    startOfYear(year: number, options?: IHelperDateOptions): Date;
+    startOfYear(year: number): Date;
 
-    endOfDay(date?: Date, options?: IHelperDateOptions): Date;
+    endOfDay(date?: Date): Date;
 
-    startOfDay(date?: Date, options?: IHelperDateOptions): Date;
+    startOfDay(date?: Date): Date;
 }

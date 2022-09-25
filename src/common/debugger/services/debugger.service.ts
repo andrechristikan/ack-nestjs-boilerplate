@@ -7,7 +7,8 @@ import { IDebuggerService } from 'src/common/debugger/interfaces/debugger.servic
 @Injectable()
 export class DebuggerService implements IDebuggerService {
     constructor(
-        @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
+        @Inject(WINSTON_MODULE_PROVIDER)
+        private readonly logger: Logger
     ) {}
 
     info(requestId: string, log: IDebuggerLog, data?: any): void {

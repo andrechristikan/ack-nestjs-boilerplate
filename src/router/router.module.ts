@@ -10,7 +10,7 @@ import { RoutesTestModule } from './routes/routes.test.module';
 @Module({})
 export class RouterModule {
     static register(): DynamicModule {
-        if (process.env.APP_HTTP_ON === 'true') {
+        if (process.env.HTTP_ENABLE === 'true') {
             return {
                 module: RouterModule,
                 controllers: [],

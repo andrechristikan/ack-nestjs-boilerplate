@@ -4,6 +4,7 @@ import {
     ArgumentsHost,
     HttpException,
     HttpStatus,
+    Optional,
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { HttpAdapterHost } from '@nestjs/core';
@@ -29,8 +30,8 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 @Catch()
 export class ErrorHttpFilter implements ExceptionFilter {
     constructor(
+        @Optional() private readonly debuggerService: DebuggerService,
         private readonly messageService: MessageService,
-        private readonly debuggerService: DebuggerService,
         private readonly httpAdapterHost: HttpAdapterHost,
         private readonly helperDateService: HelperDateService
     ) {}
@@ -53,7 +54,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
             const __requestId = request.id;
             const __timestamp =
                 request.timestamp || this.helperDateService.timestamp();
-            const __timezone = request.timezone;
+            const __timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             const __version = request.version;
             const __repoVersion = request.repoVersion;
 

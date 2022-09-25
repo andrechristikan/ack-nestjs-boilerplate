@@ -7,7 +7,7 @@ export interface IHttpDebuggerConfigOptions {
 
 export interface IHttpDebuggerConfig {
     readonly debuggerHttpFormat: string;
-    readonly HttpDebuggerOptions: IHttpDebuggerConfigOptions;
+    readonly HttpDebuggerOptions?: IHttpDebuggerConfigOptions;
 }
 
 export interface ICustomResponse extends Response {

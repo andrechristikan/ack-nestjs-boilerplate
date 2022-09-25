@@ -30,7 +30,6 @@ import { DebuggerOptionService } from 'src/common/debugger/services/debugger.opt
     imports: [
         ConfigModule.forRoot({
             load: configs,
-            ignoreEnvFile: false,
             isGlobal: true,
             cache: true,
             envFilePath: ['.env'],
@@ -45,23 +44,32 @@ import { DebuggerOptionService } from 'src/common/debugger/services/debugger.opt
                     .valid(...Object.values(ENUM_MESSAGE_LANGUAGE))
                     .default('en')
                     .required(),
-                APP_TZ: Joi.any().default('Asia/Jakarta').required(),
 
-                APP_HOST: [
+                HTTP_ENABLE: Joi.boolean().default(true).required(),
+                HTTP_HOST: [
                     Joi.string().ip({ version: 'ipv4' }).required(),
                     Joi.valid('localhost').required(),
                 ],
-                APP_PORT: Joi.number().default(3000).required(),
-                APP_DEBUG: Joi.boolean().default(true).required(),
+                HTTP_PORT: Joi.number().default(3000).required(),
+                HTTP_VERSIONING_ENABLE: Joi.boolean().default(true).required(),
+                HTTP_VERSION: Joi.number().required(),
 
-                APP_VERSIONING: Joi.boolean().default(true).required(),
-                APP_VERSION: Joi.number().required(),
+                DEBUGGER_HTTP_WRITE_INTO_FILE: Joi.boolean()
+                    .default(false)
+                    .required(),
+                DEBUGGER_SYSTEM_WRITE_INTO_FILE: Joi.boolean()
+                    .default(false)
+                    .required(),
 
-                APP_DOC_NAME: Joi.string().required(),
-                APP_DOC_VERSION: Joi.number().required(),
+                MIDDLEWARE_TIMESTAMP_TOLERANCE: Joi.string()
+                    .default('5m')
+                    .required(),
+                MIDDLEWARE_TIMEOUT: Joi.string().default('30s').required(),
 
-                APP_HTTP_ON: Joi.boolean().default(true).required(),
-                APP_JOB_ON: Joi.boolean().default(false).required(),
+                DOC_NAME: Joi.string().required(),
+                DOC_VERSION: Joi.number().required(),
+
+                JOB_ENABLE: Joi.boolean().default(false).required(),
 
                 DATABASE_HOST: Joi.any()
                     .default('mongodb://localhost:27017')
@@ -72,14 +80,10 @@ import { DebuggerOptionService } from 'src/common/debugger/services/debugger.opt
                 DATABASE_DEBUG: Joi.boolean().default(false).required(),
                 DATABASE_OPTIONS: Joi.any().optional(),
 
-                MIDDLEWARE_TOLERANCE_TIMESTAMP: Joi.string()
-                    .default('5m')
-                    .required(),
-                MIDDLEWARE_TIMEOUT: Joi.string().default('30s').required(),
-
                 AUTH_JWT_SUBJECT: Joi.string().required(),
                 AUTH_JWT_AUDIENCE: Joi.string().required(),
                 AUTH_JWT_ISSUER: Joi.string().required(),
+
                 AUTH_JWT_ACCESS_TOKEN_SECRET_KEY: Joi.string()
                     .alphanum()
                     .min(5)
@@ -88,6 +92,7 @@ import { DebuggerOptionService } from 'src/common/debugger/services/debugger.opt
                 AUTH_JWT_ACCESS_TOKEN_EXPIRED: Joi.string()
                     .default('30m')
                     .required(),
+
                 AUTH_JWT_REFRESH_TOKEN_SECRET_KEY: Joi.string()
                     .alphanum()
                     .min(5)

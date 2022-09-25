@@ -1,6 +1,8 @@
 # compiled output
 /dist
 /node_modules
+.serverless/
+.warmup/
 
 # Logs
 logs
@@ -46,6 +48,7 @@ lerna-debug.log*
 !.yarn/versions
 
 # environment
-.env
+.env*
+!.env.example
 config.yaml
 config.yml
