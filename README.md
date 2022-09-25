@@ -92,11 +92,11 @@ ack-nestjs-mongoose have some objective.
 - Url Versioning or API versioning
 - Server Side Pagination, there has 3 types
 - Import and export data with excel by using `decorator`
+- `OpenAPI 3.0 Spec` or `Swagger Spec`
 
 ### Logger and Debugger
 
 - Logger `Morgan` and Debugger `Winston` 📝
-- Support `Swagger`
 
 ### Security
 
