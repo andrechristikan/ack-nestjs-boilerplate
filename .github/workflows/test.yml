@@ -40,20 +40,23 @@ jobs:
           echo APP_NAME="ack" >> .env
           echo APP_ENV="development" >> .env
           echo APP_LANGUAGE="en" >> .env
-          echo APP_TZ="Asia/Jakarta" >> .env
           
-          echo APP_HOST="localhost" >> .env
-          echo APP_PORT="3000" >> .env
-          echo APP_DEBUG="false" >> .env
+          echo HTTP_ENABLE="true" >> .env
+          echo HTTP_HOST="localhost" >> .env
+          echo HTTP_PORT="3000" >> .env
+          echo HTTP_VERSIONING_ENABLE="true" >> .env
+          echo HTTP_VERSION="1" >> .env
 
-          echo APP_VERSIONING="true" >> .env
-          echo APP_VERSION="1" >> .env
+          echo DEBUGGER_HTTP_WRITE_INTO_FILE="false" >> .env
+          echo DEBUGGER_SYSTEM_WRITE_INTO_FILE="false" >> .env
 
-          echo APP_DOC_NAME="ACK APIs Spec" >> .env
-          echo APP_DOC_VERSION="1" >> .env
+          echo MIDDLEWARE_TIMESTAMP_TOLERANCE="5m" >> .env
+          echo MIDDLEWARE_TIMEOUT="30s" >> .env
 
-          echo APP_HTTP_ON="true" >> .env
-          echo APP_JOB_ON="true" >> .env
+          echo DOC_NAME="ACK APIs Spec" >> .env
+          echo DOC_VERSION="1" >> .env
+
+          echo JOB_ENABLE="true" >> .env
 
           echo DATABASE_HOST="mongodb://localhost:27017" >> .env
           echo DATABASE_NAME="ack" >> .env
@@ -61,9 +64,6 @@ jobs:
           echo DATABASE_PASSWORD="" >> .env
           echo DATABASE_DEBUG="false" >> .env
           echo DATABASE_OPTIONS="replicaSet=test-rs" >> .env
-
-          echo MIDDLEWARE_TOLERANCE_TIMESTAMP="5m" >> .env
-          echo MIDDLEWARE_TIMEOUT="30s" >> .env
 
           echo AUTH_JWT_SUBJECT="AckDevelopment" >> .env
           echo AUTH_JWT_AUDIENCE="https://example.com" >> .env
@@ -75,11 +75,15 @@ jobs:
           echo AUTH_JWT_REFRESH_TOKEN_REMEMBER_ME_EXPIRED="30d" >> .env
           echo AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION="0" >> .env
 
+          echo AWS_API_GATEWAY="$AWS_API_GATEWAY" >> .env
+          echo AWS_PROFILE="$AWS_PROFILE" >> .env
           echo AWS_CREDENTIAL_KEY="$AWS_CREDENTIAL_KEY" >> .env
           echo AWS_CREDENTIAL_SECRET="$AWS_CREDENTIAL_SECRET" >> .env
           echo AWS_S3_BUCKET="$AWS_S3_BUCKET" >> .env
           echo AWS_S3_REGION="$AWS_S3_REGION" >> .env
         env:
+          AWS_API_GATEWAY: ${{ secrets.AWS_API_GATEWAY }}
+          AWS_PROFILE: ${{ secrets.AWS_PROFILE }}
           AWS_CREDENTIAL_KEY: ${{ secrets.AWS_CREDENTIAL_KEY }}
           AWS_CREDENTIAL_SECRET: ${{ secrets.AWS_CREDENTIAL_SECRET }}
           AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
