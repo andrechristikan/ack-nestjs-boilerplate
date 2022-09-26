@@ -23,7 +23,6 @@ import { RequestIdMiddleware } from './request-id/request-id.middleware';
 import { ResponseTimeMiddleware } from './response-time/response-time.middleware';
 import { CustomLanguageMiddleware } from './custom-language/custom-language.middleware';
 import { VersionMiddleware } from './version/version.middleware';
-import { CompressionMiddleware } from 'src/common/middleware/compression/compression.middleware';
 
 @Module({})
 export class MiddlewareModule implements NestModule {
@@ -35,7 +34,6 @@ export class MiddlewareModule implements NestModule {
                 TextBodyParserMiddleware,
                 RawBodyParserMiddleware,
                 UrlencodedBodyParserMiddleware,
-                CompressionMiddleware,
                 CorsMiddleware,
                 HttpDebuggerResponseMiddleware,
                 HttpDebuggerMiddleware,
