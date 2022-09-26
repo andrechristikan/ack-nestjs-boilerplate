@@ -11,7 +11,6 @@ import { IAuthApiPayload } from 'src/common/auth/interfaces/auth.interface';
 import { ResponseDocOneOf } from 'src/common/response/decorators/response.decorator';
 import 'dotenv/config';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 
 export const ApiKey = createParamDecorator(
     (data: string, ctx: ExecutionContext): IAuthApiPayload => {
@@ -63,11 +62,6 @@ export function AuthApiKey(): any {
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_API_KEY_INVALID_ERROR,
                 messagePath: 'auth.apiKey.error.invalid',
-            },
-            {
-                statusCode:
-                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
-                messagePath: 'request.error.timestampInvalid',
             }
         ),
     ];

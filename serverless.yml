@@ -73,14 +73,14 @@ custom:
 provider:
   name: aws
   stackName: ${self:service}
-  apiName: baibay
+  apiName: ${env:AWS_API_GATEWAY, 'baibay'}
   deploymentMethod: direct
   runtime: nodejs16.x
   endpointType: REGIONAL
 
   stage: ${opt:stage,'development'}
   region: ${opt:region, 'ap-southeast-3'}
-  profile: baibay
+  profile: ${env:AWS_PROFILE, 'baibay'}
 
   timeout: 30
   logRetentionInDays: 90
@@ -88,7 +88,7 @@ provider:
 
   deploymentPrefix: serverless
   deploymentBucket:
-    name: baibay-development
+    name: ${env:AWS_S3_BUCKET, 'baibay-development'}
     maxPreviousDeploymentArtifacts: 5
     blockPublicAccess: true
     skipPolicySetup: true

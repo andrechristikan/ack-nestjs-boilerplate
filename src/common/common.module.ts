@@ -107,6 +107,8 @@ import { DebuggerOptionService } from 'src/common/debugger/services/debugger.opt
                 AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION:
                     Joi.string().required(),
 
+                AWS_API_GATEWAY: Joi.string().optional(),
+                AWS_PROFILE: Joi.string().optional(),
                 AWS_CREDENTIAL_KEY: Joi.string().optional(),
                 AWS_CREDENTIAL_SECRET: Joi.string().optional(),
                 AWS_S3_REGION: Joi.string().optional(),

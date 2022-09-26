@@ -25,10 +25,8 @@ ack-nestjs-mongoose is a [NestJs](http://nestjs.com) Boilerplate with [Mongoose]
 
 If you change env value of `APP_ENV` to `production` that will
 
-1. Do not write into console `Database debug` even when `DATABASE_DEBUG` is `true`
-2. Do not write into console for `DebuggerService` even when `APP_DEBUG` is `true`
-3. `CorsMiddleware` on and follow the `src/configs/middleware.config.ts`.
-4. Documentation will `off`
+1. `CorsMiddleware` on and follow the `src/configs/middleware.config.ts`.
+2. Documentation will `off`
 
 You can see our `e2e testing file` or read [section environment](ack-doc-env).
 
@@ -92,11 +90,11 @@ ack-nestjs-mongoose have some objective.
 - Url Versioning or API versioning
 - Server Side Pagination, there has 3 types
 - Import and export data with excel by using `decorator`
+- `OpenAPI 3.0 Spec` or `Swagger Spec`
 
 ### Logger and Debugger
 
 - Logger `Morgan` and Debugger `Winston` 📝
-- Support `Swagger`
 
 ### Security
 
@@ -247,13 +245,19 @@ Detail information about the environment
 | APP\_NAME | `string` | Application name and will be subject for jwt|
 | APP\_ENV | `string` | <ul><li>production</li><li>development</li></ul> |
 | APP\_LANGUAGE | `string` | Enum languages, separator `,` |
-| APP\_DEBUG | `boolean` | All logs will write into console |
+
+### HTTP Environment
 
 | HTTP\_HTTP\_ENABLE | `boolean` | Application Http turn on |
 | HTTP\_HOST | `string` | Application serve |
 | HTTP\_PORT | `number` | Application serve |
 | HTTP\_VERSIONING\_ENABLE | `boolean` | Application url versioning |
 | HTTP\_VERSION | `number | string` | Application url versioning |
+
+### Debugger Environment
+
+| DEBUGGER\_HTTP\_WRITE\_INTO\_FILE | `boolean` | Http debugger write into file |
+| DEBUGGER\_SYSTEM\_WRITE\_INTO\_FILE | `boolean` | System debugger write into file |
 
 ### Middleware Environment
 
