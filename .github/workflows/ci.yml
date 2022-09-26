@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       APP_NAME: ack-nestjs-mongoose
-      DOCKERFILE: ./docker/dockerfile.prod
+      DOCKERFILE: ./scripts/docker/dockerfile.prod
     
     steps:
       - name: Git checkout
