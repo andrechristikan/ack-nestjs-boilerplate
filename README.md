@@ -304,6 +304,14 @@ Detail information about the environment
 | AUTH\_JWT\_REFRESH\_TOKEN\_REMEMBER\_ME\_EXPIRED | `string` | Expiration time for refresh token when remember me is checked. `ms` package value |
 | AUTH\_JWT\_REFRESH\_TOKEN\_NOT\_BEFORE\_EXPIRATION | `string` | Token active for refresh token before `x` time. `ms` package value |
 
+### Serverless
+
+| Key | Type | Description |
+| ---- | ---- | ---- |
+| SERVERLESS\_AWS\_API\_GATEWAY | `string` | AWS api gateway for deployment |
+| SERVERLESS\_AWS\_PROFILE | `string` | AWS profile for deployment |
+| SERVERLESS\_AWS\_S3\_BUCKET | `string` | AWS s3 bucket for deployment |
+
 ### AWS Environment
 
 | Key | Type | Description |
