@@ -2,7 +2,7 @@ import { Model, Types } from 'mongoose';
 import { IDatabaseBulkRepositoryAbstract } from 'src/common/database/interfaces/database.bulk.repository.interface';
 import {
     IDatabaseCreateManyOptions,
-    IDatabaseDeleteOptions,
+    IDatabaseSoftDeleteOptions,
     IDatabaseOptions,
     IDatabaseRestoreOptions,
 } from 'src/common/database/interfaces/database.interface';
@@ -33,12 +33,12 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
 
     async deleteManyById(
         _id: string[],
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseOptions
     ): Promise<boolean> {
         const map: Types.ObjectId[] = _id.map((val) => new Types.ObjectId(val));
 
         try {
-            await this._repository.deleteMany(
+            const del = this._repository.deleteMany(
                 {
                     _id: {
                         $in: map,
@@ -49,6 +49,13 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
                 }
             );
 
+            if (options && options.withDeleted) {
+                del.where('deletedAt').exists(true);
+            } else {
+                del.where('deletedAt').exists(false);
+            }
+
+            await del;
             return true;
         } catch (err: any) {
             throw err;
@@ -57,13 +64,20 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
 
     async deleteMany(
         find: Record<string, any>,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseOptions
     ): Promise<boolean> {
         try {
-            await this._repository.deleteMany(find, {
+            const del = this._repository.deleteMany(find, {
                 session: options ? options.session : undefined,
             });
 
+            if (options && options.withDeleted) {
+                del.where('deletedAt').exists(true);
+            } else {
+                del.where('deletedAt').exists(false);
+            }
+
+            await del;
             return true;
         } catch (err: any) {
             throw err;
@@ -72,29 +86,29 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
 
     async softDeleteManyById(
         _id: string[],
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<boolean> {
         const map: Types.ObjectId[] = _id.map((val) => new Types.ObjectId(val));
 
         try {
-            await this._repository.updateMany(
-                {
-                    _id: {
-                        $in: map,
+            await this._repository
+                .updateMany(
+                    {
+                        _id: {
+                            $in: map,
+                        },
                     },
-                    deletedAt: {
-                        $exists: true,
+                    {
+                        $set: {
+                            deletedAt: new Date(),
+                        },
                     },
-                },
-                {
-                    $set: {
-                        deletedAt: new Date(),
-                    },
-                },
-                {
-                    session: options ? options.session : undefined,
-                }
-            );
+                    {
+                        session: options ? options.session : undefined,
+                    }
+                )
+                .where('deletedAt')
+                .exists(false);
 
             return true;
         } catch (err: any) {
@@ -104,25 +118,23 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
 
     async softDeleteMany(
         find: Record<string, any>,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<boolean> {
         try {
-            await this._repository.updateMany(
-                {
-                    ...find,
-                    deletedAt: {
-                        $exists: true,
+            await this._repository
+                .updateMany(
+                    find,
+                    {
+                        $set: {
+                            deletedAt: new Date(),
+                        },
                     },
-                },
-                {
-                    $set: {
-                        deletedAt: new Date(),
-                    },
-                },
-                {
-                    session: options ? options.session : undefined,
-                }
-            );
+                    {
+                        session: options ? options.session : undefined,
+                    }
+                )
+                .where('deletedAt')
+                .exists(false);
 
             return true;
         } catch (err: any) {
@@ -137,24 +149,24 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
         const map: Types.ObjectId[] = _id.map((val) => new Types.ObjectId(val));
 
         try {
-            await this._repository.updateMany(
-                {
-                    _id: {
-                        $in: map,
+            await this._repository
+                .updateMany(
+                    {
+                        _id: {
+                            $in: map,
+                        },
                     },
-                    deletedAt: {
-                        $exists: true,
+                    {
+                        $set: {
+                            deletedAt: undefined,
+                        },
                     },
-                },
-                {
-                    $set: {
-                        deletedAt: undefined,
-                    },
-                },
-                {
-                    session: options ? options.session : undefined,
-                }
-            );
+                    {
+                        session: options ? options.session : undefined,
+                    }
+                )
+                .where('deletedAt')
+                .exists(true);
 
             return true;
         } catch (err: any) {
@@ -168,23 +180,7 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
         options?: IDatabaseOptions
     ): Promise<boolean> {
         try {
-            if (options && options.withDeleted) {
-                find = {
-                    ...find,
-                    deletedAt: {
-                        $exists: true,
-                    },
-                };
-            } else {
-                find = {
-                    ...find,
-                    deletedAt: {
-                        $exists: false,
-                    },
-                };
-            }
-
-            await this._repository.updateMany(
+            const update = this._repository.updateMany(
                 find,
                 {
                     $set: data,
@@ -194,6 +190,13 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
                 }
             );
 
+            if (options && options.withDeleted) {
+                update.where('deletedAt').exists(true);
+            } else {
+                update.where('deletedAt').exists(false);
+            }
+
+            await update;
             return true;
         } catch (err: any) {
             throw err;

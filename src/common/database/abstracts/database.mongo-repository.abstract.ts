@@ -1,7 +1,7 @@
 import { Model, PipelineStage, PopulateOptions } from 'mongoose';
 import {
     IDatabaseCreateOptions,
-    IDatabaseDeleteOptions,
+    IDatabaseSoftDeleteOptions,
     IDatabaseExistOptions,
     IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
@@ -393,25 +393,38 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
 
     async deleteOne(
         find: Record<string, any>,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseOptions
     ): Promise<T> {
-        return this._repository
+        const del = this._repository
             .findOneAndDelete(find, { new: true })
             .session(options ? options.session : undefined);
+
+        if (options && options.withDeleted) {
+            del.where('deletedAt').exists(true);
+        } else {
+            del.where('deletedAt').exists(false);
+        }
+
+        return del;
     }
 
-    async deleteOneById(
-        _id: string,
-        options?: IDatabaseDeleteOptions
-    ): Promise<T> {
-        return this._repository
+    async deleteOneById(_id: string, options?: IDatabaseOptions): Promise<T> {
+        const del = this._repository
             .findByIdAndDelete(_id, { new: true })
             .session(options ? options.session : undefined);
+
+        if (options && options.withDeleted) {
+            del.where('deletedAt').exists(true);
+        } else {
+            del.where('deletedAt').exists(false);
+        }
+
+        return del;
     }
 
     async softDeleteOneById(
         _id: string,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<T> {
         return this._repository
             .findByIdAndUpdate(
@@ -428,7 +441,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
 
     async softDeleteOne(
         find: Record<string, any>,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<T> {
         return this._repository
             .findOneAndUpdate(

@@ -1,6 +1,6 @@
 import {
     IDatabaseCreateOptions,
-    IDatabaseDeleteOptions,
+    IDatabaseSoftDeleteOptions,
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
@@ -49,11 +49,11 @@ export interface IRoleService {
 
     deleteOneById(
         _id: string,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<RoleDocument>;
 
     deleteOne(
         find: Record<string, any>,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<RoleDocument>;
 }

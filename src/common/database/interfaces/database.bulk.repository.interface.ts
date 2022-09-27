@@ -1,7 +1,7 @@
 import {
     IDatabaseCreateManyOptions,
     IDatabaseCreateOptions,
-    IDatabaseDeleteOptions,
+    IDatabaseSoftDeleteOptions,
     IDatabaseOptions,
     IDatabaseRestoreOptions,
 } from './database.interface';
@@ -24,12 +24,12 @@ export interface IDatabaseBulkRepositoryAbstract {
 
     softDeleteManyById(
         _id: string[],
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<boolean>;
 
     softDeleteMany(
         find: Record<string, any>,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<boolean>;
 
     restore(_id: string[], options?: IDatabaseRestoreOptions): Promise<boolean>;

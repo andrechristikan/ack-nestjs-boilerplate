@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { IAuthPermission } from 'src/common/auth/interfaces/auth.interface';
 import {
     IDatabaseCreateManyOptions,
-    IDatabaseDeleteOptions,
+    IDatabaseSoftDeleteOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IPermissionBulkService } from 'src/modules/permission/interfaces/permission.bulk-service.interface';
 import { PermissionBulkRepository } from 'src/modules/permission/repositories/permission.bulk.repository';
@@ -35,7 +35,7 @@ export class PermissionBulkService implements IPermissionBulkService {
 
     async deleteMany(
         find: Record<string, any>,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<boolean> {
         return this.permissionBulkRepository.deleteMany(find, options);
     }

@@ -10,7 +10,7 @@ import {
 import { AuthApiDocument } from 'src/common/auth/schemas/auth.api.schema';
 import {
     IDatabaseCreateOptions,
-    IDatabaseDeleteOptions,
+    IDatabaseSoftDeleteOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -66,12 +66,12 @@ export interface IAuthApiService {
 
     deleteOneById(
         _id: string,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<AuthApiDocument>;
 
     deleteOne(
         find: Record<string, any>,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<AuthApiDocument>;
 
     createKey(): Promise<string>;

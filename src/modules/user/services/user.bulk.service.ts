@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { IDatabaseDeleteOptions } from 'src/common/database/interfaces/database.interface';
+import { IDatabaseSoftDeleteOptions } from 'src/common/database/interfaces/database.interface';
 import { IUserBulkService } from 'src/modules/user/interfaces/user.bulk-service.interface';
 import { UserBulkRepository } from 'src/modules/user/repositories/user.bulk.repository';
 
@@ -9,7 +9,7 @@ export class UserBulkService implements IUserBulkService {
 
     async deleteMany(
         find: Record<string, any>,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<boolean> {
         return this.userBulkRepository.deleteMany(find, options);
     }
