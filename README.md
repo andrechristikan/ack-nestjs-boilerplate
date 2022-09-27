@@ -15,7 +15,7 @@
 
 # ACK NestJs Boilerplate Mongoose  🔥 🚀
 
-ack-nestjs-mongoose is a [NestJs](http://nestjs.com) Boilerplate with [Mongoose](ref-mongoose) and [MongoDB](ref-mongodb) as Database.
+ack-nestjs-mongoose is a [Http NestJs](http://nestjs.com) Boilerplate.
 
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
 
@@ -407,3 +407,5 @@ Distributed under [MIT licensed][license].
 [ref-12factor]: https://12factor.net
 [ref-serverless]: https://www.serverless.com
 [ref-nestjscommand]: https://gitlab.com/aa900031/nestjs-command
+[ref-jwt]: https://jwt.io
+[ref-jest]: https://jestjs.io/docs/getting-started
