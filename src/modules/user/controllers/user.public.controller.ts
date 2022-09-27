@@ -11,7 +11,10 @@ import { ApiTags } from '@nestjs/swagger';
 import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
-import { RequestValidateUserAgent } from 'src/common/request/decorators/request.decorator';
+import {
+    RequestValidateTimestamp,
+    RequestValidateUserAgent,
+} from 'src/common/request/decorators/request.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { RoleDocument } from 'src/modules/role/schemas/role.schema';
@@ -36,6 +39,7 @@ export class UserPublicController {
     @Response('auth.signUp', { doc: { httpStatus: HttpStatus.CREATED } })
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Post('/sign-up')
     async signUp(
         @Body()

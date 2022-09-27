@@ -1,6 +1,7 @@
-import { Model, PipelineStage, PopulateOptions, Types } from 'mongoose';
+import { Model, PipelineStage, PopulateOptions } from 'mongoose';
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteOptions,
     IDatabaseExistOptions,
     IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
@@ -8,6 +9,7 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseGetTotalAggregateOptions,
     IDatabaseOptions,
+    IDatabaseRestoreOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IDatabaseRepositoryAbstract } from 'src/common/database/interfaces/database.repository.interface';
 
@@ -30,6 +32,12 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         options?: IDatabaseFindAllOptions
     ): Promise<Y[]> {
         const findAll = this._repository.find(find);
+
+        if (options && options.withDeleted) {
+            findAll.where('deletedAt').exists(true);
+        } else {
+            findAll.where('deletedAt').exists(false);
+        }
 
         if (options && options.select) {
             findAll.select(options.select);
@@ -68,6 +76,20 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         pipeline: PipelineStage[],
         options?: IDatabaseFindAllAggregateOptions
     ): Promise<N[]> {
+        if (options && options.withDeleted) {
+            pipeline.push({
+                $match: {
+                    deletedAt: { $exist: true },
+                },
+            });
+        } else {
+            pipeline.push({
+                $match: {
+                    deletedAt: { $exist: false },
+                },
+            });
+        }
+
         if (
             options &&
             options.limit !== undefined &&
@@ -103,6 +125,12 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     ): Promise<Y> {
         const findOne = this._repository.findOne(find);
 
+        if (options && options.withDeleted) {
+            findOne.where('deletedAt').exists(true);
+        } else {
+            findOne.where('deletedAt').exists(false);
+        }
+
         if (options && options.select) {
             findOne.select(options.select);
         }
@@ -130,6 +158,12 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     ): Promise<Y> {
         const findOne = this._repository.findById(_id);
 
+        if (options && options.withDeleted) {
+            findOne.where('deletedAt').exists(true);
+        } else {
+            findOne.where('deletedAt').exists(false);
+        }
+
         if (options && options.select) {
             findOne.select(options.select);
         }
@@ -155,6 +189,20 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         pipeline: PipelineStage[],
         options?: IDatabaseFindOneAggregateOptions
     ): Promise<Y> {
+        if (options && options.withDeleted) {
+            pipeline.push({
+                $match: {
+                    deletedAt: { $exist: true },
+                },
+            });
+        } else {
+            pipeline.push({
+                $match: {
+                    deletedAt: { $exist: false },
+                },
+            });
+        }
+
         pipeline.push({
             $limit: 1,
         });
@@ -175,6 +223,12 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     ): Promise<number> {
         const count = this._repository.countDocuments(find);
 
+        if (options && options.withDeleted) {
+            count.where('deletedAt').exists(true);
+        } else {
+            count.where('deletedAt').exists(false);
+        }
+
         if (options && options.session) {
             count.session(options.session);
         }
@@ -185,10 +239,26 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         pipeline: PipelineStage[],
         options?: IDatabaseGetTotalAggregateOptions
     ): Promise<number> {
+        if (options && options.withDeleted) {
+            pipeline.push({
+                $match: {
+                    deletedAt: { $exist: true },
+                },
+            });
+        } else {
+            pipeline.push({
+                $match: {
+                    deletedAt: { $exist: false },
+                },
+            });
+        }
+
         pipeline.push({
             $group: {
                 _id: null,
-                count: { $sum: options && options.field ? options.field : 1 },
+                count: {
+                    $sum: options && options.field ? options.field : 1,
+                },
             },
         });
 
@@ -209,11 +279,18 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         const exist = this._repository.exists({
             ...find,
             _id: {
-                $nin: new Types.ObjectId(
-                    options && options.excludeId ? options.excludeId : undefined
-                ),
+                $nin:
+                    options && options.excludeId
+                        ? options.excludeId
+                        : undefined,
             },
         });
+
+        if (options && options.withDeleted) {
+            exist.where('deletedAt').exists(true);
+        } else {
+            exist.where('deletedAt').exists(false);
+        }
 
         if (options && options.session) {
             exist.session(options.session);
@@ -228,6 +305,20 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         pipeline: Record<string, any>[],
         options?: IDatabaseOptions
     ): Promise<N[]> {
+        if (options && options.withDeleted) {
+            pipeline.push({
+                $match: {
+                    deletedAt: { $exist: true },
+                },
+            });
+        } else {
+            pipeline.push({
+                $match: {
+                    deletedAt: { $exist: false },
+                },
+            });
+        }
+
         const aggregate = this._repository.aggregate<N>(
             pipeline as PipelineStage[]
         );
@@ -242,7 +333,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     async create<N>(data: N, options?: IDatabaseCreateOptions): Promise<T> {
         const dataCreate: Record<string, any> = data;
         if (options && options._id) {
-            dataCreate._id = new Types.ObjectId(options._id);
+            dataCreate._id = options._id;
         }
 
         const create = await this._repository.create([dataCreate], {
@@ -257,7 +348,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         data: N,
         options?: IDatabaseOptions
     ): Promise<T> {
-        return this._repository
+        const update = this._repository
             .findByIdAndUpdate(
                 _id,
                 {
@@ -266,6 +357,14 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
                 { new: true }
             )
             .session(options ? options.session : undefined);
+
+        if (options && options.withDeleted) {
+            update.where('deletedAt').exists(true);
+        } else {
+            update.where('deletedAt').exists(false);
+        }
+
+        return update;
     }
 
     async updateOne<N>(
@@ -273,7 +372,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         data: N,
         options?: IDatabaseOptions
     ): Promise<T> {
-        return this._repository
+        const update = this._repository
             .findByIdAndUpdate(
                 find,
                 {
@@ -282,20 +381,79 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
                 { new: true }
             )
             .session(options ? options.session : undefined);
+
+        if (options && options.withDeleted) {
+            update.where('deletedAt').exists(true);
+        } else {
+            update.where('deletedAt').exists(false);
+        }
+
+        return update;
     }
 
     async deleteOne(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseDeleteOptions
     ): Promise<T> {
         return this._repository
             .findOneAndDelete(find, { new: true })
             .session(options ? options.session : undefined);
     }
 
-    async deleteOneById(_id: string, options?: IDatabaseOptions): Promise<T> {
+    async deleteOneById(
+        _id: string,
+        options?: IDatabaseDeleteOptions
+    ): Promise<T> {
         return this._repository
             .findByIdAndDelete(_id, { new: true })
+            .session(options ? options.session : undefined);
+    }
+
+    async softDeleteOneById(
+        _id: string,
+        options?: IDatabaseDeleteOptions
+    ): Promise<T> {
+        return this._repository
+            .findByIdAndUpdate(
+                _id,
+                {
+                    $set: { deletedAt: new Date() },
+                },
+                { new: true }
+            )
+            .where('deletedAt')
+            .exists(false)
+            .session(options ? options.session : undefined);
+    }
+
+    async softDeleteOne(
+        find: Record<string, any>,
+        options?: IDatabaseDeleteOptions
+    ): Promise<T> {
+        return this._repository
+            .findOneAndUpdate(
+                find,
+                {
+                    $set: { deletedAt: new Date() },
+                },
+                { new: true }
+            )
+            .where('deletedAt')
+            .exists(false)
+            .session(options ? options.session : undefined);
+    }
+
+    async restore(_id: string, options?: IDatabaseRestoreOptions): Promise<T> {
+        return this._repository
+            .findByIdAndUpdate(
+                _id,
+                {
+                    $set: { deletedAt: undefined },
+                },
+                { new: true }
+            )
+            .where('deletedAt')
+            .exists(true)
             .session(options ? options.session : undefined);
     }
 }

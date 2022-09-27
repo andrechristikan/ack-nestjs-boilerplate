@@ -1,14 +1,17 @@
 import { IAuthPermission } from 'src/common/auth/interfaces/auth.interface';
-import { IDatabaseOptions } from 'src/common/database/interfaces/database.interface';
+import {
+    IDatabaseCreateManyOptions,
+    IDatabaseDeleteOptions,
+} from 'src/common/database/interfaces/database.interface';
 
 export interface IPermissionBulkService {
     createMany(
         data: IAuthPermission[],
-        options?: IDatabaseOptions
+        options?: IDatabaseCreateManyOptions
     ): Promise<boolean>;
 
     deleteMany(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseDeleteOptions
     ): Promise<boolean>;
 }

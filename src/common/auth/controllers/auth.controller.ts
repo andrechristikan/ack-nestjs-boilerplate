@@ -4,7 +4,10 @@ import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { User } from 'src/common/auth/decorators/auth.decorator';
 import { AuthJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthInfoSerialization } from 'src/common/auth/serializations/auth.info.serialization';
-import { RequestValidateUserAgent } from 'src/common/request/decorators/request.decorator';
+import {
+    RequestValidateTimestamp,
+    RequestValidateUserAgent,
+} from 'src/common/request/decorators/request.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 
@@ -18,6 +21,7 @@ export class AuthController {
     @AuthJwtGuard()
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Get('/info')
     async info(@User() user: Record<string, any>): Promise<IResponse> {
         return user;

@@ -20,6 +20,7 @@ import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.s
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import {
     RequestParamGuard,
+    RequestValidateTimestamp,
     RequestValidateUserAgent,
 } from 'src/common/request/decorators/request.decorator';
 import {
@@ -72,6 +73,7 @@ export class RoleAdminController {
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.ROLE_READ)
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Get('/list')
     async list(
         @Query()
@@ -121,6 +123,7 @@ export class RoleAdminController {
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.ROLE_READ)
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Get('get/:role')
     async get(@GetRole() role: IRoleDocument): Promise<IResponse> {
         return role;
@@ -138,6 +141,7 @@ export class RoleAdminController {
     )
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Post('/create')
     async create(
         @Body()
@@ -195,6 +199,7 @@ export class RoleAdminController {
     )
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Put('/update/:role')
     async update(
         @GetRole() role: RoleDocument,
@@ -250,6 +255,7 @@ export class RoleAdminController {
     )
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Delete('/delete/:role')
     async delete(@GetRole() role: IRoleDocument): Promise<void> {
         try {
@@ -273,6 +279,7 @@ export class RoleAdminController {
     )
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Patch('/update/:role/inactive')
     async inactive(@GetRole() role: IRoleDocument): Promise<void> {
         try {
@@ -297,6 +304,7 @@ export class RoleAdminController {
     )
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Patch('/update/:role/active')
     async active(@GetRole() role: IRoleDocument): Promise<void> {
         try {

@@ -3,15 +3,8 @@ import { Logger, VersioningType } from '@nestjs/common';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
 import { useContainer } from 'class-validator';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { ResponseDefaultSerialization } from 'src/common/response/serializations/response.default.serialization';
-import { ResponsePagingSerialization } from 'src/common/response/serializations/response.paging.serialization';
-import {
-    AwsS3MultipartPartsSerialization,
-    AwsS3MultipartSerialization,
-} from 'src/common/aws/serializations/aws.s3-multipart.serialization';
-import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
+import swaggerInit from './swagger';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule);
@@ -49,48 +42,8 @@ async function bootstrap() {
     }
 
     // Swagger
-    const docName: string = configService.get<string>('doc.name');
-    const docDesc: string = configService.get<string>('doc.description');
-    const docVersion: string = configService.get<string>('doc.version');
     const docPrefix: string = configService.get<string>('doc.prefix');
-
-    if (env !== 'production') {
-        const documentConfig = new DocumentBuilder()
-            .setTitle(docName)
-            .setDescription(docDesc)
-            .setVersion(docVersion)
-            .addTag("API's")
-            .addBearerAuth(
-                { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-                'accessToken'
-            )
-            .addBearerAuth(
-                { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-                'refreshToken'
-            )
-            .addApiKey(
-                { type: 'apiKey', in: 'header', name: 'x-api-key' },
-                'apiKey'
-            );
-
-        const documentBuild = documentConfig.build();
-
-        const document = SwaggerModule.createDocument(app, documentBuild, {
-            deepScanRoutes: true,
-            extraModels: [
-                ResponseDefaultSerialization,
-                ResponsePagingSerialization,
-                AwsS3MultipartPartsSerialization,
-                AwsS3MultipartSerialization,
-                AwsS3Serialization,
-            ],
-        });
-
-        SwaggerModule.setup(docPrefix, app, document, {
-            explorer: true,
-            customSiteTitle: docName,
-        });
-    }
+    await swaggerInit(app);
 
     // Listen
     await app.listen(port, host);

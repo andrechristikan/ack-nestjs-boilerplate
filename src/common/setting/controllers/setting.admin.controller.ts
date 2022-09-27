@@ -11,6 +11,7 @@ import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import {
     RequestParamGuard,
+    RequestValidateTimestamp,
     RequestValidateUserAgent,
 } from 'src/common/request/decorators/request.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
@@ -46,6 +47,7 @@ export class SettingAdminController {
     )
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Put('/update/:setting')
     async update(
         @GetSetting() setting: SettingDocument,

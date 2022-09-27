@@ -1,5 +1,6 @@
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -31,7 +32,7 @@ export interface IPermissionService {
 
     deleteOne(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseDeleteOptions
     ): Promise<PermissionDocument>;
 
     create(

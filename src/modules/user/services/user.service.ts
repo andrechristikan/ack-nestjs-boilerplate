@@ -7,6 +7,7 @@ import { IUserService } from 'src/modules/user/interfaces/user.service.interface
 import { UserRepository } from 'src/modules/user/repositories/user.repository';
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteOptions,
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
@@ -97,14 +98,14 @@ export class UserService implements IUserService {
 
     async deleteOneById(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseDeleteOptions
     ): Promise<UserDocument> {
         return this.userRepository.deleteOneById(_id, options);
     }
 
     async deleteOne(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseDeleteOptions
     ): Promise<UserDocument> {
         return this.userRepository.deleteOne(find, options);
     }

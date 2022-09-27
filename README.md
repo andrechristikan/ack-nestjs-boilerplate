@@ -37,11 +37,13 @@ Next development
 - [x] Implement Repository Design Pattern / Data Access Object Design Pattern
 - [x] Swagger for API Documentation
 - [x] Support Serverless
+- [x] Mongoose soft delete
 - [x] Make it simple
-- [ ] Update Documentation
+- [ ] Optimize Swagger
+- [ ] Add Relational Database Repository, ex: mysql, postgres
+- [ ] Update Documentation, include an diagram for easier comprehension
 - [ ] Export to excel and Import from excel add options to background process
 - [ ] AuthApi Controller
-- [ ] Basic Token as ApiKey
 - [ ] OAuth2 Client Credentials
 
 ## Build with
@@ -59,17 +61,19 @@ Describes which version .
 | NPM        | v8.x     |
 | Docker     | v20.x    |
 | Docker Compose | v2.x |
+| Swagger | v6.x |
+| Aws CLI | v2.x |
 
 ## Objective
 
 ack-nestjs-mongoose have some objective.
 
-- Repository Design Pattern / Data Access Layer Design Pattern
-- Microservice Architecture
-- NestJs Habit.
-- [The Twelve-Factor App](https://12factor.net)
 - Easy to maintenance
-- Adobe KISS principle
+- NestJs Habit.
+- Repository Design Pattern / Data Access Layer Design Pattern
+- Microservice Architecture, Clean Architecture, and/or Hexagonal Architecture
+- [The Twelve-Factor App](https://12factor.net)
+- Adopt SOLID and KISS principle
 
 ## Features
 
@@ -77,10 +81,12 @@ ack-nestjs-mongoose have some objective.
 - Typescript 🚀
 - Production ready 🔥
 - Support serverless
+- `OpenAPI 3.0 Spec` or `Swagger Spec`
 - Authentication and authorization (`JWT`, `API Key`) 💪
 - Role management system
 - MongoDB integrate by using `mongoose` 🎉
 - Support MongoDB Transaction
+- Support MongoDB Soft Delete
 - Database Migration with `NestJs-Command`
 - Storage integration with `AwsS3`
 - Upload file `single` and `multipart` to AwsS3
@@ -90,7 +96,6 @@ ack-nestjs-mongoose have some objective.
 - Url Versioning or API versioning
 - Server Side Pagination, there has 3 types
 - Import and export data with excel by using `decorator`
-- `OpenAPI 3.0 Spec` or `Swagger Spec`
 
 ### Logger and Debugger
 
@@ -148,7 +153,7 @@ Recommend version is LTS Version for every tool and package.
 Clone ack-nestjs-mongoose with git.
 
 ```bash
-git clone https://github.com/andrechristikan/ack-nestjs-mongoose
+git clone https://github.com/andrechristikan/ack-nestjs-mongoose.git
 ```
 
 #### Install Dependencies
@@ -156,7 +161,6 @@ git clone https://github.com/andrechristikan/ack-nestjs-mongoose
 This project need some dependencies. Let's go install it.
 
 ```bash
-# yarn
 yarn install
 ```
 
@@ -383,9 +387,6 @@ Distributed under [MIT licensed][license].
 [ack-forks]: https://github.com/andrechristikan/ack-nestjs-mongoose/network/members
 [ack-contributors]: https://github.com/andrechristikan/ack-nestjs-mongoose/graphs/contributors
 [ack-history]: https://github.com/andrechristikan/ack-nestjs-mongoose/commits/main
-
-<!-- ack microservice -->
-[ack-microservice-repo]: https://github.com/andrechristikan/ack-microservice-mongoose
 
 <!-- license -->
 [license]: LICENSE.md
