@@ -15,7 +15,7 @@
 
 # ACK NestJs Boilerplate Mongoose  🔥 🚀
 
-ack-nestjs-mongoose is a [NestJs](http://nestjs.com) Boilerplate with [Mongoose](https://mongoosejs.com) and [MongoDB](https://docs.mongodb.com) as Database.
+ack-nestjs-mongoose is a [NestJs](http://nestjs.com) Boilerplate with [Mongoose](ref-mongoose) and [MongoDB](ref-mongodb) as Database.
 
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
 
@@ -23,12 +23,10 @@ ack-nestjs-mongoose is a [NestJs](http://nestjs.com) Boilerplate with [Mongoose]
 
 > ack-nestjs-mongoose still on trial and error phase and the test will base on real projects or cases. So there will be (always) have new update and new features.
 
-If you change env value of `APP_ENV` to `production` that will
+If you change env value of `APP_ENV` to `production` that will trigger
 
-1. `CorsMiddleware` on and follow the `src/configs/middleware.config.ts`.
-2. Documentation will `off`
-
-You can see our `e2e testing file` or read [section environment](ack-doc-env).
+1. CorsMiddleware will implement `src/configs/middleware.config.ts`, else default is `*`.
+2. Documentation will `disable`
 
 ## Next Todo
 
@@ -37,7 +35,7 @@ Next development
 - [x] Implement Repository Design Pattern / Data Access Object Design Pattern
 - [x] Swagger for API Documentation
 - [x] Support Serverless
-- [x] Mongoose soft delete
+- [x] Mongo Repository soft delete
 - [x] Make it simple
 - [ ] Optimize Swagger
 - [ ] Add Relational Database Repository, ex: mysql, postgres
@@ -66,13 +64,11 @@ Describes which version .
 
 ## Objective
 
-ack-nestjs-mongoose have some objective.
-
 - Easy to maintenance
-- NestJs Habit.
+- NestJs Habit
 - Repository Design Pattern / Data Access Layer Design Pattern
-- Microservice Architecture, Clean Architecture, and/or Hexagonal Architecture
-- [The Twelve-Factor App](https://12factor.net)
+- Support Microservice Architecture, Clean Architecture, and/or Hexagonal Architecture
+- Follow The Twelve-Factor App
 - Adopt SOLID and KISS principle
 
 ## Features
@@ -81,7 +77,7 @@ ack-nestjs-mongoose have some objective.
 - Typescript 🚀
 - Production ready 🔥
 - Support serverless
-- `OpenAPI 3.0 Spec` or `Swagger Spec`
+- Swagger included
 - Authentication and authorization (`JWT`, `API Key`) 💪
 - Role management system
 - MongoDB integrate by using `mongoose` 🎉
@@ -93,8 +89,8 @@ ack-nestjs-mongoose have some objective.
 - Support multi-language `i18n` 🗣
 - Request validation with `class-validation`
 - Serialization with `class-transformer`
-- Url Versioning or API versioning
-- Server Side Pagination, there has 3 types
+- Url Versioning
+- Server Side Pagination, there have 3 of types
 - Import and export data with excel by using `decorator`
 
 ### Logger and Debugger
@@ -128,13 +124,14 @@ ack-nestjs-mongoose have some objective.
 We assume that everyone who comes here is **`programmer with intermediate knowledge`** and we also need to understand more before we begin in order to reduce the knowledge gap.
 
 1. Understand [NestJs Fundamental](http://nestjs.com), Main Framework. NodeJs Framework with support fully TypeScript.
-2. Understand[Typescript Fundamental](https://www.typescriptlang.org), Programming Language. It will help us to write and read the code.
-3. Understand [ExpressJs Fundamental](https://nodejs.org), NodeJs Base Framework. It will help us in understanding how the NestJs Framework works.
-4. Understand what NoSql is and how it works as a database, especially [MongoDB.](https://docs.mongodb.com)
+2. Understand[Typescript Fundamental](ref-typescript), Programming Language. It will help us to write and read the code.
+3. Understand [ExpressJs Fundamental](ref-nodejs), NodeJs Base Framework. It will help us in understanding how the NestJs Framework works.
+4. Understand what NoSql is and how it works as a database, especially [MongoDB.](ref-mongodb)
 5. Understand Repository Design Pattern or Data Access Object Design Pattern. It will help us to read the source code
-6. Optional, Understand [Microservice Architecture](https://microservices.io) and the design pattern.
-7. Optional,[The Twelve Factor Apps](https://12factor.net)
-8. Optional, Understand [Docker](ref-docker) that can help you to run the project
+6. Understand The SOLID Principle and KISS Principle for better to write the code.
+7. Optional. Understand Microservice Architecture Clean Architecture, and/or Hexagonal Architecture.
+8. Optional. Understand [The Twelve Factor Apps](ref-12factor)
+9. Optional. Understand [Docker](ref-docker) that can help you to run the project
 
 ### Getting Started
 
@@ -143,10 +140,13 @@ Recommend version is LTS Version for every tool and package.
 
 > Make sure check that tools has been installed successfully.
 
-1. [NodeJs](https://nodejs.org)
-2. [MongoDB as Replication](https://docs.mongodb.com/manual/replication/)
-3. [Yarn](https://yarnpkg.com)
-4. [Git](https://git-scm.com)
+1. [NodeJs](ref-nodejs)
+2. [MongoDB as Replication](ref-mongodb)
+3. [Yarn](ref-yarn)
+4. [Git](ref-git)
+5. [Docker](ref-docker)
+6. [Docker-Compose](ref-dockercompose)
+7. [Serverless](ref-serverless)
 
 #### Clone Repo
 
@@ -178,7 +178,7 @@ cp .env.example .env
 
 > If you want to to implement `transaction`, you must to install `Mongodb Replication Set`.
 
-Database migration ack-nestjs-mongoose used [NestJs-Command](https://gitlab.com/aa900031/nestjs-command)
+Database migration ack-nestjs-mongoose used [NestJs-Command](ref-nestjscommand)
 
 For migrate
 
@@ -252,14 +252,18 @@ Detail information about the environment
 
 ### HTTP Environment
 
-| HTTP\_HTTP\_ENABLE | `boolean` | Application Http turn on |
-| HTTP\_HOST | `string` | Application serve |
-| HTTP\_PORT | `number` | Application serve |
-| HTTP\_VERSIONING\_ENABLE | `boolean` | Application url versioning |
-| HTTP\_VERSION | `number | string` | Application url versioning |
+| Key | Type | Description |
+| ---- | ---- | ---- |
+| HTTP\_HTTP\_ENABLE | `boolean` | Application Http on/off |
+| HTTP\_HOST | `string` | Application host serve |
+| HTTP\_PORT | `number` | Application port serve |
+| HTTP\_VERSIONING\_ENABLE | `boolean` | Application url versioning on/off |
+| HTTP\_VERSION | `number`  | Application version number |
 
 ### Debugger Environment
 
+| Key | Type | Description |
+| ---- | ---- | ---- |
 | DEBUGGER\_HTTP\_WRITE\_INTO\_FILE | `boolean` | Http debugger write into file |
 | DEBUGGER\_SYSTEM\_WRITE\_INTO\_FILE | `boolean` | System debugger write into file |
 
@@ -281,13 +285,13 @@ Detail information about the environment
 
 | Key | Type | Description |
 | ---- | ---- | ---- |
-| JOB\_ENABLE | `boolean` | Application Job turn on |
+| JOB\_ENABLE | `boolean` | Application Job turn on/off |
 
 ### Database Environment
 
 | Key | Type | Description |
 | ---- | ---- | ---- |
-| DATABASE\_HOST | `string` | Mongodb URL. Support `standard url` `replication`, and `srv` |
+| DATABASE\_HOST | `string` | Mongodb URL. Support `standard url`, `replication`, or `srv` |
 | DATABASE\_NAME | `string` | Database name |
 | DATABASE\_USER | `string` | Database user |
 | DATABASE\_PASSWORD | `string` | Database user password |
@@ -312,9 +316,9 @@ Detail information about the environment
 
 | Key | Type | Description |
 | ---- | ---- | ---- |
-| SERVERLESS\_AWS\_API\_GATEWAY | `string` | AWS api gateway for deployment |
+| SERVERLESS\_AWS\_API\_GATEWAY | `string` | AWS api gateway for server the aws lamda |
 | SERVERLESS\_AWS\_PROFILE | `string` | AWS profile for deployment |
-| SERVERLESS\_AWS\_S3\_BUCKET | `string` | AWS s3 bucket for deployment |
+| SERVERLESS\_AWS\_S3\_BUCKET | `string` | AWS s3 bucket for save the development asset |
 
 ### AWS Environment
 
@@ -391,18 +395,15 @@ Distributed under [MIT licensed][license].
 <!-- license -->
 [license]: LICENSE.md
 
-<!-- Documents -->
-[ack-docs]: https://andrechristikan.github.io/ack-nestjs-boilerplate-docs/
-
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com
 [ref-mongoose]: https://mongoosejs.com/
 [ref-mongodb]: https://docs.mongodb.com/
-[ref-nodejs-best-practice]: https://github.com/goldbergyoni/nodebestpractices
 [ref-nodejs]: https://nodejs.org/
 [ref-typescript]: https://www.typescriptlang.org/
-[ref-jwt]: https://jwt.io
-[ref-jest]: https://jestjs.io/docs/getting-started
 [ref-docker]: https://docs.docker.com
+[ref-dockercompose]: https://docs.docker.com/compose/
 [ref-yarn]: https://yarnpkg.com
-[ref-postman-import-export]: https://learning.postman.com/docs/getting-started/importing-and-exporting-data/
+[ref-12factor]: https://12factor.net
+[ref-serverless]: https://www.serverless.com
+[ref-nestjscommand]: https://gitlab.com/aa900031/nestjs-command
