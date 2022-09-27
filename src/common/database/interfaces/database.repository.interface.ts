@@ -74,13 +74,10 @@ export interface IDatabaseRepositoryAbstract<T> {
 
     deleteOne(
         find: Record<string, any>,
-        options?: IDatabaseSoftDeleteOptions
+        options?: IDatabaseOptions
     ): Promise<T>;
 
-    deleteOneById(
-        _id: string,
-        options?: IDatabaseSoftDeleteOptions
-    ): Promise<T>;
+    deleteOneById(_id: string, options?: IDatabaseOptions): Promise<T>;
 
     softDeleteOneById(
         _id: string,
