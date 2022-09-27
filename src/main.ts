@@ -42,7 +42,6 @@ async function bootstrap() {
     }
 
     // Swagger
-    const docPrefix: string = configService.get<string>('doc.prefix');
     await swaggerInit(app);
 
     // Listen
@@ -60,10 +59,6 @@ async function bootstrap() {
         'NestApplication'
     );
     logger.log(`Database uri ${databaseUri}`, 'NestApplication');
-    logger.log(
-        `Docs will serve on ${await app.getUrl()}${docPrefix}`,
-        'NestApplication'
-    );
 
     logger.log(`==========================================================`);
 }

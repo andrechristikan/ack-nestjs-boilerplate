@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestApplication } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -12,6 +13,7 @@ import { ResponsePagingSerialization } from 'src/common/response/serializations/
 export default async function (app: NestApplication) {
     const configService = app.get(ConfigService);
     const env: string = configService.get<string>('app.env');
+    const logger = new Logger();
 
     const docName: string = configService.get<string>('doc.name');
     const docDesc: string = configService.get<string>('doc.description');
@@ -54,5 +56,15 @@ export default async function (app: NestApplication) {
             explorer: true,
             customSiteTitle: docName,
         });
+
+        logger.log(
+            `==========================================================`
+        );
+
+        logger.log(`Docs will serve on ${docPrefix}`, 'NestApplication');
+
+        logger.log(
+            `==========================================================`
+        );
     }
 }
