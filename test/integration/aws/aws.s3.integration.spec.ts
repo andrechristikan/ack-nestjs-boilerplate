@@ -3,12 +3,10 @@ import { Test } from '@nestjs/testing';
 import { INTEGRATION_AWS_URL } from './aws.s3.constant';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
-import { TerminusModule } from '@nestjs/terminus';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
 import { CommonModule } from 'src/common/common.module';
-import { HealthModule } from 'src/health/health.module';
-import { HealthController } from 'src/health/controllers/health.controller';
+import { RoutesModule } from 'src/router/routes/routes.module';
 
 describe('Aws S3 Integration', () => {
     let app: INestApplication;
@@ -21,8 +19,8 @@ describe('Aws S3 Integration', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CommonModule, HealthModule, TerminusModule],
-            controllers: [HealthController],
+            imports: [CommonModule, RoutesModule],
+            controllers: [],
         }).compile();
 
         app = moduleRef.createNestApplication();

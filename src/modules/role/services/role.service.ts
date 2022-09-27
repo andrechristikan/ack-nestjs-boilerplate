@@ -3,6 +3,7 @@ import { Types } from 'mongoose';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteOptions,
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
@@ -132,13 +133,13 @@ export class RoleService implements IRoleService {
 
     async deleteOneById(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseDeleteOptions
     ): Promise<RoleDocument> {
         return this.roleRepository.deleteOneById(_id, options);
     }
     async deleteOne(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseDeleteOptions
     ): Promise<RoleDocument> {
         return this.roleRepository.deleteOne(find, options);
     }

@@ -2,6 +2,7 @@ import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteOptions,
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
@@ -37,12 +38,12 @@ export interface IUserService {
 
     deleteOneById(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseDeleteOptions
     ): Promise<UserDocument>;
 
     deleteOne(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseDeleteOptions
     ): Promise<UserDocument>;
 
     updateOneById(

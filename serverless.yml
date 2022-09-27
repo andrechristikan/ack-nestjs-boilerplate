@@ -35,6 +35,9 @@ package:
     - '!.integration-coverage/**'
 
 custom:
+  optimize:
+    external: ['swagger-ui-dist']
+    
   serverless-offline:
     httpPort: ${env:HTTP_PORT, 3000}
     host: ${env:HTTP_HOST, 'localhost'}

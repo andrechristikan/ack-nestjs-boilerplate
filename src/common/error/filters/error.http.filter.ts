@@ -4,9 +4,9 @@ import {
     ArgumentsHost,
     HttpException,
     HttpStatus,
-    Optional,
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
+import { ConfigService } from '@nestjs/config';
 import { HttpAdapterHost } from '@nestjs/core';
 import { ValidationError } from 'class-validator';
 import { Response } from 'express';
@@ -30,7 +30,8 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 @Catch()
 export class ErrorHttpFilter implements ExceptionFilter {
     constructor(
-        @Optional() private readonly debuggerService: DebuggerService,
+        private readonly configService: ConfigService,
+        private readonly debuggerService: DebuggerService,
         private readonly messageService: MessageService,
         private readonly httpAdapterHost: HttpAdapterHost,
         private readonly helperDateService: HelperDateService
@@ -45,7 +46,9 @@ export class ErrorHttpFilter implements ExceptionFilter {
             const responseExpress: Response = ctx.getResponse<Response>();
 
             // get request headers
-            const reqCustomLang = request.header('x-custom-lang');
+            const reqCustomLang =
+                request.header('x-custom-lang') ||
+                this.configService.get<string>('app.language');
 
             // get metadata
             const __class = request.__class;
@@ -55,8 +58,12 @@ export class ErrorHttpFilter implements ExceptionFilter {
             const __timestamp =
                 request.timestamp || this.helperDateService.timestamp();
             const __timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            const __version = request.version;
-            const __repoVersion = request.repoVersion;
+            const __version =
+                request.version ||
+                this.configService.get<string>('app.versioning.version');
+            const __repoVersion =
+                request.repoVersion ||
+                this.configService.get<string>('app.repoVersion');
 
             // message base in language
             const { customLang } = ctx.getRequest<IRequestApp>();

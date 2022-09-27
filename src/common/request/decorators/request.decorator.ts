@@ -17,10 +17,7 @@ import { IResult } from 'ua-parser-js';
 import 'dotenv/config';
 import { RequestTimestampInterceptor } from 'src/common/request/interceptors/request.timestamp.interceptor';
 import { RequestUserAgentInterceptor } from 'src/common/request/interceptors/request.user-agent.interceptor';
-import {
-    ResponseDoc,
-    ResponseDocOneOf,
-} from 'src/common/response/decorators/response.decorator';
+import { ResponseDocOneOf } from 'src/common/response/decorators/response.decorator';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 
 export const RequestUserAgent = createParamDecorator(
@@ -31,32 +28,7 @@ export const RequestUserAgent = createParamDecorator(
 );
 
 export function RequestValidateUserAgent(): any {
-    return applyDecorators(
-        ApiHeader({
-            name: 'user-agent',
-            description: 'User agent header',
-            required: true,
-            schema: {
-                example:
-                    'Mozilla/5.0 (platform; rv:geckoversion) Gecko/geckotrail Firefox/firefoxversion',
-                type: 'string',
-            },
-        }),
-        ResponseDocOneOf(
-            HttpStatus.FORBIDDEN,
-            {
-                statusCode:
-                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_OS_INVALID_ERROR,
-                messagePath: 'request.error.userAgentOsInvalid',
-            },
-            {
-                statusCode:
-                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_BROWSER_INVALID_ERROR,
-                messagePath: 'request.error.userAgentBrowserInvalid',
-            }
-        ),
-        UseInterceptors(RequestUserAgentInterceptor)
-    );
+    return applyDecorators(UseInterceptors(RequestUserAgentInterceptor));
 }
 
 export function RequestValidateTimestamp(): any {
@@ -69,12 +41,6 @@ export function RequestValidateTimestamp(): any {
                 example: 1662876305642,
                 type: 'number',
             },
-        }),
-        ResponseDoc({
-            httpStatus: HttpStatus.FORBIDDEN,
-            statusCode:
-                ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
-            messagePath: 'request.error.timestampInvalid',
         }),
         UseInterceptors(RequestTimestampInterceptor)
     );
@@ -122,11 +88,38 @@ export function RequestHeaderDoc(): any {
                 type: 'string',
             },
         }),
-        ResponseDoc({
-            httpStatus: HttpStatus.FORBIDDEN,
-            statusCode:
-                ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_INVALID_ERROR,
-            messagePath: 'request.error.userAgentInvalid',
-        })
+        ApiHeader({
+            name: 'user-agent',
+            description: 'User agent header',
+            required: true,
+            schema: {
+                example:
+                    'Mozilla/5.0 (platform; rv:geckoversion) Gecko/geckotrail Firefox/firefoxversion',
+                type: 'string',
+            },
+        }),
+        ResponseDocOneOf(
+            HttpStatus.FORBIDDEN,
+            {
+                statusCode:
+                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_INVALID_ERROR,
+                messagePath: 'request.error.userAgentInvalid',
+            },
+            {
+                statusCode:
+                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_BROWSER_INVALID_ERROR,
+                messagePath: 'request.error.userAgentBrowserInvalid',
+            },
+            {
+                statusCode:
+                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_OS_INVALID_ERROR,
+                messagePath: 'request.error.userAgentOsInvalid',
+            },
+            {
+                statusCode:
+                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
+                messagePath: 'request.error.timestampInvalid',
+            }
+        )
     );
 }

@@ -29,6 +29,7 @@ import { FileValidationPipe } from 'src/common/file/pipes/file.validation.pipe';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import {
     RequestParamGuard,
+    RequestValidateTimestamp,
     RequestValidateUserAgent,
 } from 'src/common/request/decorators/request.decorator';
 import {
@@ -85,6 +86,7 @@ export class UserAdminController {
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.USER_READ)
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Get('/list')
     async list(
         @Query()
@@ -133,6 +135,7 @@ export class UserAdminController {
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.USER_READ)
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Get('get/:user')
     async get(@GetUser() user: IUserDocument): Promise<IResponse> {
         return user;
@@ -147,6 +150,7 @@ export class UserAdminController {
     )
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Post('/create')
     async create(
         @Body()
@@ -220,6 +224,7 @@ export class UserAdminController {
     )
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Delete('/delete/:user')
     async delete(@GetUser() user: IUserDocument): Promise<void> {
         try {
@@ -247,6 +252,7 @@ export class UserAdminController {
     )
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Put('/update/:user')
     async update(
         @GetUser() user: IUserDocument,
@@ -277,6 +283,7 @@ export class UserAdminController {
     )
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Patch('/update/:user/inactive')
     async inactive(@GetUser() user: IUserDocument): Promise<void> {
         try {
@@ -301,6 +308,7 @@ export class UserAdminController {
     )
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Patch('/update/:user/active')
     async active(@GetUser() user: IUserDocument): Promise<void> {
         try {
@@ -328,6 +336,7 @@ export class UserAdminController {
     )
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Post('/import')
     async import(
         @UploadedFile(

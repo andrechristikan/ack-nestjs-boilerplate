@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -58,7 +59,7 @@ export class PermissionService implements IPermissionService {
 
     async deleteOne(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseDeleteOptions
     ): Promise<PermissionDocument> {
         return this.permissionRepository.deleteOne(find, options);
     }

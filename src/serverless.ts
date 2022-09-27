@@ -6,16 +6,8 @@ import { Callback, Context, Handler } from 'aws-lambda';
 import serverlessExpress from '@vendia/serverless-express';
 import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
 import { Logger, VersioningType } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ResponseDefaultSerialization } from 'src/common/response/serializations/response.default.serialization';
-import { ResponsePagingSerialization } from 'src/common/response/serializations/response.paging.serialization';
-import {
-    AwsS3MultipartPartsSerialization,
-    AwsS3MultipartSerialization,
-} from 'src/common/aws/serializations/aws.s3-multipart.serialization';
-import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
+import swaggerInit from './swagger';
 
-const binaryMimeTypes: string[] = [];
 let cachedServer: Handler;
 
 async function bootstrap() {
@@ -52,48 +44,8 @@ async function bootstrap() {
     }
 
     // Swagger
-    const docName: string = configService.get<string>('doc.name');
-    const docDesc: string = configService.get<string>('doc.description');
-    const docVersion: string = configService.get<string>('doc.version');
     const docPrefix: string = configService.get<string>('doc.prefix');
-
-    if (env !== 'production') {
-        const documentConfig = new DocumentBuilder()
-            .setTitle(docName)
-            .setDescription(docDesc)
-            .setVersion(docVersion)
-            .addTag("API's")
-            .addBearerAuth(
-                { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-                'accessToken'
-            )
-            .addBearerAuth(
-                { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-                'refreshToken'
-            )
-            .addApiKey(
-                { type: 'apiKey', in: 'header', name: 'x-api-key' },
-                'apiKey'
-            );
-
-        const documentBuild = documentConfig.build();
-
-        const document = SwaggerModule.createDocument(app, documentBuild, {
-            deepScanRoutes: true,
-            extraModels: [
-                ResponseDefaultSerialization,
-                ResponsePagingSerialization,
-                AwsS3MultipartPartsSerialization,
-                AwsS3MultipartSerialization,
-                AwsS3Serialization,
-            ],
-        });
-
-        SwaggerModule.setup(docPrefix, app, document, {
-            explorer: true,
-            customSiteTitle: docName,
-        });
-    }
+    await swaggerInit(app);
 
     // Listen
     await app.init();
@@ -111,7 +63,7 @@ async function bootstrap() {
     logger.log(`==========================================================`);
 
     const expressApp = app.getHttpAdapter().getInstance();
-    return serverlessExpress({ app: expressApp, binaryMimeTypes });
+    return serverlessExpress({ app: expressApp });
 }
 
 export const handler: Handler = async (

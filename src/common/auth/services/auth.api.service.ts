@@ -5,6 +5,7 @@ import { HelperHashService } from 'src/common/helper/services/helper.hash.servic
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -220,14 +221,14 @@ export class AuthApiService implements IAuthApiService {
 
     async deleteOneById(
         _id: string,
-        options?: IDatabaseOptions
+        options?: IDatabaseDeleteOptions
     ): Promise<AuthApiDocument> {
         return this.authApiRepository.deleteOneById(_id, options);
     }
 
     async deleteOne(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseDeleteOptions
     ): Promise<AuthApiDocument> {
         return this.authApiRepository.deleteOne(find, options);
     }

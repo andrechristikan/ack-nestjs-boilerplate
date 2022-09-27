@@ -4,6 +4,7 @@ import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import {
     RequestParamGuard,
+    RequestValidateTimestamp,
     RequestValidateUserAgent,
 } from 'src/common/request/decorators/request.decorator';
 import {
@@ -54,6 +55,7 @@ export class SettingController {
     })
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Get('/list')
     async list(
         @Query()
@@ -106,6 +108,7 @@ export class SettingController {
     @RequestParamGuard(SettingRequestDto)
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Get('get/:setting')
     async get(@GetSetting() setting: SettingDocument): Promise<IResponse> {
         return setting;
@@ -120,6 +123,7 @@ export class SettingController {
     @SettingGetByNameGuard()
     @AuthApiKey()
     @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Get('get/name/:settingName')
     async getByName(
         @GetSetting() setting: SettingDocument
