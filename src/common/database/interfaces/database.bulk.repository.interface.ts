@@ -1,6 +1,5 @@
 import {
     IDatabaseCreateManyOptions,
-    IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,
     IDatabaseOptions,
     IDatabaseRestoreOptions,
