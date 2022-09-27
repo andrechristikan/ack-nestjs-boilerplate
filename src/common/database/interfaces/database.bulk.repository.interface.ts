@@ -12,14 +12,11 @@ export interface IDatabaseBulkRepositoryAbstract {
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean>;
 
-    deleteManyById(
-        _id: string[],
-        options?: IDatabaseCreateOptions
-    ): Promise<boolean>;
+    deleteManyById(_id: string[], options?: IDatabaseOptions): Promise<boolean>;
 
     deleteMany(
         find: Record<string, any>,
-        options?: IDatabaseCreateOptions
+        options?: IDatabaseOptions
     ): Promise<boolean>;
 
     softDeleteManyById(
