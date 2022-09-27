@@ -1,6 +1,6 @@
 import {
     IDatabaseCreateOptions,
-    IDatabaseDeleteOptions,
+    IDatabaseSoftDeleteOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -43,7 +43,7 @@ export interface ISettingService {
 
     deleteOne(
         find: Record<string, any>,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<SettingDocument>;
 
     convertValue(value: string): Promise<string | number | boolean>;

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
     IDatabaseCreateOptions,
-    IDatabaseDeleteOptions,
+    IDatabaseSoftDeleteOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -99,7 +99,7 @@ export class SettingService implements ISettingService {
 
     async deleteOne(
         find: Record<string, any>,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<SettingDocument> {
         return this.settingRepository.deleteOne(find, options);
     }

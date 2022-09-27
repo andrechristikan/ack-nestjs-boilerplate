@@ -1,13 +1,13 @@
 import {
     IDatabaseCreateManyOptions,
-    IDatabaseDeleteOptions,
+    IDatabaseSoftDeleteOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 
 export interface IRoleBulkService {
     deleteMany(
         find: Record<string, any>,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<boolean>;
 
     createMany(

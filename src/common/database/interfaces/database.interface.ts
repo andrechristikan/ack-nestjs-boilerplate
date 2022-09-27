@@ -26,7 +26,10 @@ export type IDatabaseOptions = Pick<
     'session' | 'withDeleted'
 >;
 
-export type IDatabaseDeleteOptions = Pick<IDatabaseFindOneOptions, 'session'>;
+export type IDatabaseSoftDeleteOptions = Pick<
+    IDatabaseFindOneOptions,
+    'session'
+>;
 
 export interface IDatabaseCreateOptions
     extends Omit<IDatabaseOptions, 'withDeleted'> {

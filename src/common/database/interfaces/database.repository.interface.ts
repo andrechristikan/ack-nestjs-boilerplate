@@ -1,7 +1,7 @@
 import { PipelineStage } from 'mongoose';
 import {
     IDatabaseCreateOptions,
-    IDatabaseDeleteOptions,
+    IDatabaseSoftDeleteOptions,
     IDatabaseExistOptions,
     IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
@@ -74,19 +74,22 @@ export interface IDatabaseRepositoryAbstract<T> {
 
     deleteOne(
         find: Record<string, any>,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<T>;
 
-    deleteOneById(_id: string, options?: IDatabaseDeleteOptions): Promise<T>;
+    deleteOneById(
+        _id: string,
+        options?: IDatabaseSoftDeleteOptions
+    ): Promise<T>;
 
     softDeleteOneById(
         _id: string,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<T>;
 
     softDeleteOne(
         find: Record<string, any>,
-        options?: IDatabaseDeleteOptions
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<T>;
 
     restore(_id: string, options?: IDatabaseRestoreOptions): Promise<T>;
