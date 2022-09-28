@@ -43,6 +43,7 @@ Next development
 - [ ] Export to excel and Import from excel add options to background process
 - [ ] AuthApi Controller
 - [ ] OAuth2 Client Credentials
+- [ ] Maybe will adopt [CQRS](https://docs.nestjs.com/recipes/cqrs)
 
 ## Build with
 
@@ -66,7 +67,8 @@ Describes which version .
 
 - Easy to maintenance
 - NestJs Habit
-- Repository Design Pattern / Data Access Layer Design Pattern
+- Component based folder structure
+- Repository Design Pattern or Data Access Layer Design Pattern
 - Support Microservice Architecture, Clean Architecture, and/or Hexagonal Architecture
 - Follow The Twelve-Factor App
 - Adopt SOLID and KISS principle
@@ -128,7 +130,7 @@ We assume that everyone who comes here is **`programmer with intermediate knowle
 3. Understand [ExpressJs Fundamental](ref-nodejs), NodeJs Base Framework. It will help us in understanding how the NestJs Framework works.
 4. Understand what NoSql is and how it works as a database, especially [MongoDB.](ref-mongodb)
 5. Understand Repository Design Pattern or Data Access Object Design Pattern. It will help us to read the source code
-6. Understand The SOLID Principle and KISS Principle for better to write the code.
+6. Understand The SOLID Principle and KISS Principle for better write the code.
 7. Optional. Understand Microservice Architecture Clean Architecture, and/or Hexagonal Architecture.
 8. Optional. Understand [The Twelve Factor Apps](ref-12factor)
 9. Optional. Understand [Docker](ref-docker) that can help you to run the project

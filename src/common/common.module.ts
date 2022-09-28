@@ -6,7 +6,10 @@ import {
     DebuggerOptionsModule,
 } from 'src/common/debugger/debugger.module';
 import { MongooseModule } from '@nestjs/mongoose';
-import { DatabaseOptionsModule } from 'src/common/database/database.module';
+import {
+    DatabaseModule,
+    DatabaseOptionsModule,
+} from 'src/common/database/database.module';
 import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
 import { HelperModule } from 'src/common/helper/helper.module';
 import { ErrorModule } from 'src/common/error/error.module';
@@ -121,19 +124,7 @@ import { DebuggerOptionService } from 'src/common/debugger/services/debugger.opt
                 abortEarly: true,
             },
         }),
-        WinstonModule.forRootAsync({
-            inject: [DebuggerOptionService],
-            imports: [DebuggerOptionsModule],
-            useFactory: (debuggerOptionsService: DebuggerOptionService) =>
-                debuggerOptionsService.createLogger(),
-        }),
-        MongooseModule.forRootAsync({
-            connectionName: DATABASE_CONNECTION_NAME,
-            inject: [DatabaseOptionsService],
-            imports: [DatabaseOptionsModule],
-            useFactory: (databaseOptionsService: DatabaseOptionsService) =>
-                databaseOptionsService.createMongooseOptions(),
-        }),
+        DatabaseModule,
         MessageModule,
         HelperModule,
         PaginationModule,
