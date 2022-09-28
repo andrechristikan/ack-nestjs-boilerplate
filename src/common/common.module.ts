@@ -1,16 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { WinstonModule } from 'nest-winston';
-import {
-    DebuggerModule,
-    DebuggerOptionsModule,
-} from 'src/common/debugger/debugger.module';
-import { MongooseModule } from '@nestjs/mongoose';
-import {
-    DatabaseModule,
-    DatabaseOptionsModule,
-} from 'src/common/database/database.module';
-import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
+import { DebuggerModule } from 'src/common/debugger/debugger.module';
+import { DatabaseModule } from 'src/common/database/database.module';
 import { HelperModule } from 'src/common/helper/helper.module';
 import { ErrorModule } from 'src/common/error/error.module';
 import { ResponseModule } from 'src/common/response/response.module';
@@ -19,13 +10,11 @@ import { MiddlewareModule } from 'src/common/middleware/middleware.module';
 import { AuthModule } from 'src/common/auth/auth.module';
 import { MessageModule } from 'src/common/message/message.module';
 import { LoggerModule } from 'src/common/logger/logger.module';
-import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { PaginationModule } from 'src/common/pagination/pagination.module';
 import { SettingModule } from 'src/common/setting/setting.module';
 import Joi from 'joi';
 import { ENUM_MESSAGE_LANGUAGE } from './message/constants/message.enum.constant';
 import configs from 'src/configs';
-import { DebuggerOptionService } from 'src/common/debugger/services/debugger.options.service';
 
 @Module({
     controllers: [],
