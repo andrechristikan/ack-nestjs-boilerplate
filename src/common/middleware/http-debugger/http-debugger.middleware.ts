@@ -17,6 +17,7 @@ import {
 @Injectable()
 export class HttpDebuggerMiddleware implements NestMiddleware {
     private readonly writeIntoFile: boolean;
+    private readonly writeIntoConsole: boolean;
     private readonly maxSize: string;
     private readonly maxFiles: number;
 
@@ -26,6 +27,9 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
     ) {
         this.writeIntoFile = this.configService.get<boolean>(
             'debugger.http.writeIntoFile'
+        );
+        this.writeIntoConsole = this.configService.get<boolean>(
+            'debugger.http.writeIntoConsole'
         );
         this.maxSize = this.configService.get<string>('debugger.http.maxSize');
         this.maxFiles = this.configService.get<number>(
@@ -78,31 +82,48 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
     }
 
     async use(req: Request, res: Response, next: NextFunction): Promise<void> {
-        const config: IHttpDebuggerConfig = await this.httpLogger();
-        this.customToken();
-        morgan(config.debuggerHttpFormat, config.HttpDebuggerOptions)(
-            req,
-            res,
-            next
-        );
+        if (this.writeIntoConsole || this.writeIntoFile) {
+            const config: IHttpDebuggerConfig = await this.httpLogger();
+            this.customToken();
+            morgan(config.debuggerHttpFormat, config.HttpDebuggerOptions)(
+                req,
+                res,
+                next
+            );
+        } else {
+            next();
+        }
     }
 }
 
 @Injectable()
 export class HttpDebuggerResponseMiddleware implements NestMiddleware {
+    private readonly writeIntoFile: boolean;
+    private readonly writeIntoConsole: boolean;
+
+    constructor(private readonly configService: ConfigService) {
+        this.writeIntoConsole = this.configService.get<boolean>(
+            'debugger.http.writeIntoConsole'
+        );
+        this.writeIntoFile = this.configService.get<boolean>(
+            'debugger.http.writeIntoFile'
+        );
+    }
     use(req: Request, res: Response, next: NextFunction): void {
-        const send: any = res.send;
-        const resOld: any = res;
+        if (this.writeIntoConsole || this.writeIntoFile) {
+            const send: any = res.send;
+            const resOld: any = res;
 
-        // Add response data to request
-        // this is for morgan
-        resOld.send = (body: any) => {
-            resOld.body = body;
-            resOld.send = send;
-            resOld.send(body);
+            // Add response data to request
+            // this is for morgan
+            resOld.send = (body: any) => {
+                resOld.body = body;
+                resOld.send = send;
+                resOld.send(body);
 
-            res = resOld as Response;
-        };
+                res = resOld as Response;
+            };
+        }
 
         next();
     }

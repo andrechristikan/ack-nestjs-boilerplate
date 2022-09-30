@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { CommonModule } from 'src/common/common.module';
+import { DebuggerModule } from 'src/common/debugger/debugger.module';
 import { DebuggerService } from 'src/common/debugger/services/debugger.service';
 
 describe('DebuggerService', () => {
@@ -11,8 +12,13 @@ describe('DebuggerService', () => {
     const data = { test: 'test' };
 
     beforeEach(async () => {
+        process.env.DEBUGGER_HTTP_WRITE_INTO_CONSOLE = 'true';
+        process.env.DEBUGGER_SYSTEM_WRITE_INTO_CONSOLE = 'true';
+        process.env.DEBUGGER_HTTP_WRITE_INTO_FILE = 'true';
+        process.env.DEBUGGER_SYSTEM_WRITE_INTO_FILE = 'true';
+
         const moduleRef = await Test.createTestingModule({
-            imports: [CommonModule],
+            imports: [CommonModule, DebuggerModule.register()],
         }).compile();
 
         debuggerService = moduleRef.get<DebuggerService>(DebuggerService);

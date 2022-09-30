@@ -331,6 +331,70 @@ Detail information about the environment
 | AWS\_S3\_REGION | `string` | AWS S3 Region |
 | AWS\_S3\_BUCKET | `string` | AWS S3 Name of Bucket |
 
+## Api Key Encryption
+
+> ApiKeyHashed using `sha256` encryption, and then encryption for `dataObject` is `AES256`. Please keep the `secret` keep private.
+
+To do the encryption
+
+1. Concat the `key` and `secret`.
+
+    ```typescript
+    const apiKeyString = `${key}:${secret}`;
+    ```
+
+2. Encryption `apiKeyString` with sha256
+
+    ```typescript
+    const apiKeyHashed = this.helperHashService.sha256(`${key}:${secret}`);
+    // e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54
+    ```
+
+3. Then put the `apiKeyHashed` into `dataObject`
+
+    ```typescript
+    const timestamp = this.helperDateService.timestamp(); 
+    const data: IAuthApiRequestHashedData = {
+        key: "qwertyuiop12345zxcvbnmkjh",
+        timestamp,
+        hash: apiKeyHashed,
+    }
+    ```
+
+4. Encryption the `dataObject` with `AES 256`
+
+    > These data `encryptionKey`, and `passphrase` can be find in database.
+
+    ```typescript
+    const passphrase = 'cuwakimacojulawu'; // <--- IV for encrypt AES 256
+    const encryptionKey = 'opbUwdiS1FBsrDUoPgZdx';
+    const apiKeyEncryption = await authApiService.encryptApiKey(
+        data,
+        encryptionKey,
+        passphrase
+    );
+    ```
+
+5. Last, combine the `key` and `apiKeyEncryption`
+
+    ```typescript
+    const xApiKey = `${key}:${apiEncryption}`;
+    ```
+
+6. Send into request. Put the `xApiKey` in request headers
+
+    ```json
+    {
+        "headers": {
+            "x-api-key": "${xApiKey}",
+
+            ...
+            ...
+            ...
+        }
+    }
+    ```
+
 ## Adjust Mongoose Setting
 
 > Just is case, if your mongodb version is < 5
