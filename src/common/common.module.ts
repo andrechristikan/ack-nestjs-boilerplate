@@ -49,7 +49,13 @@ import configs from 'src/configs';
                 DEBUGGER_HTTP_WRITE_INTO_FILE: Joi.boolean()
                     .default(false)
                     .required(),
+                DEBUGGER_HTTP_WRITE_INTO_CONSOLE: Joi.boolean()
+                    .default(false)
+                    .required(),
                 DEBUGGER_SYSTEM_WRITE_INTO_FILE: Joi.boolean()
+                    .default(false)
+                    .required(),
+                DEBUGGER_SYSTEM_WRITE_INTO_CONSOLE: Joi.boolean()
                     .default(false)
                     .required(),
 
@@ -119,7 +125,7 @@ import configs from 'src/configs';
         PaginationModule,
         ErrorModule,
         LoggerModule,
-        DebuggerModule,
+        DebuggerModule.register(),
         ResponseModule,
         RequestModule,
         MiddlewareModule,

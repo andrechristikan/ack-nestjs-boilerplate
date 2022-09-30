@@ -4,6 +4,7 @@ import {
     ArgumentsHost,
     HttpException,
     HttpStatus,
+    Optional,
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
@@ -30,8 +31,8 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 @Catch()
 export class ErrorHttpFilter implements ExceptionFilter {
     constructor(
+        @Optional() private readonly debuggerService: DebuggerService,
         private readonly configService: ConfigService,
-        private readonly debuggerService: DebuggerService,
         private readonly messageService: MessageService,
         private readonly httpAdapterHost: HttpAdapterHost,
         private readonly helperDateService: HelperDateService
@@ -69,16 +70,18 @@ export class ErrorHttpFilter implements ExceptionFilter {
             const { customLang } = ctx.getRequest<IRequestApp>();
 
             // Debugger
-            this.debuggerService.error(
-                request && request.id ? request.id : ErrorHttpFilter.name,
-                {
-                    description: exception.message,
-                    class: __class,
-                    function: __function,
-                    path: __path,
-                },
-                exception
-            );
+            try {
+                this.debuggerService.error(
+                    request && request.id ? request.id : ErrorHttpFilter.name,
+                    {
+                        description: exception.message,
+                        class: __class,
+                        function: __function,
+                        path: __path,
+                    },
+                    exception
+                );
+            } catch (err: any) {}
 
             // Restructure
             const response = exception.getResponse();
@@ -161,16 +164,18 @@ export class ErrorHttpFilter implements ExceptionFilter {
             )) as string;
 
             // Debugger
-            this.debuggerService.error(
-                ErrorHttpFilter.name,
-                {
-                    description: message,
-                    class: ErrorHttpFilter.name,
-                    function: 'catch',
-                    path: __path,
-                },
-                exception
-            );
+            try {
+                this.debuggerService.error(
+                    ErrorHttpFilter.name,
+                    {
+                        description: message,
+                        class: ErrorHttpFilter.name,
+                        function: 'catch',
+                        path: __path,
+                    },
+                    exception
+                );
+            } catch (err: any) {}
 
             const responseBody = {
                 statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
