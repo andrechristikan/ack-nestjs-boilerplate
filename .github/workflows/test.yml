@@ -48,7 +48,9 @@ jobs:
           echo HTTP_VERSION="1" >> .env
 
           echo DEBUGGER_HTTP_WRITE_INTO_FILE="false" >> .env
+          echo DEBUGGER_HTTP_WRITE_INTO_CONSOLE="false" >> .env
           echo DEBUGGER_SYSTEM_WRITE_INTO_FILE="false" >> .env
+          echo DEBUGGER_SYSTEM_WRITE_INTO_CONSOLE="false" >> .env
 
           echo MIDDLEWARE_TIMESTAMP_TOLERANCE="5m" >> .env
           echo MIDDLEWARE_TIMEOUT="30s" >> .env
