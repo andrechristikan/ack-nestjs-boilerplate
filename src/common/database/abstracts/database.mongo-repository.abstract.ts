@@ -79,13 +79,13 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         if (options && options.withDeleted) {
             pipeline.push({
                 $match: {
-                    deletedAt: { $exist: true },
+                    deletedAt: { $exists: true },
                 },
             });
         } else {
             pipeline.push({
                 $match: {
-                    deletedAt: { $exist: false },
+                    deletedAt: { $exists: false },
                 },
             });
         }
@@ -192,13 +192,13 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         if (options && options.withDeleted) {
             pipeline.push({
                 $match: {
-                    deletedAt: { $exist: true },
+                    deletedAt: { $exists: true },
                 },
             });
         } else {
             pipeline.push({
                 $match: {
-                    deletedAt: { $exist: false },
+                    deletedAt: { $exists: false },
                 },
             });
         }
@@ -242,13 +242,13 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         if (options && options.withDeleted) {
             pipeline.push({
                 $match: {
-                    deletedAt: { $exist: true },
+                    deletedAt: { $exists: true },
                 },
             });
         } else {
             pipeline.push({
                 $match: {
-                    deletedAt: { $exist: false },
+                    deletedAt: { $exists: false },
                 },
             });
         }
@@ -308,13 +308,13 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         if (options && options.withDeleted) {
             pipeline.push({
                 $match: {
-                    deletedAt: { $exist: true },
+                    deletedAt: { $exists: true },
                 },
             });
         } else {
             pipeline.push({
                 $match: {
-                    deletedAt: { $exist: false },
+                    deletedAt: { $exists: false },
                 },
             });
         }
