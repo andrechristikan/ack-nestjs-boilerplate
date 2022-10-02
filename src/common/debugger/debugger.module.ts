@@ -14,10 +14,6 @@ export class DebuggerOptionsModule {}
 @Module({})
 export class DebuggerModule {
     static register(): DynamicModule {
-        console.log(
-            'process.env.DEBUGGER_SYSTEM_WRITE_INTO_CONSOLE',
-            process.env.DEBUGGER_SYSTEM_WRITE_INTO_CONSOLE
-        );
         if (
             process.env.DEBUGGER_SYSTEM_WRITE_INTO_CONSOLE === 'true' ||
             process.env.DEBUGGER_SYSTEM_WRITE_INTO_FILE === 'true'
