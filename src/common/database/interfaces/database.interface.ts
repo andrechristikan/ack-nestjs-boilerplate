@@ -1,7 +1,8 @@
 import { ClientSession } from 'mongoose';
 import { IPaginationOptions } from 'src/common/pagination/interfaces/pagination.interface';
 
-export interface IDatabaseFindOneOptions {
+export interface IDatabaseFindOneOptions
+    extends Pick<IPaginationOptions, 'sort'> {
     select?: Record<string, number> | Record<string, string>;
     populate?: boolean;
     session?: ClientSession;
@@ -10,12 +11,12 @@ export interface IDatabaseFindOneOptions {
 
 export type IDatabaseFindOneAggregateOptions = Pick<
     IDatabaseFindOneOptions,
-    'session' | 'withDeleted'
+    'session' | 'withDeleted' | 'sort'
 >;
 
 export interface IDatabaseFindAllOptions
     extends IPaginationOptions,
-        IDatabaseFindOneOptions {}
+        Omit<IDatabaseFindOneOptions, 'sort'> {}
 
 export interface IDatabaseFindAllAggregateOptions
     extends IPaginationOptions,

@@ -15,9 +15,32 @@
 
 # ACK NestJs Boilerplate Mongoose  🔥 🚀
 
-ack-nestjs-mongoose is a [Http NestJs](http://nestjs.com) Boilerplate.
+ack-nestjs-mongoose is a [Http NestJs][ref-nestjs] Boilerplate.
 
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
+
+## Table of contents
+
+* [Important](#important)
+* [Next Todo](#next-todo)
+* [Build With](#build-with)
+* [Objective](#objective)
+* [Features](#features)
+* [Prerequisites](#prerequisites)
+* [Getting Started](#getting-started)
+    * [Clone Repo](#clone-repo)
+    * [Install Dependencies](#install-dependencies)
+    * [Create environment](#create-environment)
+    * [Database Migration](#database-migration)
+    * [Test](#test)
+    * [Run Project](#run-project)
+    * [Run Project with Docker](#run-project-with-docker)
+* [API Reference](#api-reference)
+* [Environment](#environment)
+* [Api Key Encryption](#api-key-encryption)
+* [Adjust Mongoose Setting](#adjust-mongoose-setting)
+* [License](#license)
+* [Contact](#contact)
 
 ## Important
 
@@ -32,18 +55,18 @@ If you change env value of `APP_ENV` to `production` that will trigger
 
 Next development
 
-- [x] Implement Repository Design Pattern / Data Access Object Design Pattern
-- [x] Swagger for API Documentation
-- [x] Support Serverless
-- [x] Mongo Repository soft delete
-- [x] Make it simple
-- [ ] Optimize Swagger
-- [ ] Add Relational Database Repository, ex: mysql, postgres
-- [ ] Update Documentation, include an diagram for easier comprehension
-- [ ] Export to excel and Import from excel add options to background process
-- [ ] AuthApi Controller
-- [ ] OAuth2 Client Credentials
-- [ ] Maybe will adopt [CQRS](https://docs.nestjs.com/recipes/cqrs)
+* [x] Implement Repository Design Pattern / Data Access Object Design Pattern
+* [x] Swagger for API Documentation
+* [x] Support Serverless
+* [x] Mongo Repository soft delete
+* [x] Make it simple
+* [ ] Optimize Swagger
+* [ ] Add Relational Database Repository, ex: mysql, postgres
+* [ ] Update Documentation, include an diagram for easier comprehension
+* [ ] Export to excel and Import from excel add options to background process
+* [ ] AuthApi Controller
+* [ ] OAuth2 Client Credentials
+* [ ] Maybe will adopt [CQRS][ref-nestjs-cqrs]
 
 ## Build with
 
@@ -65,92 +88,92 @@ Describes which version .
 
 ## Objective
 
-- Easy to maintenance
-- NestJs Habit
-- Component based folder structure
-- Repository Design Pattern or Data Access Layer Design Pattern
-- Support Microservice Architecture, Clean Architecture, and/or Hexagonal Architecture
-- Follow The Twelve-Factor App
-- Adopt SOLID and KISS principle
+* Easy to maintenance
+* NestJs Habit
+* Component based folder structure
+* Repository Design Pattern or Data Access Layer Design Pattern
+* Support Microservice Architecture, Clean Architecture, and/or Hexagonal Architecture
+* Follow The Twelve-Factor App
+* Adopt SOLID and KISS principle
 
 ## Features
 
-- NestJs v9.x 🥳
-- Typescript 🚀
-- Production ready 🔥
-- Support serverless
-- Swagger included
-- Authentication and authorization (`JWT`, `API Key`) 💪
-- Role management system
-- MongoDB integrate by using `mongoose` 🎉
-- Support MongoDB Transaction
-- Support MongoDB Soft Delete
-- Database Migration with `NestJs-Command`
-- Storage integration with `AwsS3`
-- Upload file `single` and `multipart` to AwsS3
-- Support multi-language `i18n` 🗣
-- Request validation with `class-validation`
-- Serialization with `class-transformer`
-- Url Versioning
-- Server Side Pagination, there have 3 of types
-- Import and export data with excel by using `decorator`
+* NestJs v9.x 🥳
+* Typescript 🚀
+* Production ready 🔥
+* Support serverless
+* Swagger included
+* Authentication and authorization (`JWT`, `API Key`) 💪
+* Role management system
+* MongoDB integrate by using `mongoose` 🎉
+* Support MongoDB Transaction
+* Support MongoDB Soft Delete
+* Database Migration with `NestJs-Command`
+* Storage integration with `AwsS3`
+* Upload file `single` and `multipart` to AwsS3
+* Support multi-language `i18n` 🗣
+* Request validation with `class-validation`
+* Serialization with `class-transformer`
+* Url Versioning
+* Server Side Pagination, there have 3 of types
+* Import and export data with excel by using `decorator`
 
 ### Logger and Debugger
 
-- Logger `Morgan` and Debugger `Winston` 📝
+* Logger `Morgan` and Debugger `Winston` 📝
 
 ### Security
 
-- Apply `helmet`, `cors`, and `rate-limit`
-- Timeout awareness and can override ⌛️
-- User agent awareness, and can whitelist user agent
+* Apply `helmet`, `cors`, and `rate-limit`
+* Timeout awareness and can override ⌛️
+* User agent awareness, and can whitelist user agent
 
 ### Setting
 
-- Support environment file
-- Centralize configuration 🤖
-- Centralize response
-- Centralize exception filter
-- Setting from database 🗿
-- Maintenance mode on / off from database 🐤
+* Support environment file
+* Centralize configuration 🤖
+* Centralize response
+* Centralize exception filter
+* Setting from database 🗿
+* Maintenance mode on / off from database 🐤
 
 ### Others
 
-- Support Docker Installation
-- Support CI/CD with Github Action or Jenkins
-- Husky GitHook For Check Source Code, and Run Test Before Commit 🐶
-- Linter with EsLint for Typescript
+* Support Docker Installation
+* Support CI/CD with Github Action or Jenkins
+* Husky GitHook For Check Source Code, and Run Test Before Commit 🐶
+* Linter with EsLint for Typescript
 
 ## Prerequisites
 
 We assume that everyone who comes here is **`programmer with intermediate knowledge`** and we also need to understand more before we begin in order to reduce the knowledge gap.
 
-1. Understand [NestJs Fundamental](http://nestjs.com), Main Framework. NodeJs Framework with support fully TypeScript.
-2. Understand[Typescript Fundamental](ref-typescript), Programming Language. It will help us to write and read the code.
-3. Understand [ExpressJs Fundamental](ref-nodejs), NodeJs Base Framework. It will help us in understanding how the NestJs Framework works.
-4. Understand what NoSql is and how it works as a database, especially [MongoDB.](ref-mongodb)
+1. Understand [NestJs Fundamental][ref-nestjs], Main Framework. NodeJs Framework with support fully TypeScript.
+2. Understand[Typescript Fundamental][ref-typescript], Programming Language. It will help us to write and read the code.
+3. Understand [ExpressJs Fundamental][ref-nodejs], NodeJs Base Framework. It will help us in understanding how the NestJs Framework works.
+4. Understand what NoSql is and how it works as a database, especially [MongoDB.][ref-mongodb]
 5. Understand Repository Design Pattern or Data Access Object Design Pattern. It will help us to read the source code
 6. Understand The SOLID Principle and KISS Principle for better write the code.
 7. Optional. Understand Microservice Architecture Clean Architecture, and/or Hexagonal Architecture.
-8. Optional. Understand [The Twelve Factor Apps](ref-12factor)
-9. Optional. Understand [Docker](ref-docker) that can help you to run the project
+8. Optional. Understand [The Twelve Factor Apps][ref-12factor]
+9. Optional. Understand [Docker][ref-docker] that can help you to run the project
 
-### Getting Started
+## Getting Started
 
 Before we start, we need to install some packages and tools.
 Recommend version is LTS Version for every tool and package.
 
 > Make sure check that tools has been installed successfully.
 
-1. [NodeJs](ref-nodejs)
-2. [MongoDB as Replication](ref-mongodb)
-3. [Yarn](ref-yarn)
-4. [Git](ref-git)
-5. [Docker](ref-docker)
-6. [Docker-Compose](ref-dockercompose)
-7. [Serverless](ref-serverless)
+1. [NodeJs][ref-nodejs]
+2. [MongoDB as Replication][ref-mongodb]
+3. [Yarn][ref-yarn]
+4. [Git][ref-git]
+5. [Docker][ref-docker]
+6. [Docker-Compose][ref-dockercompose]
+7. [Serverless][ref-serverless]
 
-#### Clone Repo
+### Clone Repo
 
 Clone ack-nestjs-mongoose with git.
 
@@ -158,7 +181,7 @@ Clone ack-nestjs-mongoose with git.
 git clone https://github.com/andrechristikan/ack-nestjs-mongoose.git
 ```
 
-#### Install Dependencies
+### Install Dependencies
 
 This project need some dependencies. Let's go install it.
 
@@ -166,7 +189,7 @@ This project need some dependencies. Let's go install it.
 yarn install
 ```
 
-#### Create environment
+### Create environment
 
 Make your own environment with copy from `.env.example` and edit some value.
 
@@ -176,11 +199,11 @@ cp .env.example .env
 
 [Jump to details](#environment)
 
-#### Database Migration
+### Database Migration
 
 > If you want to to implement `transaction`, you must to install `Mongodb Replication Set`.
 
-Database migration ack-nestjs-mongoose used [NestJs-Command](ref-nestjscommand)
+Database migration ack-nestjs-mongoose used [NestJs-Command][ref-nestjscommand]
 
 For migrate
 
@@ -194,7 +217,7 @@ For rollback
 yarn rollback
 ```
 
-#### Test
+### Test
 
 ack-nestjs-mongoose provide 3 automation testing `unit testing`, `integration testing`, and `e2e testing`.
 
@@ -202,27 +225,27 @@ ack-nestjs-mongoose provide 3 automation testing `unit testing`, `integration te
 yarn test
 ```
 
-#### Specific test
+For specific test use this
 
-For unit testing
+* Unit testing
 
-```bash
-yarn test:unit
-```
+    ```bash
+    yarn test:unit
+    ```
 
-For integration testing
+* Integration testing
 
-```bash
-yarn test:integration
-```
+    ```bash
+    yarn test:integration
+    ```
 
-For E2E testing
+* E2E testing
 
-```bash
-yarn test:e2e
-```
+    ```bash
+    yarn test:e2e
+    ```
 
-#### Run Project
+### Run Project
 
 > If mongodb version < 5, [Read this section for adjust mongoose setting.](#adjust-mongoose-setting)
 
@@ -234,11 +257,15 @@ Now we can run ack-nestjs-mongoose and use all of features.
 yarn start:dev
 ```
 
-#### Run Project with Docker
+### Run Project with Docker
 
 ```bash
 docker-compose up -d
 ```
+
+## API Reference
+
+We have already provided the API reference. To visit, [click here][api-reference-docs].
 
 ## Environment
 
@@ -450,20 +477,17 @@ Distributed under [MIT licensed][license].
 [author-github]: https://github.com/andrechristikan
 
 <!-- Repo LINKS -->
-[ack-repo]: https://github.com/andrechristikan/ack-nestjs-mongoose
-[ack-e2e]: /test/e2e/
 [ack-issues]: https://github.com/andrechristikan/ack-nestjs-mongoose/issues
 [ack-stars]: https://github.com/andrechristikan/ack-nestjs-mongoose/stargazers
 [ack-forks]: https://github.com/andrechristikan/ack-nestjs-mongoose/network/members
 [ack-contributors]: https://github.com/andrechristikan/ack-nestjs-mongoose/graphs/contributors
-[ack-history]: https://github.com/andrechristikan/ack-nestjs-mongoose/commits/main
 
 <!-- license -->
 [license]: LICENSE.md
 
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com
-[ref-mongoose]: https://mongoosejs.com/
+[ref-nestjs-cqrs]: https://docs.nestjs.com/recipes/cqrs
 [ref-mongodb]: https://docs.mongodb.com/
 [ref-nodejs]: https://nodejs.org/
 [ref-typescript]: https://www.typescriptlang.org/
@@ -475,3 +499,7 @@ Distributed under [MIT licensed][license].
 [ref-nestjscommand]: https://gitlab.com/aa900031/nestjs-command
 [ref-jwt]: https://jwt.io
 [ref-jest]: https://jestjs.io/docs/getting-started
+[ref-git]: https://git-scm.com
+
+<!-- API Reference -->
+[api-reference-docs]: https://lgtw8uvhvd.execute-api.ap-southeast-3.amazonaws.com/development/docs

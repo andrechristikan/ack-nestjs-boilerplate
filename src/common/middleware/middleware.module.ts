@@ -14,6 +14,8 @@ import {
 import {
     HttpDebuggerMiddleware,
     HttpDebuggerResponseMiddleware,
+    HttpDebuggerWriteIntoConsoleMiddleware,
+    HttpDebuggerWriteIntoFileMiddleware,
 } from './http-debugger/http-debugger.middleware';
 import { HelmetMiddleware } from './helmet/helmet.middleware';
 import { RateLimitMiddleware } from './rate-limit/rate-limit.middleware';
@@ -37,6 +39,8 @@ export class MiddlewareModule implements NestModule {
                 CorsMiddleware,
                 HttpDebuggerResponseMiddleware,
                 HttpDebuggerMiddleware,
+                HttpDebuggerWriteIntoConsoleMiddleware,
+                HttpDebuggerWriteIntoFileMiddleware,
                 HelmetMiddleware,
                 RateLimitMiddleware,
                 UserAgentMiddleware,

@@ -18,22 +18,13 @@ import {
 export class HttpDebuggerMiddleware implements NestMiddleware {
     private readonly writeIntoFile: boolean;
     private readonly writeIntoConsole: boolean;
-    private readonly maxSize: string;
-    private readonly maxFiles: number;
 
-    constructor(
-        private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService
-    ) {
+    constructor(private readonly configService: ConfigService) {
         this.writeIntoFile = this.configService.get<boolean>(
             'debugger.http.writeIntoFile'
         );
         this.writeIntoConsole = this.configService.get<boolean>(
             'debugger.http.writeIntoConsole'
-        );
-        this.maxSize = this.configService.get<string>('debugger.http.maxSize');
-        this.maxFiles = this.configService.get<number>(
-            'debugger.http.maxFiles'
         );
     }
 
@@ -54,42 +45,91 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
         );
     }
 
+    async use(req: Request, res: Response, next: NextFunction): Promise<void> {
+        if (this.writeIntoConsole || this.writeIntoFile) {
+            this.customToken();
+        }
+
+        next();
+    }
+}
+
+@Injectable()
+export class HttpDebuggerWriteIntoFileMiddleware implements NestMiddleware {
+    private readonly writeIntoFile: boolean;
+    private readonly maxSize: string;
+    private readonly maxFiles: number;
+
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly helperDateService: HelperDateService
+    ) {
+        this.writeIntoFile = this.configService.get<boolean>(
+            'debugger.http.writeIntoFile'
+        );
+        this.maxSize = this.configService.get<string>('debugger.http.maxSize');
+        this.maxFiles = this.configService.get<number>(
+            'debugger.http.maxFiles'
+        );
+    }
+
     private async httpLogger(): Promise<IHttpDebuggerConfig> {
         const date: string = this.helperDateService.format(
             this.helperDateService.create()
         );
 
+        const HttpDebuggerOptions: IHttpDebuggerConfigOptions = {
+            stream: createStream(`${date}.log`, {
+                path: `./logs/${DEBUGGER_HTTP_NAME}/`,
+                maxSize: this.maxSize,
+                maxFiles: this.maxFiles,
+                compress: true,
+                interval: '1d',
+            }),
+        };
+
+        return {
+            debuggerHttpFormat: DEBUGGER_HTTP_FORMAT,
+            HttpDebuggerOptions,
+        };
+    }
+
+    async use(req: Request, res: Response, next: NextFunction): Promise<void> {
         if (this.writeIntoFile) {
-            const HttpDebuggerOptions: IHttpDebuggerConfigOptions = {
-                stream: createStream(`${date}.log`, {
-                    path: `./logs/${DEBUGGER_HTTP_NAME}/`,
-                    maxSize: this.maxSize,
-                    maxFiles: this.maxFiles,
-                    compress: true,
-                    interval: '1d',
-                }),
-            };
+            const config: IHttpDebuggerConfig = await this.httpLogger();
 
-            return {
-                debuggerHttpFormat: DEBUGGER_HTTP_FORMAT,
-                HttpDebuggerOptions,
-            };
+            morgan(config.debuggerHttpFormat, config.HttpDebuggerOptions)(
+                req,
+                res,
+                next
+            );
+        } else {
+            next();
         }
+    }
+}
 
+@Injectable()
+export class HttpDebuggerWriteIntoConsoleMiddleware implements NestMiddleware {
+    private readonly writeIntoConsole: boolean;
+
+    constructor(private readonly configService: ConfigService) {
+        this.writeIntoConsole = this.configService.get<boolean>(
+            'debugger.http.writeIntoConsole'
+        );
+    }
+
+    private async httpLogger(): Promise<IHttpDebuggerConfig> {
         return {
             debuggerHttpFormat: DEBUGGER_HTTP_FORMAT,
         };
     }
 
     async use(req: Request, res: Response, next: NextFunction): Promise<void> {
-        if (this.writeIntoConsole || this.writeIntoFile) {
+        if (this.writeIntoConsole) {
             const config: IHttpDebuggerConfig = await this.httpLogger();
-            this.customToken();
-            morgan(config.debuggerHttpFormat, config.HttpDebuggerOptions)(
-                req,
-                res,
-                next
-            );
+
+            morgan(config.debuggerHttpFormat)(req, res, next);
         } else {
             next();
         }

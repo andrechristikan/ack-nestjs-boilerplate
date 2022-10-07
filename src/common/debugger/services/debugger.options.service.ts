@@ -9,12 +9,16 @@ import { IDebuggerOptionService } from 'src/common/debugger/interfaces/debugger.
 @Injectable()
 export class DebuggerOptionService implements IDebuggerOptionService {
     private readonly writeIntoFile: boolean;
+    private readonly writeIntoConsole: boolean;
     private readonly maxSize: string;
     private readonly maxFiles: string;
 
     constructor(private configService: ConfigService) {
         this.writeIntoFile = this.configService.get<boolean>(
             'debugger.system.writeIntoFile'
+        );
+        this.writeIntoConsole = this.configService.get<boolean>(
+            'debugger.system.writeIntoConsole'
         );
         this.maxSize = this.configService.get<string>(
             'debugger.system.maxSize'
@@ -67,7 +71,9 @@ export class DebuggerOptionService implements IDebuggerOptionService {
             );
         }
 
-        transports.push(new winston.transports.Console());
+        if (this.writeIntoConsole) {
+            transports.push(new winston.transports.Console());
+        }
 
         const loggerOptions: LoggerOptions = {
             format: winston.format.combine(
