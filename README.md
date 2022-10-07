@@ -19,6 +19,31 @@ ack-nestjs-mongoose is a [Http NestJs](http://nestjs.com) Boilerplate.
 
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
 
+## Table of contents
+
+* [Important](#important)
+* [Next Todo](#next-todo)
+* [Build With](#build-with)
+* [Objective](#objective)
+* [Features](#features)
+* [Prerequisites](#prerequisites)
+* [Getting Started](#getting-started)
+    * [Clone Repo](#clone-repo)
+    * [Install Dependencies](#install-dependencies)
+    * [Create environment](#create-environment)
+    * [Database Migration](#database-migration)
+    * [Test](#test)
+    * [Run Project](#run-project)
+    * [Run Project with Docker](#run-project-with-docker)
+* [API Reference](#api-reference)
+* [Environment](#environment)
+* [Api Key Encryption](#api-key-encryption)
+* [Adjust Mongoose Setting](#adjust-mongoose-setting)
+* [License](#license)
+* [Contact](#contact)
+
+
+
 ## Important
 
 > ack-nestjs-mongoose still on trial and error phase and the test will base on real projects or cases. So there will be (always) have new update and new features.
@@ -135,7 +160,7 @@ We assume that everyone who comes here is **`programmer with intermediate knowle
 8. Optional. Understand [The Twelve Factor Apps](ref-12factor)
 9. Optional. Understand [Docker](ref-docker) that can help you to run the project
 
-### Getting Started
+## Getting Started
 
 Before we start, we need to install some packages and tools.
 Recommend version is LTS Version for every tool and package.
@@ -150,7 +175,7 @@ Recommend version is LTS Version for every tool and package.
 6. [Docker-Compose](ref-dockercompose)
 7. [Serverless](ref-serverless)
 
-#### Clone Repo
+### Clone Repo
 
 Clone ack-nestjs-mongoose with git.
 
@@ -158,7 +183,7 @@ Clone ack-nestjs-mongoose with git.
 git clone https://github.com/andrechristikan/ack-nestjs-mongoose.git
 ```
 
-#### Install Dependencies
+### Install Dependencies
 
 This project need some dependencies. Let's go install it.
 
@@ -166,7 +191,7 @@ This project need some dependencies. Let's go install it.
 yarn install
 ```
 
-#### Create environment
+### Create environment
 
 Make your own environment with copy from `.env.example` and edit some value.
 
@@ -176,7 +201,7 @@ cp .env.example .env
 
 [Jump to details](#environment)
 
-#### Database Migration
+### Database Migration
 
 > If you want to to implement `transaction`, you must to install `Mongodb Replication Set`.
 
@@ -194,7 +219,7 @@ For rollback
 yarn rollback
 ```
 
-#### Test
+### Test
 
 ack-nestjs-mongoose provide 3 automation testing `unit testing`, `integration testing`, and `e2e testing`.
 
@@ -202,27 +227,27 @@ ack-nestjs-mongoose provide 3 automation testing `unit testing`, `integration te
 yarn test
 ```
 
-#### Specific test
+For specific test use this
 
-For unit testing
+* Unit testing
 
-```bash
-yarn test:unit
-```
+    ```bash
+    yarn test:unit
+    ```
 
-For integration testing
+* Integration testing
 
-```bash
-yarn test:integration
-```
+    ```bash
+    yarn test:integration
+    ```
 
-For E2E testing
+* E2E testing
 
-```bash
-yarn test:e2e
-```
+    ```bash
+    yarn test:e2e
+    ```
 
-#### Run Project
+### Run Project
 
 > If mongodb version < 5, [Read this section for adjust mongoose setting.](#adjust-mongoose-setting)
 
@@ -234,11 +259,15 @@ Now we can run ack-nestjs-mongoose and use all of features.
 yarn start:dev
 ```
 
-#### Run Project with Docker
+### Run Project with Docker
 
 ```bash
 docker-compose up -d
 ```
+
+## API Reference
+
+We have already provided the API reference. To visit, [click here](api-reference-docs).
 
 ## Environment
 
@@ -475,3 +504,6 @@ Distributed under [MIT licensed][license].
 [ref-nestjscommand]: https://gitlab.com/aa900031/nestjs-command
 [ref-jwt]: https://jwt.io
 [ref-jest]: https://jestjs.io/docs/getting-started
+
+<!-- API Reference -->
+[api-reference-docs]: https://lgtw8uvhvd.execute-api.ap-southeast-3.amazonaws.com/development/docs

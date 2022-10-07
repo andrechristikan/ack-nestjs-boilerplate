@@ -122,7 +122,7 @@ functions:
     events:
       - http:
           method: ANY
-          path: /${self:service}
+          path: /
       - http:
           method: ANY
-          path: '/${self:service}/{proxy+}'
+          path: '/{proxy+}'

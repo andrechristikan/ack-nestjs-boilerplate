@@ -56,13 +56,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         }
 
         if (options && options.populate) {
-            if (Array.isArray(this._populateOnFind)) {
-                for (const populate of this._populateOnFind) {
-                    findAll.populate(populate);
-                }
-            } else {
-                findAll.populate(this._populateOnFind);
-            }
+            findAll.populate(this._populateOnFind);
         }
 
         if (options && options.session) {
@@ -136,17 +130,15 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         }
 
         if (options && options.populate) {
-            if (Array.isArray(this._populateOnFind)) {
-                for (const populate of this._populateOnFind) {
-                    findOne.populate(populate);
-                }
-            } else {
-                findOne.populate(this._populateOnFind);
-            }
+            findOne.populate(this._populateOnFind);
         }
 
         if (options && options.session) {
             findOne.session(options.session);
+        }
+
+        if (options && options.sort) {
+            findOne.sort(options.sort);
         }
 
         return findOne.lean();
@@ -169,17 +161,15 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         }
 
         if (options && options.populate) {
-            if (Array.isArray(this._populateOnFind)) {
-                for (const populate of this._populateOnFind) {
-                    findOne.populate(populate);
-                }
-            } else {
-                findOne.populate(this._populateOnFind);
-            }
+            findOne.populate(this._populateOnFind);
         }
 
         if (options && options.session) {
             findOne.session(options.session);
+        }
+
+        if (options && options.sort) {
+            findOne.sort(options.sort);
         }
 
         return findOne.lean();
@@ -200,6 +190,12 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
                 $match: {
                     deletedAt: { $exists: false },
                 },
+            });
+        }
+
+        if (options && options.sort) {
+            pipeline.push({
+                $sort: options.sort,
             });
         }
 
