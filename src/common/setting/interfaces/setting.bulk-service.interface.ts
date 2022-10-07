@@ -1,8 +1,8 @@
-import { IDatabaseSoftDeleteOptions } from 'src/common/database/interfaces/database.interface';
+import { IDatabaseManyOptions } from 'src/common/database/interfaces/database.interface';
 
 export interface ISettingBulkService {
     deleteMany(
         find: Record<string, any>,
-        options?: IDatabaseSoftDeleteOptions
+        options?: IDatabaseManyOptions
     ): Promise<boolean>;
 }

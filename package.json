@@ -1,6 +1,6 @@
 {
   "name": "ack-nestjs-mongoose",
-  "version": "3.4.0",
+  "version": "3.4.1g",
   "description": "Ack NestJs Mongoose",
   "repository": {
     "type": "git",

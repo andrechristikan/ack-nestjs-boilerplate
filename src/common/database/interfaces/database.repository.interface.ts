@@ -5,11 +5,11 @@ import {
     IDatabaseExistOptions,
     IDatabaseFindAllAggregateOptions,
     IDatabaseFindAllOptions,
-    IDatabaseFindOneAggregateOptions,
     IDatabaseFindOneOptions,
     IDatabaseGetTotalAggregateOptions,
     IDatabaseOptions,
     IDatabaseRestoreOptions,
+    IDatabaseAggregateOptions,
 } from './database.interface';
 
 export interface IDatabaseRepositoryAbstract<T> {
@@ -18,10 +18,10 @@ export interface IDatabaseRepositoryAbstract<T> {
         options?: IDatabaseFindAllOptions
     ): Promise<Y[]>;
 
-    findAllAggregate<Y = T>(
+    findAllAggregate<N>(
         pipeline: PipelineStage[],
         options?: IDatabaseFindAllAggregateOptions
-    ): Promise<Y[]>;
+    ): Promise<N[]>;
 
     findOne<Y = T>(
         find: Record<string, any>,
@@ -33,10 +33,10 @@ export interface IDatabaseRepositoryAbstract<T> {
         options?: IDatabaseFindOneOptions
     ): Promise<Y>;
 
-    findOneAggregate<Y = T>(
+    findOneAggregate<N>(
         pipeline: PipelineStage[],
-        options?: IDatabaseFindOneAggregateOptions
-    ): Promise<Y[]>;
+        options?: IDatabaseAggregateOptions
+    ): Promise<N[]>;
 
     getTotal(
         find?: Record<string, any>,
@@ -48,26 +48,26 @@ export interface IDatabaseRepositoryAbstract<T> {
         options?: IDatabaseGetTotalAggregateOptions
     ): Promise<number>;
 
-    aggregate<N>(
-        pipeline: Record<string, any>[],
-        options?: IDatabaseOptions
-    ): Promise<N[]>;
-
     exists(
         find: Record<string, any>,
         options?: IDatabaseExistOptions
     ): Promise<boolean>;
 
+    aggregate<N>(
+        pipeline: Record<string, any>[],
+        options?: IDatabaseAggregateOptions
+    ): Promise<N[]>;
+
     create<N>(data: N, options?: IDatabaseCreateOptions): Promise<T>;
 
-    updateOne<N>(
-        find: Record<string, any>,
+    updateOneById<N>(
+        _id: string,
         data: N,
         options?: IDatabaseOptions
     ): Promise<T>;
 
-    updateOneById<N>(
-        _id: string,
+    updateOne<N>(
+        find: Record<string, any>,
         data: N,
         options?: IDatabaseOptions
     ): Promise<T>;
