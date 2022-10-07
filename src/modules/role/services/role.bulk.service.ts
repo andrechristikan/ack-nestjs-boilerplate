@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
     IDatabaseCreateManyOptions,
-    IDatabaseSoftDeleteOptions,
+    IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { IRoleBulkService } from 'src/modules/role/interfaces/role.bulk-service.interface';
@@ -13,7 +13,7 @@ export class RoleBulkService implements IRoleBulkService {
 
     async deleteMany(
         find: Record<string, any>,
-        options?: IDatabaseSoftDeleteOptions
+        options?: IDatabaseManyOptions
     ): Promise<boolean> {
         return this.roleBulkRepository.deleteMany(find, options);
     }

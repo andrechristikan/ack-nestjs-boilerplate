@@ -1,7 +1,7 @@
 import { IAuthPermission } from 'src/common/auth/interfaces/auth.interface';
 import {
     IDatabaseCreateManyOptions,
-    IDatabaseSoftDeleteOptions,
+    IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 
 export interface IPermissionBulkService {
@@ -12,6 +12,6 @@ export interface IPermissionBulkService {
 
     deleteMany(
         find: Record<string, any>,
-        options?: IDatabaseSoftDeleteOptions
+        options?: IDatabaseManyOptions
     ): Promise<boolean>;
 }
