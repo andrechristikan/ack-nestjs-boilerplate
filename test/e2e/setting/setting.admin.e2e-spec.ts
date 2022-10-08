@@ -60,7 +60,8 @@ describe('E2E Setting Admin', () => {
             E2E_SETTING_ADMIN_PAYLOAD_TEST,
             false
         );
-        accessToken = await authService.createAccessToken(payload);
+        const payloadHashed = await authService.encryptAccessToken(payload);
+        accessToken = await authService.createAccessToken(payloadHashed);
 
         await settingService.create({ name: settingName, value: true });
         setting = await settingService.findOneByName(settingName);

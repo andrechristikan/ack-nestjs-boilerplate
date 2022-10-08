@@ -9,6 +9,12 @@ describe('AuthService', () => {
 
     const rememberMe = false;
 
+    let payloadHashedAccessToken: string;
+    let payloadAccessToken: Record<string, any>;
+
+    let payloadHashedRefreshToken: string;
+    let payloadRefreshToken: Record<string, any>;
+
     // cSpell:ignore ZfqgaDMPpWQ3lJEGQ8Ueu stnk
     const user: Record<string, any> = {
         _id: '623cb7fd37a861a10bac2c91',
@@ -37,36 +43,93 @@ describe('AuthService', () => {
         }).compile();
 
         authService = moduleRef.get<AuthService>(AuthService);
+
+        payloadHashedAccessToken = await authService.encryptAccessToken(user);
+        payloadAccessToken = { data: payloadHashedAccessToken };
+
+        payloadHashedRefreshToken = await authService.encryptRefreshToken(user);
+        payloadRefreshToken = { data: payloadHashedRefreshToken };
     });
 
     it('should be defined', async () => {
         expect(authService).toBeDefined();
     });
 
-    describe('createAccessToken', () => {
+    describe('encryptAccessToken', () => {
         it('should be called', async () => {
-            const test = jest.spyOn(authService, 'createAccessToken');
+            const test = jest.spyOn(authService, 'encryptAccessToken');
 
-            await authService.createAccessToken(user);
+            await authService.encryptAccessToken(user);
             expect(test).toHaveBeenCalledWith(user);
         });
 
         it('should be success', async () => {
-            const accessToken = await authService.createAccessToken(user);
+            const payloadHashedAccessToken =
+                await authService.encryptAccessToken(user);
+            jest.spyOn(authService, 'encryptAccessToken').mockImplementation(
+                async () => payloadHashedAccessToken
+            );
+
+            expect(await authService.encryptAccessToken(user)).toBe(
+                payloadHashedAccessToken
+            );
+        });
+    });
+
+    describe('decryptAccessToken', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(authService, 'decryptAccessToken');
+
+            await authService.decryptAccessToken(payloadAccessToken);
+            expect(test).toHaveBeenCalledWith(payloadAccessToken);
+        });
+
+        it('should be success', async () => {
+            const user = await authService.decryptAccessToken(
+                payloadAccessToken
+            );
+            jest.spyOn(authService, 'decryptAccessToken').mockImplementation(
+                async () => user
+            );
+
+            expect(
+                await authService.decryptAccessToken(payloadAccessToken)
+            ).toBe(user);
+        });
+    });
+
+    describe('createAccessToken', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(authService, 'createAccessToken');
+
+            await authService.createAccessToken(payloadHashedAccessToken);
+            expect(test).toHaveBeenCalledWith(payloadHashedAccessToken);
+        });
+
+        it('should be success', async () => {
+            const accessToken = await authService.createAccessToken(
+                payloadHashedAccessToken
+            );
             jest.spyOn(authService, 'createAccessToken').mockImplementation(
                 async () => accessToken
             );
 
-            expect(await authService.createAccessToken(user)).toBe(accessToken);
+            expect(
+                await authService.createAccessToken(payloadHashedAccessToken)
+            ).toBe(accessToken);
         });
 
         it('should be success with options', async () => {
-            const accessToken = await authService.createAccessToken(user);
+            const accessToken = await authService.createAccessToken(
+                payloadHashedAccessToken
+            );
             jest.spyOn(authService, 'createAccessToken').mockImplementation(
                 async () => accessToken
             );
 
-            expect(await authService.createAccessToken(user)).toBe(accessToken);
+            expect(
+                await authService.createAccessToken(payloadHashedAccessToken)
+            ).toBe(accessToken);
         });
     });
 
@@ -74,13 +137,17 @@ describe('AuthService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(authService, 'validateAccessToken');
 
-            const accessToken = await authService.createAccessToken(user);
+            const accessToken = await authService.createAccessToken(
+                payloadHashedAccessToken
+            );
             await authService.validateAccessToken(accessToken);
             expect(test).toHaveBeenCalledWith(accessToken);
         });
 
         it('should be success', async () => {
-            const accessToken = await authService.createAccessToken(user);
+            const accessToken = await authService.createAccessToken(
+                payloadHashedAccessToken
+            );
             const validate = await authService.validateAccessToken(accessToken);
             jest.spyOn(authService, 'validateAccessToken').mockImplementation(
                 async () => validate
@@ -92,7 +159,9 @@ describe('AuthService', () => {
         });
 
         it('should be success with options', async () => {
-            const accessToken = await authService.createAccessToken(user);
+            const accessToken = await authService.createAccessToken(
+                payloadHashedAccessToken
+            );
             const validate = await authService.validateAccessToken(accessToken);
             jest.spyOn(authService, 'validateAccessToken').mockImplementation(
                 async () => validate
@@ -108,13 +177,17 @@ describe('AuthService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(authService, 'payloadAccessToken');
 
-            const accessToken = await authService.createAccessToken(user);
+            const accessToken = await authService.createAccessToken(
+                payloadHashedAccessToken
+            );
             await authService.payloadAccessToken(accessToken);
             expect(test).toHaveBeenCalledWith(accessToken);
         });
 
         it('should be success', async () => {
-            const accessToken = await authService.createAccessToken(user);
+            const accessToken = await authService.createAccessToken(
+                payloadHashedAccessToken
+            );
             jest.spyOn(authService, 'payloadAccessToken').mockImplementation(
                 async () => user
             );
@@ -125,80 +198,145 @@ describe('AuthService', () => {
         });
     });
 
-    describe('createRefreshToken', () => {
+    describe('encryptRefreshToken', () => {
         it('should be called', async () => {
-            const test = jest.spyOn(authService, 'createRefreshToken');
+            const test = jest.spyOn(authService, 'encryptRefreshToken');
 
-            await authService.createRefreshToken(user);
+            await authService.encryptRefreshToken(user);
             expect(test).toHaveBeenCalledWith(user);
         });
 
         it('should be success', async () => {
-            const refreshToken = await authService.createRefreshToken(user);
-            jest.spyOn(authService, 'createRefreshToken').mockImplementation(
-                async () => refreshToken
+            const payloadHashedRefreshToken =
+                await authService.encryptRefreshToken(user);
+            jest.spyOn(authService, 'encryptRefreshToken').mockImplementation(
+                async () => payloadHashedRefreshToken
             );
 
-            expect(await authService.createRefreshToken(user)).toBe(
-                refreshToken
+            expect(await authService.encryptRefreshToken(user)).toBe(
+                payloadHashedRefreshToken
             );
         });
+    });
 
-        it('should be success with options remember me', async () => {
-            const refreshToken = await authService.createRefreshToken(user, {
-                rememberMe: true,
-            });
+    describe('decryptRefreshToken', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(authService, 'decryptRefreshToken');
+
+            await authService.decryptRefreshToken(payloadRefreshToken);
+            expect(test).toHaveBeenCalledWith(payloadRefreshToken);
+        });
+
+        it('should be success', async () => {
+            const user = await authService.decryptRefreshToken(
+                payloadRefreshToken
+            );
+            jest.spyOn(authService, 'decryptRefreshToken').mockImplementation(
+                async () => user
+            );
+
+            expect(
+                await authService.decryptRefreshToken(payloadRefreshToken)
+            ).toBe(user);
+        });
+    });
+
+    describe('createRefreshToken', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(authService, 'createRefreshToken');
+
+            await authService.createRefreshToken(payloadHashedRefreshToken);
+            expect(test).toHaveBeenCalledWith(payloadHashedRefreshToken);
+        });
+
+        it('should be success', async () => {
+            const refreshToken = await authService.createRefreshToken(
+                payloadHashedRefreshToken
+            );
             jest.spyOn(authService, 'createRefreshToken').mockImplementation(
                 async () => refreshToken
             );
 
             expect(
-                await authService.createRefreshToken(user, {
+                await authService.createRefreshToken(payloadHashedRefreshToken)
+            ).toBe(refreshToken);
+        });
+
+        it('should be success with options remember me', async () => {
+            const refreshToken = await authService.createRefreshToken(
+                payloadHashedRefreshToken,
+                {
                     rememberMe: true,
-                })
+                }
+            );
+            jest.spyOn(authService, 'createRefreshToken').mockImplementation(
+                async () => refreshToken
+            );
+
+            expect(
+                await authService.createRefreshToken(
+                    payloadHashedRefreshToken,
+                    {
+                        rememberMe: true,
+                    }
+                )
             ).toBe(refreshToken);
         });
 
         it('should be success with options notBeforeExpirationTime', async () => {
-            const refreshToken = await authService.createRefreshToken(user, {
-                notBeforeExpirationTime: '0',
-            });
+            const refreshToken = await authService.createRefreshToken(
+                payloadHashedRefreshToken,
+                {
+                    notBeforeExpirationTime: '0',
+                }
+            );
             jest.spyOn(authService, 'createRefreshToken').mockImplementation(
                 async () => refreshToken
             );
 
             expect(
-                await authService.createRefreshToken(user, {
-                    notBeforeExpirationTime: '0',
-                })
+                await authService.createRefreshToken(
+                    payloadHashedRefreshToken,
+                    {
+                        notBeforeExpirationTime: '0',
+                    }
+                )
             ).toBe(refreshToken);
         });
 
         it('should be success with options audience', async () => {
-            const refreshToken = await authService.createRefreshToken(user);
-            jest.spyOn(authService, 'createRefreshToken').mockImplementation(
-                async () => refreshToken
+            const refreshToken = await authService.createRefreshToken(
+                payloadHashedRefreshToken
             );
-
-            expect(await authService.createRefreshToken(user)).toBe(
-                refreshToken
-            );
-        });
-
-        it('should be success with full options', async () => {
-            const refreshToken = await authService.createRefreshToken(user, {
-                rememberMe,
-                notBeforeExpirationTime: '0',
-            });
             jest.spyOn(authService, 'createRefreshToken').mockImplementation(
                 async () => refreshToken
             );
 
             expect(
-                await authService.createRefreshToken(user, {
+                await authService.createRefreshToken(payloadHashedRefreshToken)
+            ).toBe(refreshToken);
+        });
+
+        it('should be success with full options', async () => {
+            const refreshToken = await authService.createRefreshToken(
+                payloadHashedRefreshToken,
+                {
                     rememberMe,
                     notBeforeExpirationTime: '0',
-                })
+                }
+            );
+            jest.spyOn(authService, 'createRefreshToken').mockImplementation(
+                async () => refreshToken
+            );
+
+            expect(
+                await authService.createRefreshToken(
+                    payloadHashedRefreshToken,
+                    {
+                        rememberMe,
+                        notBeforeExpirationTime: '0',
+                    }
+                )
             ).toBe(refreshToken);
         });
     });
@@ -207,13 +345,17 @@ describe('AuthService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(authService, 'validateRefreshToken');
 
-            const refreshToken = await authService.createRefreshToken(user);
+            const refreshToken = await authService.createRefreshToken(
+                payloadHashedRefreshToken
+            );
             await authService.validateRefreshToken(refreshToken);
             expect(test).toHaveBeenCalledWith(refreshToken);
         });
 
         it('should be success', async () => {
-            const refreshToken = await authService.createRefreshToken(user);
+            const refreshToken = await authService.createRefreshToken(
+                payloadHashedRefreshToken
+            );
             const validate = await authService.validateRefreshToken(
                 refreshToken
             );
@@ -227,7 +369,9 @@ describe('AuthService', () => {
         });
 
         it('should be success with audience', async () => {
-            const refreshToken = await authService.createRefreshToken(user);
+            const refreshToken = await authService.createRefreshToken(
+                payloadHashedRefreshToken
+            );
             const validate = await authService.validateRefreshToken(
                 refreshToken
             );
@@ -245,13 +389,17 @@ describe('AuthService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(authService, 'payloadRefreshToken');
 
-            const refreshToken = await authService.createRefreshToken(user);
+            const refreshToken = await authService.createRefreshToken(
+                payloadHashedRefreshToken
+            );
             await authService.payloadRefreshToken(refreshToken);
             expect(test).toHaveBeenCalledWith(refreshToken);
         });
 
         it('should be success', async () => {
-            const refreshToken = await authService.createRefreshToken(user);
+            const refreshToken = await authService.createRefreshToken(
+                payloadHashedRefreshToken
+            );
             jest.spyOn(authService, 'payloadRefreshToken').mockImplementation(
                 async () => user
             );

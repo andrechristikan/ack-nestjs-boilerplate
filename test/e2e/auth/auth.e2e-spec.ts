@@ -47,7 +47,8 @@ describe('E2E Auth', () => {
             E2E_AUTH_PAYLOAD_TEST,
             false
         );
-        accessToken = await authService.createAccessToken(payload);
+        const payloadHashed = await authService.encryptAccessToken(payload);
+        accessToken = await authService.createAccessToken(payloadHashed);
 
         timestamp = helperDateService.timestamp();
         const apiEncryption = await authApiService.encryptApiKey(

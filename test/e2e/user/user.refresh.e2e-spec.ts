@@ -103,12 +103,17 @@ describe('E2E User Refresh', () => {
             _id: `${new Types.ObjectId()}`,
         };
 
-        refreshToken = await authService.createRefreshToken(payload, {
+        const payloadHashed = await authService.encryptRefreshToken(payload);
+        const payloadHashedNotFound = await authService.encryptRefreshToken(
+            payloadNotFound
+        );
+
+        refreshToken = await authService.createRefreshToken(payloadHashed, {
             rememberMe: false,
             notBeforeExpirationTime: '0',
         });
         refreshTokenNotFound = await authService.createRefreshToken(
-            payloadNotFound,
+            payloadHashedNotFound,
             {
                 rememberMe: false,
                 notBeforeExpirationTime: '0',

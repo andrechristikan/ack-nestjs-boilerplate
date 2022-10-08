@@ -2,10 +2,14 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
-    constructor(private readonly configService: ConfigService) {
+    constructor(
+        private readonly configService: ConfigService,
+        private readonly helperEncryptionService: HelperEncryptionService
+    ) {
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderWithScheme(
                 configService.get<string>('auth.jwt.prefixAuthorization')
@@ -23,7 +27,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         });
     }
 
-    async validate(payload: Record<string, any>): Promise<Record<string, any>> {
-        return payload;
+    async validate({
+        data,
+    }: Record<string, any>): Promise<Record<string, any>> {
+        return this.helperEncryptionService.aes256Decrypt(
+            data,
+            this.configService.get<string>('auth.jwt.accessToken.encryptKey'),
+            this.configService.get<string>('auth.jwt.accessToken.encryptIv')
+        ) as Record<string, any>;
     }
 }

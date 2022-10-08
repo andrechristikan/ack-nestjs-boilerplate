@@ -163,7 +163,7 @@ describe('HelperEncryptionService', () => {
             );
         });
 
-        it('should be success', async () => {
+        it('should be success string', async () => {
             const result = helperEncryptionService.aes256Encrypt(
                 data,
                 '1234567',
@@ -181,6 +181,26 @@ describe('HelperEncryptionService', () => {
                     '1231231231231231'
                 )
             ).toBe(data);
+        });
+
+        it('should be success object', async () => {
+            const result = helperEncryptionService.aes256Encrypt(
+                dataObject,
+                '1234567',
+                '1231231231231231'
+            );
+            jest.spyOn(
+                helperEncryptionService,
+                'aes256Decrypt'
+            ).mockImplementation(() => dataObject);
+
+            expect(
+                helperEncryptionService.aes256Decrypt(
+                    result,
+                    '1234567',
+                    '1231231231231231'
+                )
+            ).toBe(dataObject);
         });
     });
 

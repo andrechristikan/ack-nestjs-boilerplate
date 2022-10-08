@@ -118,11 +118,13 @@ describe('E2E Role Admin', () => {
 
         role = await roleService.create(existData);
 
-        accessToken = await authService.createAccessToken({
+        const payloadHashed = await authService.encryptAccessToken({
             ...E2E_ROLE_PAYLOAD_TEST,
             loginDate: new Date(),
             rememberMe: false,
         });
+
+        accessToken = await authService.createAccessToken(payloadHashed);
 
         timestamp = helperDateService.timestamp();
         const apiEncryption = await authApiService.encryptApiKey(

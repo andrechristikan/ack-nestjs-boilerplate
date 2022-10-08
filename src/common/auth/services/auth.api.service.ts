@@ -284,7 +284,7 @@ export class AuthApiService implements IAuthApiService {
             passphrase
         );
 
-        return JSON.parse(decrypted);
+        return decrypted as IAuthApiRequestHashedData;
     }
 
     async encryptApiKey(

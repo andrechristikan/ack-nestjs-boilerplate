@@ -245,12 +245,17 @@ export class UserController {
                 }
             );
 
+        const payloadHashedAccessToken =
+            await this.authService.encryptAccessToken(payloadAccessToken);
+        const payloadHashedRefreshToken =
+            await this.authService.encryptAccessToken(payloadRefreshToken);
+
         const accessToken: string = await this.authService.createAccessToken(
-            payloadAccessToken
+            payloadHashedAccessToken
         );
 
         const refreshToken: string = await this.authService.createRefreshToken(
-            payloadRefreshToken,
+            payloadHashedRefreshToken,
             { rememberMe }
         );
 
@@ -340,8 +345,11 @@ export class UserController {
                 }
             );
 
+        const payloadHashedAccessToken =
+            await this.authService.encryptAccessToken(payloadAccessToken);
+
         const accessToken: string = await this.authService.createAccessToken(
-            payloadAccessToken
+            payloadHashedAccessToken
         );
 
         return {

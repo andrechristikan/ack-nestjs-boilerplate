@@ -12,6 +12,9 @@ export default registerAs(
                     ? ms(process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED)
                     : ms('30m'), // recommendation for production is 30m
                 notBeforeExpirationTime: ms(0), // keep it in zero value
+
+                encryptKey: process.env.AUTH_JWT_ACCESS_TOKEN_ENCRYPT_KEY,
+                encryptIv: process.env.AUTH_JWT_ACCESS_TOKEN_ENCRYPT_IV, // must int length 16
             },
 
             refreshToken: {
@@ -32,6 +35,9 @@ export default registerAs(
                               .AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION
                       )
                     : ms('30m'), // recommendation for production is 30m
+
+                encryptKey: process.env.AUTH_JWT_REFRESH_TOKEN_ENCRYPT_KEY,
+                encryptIv: process.env.AUTH_JWT_REFRESH_TOKEN_ENCRYPT_IV, // must int length 16
             },
 
             subject: process.env.AUTH_JWT_SUBJECT || 'ackDevelopment',
