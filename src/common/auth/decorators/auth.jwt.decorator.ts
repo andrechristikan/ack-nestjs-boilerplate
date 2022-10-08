@@ -15,7 +15,6 @@ import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.stat
 import { JwtRefreshGuard } from 'src/common/auth/guards/jwt-refresh/auth.jwt-refresh.guard';
 import { JwtGuard } from 'src/common/auth/guards/jwt/auth.jwt.guard';
 import { AuthPayloadAccessForGuard } from 'src/common/auth/guards/payload/auth.payload.access-for.guard';
-import { AuthPayloadDefaultGuard } from 'src/common/auth/guards/payload/auth.payload.default.guard';
 import { AuthPayloadPasswordExpiredGuard } from 'src/common/auth/guards/payload/auth.payload.password-expired.guard';
 import { AuthPayloadPermissionGuard } from 'src/common/auth/guards/payload/auth.payload.permission.guard';
 import {
@@ -47,22 +46,9 @@ export function AuthJwtGuard(...permissions: ENUM_AUTH_PERMISSIONS[]): any {
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_ACCESS_FOR_INVALID_ERROR,
                 messagePath: 'auth.error.accessForForbidden',
-            },
-            {
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_INACTIVE_ERROR,
-                messagePath: 'auth.error.blocked',
-            },
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_ROLE_INACTIVE_ERROR,
-                messagePath: 'auth.error.roleBlocked',
             }
         ),
-        UseGuards(
-            JwtGuard,
-            AuthPayloadDefaultGuard,
-            AuthPayloadPermissionGuard
-        ),
+        UseGuards(JwtGuard, AuthPayloadPermissionGuard),
         SetMetadata(AUTH_PERMISSION_META_KEY, permissions)
     );
 }
@@ -93,20 +79,10 @@ export function AuthPublicJwtGuard(
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_ACCESS_FOR_INVALID_ERROR,
                 messagePath: 'auth.error.accessForForbidden',
-            },
-            {
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_INACTIVE_ERROR,
-                messagePath: 'auth.error.blocked',
-            },
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_ROLE_INACTIVE_ERROR,
-                messagePath: 'auth.error.roleBlocked',
             }
         ),
         UseGuards(
             JwtGuard,
-            AuthPayloadDefaultGuard,
             AuthPayloadPasswordExpiredGuard,
             AuthPayloadAccessForGuard,
             AuthPayloadPermissionGuard
@@ -140,20 +116,10 @@ export function AuthAdminJwtGuard(...permissions: ENUM_AUTH_PERMISSIONS[]) {
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_ACCESS_FOR_INVALID_ERROR,
                 messagePath: 'auth.error.accessForForbidden',
-            },
-            {
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_INACTIVE_ERROR,
-                messagePath: 'auth.error.blocked',
-            },
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_ROLE_INACTIVE_ERROR,
-                messagePath: 'auth.error.roleBlocked',
             }
         ),
         UseGuards(
             JwtGuard,
-            AuthPayloadDefaultGuard,
             AuthPayloadPasswordExpiredGuard,
             AuthPayloadAccessForGuard,
             AuthPayloadPermissionGuard
