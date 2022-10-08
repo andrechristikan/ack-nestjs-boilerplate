@@ -9,7 +9,6 @@ import { AUTH_PERMISSION_META_KEY } from 'src/common/auth/constants/auth.constan
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
-import { IAuthPermission } from 'src/common/auth/interfaces/auth.interface';
 
 @Injectable()
 export class AuthPayloadPermissionGuard implements CanActivate {
@@ -31,10 +30,7 @@ export class AuthPayloadPermissionGuard implements CanActivate {
             return true;
         }
 
-        const permissions: string[] = role.permissions
-            .filter((val: IAuthPermission) => val.isActive)
-            .map((val: IAuthPermission) => val.code);
-
+        const permissions: string[] = role.permissions;
         const hasPermission: boolean = requiredPermission.every((permission) =>
             permissions.includes(permission)
         );
