@@ -64,11 +64,13 @@ describe('E2E Permission Admin', () => {
         helperDateService = app.get(HelperDateService);
         authApiService = app.get(AuthApiService);
 
-        accessToken = await authService.createAccessToken({
+        const payloadHashed = await authService.encryptAccessToken({
             ...E2E_PERMISSION_PAYLOAD_TEST,
             loginDate: new Date(),
             rememberMe: false,
         });
+
+        accessToken = await authService.createAccessToken(payloadHashed);
 
         permission = await permissionService.create({
             name: 'testPermission',

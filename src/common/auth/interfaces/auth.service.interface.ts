@@ -5,14 +5,24 @@ import {
 } from 'src/common/auth/interfaces/auth.interface';
 
 export interface IAuthService {
-    createAccessToken(payload: Record<string, any>): Promise<string>;
+    encryptAccessToken(payload: Record<string, any>): Promise<string>;
+
+    decryptAccessToken(data: Record<string, any>): Promise<Record<string, any>>;
+
+    createAccessToken(payloadHashed: string): Promise<string>;
 
     validateAccessToken(token: string): Promise<boolean>;
 
     payloadAccessToken(token: string): Promise<Record<string, any>>;
 
+    encryptRefreshToken(payload: Record<string, any>): Promise<string>;
+
+    decryptRefreshToken(
+        data: Record<string, any>
+    ): Promise<Record<string, any>>;
+
     createRefreshToken(
-        payload: Record<string, any>,
+        payloadHashed: string,
         options?: IAuthRefreshTokenOptions
     ): Promise<string>;
 

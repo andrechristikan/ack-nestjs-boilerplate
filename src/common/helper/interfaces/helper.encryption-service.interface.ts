@@ -16,7 +16,11 @@ export interface IHelperEncryptionService {
         iv: string
     ): string;
 
-    aes256Decrypt(encrypted: string, key: string, iv: string): string;
+    aes256Decrypt(
+        encrypted: string,
+        key: string,
+        iv: string
+    ): string | Record<string, any> | Record<string, any>[];
 
     jwtEncrypt(
         payload: Record<string, any>,

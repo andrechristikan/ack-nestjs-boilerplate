@@ -40,7 +40,11 @@ export class HelperEncryptionService implements IHelperEncryptionService {
         return cipher.toString();
     }
 
-    aes256Decrypt(encrypted: string, key: string, iv: string): string {
+    aes256Decrypt(
+        encrypted: string,
+        key: string,
+        iv: string
+    ): string | Record<string, any> | Record<string, any>[] {
         const cIv = enc.Utf8.parse(iv);
         const cipher = AES.decrypt(encrypted, key, {
             mode: mode.CBC,
@@ -48,7 +52,7 @@ export class HelperEncryptionService implements IHelperEncryptionService {
             iv: cIv,
         });
 
-        return cipher.toString(enc.Utf8);
+        return JSON.parse(cipher.toString(enc.Utf8));
     }
 
     jwtEncrypt(

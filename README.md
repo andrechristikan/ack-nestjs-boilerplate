@@ -13,9 +13,9 @@
 [![Yarn][yarn-shield]][ref-yarn]
 [![Docker][docker-shield]][ref-docker]
 
-# ACK NestJs Boilerplate Mongoose  🔥 🚀
+# ACK NestJs Boilerplate  🔥 🚀
 
-ack-nestjs-mongoose is a [Http NestJs][ref-nestjs] Boilerplate.
+[Http NestJs v9.x][ref-nestjs] Boilerplate.
 
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
 
@@ -44,8 +44,6 @@ ack-nestjs-mongoose is a [Http NestJs][ref-nestjs] Boilerplate.
 
 ## Important
 
-> ack-nestjs-mongoose still on trial and error phase and the test will base on real projects or cases. So there will be (always) have new update and new features.
-
 If you change env value of `APP_ENV` to `production` that will trigger
 
 1. CorsMiddleware will implement `src/configs/middleware.config.ts`, else default is `*`.
@@ -60,12 +58,13 @@ Next development
 * [x] Support Serverless
 * [x] Mongo Repository soft delete
 * [x] Make it simple
-* [ ] Optimize Swagger
-* [ ] Add Relational Database Repository, ex: mysql, postgres
+* [x] Encrypt jwt payload
+* [ ] Optimize Swagger (Ongoing)
+* [ ] Add Relational Database Repository, ex: mysql, postgres (Ongoing)
 * [ ] Update Documentation, include an diagram for easier comprehension
 * [ ] Export to excel and Import from excel add options to background process
-* [ ] AuthApi Controller
 * [ ] OAuth2 Client Credentials
+* [ ] AuthApi Controller
 * [ ] Maybe will adopt [CQRS][ref-nestjs-cqrs]
 
 ## Build with
@@ -79,6 +78,7 @@ Describes which version .
 | Typescript | v4.x     |
 | Mongoose   | v6.x     |
 | MongoDB    | v6.x     |
+| PostgreSQL    | -     |
 | Yarn       | v1.x     |
 | NPM        | v8.x     |
 | Docker     | v20.x    |
@@ -105,10 +105,6 @@ Describes which version .
 * Swagger included
 * Authentication and authorization (`JWT`, `API Key`) 💪
 * Role management system
-* MongoDB integrate by using `mongoose` 🎉
-* Support MongoDB Transaction
-* Support MongoDB Soft Delete
-* Database Migration with `NestJs-Command`
 * Storage integration with `AwsS3`
 * Upload file `single` and `multipart` to AwsS3
 * Support multi-language `i18n` 🗣
@@ -117,6 +113,15 @@ Describes which version .
 * Url Versioning
 * Server Side Pagination, there have 3 of types
 * Import and export data with excel by using `decorator`
+
+## Database
+
+* MongoDB integrate by using `mongoose` 🎉
+* PostgreSQL integrate by using `typeorm` 🎊 (Ongoing)
+* Multi Database
+* Database Transaction
+* Database Soft Delete
+* Database Migration
 
 ### Logger and Debugger
 
@@ -175,10 +180,10 @@ Recommend version is LTS Version for every tool and package.
 
 ### Clone Repo
 
-Clone ack-nestjs-mongoose with git.
+Clone ack-nestjs-boilerplate with git.
 
 ```bash
-git clone https://github.com/andrechristikan/ack-nestjs-mongoose.git
+git clone https://github.com/andrechristikan/ack-nestjs-boilerplate.git
 ```
 
 ### Install Dependencies
@@ -203,7 +208,7 @@ cp .env.example .env
 
 > If you want to to implement `transaction`, you must to install `Mongodb Replication Set`.
 
-Database migration ack-nestjs-mongoose used [NestJs-Command][ref-nestjscommand]
+Database migration ack-nestjs-boilerplate used [NestJs-Command][ref-nestjscommand]
 
 For migrate
 
@@ -219,7 +224,7 @@ yarn rollback
 
 ### Test
 
-ack-nestjs-mongoose provide 3 automation testing `unit testing`, `integration testing`, and `e2e testing`.
+ack-nestjs-boilerplate provide 3 automation testing `unit testing`, `integration testing`, and `e2e testing`.
 
 ```bash
 yarn test
@@ -251,7 +256,7 @@ For specific test use this
 
 Finally, Cheers 🍻🍻 !!! we passed all steps.
 
-Now we can run ack-nestjs-mongoose and use all of features.
+Now we can run ack-nestjs-boilerplate and use all of features.
 
 ```bash
 yarn start:dev
@@ -324,7 +329,7 @@ Detail information about the environment
 | DATABASE\_NAME | `string` | Database name |
 | DATABASE\_USER | `string` | Database user |
 | DATABASE\_PASSWORD | `string` | Database user password |
-| DATABASE\_DEBUG | `boolean` | Trigger database mongoose `DEBUG` |
+| DATABASE\_DEBUG | `boolean` | Trigger database `DEBUG` |
 | DATABASE\_OPTIONS | `string` | Mongodb connect options |
 
 ### Auth Environment
@@ -451,11 +456,11 @@ Distributed under [MIT licensed][license].
 [![Instagram][instagram-shield]][author-instagram]
 
 <!-- BADGE LINKS -->
-[ack-contributors-shield]: https://img.shields.io/github/contributors/andrechristikan/ack-nestjs-mongoose?style=for-the-badge
-[ack-forks-shield]: https://img.shields.io/github/forks/andrechristikan/ack-nestjs-mongoose?style=for-the-badge
-[ack-stars-shield]: https://img.shields.io/github/stars/andrechristikan/ack-nestjs-mongoose?style=for-the-badge
-[ack-issues-shield]: https://img.shields.io/github/issues/andrechristikan/ack-nestjs-mongoose?style=for-the-badge
-[ack-license-shield]: https://img.shields.io/github/license/andrechristikan/ack-nestjs-mongoose?style=for-the-badge
+[ack-contributors-shield]: https://img.shields.io/github/contributors/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
+[ack-forks-shield]: https://img.shields.io/github/forks/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
+[ack-stars-shield]: https://img.shields.io/github/stars/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
+[ack-issues-shield]: https://img.shields.io/github/issues/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
+[ack-license-shield]: https://img.shields.io/github/license/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
 
 [nestjs-shield]: https://img.shields.io/badge/nestjs-%23E0234E.svg?style=for-the-badge&logo=nestjs&logoColor=white
 [nodejs-shield]: https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white
@@ -477,10 +482,10 @@ Distributed under [MIT licensed][license].
 [author-github]: https://github.com/andrechristikan
 
 <!-- Repo LINKS -->
-[ack-issues]: https://github.com/andrechristikan/ack-nestjs-mongoose/issues
-[ack-stars]: https://github.com/andrechristikan/ack-nestjs-mongoose/stargazers
-[ack-forks]: https://github.com/andrechristikan/ack-nestjs-mongoose/network/members
-[ack-contributors]: https://github.com/andrechristikan/ack-nestjs-mongoose/graphs/contributors
+[ack-issues]: https://github.com/andrechristikan/ack-nestjs-boilerplate/issues
+[ack-stars]: https://github.com/andrechristikan/ack-nestjs-boilerplate/stargazers
+[ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate/network/members
+[ack-contributors]: https://github.com/andrechristikan/ack-nestjs-boilerplate/graphs/contributors
 
 <!-- license -->
 [license]: LICENSE.md
@@ -488,6 +493,8 @@ Distributed under [MIT licensed][license].
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com
 [ref-nestjs-cqrs]: https://docs.nestjs.com/recipes/cqrs
+[ref-mongoose]: https://mongoosejs.com
+[ref-typeorm]: https://typeorm.io
 [ref-mongodb]: https://docs.mongodb.com/
 [ref-nodejs]: https://nodejs.org/
 [ref-typescript]: https://www.typescriptlang.org/

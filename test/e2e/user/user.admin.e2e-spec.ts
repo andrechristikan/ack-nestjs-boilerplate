@@ -112,7 +112,8 @@ describe('E2E User Admin', () => {
 
         const map = plainToInstance(UserPayloadSerialization, user);
         const payload = await authService.createPayloadAccessToken(map, false);
-        accessToken = await authService.createAccessToken(payload);
+        const payloadHashed = await authService.encryptAccessToken(payload);
+        accessToken = await authService.createAccessToken(payloadHashed);
 
         timestamp = helperDateService.timestamp();
         const apiEncryption = await authApiService.encryptApiKey(

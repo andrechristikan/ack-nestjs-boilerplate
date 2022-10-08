@@ -105,10 +105,14 @@ describe('E2E User Change Password', () => {
             ...payload,
             _id: `${new Types.ObjectId()}`,
         };
-
-        accessToken = await authService.createAccessToken(payload);
-        accessTokenNotFound = await authService.createAccessToken(
+        const payloadHashed = await authService.encryptAccessToken(payload);
+        const payloadHashedNotFound = await authService.encryptAccessToken(
             payloadNotFound
+        );
+
+        accessToken = await authService.createAccessToken(payloadHashed);
+        accessTokenNotFound = await authService.createAccessToken(
+            payloadHashedNotFound
         );
         await app.init();
     });

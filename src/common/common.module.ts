@@ -91,6 +91,11 @@ import configs from 'src/configs';
                     .default('30m')
                     .required(),
 
+                AUTH_JWT_ACCESS_TOKEN_ENCRYPT_KEY: Joi.string().required(),
+                AUTH_JWT_ACCESS_TOKEN_ENCRYPT_IV: Joi.string()
+                    .length(16)
+                    .required(),
+
                 AUTH_JWT_REFRESH_TOKEN_SECRET_KEY: Joi.string()
                     .alphanum()
                     .min(5)
@@ -104,6 +109,11 @@ import configs from 'src/configs';
                     .required(),
                 AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION:
                     Joi.string().required(),
+
+                AUTH_JWT_REFRESH_TOKEN_ENCRYPT_KEY: Joi.string().required(),
+                AUTH_JWT_REFRESH_TOKEN_ENCRYPT_IV: Joi.string()
+                    .length(16)
+                    .required(),
 
                 SERVERLESS_AWS_API_GATEWAY: Joi.string().optional(),
                 SERVERLESS_AWS_PROFILE: Joi.string().optional(),

@@ -70,12 +70,20 @@ jobs:
           echo AUTH_JWT_SUBJECT="AckDevelopment" >> .env
           echo AUTH_JWT_AUDIENCE="https://example.com" >> .env
           echo AUTH_JWT_ISSUER="ack" >> .env
+          
           echo AUTH_JWT_ACCESS_TOKEN_SECRET_KEY="123456" >> .env
           echo AUTH_JWT_ACCESS_TOKEN_EXPIRED="30m" >> .env
+
+          echo AUTH_JWT_ACCESS_TOKEN_ENCRYPT_KEY="ZGNntKGgOQTFJG9AQWPjh1OOktBFOjZa" >> .env
+          echo AUTH_JWT_ACCESS_TOKEN_ENCRYPT_IV="sdZiqBYaA1aDYXYo" >> .env
+          
           echo AUTH_JWT_REFRESH_TOKEN_SECRET_KEY="01001231" >> .env
           echo AUTH_JWT_REFRESH_TOKEN_EXPIRED="7d" >> .env
           echo AUTH_JWT_REFRESH_TOKEN_REMEMBER_ME_EXPIRED="30d" >> .env
           echo AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION="0" >> .env
+
+          echo AUTH_JWT_REFRESH_TOKEN_ENCRYPT_KEY="iU9qGavXmvPPIZT8RLYzbZIaXGB3VgnK" >> .env
+          echo AUTH_JWT_REFRESH_TOKEN_ENCRYPT_IV="50YF50X49AFiZVx4" >> .env
 
           echo SERVERLESS_AWS_API_GATEWAY="$SERVERLESS_AWS_API_GATEWAY" >> .env
           echo SERVERLESS_AWS_PROFILE="$SERVERLESS_AWS_PROFILE" >> .env

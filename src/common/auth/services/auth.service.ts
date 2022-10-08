@@ -15,11 +15,15 @@ export class AuthService implements IAuthService {
     private readonly accessTokenSecretToken: string;
     private readonly accessTokenExpirationTime: number;
     private readonly accessTokenNotBeforeExpirationTime: number;
+    private readonly accessTokenEncryptKey: string;
+    private readonly accessTokenEncryptIv: string;
 
     private readonly refreshTokenSecretToken: string;
     private readonly refreshTokenExpirationTime: number;
     private readonly refreshTokenExpirationTimeRememberMe: number;
     private readonly refreshTokenNotBeforeExpirationTime: number;
+    private readonly refreshTokenEncryptKey: string;
+    private readonly refreshTokenEncryptIv: string;
 
     private readonly prefixAuthorization: string;
     private readonly audience: string;
@@ -42,6 +46,12 @@ export class AuthService implements IAuthService {
             this.configService.get<number>(
                 'auth.jwt.accessToken.notBeforeExpirationTime'
             );
+        this.accessTokenEncryptKey = this.configService.get<string>(
+            'auth.jwt.accessToken.encryptKey'
+        );
+        this.accessTokenEncryptIv = this.configService.get<string>(
+            'auth.jwt.accessToken.encryptIv'
+        );
 
         this.refreshTokenSecretToken = this.configService.get<string>(
             'auth.jwt.refreshToken.secretKey'
@@ -57,6 +67,12 @@ export class AuthService implements IAuthService {
             this.configService.get<number>(
                 'auth.jwt.refreshToken.notBeforeExpirationTime'
             );
+        this.refreshTokenEncryptKey = this.configService.get<string>(
+            'auth.jwt.refreshToken.encryptKey'
+        );
+        this.refreshTokenEncryptIv = this.configService.get<string>(
+            'auth.jwt.refreshToken.encryptIv'
+        );
 
         this.prefixAuthorization = this.configService.get<string>(
             'auth.jwt.prefixAuthorization'
@@ -66,15 +82,36 @@ export class AuthService implements IAuthService {
         this.issuer = this.configService.get<string>('auth.jwt.issuer');
     }
 
-    async createAccessToken(payload: Record<string, any>): Promise<string> {
-        return this.helperEncryptionService.jwtEncrypt(payload, {
-            secretKey: this.accessTokenSecretToken,
-            expiredIn: this.accessTokenExpirationTime,
-            notBefore: this.accessTokenNotBeforeExpirationTime,
-            audience: this.audience,
-            issuer: this.issuer,
-            subject: this.subject,
-        });
+    async encryptAccessToken(payload: Record<string, any>): Promise<string> {
+        return this.helperEncryptionService.aes256Encrypt(
+            payload,
+            this.accessTokenEncryptKey,
+            this.accessTokenEncryptIv
+        );
+    }
+
+    async decryptAccessToken({
+        data,
+    }: Record<string, any>): Promise<Record<string, any>> {
+        return this.helperEncryptionService.aes256Decrypt(
+            data,
+            this.accessTokenEncryptKey,
+            this.accessTokenEncryptIv
+        ) as Record<string, any>;
+    }
+
+    async createAccessToken(payloadHashed: string): Promise<string> {
+        return this.helperEncryptionService.jwtEncrypt(
+            { data: payloadHashed },
+            {
+                secretKey: this.accessTokenSecretToken,
+                expiredIn: this.accessTokenExpirationTime,
+                notBefore: this.accessTokenNotBeforeExpirationTime,
+                audience: this.audience,
+                issuer: this.issuer,
+                subject: this.subject,
+            }
+        );
     }
 
     async validateAccessToken(token: string): Promise<boolean> {
@@ -90,24 +127,45 @@ export class AuthService implements IAuthService {
         return this.helperEncryptionService.jwtDecrypt(token);
     }
 
+    async encryptRefreshToken(payload: Record<string, any>): Promise<string> {
+        return this.helperEncryptionService.aes256Encrypt(
+            payload,
+            this.refreshTokenEncryptKey,
+            this.refreshTokenEncryptIv
+        );
+    }
+
+    async decryptRefreshToken({
+        data,
+    }: Record<string, any>): Promise<Record<string, any>> {
+        return this.helperEncryptionService.aes256Decrypt(
+            data,
+            this.refreshTokenEncryptKey,
+            this.refreshTokenEncryptIv
+        ) as Record<string, any>;
+    }
+
     async createRefreshToken(
-        payload: Record<string, any>,
+        payloadHashed: string,
         options?: IAuthRefreshTokenOptions
     ): Promise<string> {
-        return this.helperEncryptionService.jwtEncrypt(payload, {
-            secretKey: this.refreshTokenSecretToken,
-            expiredIn:
-                options && options.rememberMe
-                    ? this.refreshTokenExpirationTimeRememberMe
-                    : this.refreshTokenExpirationTime,
-            notBefore:
-                options && options.notBeforeExpirationTime
-                    ? options.notBeforeExpirationTime
-                    : this.refreshTokenNotBeforeExpirationTime,
-            audience: this.audience,
-            issuer: this.issuer,
-            subject: this.subject,
-        });
+        return this.helperEncryptionService.jwtEncrypt(
+            { data: payloadHashed },
+            {
+                secretKey: this.refreshTokenSecretToken,
+                expiredIn:
+                    options && options.rememberMe
+                        ? this.refreshTokenExpirationTimeRememberMe
+                        : this.refreshTokenExpirationTime,
+                notBefore:
+                    options && options.notBeforeExpirationTime
+                        ? options.notBeforeExpirationTime
+                        : this.refreshTokenNotBeforeExpirationTime,
+                audience: this.audience,
+                issuer: this.issuer,
+                subject: this.subject,
+            }
+        );
     }
 
     async validateRefreshToken(token: string): Promise<boolean> {
