@@ -24,7 +24,7 @@ export interface IDatabaseFindAllAggregateOptions
         IDatabaseAggregateOptions {}
 
 export interface IDatabaseGetTotalAggregateOptions extends IDatabaseOptions {
-    field?: string;
+    field?: Record<string, string> | string;
     sumField?: string;
 }
 
