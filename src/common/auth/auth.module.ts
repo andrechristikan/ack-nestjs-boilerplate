@@ -17,18 +17,22 @@ import { AuthEnumService } from './services/auth.enum.service';
 import { AuthService } from './services/auth.service';
 
 @Module({
+    providers: [AuthService, AuthEnumService, JwtStrategy, JwtRefreshStrategy],
+    exports: [AuthService, AuthEnumService],
+    controllers: [],
+    imports: [],
+})
+export class AuthModule {}
+
+@Module({
     providers: [
-        AuthService,
         AuthApiService,
         AuthApiBulkService,
-        AuthEnumService,
         AuthApiBulkRepository,
         AuthApiRepository,
-        JwtStrategy,
-        JwtRefreshStrategy,
         ApiKeyStrategy,
     ],
-    exports: [AuthService, AuthApiService, AuthApiBulkService, AuthEnumService],
+    exports: [AuthApiService, AuthApiBulkService],
     controllers: [],
     imports: [
         MongooseModule.forFeature(
@@ -43,4 +47,4 @@ import { AuthService } from './services/auth.service';
         ),
     ],
 })
-export class AuthModule {}
+export class AuthApiModule {}

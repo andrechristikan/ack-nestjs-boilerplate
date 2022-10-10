@@ -1,7 +1,9 @@
+import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { readFileSync } from 'fs';
-import { CommonModule } from 'src/common/common.module';
+import { HelperModule } from 'src/common/helper/helper.module';
 import { HelperFileService } from 'src/common/helper/services/helper.file.service';
+import configs from 'src/configs';
 
 describe('HelperFileService', () => {
     let helperFileService: HelperFileService;
@@ -9,7 +11,16 @@ describe('HelperFileService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CommonModule],
+            imports: [
+                ConfigModule.forRoot({
+                    load: configs,
+                    isGlobal: true,
+                    cache: true,
+                    envFilePath: ['.env'],
+                    expandVariables: true,
+                }),
+                HelperModule,
+            ],
         }).compile();
 
         helperFileService = moduleRef.get<HelperFileService>(HelperFileService);

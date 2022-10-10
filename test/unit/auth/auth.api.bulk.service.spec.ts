@@ -1,19 +1,14 @@
 import { Test } from '@nestjs/testing';
-import { CommonModule } from 'src/common/common.module';
 import { AuthApiBulkService } from 'src/common/auth/services/auth.api.bulk.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import {
-    AuthApiDatabaseName,
-    AuthApiEntity,
-    AuthApiSchema,
-} from 'src/common/auth/schemas/auth.api.schema';
 import { faker } from '@faker-js/faker';
 import { Types } from 'mongoose';
-import { MongooseModule } from '@nestjs/mongoose';
-import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { IAuthApi } from 'src/common/auth/interfaces/auth.interface';
-import { AuthApiRepository } from 'src/common/auth/repositories/auth.api.repository';
-import { AuthApiBulkRepository } from 'src/common/auth/repositories/auth.api.bulk.repository';
+import { AuthApiModule } from 'src/common/auth/auth.module';
+import { DatabaseModule } from 'src/common/database/database.module';
+import configs from 'src/configs';
+import { ConfigModule } from '@nestjs/config';
+import { HelperModule } from 'src/common/helper/helper.module';
 
 describe('AuthApiBulkService', () => {
     let authApiBulkService: AuthApiBulkService;
@@ -26,24 +21,18 @@ describe('AuthApiBulkService', () => {
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
-                CommonModule,
-                MongooseModule.forFeature(
-                    [
-                        {
-                            name: AuthApiEntity.name,
-                            schema: AuthApiSchema,
-                            collection: AuthApiDatabaseName,
-                        },
-                    ],
-                    DATABASE_CONNECTION_NAME
-                ),
+                DatabaseModule,
+                ConfigModule.forRoot({
+                    load: configs,
+                    isGlobal: true,
+                    cache: true,
+                    envFilePath: ['.env'],
+                    expandVariables: true,
+                }),
+                HelperModule,
+                AuthApiModule,
             ],
-            providers: [
-                AuthApiBulkService,
-                AuthApiService,
-                AuthApiRepository,
-                AuthApiBulkRepository,
-            ],
+            providers: [],
         }).compile();
 
         authApiBulkService =

@@ -1,13 +1,26 @@
+import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { CommonModule } from 'src/common/common.module';
+import { HelperModule } from 'src/common/helper/helper.module';
+import { PaginationModule } from 'src/common/pagination/pagination.module';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
+import configs from 'src/configs';
 
 describe('PaginationService', () => {
     let paginationService: PaginationService;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CommonModule],
+            imports: [
+                ConfigModule.forRoot({
+                    load: configs,
+                    isGlobal: true,
+                    cache: true,
+                    envFilePath: ['.env'],
+                    expandVariables: true,
+                }),
+                HelperModule,
+                PaginationModule,
+            ],
         }).compile();
 
         paginationService = moduleRef.get<PaginationService>(PaginationService);

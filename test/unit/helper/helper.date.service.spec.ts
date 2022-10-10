@@ -1,10 +1,13 @@
+import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { CommonModule } from 'src/common/common.module';
 import {
     ENUM_HELPER_DATE_DIFF,
     ENUM_HELPER_DATE_FORMAT,
 } from 'src/common/helper/constants/helper.enum.constant';
+import { HelperModule } from 'src/common/helper/helper.module';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import configs from 'src/configs';
+
 describe('HelperDateService', () => {
     let helperDateService: HelperDateService;
     const date1 = new Date();
@@ -12,7 +15,16 @@ describe('HelperDateService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CommonModule],
+            imports: [
+                ConfigModule.forRoot({
+                    load: configs,
+                    isGlobal: true,
+                    cache: true,
+                    envFilePath: ['.env'],
+                    expandVariables: true,
+                }),
+                HelperModule,
+            ],
         }).compile();
 
         helperDateService = moduleRef.get<HelperDateService>(HelperDateService);

@@ -1,13 +1,26 @@
+import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { CommonModule } from 'src/common/common.module';
+import { HelperModule } from 'src/common/helper/helper.module';
+import { MessageModule } from 'src/common/message/message.module';
 import { MessageEnumService } from 'src/common/message/services/message.enum.service';
+import configs from 'src/configs';
 
 describe('MessageEnumService', () => {
     let messageEnumService: MessageEnumService;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CommonModule],
+            imports: [
+                ConfigModule.forRoot({
+                    load: configs,
+                    isGlobal: true,
+                    cache: true,
+                    envFilePath: ['.env'],
+                    expandVariables: true,
+                }),
+                HelperModule,
+                MessageModule,
+            ],
         }).compile();
 
         messageEnumService =

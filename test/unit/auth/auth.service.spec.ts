@@ -1,8 +1,11 @@
 import { Test } from '@nestjs/testing';
 import { faker } from '@faker-js/faker';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { CommonModule } from 'src/common/common.module';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+import { AuthModule } from 'src/common/auth/auth.module';
+import configs from 'src/configs';
+import { ConfigModule } from '@nestjs/config';
+import { HelperModule } from 'src/common/helper/helper.module';
 
 describe('AuthService', () => {
     let authService: AuthService;
@@ -38,8 +41,18 @@ describe('AuthService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CommonModule],
-            providers: [AuthService],
+            imports: [
+                ConfigModule.forRoot({
+                    load: configs,
+                    isGlobal: true,
+                    cache: true,
+                    envFilePath: ['.env'],
+                    expandVariables: true,
+                }),
+                HelperModule,
+                AuthModule,
+            ],
+            providers: [],
         }).compile();
 
         authService = moduleRef.get<AuthService>(AuthService);

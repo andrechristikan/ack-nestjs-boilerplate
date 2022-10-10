@@ -1,14 +1,18 @@
+import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { Types } from 'mongoose';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
-import { CommonModule } from 'src/common/common.module';
+import { DatabaseModule } from 'src/common/database/database.module';
+import { HelperModule } from 'src/common/helper/helper.module';
 import {
     ENUM_LOGGER_ACTION,
     ENUM_LOGGER_LEVEL,
 } from 'src/common/logger/constants/logger.enum.constant';
 import { ILogger } from 'src/common/logger/interfaces/logger.interface';
+import { LoggerModule } from 'src/common/logger/logger.module';
 import { LoggerService } from 'src/common/logger/services/logger.service';
 import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
+import configs from 'src/configs';
 import { v4 } from 'uuid';
 
 describe('LoggerService', () => {
@@ -45,7 +49,18 @@ describe('LoggerService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CommonModule],
+            imports: [
+                DatabaseModule,
+                ConfigModule.forRoot({
+                    load: configs,
+                    isGlobal: true,
+                    cache: true,
+                    envFilePath: ['.env'],
+                    expandVariables: true,
+                }),
+                HelperModule,
+                LoggerModule,
+            ],
         }).compile();
 
         loggerService = moduleRef.get<LoggerService>(LoggerService);

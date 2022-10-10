@@ -1,14 +1,27 @@
 import { Test } from '@nestjs/testing';
-import { CommonModule } from 'src/common/common.module';
 import { AuthEnumService } from 'src/common/auth/services/auth.enum.service';
+import { AuthModule } from 'src/common/auth/auth.module';
+import { HelperModule } from 'src/common/helper/helper.module';
+import { ConfigModule } from '@nestjs/config';
+import configs from 'src/configs';
 
 describe('AuthEnumService', () => {
     let authEnumService: AuthEnumService;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CommonModule],
-            providers: [AuthEnumService],
+            imports: [
+                ConfigModule.forRoot({
+                    load: configs,
+                    isGlobal: true,
+                    cache: true,
+                    envFilePath: ['.env'],
+                    expandVariables: true,
+                }),
+                HelperModule,
+                AuthModule,
+            ],
+            providers: [],
         }).compile();
 
         authEnumService = moduleRef.get<AuthEnumService>(AuthEnumService);
