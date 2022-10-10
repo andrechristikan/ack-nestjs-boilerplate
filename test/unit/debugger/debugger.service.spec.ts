@@ -1,7 +1,9 @@
+import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { CommonModule } from 'src/common/common.module';
 import { DebuggerModule } from 'src/common/debugger/debugger.module';
 import { DebuggerService } from 'src/common/debugger/services/debugger.service';
+import { HelperModule } from 'src/common/helper/helper.module';
+import configs from 'src/configs';
 
 describe('DebuggerService', () => {
     let debuggerService: DebuggerService;
@@ -18,7 +20,17 @@ describe('DebuggerService', () => {
         process.env.DEBUGGER_SYSTEM_WRITE_INTO_FILE = 'true';
 
         const moduleRef = await Test.createTestingModule({
-            imports: [CommonModule, DebuggerModule.register()],
+            imports: [
+                ConfigModule.forRoot({
+                    load: configs,
+                    isGlobal: true,
+                    cache: true,
+                    envFilePath: ['.env'],
+                    expandVariables: true,
+                }),
+                HelperModule,
+                DebuggerModule.register(),
+            ],
         }).compile();
 
         debuggerService = moduleRef.get<DebuggerService>(DebuggerService);

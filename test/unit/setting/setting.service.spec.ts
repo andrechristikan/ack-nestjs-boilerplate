@@ -1,8 +1,12 @@
 import { faker } from '@faker-js/faker';
+import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { Types } from 'mongoose';
-import { CommonModule } from 'src/common/common.module';
+import { DatabaseModule } from 'src/common/database/database.module';
+import { HelperModule } from 'src/common/helper/helper.module';
 import { SettingService } from 'src/common/setting/services/setting.service';
+import { SettingModule } from 'src/common/setting/setting.module';
+import configs from 'src/configs';
 
 describe('SettingService', () => {
     let settingService: SettingService;
@@ -11,7 +15,18 @@ describe('SettingService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CommonModule],
+            imports: [
+                DatabaseModule,
+                ConfigModule.forRoot({
+                    load: configs,
+                    isGlobal: true,
+                    cache: true,
+                    envFilePath: ['.env'],
+                    expandVariables: true,
+                }),
+                HelperModule,
+                SettingModule,
+            ],
         }).compile();
 
         settingService = moduleRef.get<SettingService>(SettingService);

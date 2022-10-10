@@ -1,6 +1,6 @@
 {
   "name": "ack-nestjs-boilerplate",
-  "version": "3.4.4",
+  "version": "3.4.5",
   "description": "Ack NestJs Boilerplate",
   "repository": {
     "type": "git",
@@ -140,7 +140,7 @@
     "jest": "^29.1.2",
     "prettier": "^2.7.1",
     "serverless-dotenv-plugin": "^4.0.2",
-    "serverless-offline": "^11.0.3",
+    "serverless-offline": "^11.1.1",
     "serverless-plugin-optimize": "^4.2.1-rc.1",
     "serverless-plugin-warmup": "^8.1.0",
     "supertest": "^6.3.0",

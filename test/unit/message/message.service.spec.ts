@@ -1,8 +1,11 @@
+import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { ValidationError } from 'class-validator';
-import { CommonModule } from 'src/common/common.module';
 import { IValidationErrorImport } from 'src/common/error/interfaces/error.interface';
+import { HelperModule } from 'src/common/helper/helper.module';
+import { MessageModule } from 'src/common/message/message.module';
 import { MessageService } from 'src/common/message/services/message.service';
+import configs from 'src/configs';
 
 describe('MessageService', () => {
     let messageService: MessageService;
@@ -15,7 +18,17 @@ describe('MessageService', () => {
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CommonModule],
+            imports: [
+                ConfigModule.forRoot({
+                    load: configs,
+                    isGlobal: true,
+                    cache: true,
+                    envFilePath: ['.env'],
+                    expandVariables: true,
+                }),
+                HelperModule,
+                MessageModule,
+            ],
         }).compile();
 
         messageService = moduleRef.get<MessageService>(MessageService);

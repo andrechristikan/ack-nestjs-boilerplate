@@ -1,13 +1,21 @@
-import { ConfigService } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { CommonModule } from 'src/common/common.module';
+import configs from 'src/configs';
 
 describe('ConfigService', () => {
     let configService: ConfigService;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CommonModule],
+            imports: [
+                ConfigModule.forRoot({
+                    load: configs,
+                    isGlobal: true,
+                    cache: true,
+                    envFilePath: ['.env'],
+                    expandVariables: true,
+                }),
+            ],
         }).compile();
 
         configService = moduleRef.get<ConfigService>(ConfigService);

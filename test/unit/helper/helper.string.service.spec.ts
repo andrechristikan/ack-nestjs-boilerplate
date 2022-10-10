@@ -1,13 +1,24 @@
+import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { CommonModule } from 'src/common/common.module';
+import { HelperModule } from 'src/common/helper/helper.module';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
+import configs from 'src/configs';
 
 describe('HelperStringService', () => {
     let helperStringService: HelperStringService;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
-            imports: [CommonModule],
+            imports: [
+                ConfigModule.forRoot({
+                    load: configs,
+                    isGlobal: true,
+                    cache: true,
+                    envFilePath: ['.env'],
+                    expandVariables: true,
+                }),
+                HelperModule,
+            ],
         }).compile();
 
         helperStringService =

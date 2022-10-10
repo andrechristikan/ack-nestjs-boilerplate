@@ -59,6 +59,7 @@ Next development
 * [x] Mongo Repository soft delete
 * [x] Make it simple
 * [x] Encrypt jwt payload
+* [x] Optimize Unit Testing
 * [ ] Optimize Swagger (Ongoing)
 * [ ] Add Relational Database Repository, ex: mysql, postgres (Ongoing)
 * [ ] Update Documentation, include an diagram for easier comprehension
@@ -341,10 +342,14 @@ Detail information about the environment
 | AUTH\_JWT\_ISSUER| `string` | JWT issuer |
 | AUTH\_JWT\_ACCESS\_TOKEN\_SECRET\_KEY | `string` | Secret access token, free text. |
 | AUTH\_JWT\_ACCESS\_TOKEN\_EXPIRED | `string` | Expiration time for access token. `ms` package value |
+| AUTH_JWT_ACCESS_TOKEN_ENCRYPT_KEY | `string` | Encrypt key for access token payload |
+| AUTH_JWT_ACCESS_TOKEN_ENCRYPT_IV | `string` | Encrypt IV for access token payload |
 | AUTH\_JWT\_REFRESH\_TOKEN\_SECRET\_KEY | `string` | Secret refresh token, free text. |
 | AUTH\_JWT\_REFRESH\_TOKEN\_EXPIRED | `string` | Expiration time for refresh token. `ms` package value |
 | AUTH\_JWT\_REFRESH\_TOKEN\_REMEMBER\_ME\_EXPIRED | `string` | Expiration time for refresh token when remember me is checked. `ms` package value |
 | AUTH\_JWT\_REFRESH\_TOKEN\_NOT\_BEFORE\_EXPIRATION | `string` | Token active for refresh token before `x` time. `ms` package value |
+| AUTH_JWT_REFRESH_TOKEN_ENCRYPT_KEY | `string` | Encrypt key for refresh token payload |
+| AUTH_JWT_REFRESH_TOKEN_ENCRYPT_IV | `string` | Encrypt IV for refresh token payload |
 
 ### Serverless
 

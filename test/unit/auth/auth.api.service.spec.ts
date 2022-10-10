@@ -1,14 +1,6 @@
 import { Test } from '@nestjs/testing';
-import { CommonModule } from 'src/common/common.module';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { MongooseModule } from '@nestjs/mongoose';
-import {
-    AuthApiDatabaseName,
-    AuthApiDocument,
-    AuthApiEntity,
-    AuthApiSchema,
-} from 'src/common/auth/schemas/auth.api.schema';
-import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { AuthApiDocument } from 'src/common/auth/schemas/auth.api.schema';
 import { faker } from '@faker-js/faker';
 import { Types } from 'mongoose';
 import { AuthApiBulkService } from 'src/common/auth/services/auth.api.bulk.service';
@@ -16,7 +8,11 @@ import {
     IAuthApi,
     IAuthApiRequestHashedData,
 } from 'src/common/auth/interfaces/auth.interface';
-import { AuthApiRepository } from 'src/common/auth/repositories/auth.api.repository';
+import { AuthApiModule } from 'src/common/auth/auth.module';
+import { HelperModule } from 'src/common/helper/helper.module';
+import { DatabaseModule } from 'src/common/database/database.module';
+import { ConfigModule } from '@nestjs/config';
+import configs from 'src/configs';
 
 describe('AuthApiService', () => {
     let authApiService: AuthApiService;
@@ -28,19 +24,18 @@ describe('AuthApiService', () => {
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
-                CommonModule,
-                MongooseModule.forFeature(
-                    [
-                        {
-                            name: AuthApiEntity.name,
-                            schema: AuthApiSchema,
-                            collection: AuthApiDatabaseName,
-                        },
-                    ],
-                    DATABASE_CONNECTION_NAME
-                ),
+                DatabaseModule,
+                ConfigModule.forRoot({
+                    load: configs,
+                    isGlobal: true,
+                    cache: true,
+                    envFilePath: ['.env'],
+                    expandVariables: true,
+                }),
+                HelperModule,
+                AuthApiModule,
             ],
-            providers: [AuthApiService, AuthApiRepository],
+            providers: [],
         }).compile();
 
         authApiService = moduleRef.get<AuthApiService>(AuthApiService);
