@@ -68,7 +68,6 @@
     "@nestjs/swagger": "^6.1.2",
     "@nestjs/terminus": "^9.1.2",
     "@types/response-time": "^2.3.5",
-    "aws-lambda": "^1.0.7",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.13.2",
