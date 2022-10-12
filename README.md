@@ -48,6 +48,7 @@ If you change env value of `APP_ENV` to `production` that will trigger
 
 1. CorsMiddleware will implement `src/configs/middleware.config.ts`, else default is `*`.
 2. Documentation will `disable`
+3. Encrypt the payload of JWT
 
 ## Next Todo
 

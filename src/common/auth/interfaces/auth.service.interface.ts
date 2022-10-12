@@ -5,7 +5,9 @@ import {
 } from 'src/common/auth/interfaces/auth.interface';
 
 export interface IAuthService {
-    encryptAccessToken(payload: Record<string, any>): Promise<string>;
+    encryptAccessToken(
+        payload: Record<string, any>
+    ): Promise<string | Record<string, any>>;
 
     decryptAccessToken(data: Record<string, any>): Promise<Record<string, any>>;
 
@@ -15,7 +17,9 @@ export interface IAuthService {
 
     payloadAccessToken(token: string): Promise<Record<string, any>>;
 
-    encryptRefreshToken(payload: Record<string, any>): Promise<string>;
+    encryptRefreshToken(
+        payload: Record<string, any>
+    ): Promise<string | Record<string, any>>;
 
     decryptRefreshToken(
         data: Record<string, any>

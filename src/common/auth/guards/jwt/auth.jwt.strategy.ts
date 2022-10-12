@@ -30,10 +30,16 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     async validate({
         data,
     }: Record<string, any>): Promise<Record<string, any>> {
-        return this.helperEncryptionService.aes256Decrypt(
-            data,
-            this.configService.get<string>('auth.jwt.accessToken.encryptKey'),
-            this.configService.get<string>('auth.jwt.accessToken.encryptIv')
-        ) as Record<string, any>;
+        return this.configService.get<string>('app.env') === 'production'
+            ? (this.helperEncryptionService.aes256Decrypt(
+                  data,
+                  this.configService.get<string>(
+                      'auth.jwt.accessToken.encryptKey'
+                  ),
+                  this.configService.get<string>(
+                      'auth.jwt.accessToken.encryptIv'
+                  )
+              ) as Record<string, any>)
+            : data;
     }
 }
