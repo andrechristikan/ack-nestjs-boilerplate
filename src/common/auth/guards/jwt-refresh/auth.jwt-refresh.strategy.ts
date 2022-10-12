@@ -33,10 +33,16 @@ export class JwtRefreshStrategy extends PassportStrategy(
     async validate({
         data,
     }: Record<string, any>): Promise<Record<string, any>> {
-        return this.helperEncryptionService.aes256Decrypt(
-            data,
-            this.configService.get<string>('auth.jwt.refreshToken.encryptKey'),
-            this.configService.get<string>('auth.jwt.refreshToken.encryptIv')
-        ) as Record<string, any>;
+        return this.configService.get<string>('app.env') === 'production'
+            ? (this.helperEncryptionService.aes256Decrypt(
+                  data,
+                  this.configService.get<string>(
+                      'auth.jwt.refreshToken.encryptKey'
+                  ),
+                  this.configService.get<string>(
+                      'auth.jwt.refreshToken.encryptIv'
+                  )
+              ) as Record<string, any>)
+            : data;
     }
 }

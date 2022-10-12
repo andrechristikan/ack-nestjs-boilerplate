@@ -82,12 +82,16 @@ export class AuthService implements IAuthService {
         this.issuer = this.configService.get<string>('auth.jwt.issuer');
     }
 
-    async encryptAccessToken(payload: Record<string, any>): Promise<string> {
-        return this.helperEncryptionService.aes256Encrypt(
-            payload,
-            this.accessTokenEncryptKey,
-            this.accessTokenEncryptIv
-        );
+    async encryptAccessToken(
+        payload: Record<string, any>
+    ): Promise<string | Record<string, any>> {
+        return this.configService.get('app.env') === 'production'
+            ? this.helperEncryptionService.aes256Encrypt(
+                  payload,
+                  this.accessTokenEncryptKey,
+                  this.accessTokenEncryptIv
+              )
+            : payload;
     }
 
     async decryptAccessToken({
@@ -100,7 +104,9 @@ export class AuthService implements IAuthService {
         ) as Record<string, any>;
     }
 
-    async createAccessToken(payloadHashed: string): Promise<string> {
+    async createAccessToken(
+        payloadHashed: string | Record<string, any>
+    ): Promise<string> {
         return this.helperEncryptionService.jwtEncrypt(
             { data: payloadHashed },
             {
@@ -127,12 +133,16 @@ export class AuthService implements IAuthService {
         return this.helperEncryptionService.jwtDecrypt(token);
     }
 
-    async encryptRefreshToken(payload: Record<string, any>): Promise<string> {
-        return this.helperEncryptionService.aes256Encrypt(
-            payload,
-            this.refreshTokenEncryptKey,
-            this.refreshTokenEncryptIv
-        );
+    async encryptRefreshToken(
+        payload: Record<string, any>
+    ): Promise<string | Record<string, any>> {
+        return this.configService.get('app.env') === 'production'
+            ? this.helperEncryptionService.aes256Encrypt(
+                  payload,
+                  this.refreshTokenEncryptKey,
+                  this.refreshTokenEncryptIv
+              )
+            : payload;
     }
 
     async decryptRefreshToken({
@@ -146,7 +156,7 @@ export class AuthService implements IAuthService {
     }
 
     async createRefreshToken(
-        payloadHashed: string,
+        payloadHashed: string | Record<string, any>,
         options?: IAuthRefreshTokenOptions
     ): Promise<string> {
         return this.helperEncryptionService.jwtEncrypt(
