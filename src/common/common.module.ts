@@ -115,10 +115,6 @@ import configs from 'src/configs';
                     .length(16)
                     .required(),
 
-                SERVERLESS_AWS_API_GATEWAY: Joi.string().optional(),
-                SERVERLESS_AWS_PROFILE: Joi.string().optional(),
-                SERVERLESS_AWS_S3_BUCKET: Joi.string().optional(),
-
                 AWS_CREDENTIAL_KEY: Joi.string().optional(),
                 AWS_CREDENTIAL_SECRET: Joi.string().optional(),
                 AWS_S3_REGION: Joi.string().optional(),

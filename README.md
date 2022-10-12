@@ -15,7 +15,7 @@
 
 # ACK NestJs Boilerplate  🔥 🚀
 
-[Http NestJs v9.x][ref-nestjs] Boilerplate.
+[Http NestJs v9.x][ref-nestjs] Boilerplate. Best uses for backend service.
 
 *You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
 
@@ -55,11 +55,11 @@ Next development
 
 * [x] Implement Repository Design Pattern / Data Access Object Design Pattern
 * [x] Swagger for API Documentation
-* [x] Support Serverless
 * [x] Mongo Repository soft delete
 * [x] Make it simple
 * [x] Encrypt jwt payload
 * [x] Optimize Unit Testing
+* [x] Make serverless separate repo
 * [ ] Optimize Swagger (Ongoing)
 * [ ] Add Relational Database Repository, ex: mysql, postgres (Ongoing)
 * [ ] Update Documentation, include an diagram for easier comprehension
@@ -102,7 +102,6 @@ Describes which version .
 * NestJs v9.x 🥳
 * Typescript 🚀
 * Production ready 🔥
-* Support serverless
 * Swagger included
 * Authentication and authorization (`JWT`, `API Key`) 💪
 * Role management system
@@ -177,7 +176,6 @@ Recommend version is LTS Version for every tool and package.
 4. [Git][ref-git]
 5. [Docker][ref-docker]
 6. [Docker-Compose][ref-dockercompose]
-7. [Serverless][ref-serverless]
 
 ### Clone Repo
 
@@ -351,14 +349,6 @@ Detail information about the environment
 | AUTH_JWT_REFRESH_TOKEN_ENCRYPT_KEY | `string` | Encrypt key for refresh token payload |
 | AUTH_JWT_REFRESH_TOKEN_ENCRYPT_IV | `string` | Encrypt IV for refresh token payload |
 
-### Serverless
-
-| Key | Type | Description |
-| ---- | ---- | ---- |
-| SERVERLESS\_AWS\_API\_GATEWAY | `string` | AWS api gateway for server the aws lamda |
-| SERVERLESS\_AWS\_PROFILE | `string` | AWS profile for deployment |
-| SERVERLESS\_AWS\_S3\_BUCKET | `string` | AWS s3 bucket for save the development asset |
-
 ### AWS Environment
 
 | Key | Type | Description |
@@ -507,7 +497,6 @@ Distributed under [MIT licensed][license].
 [ref-dockercompose]: https://docs.docker.com/compose/
 [ref-yarn]: https://yarnpkg.com
 [ref-12factor]: https://12factor.net
-[ref-serverless]: https://www.serverless.com
 [ref-nestjscommand]: https://gitlab.com/aa900031/nestjs-command
 [ref-jwt]: https://jwt.io
 [ref-jest]: https://jestjs.io/docs/getting-started
