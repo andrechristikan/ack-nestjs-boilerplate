@@ -48,8 +48,8 @@ export class ErrorHttpFilter implements ExceptionFilter {
             this.configService.get<string>('app.language').split(',');
 
         // get metadata
-        const __class = request.__class;
-        const __function = request.__function;
+        const __class = request.__class || ErrorHttpFilter.name;
+        const __function = request.__function || this.catch.name;
         const __requestId = request.id;
         const __path = request.path;
         const __timestamp =
@@ -127,8 +127,6 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 path: __path,
                 version: __version,
                 repoVersion: __repoVersion,
-                function: __function,
-                class: __class,
                 ...metadata,
             };
 
@@ -151,8 +149,6 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 .setHeader('x-request-id', __requestId)
                 .setHeader('x-version', __version)
                 .setHeader('x-repo-version', __repoVersion)
-                .setHeader('x-function', __function)
-                .setHeader('x-class', __class)
                 .status(statusHttp)
                 .json(resResponse);
         } else {
@@ -171,8 +167,6 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 path: __path,
                 version: __version,
                 repoVersion: __repoVersion,
-                function: __function,
-                class: __class,
             };
 
             const responseBody = {
@@ -192,9 +186,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 .setHeader('x-timezone', __timezone)
                 .setHeader('x-request-id', __requestId)
                 .setHeader('x-version', __version)
-                .setHeader('x-repo-version', __repoVersion)
-                .setHeader('x-function', __function)
-                .setHeader('x-class', __class);
+                .setHeader('x-repo-version', __repoVersion);
 
             // Debugger
             try {
