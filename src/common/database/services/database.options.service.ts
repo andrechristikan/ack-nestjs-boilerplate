@@ -50,7 +50,7 @@ export class DatabaseOptionsService
             useNewUrlParser: true,
             useUnifiedTopology: true,
             serverSelectionTimeoutMS: 5000,
-            // useMongoClient: true
+            // useMongoClient: true,
         };
 
         /* istanbul ignore next */
