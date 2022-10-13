@@ -14,7 +14,7 @@ export class AwsHealthIndicator extends HealthIndicator {
 
     async isHealthy(key: string): Promise<HealthIndicatorResult> {
         try {
-            await this.awsS3Service.listBucket();
+            await this.awsS3Service.checkConnection();
             return this.getStatus(key, true);
         } catch (err: any) {
             throw new HealthCheckError(

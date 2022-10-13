@@ -18,6 +18,7 @@ import {
     AbortMultipartUploadCommand,
     AbortMultipartUploadCommandInput,
     UploadPartRequest,
+    HeadBucketCommand,
 } from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -50,6 +51,22 @@ export class AwsS3Service implements IAwsS3Service {
 
         this.bucket = this.configService.get<string>('aws.s3.bucket');
         this.baseUrl = this.configService.get<string>('aws.s3.baseUrl');
+    }
+
+    async checkConnection(): Promise<Record<string, any>> {
+        const command: HeadBucketCommand = new HeadBucketCommand({
+            Bucket: this.bucket,
+        });
+
+        try {
+            const check: Record<string, any> = await this.s3Client.send(
+                command
+            );
+
+            return check;
+        } catch (err: any) {
+            throw err;
+        }
     }
 
     async listBucket(): Promise<string[]> {

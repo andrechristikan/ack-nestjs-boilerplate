@@ -11,7 +11,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env: 
-      APP_NAME: ack-nestjs-mongoose
+      APP_NAME: ${{ github.event.repository.name }}
       APP_PORT: 3000
       APP_NETWORK: app-network
 
