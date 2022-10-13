@@ -526,4 +526,4 @@ Distributed under [MIT licensed][license].
 [ref-git]: https://git-scm.com
 
 <!-- API Reference -->
-[api-reference-docs]: https://lgtw8uvhvd.execute-api.ap-southeast-3.amazonaws.com/development/docs
+[api-reference-docs]: http://108.137.127.177:3000/api/hello
