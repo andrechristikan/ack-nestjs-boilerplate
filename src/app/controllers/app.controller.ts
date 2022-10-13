@@ -1,4 +1,9 @@
-import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
+import {
+    Controller,
+    Get,
+    InternalServerErrorException,
+    VERSION_NEUTRAL,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
 import { AppHelloSerialization } from 'src/app/serializations/app.hello.serialization';
