@@ -15,9 +15,9 @@
 
 # ACK NestJs Boilerplate  🔥 🚀
 
-[Http NestJs v9.x][ref-nestjs] Boilerplate. Best uses for backend service.
+[Http NestJs v9.x][ref-nestjs] boilerplate. Best uses for backend service.
 
-*You can [Request Feature][ack-issues] or [Report Bug][ack-issues] with following this link*
+*You can [request feature][ack-issues] or [report bug][ack-issues] with following this link*
 
 ## Table of contents
 
@@ -44,11 +44,11 @@
 
 ## Important
 
-If you change env value of `APP_ENV` to `production` that will trigger
+If you change the environment value of `APP_ENV` to `production`, that will trigger.
 
-1. CorsMiddleware will implement `src/configs/middleware.config.ts`, else default is `*`.
-2. Documentation will `disable`
-3. Encrypt the payload of JWT
+1. CorsMiddleware will implement `src/configs/middleware.config.ts`, else the default is `*`.
+2. Documentation will `disable`.
+3. Encrypt the payload of JWT.
 
 ## Next Todo
 
@@ -86,7 +86,6 @@ Describes which version .
 | Docker     | v20.x    |
 | Docker Compose | v2.x |
 | Swagger | v6.x |
-| Aws CLI | v2.x |
 
 ## Objective
 
@@ -117,8 +116,8 @@ Describes which version .
 
 ## Database
 
-* MongoDB integrate by using `mongoose` 🎉
-* PostgreSQL integrate by using `typeorm` 🎊 (Ongoing)
+* MongoDB integrate by using [mongoose][ref-mongoose] 🎉
+* PostgreSQL integrate by using [typeorm][ref-typeorm] 🎊 (Ongoing)
 * Multi Database
 * Database Transaction
 * Database Soft Delete
@@ -158,18 +157,18 @@ We assume that everyone who comes here is **`programmer with intermediate knowle
 2. Understand[Typescript Fundamental][ref-typescript], Programming Language. It will help us to write and read the code.
 3. Understand [ExpressJs Fundamental][ref-nodejs], NodeJs Base Framework. It will help us in understanding how the NestJs Framework works.
 4. Understand what NoSql is and how it works as a database, especially [MongoDB.][ref-mongodb]
-5. Understand Repository Design Pattern or Data Access Object Design Pattern. It will help us to read the source code
+5. Understand Repository Design Pattern or Data Access Object Design Pattern. It will help to read, and write the source code
 6. Understand The SOLID Principle and KISS Principle for better write the code.
-7. Optional. Understand Microservice Architecture Clean Architecture, and/or Hexagonal Architecture.
-8. Optional. Understand [The Twelve Factor Apps][ref-12factor]
-9. Optional. Understand [Docker][ref-docker] that can help you to run the project
+7. Optional. Understand Microservice Architecture, Clean Architecture, and/or Hexagonal Architecture. It can help to serve the project.
+8. Optional. Understanding [The Twelve Factor Apps][ref-12factor]. It can help to serve the project.
+9. Optional. Understanding [Docker][ref-docker]. It can help to run the project.
 
 ## Getting Started
 
 Before we start, we need to install some packages and tools.
-Recommend version is LTS Version for every tool and package.
+The recommended version is the LTS version for every tool and package.
 
-> Make sure check that tools has been installed successfully.
+> Make sure to check that the tools have been installed successfully.
 
 1. [NodeJs][ref-nodejs]
 2. [MongoDB as Replication][ref-mongodb]
@@ -180,7 +179,7 @@ Recommend version is LTS Version for every tool and package.
 
 ### Clone Repo
 
-Clone ack-nestjs-boilerplate with git.
+Clone the project with git.
 
 ```bash
 git clone https://github.com/andrechristikan/ack-nestjs-boilerplate.git
@@ -188,7 +187,7 @@ git clone https://github.com/andrechristikan/ack-nestjs-boilerplate.git
 
 ### Install Dependencies
 
-This project need some dependencies. Let's go install it.
+This project needs some dependencies. Let's go install it.
 
 ```bash
 yarn install
@@ -196,7 +195,7 @@ yarn install
 
 ### Create environment
 
-Make your own environment with copy from `.env.example` and edit some value.
+Make your own environment file with a copy of `env.example` and adjust values to suit your own environment.
 
 ```bash
 cp .env.example .env
@@ -206,9 +205,9 @@ cp .env.example .env
 
 ### Database Migration
 
-> If you want to to implement `transaction`, you must to install `Mongodb Replication Set`.
+> Mongodb. If you want to implement `database transaction`, we must run mongodb as a `Replication Set`.
 
-Database migration ack-nestjs-boilerplate used [NestJs-Command][ref-nestjscommand]
+Database migration used [NestJs-Command][ref-nestjscommand]
 
 For migrate
 
@@ -224,7 +223,9 @@ yarn rollback
 
 ### Test
 
-ack-nestjs-boilerplate provide 3 automation testing `unit testing`, `integration testing`, and `e2e testing`.
+> The automation is still not good net. I'm still lazy too do that.
+
+The project provide 3 automation testing `unit testing`, `integration testing`, and `e2e testing`.
 
 ```bash
 yarn test
@@ -252,11 +253,9 @@ For specific test use this
 
 ### Run Project
 
-> If mongodb version < 5, [Read this section for adjust mongoose setting.](#adjust-mongoose-setting)
-
 Finally, Cheers 🍻🍻 !!! we passed all steps.
 
-Now we can run ack-nestjs-boilerplate and use all of features.
+Now we can run the project.
 
 ```bash
 yarn start:dev
@@ -280,7 +279,7 @@ Detail information about the environment
 
 | Key | Type | Description |
 | ---- | ---- | ---- |
-| APP\_NAME | `string` | Application name and will be subject for jwt|
+| APP\_NAME | `string` | Application name |
 | APP\_ENV | `string` | <ul><li>production</li><li>development</li></ul> |
 | APP\_LANGUAGE | `string` | Enum languages, separator `,` |
 
@@ -292,20 +291,22 @@ Detail information about the environment
 | HTTP\_HOST | `string` | Application host serve |
 | HTTP\_PORT | `number` | Application port serve |
 | HTTP\_VERSIONING\_ENABLE | `boolean` | Application url versioning on/off |
-| HTTP\_VERSION | `number`  | Application version number |
+| HTTP\_VERSION | `number`  | Application url version number. When HTTP_VERSIONING_ENABLE is enabled, the application version number is used. |
 
 ### Debugger Environment
 
 | Key | Type | Description |
 | ---- | ---- | ---- |
 | DEBUGGER\_HTTP\_WRITE\_INTO\_FILE | `boolean` | Http debugger write into file |
+| DEBUGGER\_HTTP\_WRITE\_INTO\_CONSOL | `boolean` | Http debugger write into console |
 | DEBUGGER\_SYSTEM\_WRITE\_INTO\_FILE | `boolean` | System debugger write into file |
+| DEBUGGER\_SYSTEM\_WRITE\_INTO\_CONSOLE | `boolean` | System debugger write into console |
 
 ### Middleware Environment
 
 | Key | Type | Description |
 | ---- | ---- | ---- |
-| MIDDLEWARE\_TIMESTAMP\_TOLERANCE | `string` | Tolerance timestamp `ApiKey`. `ms` package value |
+| MIDDLEWARE\_TIMESTAMP\_TOLERANCE | `string` | Tolerance timestamp and used for validate the `ApiKey`. `ms` package value |
 | MIDDLEWARE\_TIMEOUT | `string` | Request timeout. `ms` package value  |
 
 ### Documentation Environment
@@ -319,7 +320,7 @@ Detail information about the environment
 
 | Key | Type | Description |
 | ---- | ---- | ---- |
-| JOB\_ENABLE | `boolean` | Application Job turn on/off |
+| JOB\_ENABLE | `boolean` | Application Job or Schedule turn on/off |
 
 ### Database Environment
 
@@ -332,7 +333,7 @@ Detail information about the environment
 | DATABASE\_DEBUG | `boolean` | Trigger database `DEBUG` |
 | DATABASE\_OPTIONS | `string` | Mongodb connect options |
 
-### Auth Environment
+### Auth JWT Access Token Environment
 
 | Key | Type | Description |
 | ---- | ---- | ---- |
@@ -341,12 +342,27 @@ Detail information about the environment
 | AUTH\_JWT\_ISSUER| `string` | JWT issuer |
 | AUTH\_JWT\_ACCESS\_TOKEN\_SECRET\_KEY | `string` | Secret access token, free text. |
 | AUTH\_JWT\_ACCESS\_TOKEN\_EXPIRED | `string` | Expiration time for access token. `ms` package value |
+
+### Auth JWT Encrypt Access Token Environment
+
+| Key | Type | Description |
+| ---- | ---- | ---- |
 | AUTH_JWT_ACCESS_TOKEN_ENCRYPT_KEY | `string` | Encrypt key for access token payload |
 | AUTH_JWT_ACCESS_TOKEN_ENCRYPT_IV | `string` | Encrypt IV for access token payload |
+
+### Auth JWT Refresh Token Environment
+
+| Key | Type | Description |
+| ---- | ---- | ---- |
 | AUTH\_JWT\_REFRESH\_TOKEN\_SECRET\_KEY | `string` | Secret refresh token, free text. |
 | AUTH\_JWT\_REFRESH\_TOKEN\_EXPIRED | `string` | Expiration time for refresh token. `ms` package value |
 | AUTH\_JWT\_REFRESH\_TOKEN\_REMEMBER\_ME\_EXPIRED | `string` | Expiration time for refresh token when remember me is checked. `ms` package value |
 | AUTH\_JWT\_REFRESH\_TOKEN\_NOT\_BEFORE\_EXPIRATION | `string` | Token active for refresh token before `x` time. `ms` package value |
+
+### Auth JWT Encrypt Refresh Token Environment
+
+| Key | Type | Description |
+| ---- | ---- | ---- |
 | AUTH_JWT_REFRESH_TOKEN_ENCRYPT_KEY | `string` | Encrypt key for refresh token payload |
 | AUTH_JWT_REFRESH_TOKEN_ENCRYPT_IV | `string` | Encrypt IV for refresh token payload |
 
@@ -361,35 +377,41 @@ Detail information about the environment
 
 ## Api Key Encryption
 
-> ApiKeyHashed using `sha256` encryption, and then encryption for `dataObject` is `AES256`. Please keep the `secret` keep private.
+> Please keep the `secret` private.
 
-To do the encryption
+ApiKeyHashed uses `sha256` encryption, and `dataObject` encryption is `AES256`.
 
-1. Concat the `key` and `secret`.
+To do the encryption.
+
+1. Make sure we have value of
+    * `key`: You can find the key for apiKey in the database.
+    * `secret`: `This value is only generated when the apiKey is created`. After that, if you lose the secret, you need to recreate the apiKey.
+    * `encryptionKey`: You can find the key for encryption in the database.
+    * `passphrase`: You can find the secret for encryption in the database. (Actually, is need to be private too. Same with `secret`). This is IV for encrypt AES 256.
+
+2. Concat the `key` and `secret`.
 
     ```typescript
-    const apiKeyString = `${key}:${secret}`;
+    const concatApiKey = `${key}:${secret}`;
     ```
 
-2. Encryption `apiKeyString` with sha256
+3. Encryption `concatApiKey` with `sha256`
 
     ```typescript
-    const apiKeyHashed = this.helperHashService.sha256(`${key}:${secret}`);
-    // e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54
+    const apiKeyHashed = this.helperHashService.sha256(concatApiKey);
     ```
 
-3. Then put the `apiKeyHashed` into `dataObject`
+4. Then create `dataObject` and put the `apiKeyHashed` into it
 
     ```typescript
-    const timestamp = this.helperDateService.timestamp(); 
-    const data: IAuthApiRequestHashedData = {
-        key: "qwertyuiop12345zxcvbnmkjh",
-        timestamp,
-        hash: apiKeyHashed,
+    const dataObject: IAuthApiRequestHashedData = {
+        key, // from 1.key
+        timestamp: this.helperDateService.timestamp(), // ms timestamp
+        hash: apiKeyHashed, // from 3
     }
     ```
 
-4. Encryption the `dataObject` with `AES 256`
+5. Encryption the `dataObject` with `AES 256`
 
     > These data `encryptionKey`, and `passphrase` can be find in database.
 
@@ -403,13 +425,13 @@ To do the encryption
     );
     ```
 
-5. Last, combine the `key` and `apiKeyEncryption`
+6. Last, combine the `key` and `apiKeyEncryption`
 
     ```typescript
     const xApiKey = `${key}:${apiEncryption}`;
     ```
 
-6. Send into request. Put the `xApiKey` in request headers
+7. Send into request. Put the `xApiKey` in request headers
 
     ```json
     {
@@ -425,9 +447,9 @@ To do the encryption
 
 ## Adjust Mongoose Setting
 
-> Just is case, if your mongodb version is < 5
+> Optional, if your mongodb version is < 5
 
-Go to file `src/common/database/services/database.options.service.ts` and remove comment `useMongoClient` then set value to `true`.
+Go to file `src/common/database/services/database.options.service.ts` and add `useMongoClient` to `mongooseOptions` then set value to `true`.
 
 ```typescript
 const mongooseOptions: MongooseModuleOptions = {

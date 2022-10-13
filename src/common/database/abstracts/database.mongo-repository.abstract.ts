@@ -375,7 +375,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         data: N,
         options?: IDatabaseOptions
     ): Promise<T> {
-        const update = this._repository.findByIdAndUpdate(
+        const update = this._repository.findOneAndUpdate(
             find,
             {
                 $set: data,
