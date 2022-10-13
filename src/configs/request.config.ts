@@ -8,7 +8,7 @@ export default registerAs(
             maxFileSize: bytes('100kb'), // 100kb
         },
         raw: {
-            maxFileSize: bytes('10mb'), // 10mb
+            maxFileSize: bytes('5mb'), // 5mb
         },
         text: {
             maxFileSize: bytes('100kb'), // 100kb
