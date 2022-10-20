@@ -4,7 +4,6 @@ import {
     Controller,
     Delete,
     Get,
-    HttpStatus,
     InternalServerErrorException,
     NotFoundException,
     Patch,
@@ -35,7 +34,6 @@ import { ResponseIdSerialization } from 'src/common/response/serializations/resp
 import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/constants/permission.status-code.constant';
 import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
-import { RoleDocParamsGet } from 'src/modules/role/constants/role.doc.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import {
     RoleDeleteGuard,
@@ -116,7 +114,6 @@ export class RoleAdminController {
 
     @Response('role.get', {
         classSerialization: RoleGetSerialization,
-        doc: { params: RoleDocParamsGet },
     })
     @RoleGetGuard()
     @RequestParamGuard(RoleRequestDto)
@@ -131,9 +128,6 @@ export class RoleAdminController {
 
     @Response('role.create', {
         classSerialization: ResponseIdSerialization,
-        doc: {
-            httpStatus: HttpStatus.CREATED,
-        },
     })
     @AuthAdminJwtGuard(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
@@ -189,7 +183,6 @@ export class RoleAdminController {
 
     @Response('role.update', {
         classSerialization: ResponseIdSerialization,
-        doc: { params: RoleDocParamsGet },
     })
     @RoleUpdateGuard()
     @RequestParamGuard(RoleRequestDto)
@@ -246,7 +239,7 @@ export class RoleAdminController {
         };
     }
 
-    @Response('role.delete', { doc: { params: RoleDocParamsGet } })
+    @Response('role.delete')
     @RoleDeleteGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(
@@ -270,7 +263,7 @@ export class RoleAdminController {
         return;
     }
 
-    @Response('role.inactive', { doc: { params: RoleDocParamsGet } })
+    @Response('role.inactive')
     @RoleUpdateInactiveGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(
@@ -295,7 +288,7 @@ export class RoleAdminController {
         return;
     }
 
-    @Response('role.active', { doc: { params: RoleDocParamsGet } })
+    @Response('role.active')
     @RoleUpdateActiveGuard()
     @RequestParamGuard(RoleRequestDto)
     @AuthAdminJwtGuard(

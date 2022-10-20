@@ -2,7 +2,6 @@ import {
     BadRequestException,
     Body,
     Controller,
-    HttpStatus,
     InternalServerErrorException,
     NotFoundException,
     Post,
@@ -36,7 +35,7 @@ export class UserPublicController {
         private readonly roleService: RoleService
     ) {}
 
-    @Response('auth.signUp', { doc: { httpStatus: HttpStatus.CREATED } })
+    @Response('auth.signUp')
     @AuthApiKey()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()

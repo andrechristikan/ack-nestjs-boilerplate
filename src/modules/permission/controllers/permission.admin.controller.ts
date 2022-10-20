@@ -28,10 +28,6 @@ import {
 } from 'src/common/response/interfaces/response.interface';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import {
-    PermissionDocParamsGet,
-    PermissionDocQueryList,
-} from 'src/modules/permission/constants/permission.doc.constant';
-import {
     PermissionGetGuard,
     PermissionUpdateActiveGuard,
     PermissionUpdateGuard,
@@ -59,9 +55,6 @@ export class PermissionAdminController {
 
     @ResponsePaging('permission.list', {
         classSerialization: PermissionListSerialization,
-        doc: {
-            queries: PermissionDocQueryList,
-        },
     })
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
     @AuthApiKey()
@@ -114,9 +107,6 @@ export class PermissionAdminController {
 
     @Response('permission.get', {
         classSerialization: PermissionGetSerialization,
-        doc: {
-            params: PermissionDocParamsGet,
-        },
     })
     @PermissionGetGuard()
     @RequestParamGuard(PermissionRequestDto)
@@ -133,9 +123,6 @@ export class PermissionAdminController {
 
     @Response('permission.update', {
         classSerialization: ResponseIdSerialization,
-        doc: {
-            params: PermissionDocParamsGet,
-        },
     })
     @PermissionUpdateGuard()
     @RequestParamGuard(PermissionRequestDto)
@@ -166,11 +153,7 @@ export class PermissionAdminController {
         };
     }
 
-    @Response('permission.inactive', {
-        doc: {
-            params: PermissionDocParamsGet,
-        },
-    })
+    @Response('permission.inactive', {})
     @PermissionUpdateInactiveGuard()
     @RequestParamGuard(PermissionRequestDto)
     @AuthAdminJwtGuard(
@@ -197,11 +180,7 @@ export class PermissionAdminController {
         return;
     }
 
-    @Response('permission.active', {
-        doc: {
-            params: PermissionDocParamsGet,
-        },
-    })
+    @Response('permission.active', {})
     @PermissionUpdateActiveGuard()
     @RequestParamGuard(PermissionRequestDto)
     @AuthAdminJwtGuard(

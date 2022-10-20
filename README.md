@@ -35,6 +35,7 @@
     * [Test](#test)
     * [Run Project](#run-project)
     * [Run Project with Docker](#run-project-with-docker)
+* [Response Structure](#response-structure)
 * [API Reference](#api-reference)
 * [Environment](#environment)
 * [Api Key Encryption](#api-key-encryption)
@@ -265,6 +266,56 @@ yarn start:dev
 
 ```bash
 docker-compose up -d
+```
+
+## Response Interface
+
+This section till describe structure of the response.
+
+### Response Metadata
+
+This is useful when we need to give the frontend some information that is not related to the endpoint.
+
+```ts
+export interface IResponseMetadata {
+    languages: ENUM_MESSAGE_LANGUAGE[],
+    timestamp: number
+    timezone: string,
+    requestId: string,
+    path: string,
+    version: string,
+    repoVersion: string,
+    [key: string]: any;
+}
+```
+
+### Response Default
+
+Default response for the response
+
+```ts
+export interface IResponse {
+    metadata?: IResponseMetadata;
+    [key: string]: any;
+}
+```
+
+### Response Paging
+
+Default response for pagination.
+
+```ts
+export interface IResponsePaging {
+    totalData: number;
+    totalPage?: number;
+    currentPage?: number;
+    perPage?: number;
+    availableSearch?: string[];
+    availableSort?: string[];
+    metadata?: IResponseMetadata;
+    data: Record<string, any>[];
+}
+
 ```
 
 ## API Reference
