@@ -51,6 +51,16 @@ import {
     UserUpdateInactiveGuard,
 } from 'src/modules/user/decorators/user.admin.decorator';
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
+import {
+    UserActiveDoc,
+    UserCreateDoc,
+    UserDeleteDoc,
+    UserGetDoc,
+    UserImportDoc,
+    UserInactiveDoc,
+    UserListDoc,
+    UserUpdateDoc,
+} from 'src/modules/user/docs/user.admin.doc';
 import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 import { UserListDto } from 'src/modules/user/dtos/user.list.dto';
@@ -78,6 +88,7 @@ export class UserAdminController {
         private readonly roleService: RoleService
     ) {}
 
+    @UserListDoc()
     @ResponsePaging('user.list', {
         classSerialization: UserListSerialization,
     })
@@ -124,6 +135,7 @@ export class UserAdminController {
         };
     }
 
+    @UserGetDoc()
     @Response('user.get', {
         classSerialization: UserGetSerialization,
     })
@@ -138,6 +150,7 @@ export class UserAdminController {
         return user;
     }
 
+    @UserCreateDoc()
     @Response('user.create', {
         classSerialization: ResponseIdSerialization,
     })
@@ -212,6 +225,7 @@ export class UserAdminController {
         }
     }
 
+    @UserDeleteDoc()
     @Response('user.delete')
     @UserDeleteGuard()
     @RequestParamGuard(UserRequestDto)
@@ -237,6 +251,7 @@ export class UserAdminController {
         return;
     }
 
+    @UserUpdateDoc()
     @Response('user.update', {
         classSerialization: ResponseIdSerialization,
     })
@@ -270,6 +285,7 @@ export class UserAdminController {
         };
     }
 
+    @UserInactiveDoc()
     @Response('user.inactive')
     @UserUpdateInactiveGuard()
     @RequestParamGuard(UserRequestDto)
@@ -295,6 +311,7 @@ export class UserAdminController {
         return;
     }
 
+    @UserActiveDoc()
     @Response('user.active')
     @UserUpdateActiveGuard()
     @RequestParamGuard(UserRequestDto)
@@ -320,6 +337,7 @@ export class UserAdminController {
         return;
     }
 
+    @UserImportDoc()
     @Response('user.import', {
         classSerialization: UserImportSerialization,
     })

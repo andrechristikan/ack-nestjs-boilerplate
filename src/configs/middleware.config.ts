@@ -50,18 +50,16 @@ export default registerAs(
             maxRequestPerId: 1, // max request per reset time
         },
         timestamp: {
-            toleranceTimeInMs: process.env.MIDDLEWARE_TIMESTAMP_TOLERANCE
-                ? ms(process.env.MIDDLEWARE_TIMESTAMP_TOLERANCE)
-                : ms('5m'), // 5 mins
+            toleranceTimeInMs: ms(
+                process.env.MIDDLEWARE_TIMESTAMP_TOLERANCE || '5m'
+            ), // 5 mins
         },
         cache: {
             ttl: ms('30s'), // 30sec
             max: 100, // maximum number of items in cache,
         },
         timeout: {
-            in: process.env.MIDDLEWARE_TIMEOUT
-                ? ms(process.env.MIDDLEWARE_TIMEOUT)
-                : ms('30s'), // 30s based on ms module
+            in: ms(process.env.MIDDLEWARE_TIMEOUT || '30s'), // 30s based on ms module
         },
         userAgent: {
             os: [

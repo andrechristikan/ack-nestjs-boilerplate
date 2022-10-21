@@ -43,6 +43,13 @@ import {
 } from 'src/modules/user/constants/user.status-code.constant';
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
 import { UserProfileGuard } from 'src/modules/user/decorators/user.public.decorator';
+import {
+    UserChangePasswordDoc,
+    UserLoginDoc,
+    UserProfileDoc,
+    UserRefreshDoc,
+    UserUploadProfileDoc,
+} from 'src/modules/user/docs/user.doc';
 import { UserChangePasswordDto } from 'src/modules/user/dtos/user.change-password.dto';
 import { UserLoginDto } from 'src/modules/user/dtos/user.login.dto';
 import { IUserDocument } from 'src/modules/user/interfaces/user.interface';
@@ -64,6 +71,7 @@ export class UserController {
         private readonly awsService: AwsS3Service
     ) {}
 
+    @UserProfileDoc()
     @Response('user.profile', {
         classSerialization: UserProfileSerialization,
     })
@@ -77,6 +85,7 @@ export class UserController {
         return user;
     }
 
+    @UserUploadProfileDoc()
     @Response('user.upload')
     @UserProfileGuard()
     @AuthJwtGuard()
@@ -121,6 +130,7 @@ export class UserController {
         return;
     }
 
+    @UserChangePasswordDoc()
     @Response('user.changePassword')
     @AuthJwtGuard()
     @Patch('/change-password')
@@ -177,6 +187,7 @@ export class UserController {
         return;
     }
 
+    @UserLoginDoc()
     @Response('user.login', {
         classSerialization: UserLoginSerialization,
     })
@@ -288,6 +299,7 @@ export class UserController {
         };
     }
 
+    @UserRefreshDoc()
     @Response('user.refresh', { classSerialization: UserLoginSerialization })
     @AuthRefreshJwtGuard()
     @HttpCode(HttpStatus.OK)

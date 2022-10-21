@@ -3,14 +3,14 @@ import { ApiProperty } from '@nestjs/swagger';
 export class UserImportSerialization {
     @ApiProperty({
         description: 'Data extract from excel',
-        example: [{}],
+        example: [{}, {}],
         type: 'array',
     })
     extract: Record<string, any>[];
 
     @ApiProperty({
         description: 'Data after validation with dto',
-        example: [{}],
+        example: [{}, {}],
         type: 'array',
     })
     dto: Record<string, any>[];

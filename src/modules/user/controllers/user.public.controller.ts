@@ -19,6 +19,7 @@ import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.sta
 import { RoleDocument } from 'src/modules/role/schemas/role.schema';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
+import { UserSignUpDoc } from 'src/modules/user/docs/user.public.doc';
 import { UserSignUpDto } from 'src/modules/user/dtos/user.sign-up.dto';
 import { IUserCheckExist } from 'src/modules/user/interfaces/user.interface';
 import { UserService } from 'src/modules/user/services/user.service';
@@ -35,6 +36,7 @@ export class UserPublicController {
         private readonly roleService: RoleService
     ) {}
 
+    @UserSignUpDoc()
     @Response('auth.signUp')
     @AuthApiKey()
     @RequestValidateUserAgent()

@@ -5,7 +5,7 @@ import { SettingDocParamsGet } from 'src/common/setting/constants/setting.doc.co
 
 export function SettingUpdateDoc(): any {
     return applyDecorators(
-        Doc('setting.update', {
+        Doc<ResponseIdSerialization>('setting.update', {
             auth: {
                 jwtAccessToken: true,
                 apiKey: true,

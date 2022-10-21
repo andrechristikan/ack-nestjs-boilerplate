@@ -43,6 +43,15 @@ import {
     RoleUpdateInactiveGuard,
 } from 'src/modules/role/decorators/role.admin.decorator';
 import { GetRole } from 'src/modules/role/decorators/role.decorator';
+import {
+    RoleActiveDoc,
+    RoleCreateDoc,
+    RoleDeleteDoc,
+    RoleGetDoc,
+    RoleInactiveDoc,
+    RoleListDoc,
+    RoleUpdateDoc,
+} from 'src/modules/role/docs/role.admin.doc';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleListDto } from 'src/modules/role/dtos/role.list.dto';
 import { RoleRequestDto } from 'src/modules/role/dtos/role.request.dto';
@@ -65,6 +74,7 @@ export class RoleAdminController {
         private readonly permissionService: PermissionService
     ) {}
 
+    @RoleListDoc()
     @ResponsePaging('role.list', {
         classSerialization: RoleListSerialization,
     })
@@ -112,6 +122,7 @@ export class RoleAdminController {
         };
     }
 
+    @RoleGetDoc()
     @Response('role.get', {
         classSerialization: RoleGetSerialization,
     })
@@ -126,6 +137,7 @@ export class RoleAdminController {
         return role;
     }
 
+    @RoleCreateDoc()
     @Response('role.create', {
         classSerialization: ResponseIdSerialization,
     })
@@ -181,6 +193,7 @@ export class RoleAdminController {
         }
     }
 
+    @RoleUpdateDoc()
     @Response('role.update', {
         classSerialization: ResponseIdSerialization,
     })
@@ -239,6 +252,7 @@ export class RoleAdminController {
         };
     }
 
+    @RoleDeleteDoc()
     @Response('role.delete')
     @RoleDeleteGuard()
     @RequestParamGuard(RoleRequestDto)
@@ -263,6 +277,7 @@ export class RoleAdminController {
         return;
     }
 
+    @RoleInactiveDoc()
     @Response('role.inactive')
     @RoleUpdateInactiveGuard()
     @RequestParamGuard(RoleRequestDto)
@@ -288,6 +303,7 @@ export class RoleAdminController {
         return;
     }
 
+    @RoleActiveDoc()
     @Response('role.active')
     @RoleUpdateActiveGuard()
     @RequestParamGuard(RoleRequestDto)

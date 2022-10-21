@@ -8,9 +8,9 @@ export default registerAs(
             accessToken: {
                 secretKey:
                     process.env.AUTH_JWT_ACCESS_TOKEN_SECRET_KEY || '123456',
-                expirationTime: process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED
-                    ? ms(process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED)
-                    : ms('30m'), // recommendation for production is 30m
+                expirationTime: ms(
+                    process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED || '30m'
+                ), // recommendation for production is 30m
                 notBeforeExpirationTime: ms(0), // keep it in zero value
 
                 encryptKey: process.env.AUTH_JWT_ACCESS_TOKEN_ENCRYPT_KEY,
@@ -21,20 +21,17 @@ export default registerAs(
                 secretKey:
                     process.env.AUTH_JWT_REFRESH_TOKEN_SECRET_KEY ||
                     '123456000',
-                expirationTime: process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED
-                    ? ms(process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED)
-                    : ms('7d'), // recommendation for production is 7d
-                expirationTimeRememberMe: process.env
-                    .AUTH_JWT_REFRESH_TOKEN_REMEMBER_ME_EXPIRED
-                    ? ms(process.env.AUTH_JWT_REFRESH_TOKEN_REMEMBER_ME_EXPIRED)
-                    : ms('30d'), // recommendation for production is 30d
-                notBeforeExpirationTime: process.env
-                    .AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION
-                    ? ms(
-                          process.env
-                              .AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION
-                      )
-                    : ms('30m'), // recommendation for production is 30m
+                expirationTime: ms(
+                    process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED || '7d'
+                ), // recommendation for production is 7d
+                expirationTimeRememberMe: ms(
+                    process.env.AUTH_JWT_REFRESH_TOKEN_REMEMBER_ME_EXPIRED ||
+                        '30d'
+                ), // recommendation for production is 30d
+                notBeforeExpirationTime: ms(
+                    process.env.AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION ||
+                        '30m'
+                ), // recommendation for production is 30m
 
                 encryptKey: process.env.AUTH_JWT_REFRESH_TOKEN_ENCRYPT_KEY,
                 encryptIv: process.env.AUTH_JWT_REFRESH_TOKEN_ENCRYPT_IV, // must int length 16

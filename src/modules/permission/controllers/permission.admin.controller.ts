@@ -34,6 +34,13 @@ import {
     PermissionUpdateInactiveGuard,
 } from 'src/modules/permission/decorators/permission.admin.decorator';
 import { GetPermission } from 'src/modules/permission/decorators/permission.decorator';
+import {
+    PermissionActiveDoc,
+    PermissionGetDoc,
+    PermissionInactiveDoc,
+    PermissionListDoc,
+    PermissionUpdateDoc,
+} from 'src/modules/permission/docs/permission.admin.doc';
 import { PermissionListDto } from 'src/modules/permission/dtos/permission.list.dto';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
 import { PermissionRequestDto } from 'src/modules/permission/dtos/permissions.request.dto';
@@ -53,6 +60,7 @@ export class PermissionAdminController {
         private readonly permissionService: PermissionService
     ) {}
 
+    @PermissionListDoc()
     @ResponsePaging('permission.list', {
         classSerialization: PermissionListSerialization,
     })
@@ -105,6 +113,7 @@ export class PermissionAdminController {
         };
     }
 
+    @PermissionGetDoc()
     @Response('permission.get', {
         classSerialization: PermissionGetSerialization,
     })
@@ -121,6 +130,7 @@ export class PermissionAdminController {
         return permission;
     }
 
+    @PermissionUpdateDoc()
     @Response('permission.update', {
         classSerialization: ResponseIdSerialization,
     })
@@ -153,6 +163,7 @@ export class PermissionAdminController {
         };
     }
 
+    @PermissionInactiveDoc()
     @Response('permission.inactive', {})
     @PermissionUpdateInactiveGuard()
     @RequestParamGuard(PermissionRequestDto)
@@ -180,6 +191,7 @@ export class PermissionAdminController {
         return;
     }
 
+    @PermissionActiveDoc()
     @Response('permission.active', {})
     @PermissionUpdateActiveGuard()
     @RequestParamGuard(PermissionRequestDto)

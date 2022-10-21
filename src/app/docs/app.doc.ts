@@ -13,9 +13,5 @@ export function AppHelloDoc(): any {
 }
 
 export function AppHelloTimeoutDoc(): any {
-    return applyDecorators(
-        Doc<void>('app.helloTimeout', {
-            responseVoid: true,
-        })
-    );
+    return applyDecorators(Doc<void>('app.helloTimeout'));
 }

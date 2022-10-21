@@ -23,6 +23,7 @@ import {
 import {
     SettingGetByNameDoc,
     SettingGetDoc,
+    SettingListDoc,
 } from 'src/common/setting/docs/setting.doc';
 import { SettingListDto } from 'src/common/setting/dtos/setting.list.dto';
 import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
@@ -42,6 +43,7 @@ export class SettingController {
         private readonly paginationService: PaginationService
     ) {}
 
+    @SettingListDoc()
     @ResponsePaging('setting.list', {
         classSerialization: SettingListSerialization,
     })
