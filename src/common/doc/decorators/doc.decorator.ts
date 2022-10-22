@@ -63,7 +63,7 @@ export function Doc<T>(messagePath: string, options?: IDocOptions<T>): any {
                 })
             );
         }
-    } else if (options?.request?.bodyType === ENUM_DOC_REQUEST_BODY_TYPE.RAW) {
+    } else if (options?.request?.bodyType === ENUM_DOC_REQUEST_BODY_TYPE.TEXT) {
         docs.push(ApiConsumes('text/plain'));
     } else {
         docs.push(ApiConsumes('application/json'));
@@ -72,7 +72,7 @@ export function Doc<T>(messagePath: string, options?: IDocOptions<T>): any {
     if (options?.response?.bodyType === ENUM_DOC_RESPONSE_BODY_TYPE.FILE) {
         docs.push(ApiProduces(ENUM_FILE_EXCEL_MIME.XLSX));
     } else if (
-        options?.response?.bodyType === ENUM_DOC_RESPONSE_BODY_TYPE.RAW
+        options?.response?.bodyType === ENUM_DOC_RESPONSE_BODY_TYPE.TEXT
     ) {
         docs.push(ApiProduces('text/plain'));
     } else {
