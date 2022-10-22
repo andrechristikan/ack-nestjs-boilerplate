@@ -15,19 +15,16 @@ import {
     IResponse,
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
-import {
-    SettingDocParamsGet,
-    SettingDocParamsGetByName,
-} from 'src/common/setting/constants/setting.doc.constant';
-import {
-    SETTING_DEFAULT_AVAILABLE_SEARCH,
-    SETTING_DEFAULT_AVAILABLE_SORT,
-} from 'src/common/setting/constants/setting.list.constant';
 import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
 import {
     SettingGetByNameGuard,
     SettingGetGuard,
 } from 'src/common/setting/decorators/setting.public.decorator';
+import {
+    SettingGetByNameDoc,
+    SettingGetDoc,
+    SettingListDoc,
+} from 'src/common/setting/docs/setting.doc';
 import { SettingListDto } from 'src/common/setting/dtos/setting.list.dto';
 import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
 import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
@@ -46,12 +43,9 @@ export class SettingController {
         private readonly paginationService: PaginationService
     ) {}
 
+    @SettingListDoc()
     @ResponsePaging('setting.list', {
         classSerialization: SettingListSerialization,
-        doc: {
-            availableSearch: SETTING_DEFAULT_AVAILABLE_SEARCH,
-            availableSort: SETTING_DEFAULT_AVAILABLE_SORT,
-        },
     })
     @AuthApiKey()
     @RequestValidateUserAgent()
@@ -98,11 +92,9 @@ export class SettingController {
         };
     }
 
+    @SettingGetDoc()
     @Response('setting.get', {
         classSerialization: SettingGetSerialization,
-        doc: {
-            params: SettingDocParamsGet,
-        },
     })
     @SettingGetGuard()
     @RequestParamGuard(SettingRequestDto)
@@ -114,11 +106,9 @@ export class SettingController {
         return setting;
     }
 
+    @SettingGetByNameDoc()
     @Response('setting.getByName', {
         classSerialization: SettingGetSerialization,
-        doc: {
-            params: SettingDocParamsGetByName,
-        },
     })
     @SettingGetByNameGuard()
     @AuthApiKey()

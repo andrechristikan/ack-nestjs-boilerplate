@@ -3,6 +3,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { User } from 'src/common/auth/decorators/auth.decorator';
 import { AuthJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
+import { AuthGetInfoDoc } from 'src/common/auth/docs/auth.doc';
 import { AuthInfoSerialization } from 'src/common/auth/serializations/auth.info.serialization';
 import {
     RequestValidateTimestamp,
@@ -17,6 +18,7 @@ import { IResponse } from 'src/common/response/interfaces/response.interface';
     path: '/auth',
 })
 export class AuthController {
+    @AuthGetInfoDoc()
     @Response('auth.info', { classSerialization: AuthInfoSerialization })
     @AuthJwtGuard()
     @AuthApiKey()

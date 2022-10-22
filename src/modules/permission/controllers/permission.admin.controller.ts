@@ -28,16 +28,19 @@ import {
 } from 'src/common/response/interfaces/response.interface';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import {
-    PermissionDocParamsGet,
-    PermissionDocQueryList,
-} from 'src/modules/permission/constants/permission.doc.constant';
-import {
     PermissionGetGuard,
     PermissionUpdateActiveGuard,
     PermissionUpdateGuard,
     PermissionUpdateInactiveGuard,
 } from 'src/modules/permission/decorators/permission.admin.decorator';
 import { GetPermission } from 'src/modules/permission/decorators/permission.decorator';
+import {
+    PermissionActiveDoc,
+    PermissionGetDoc,
+    PermissionInactiveDoc,
+    PermissionListDoc,
+    PermissionUpdateDoc,
+} from 'src/modules/permission/docs/permission.admin.doc';
 import { PermissionListDto } from 'src/modules/permission/dtos/permission.list.dto';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
 import { PermissionRequestDto } from 'src/modules/permission/dtos/permissions.request.dto';
@@ -57,11 +60,9 @@ export class PermissionAdminController {
         private readonly permissionService: PermissionService
     ) {}
 
+    @PermissionListDoc()
     @ResponsePaging('permission.list', {
         classSerialization: PermissionListSerialization,
-        doc: {
-            queries: PermissionDocQueryList,
-        },
     })
     @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
     @AuthApiKey()
@@ -112,11 +113,9 @@ export class PermissionAdminController {
         };
     }
 
+    @PermissionGetDoc()
     @Response('permission.get', {
         classSerialization: PermissionGetSerialization,
-        doc: {
-            params: PermissionDocParamsGet,
-        },
     })
     @PermissionGetGuard()
     @RequestParamGuard(PermissionRequestDto)
@@ -131,11 +130,9 @@ export class PermissionAdminController {
         return permission;
     }
 
+    @PermissionUpdateDoc()
     @Response('permission.update', {
         classSerialization: ResponseIdSerialization,
-        doc: {
-            params: PermissionDocParamsGet,
-        },
     })
     @PermissionUpdateGuard()
     @RequestParamGuard(PermissionRequestDto)
@@ -166,11 +163,8 @@ export class PermissionAdminController {
         };
     }
 
-    @Response('permission.inactive', {
-        doc: {
-            params: PermissionDocParamsGet,
-        },
-    })
+    @PermissionInactiveDoc()
+    @Response('permission.inactive', {})
     @PermissionUpdateInactiveGuard()
     @RequestParamGuard(PermissionRequestDto)
     @AuthAdminJwtGuard(
@@ -197,11 +191,8 @@ export class PermissionAdminController {
         return;
     }
 
-    @Response('permission.active', {
-        doc: {
-            params: PermissionDocParamsGet,
-        },
-    })
+    @PermissionActiveDoc()
+    @Response('permission.active', {})
     @PermissionUpdateActiveGuard()
     @RequestParamGuard(PermissionRequestDto)
     @AuthAdminJwtGuard(

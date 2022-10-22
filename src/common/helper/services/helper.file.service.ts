@@ -45,7 +45,7 @@ export class HelperFileService implements IHelperFileService {
         const worksheetName = workbook.SheetNames;
         const worksheet = workbook.Sheets[worksheetName[0]];
 
-        // rows=
+        // rows
         const rows: IHelperFileExcelRows[] =
             XLSX.utils.sheet_to_json(worksheet);
 

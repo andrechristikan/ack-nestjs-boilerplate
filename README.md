@@ -26,6 +26,7 @@
 * [Build With](#build-with)
 * [Objective](#objective)
 * [Features](#features)
+* [Structure](#structure)
 * [Prerequisites](#prerequisites)
 * [Getting Started](#getting-started)
     * [Clone Repo](#clone-repo)
@@ -35,6 +36,7 @@
     * [Test](#test)
     * [Run Project](#run-project)
     * [Run Project with Docker](#run-project-with-docker)
+* [Response Structure](#response-structure)
 * [API Reference](#api-reference)
 * [Environment](#environment)
 * [Api Key Encryption](#api-key-encryption)
@@ -61,7 +63,7 @@ Next development
 * [x] Encrypt jwt payload
 * [x] Optimize Unit Testing
 * [x] Make serverless separate repo
-* [ ] Optimize Swagger (Ongoing)
+* [x] Optimize Swagger
 * [ ] Add Relational Database Repository, ex: mysql, postgres (Ongoing)
 * [ ] Update Documentation, include an diagram for easier comprehension
 * [ ] Export to excel and Import from excel add options to background process
@@ -148,6 +150,48 @@ Describes which version .
 * Support CI/CD with Github Action or Jenkins
 * Husky GitHook For Check Source Code, and Run Test Before Commit 🐶
 * Linter with EsLint for Typescript
+
+## Structure
+
+### Folder Structure
+
+1. `/app` The final wrapper module
+2. `/common` The main module
+3. `/configs` The all configs for this project
+4. `/health` health check module for every service integrated
+5. `/jobs` cron job, or schedule task
+6. `/language` -
+7. `/migration` migrate all init data for test the project
+8. `/modules` other modules based on service/project. So, this will difference for every service/project
+9. `/router` endpoint router, `the controller` will put in this
+
+### Module structure
+
+Full structure of module
+
+```txt
+.
+└── module1
+    ├── abstracts
+    ├── constants // constant like enum, static value, etc
+    ├── controllers // business logic for rest
+    ├── decorators // warper decorator, custom decorator, etc
+    ├── dtos // request validation
+    ├── docs // swagger
+    ├── errors // custom error
+    ├── filters // custom filter 
+    ├── guards // validate related with database
+    ├── indicators // custom health check indicator
+    ├── interceptors // custom interceptors
+    ├── interfaces
+    ├── pipes
+    ├── repositories // repository or persistent layer
+    ├── schemas // database schema
+    ├── serializations
+    ├── services
+    ├── tasks // task for cron job
+    └── module1.module.ts
+```
 
 ## Prerequisites
 
@@ -265,6 +309,60 @@ yarn start:dev
 
 ```bash
 docker-compose up -d
+```
+
+## Response Interface
+
+This section till describe structure of the response.
+
+### Response Metadata
+
+This is useful when we need to give the frontend some information that is not related to the endpoint.
+
+```ts
+export interface IResponseMetadata {
+    languages: ENUM_MESSAGE_LANGUAGE[],
+    timestamp: number
+    timezone: string,
+    requestId: string,
+    path: string,
+    version: string,
+    repoVersion: string,
+    nextPage?: string,
+    previousPage?: string,
+    firstPage?: string,
+    lastPage?: string,
+    [key: string]: any;
+}
+```
+
+### Response Default
+
+Default response for the response
+
+```ts
+export interface IResponse {
+    metadata?: IResponseMetadata;
+    [key: string]: any;
+}
+```
+
+### Response Paging
+
+Default response for pagination.
+
+```ts
+export interface IResponsePaging {
+    totalData: number;
+    totalPage?: number;
+    currentPage?: number;
+    perPage?: number;
+    availableSearch?: string[];
+    availableSort?: string[];
+    metadata?: IResponseMetadata;
+    data: Record<string, any>[];
+}
+
 ```
 
 ## API Reference
@@ -465,6 +563,31 @@ const mongooseOptions: MongooseModuleOptions = {
 
 Distributed under [MIT licensed][license].
 
+## Contribute
+
+How to contribute in this repo
+
+1. Fork the project with click `Fork` button of this repo.
+2. Clone the fork project `git clone "url you just copied"`
+3. Create a branch `git switch -c your-new-branch-name`
+4. Make necessary changes and commit those changes
+5. Commit the changes `git commit -m "your message"`
+6. Push changes to GitHub `git push origin -u main`
+7. Back to browser, goto your fork repo github. Then, click `Compare & pull request`
+
+If your code behind commit with the original, please update your code and resolve the conflict. Then, repeat from number 5.
+
+### Rule
+
+* Avoid Circular Dependency
+* Consume component folder structure, and repository design pattern
+* Always make `service` for every module is independently.
+* Do not put `controller` into modules, cause this will break the dependency. Only put the controller into `router` and then inject the dependency.
+* Put the config in `/configs` folder, and for dynamic config put as `environment variable`
+* `CommonModule` only for main package, and put the module that related of service/project into `/src/modules`. So, if we want to clear the unnecessary module, we just need to delete the `src/modules/**`
+* If there a new service in CommonModule. Make sure to create the unit test in `/test/unit`
+* If there a new controller, make sure to create the e2e testing in `test/e2e`
+
 ## Contact
 
 [Andre Christi kan][author-email]
@@ -526,4 +649,4 @@ Distributed under [MIT licensed][license].
 [ref-git]: https://git-scm.com
 
 <!-- API Reference -->
-[api-reference-docs]: http://108.137.127.177:3000/api/hello
+[api-reference-docs]: http://108.137.127.177:3000/docs

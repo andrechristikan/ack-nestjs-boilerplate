@@ -17,9 +17,9 @@ import {
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
-import { SettingDocParamsGet } from 'src/common/setting/constants/setting.doc.constant';
 import { SettingUpdateGuard } from 'src/common/setting/decorators/setting.admin.decorator';
 import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
+import { SettingUpdateDoc } from 'src/common/setting/docs/setting.admin.doc';
 import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
 import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
 import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
@@ -33,11 +33,9 @@ import { SettingService } from 'src/common/setting/services/setting.service';
 export class SettingAdminController {
     constructor(private readonly settingService: SettingService) {}
 
+    @SettingUpdateDoc()
     @Response('setting.update', {
         classSerialization: ResponseIdSerialization,
-        doc: {
-            params: SettingDocParamsGet,
-        },
     })
     @SettingUpdateGuard()
     @RequestParamGuard(SettingRequestDto)

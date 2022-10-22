@@ -11,7 +11,6 @@ import {
     Patch,
     NotFoundException,
     UploadedFile,
-    HttpStatus,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
@@ -43,7 +42,6 @@ import {
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { UserDocParamsGet } from 'src/modules/user/constants/user.doc.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import {
     UserDeleteGuard,
@@ -53,6 +51,16 @@ import {
     UserUpdateInactiveGuard,
 } from 'src/modules/user/decorators/user.admin.decorator';
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
+import {
+    UserActiveDoc,
+    UserCreateDoc,
+    UserDeleteDoc,
+    UserGetDoc,
+    UserImportDoc,
+    UserInactiveDoc,
+    UserListDoc,
+    UserUpdateDoc,
+} from 'src/modules/user/docs/user.admin.doc';
 import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 import { UserListDto } from 'src/modules/user/dtos/user.list.dto';
@@ -80,6 +88,7 @@ export class UserAdminController {
         private readonly roleService: RoleService
     ) {}
 
+    @UserListDoc()
     @ResponsePaging('user.list', {
         classSerialization: UserListSerialization,
     })
@@ -126,9 +135,9 @@ export class UserAdminController {
         };
     }
 
+    @UserGetDoc()
     @Response('user.get', {
         classSerialization: UserGetSerialization,
-        doc: { params: UserDocParamsGet },
     })
     @UserGetGuard()
     @RequestParamGuard(UserRequestDto)
@@ -141,6 +150,7 @@ export class UserAdminController {
         return user;
     }
 
+    @UserCreateDoc()
     @Response('user.create', {
         classSerialization: ResponseIdSerialization,
     })
@@ -215,7 +225,8 @@ export class UserAdminController {
         }
     }
 
-    @Response('user.delete', { doc: { params: UserDocParamsGet } })
+    @UserDeleteDoc()
+    @Response('user.delete')
     @UserDeleteGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(
@@ -240,9 +251,9 @@ export class UserAdminController {
         return;
     }
 
+    @UserUpdateDoc()
     @Response('user.update', {
         classSerialization: ResponseIdSerialization,
-        doc: { params: UserDocParamsGet },
     })
     @UserUpdateGuard()
     @RequestParamGuard(UserRequestDto)
@@ -274,7 +285,8 @@ export class UserAdminController {
         };
     }
 
-    @Response('user.inactive', { doc: { params: UserDocParamsGet } })
+    @UserInactiveDoc()
+    @Response('user.inactive')
     @UserUpdateInactiveGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(
@@ -299,7 +311,8 @@ export class UserAdminController {
         return;
     }
 
-    @Response('user.active', { doc: { params: UserDocParamsGet } })
+    @UserActiveDoc()
+    @Response('user.active')
     @UserUpdateActiveGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthAdminJwtGuard(
@@ -324,9 +337,9 @@ export class UserAdminController {
         return;
     }
 
+    @UserImportDoc()
     @Response('user.import', {
         classSerialization: UserImportSerialization,
-        doc: { httpStatus: HttpStatus.CREATED },
     })
     @UploadFileSingle('file')
     @AuthAdminJwtGuard(
