@@ -2,7 +2,7 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { RouterModule } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { useContainer } from 'class-validator';
-import { connection, Types } from 'mongoose';
+import { connection } from 'mongoose';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
 import {
@@ -10,13 +10,14 @@ import {
     E2E_SETTING_COMMON_GET_URL,
     E2E_SETTING_COMMON_LIST_URL,
 } from './setting.constant';
-import { SettingService } from 'src/common/setting/services/setting.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { Setting } from 'src/common/setting/schemas/setting.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
 import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/common/setting/constants/setting.status-code.constant';
+import { SettingService } from 'src/common/setting/services/setting.service';
+import { Setting } from 'src/common/setting/schemas/setting.schema';
+import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
 
 describe('E2E Setting', () => {
     let app: INestApplication;
@@ -87,7 +88,7 @@ describe('E2E Setting', () => {
             .get(
                 E2E_SETTING_COMMON_GET_URL.replace(
                     ':_id',
-                    `${new DatabasePrimaryKey()}`
+                    `${DatabasePrimaryKey()}`
                 )
             )
             .set('user-agent', faker.internet.userAgent())

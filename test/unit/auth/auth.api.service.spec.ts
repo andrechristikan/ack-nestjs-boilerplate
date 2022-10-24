@@ -1,8 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { AuthApiDocument } from 'src/common/auth/schemas/auth.api.schema';
 import { faker } from '@faker-js/faker';
-import { Types } from 'mongoose';
 import { AuthApiBulkService } from 'src/common/auth/services/auth.api.bulk.service';
 import {
     IAuthApi,
@@ -10,9 +8,11 @@ import {
 } from 'src/common/auth/interfaces/auth.interface';
 import { AuthApiModule } from 'src/common/auth/auth.module';
 import { HelperModule } from 'src/common/helper/helper.module';
-import { DatabaseModule } from 'src/common/database/database.module';
 import { ConfigModule } from '@nestjs/config';
 import configs from 'src/configs';
+import { AuthApi } from 'src/common/auth/schemas/auth.api.schema';
+import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
+import { DatabaseConnectionModule } from 'src/common/database/database.module';
 
 describe('AuthApiService', () => {
     let authApiService: AuthApiService;
@@ -24,7 +24,7 @@ describe('AuthApiService', () => {
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
-                DatabaseModule,
+                DatabaseConnectionModule.register(),
                 ConfigModule.forRoot({
                     load: configs,
                     isGlobal: true,
@@ -97,7 +97,7 @@ describe('AuthApiService', () => {
 
     describe('findOneById', () => {
         it('should return an success', async () => {
-            const result: AuthApiDocument = await authApiService.findOneById(
+            const result: AuthApi = await authApiService.findOneById(
                 `${authApi._id}`
             );
             jest.spyOn(authApiService, 'findOneById').mockImplementation(
@@ -112,7 +112,7 @@ describe('AuthApiService', () => {
 
     describe('findOne', () => {
         it('should return an success', async () => {
-            const result: AuthApiDocument = await authApiService.findOne({
+            const result: AuthApi = await authApiService.findOne({
                 _id: authApi._id,
             });
             jest.spyOn(authApiService, 'findOne').mockImplementation(
@@ -127,10 +127,11 @@ describe('AuthApiService', () => {
 
     describe('findOneByKey', () => {
         it('should return an success', async () => {
-            const findOne: AuthApiDocument = await authApiService.findOneById(
+            const findOne: AuthApi = await authApiService.findOneById(
                 `${authApi._id}`
             );
-            const result: AuthApiDocument = await authApiService.findOneByKey(
+
+            const result: AuthApi = await authApiService.findOneByKey(
                 findOne.key
             );
             jest.spyOn(authApiService, 'findOneByKey').mockImplementation(
@@ -143,7 +144,7 @@ describe('AuthApiService', () => {
 
     describe('inactive', () => {
         it('should return an success', async () => {
-            const result: AuthApiDocument = await authApiService.inactive(
+            const result: AuthApi = await authApiService.inactive(
                 `${authApi._id}`
             );
             jest.spyOn(authApiService, 'inactive').mockImplementation(
@@ -158,7 +159,7 @@ describe('AuthApiService', () => {
 
     describe('active', () => {
         it('should return an success', async () => {
-            const result: AuthApiDocument = await authApiService.active(
+            const result: AuthApi = await authApiService.active(
                 `${authApi._id}`
             );
             jest.spyOn(authApiService, 'active').mockImplementation(
@@ -171,7 +172,7 @@ describe('AuthApiService', () => {
 
     describe('findAll', () => {
         it('should return an success', async () => {
-            const result: AuthApiDocument[] = await authApiService.findAll(
+            const result: AuthApi[] = await authApiService.findAll(
                 {},
                 { limit: 1, skip: 1 }
             );
@@ -185,7 +186,7 @@ describe('AuthApiService', () => {
         });
 
         it('should return an success with limit and offset', async () => {
-            const result: AuthApiDocument[] = await authApiService.findAll(
+            const result: AuthApi[] = await authApiService.findAll(
                 {},
                 { limit: 1, skip: 1 }
             );
@@ -199,7 +200,7 @@ describe('AuthApiService', () => {
         });
 
         it('should return an success with limit, offset, and sort', async () => {
-            const result: AuthApiDocument[] = await authApiService.findAll(
+            const result: AuthApi[] = await authApiService.findAll(
                 {},
                 { limit: 1, skip: 1, sort: { name: 1 } }
             );
@@ -218,7 +219,7 @@ describe('AuthApiService', () => {
 
     describe('updateOneById', () => {
         it('should return an success', async () => {
-            const result: AuthApiDocument = await authApiService.updateOneById(
+            const result: AuthApi = await authApiService.updateOneById(
                 `${authApi._id}`,
                 {
                     name: faker.random.alphaNumeric(10),
@@ -255,7 +256,7 @@ describe('AuthApiService', () => {
 
     describe('deleteOneById', () => {
         it('should return an success', async () => {
-            const result: AuthApiDocument = await authApiService.deleteOneById(
+            const result: AuthApi = await authApiService.deleteOneById(
                 `${authApi._id}`
             );
             jest.spyOn(authApiService, 'deleteOneById').mockImplementation(
@@ -270,7 +271,7 @@ describe('AuthApiService', () => {
 
     describe('deleteOne', () => {
         it('should return an success', async () => {
-            const result: AuthApiDocument = await authApiService.deleteOne({
+            const result: AuthApi = await authApiService.deleteOne({
                 _id: `${authApi._id}`,
             });
             jest.spyOn(authApiService, 'deleteOne').mockImplementation(
@@ -348,7 +349,7 @@ describe('AuthApiService', () => {
 
     describe('validateHashApiKey', () => {
         it('should return an success', async () => {
-            const findOne: AuthApiDocument = await authApiService.findOneById(
+            const findOne: AuthApi = await authApiService.findOneById(
                 `${authApi._id}`
             );
             const hashFormRequest = findOne.hash;
@@ -369,7 +370,7 @@ describe('AuthApiService', () => {
         });
 
         it('should return an failed', async () => {
-            const findOne: AuthApiDocument = await authApiService.findOneById(
+            const findOne: AuthApi = await authApiService.findOneById(
                 `${authApi._id}`
             );
             const hashFormRequest = findOne.hash;
@@ -393,7 +394,7 @@ describe('AuthApiService', () => {
 
     describe('decryptApiKey', () => {
         it('should return an success', async () => {
-            const findOne: AuthApiDocument = await authApiService.findOneById(
+            const findOne: AuthApi = await authApiService.findOneById(
                 `${authApi._id}`
             );
             const timestamp = new Date().valueOf();
@@ -434,9 +435,10 @@ describe('AuthApiService', () => {
 
     describe('encryptApiKey', () => {
         it('should return an success', async () => {
-            const findOne: AuthApiDocument = await authApiService.findOneById(
+            const findOne: AuthApi = await authApiService.findOneById(
                 `${authApi._id}`
             );
+
             const timestamp = new Date().valueOf();
             const apiHash = await authApiService.createHashApiKey(
                 findOne.key,
@@ -536,7 +538,7 @@ describe('AuthApiService', () => {
     afterEach(async () => {
         try {
             await authApiService.deleteOne({
-                _id: new DatabasePrimaryKey(authApi._id),
+                _id: DatabasePrimaryKey(`${authApi._id}`),
             });
             await authApiBulkService.deleteMany({
                 name: authApiName,

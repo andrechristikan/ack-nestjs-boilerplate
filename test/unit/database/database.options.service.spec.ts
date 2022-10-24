@@ -1,6 +1,6 @@
 import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { DatabaseOptionsModule } from 'src/common/database/database.module';
+import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
 import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
 import { HelperModule } from 'src/common/helper/helper.module';
 import configs from 'src/configs';
@@ -65,6 +65,28 @@ describe('DatabaseOptionsService', () => {
             expect(databaseOptionsService.createMongooseOptions()).toBe(
                 options
             );
+        });
+    });
+
+    describe('createTypeOrmOptions', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(
+                databaseOptionsService,
+                'createTypeOrmOptions'
+            );
+
+            databaseOptionsService.createTypeOrmOptions();
+            expect(test).toHaveBeenCalled();
+        });
+
+        it('should be success', async () => {
+            const options = databaseOptionsService.createTypeOrmOptions();
+            jest.spyOn(
+                databaseOptionsService,
+                'createTypeOrmOptions'
+            ).mockImplementation(() => options);
+
+            expect(databaseOptionsService.createTypeOrmOptions()).toBe(options);
         });
     });
 });

@@ -11,17 +11,19 @@ import {
     ENUM_USER_STATUS_CODE_ERROR,
     ENUM_USER_STATUS_CODE_SUCCESS,
 } from 'src/modules/user/constants/user.status-code.constant';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
 import { User } from 'src/modules/user/schemas/user.schema';
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { RoleService } from 'src/modules/role/services/role.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { Role } from 'src/modules/role/schemas/role.schema';
 import { ENUM_AUTH_ACCESS_FOR_DEFAULT } from 'src/common/auth/constants/auth.enum.constant';
+import { RoleService } from 'src/modules/role/services/role.service';
+import { Role } from 'src/modules/role/schemas/role.schema';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
+import { RoleModule } from 'src/modules/role/role.module';
+import { PermissionModule } from 'src/modules/permission/permission.module';
 
 describe('E2E User Login', () => {
     let app: INestApplication;
@@ -49,6 +51,8 @@ describe('E2E User Login', () => {
         const modRef = await Test.createTestingModule({
             imports: [
                 CommonModule,
+                RoleModule,
+                PermissionModule,
                 RoutesModule,
                 RouterModule.register([
                     {

@@ -15,8 +15,8 @@ import { ENUM_MESSAGE_LANGUAGE } from './message/constants/message.enum.constant
 import configs from 'src/configs';
 import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum.constant';
 import { AppLanguage } from 'src/app/constants/app.constant';
-import { DatabaseConnectionModule } from 'src/common/database/database.connection.module';
 import { SettingModule } from 'src/common/setting/setting.module';
+import { DatabaseConnectionModule } from 'src/common/database/database.module';
 
 @Module({
     controllers: [],

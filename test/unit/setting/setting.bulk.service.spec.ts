@@ -1,6 +1,6 @@
 import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { DatabaseModule } from 'src/common/database/database.module';
+import { DatabaseConnectionModule } from 'src/common/database/database.module';
 import { HelperModule } from 'src/common/helper/helper.module';
 import { SettingBulkService } from 'src/common/setting/services/setting.bulk.service';
 import { SettingModule } from 'src/common/setting/setting.module';
@@ -12,7 +12,7 @@ describe('SettingBulkService', () => {
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
-                DatabaseModule,
+                DatabaseConnectionModule.register(),
                 ConfigModule.forRoot({
                     load: configs,
                     isGlobal: true,

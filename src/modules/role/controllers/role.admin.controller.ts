@@ -78,10 +78,10 @@ export class RoleAdminController {
     @ResponsePaging('role.list', {
         classSerialization: RoleListSerialization,
     })
-    @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.ROLE_READ)
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
+    // @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.ROLE_READ)
+    // @AuthApiKey()
+    // @RequestValidateUserAgent()
+    // @RequestValidateTimestamp()
     @Get('/list')
     async list(
         @Query()

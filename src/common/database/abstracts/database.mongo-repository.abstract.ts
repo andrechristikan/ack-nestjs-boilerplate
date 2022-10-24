@@ -149,7 +149,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         _id: string,
         options?: IDatabaseFindOneOptions
     ): Promise<Y> {
-        const findOne = this._repository.findById(_id);
+        const findOne = this._repository.findById(DatabasePrimaryKey(_id));
 
         if (options && options.withDeleted) {
             findOne.where('deletedAt').exists(true);
@@ -276,8 +276,10 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             _id: {
                 $nin:
                     options && options.excludeId
-                        ? options.excludeId
-                        : undefined,
+                        ? options.excludeId.map((val) =>
+                              DatabasePrimaryKey(val)
+                          )
+                        : [],
             },
         });
 
@@ -347,7 +349,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         options?: IDatabaseOptions
     ): Promise<T> {
         const update = this._repository.findByIdAndUpdate(
-            _id,
+            DatabasePrimaryKey(_id),
             {
                 $set: data,
             },
@@ -425,7 +427,10 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     }
 
     async deleteOneById(_id: string, options?: IDatabaseOptions): Promise<T> {
-        const del = this._repository.findByIdAndDelete(_id, { new: true });
+        const del = this._repository.findByIdAndDelete(
+            DatabasePrimaryKey(_id),
+            { new: true }
+        );
 
         if (options && options.withDeleted) {
             del.where('deletedAt').exists(true);
@@ -450,7 +455,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     ): Promise<T> {
         const del = this._repository
             .findByIdAndUpdate(
-                _id,
+                DatabasePrimaryKey(_id),
                 {
                     $set: { deletedAt: new Date() },
                 },
@@ -499,7 +504,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     async restore(_id: string, options?: IDatabaseRestoreOptions): Promise<T> {
         const rest = this._repository
             .findByIdAndUpdate(
-                _id,
+                DatabasePrimaryKey(_id),
                 {
                     $set: { deletedAt: undefined },
                 },

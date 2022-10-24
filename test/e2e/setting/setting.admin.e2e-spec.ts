@@ -2,22 +2,23 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { RouterModule } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { useContainer } from 'class-validator';
-import { connection, Types } from 'mongoose';
+import { connection } from 'mongoose';
 import {
     E2E_SETTING_ADMIN_PAYLOAD_TEST,
     E2E_SETTING_ADMIN_UPDATE_URL,
 } from './setting.constant';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
-import { SettingService } from 'src/common/setting/services/setting.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { Setting } from 'src/common/setting/schemas/setting.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/common/setting/constants/setting.status-code.constant';
+import { SettingService } from 'src/common/setting/services/setting.service';
+import { Setting } from 'src/common/setting/schemas/setting.schema';
+import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
 
 describe('E2E Setting Admin', () => {
     let app: INestApplication;
@@ -86,7 +87,7 @@ describe('E2E Setting Admin', () => {
             .put(
                 E2E_SETTING_ADMIN_UPDATE_URL.replace(
                     ':_id',
-                    `${new DatabasePrimaryKey()}`
+                    `${DatabasePrimaryKey()}`
                 )
             )
             .set('user-agent', faker.internet.userAgent())

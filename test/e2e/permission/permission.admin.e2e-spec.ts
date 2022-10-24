@@ -10,19 +10,20 @@ import {
     E2E_PERMISSION_ADMIN_UPDATE_URL,
     E2E_PERMISSION_PAYLOAD_TEST,
 } from './permission.constant';
-import { Types, connection } from 'mongoose';
+import { connection } from 'mongoose';
 import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
 import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/constants/permission.status-code.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
+import { Permission } from 'src/modules/permission/schemas/permission.schema';
+import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
 
 describe('E2E Permission Admin', () => {
     let app: INestApplication;
@@ -32,7 +33,7 @@ describe('E2E Permission Admin', () => {
     let authApiService: AuthApiService;
 
     let accessToken: string;
-    let permission: PermissionDocument;
+    let permission: Permission;
 
     const updateData: PermissionUpdateDto = {
         name: 'update role',
@@ -112,7 +113,7 @@ describe('E2E Permission Admin', () => {
             .get(
                 E2E_PERMISSION_ADMIN_GET_URL.replace(
                     ':_id',
-                    `${new DatabasePrimaryKey()}`
+                    `${DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -147,7 +148,7 @@ describe('E2E Permission Admin', () => {
             .put(
                 E2E_PERMISSION_ADMIN_UPDATE_URL.replace(
                     ':_id',
-                    `${new DatabasePrimaryKey()}`
+                    `${DatabasePrimaryKey()}`
                 )
             )
             .send(updateData)
@@ -207,7 +208,7 @@ describe('E2E Permission Admin', () => {
             .patch(
                 E2E_PERMISSION_ADMIN_ACTIVE_URL.replace(
                     ':_id',
-                    `${new DatabasePrimaryKey()}`
+                    `${DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -246,7 +247,7 @@ describe('E2E Permission Admin', () => {
             .patch(
                 E2E_PERMISSION_ADMIN_INACTIVE_URL.replace(
                     ':_id',
-                    `${new DatabasePrimaryKey()}`
+                    `${DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -320,8 +321,8 @@ describe('E2E Permission Admin', () => {
 
     afterAll(async () => {
         try {
-            await permission.deleteOne({
-                _id: new DatabasePrimaryKey(permission._id),
+            await permissionService.deleteOne({
+                _id: DatabasePrimaryKey(permission._id),
             });
         } catch (e) {
             console.error(e);

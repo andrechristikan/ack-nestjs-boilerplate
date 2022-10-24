@@ -52,7 +52,7 @@ export interface IDatabaseCreateOptions
 // exist
 
 export interface IDatabaseExistOptions extends IDatabaseOptions {
-    excludeId?: string;
+    excludeId?: string[];
 }
 
 // soft delete

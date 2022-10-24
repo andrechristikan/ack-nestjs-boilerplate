@@ -2,13 +2,13 @@ import { Test } from '@nestjs/testing';
 import { AuthApiBulkService } from 'src/common/auth/services/auth.api.bulk.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
 import { faker } from '@faker-js/faker';
-import { Types } from 'mongoose';
 import { IAuthApi } from 'src/common/auth/interfaces/auth.interface';
 import { AuthApiModule } from 'src/common/auth/auth.module';
-import { DatabaseModule } from 'src/common/database/database.module';
 import configs from 'src/configs';
 import { ConfigModule } from '@nestjs/config';
 import { HelperModule } from 'src/common/helper/helper.module';
+import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
+import { DatabaseConnectionModule } from 'src/common/database/database.module';
 
 describe('AuthApiBulkService', () => {
     let authApiBulkService: AuthApiBulkService;
@@ -21,7 +21,7 @@ describe('AuthApiBulkService', () => {
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
-                DatabaseModule,
+                DatabaseConnectionModule.register(),
                 ConfigModule.forRoot({
                     load: configs,
                     isGlobal: true,
@@ -58,7 +58,7 @@ describe('AuthApiBulkService', () => {
 
             expect(
                 await authApiBulkService.deleteMany({
-                    _id: new DatabasePrimaryKey(authApi._id),
+                    _id: DatabasePrimaryKey(`${authApi._id}`),
                 })
             ).toBe(result);
         });
@@ -67,7 +67,7 @@ describe('AuthApiBulkService', () => {
     afterEach(async () => {
         try {
             await authApiBulkService.deleteMany({
-                _id: new DatabasePrimaryKey(authApi._id),
+                _id: DatabasePrimaryKey(`${authApi._id}`),
             });
             await authApiService.deleteOne({
                 name: authApiName,

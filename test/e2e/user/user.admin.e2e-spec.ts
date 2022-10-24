@@ -2,7 +2,7 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
-import { Types, connection } from 'mongoose';
+import { connection } from 'mongoose';
 import {
     E2E_USER_ADMIN_ACTIVE_URL,
     E2E_USER_ADMIN_CREATE_URL,
@@ -16,19 +16,20 @@ import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { RoleService } from 'src/modules/role/services/role.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
 import { User } from 'src/modules/user/schemas/user.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
-import { Role } from 'src/modules/role/schemas/role.schema';
 import { plainToInstance } from 'class-transformer';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { IUser } from 'src/modules/user/interfaces/user.interface';
+import { RoleService } from 'src/modules/role/services/role.service';
+import { Role } from 'src/modules/role/schemas/role.schema';
+import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 
 describe('E2E User Admin', () => {
     let app: INestApplication;
@@ -167,7 +168,7 @@ describe('E2E User Admin', () => {
     it(`POST ${E2E_USER_ADMIN_CREATE_URL} Create, Role Not Found`, async () => {
         const req = {
             ...userData,
-            role: `${new DatabasePrimaryKey()}`,
+            role: `${DatabasePrimaryKey()}`,
             password,
         };
 
@@ -272,7 +273,7 @@ describe('E2E User Admin', () => {
             .get(
                 E2E_USER_ADMIN_GET_URL.replace(
                     ':_id',
-                    `${new DatabasePrimaryKey()}`
+                    `${DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -328,7 +329,7 @@ describe('E2E User Admin', () => {
             .put(
                 E2E_USER_ADMIN_UPDATE_URL.replace(
                     ':_id',
-                    `${new DatabasePrimaryKey()}`
+                    `${DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -373,7 +374,7 @@ describe('E2E User Admin', () => {
             .patch(
                 E2E_USER_ADMIN_INACTIVE_URL.replace(
                     ':_id',
-                    `${new DatabasePrimaryKey()}`
+                    `${DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -427,7 +428,7 @@ describe('E2E User Admin', () => {
             .patch(
                 E2E_USER_ADMIN_ACTIVE_URL.replace(
                     ':_id',
-                    `${new DatabasePrimaryKey()}`
+                    `${DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -481,7 +482,7 @@ describe('E2E User Admin', () => {
             .delete(
                 E2E_USER_ADMIN_DELETE_URL.replace(
                     ':_id',
-                    `${new DatabasePrimaryKey()}`
+                    `${DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
