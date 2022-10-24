@@ -12,7 +12,7 @@ import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.upda
 import { IPermissionService } from 'src/modules/permission/interfaces/permission.service.interface';
 import { PermissionRepository } from 'src/modules/permission/repositories/permission.repository';
 import {
-    PermissionDocument,
+    Permission,
     PermissionEntity,
 } from 'src/modules/permission/schemas/permission.schema';
 
@@ -23,31 +23,22 @@ export class PermissionService implements IPermissionService {
     async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<PermissionDocument[]> {
-        return this.permissionRepository.findAll<PermissionDocument>(
-            find,
-            options
-        );
+    ): Promise<Permission[]> {
+        return this.permissionRepository.findAll<Permission>(find, options);
     }
 
     async findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<PermissionDocument> {
-        return this.permissionRepository.findOneById<PermissionDocument>(
-            _id,
-            options
-        );
+    ): Promise<Permission> {
+        return this.permissionRepository.findOneById<Permission>(_id, options);
     }
 
     async findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<PermissionDocument> {
-        return this.permissionRepository.findOne<PermissionDocument>(
-            find,
-            options
-        );
+    ): Promise<Permission> {
+        return this.permissionRepository.findOne<Permission>(find, options);
     }
 
     async getTotal(
@@ -60,18 +51,18 @@ export class PermissionService implements IPermissionService {
     async deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<PermissionDocument> {
+    ): Promise<Permission> {
         return this.permissionRepository.deleteOne(find, options);
     }
 
     async create(
         data: PermissionCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<PermissionDocument> {
-        const create: PermissionEntity = {
-            ...data,
-            isActive: true,
-        };
+    ): Promise<Permission> {
+        const create: PermissionEntity = new PermissionEntity();
+        create.name = data.name;
+        create.code = data.code;
+        create.description = data.description;
 
         return this.permissionRepository.create<PermissionEntity>(
             create,
@@ -83,7 +74,7 @@ export class PermissionService implements IPermissionService {
         _id: string,
         data: PermissionUpdateDto,
         options?: IDatabaseOptions
-    ): Promise<PermissionDocument> {
+    ): Promise<Permission> {
         return this.permissionRepository.updateOneById<PermissionUpdateDto>(
             _id,
             data,
@@ -94,7 +85,7 @@ export class PermissionService implements IPermissionService {
     async inactive(
         _id: string,
         options?: IDatabaseOptions
-    ): Promise<PermissionDocument> {
+    ): Promise<Permission> {
         const update: PermissionActiveDto = {
             isActive: false,
         };
@@ -106,10 +97,7 @@ export class PermissionService implements IPermissionService {
         );
     }
 
-    async active(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<PermissionDocument> {
+    async active(_id: string, options?: IDatabaseOptions): Promise<Permission> {
         const update: PermissionActiveDto = {
             isActive: true,
         };

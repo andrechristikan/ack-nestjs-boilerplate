@@ -4,9 +4,9 @@ import {
     ExecutionContext,
     BadRequestException,
 } from '@nestjs/common';
-import { Types } from 'mongoose';
+import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { UserDocument } from 'src/modules/user/schemas/user.schema';
+import { User } from 'src/modules/user/schemas/user.schema';
 import { UserService } from 'src/modules/user/services/user.service';
 
 @Injectable()
@@ -15,8 +15,8 @@ export class RoleUsedGuard implements CanActivate {
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const { __role } = context.switchToHttp().getRequest();
-        const check: UserDocument = await this.userService.findOne({
-            role: new Types.ObjectId(__role._id),
+        const check: User = await this.userService.findOne({
+            role: DatabasePrimaryKey(__role._id),
         });
 
         if (check) {

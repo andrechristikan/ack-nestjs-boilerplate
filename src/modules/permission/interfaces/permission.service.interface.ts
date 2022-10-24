@@ -7,23 +7,23 @@ import {
 } from 'src/common/database/interfaces/database.interface';
 import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
-import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
+import { Permission } from 'src/modules/permission/schemas/permission.schema';
 
 export interface IPermissionService {
     findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<PermissionDocument[]>;
+    ): Promise<Permission[]>;
 
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<PermissionDocument>;
+    ): Promise<Permission>;
 
     findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<PermissionDocument>;
+    ): Promise<Permission>;
 
     getTotal(
         find?: Record<string, any>,
@@ -33,26 +33,20 @@ export interface IPermissionService {
     deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<PermissionDocument>;
+    ): Promise<Permission>;
 
     create(
         data: PermissionCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<PermissionDocument>;
+    ): Promise<Permission>;
 
     update(
         _id: string,
         data: PermissionUpdateDto,
         options?: IDatabaseOptions
-    ): Promise<PermissionDocument>;
+    ): Promise<Permission>;
 
-    inactive(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<PermissionDocument>;
+    inactive(_id: string, options?: IDatabaseOptions): Promise<Permission>;
 
-    active(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<PermissionDocument>;
+    active(_id: string, options?: IDatabaseOptions): Promise<Permission>;
 }

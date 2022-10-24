@@ -14,13 +14,13 @@ import { AuthService } from 'src/common/auth/services/auth.service';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { UserDocument } from 'src/modules/user/schemas/user.schema';
+import { User } from 'src/modules/user/schemas/user.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
-import { RoleDocument } from 'src/modules/role/schemas/role.schema';
+import { Role } from 'src/modules/role/schemas/role.schema';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
-import { IUserDocument } from 'src/modules/user/interfaces/user.interface';
+import { IUser } from 'src/modules/user/interfaces/user.interface';
 
 describe('E2E User', () => {
     let app: INestApplication;
@@ -30,7 +30,7 @@ describe('E2E User', () => {
     let helperDateService: HelperDateService;
     let authApiService: AuthApiService;
 
-    let user: UserDocument;
+    let user: User;
 
     let accessToken: string;
     let accessTokenNotFound: string;
@@ -61,7 +61,7 @@ describe('E2E User', () => {
         helperDateService = app.get(HelperDateService);
         authApiService = app.get(AuthApiService);
 
-        const role: RoleDocument = await roleService.findOne({
+        const role: Role = await roleService.findOne({
             name: 'user',
         });
 
@@ -80,18 +80,15 @@ describe('E2E User', () => {
             role: `${role._id}`,
         });
 
-        const userPopulate = await userService.findOneById<IUserDocument>(
-            user._id,
-            {
-                populate: true,
-            }
-        );
+        const userPopulate = await userService.findOneById<IUser>(user._id, {
+            populate: true,
+        });
 
         const map = await userService.payloadSerialization(userPopulate);
         const payload = await authService.createPayloadAccessToken(map, false);
         const payloadNotFound = {
             ...payload,
-            _id: `${new Types.ObjectId()}`,
+            _id: `${new DatabasePrimaryKey()}`,
         };
 
         const payloadHashed = await authService.encryptAccessToken(payload);

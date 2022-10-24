@@ -1,11 +1,24 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Types, Document } from 'mongoose';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
+import {
+    DatabaseEntity,
+    DatabasePropForeign,
+    DatabaseProp,
+    DatabaseHookBefore,
+    DatabaseSchema,
+    DatabasePropPrimary,
+} from 'src/common/database/decorators/database.decorator';
+import {
+    DatabasePrimaryKeyType,
+    DatabaseSchemaType,
+} from 'src/common/database/interfaces/database.interface';
 import { RoleEntity } from 'src/modules/role/schemas/role.schema';
 
-@Schema({ timestamps: true, versionKey: false })
+@DatabaseEntity({ timestamps: true, versionKey: false })
 export class UserEntity {
-    @Prop({
+    @DatabasePropPrimary()
+    _id?: DatabasePrimaryKeyType;
+
+    @DatabaseProp({
         required: true,
         index: true,
         lowercase: true,
@@ -13,7 +26,7 @@ export class UserEntity {
     })
     firstName: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         index: true,
         lowercase: true,
@@ -21,7 +34,7 @@ export class UserEntity {
     })
     lastName: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         index: true,
         unique: true,
@@ -29,7 +42,7 @@ export class UserEntity {
     })
     mobileNumber: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         index: true,
         unique: true,
@@ -38,38 +51,37 @@ export class UserEntity {
     })
     email: string;
 
-    @Prop({
+    @DatabasePropForeign({
         required: true,
-        type: Types.ObjectId,
         ref: RoleEntity.name,
         index: true,
     })
-    role: Types.ObjectId;
+    role: DatabasePrimaryKeyType;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
     })
     password: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         index: true,
     })
     passwordExpired: Date;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
     })
     salt: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         default: true,
         index: true,
     })
     isActive: boolean;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
         _id: false,
         type: {
@@ -82,18 +94,16 @@ export class UserEntity {
         },
     })
     photo?: AwsS3Serialization;
+
+    @DatabaseHookBefore()
+    beforeHook() {
+        this.email = this.email.toLowerCase();
+        this.firstName = this.firstName.toLowerCase();
+        this.lastName = this.lastName.toLowerCase();
+    }
 }
 
 export const UserDatabaseName = 'users';
-export const UserSchema = SchemaFactory.createForClass(UserEntity);
 
-export type UserDocument = UserEntity & Document;
-
-// Hooks
-UserSchema.pre<UserDocument>('save', function (next) {
-    this.email = this.email.toLowerCase();
-    this.firstName = this.firstName.toLowerCase();
-    this.lastName = this.lastName.toLowerCase();
-
-    next();
-});
+export const User = DatabaseSchema(UserEntity);
+export type User = DatabaseSchemaType<UserEntity>;

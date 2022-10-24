@@ -1,4 +1,5 @@
-import { Model, PipelineStage, PopulateOptions, Types } from 'mongoose';
+import { Model, PipelineStage, PopulateOptions } from 'mongoose';
+import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,
@@ -330,7 +331,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     async create<N>(data: N, options?: IDatabaseCreateOptions): Promise<T> {
         const dataCreate: Record<string, any> = data;
         if (options && options._id) {
-            dataCreate._id = new Types.ObjectId(options._id);
+            dataCreate._id = DatabasePrimaryKey(options._id);
         }
 
         const create = await this._repository.create([dataCreate], {

@@ -1,5 +1,5 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
+import { Setting } from 'src/common/setting/schemas/setting.schema';
 import { SettingService } from 'src/common/setting/services/setting.service';
 
 @Injectable()
@@ -11,9 +11,7 @@ export class SettingPutToRequestGuard implements CanActivate {
         const { params } = request;
         const { setting } = params;
 
-        const check: SettingDocument = await this.settingService.findOneById(
-            setting
-        );
+        const check: Setting = await this.settingService.findOneById(setting);
         request.__setting = check;
 
         return true;
@@ -29,7 +27,7 @@ export class SettingPutToRequestByNameGuard implements CanActivate {
         const { params } = request;
         const { settingName } = params;
 
-        const check: SettingDocument = await this.settingService.findOneByName(
+        const check: Setting = await this.settingService.findOneByName(
             settingName
         );
         request.__setting = check;

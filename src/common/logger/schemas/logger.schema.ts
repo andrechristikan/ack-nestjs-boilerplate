@@ -1,94 +1,106 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Types } from 'mongoose';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { AuthApiEntity } from 'src/common/auth/schemas/auth.api.schema';
+import {
+    DatabaseEntity,
+    DatabasePropForeign,
+    DatabaseProp,
+    DatabasePropPrimary,
+    DatabaseSchema,
+} from 'src/common/database/decorators/database.decorator';
+import {
+    DatabasePrimaryKeyType,
+    DatabaseSchemaType,
+} from 'src/common/database/interfaces/database.interface';
 import {
     ENUM_LOGGER_ACTION,
     ENUM_LOGGER_LEVEL,
 } from 'src/common/logger/constants/logger.enum.constant';
 import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
 
-@Schema({ timestamps: true, versionKey: false })
+@DatabaseEntity({ timestamps: true, versionKey: false })
 export class LoggerEntity {
-    @Prop({
+    @DatabasePropPrimary()
+    _id?: DatabasePrimaryKeyType;
+
+    @DatabaseProp({
         required: true,
         enum: ENUM_LOGGER_LEVEL,
     })
     level: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         enum: ENUM_LOGGER_ACTION,
     })
     action: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         enum: ENUM_REQUEST_METHOD,
     })
     method: string;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
     })
     requestId?: string;
 
-    @Prop({
+    @DatabasePropForeign({
         required: false,
     })
-    user?: Types.ObjectId;
+    user?: DatabasePrimaryKeyType;
 
-    @Prop({
+    @DatabasePropForeign({
         required: false,
     })
-    role?: Types.ObjectId;
+    role?: DatabasePrimaryKeyType;
 
-    @Prop({
+    @DatabasePropForeign({
         required: false,
         ref: AuthApiEntity.name,
     })
-    apiKey?: Types.ObjectId;
+    apiKey?: DatabasePrimaryKeyType;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         default: true,
     })
     anonymous: boolean;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
         enum: ENUM_AUTH_ACCESS_FOR,
     })
     accessFor?: ENUM_AUTH_ACCESS_FOR;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
     })
     description: string;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
         type: Object,
     })
     params?: Record<string, any>;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
         type: Object,
     })
     bodies?: Record<string, any>;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
     })
     statusCode?: number;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
     })
     path?: string;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
         default: [],
     })
@@ -96,6 +108,6 @@ export class LoggerEntity {
 }
 
 export const LoggerDatabaseName = 'loggers';
-export const LoggerSchema = SchemaFactory.createForClass(LoggerEntity);
 
-export type LoggerDocument = LoggerEntity & Document;
+export const Logger = DatabaseSchema(LoggerEntity);
+export type Logger = DatabaseSchemaType<LoggerEntity>;

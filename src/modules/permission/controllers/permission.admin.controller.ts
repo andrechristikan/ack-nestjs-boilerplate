@@ -44,7 +44,7 @@ import {
 import { PermissionListDto } from 'src/modules/permission/dtos/permission.list.dto';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
 import { PermissionRequestDto } from 'src/modules/permission/dtos/permissions.request.dto';
-import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
+import { Permission } from 'src/modules/permission/schemas/permission.schema';
 import { PermissionGetSerialization } from 'src/modules/permission/serializations/permission.get.serialization';
 import { PermissionListSerialization } from 'src/modules/permission/serializations/permission.list.serialization';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
@@ -89,12 +89,14 @@ export class PermissionAdminController {
             ...search,
         };
 
-        const permissions: PermissionDocument[] =
-            await this.permissionService.findAll(find, {
+        const permissions: Permission[] = await this.permissionService.findAll(
+            find,
+            {
                 skip: skip,
                 limit: perPage,
                 sort,
-            });
+            }
+        );
 
         const totalData: number = await this.permissionService.getTotal(find);
         const totalPage: number = await this.paginationService.totalPage(
@@ -124,9 +126,7 @@ export class PermissionAdminController {
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('/get/:permission')
-    async get(
-        @GetPermission() permission: PermissionDocument
-    ): Promise<IResponse> {
+    async get(@GetPermission() permission: Permission): Promise<IResponse> {
         return permission;
     }
 
@@ -145,7 +145,7 @@ export class PermissionAdminController {
     @RequestValidateTimestamp()
     @Put('/update/:permission')
     async update(
-        @GetPermission() permission: PermissionDocument,
+        @GetPermission() permission: Permission,
         @Body() body: PermissionUpdateDto
     ): Promise<IResponse> {
         try {
@@ -175,9 +175,7 @@ export class PermissionAdminController {
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Patch('/update/:permission/inactive')
-    async inactive(
-        @GetPermission() permission: PermissionDocument
-    ): Promise<void> {
+    async inactive(@GetPermission() permission: Permission): Promise<void> {
         try {
             await this.permissionService.inactive(permission._id);
         } catch (err: any) {
@@ -203,9 +201,7 @@ export class PermissionAdminController {
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Patch('/update/:permission/active')
-    async active(
-        @GetPermission() permission: PermissionDocument
-    ): Promise<void> {
+    async active(@GetPermission() permission: Permission): Promise<void> {
         try {
             await this.permissionService.active(permission._id);
         } catch (err: any) {

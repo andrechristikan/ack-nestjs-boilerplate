@@ -1,11 +1,11 @@
 import { Global, Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { DatabaseModule } from 'src/common/database/database.module';
 import { LoggerRepository } from 'src/common/logger/repositories/logger.repository';
 import {
+    Logger,
     LoggerDatabaseName,
     LoggerEntity,
-    LoggerSchema,
 } from './schemas/logger.schema';
 import { LoggerService } from './services/logger.service';
 
@@ -14,16 +14,12 @@ import { LoggerService } from './services/logger.service';
     providers: [LoggerService, LoggerRepository],
     exports: [LoggerService],
     imports: [
-        MongooseModule.forFeature(
-            [
-                {
-                    name: LoggerEntity.name,
-                    schema: LoggerSchema,
-                    collection: LoggerDatabaseName,
-                },
-            ],
-            DATABASE_CONNECTION_NAME
-        ),
+        DatabaseModule.register({
+            name: LoggerEntity.name,
+            schema: Logger,
+            collection: LoggerDatabaseName,
+            connectionName: DATABASE_CONNECTION_NAME,
+        }),
     ],
 })
 export class LoggerModule {}

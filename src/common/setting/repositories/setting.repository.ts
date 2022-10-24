@@ -1,21 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { DatabaseMongoRepositoryAbstract } from 'src/common/database/abstracts/database.mongo-repository.abstract';
-import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+import { DatabaseModel } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseRepositoryAbstract } from 'src/common/database/interfaces/database.repository.interface';
 import {
-    SettingDocument,
+    Setting,
     SettingEntity,
 } from 'src/common/setting/schemas/setting.schema';
 
 @Injectable()
 export class SettingRepository
-    extends DatabaseMongoRepositoryAbstract<SettingDocument>
-    implements IDatabaseRepositoryAbstract<SettingDocument>
+    extends DatabaseMongoRepositoryAbstract<Setting>
+    implements IDatabaseRepositoryAbstract<Setting>
 {
     constructor(
-        @DatabaseEntity(SettingEntity.name)
-        private readonly settingModel: Model<SettingDocument>
+        @DatabaseModel(SettingEntity.name)
+        private readonly settingModel: Model<Setting>
     ) {
         super(settingModel);
     }

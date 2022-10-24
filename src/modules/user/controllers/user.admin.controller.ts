@@ -68,7 +68,7 @@ import { UserRequestDto } from 'src/modules/user/dtos/user.request.dto';
 import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
 import {
     IUserCheckExist,
-    IUserDocument,
+    IUser,
 } from 'src/modules/user/interfaces/user.interface';
 import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
 import { UserImportSerialization } from 'src/modules/user/serializations/user.import.serialization';
@@ -113,7 +113,7 @@ export class UserAdminController {
             ...search,
         };
 
-        const users: IUserDocument[] = await this.userService.findAll(find, {
+        const users: IUser[] = await this.userService.findAll(find, {
             limit: perPage,
             skip: skip,
             sort,
@@ -146,7 +146,7 @@ export class UserAdminController {
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('get/:user')
-    async get(@GetUser() user: IUserDocument): Promise<IResponse> {
+    async get(@GetUser() user: IUser): Promise<IResponse> {
         return user;
     }
 
@@ -237,7 +237,7 @@ export class UserAdminController {
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Delete('/delete/:user')
-    async delete(@GetUser() user: IUserDocument): Promise<void> {
+    async delete(@GetUser() user: IUser): Promise<void> {
         try {
             await this.userService.deleteOneById(user._id);
         } catch (err: any) {
@@ -266,7 +266,7 @@ export class UserAdminController {
     @RequestValidateTimestamp()
     @Put('/update/:user')
     async update(
-        @GetUser() user: IUserDocument,
+        @GetUser() user: IUser,
         @Body()
         body: UserUpdateDto
     ): Promise<IResponse> {
@@ -297,7 +297,7 @@ export class UserAdminController {
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Patch('/update/:user/inactive')
-    async inactive(@GetUser() user: IUserDocument): Promise<void> {
+    async inactive(@GetUser() user: IUser): Promise<void> {
         try {
             await this.userService.inactive(user._id);
         } catch (err: any) {
@@ -323,7 +323,7 @@ export class UserAdminController {
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Patch('/update/:user/active')
-    async active(@GetUser() user: IUserDocument): Promise<void> {
+    async active(@GetUser() user: IUser): Promise<void> {
         try {
             await this.userService.active(user._id);
         } catch (err: any) {

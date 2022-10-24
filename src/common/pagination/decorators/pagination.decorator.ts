@@ -29,7 +29,7 @@ import { RequestAddDatePipe } from 'src/common/request/pipes/request.add-date.pi
 import { MinGreaterThan } from 'src/common/request/validations/request.min-greater-than.validation';
 import { Skip } from 'src/common/request/validations/request.skip.validation';
 
-export function PaginationSearch(availableSearch: string[]): any {
+export function PaginationSearch(availableSearch: string[]): PropertyDecorator {
     return applyDecorators(
         Expose(),
         IsOptional(),
@@ -50,14 +50,16 @@ export function PaginationSearch(availableSearch: string[]): any {
     );
 }
 
-export function PaginationAvailableSearch(availableSearch: string[]): any {
+export function PaginationAvailableSearch(
+    availableSearch: string[]
+): PropertyDecorator {
     return applyDecorators(
         Expose(),
         Transform(() => availableSearch)
     );
 }
 
-export function PaginationPage(page = PAGINATION_PAGE): any {
+export function PaginationPage(page = PAGINATION_PAGE): PropertyDecorator {
     return applyDecorators(
         Expose(),
         Type(() => Number),
@@ -71,7 +73,9 @@ export function PaginationPage(page = PAGINATION_PAGE): any {
     );
 }
 
-export function PaginationPerPage(perPage = PAGINATION_PER_PAGE): any {
+export function PaginationPerPage(
+    perPage = PAGINATION_PER_PAGE
+): PropertyDecorator {
     return applyDecorators(
         Expose(),
         Type(() => Number),
@@ -88,7 +92,7 @@ export function PaginationPerPage(perPage = PAGINATION_PER_PAGE): any {
 export function PaginationSort(
     sort = PAGINATION_SORT,
     availableSort = PAGINATION_AVAILABLE_SORT
-): any {
+): PropertyDecorator {
     return applyDecorators(
         Expose(),
         Transform(({ value, obj }) => {
@@ -113,14 +117,16 @@ export function PaginationSort(
 
 export function PaginationAvailableSort(
     availableSort = PAGINATION_AVAILABLE_SORT
-): any {
+): PropertyDecorator {
     return applyDecorators(
         Expose(),
         Transform(({ value }) => (!value ? availableSort : value))
     );
 }
 
-export function PaginationFilterBoolean(defaultValue: boolean[]): any {
+export function PaginationFilterBoolean(
+    defaultValue: boolean[]
+): PropertyDecorator {
     return applyDecorators(
         Expose(),
         IsBoolean({ each: true }),
@@ -137,7 +143,7 @@ export function PaginationFilterBoolean(defaultValue: boolean[]): any {
 export function PaginationFilterEnum<T>(
     defaultValue: T[],
     defaultEnum: Record<string, any>
-): any {
+): PropertyDecorator {
     const cEnum = defaultEnum as unknown;
     return applyDecorators(
         Expose(),
@@ -153,7 +159,7 @@ export function PaginationFilterEnum<T>(
 export function PaginationFilterId(
     field: string,
     options?: IPaginationFilterOptions
-): any {
+): PropertyDecorator {
     return applyDecorators(
         Expose(),
         IsMongoId(),
@@ -167,7 +173,7 @@ export function PaginationFilterId(
 export function PaginationFilterDate(
     field: string,
     options?: IPaginationFilterDateOptions
-): any {
+): PropertyDecorator {
     return applyDecorators(
         Expose(),
         IsDate(),
@@ -194,7 +200,7 @@ export function PaginationFilterDate(
 export function PaginationFilterString(
     field: string,
     options?: IPaginationFilterStringOptions
-) {
+): PropertyDecorator {
     return applyDecorators(
         Expose(),
         IsString(),

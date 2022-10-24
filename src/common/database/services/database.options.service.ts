@@ -1,16 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import {
-    MongooseOptionsFactory,
-    MongooseModuleOptions,
-} from '@nestjs/mongoose';
+import { MongooseModuleOptions } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { IDatabaseOptionsService } from 'src/common/database/interfaces/database.options-service.interface';
+import qs from 'qs';
+import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
 @Injectable()
-export class DatabaseOptionsService
-    implements MongooseOptionsFactory, IDatabaseOptionsService
-{
+export class DatabaseOptionsService implements IDatabaseOptionsService {
     private readonly host: string;
     private readonly database: string;
     private readonly user: string;
@@ -62,5 +59,18 @@ export class DatabaseOptionsService
         }
 
         return mongooseOptions;
+    }
+
+    createTypeOrmOptions(): TypeOrmModuleOptions {
+        const options: Record<string, any> = qs.parse(this.options);
+        return {
+            type: 'postgres',
+            url: this.host,
+            username: this.user,
+            password: this.password,
+            database: this.database,
+            retryDelay: 5000,
+            ...options,
+        };
     }
 }

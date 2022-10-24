@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Exclude, Expose, Transform, Type } from 'class-transformer';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
-import { IRoleDocument } from 'src/modules/role/interfaces/role.interface';
+import { IRole } from 'src/modules/role/interfaces/role.interface';
 
 export class UserGetSerialization {
     @ApiProperty({ example: faker.database.mongodbObjectId() })
@@ -31,7 +31,7 @@ export class UserGetSerialization {
         accessFor: value.accessFor,
         isActive: value.isActive,
     }))
-    readonly role: IRoleDocument;
+    readonly role: IRole;
 
     @ApiProperty({
         example: faker.internet.email(),

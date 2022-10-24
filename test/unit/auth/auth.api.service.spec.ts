@@ -536,7 +536,7 @@ describe('AuthApiService', () => {
     afterEach(async () => {
         try {
             await authApiService.deleteOne({
-                _id: new Types.ObjectId(authApi._id),
+                _id: new DatabasePrimaryKey(authApi._id),
             });
             await authApiBulkService.deleteMany({
                 name: authApiName,

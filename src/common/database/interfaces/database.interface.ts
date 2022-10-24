@@ -1,5 +1,14 @@
-import { ClientSession } from 'mongoose';
+import { ClientSession, Document, Types } from 'mongoose';
 import { IPaginationOptions } from 'src/common/pagination/interfaces/pagination.interface';
+
+export type DatabaseSchemaType<T> = T | (T & Document);
+export type DatabasePrimaryKeyType = string | Types.ObjectId;
+export interface DatabaseOptions {
+    name: string;
+    schema: any;
+    collection: string;
+    connectionName?: string;
+}
 
 // find one
 export interface IDatabaseFindOneOptions

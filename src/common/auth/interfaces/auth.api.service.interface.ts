@@ -7,7 +7,7 @@ import {
     IAuthApi,
     IAuthApiRequestHashedData,
 } from 'src/common/auth/interfaces/auth.interface';
-import { AuthApiDocument } from 'src/common/auth/schemas/auth.api.schema';
+import { AuthApi } from 'src/common/auth/schemas/auth.api.schema';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,
@@ -20,31 +20,31 @@ export interface IAuthApiService {
     findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<AuthApiDocument[]>;
+    ): Promise<AuthApi[]>;
 
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<AuthApiDocument>;
+    ): Promise<AuthApi>;
 
     findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<AuthApiDocument>;
+    ): Promise<AuthApi>;
 
     findOneByKey(
         key: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<AuthApiDocument>;
+    ): Promise<AuthApi>;
 
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseOptions
     ): Promise<number>;
 
-    inactive(_id: string, options?: IDatabaseOptions): Promise<AuthApiDocument>;
+    inactive(_id: string, options?: IDatabaseOptions): Promise<AuthApi>;
 
-    active(_id: string, options?: IDatabaseOptions): Promise<AuthApiDocument>;
+    active(_id: string, options?: IDatabaseOptions): Promise<AuthApi>;
 
     create(
         data: AuthApiCreateDto,
@@ -60,19 +60,19 @@ export interface IAuthApiService {
         _id: string,
         data: AuthApiUpdateDto,
         options?: IDatabaseOptions
-    ): Promise<AuthApiDocument>;
+    ): Promise<AuthApi>;
 
     updateHashById(_id: string, options?: IDatabaseOptions): Promise<IAuthApi>;
 
     deleteOneById(
         _id: string,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<AuthApiDocument>;
+    ): Promise<AuthApi>;
 
     deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<AuthApiDocument>;
+    ): Promise<AuthApi>;
 
     createKey(): Promise<string>;
 

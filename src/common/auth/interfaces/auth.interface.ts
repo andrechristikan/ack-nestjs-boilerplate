@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import { DatabasePrimaryKeyType } from 'src/common/database/interfaces/database.interface';
 
 // Auth API
 export interface IAuthApiPayload {
@@ -8,7 +8,7 @@ export interface IAuthApiPayload {
 }
 
 export interface IAuthApi {
-    _id: Types.ObjectId;
+    _id: DatabasePrimaryKeyType;
     secret: string;
     passphrase: string;
     encryptionKey: string;

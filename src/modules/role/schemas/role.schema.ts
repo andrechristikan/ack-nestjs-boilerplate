@@ -1,11 +1,24 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Types, Document } from 'mongoose';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+import {
+    DatabaseHookBefore,
+    DatabaseEntity,
+    DatabasePropForeign,
+    DatabaseProp,
+    DatabasePropPrimary,
+    DatabaseSchema,
+} from 'src/common/database/decorators/database.decorator';
+import {
+    DatabasePrimaryKeyType,
+    DatabaseSchemaType,
+} from 'src/common/database/interfaces/database.interface';
 import { PermissionEntity } from 'src/modules/permission/schemas/permission.schema';
 
-@Schema({ timestamps: true, versionKey: false })
+@DatabaseEntity({ timestamps: true, versionKey: false })
 export class RoleEntity {
-    @Prop({
+    @DatabasePropPrimary()
+    _id?: DatabasePrimaryKeyType;
+
+    @DatabaseProp({
         required: true,
         index: true,
         unique: true,
@@ -14,37 +27,37 @@ export class RoleEntity {
     })
     name: string;
 
-    @Prop({
-        required: true,
-        type: Array,
-        default: [],
-        ref: PermissionEntity.name,
-    })
-    permissions: Types.ObjectId[];
+    @DatabasePropForeign(
+        {
+            required: true,
+            default: [],
+            ref: PermissionEntity.name,
+        },
+        true
+    )
+    permissions: DatabasePrimaryKeyType[];
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         default: true,
         index: true,
     })
     isActive: boolean;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         enum: ENUM_AUTH_ACCESS_FOR,
         index: true,
     })
     accessFor: ENUM_AUTH_ACCESS_FOR;
+
+    @DatabaseHookBefore()
+    beforeHook() {
+        this.name = this.name.toLowerCase();
+    }
 }
 
 export const RoleDatabaseName = 'roles';
-export const RoleSchema = SchemaFactory.createForClass(RoleEntity);
 
-export type RoleDocument = RoleEntity & Document;
-
-// Hooks
-RoleSchema.pre<RoleDocument>('save', function (next) {
-    this.name = this.name.toLowerCase();
-
-    next();
-});
+export const Role = DatabaseSchema(RoleEntity);
+export type Role = DatabaseSchemaType<RoleEntity>;

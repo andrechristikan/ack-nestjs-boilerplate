@@ -14,13 +14,13 @@ import {
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
-import { UserDocument } from 'src/modules/user/schemas/user.schema';
+import { User } from 'src/modules/user/schemas/user.schema';
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { RoleDocument } from 'src/modules/role/schemas/role.schema';
+import { Role } from 'src/modules/role/schemas/role.schema';
 import { ENUM_AUTH_ACCESS_FOR_DEFAULT } from 'src/common/auth/constants/auth.enum.constant';
 
 describe('E2E User Login', () => {
@@ -39,7 +39,7 @@ describe('E2E User Login', () => {
     let xApiKey: string;
     let timestamp: number;
 
-    let user: UserDocument;
+    let user: User;
 
     const roleName = faker.random.alphaNumeric(5);
 
@@ -72,7 +72,7 @@ describe('E2E User Login', () => {
             accessFor: ENUM_AUTH_ACCESS_FOR_DEFAULT.USER,
             permissions: [],
         });
-        const role: RoleDocument = await roleService.findOne({
+        const role: Role = await roleService.findOne({
             name: roleName,
         });
 

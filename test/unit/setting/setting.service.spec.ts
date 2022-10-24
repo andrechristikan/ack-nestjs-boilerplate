@@ -10,7 +10,7 @@ import configs from 'src/configs';
 
 describe('SettingService', () => {
     let settingService: SettingService;
-    const _id = new Types.ObjectId();
+    const _id = new DatabasePrimaryKey();
     const _idString = `${_id}`;
 
     beforeEach(async () => {

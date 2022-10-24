@@ -4,7 +4,7 @@ import { AuthService } from 'src/common/auth/services/auth.service';
 import { UserService } from 'src/modules/user/services/user.service';
 import { UserBulkService } from 'src/modules/user/services/user.bulk.service';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { RoleDocument } from 'src/modules/role/schemas/role.schema';
+import { Role } from 'src/modules/role/schemas/role.schema';
 
 @Injectable()
 export class UserSeed {
@@ -20,18 +20,15 @@ export class UserSeed {
         describe: 'insert users',
     })
     async insert(): Promise<void> {
-        const superadminRole: RoleDocument =
-            await this.roleService.findOne<RoleDocument>({
-                name: 'superadmin',
-            });
-        const adminRole: RoleDocument =
-            await this.roleService.findOne<RoleDocument>({
-                name: 'admin',
-            });
-        const userRole: RoleDocument =
-            await this.roleService.findOne<RoleDocument>({
-                name: 'user',
-            });
+        const superadminRole: Role = await this.roleService.findOne<Role>({
+            name: 'superadmin',
+        });
+        const adminRole: Role = await this.roleService.findOne<Role>({
+            name: 'admin',
+        });
+        const userRole: Role = await this.roleService.findOne<Role>({
+            name: 'user',
+        });
 
         try {
             const password = await this.authService.createPassword(

@@ -1,9 +1,21 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Schema as MongooseSchema } from 'mongoose';
+import { Schema as MongooseSchema } from 'mongoose';
+import {
+    DatabaseEntity,
+    DatabaseProp,
+    DatabasePropPrimary,
+    DatabaseSchema,
+} from 'src/common/database/decorators/database.decorator';
+import {
+    DatabasePrimaryKeyType,
+    DatabaseSchemaType,
+} from 'src/common/database/interfaces/database.interface';
 
-@Schema({ timestamps: true, versionKey: false })
+@DatabaseEntity({ timestamps: true, versionKey: false })
 export class SettingEntity {
-    @Prop({
+    @DatabasePropPrimary()
+    _id?: DatabasePrimaryKeyType;
+
+    @DatabaseProp({
         required: true,
         index: true,
         unique: true,
@@ -11,12 +23,12 @@ export class SettingEntity {
     })
     name: string;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
     })
     description?: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         trim: true,
         type: MongooseSchema.Types.Mixed,
@@ -25,6 +37,6 @@ export class SettingEntity {
 }
 
 export const SettingDatabaseName = 'settings';
-export const SettingSchema = SchemaFactory.createForClass(SettingEntity);
 
-export type SettingDocument = SettingEntity & Document;
+export const Setting = DatabaseSchema(SettingEntity);
+export type Setting = DatabaseSchemaType<SettingEntity>;

@@ -12,7 +12,7 @@ import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
 import { ISettingService } from 'src/common/setting/interfaces/setting.service.interface';
 import { SettingRepository } from 'src/common/setting/repositories/setting.repository';
 import {
-    SettingDocument,
+    Setting,
     SettingEntity,
 } from 'src/common/setting/schemas/setting.schema';
 
@@ -26,28 +26,22 @@ export class SettingService implements ISettingService {
     async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<SettingDocument[]> {
-        return this.settingRepository.findAll<SettingDocument>(find, options);
+    ): Promise<Setting[]> {
+        return this.settingRepository.findAll<Setting>(find, options);
     }
 
     async findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<SettingDocument> {
-        return this.settingRepository.findOneById<SettingDocument>(
-            _id,
-            options
-        );
+    ): Promise<Setting> {
+        return this.settingRepository.findOneById<Setting>(_id, options);
     }
 
     async findOneByName(
         name: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<SettingDocument> {
-        return this.settingRepository.findOne<SettingDocument>(
-            { name },
-            options
-        );
+    ): Promise<Setting> {
+        return this.settingRepository.findOne<Setting>({ name }, options);
     }
 
     async getTotal(
@@ -60,7 +54,7 @@ export class SettingService implements ISettingService {
     async create(
         { name, description, value }: SettingCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<SettingDocument> {
+    ): Promise<Setting> {
         let convertValue = value;
         if (typeof value === 'string') {
             convertValue = await this.convertValue(value as string);
@@ -79,7 +73,7 @@ export class SettingService implements ISettingService {
         _id: string,
         { description, value }: SettingUpdateDto,
         options?: IDatabaseOptions
-    ): Promise<SettingDocument> {
+    ): Promise<Setting> {
         let convertValue = value;
         if (typeof value === 'string') {
             convertValue = await this.convertValue(value as string);
@@ -100,7 +94,7 @@ export class SettingService implements ISettingService {
     async deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<SettingDocument> {
+    ): Promise<Setting> {
         return this.settingRepository.deleteOne(find, options);
     }
 

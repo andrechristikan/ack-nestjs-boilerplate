@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DebuggerModule } from 'src/common/debugger/debugger.module';
-import { DatabaseModule } from 'src/common/database/database.module';
 import { HelperModule } from 'src/common/helper/helper.module';
 import { ErrorModule } from 'src/common/error/error.module';
 import { ResponseModule } from 'src/common/response/response.module';
@@ -11,10 +10,13 @@ import { AuthApiModule, AuthModule } from 'src/common/auth/auth.module';
 import { MessageModule } from 'src/common/message/message.module';
 import { LoggerModule } from 'src/common/logger/logger.module';
 import { PaginationModule } from 'src/common/pagination/pagination.module';
-import { SettingModule } from 'src/common/setting/setting.module';
 import Joi from 'joi';
 import { ENUM_MESSAGE_LANGUAGE } from './message/constants/message.enum.constant';
 import configs from 'src/configs';
+import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum.constant';
+import { AppLanguage } from 'src/app/constants/app.constant';
+import { DatabaseConnectionModule } from 'src/common/database/database.connection.module';
+import { SettingModule } from 'src/common/setting/setting.module';
 
 @Module({
     controllers: [],
@@ -34,7 +36,7 @@ import configs from 'src/configs';
                     .required(),
                 APP_LANGUAGE: Joi.string()
                     .valid(...Object.values(ENUM_MESSAGE_LANGUAGE))
-                    .default('en')
+                    .default(AppLanguage)
                     .required(),
 
                 HTTP_ENABLE: Joi.boolean().default(true).required(),
@@ -69,6 +71,10 @@ import configs from 'src/configs';
 
                 JOB_ENABLE: Joi.boolean().default(false).required(),
 
+                DATABASE_TYPE: Joi.string()
+                    .valid(...Object.values(ENUM_DATABASE_TYPE))
+                    .default(ENUM_DATABASE_TYPE.MONGO)
+                    .required(),
                 DATABASE_HOST: Joi.any()
                     .default('mongodb://localhost:27017')
                     .required(),
@@ -125,7 +131,7 @@ import configs from 'src/configs';
                 abortEarly: true,
             },
         }),
-        DatabaseModule,
+        DatabaseConnectionModule.register(),
         MessageModule,
         HelperModule,
         PaginationModule,
@@ -135,9 +141,9 @@ import configs from 'src/configs';
         ResponseModule,
         RequestModule,
         MiddlewareModule,
+        SettingModule,
         AuthApiModule,
         AuthModule,
-        SettingModule,
     ],
 })
 export class CommonModule {}

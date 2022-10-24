@@ -112,7 +112,7 @@ describe('E2E Permission Admin', () => {
             .get(
                 E2E_PERMISSION_ADMIN_GET_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${new DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -147,7 +147,7 @@ describe('E2E Permission Admin', () => {
             .put(
                 E2E_PERMISSION_ADMIN_UPDATE_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${new DatabasePrimaryKey()}`
                 )
             )
             .send(updateData)
@@ -207,7 +207,7 @@ describe('E2E Permission Admin', () => {
             .patch(
                 E2E_PERMISSION_ADMIN_ACTIVE_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${new DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -246,7 +246,7 @@ describe('E2E Permission Admin', () => {
             .patch(
                 E2E_PERMISSION_ADMIN_INACTIVE_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${new DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -321,7 +321,7 @@ describe('E2E Permission Admin', () => {
     afterAll(async () => {
         try {
             await permission.deleteOne({
-                _id: new Types.ObjectId(permission._id),
+                _id: new DatabasePrimaryKey(permission._id),
             });
         } catch (e) {
             console.error(e);

@@ -58,7 +58,7 @@ describe('AuthApiBulkService', () => {
 
             expect(
                 await authApiBulkService.deleteMany({
-                    _id: new Types.ObjectId(authApi._id),
+                    _id: new DatabasePrimaryKey(authApi._id),
                 })
             ).toBe(result);
         });
@@ -67,7 +67,7 @@ describe('AuthApiBulkService', () => {
     afterEach(async () => {
         try {
             await authApiBulkService.deleteMany({
-                _id: new Types.ObjectId(authApi._id),
+                _id: new DatabasePrimaryKey(authApi._id),
             });
             await authApiService.deleteOne({
                 name: authApiName,

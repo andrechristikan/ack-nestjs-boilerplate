@@ -13,7 +13,7 @@ import { SettingService } from 'src/common/setting/services/setting.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
+import { Setting } from 'src/common/setting/schemas/setting.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
@@ -30,7 +30,7 @@ describe('E2E Setting Admin', () => {
     let xApiKey: string;
     let timestamp: number;
 
-    let setting: SettingDocument;
+    let setting: Setting;
     const settingName: string = faker.random.alphaNumeric(10);
 
     let accessToken: string;
@@ -86,7 +86,7 @@ describe('E2E Setting Admin', () => {
             .put(
                 E2E_SETTING_ADMIN_UPDATE_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${new DatabasePrimaryKey()}`
                 )
             )
             .set('user-agent', faker.internet.userAgent())

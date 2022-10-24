@@ -1,0 +1,4 @@
+export enum ENUM_DATABASE_TYPE {
+    MONGO = 'MONGO',
+    POSTGRES = 'POSTGRES',
+}

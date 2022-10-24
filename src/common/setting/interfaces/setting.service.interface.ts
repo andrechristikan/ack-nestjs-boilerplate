@@ -7,23 +7,23 @@ import {
 } from 'src/common/database/interfaces/database.interface';
 import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
 import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
-import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
+import { Setting } from 'src/common/setting/schemas/setting.schema';
 
 export interface ISettingService {
     findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<SettingDocument[]>;
+    ): Promise<Setting[]>;
 
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<SettingDocument>;
+    ): Promise<Setting>;
 
     findOneByName(
         name: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<SettingDocument>;
+    ): Promise<Setting>;
 
     getTotal(
         find?: Record<string, any>,
@@ -33,18 +33,18 @@ export interface ISettingService {
     create(
         data: SettingCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<SettingDocument>;
+    ): Promise<Setting>;
 
     updateOneById(
         _id: string,
         data: SettingUpdateDto,
         options?: IDatabaseOptions
-    ): Promise<SettingDocument>;
+    ): Promise<Setting>;
 
     deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<SettingDocument>;
+    ): Promise<Setting>;
 
     convertValue(value: string): Promise<string | number | boolean>;
 }

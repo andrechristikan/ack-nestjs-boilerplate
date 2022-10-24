@@ -28,11 +28,11 @@ describe('LoggerService', () => {
     const loggerComplete: ILogger = {
         action: ENUM_LOGGER_ACTION.TEST,
         description: 'test aaa',
-        user: `${new Types.ObjectId()}`,
-        apiKey: `${new Types.ObjectId()}`,
+        user: `${new DatabasePrimaryKey()}`,
+        apiKey: `${new DatabasePrimaryKey()}`,
         requestId: v4(),
         role: {
-            _id: `${new Types.ObjectId()}`,
+            _id: `${new DatabasePrimaryKey()}`,
             accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
         },
         method: ENUM_REQUEST_METHOD.GET,

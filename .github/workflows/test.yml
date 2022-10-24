@@ -60,6 +60,7 @@ jobs:
 
           echo JOB_ENABLE="true" >> .env
 
+          echo DATABASE_TYPE="MONGO" >> .env
           echo DATABASE_HOST="mongodb://localhost:27017" >> .env
           echo DATABASE_NAME="ack" >> .env
           echo DATABASE_USER="" >> .env

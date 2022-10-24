@@ -21,7 +21,7 @@ import { PermissionService } from 'src/modules/permission/services/permission.se
 import { RoleBulkService } from 'src/modules/role/services/role.bulk.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { RoleDocument } from 'src/modules/role/schemas/role.schema';
+import { Role } from 'src/modules/role/schemas/role.schema';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
@@ -40,8 +40,8 @@ describe('E2E Role Admin', () => {
     let helperDateService: HelperDateService;
     let authApiService: AuthApiService;
 
-    let role: RoleDocument;
-    let roleUpdate: RoleDocument;
+    let role: Role;
+    let roleUpdate: Role;
 
     let accessToken: string;
 
@@ -160,7 +160,7 @@ describe('E2E Role Admin', () => {
             .get(
                 E2E_ROLE_ADMIN_GET_BY_ID_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${new DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -265,7 +265,7 @@ describe('E2E Role Admin', () => {
             .put(
                 E2E_ROLE_ADMIN_UPDATE_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${new DatabasePrimaryKey()}`
                 )
             )
             .send(updateData)
@@ -319,7 +319,7 @@ describe('E2E Role Admin', () => {
             .patch(
                 E2E_ROLE_ADMIN_INACTIVE_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${new DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -370,7 +370,7 @@ describe('E2E Role Admin', () => {
             .patch(
                 E2E_ROLE_ADMIN_ACTIVE_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${new DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -421,7 +421,7 @@ describe('E2E Role Admin', () => {
             .delete(
                 E2E_ROLE_ADMIN_DELETE_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${new DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)

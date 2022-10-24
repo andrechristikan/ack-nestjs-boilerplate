@@ -19,16 +19,16 @@ import { AuthService } from 'src/common/auth/services/auth.service';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { UserDocument } from 'src/modules/user/schemas/user.schema';
+import { User } from 'src/modules/user/schemas/user.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
-import { RoleDocument } from 'src/modules/role/schemas/role.schema';
+import { Role } from 'src/modules/role/schemas/role.schema';
 import { plainToInstance } from 'class-transformer';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
-import { IUserDocument } from 'src/modules/user/interfaces/user.interface';
+import { IUser } from 'src/modules/user/interfaces/user.interface';
 
 describe('E2E User Admin', () => {
     let app: INestApplication;
@@ -47,7 +47,7 @@ describe('E2E User Admin', () => {
     let timestamp: number;
 
     let userData: Record<string, any>;
-    let userExist: UserDocument;
+    let userExist: User;
 
     let accessToken: string;
 
@@ -73,7 +73,7 @@ describe('E2E User Admin', () => {
         helperDateService = app.get(HelperDateService);
         authApiService = app.get(AuthApiService);
 
-        const role: RoleDocument = await roleService.findOne({
+        const role: Role = await roleService.findOne({
             name: 'user',
         });
 
@@ -101,7 +101,7 @@ describe('E2E User Admin', () => {
             role: `${role._id}`,
         });
 
-        const user = await userService.findOne<IUserDocument>(
+        const user = await userService.findOne<IUser>(
             {
                 email: 'admin@mail.com',
             },
@@ -167,7 +167,7 @@ describe('E2E User Admin', () => {
     it(`POST ${E2E_USER_ADMIN_CREATE_URL} Create, Role Not Found`, async () => {
         const req = {
             ...userData,
-            role: `${new Types.ObjectId()}`,
+            role: `${new DatabasePrimaryKey()}`,
             password,
         };
 
@@ -272,7 +272,7 @@ describe('E2E User Admin', () => {
             .get(
                 E2E_USER_ADMIN_GET_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${new DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -328,7 +328,7 @@ describe('E2E User Admin', () => {
             .put(
                 E2E_USER_ADMIN_UPDATE_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${new DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -373,7 +373,7 @@ describe('E2E User Admin', () => {
             .patch(
                 E2E_USER_ADMIN_INACTIVE_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${new DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -427,7 +427,7 @@ describe('E2E User Admin', () => {
             .patch(
                 E2E_USER_ADMIN_ACTIVE_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${new DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -481,7 +481,7 @@ describe('E2E User Admin', () => {
             .delete(
                 E2E_USER_ADMIN_DELETE_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${new DatabasePrimaryKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)

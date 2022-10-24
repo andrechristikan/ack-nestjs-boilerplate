@@ -10,16 +10,16 @@ import { AuthService } from 'src/common/auth/services/auth.service';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { UserDocument } from 'src/modules/user/schemas/user.schema';
+import { User } from 'src/modules/user/schemas/user.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
-import { RoleDocument } from 'src/modules/role/schemas/role.schema';
+import { Role } from 'src/modules/role/schemas/role.schema';
 import { plainToInstance } from 'class-transformer';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { E2E_USER_REFRESH_URL } from './user.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { IUserDocument } from 'src/modules/user/interfaces/user.interface';
+import { IUser } from 'src/modules/user/interfaces/user.interface';
 
 describe('E2E User Refresh', () => {
     let app: INestApplication;
@@ -37,7 +37,7 @@ describe('E2E User Refresh', () => {
     let xApiKey: string;
     let timestamp: number;
 
-    let user: UserDocument;
+    let user: User;
     let passwordExpired: Date;
     let passwordExpiredForward: Date;
 
@@ -66,7 +66,7 @@ describe('E2E User Refresh', () => {
         helperDateService = app.get(HelperDateService);
         authApiService = app.get(AuthApiService);
 
-        const role: RoleDocument = await roleService.findOne({
+        const role: Role = await roleService.findOne({
             name: 'user',
         });
 
@@ -86,12 +86,9 @@ describe('E2E User Refresh', () => {
             role: `${role._id}`,
         });
 
-        const userPopulate = await userService.findOneById<IUserDocument>(
-            user._id,
-            {
-                populate: true,
-            }
-        );
+        const userPopulate = await userService.findOneById<IUser>(user._id, {
+            populate: true,
+        });
 
         const map = plainToInstance(UserPayloadSerialization, userPopulate);
         const payload = await authService.createPayloadRefreshToken(
@@ -100,7 +97,7 @@ describe('E2E User Refresh', () => {
         );
         const payloadNotFound = {
             ...payload,
-            _id: `${new Types.ObjectId()}`,
+            _id: `${new DatabasePrimaryKey()}`,
         };
 
         const payloadHashed = await authService.encryptRefreshToken(payload);

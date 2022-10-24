@@ -25,7 +25,8 @@
         "jenkinsfile",
         "superadmin",
         "alphanum",
-        "dtos"
+        "dtos",
+        "typeorm"
     ],
     "ignoreWords": [
         "psheon",

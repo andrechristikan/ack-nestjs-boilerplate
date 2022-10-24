@@ -16,7 +16,7 @@ import {
 } from 'src/common/request/decorators/request.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { RoleDocument } from 'src/modules/role/schemas/role.schema';
+import { Role } from 'src/modules/role/schemas/role.schema';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { UserSignUpDoc } from 'src/modules/user/docs/user.public.doc';
@@ -46,11 +46,9 @@ export class UserPublicController {
         @Body()
         { email, mobileNumber, ...body }: UserSignUpDto
     ): Promise<void> {
-        const role: RoleDocument = await this.roleService.findOne<RoleDocument>(
-            {
-                name: 'user',
-            }
-        );
+        const role: Role = await this.roleService.findOne<Role>({
+            name: 'user',
+        });
         if (!role) {
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,

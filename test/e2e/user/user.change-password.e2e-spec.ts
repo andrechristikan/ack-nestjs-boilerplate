@@ -10,16 +10,16 @@ import { AuthService } from 'src/common/auth/services/auth.service';
 import { AuthApiService } from 'src/common/auth/services/auth.api.service';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { UserDocument } from 'src/modules/user/schemas/user.schema';
+import { User } from 'src/modules/user/schemas/user.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
-import { RoleDocument } from 'src/modules/role/schemas/role.schema';
+import { Role } from 'src/modules/role/schemas/role.schema';
 import { plainToInstance } from 'class-transformer';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { E2E_USER_CHANGE_PASSWORD_URL } from './user.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
-import { IUserDocument } from 'src/modules/user/interfaces/user.interface';
+import { IUser } from 'src/modules/user/interfaces/user.interface';
 
 describe('E2E User Change Password', () => {
     let app: INestApplication;
@@ -36,7 +36,7 @@ describe('E2E User Change Password', () => {
     const password = `aaAA@!123`;
     const newPassword = `bbBB@!456`;
 
-    let user: UserDocument;
+    let user: User;
 
     let accessToken: string;
     let accessTokenNotFound: string;
@@ -63,7 +63,7 @@ describe('E2E User Change Password', () => {
         roleService = app.get(RoleService);
         helperDateService = app.get(HelperDateService);
 
-        const role: RoleDocument = await roleService.findOne({
+        const role: Role = await roleService.findOne({
             name: 'user',
         });
 
@@ -80,12 +80,9 @@ describe('E2E User Change Password', () => {
             role: `${role._id}`,
         });
 
-        const userPopulate = await userService.findOneById<IUserDocument>(
-            user._id,
-            {
-                populate: true,
-            }
-        );
+        const userPopulate = await userService.findOneById<IUser>(user._id, {
+            populate: true,
+        });
 
         timestamp = helperDateService.timestamp();
         const apiEncryption = await authApiService.encryptApiKey(
@@ -103,7 +100,7 @@ describe('E2E User Change Password', () => {
         const payload = await authService.createPayloadAccessToken(map, false);
         const payloadNotFound = {
             ...payload,
-            _id: `${new Types.ObjectId()}`,
+            _id: `${new DatabasePrimaryKey()}`,
         };
         const payloadHashed = await authService.encryptAccessToken(payload);
         const payloadHashedNotFound = await authService.encryptAccessToken(

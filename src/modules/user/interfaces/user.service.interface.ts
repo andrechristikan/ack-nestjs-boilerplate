@@ -9,9 +9,9 @@ import {
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
-import { UserDocument } from 'src/modules/user/schemas/user.schema';
+import { User } from 'src/modules/user/schemas/user.schema';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
-import { IUserCheckExist, IUserCreate, IUserDocument } from './user.interface';
+import { IUserCheckExist, IUserCreate, IUser } from './user.interface';
 
 export interface IUserService {
     findAll<T>(
@@ -31,26 +31,23 @@ export interface IUserService {
         options?: IDatabaseOptions
     ): Promise<number>;
 
-    create(
-        data: IUserCreate,
-        options?: IDatabaseCreateOptions
-    ): Promise<UserDocument>;
+    create(data: IUserCreate, options?: IDatabaseCreateOptions): Promise<User>;
 
     deleteOneById(
         _id: string,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<UserDocument>;
+    ): Promise<User>;
 
     deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<UserDocument>;
+    ): Promise<User>;
 
     updateOneById(
         _id: string,
         data: UserUpdateDto,
         options?: IDatabaseOptions
-    ): Promise<UserDocument>;
+    ): Promise<User>;
 
     checkExist(
         email: string,
@@ -62,7 +59,7 @@ export interface IUserService {
         _id: string,
         aws: AwsS3Serialization,
         options?: IDatabaseOptions
-    ): Promise<UserDocument>;
+    ): Promise<User>;
 
     createRandomFilename(): Promise<Record<string, any>>;
 
@@ -70,19 +67,17 @@ export interface IUserService {
         _id: string,
         data: IAuthPassword,
         options?: IDatabaseOptions
-    ): Promise<UserDocument>;
+    ): Promise<User>;
 
     updatePasswordExpired(
         _id: string,
         passwordExpired: Date,
         options?: IDatabaseOptions
-    ): Promise<UserDocument>;
+    ): Promise<User>;
 
-    inactive(_id: string, options?: IDatabaseOptions): Promise<UserDocument>;
+    inactive(_id: string, options?: IDatabaseOptions): Promise<User>;
 
-    active(_id: string, options?: IDatabaseOptions): Promise<UserDocument>;
+    active(_id: string, options?: IDatabaseOptions): Promise<User>;
 
-    payloadSerialization(
-        data: IUserDocument
-    ): Promise<UserPayloadSerialization>;
+    payloadSerialization(data: IUser): Promise<UserPayloadSerialization>;
 }

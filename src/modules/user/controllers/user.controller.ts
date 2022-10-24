@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
-import { Token, User } from 'src/common/auth/decorators/auth.decorator';
+import { AuthToken, AuthUser } from 'src/common/auth/decorators/auth.decorator';
 import {
     AuthJwtGuard,
     AuthRefreshJwtGuard,
@@ -52,8 +52,8 @@ import {
 } from 'src/modules/user/docs/user.doc';
 import { UserChangePasswordDto } from 'src/modules/user/dtos/user.change-password.dto';
 import { UserLoginDto } from 'src/modules/user/dtos/user.login.dto';
-import { IUserDocument } from 'src/modules/user/interfaces/user.interface';
-import { UserDocument } from 'src/modules/user/schemas/user.schema';
+import { IUser } from 'src/modules/user/interfaces/user.interface';
+import { User } from 'src/modules/user/schemas/user.schema';
 import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
@@ -81,7 +81,7 @@ export class UserController {
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('/profile')
-    async profile(@GetUser() user: IUserDocument): Promise<IResponse> {
+    async profile(@GetUser() user: IUser): Promise<IResponse> {
         return user;
     }
 
@@ -96,7 +96,7 @@ export class UserController {
     @HttpCode(HttpStatus.OK)
     @Post('/profile/upload')
     async upload(
-        @GetUser() user: IUserDocument,
+        @GetUser() user: IUser,
         @UploadedFile(FileRequiredPipe, FileSizeImagePipe, FileTypeImagePipe)
         file: IFile
     ): Promise<void> {
@@ -136,9 +136,9 @@ export class UserController {
     @Patch('/change-password')
     async changePassword(
         @Body() body: UserChangePasswordDto,
-        @User('_id') _id: string
+        @AuthUser('_id') _id: string
     ): Promise<void> {
-        const user: UserDocument = await this.userService.findOneById(_id);
+        const user: User = await this.userService.findOneById(_id);
         if (!user) {
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
@@ -195,15 +195,14 @@ export class UserController {
     @HttpCode(HttpStatus.OK)
     @Post('/login')
     async login(@Body() body: UserLoginDto): Promise<IResponse> {
-        const user: IUserDocument =
-            await this.userService.findOne<IUserDocument>(
-                {
-                    email: body.email,
-                },
-                {
-                    populate: true,
-                }
-            );
+        const user: IUser = await this.userService.findOne<IUser>(
+            {
+                email: body.email,
+            },
+            {
+                populate: true,
+            }
+        );
 
         if (!user) {
             throw new NotFoundException({
@@ -305,14 +304,13 @@ export class UserController {
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
     async refresh(
-        @User()
+        @AuthUser()
         { _id, rememberMe, loginDate }: Record<string, any>,
-        @Token() refreshToken: string
+        @AuthToken() refreshToken: string
     ): Promise<IResponse> {
-        const user: IUserDocument =
-            await this.userService.findOneById<IUserDocument>(_id, {
-                populate: true,
-            });
+        const user: IUser = await this.userService.findOneById<IUser>(_id, {
+            populate: true,
+        });
 
         if (!user) {
             throw new NotFoundException({

@@ -1,20 +1,32 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import {
+    DatabaseHookBefore,
+    DatabaseEntity,
+    DatabaseProp,
+    DatabasePropPrimary,
+    DatabaseSchema,
+} from 'src/common/database/decorators/database.decorator';
+import {
+    DatabasePrimaryKeyType,
+    DatabaseSchemaType,
+} from 'src/common/database/interfaces/database.interface';
 
-@Schema({ timestamps: true, versionKey: false })
+@DatabaseEntity({ timestamps: true, versionKey: false })
 export class AuthApiEntity {
-    @Prop({
+    @DatabasePropPrimary()
+    _id?: DatabasePrimaryKeyType;
+
+    @DatabaseProp({
         required: true,
         index: true,
     })
     name: string;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
     })
     description?: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         trim: true,
         unique: true,
@@ -22,20 +34,20 @@ export class AuthApiEntity {
     })
     key: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         trim: true,
     })
     hash: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         trim: true,
         index: true,
     })
     encryptionKey: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         trim: true,
         minLength: 16,
@@ -43,21 +55,19 @@ export class AuthApiEntity {
     })
     passphrase: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         index: true,
     })
     isActive: boolean;
+
+    @DatabaseHookBefore()
+    beforeHook() {
+        this.name = this.name.toLowerCase();
+    }
 }
 
 export const AuthApiDatabaseName = 'authapis';
-export const AuthApiSchema = SchemaFactory.createForClass(AuthApiEntity);
 
-export type AuthApiDocument = AuthApiEntity & Document;
-
-// Hooks
-AuthApiSchema.pre<AuthApiDocument>('save', function (next) {
-    this.name = this.name.toLowerCase();
-
-    next();
-});
+export const AuthApi = DatabaseSchema(AuthApiEntity);
+export type AuthApi = DatabaseSchemaType<AuthApiEntity>;

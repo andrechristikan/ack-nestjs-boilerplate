@@ -1,10 +1,12 @@
-import { Model, PopulateOptions, Types } from 'mongoose';
+import { Model, PopulateOptions } from 'mongoose';
+import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseBulkRepositoryAbstract } from 'src/common/database/interfaces/database.bulk.repository.interface';
 import {
     IDatabaseCreateManyOptions,
     IDatabaseManyOptions,
     IDatabaseSoftDeleteManyOptions,
     IDatabaseRestoreManyOptions,
+    DatabasePrimaryKeyType,
 } from 'src/common/database/interfaces/database.interface';
 
 export abstract class DatabaseMongoBulkRepositoryAbstract<T>
@@ -41,7 +43,9 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
         _id: string[],
         options?: IDatabaseManyOptions
     ): Promise<boolean> {
-        const map: Types.ObjectId[] = _id.map((val) => new Types.ObjectId(val));
+        const map: DatabasePrimaryKeyType[] = _id.map((val) =>
+            DatabasePrimaryKey(val)
+        );
 
         const del = this._repository.deleteMany({
             _id: {
@@ -103,7 +107,9 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
         _id: string[],
         options?: IDatabaseSoftDeleteManyOptions
     ): Promise<boolean> {
-        const map: Types.ObjectId[] = _id.map((val) => new Types.ObjectId(val));
+        const map: DatabasePrimaryKeyType[] = _id.map((val) =>
+            DatabasePrimaryKey(val)
+        );
 
         const softDel = this._repository
             .updateMany(
@@ -170,7 +176,9 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
         _id: string[],
         options?: IDatabaseRestoreManyOptions
     ): Promise<boolean> {
-        const map: Types.ObjectId[] = _id.map((val) => new Types.ObjectId(val));
+        const map: DatabasePrimaryKeyType[] = _id.map((val) =>
+            DatabasePrimaryKey(val)
+        );
 
         const rest = this._repository
             .updateMany(

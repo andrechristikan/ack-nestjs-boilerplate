@@ -8,7 +8,7 @@ import {
 } from 'src/common/database/interfaces/database.interface';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
-import { RoleDocument } from 'src/modules/role/schemas/role.schema';
+import { Role } from 'src/modules/role/schemas/role.schema';
 
 export interface IRoleService {
     findAll<T>(
@@ -33,27 +33,27 @@ export interface IRoleService {
     create(
         data: RoleCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<RoleDocument>;
+    ): Promise<Role>;
 
-    createSuperAdmin(options?: IDatabaseOptions): Promise<RoleDocument>;
+    createSuperAdmin(options?: IDatabaseOptions): Promise<Role>;
 
     update(
         _id: string,
         data: RoleUpdateDto,
         options?: IDatabaseOptions
-    ): Promise<RoleDocument>;
+    ): Promise<Role>;
 
-    inactive(_id: string, options?: IDatabaseOptions): Promise<RoleDocument>;
+    inactive(_id: string, options?: IDatabaseOptions): Promise<Role>;
 
-    active(_id: string, options?: IDatabaseOptions): Promise<RoleDocument>;
+    active(_id: string, options?: IDatabaseOptions): Promise<Role>;
 
     deleteOneById(
         _id: string,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<RoleDocument>;
+    ): Promise<Role>;
 
     deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<RoleDocument>;
+    ): Promise<Role>;
 }

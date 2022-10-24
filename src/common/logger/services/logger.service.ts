@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Types } from 'mongoose';
+import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
 import { ENUM_LOGGER_LEVEL } from 'src/common/logger/constants/logger.enum.constant';
 import {
     ILogger,
@@ -7,10 +7,7 @@ import {
 } from 'src/common/logger/interfaces/logger.interface';
 import { ILoggerService } from 'src/common/logger/interfaces/logger.service.interface';
 import { LoggerRepository } from 'src/common/logger/repositories/logger.repository';
-import {
-    LoggerDocument,
-    LoggerEntity,
-} from 'src/common/logger/schemas/logger.schema';
+import { Logger, LoggerEntity } from 'src/common/logger/schemas/logger.schema';
 
 @Injectable()
 export class LoggerService implements ILoggerService {
@@ -29,17 +26,17 @@ export class LoggerService implements ILoggerService {
         path,
         statusCode,
         tags,
-    }: ILogger): Promise<LoggerDocument> {
+    }: ILogger): Promise<Logger> {
         const create: LoggerEntity = {
             level: ENUM_LOGGER_LEVEL.INFO,
-            user: user ? new Types.ObjectId(user) : undefined,
-            apiKey: apiKey ? new Types.ObjectId(apiKey) : undefined,
+            user: user ? DatabasePrimaryKey(user) : undefined,
+            apiKey: apiKey ? DatabasePrimaryKey(apiKey) : undefined,
             anonymous: user ? false : true,
             action,
             description,
             method,
             requestId,
-            role: role ? new Types.ObjectId(role._id) : undefined,
+            role: role ? DatabasePrimaryKey(role._id) : undefined,
             accessFor: role && role.accessFor ? role.accessFor : undefined,
             params,
             bodies,
@@ -64,17 +61,17 @@ export class LoggerService implements ILoggerService {
         path,
         statusCode,
         tags,
-    }: ILogger): Promise<LoggerDocument> {
+    }: ILogger): Promise<Logger> {
         const create: LoggerEntity = {
             level: ENUM_LOGGER_LEVEL.DEBUG,
-            user: user ? new Types.ObjectId(user) : undefined,
-            apiKey: apiKey ? new Types.ObjectId(apiKey) : undefined,
+            user: user ? DatabasePrimaryKey(user) : undefined,
+            apiKey: apiKey ? DatabasePrimaryKey(apiKey) : undefined,
             anonymous: user ? false : true,
             action,
             description,
             method,
             requestId,
-            role: role ? new Types.ObjectId(role._id) : undefined,
+            role: role ? DatabasePrimaryKey(role._id) : undefined,
             accessFor: role && role.accessFor ? role.accessFor : undefined,
             params,
             bodies,
@@ -99,17 +96,17 @@ export class LoggerService implements ILoggerService {
         path,
         statusCode,
         tags,
-    }: ILogger): Promise<LoggerDocument> {
+    }: ILogger): Promise<Logger> {
         const create: LoggerEntity = {
             level: ENUM_LOGGER_LEVEL.WARM,
-            user: user ? new Types.ObjectId(user) : undefined,
-            apiKey: apiKey ? new Types.ObjectId(apiKey) : undefined,
+            user: user ? DatabasePrimaryKey(user) : undefined,
+            apiKey: apiKey ? DatabasePrimaryKey(apiKey) : undefined,
             anonymous: user ? false : true,
             action,
             description,
             method,
             requestId,
-            role: role ? new Types.ObjectId(role._id) : undefined,
+            role: role ? DatabasePrimaryKey(role._id) : undefined,
             accessFor: role && role.accessFor ? role.accessFor : undefined,
             params,
             bodies,
@@ -134,17 +131,17 @@ export class LoggerService implements ILoggerService {
         path,
         statusCode,
         tags,
-    }: ILogger): Promise<LoggerDocument> {
+    }: ILogger): Promise<Logger> {
         const create: LoggerEntity = {
             level: ENUM_LOGGER_LEVEL.FATAL,
-            user: user ? new Types.ObjectId(user) : undefined,
-            apiKey: apiKey ? new Types.ObjectId(apiKey) : undefined,
+            user: user ? DatabasePrimaryKey(user) : undefined,
+            apiKey: apiKey ? DatabasePrimaryKey(apiKey) : undefined,
             anonymous: user ? false : true,
             action,
             description,
             method,
             requestId,
-            role: role ? new Types.ObjectId(role._id) : undefined,
+            role: role ? DatabasePrimaryKey(role._id) : undefined,
             accessFor: role && role.accessFor ? role.accessFor : undefined,
             params,
             bodies,
@@ -170,17 +167,17 @@ export class LoggerService implements ILoggerService {
         path,
         statusCode,
         tags,
-    }: ILoggerRaw): Promise<LoggerDocument> {
+    }: ILoggerRaw): Promise<Logger> {
         const create: LoggerEntity = {
             level,
-            user: user ? new Types.ObjectId(user) : undefined,
-            apiKey: apiKey ? new Types.ObjectId(apiKey) : undefined,
+            user: user ? DatabasePrimaryKey(user) : undefined,
+            apiKey: apiKey ? DatabasePrimaryKey(apiKey) : undefined,
             anonymous: user ? false : true,
             action,
             description,
             method,
             requestId,
-            role: role ? new Types.ObjectId(role._id) : undefined,
+            role: role ? DatabasePrimaryKey(role._id) : undefined,
             accessFor: role && role.accessFor ? role.accessFor : undefined,
             params,
             bodies,

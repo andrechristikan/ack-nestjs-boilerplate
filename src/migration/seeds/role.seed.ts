@@ -1,11 +1,11 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { RoleService } from 'src/modules/role/services/role.service';
-import { RoleBulkService } from 'src/modules/role/services/role.bulk.service';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
-import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
+import { Permission } from 'src/modules/permission/schemas/permission.schema';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+import { RoleBulkService } from 'src/modules/role/services/role.bulk.service';
+import { RoleService } from 'src/modules/role/services/role.service';
 
 @Injectable()
 export class RoleSeed {
@@ -20,10 +20,9 @@ export class RoleSeed {
         describe: 'insert roles',
     })
     async insert(): Promise<void> {
-        const permissions: PermissionDocument[] =
-            await this.permissionService.findAll({
-                code: { $in: Object.values(ENUM_AUTH_PERMISSIONS) },
-            });
+        const permissions: Permission[] = await this.permissionService.findAll({
+            code: { $in: Object.values(ENUM_AUTH_PERMISSIONS) },
+        });
 
         try {
             const permissionsMap = permissions.map((val) => val._id);

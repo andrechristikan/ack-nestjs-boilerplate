@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { Types } from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { plainToInstance } from 'class-transformer';
@@ -14,11 +13,11 @@ import {
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import {
+    IUser,
     IUserCheckExist,
     IUserCreate,
-    IUserDocument,
 } from 'src/modules/user/interfaces/user.interface';
-import { UserDocument, UserEntity } from 'src/modules/user/schemas/user.schema';
+import { User, UserEntity } from 'src/modules/user/schemas/user.schema';
 import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
@@ -27,6 +26,7 @@ import { UserPhotoDto } from 'src/modules/user/dtos/user.photo.dto';
 import { UserPasswordDto } from 'src/modules/user/dtos/user.password.dto';
 import { UserPasswordExpiredDto } from 'src/modules/user/dtos/user.password-expired.dto';
 import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
+import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -80,18 +80,17 @@ export class UserService implements IUserService {
             role,
         }: IUserCreate,
         options?: IDatabaseCreateOptions
-    ): Promise<UserDocument> {
-        const user: UserEntity = {
-            firstName,
-            email,
-            mobileNumber,
-            password,
-            role: new Types.ObjectId(role),
-            isActive: true,
-            lastName,
-            salt,
-            passwordExpired,
-        };
+    ): Promise<User> {
+        const user: UserEntity = new UserEntity();
+        user.firstName = firstName;
+        user.email = email;
+        user.mobileNumber = mobileNumber;
+        user.password = password;
+        user.role = DatabasePrimaryKey(role);
+        user.isActive = true;
+        user.lastName = lastName;
+        user.salt = salt;
+        user.passwordExpired = passwordExpired;
 
         return this.userRepository.create<UserEntity>(user, options);
     }
@@ -99,14 +98,14 @@ export class UserService implements IUserService {
     async deleteOneById(
         _id: string,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<UserDocument> {
+    ): Promise<User> {
         return this.userRepository.deleteOneById(_id, options);
     }
 
     async deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<UserDocument> {
+    ): Promise<User> {
         return this.userRepository.deleteOne(find, options);
     }
 
@@ -114,7 +113,7 @@ export class UserService implements IUserService {
         _id: string,
         data: UserUpdateDto,
         options?: IDatabaseOptions
-    ): Promise<UserDocument> {
+    ): Promise<User> {
         return this.userRepository.updateOneById<UserUpdateDto>(
             _id,
             data,
@@ -154,7 +153,7 @@ export class UserService implements IUserService {
         _id: string,
         aws: AwsS3Serialization,
         options?: IDatabaseOptions
-    ): Promise<UserDocument> {
+    ): Promise<User> {
         const update: UserPhotoDto = {
             photo: aws,
         };
@@ -179,7 +178,7 @@ export class UserService implements IUserService {
         _id: string,
         { salt, passwordHash, passwordExpired }: IAuthPassword,
         options?: IDatabaseOptions
-    ): Promise<UserDocument> {
+    ): Promise<User> {
         const update: UserPasswordDto = {
             password: passwordHash,
             passwordExpired: passwordExpired,
@@ -197,7 +196,7 @@ export class UserService implements IUserService {
         _id: string,
         passwordExpired: Date,
         options?: IDatabaseOptions
-    ): Promise<UserDocument> {
+    ): Promise<User> {
         const update: UserPasswordExpiredDto = {
             passwordExpired: passwordExpired,
         };
@@ -205,10 +204,7 @@ export class UserService implements IUserService {
         return this.userRepository.updateOneById(_id, update, options);
     }
 
-    async inactive(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<UserDocument> {
+    async inactive(_id: string, options?: IDatabaseOptions): Promise<User> {
         const update: UserActiveDto = {
             isActive: false,
         };
@@ -216,10 +212,7 @@ export class UserService implements IUserService {
         return this.userRepository.updateOneById(_id, update, options);
     }
 
-    async active(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<UserDocument> {
+    async active(_id: string, options?: IDatabaseOptions): Promise<User> {
         const update: UserActiveDto = {
             isActive: true,
         };
@@ -227,9 +220,7 @@ export class UserService implements IUserService {
         return this.userRepository.updateOneById(_id, update, options);
     }
 
-    async payloadSerialization(
-        data: IUserDocument
-    ): Promise<UserPayloadSerialization> {
+    async payloadSerialization(data: IUser): Promise<UserPayloadSerialization> {
         return plainToInstance(UserPayloadSerialization, data);
     }
 }
