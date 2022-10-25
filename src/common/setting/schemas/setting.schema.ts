@@ -6,14 +6,14 @@ import {
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
 import {
-    DatabasePrimaryKeyType,
+    DatabaseKeyType,
     DatabaseSchemaType,
 } from 'src/common/database/interfaces/database.interface';
 
 @DatabaseEntity({ timestamps: true, versionKey: false })
 export class SettingEntity {
     @DatabasePropPrimary()
-    _id?: DatabasePrimaryKeyType;
+    _id?: DatabaseKeyType;
 
     @DatabaseProp({
         required: true,

@@ -18,7 +18,7 @@ import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/req
 import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/common/setting/constants/setting.status-code.constant';
 import { SettingService } from 'src/common/setting/services/setting.service';
 import { Setting } from 'src/common/setting/schemas/setting.schema';
-import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
+import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 
 describe('E2E Setting Admin', () => {
     let app: INestApplication;
@@ -85,10 +85,7 @@ describe('E2E Setting Admin', () => {
     it(`PUT ${E2E_SETTING_ADMIN_UPDATE_URL} Update Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .put(
-                E2E_SETTING_ADMIN_UPDATE_URL.replace(
-                    ':_id',
-                    `${DatabasePrimaryKey()}`
-                )
+                E2E_SETTING_ADMIN_UPDATE_URL.replace(':_id', `${DatabaseKey()}`)
             )
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())

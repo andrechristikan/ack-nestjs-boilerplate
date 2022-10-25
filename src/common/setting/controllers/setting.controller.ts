@@ -47,9 +47,9 @@ export class SettingController {
     @ResponsePaging('setting.list', {
         classSerialization: SettingListSerialization,
     })
-    // @AuthApiKey()
-    // @RequestValidateUserAgent()
-    // @RequestValidateTimestamp()
+    @AuthApiKey()
+    @RequestValidateUserAgent()
+    @RequestValidateTimestamp()
     @Get('/list')
     async list(
         @Query()

@@ -24,20 +24,25 @@ import { v4 as uuidV4 } from 'uuid';
 
 // for load env
 import { config } from 'dotenv';
-import { DatabasePrimaryKeyType } from 'src/common/database/interfaces/database.interface';
+import { DatabaseKeyType } from 'src/common/database/interfaces/database.interface';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 config();
 
 export function DatabaseConnection(
     connectionName?: string
 ): ParameterDecorator {
-    return InjectConnection(connectionName || DATABASE_CONNECTION_NAME);
+    return process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO
+        ? InjectConnection(connectionName || DATABASE_CONNECTION_NAME)
+        : InjectDataSource(connectionName || DATABASE_CONNECTION_NAME);
 }
 
-export function DatabaseModel(
-    entity: string,
+export function DatabaseRepository(
+    entity: any,
     connectionName?: string
 ): ParameterDecorator {
-    return InjectModel(entity, connectionName || DATABASE_CONNECTION_NAME);
+    return process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO
+        ? InjectModel(entity, connectionName || DATABASE_CONNECTION_NAME)
+        : InjectRepository(entity, connectionName || DATABASE_CONNECTION_NAME);
 }
 
 export function DatabaseEntity(
@@ -55,7 +60,7 @@ export function DatabaseProp(options?: PropOptions<any>): PropertyDecorator {
 }
 
 export function DatabasePropForeign(
-    options?: PropOptions<any>,
+    options?: Omit<PropOptions<any>, 'type'>,
     multiple?: boolean
 ): PropertyDecorator {
     return process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO
@@ -74,7 +79,7 @@ export function DatabasePropPrimary(): PropertyDecorator {
 
 export function DatabaseHookBefore(): PropertyDecorator {
     if (process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO) {
-        return applyDecorators(Skip());
+        return Skip();
     }
 
     return applyDecorators(BeforeInsert, BeforeUpdate);
@@ -87,12 +92,12 @@ export function DatabaseSchema<T>(entity: T): any {
             'save',
             function (next: CallbackWithoutResultAndOptionalError) {
                 const cls = new (entity as any)();
-                if (cls.beforeHook && typeof cls.beforeHook === 'function') {
-                    const bHook = cls.beforeHook.bind(this);
+                if (cls.hookBefore && typeof cls.hookBefore === 'function') {
+                    const bHook = cls.hookBefore.bind(this);
                     bHook();
                 }
 
-                this._id = DatabasePrimaryKey();
+                this._id = DatabaseKey();
                 next();
             }
         );
@@ -103,7 +108,7 @@ export function DatabaseSchema<T>(entity: T): any {
     return entity;
 }
 
-export function DatabasePrimaryKey(_id?: string): DatabasePrimaryKeyType {
+export function DatabaseKey(_id?: string): DatabaseKeyType {
     if (process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO) {
         return new Types.ObjectId(_id);
     }

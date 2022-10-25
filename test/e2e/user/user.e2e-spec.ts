@@ -21,7 +21,7 @@ import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.stat
 import { IUser } from 'src/modules/user/interfaces/user.interface';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { Role } from 'src/modules/role/schemas/role.schema';
-import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
+import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 import { RoleModule } from 'src/modules/role/role.module';
 import { PermissionModule } from 'src/modules/permission/permission.module';
 
@@ -93,7 +93,7 @@ describe('E2E User', () => {
         const payload = await authService.createPayloadAccessToken(map, false);
         const payloadNotFound = {
             ...payload,
-            _id: `${DatabasePrimaryKey()}`,
+            _id: `${DatabaseKey()}`,
         };
 
         const payloadHashed = await authService.encryptAccessToken(payload);

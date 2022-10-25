@@ -8,7 +8,7 @@ import {
     DatabasePropPrimary,
 } from 'src/common/database/decorators/database.decorator';
 import {
-    DatabasePrimaryKeyType,
+    DatabaseKeyType,
     DatabaseSchemaType,
 } from 'src/common/database/interfaces/database.interface';
 import { RoleEntity } from 'src/modules/role/schemas/role.schema';
@@ -16,7 +16,7 @@ import { RoleEntity } from 'src/modules/role/schemas/role.schema';
 @DatabaseEntity({ timestamps: true, versionKey: false })
 export class UserEntity {
     @DatabasePropPrimary()
-    _id?: DatabasePrimaryKeyType;
+    _id?: DatabaseKeyType;
 
     @DatabaseProp({
         required: true,
@@ -56,7 +56,7 @@ export class UserEntity {
         ref: RoleEntity.name,
         index: true,
     })
-    role: DatabasePrimaryKeyType;
+    role: DatabaseKeyType;
 
     @DatabaseProp({
         required: true,
@@ -96,7 +96,7 @@ export class UserEntity {
     photo?: AwsS3Serialization;
 
     @DatabaseHookBefore()
-    beforeHook() {
+    hookBefore() {
         this.email = this.email.toLowerCase();
         this.firstName = this.firstName.toLowerCase();
         this.lastName = this.lastName.toLowerCase();

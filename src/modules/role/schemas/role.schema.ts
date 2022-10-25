@@ -8,7 +8,7 @@ import {
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
 import {
-    DatabasePrimaryKeyType,
+    DatabaseKeyType,
     DatabaseSchemaType,
 } from 'src/common/database/interfaces/database.interface';
 import { PermissionEntity } from 'src/modules/permission/schemas/permission.schema';
@@ -16,7 +16,7 @@ import { PermissionEntity } from 'src/modules/permission/schemas/permission.sche
 @DatabaseEntity({ timestamps: true, versionKey: false })
 export class RoleEntity {
     @DatabasePropPrimary()
-    _id?: DatabasePrimaryKeyType;
+    _id?: DatabaseKeyType;
 
     @DatabaseProp({
         required: true,
@@ -35,7 +35,7 @@ export class RoleEntity {
         },
         true
     )
-    permissions: DatabasePrimaryKeyType[];
+    permissions: DatabaseKeyType[];
 
     @DatabaseProp({
         required: true,
@@ -52,7 +52,7 @@ export class RoleEntity {
     accessFor: ENUM_AUTH_ACCESS_FOR;
 
     @DatabaseHookBefore()
-    beforeHook() {
+    hookBefore() {
         this.name = this.name.toLowerCase();
     }
 }

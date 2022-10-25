@@ -28,7 +28,7 @@ import { UserPayloadSerialization } from 'src/modules/user/serializations/user.p
 import { IUser } from 'src/modules/user/interfaces/user.interface';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { Role } from 'src/modules/role/schemas/role.schema';
-import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
+import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 
 describe('E2E User Admin', () => {
@@ -168,7 +168,7 @@ describe('E2E User Admin', () => {
     it(`POST ${E2E_USER_ADMIN_CREATE_URL} Create, Role Not Found`, async () => {
         const req = {
             ...userData,
-            role: `${DatabasePrimaryKey()}`,
+            role: `${DatabaseKey()}`,
             password,
         };
 
@@ -270,12 +270,7 @@ describe('E2E User Admin', () => {
 
     it(`GET ${E2E_USER_ADMIN_GET_URL} Get Not Found`, async () => {
         const response = await request(app.getHttpServer())
-            .get(
-                E2E_USER_ADMIN_GET_URL.replace(
-                    ':_id',
-                    `${DatabasePrimaryKey()}`
-                )
-            )
+            .get(E2E_USER_ADMIN_GET_URL.replace(':_id', `${DatabaseKey()}`))
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
@@ -326,12 +321,7 @@ describe('E2E User Admin', () => {
 
     it(`PUT ${E2E_USER_ADMIN_UPDATE_URL} Update, not found`, async () => {
         const response = await request(app.getHttpServer())
-            .put(
-                E2E_USER_ADMIN_UPDATE_URL.replace(
-                    ':_id',
-                    `${DatabasePrimaryKey()}`
-                )
-            )
+            .put(E2E_USER_ADMIN_UPDATE_URL.replace(':_id', `${DatabaseKey()}`))
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
@@ -372,10 +362,7 @@ describe('E2E User Admin', () => {
     it(`PATCH ${E2E_USER_ADMIN_INACTIVE_URL} Inactive, Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .patch(
-                E2E_USER_ADMIN_INACTIVE_URL.replace(
-                    ':_id',
-                    `${DatabasePrimaryKey()}`
-                )
+                E2E_USER_ADMIN_INACTIVE_URL.replace(':_id', `${DatabaseKey()}`)
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
@@ -426,10 +413,7 @@ describe('E2E User Admin', () => {
     it(`PATCH ${E2E_USER_ADMIN_ACTIVE_URL} Active, Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .patch(
-                E2E_USER_ADMIN_ACTIVE_URL.replace(
-                    ':_id',
-                    `${DatabasePrimaryKey()}`
-                )
+                E2E_USER_ADMIN_ACTIVE_URL.replace(':_id', `${DatabaseKey()}`)
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
@@ -480,10 +464,7 @@ describe('E2E User Admin', () => {
     it(`DELETE ${E2E_USER_ADMIN_DELETE_URL} Delete, Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .delete(
-                E2E_USER_ADMIN_DELETE_URL.replace(
-                    ':_id',
-                    `${DatabasePrimaryKey()}`
-                )
+                E2E_USER_ADMIN_DELETE_URL.replace(':_id', `${DatabaseKey()}`)
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())

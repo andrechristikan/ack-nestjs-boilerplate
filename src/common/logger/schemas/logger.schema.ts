@@ -8,7 +8,7 @@ import {
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
 import {
-    DatabasePrimaryKeyType,
+    DatabaseKeyType,
     DatabaseSchemaType,
 } from 'src/common/database/interfaces/database.interface';
 import {
@@ -20,7 +20,7 @@ import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.c
 @DatabaseEntity({ timestamps: true, versionKey: false })
 export class LoggerEntity {
     @DatabasePropPrimary()
-    _id?: DatabasePrimaryKeyType;
+    _id?: DatabaseKeyType;
 
     @DatabaseProp({
         required: true,
@@ -48,18 +48,18 @@ export class LoggerEntity {
     @DatabasePropForeign({
         required: false,
     })
-    user?: DatabasePrimaryKeyType;
+    user?: DatabaseKeyType;
 
     @DatabasePropForeign({
         required: false,
     })
-    role?: DatabasePrimaryKeyType;
+    role?: DatabaseKeyType;
 
     @DatabasePropForeign({
         required: false,
         ref: AuthApiEntity.name,
     })
-    apiKey?: DatabasePrimaryKeyType;
+    apiKey?: DatabaseKeyType;
 
     @DatabaseProp({
         required: true,

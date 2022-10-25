@@ -20,7 +20,7 @@ import { IUser } from 'src/modules/user/interfaces/user.interface';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { Role } from 'src/modules/role/schemas/role.schema';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
+import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 import { RoleModule } from 'src/modules/role/role.module';
 import { PermissionModule } from 'src/modules/permission/permission.module';
 
@@ -102,7 +102,7 @@ describe('E2E User Refresh', () => {
         );
         const payloadNotFound = {
             ...payload,
-            _id: `${DatabasePrimaryKey()}`,
+            _id: `${DatabaseKey()}`,
         };
 
         const payloadHashed = await authService.encryptRefreshToken(payload);

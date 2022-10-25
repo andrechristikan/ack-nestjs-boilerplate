@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { DatabaseConnectionModule } from 'src/common/database/database.module';
-import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
+import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 import { HelperModule } from 'src/common/helper/helper.module';
 import { SettingService } from 'src/common/setting/services/setting.service';
 import { SettingModule } from 'src/common/setting/setting.module';
@@ -10,7 +10,7 @@ import configs from 'src/configs';
 
 describe('SettingService', () => {
     let settingService: SettingService;
-    const _id = DatabasePrimaryKey();
+    const _id = DatabaseKey();
     const _idString = `${_id}`;
 
     beforeEach(async () => {

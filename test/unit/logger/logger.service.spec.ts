@@ -2,7 +2,7 @@ import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { DatabaseConnectionModule } from 'src/common/database/database.module';
-import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
+import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 import { HelperModule } from 'src/common/helper/helper.module';
 import {
     ENUM_LOGGER_ACTION,
@@ -28,11 +28,11 @@ describe('LoggerService', () => {
     const loggerComplete: ILogger = {
         action: ENUM_LOGGER_ACTION.TEST,
         description: 'test aaa',
-        user: `${DatabasePrimaryKey()}`,
-        apiKey: `${DatabasePrimaryKey()}`,
+        user: `${DatabaseKey()}`,
+        apiKey: `${DatabaseKey()}`,
         requestId: v4(),
         role: {
-            _id: `${DatabasePrimaryKey()}`,
+            _id: `${DatabaseKey()}`,
             accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
         },
         method: ENUM_REQUEST_METHOD.GET,

@@ -77,9 +77,6 @@ export class UserController {
     })
     @UserProfileGuard()
     @AuthJwtGuard()
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Get('/profile')
     async profile(@GetUser() user: IUser): Promise<IResponse> {
         return user;
@@ -89,9 +86,6 @@ export class UserController {
     @Response('user.upload')
     @UserProfileGuard()
     @AuthJwtGuard()
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @UploadFileSingle('file')
     @HttpCode(HttpStatus.OK)
     @Post('/profile/upload')

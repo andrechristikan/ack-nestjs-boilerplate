@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { DatabaseMongoRepositoryAbstract } from 'src/common/database/abstracts/database.mongo-repository.abstract';
-import { DatabaseModel } from 'src/common/database/decorators/database.decorator';
+import { DatabaseRepository } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseRepositoryAbstract } from 'src/common/database/interfaces/database.repository.interface';
 import { PermissionEntity } from 'src/modules/permission/schemas/permission.schema';
 import { RoleEntity } from 'src/modules/role/schemas/role.schema';
@@ -13,7 +13,7 @@ export class UserRepository
     implements IDatabaseRepositoryAbstract<User>
 {
     constructor(
-        @DatabaseModel(UserEntity.name)
+        @DatabaseRepository(UserEntity.name)
         private readonly userModel: Model<User>
     ) {
         super(userModel, {

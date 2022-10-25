@@ -30,7 +30,7 @@ import { Role } from 'src/modules/role/schemas/role.schema';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { Permission } from 'src/modules/permission/schemas/permission.schema';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
+import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 
 describe('E2E Role Admin', () => {
     let app: INestApplication;
@@ -158,10 +158,7 @@ describe('E2E Role Admin', () => {
     it(`GET ${E2E_ROLE_ADMIN_GET_BY_ID_URL} Get Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .get(
-                E2E_ROLE_ADMIN_GET_BY_ID_URL.replace(
-                    ':_id',
-                    `${DatabasePrimaryKey()}`
-                )
+                E2E_ROLE_ADMIN_GET_BY_ID_URL.replace(':_id', `${DatabaseKey()}`)
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
@@ -262,12 +259,7 @@ describe('E2E Role Admin', () => {
 
     it(`PUT ${E2E_ROLE_ADMIN_UPDATE_URL} Update Not found`, async () => {
         const response = await request(app.getHttpServer())
-            .put(
-                E2E_ROLE_ADMIN_UPDATE_URL.replace(
-                    ':_id',
-                    `${DatabasePrimaryKey()}`
-                )
-            )
+            .put(E2E_ROLE_ADMIN_UPDATE_URL.replace(':_id', `${DatabaseKey()}`))
             .send(updateData)
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
@@ -317,10 +309,7 @@ describe('E2E Role Admin', () => {
     it(`PATCH ${E2E_ROLE_ADMIN_INACTIVE_URL} Inactive, Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .patch(
-                E2E_ROLE_ADMIN_INACTIVE_URL.replace(
-                    ':_id',
-                    `${DatabasePrimaryKey()}`
-                )
+                E2E_ROLE_ADMIN_INACTIVE_URL.replace(':_id', `${DatabaseKey()}`)
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
@@ -368,10 +357,7 @@ describe('E2E Role Admin', () => {
     it(`PATCH ${E2E_ROLE_ADMIN_ACTIVE_URL} Active, Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .patch(
-                E2E_ROLE_ADMIN_ACTIVE_URL.replace(
-                    ':_id',
-                    `${DatabasePrimaryKey()}`
-                )
+                E2E_ROLE_ADMIN_ACTIVE_URL.replace(':_id', `${DatabaseKey()}`)
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
@@ -419,10 +405,7 @@ describe('E2E Role Admin', () => {
     it(`DELETE ${E2E_ROLE_ADMIN_DELETE_URL} Delete Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .delete(
-                E2E_ROLE_ADMIN_DELETE_URL.replace(
-                    ':_id',
-                    `${DatabasePrimaryKey()}`
-                )
+                E2E_ROLE_ADMIN_DELETE_URL.replace(':_id', `${DatabaseKey()}`)
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())

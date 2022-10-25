@@ -26,7 +26,7 @@ import { UserPhotoDto } from 'src/modules/user/dtos/user.photo.dto';
 import { UserPasswordDto } from 'src/modules/user/dtos/user.password.dto';
 import { UserPasswordExpiredDto } from 'src/modules/user/dtos/user.password-expired.dto';
 import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
-import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
+import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -86,7 +86,7 @@ export class UserService implements IUserService {
         user.email = email;
         user.mobileNumber = mobileNumber;
         user.password = password;
-        user.role = DatabasePrimaryKey(role);
+        user.role = DatabaseKey(role);
         user.isActive = true;
         user.lastName = lastName;
         user.salt = salt;
@@ -114,6 +114,7 @@ export class UserService implements IUserService {
         data: UserUpdateDto,
         options?: IDatabaseOptions
     ): Promise<User> {
+        console.log('ggg');
         return this.userRepository.updateOneById<UserUpdateDto>(
             _id,
             data,

@@ -16,7 +16,10 @@ import configs from 'src/configs';
 import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum.constant';
 import { AppLanguage } from 'src/app/constants/app.constant';
 import { SettingModule } from 'src/common/setting/setting.module';
-import { DatabaseConnectionModule } from 'src/common/database/database.module';
+import {
+    DatabaseConnectionModule,
+    DatabaseTransactionModule,
+} from 'src/common/database/database.module';
 
 @Module({
     controllers: [],
@@ -132,6 +135,7 @@ import { DatabaseConnectionModule } from 'src/common/database/database.module';
             },
         }),
         DatabaseConnectionModule.register(),
+        DatabaseTransactionModule,
         MessageModule,
         HelperModule,
         PaginationModule,

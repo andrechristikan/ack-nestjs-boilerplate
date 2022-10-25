@@ -17,7 +17,7 @@ import { RoutesModule } from 'src/router/routes/routes.module';
 import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/common/setting/constants/setting.status-code.constant';
 import { SettingService } from 'src/common/setting/services/setting.service';
 import { Setting } from 'src/common/setting/schemas/setting.schema';
-import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
+import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 
 describe('E2E Setting', () => {
     let app: INestApplication;
@@ -85,12 +85,7 @@ describe('E2E Setting', () => {
 
     it(`GET ${E2E_SETTING_COMMON_GET_URL} Get Not Found`, async () => {
         const response = await request(app.getHttpServer())
-            .get(
-                E2E_SETTING_COMMON_GET_URL.replace(
-                    ':_id',
-                    `${DatabasePrimaryKey()}`
-                )
-            )
+            .get(E2E_SETTING_COMMON_GET_URL.replace(':_id', `${DatabaseKey()}`))
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);

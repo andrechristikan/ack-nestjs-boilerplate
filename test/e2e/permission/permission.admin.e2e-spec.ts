@@ -23,7 +23,7 @@ import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
 import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/constants/permission.status-code.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { Permission } from 'src/modules/permission/schemas/permission.schema';
-import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
+import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 
 describe('E2E Permission Admin', () => {
     let app: INestApplication;
@@ -111,10 +111,7 @@ describe('E2E Permission Admin', () => {
     it(`GET ${E2E_PERMISSION_ADMIN_GET_URL} Get Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .get(
-                E2E_PERMISSION_ADMIN_GET_URL.replace(
-                    ':_id',
-                    `${DatabasePrimaryKey()}`
-                )
+                E2E_PERMISSION_ADMIN_GET_URL.replace(':_id', `${DatabaseKey()}`)
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
@@ -148,7 +145,7 @@ describe('E2E Permission Admin', () => {
             .put(
                 E2E_PERMISSION_ADMIN_UPDATE_URL.replace(
                     ':_id',
-                    `${DatabasePrimaryKey()}`
+                    `${DatabaseKey()}`
                 )
             )
             .send(updateData)
@@ -208,7 +205,7 @@ describe('E2E Permission Admin', () => {
             .patch(
                 E2E_PERMISSION_ADMIN_ACTIVE_URL.replace(
                     ':_id',
-                    `${DatabasePrimaryKey()}`
+                    `${DatabaseKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -247,7 +244,7 @@ describe('E2E Permission Admin', () => {
             .patch(
                 E2E_PERMISSION_ADMIN_INACTIVE_URL.replace(
                     ':_id',
-                    `${DatabasePrimaryKey()}`
+                    `${DatabaseKey()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -322,7 +319,7 @@ describe('E2E Permission Admin', () => {
     afterAll(async () => {
         try {
             await permissionService.deleteOne({
-                _id: DatabasePrimaryKey(permission._id),
+                _id: DatabaseKey(permission._id),
             });
         } catch (e) {
             console.error(e);

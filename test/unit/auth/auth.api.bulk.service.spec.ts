@@ -7,7 +7,7 @@ import { AuthApiModule } from 'src/common/auth/auth.module';
 import configs from 'src/configs';
 import { ConfigModule } from '@nestjs/config';
 import { HelperModule } from 'src/common/helper/helper.module';
-import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
+import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 import { DatabaseConnectionModule } from 'src/common/database/database.module';
 
 describe('AuthApiBulkService', () => {
@@ -58,7 +58,7 @@ describe('AuthApiBulkService', () => {
 
             expect(
                 await authApiBulkService.deleteMany({
-                    _id: DatabasePrimaryKey(`${authApi._id}`),
+                    _id: DatabaseKey(`${authApi._id}`),
                 })
             ).toBe(result);
         });
@@ -67,7 +67,7 @@ describe('AuthApiBulkService', () => {
     afterEach(async () => {
         try {
             await authApiBulkService.deleteMany({
-                _id: DatabasePrimaryKey(`${authApi._id}`),
+                _id: DatabaseKey(`${authApi._id}`),
             });
             await authApiService.deleteOne({
                 name: authApiName,

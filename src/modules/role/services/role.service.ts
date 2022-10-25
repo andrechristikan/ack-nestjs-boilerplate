@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
-import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
+import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,
@@ -70,7 +70,7 @@ export class RoleService implements IRoleService {
     ): Promise<Role> {
         const create: RoleEntity = new RoleEntity();
         create.name = name;
-        create.permissions = permissions.map((val) => DatabasePrimaryKey(val));
+        create.permissions = permissions.map((val) => DatabaseKey(val));
         create.isActive = true;
         create.accessFor = accessFor;
 
@@ -94,7 +94,7 @@ export class RoleService implements IRoleService {
         const update: IRoleUpdate = {
             name,
             accessFor,
-            permissions: permissions.map((val) => DatabasePrimaryKey(val)),
+            permissions: permissions.map((val) => DatabaseKey(val)),
         };
 
         return this.roleRepository.updateOneById<IRoleUpdate>(

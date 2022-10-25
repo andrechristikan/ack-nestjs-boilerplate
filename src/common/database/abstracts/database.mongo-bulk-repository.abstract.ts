@@ -1,12 +1,12 @@
-import { Model, PopulateOptions } from 'mongoose';
-import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
+import { ClientSession, Model, PopulateOptions } from 'mongoose';
+import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseBulkRepositoryAbstract } from 'src/common/database/interfaces/database.bulk.repository.interface';
 import {
     IDatabaseCreateManyOptions,
     IDatabaseManyOptions,
     IDatabaseSoftDeleteManyOptions,
     IDatabaseRestoreManyOptions,
-    DatabasePrimaryKeyType,
+    DatabaseKeyType,
 } from 'src/common/database/interfaces/database.interface';
 
 export abstract class DatabaseMongoBulkRepositoryAbstract<T>
@@ -28,7 +28,7 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean> {
         const create = this._repository.insertMany(data, {
-            session: options ? options.session : undefined,
+            session: options ? (options.session as ClientSession) : undefined,
         });
 
         try {
@@ -43,9 +43,7 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
         _id: string[],
         options?: IDatabaseManyOptions
     ): Promise<boolean> {
-        const map: DatabasePrimaryKeyType[] = _id.map((val) =>
-            DatabasePrimaryKey(val)
-        );
+        const map: DatabaseKeyType[] = _id.map((val) => DatabaseKey(val));
 
         const del = this._repository.deleteMany({
             _id: {
@@ -60,7 +58,7 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
         }
 
         if (options && options.session) {
-            del.session(options.session);
+            del.session(options.session as ClientSession);
         }
 
         if (options && options.populate) {
@@ -88,7 +86,7 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
         }
 
         if (options && options.session) {
-            del.session(options.session);
+            del.session(options.session as ClientSession);
         }
 
         if (options && options.populate) {
@@ -107,9 +105,7 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
         _id: string[],
         options?: IDatabaseSoftDeleteManyOptions
     ): Promise<boolean> {
-        const map: DatabasePrimaryKeyType[] = _id.map((val) =>
-            DatabasePrimaryKey(val)
-        );
+        const map: DatabaseKeyType[] = _id.map((val) => DatabaseKey(val));
 
         const softDel = this._repository
             .updateMany(
@@ -128,7 +124,7 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
             .exists(false);
 
         if (options && options.session) {
-            softDel.session(options.session);
+            softDel.session(options.session as ClientSession);
         }
 
         if (options && options.populate) {
@@ -157,7 +153,7 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
             .exists(false);
 
         if (options && options.session) {
-            softDel.session(options.session);
+            softDel.session(options.session as ClientSession);
         }
 
         if (options && options.populate) {
@@ -176,9 +172,7 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
         _id: string[],
         options?: IDatabaseRestoreManyOptions
     ): Promise<boolean> {
-        const map: DatabasePrimaryKeyType[] = _id.map((val) =>
-            DatabasePrimaryKey(val)
-        );
+        const map: DatabaseKeyType[] = _id.map((val) => DatabaseKey(val));
 
         const rest = this._repository
             .updateMany(
@@ -197,7 +191,7 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
             .exists(true);
 
         if (options && options.session) {
-            rest.session(options.session);
+            rest.session(options.session as ClientSession);
         }
 
         if (options && options.populate) {
@@ -228,7 +222,7 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
         }
 
         if (options && options.session) {
-            update.session(options.session);
+            update.session(options.session as ClientSession);
         }
 
         if (options && options.populate) {

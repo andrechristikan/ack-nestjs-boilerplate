@@ -11,7 +11,7 @@ import { HelperModule } from 'src/common/helper/helper.module';
 import { ConfigModule } from '@nestjs/config';
 import configs from 'src/configs';
 import { AuthApi } from 'src/common/auth/schemas/auth.api.schema';
-import { DatabasePrimaryKey } from 'src/common/database/decorators/database.decorator';
+import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 import { DatabaseConnectionModule } from 'src/common/database/database.module';
 
 describe('AuthApiService', () => {
@@ -538,7 +538,7 @@ describe('AuthApiService', () => {
     afterEach(async () => {
         try {
             await authApiService.deleteOne({
-                _id: DatabasePrimaryKey(`${authApi._id}`),
+                _id: DatabaseKey(`${authApi._id}`),
             });
             await authApiBulkService.deleteMany({
                 name: authApiName,

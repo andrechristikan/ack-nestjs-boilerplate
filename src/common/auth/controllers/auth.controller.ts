@@ -21,9 +21,6 @@ export class AuthController {
     @AuthGetInfoDoc()
     @Response('auth.info', { classSerialization: AuthInfoSerialization })
     @AuthJwtGuard()
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Get('/info')
     async info(@AuthUser() user: Record<string, any>): Promise<IResponse> {
         return user;
