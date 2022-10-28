@@ -26,7 +26,7 @@ import { UserPhotoDto } from 'src/modules/user/dtos/user.photo.dto';
 import { UserPasswordDto } from 'src/modules/user/dtos/user.password.dto';
 import { UserPasswordExpiredDto } from 'src/modules/user/dtos/user.password-expired.dto';
 import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
-import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
+import { DatabaseService } from 'src/common/database/services/database.service';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -35,7 +35,8 @@ export class UserService implements IUserService {
     constructor(
         private readonly userRepository: UserRepository,
         private readonly helperStringService: HelperStringService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly databaseService: DatabaseService
     ) {
         this.uploadPath = this.configService.get<string>('user.uploadPath');
     }
@@ -86,7 +87,7 @@ export class UserService implements IUserService {
         user.email = email;
         user.mobileNumber = mobileNumber;
         user.password = password;
-        user.role = DatabaseKey(role);
+        user.role = role;
         user.isActive = true;
         user.lastName = lastName;
         user.salt = salt;

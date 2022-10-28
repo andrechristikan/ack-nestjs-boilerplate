@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
-import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,
@@ -9,6 +8,7 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { DatabaseService } from 'src/common/database/services/database.service';
 import { RoleActiveDto } from 'src/modules/role/dtos/role.active.dto';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
@@ -19,7 +19,10 @@ import { Role, RoleEntity } from 'src/modules/role/schemas/role.schema';
 
 @Injectable()
 export class RoleService implements IRoleService {
-    constructor(private readonly roleRepository: RoleRepository) {}
+    constructor(
+        private readonly roleRepository: RoleRepository,
+        private readonly databaseService: DatabaseService
+    ) {}
 
     async findAll<T>(
         find?: Record<string, any>,
@@ -70,7 +73,7 @@ export class RoleService implements IRoleService {
     ): Promise<Role> {
         const create: RoleEntity = new RoleEntity();
         create.name = name;
-        create.permissions = permissions.map((val) => DatabaseKey(val));
+        create.permissions = permissions;
         create.isActive = true;
         create.accessFor = accessFor;
 
@@ -94,7 +97,7 @@ export class RoleService implements IRoleService {
         const update: IRoleUpdate = {
             name,
             accessFor,
-            permissions: permissions.map((val) => DatabaseKey(val)),
+            permissions: permissions,
         };
 
         return this.roleRepository.updateOneById<IRoleUpdate>(

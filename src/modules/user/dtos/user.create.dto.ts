@@ -7,7 +7,7 @@ import {
     IsEmail,
     MaxLength,
     MinLength,
-    IsMongoId,
+    IsUUID,
 } from 'class-validator';
 import { IsPasswordStrong } from 'src/common/request/validations/request.is-password-strong.validation';
 import { IsStartWith } from 'src/common/request/validations/request.is-start-with.validation';
@@ -62,7 +62,7 @@ export class UserCreateDto {
         required: true,
     })
     @IsNotEmpty()
-    @IsMongoId()
+    @IsUUID('4')
     readonly role: string;
 
     @ApiProperty({

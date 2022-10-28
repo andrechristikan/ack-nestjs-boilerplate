@@ -4,13 +4,22 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum.constant';
 import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
-import { DatabaseOptions } from 'src/common/database/interfaces/database.interface';
+import { IDatabaseConnectOptions } from 'src/common/database/interfaces/database.interface';
 import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
-import { DatabaseTransactionService } from 'src/common/database/services/database.transaction.service';
+import { DatabaseService } from 'src/common/database/services/database.service';
+
+@Global()
+@Module({
+    controllers: [],
+    providers: [DatabaseService],
+    exports: [DatabaseService],
+    imports: [],
+})
+export class DatabaseModule {}
 
 @Module({})
-export class DatabaseModule {
-    static register(options: DatabaseOptions): DynamicModule {
+export class DatabaseConnectModule {
+    static register(options: IDatabaseConnectOptions): DynamicModule {
         const module =
             process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO
                 ? MongooseModule.forFeature(
@@ -38,7 +47,7 @@ export class DatabaseModule {
                   );
 
         return {
-            module: DatabaseModule,
+            module: DatabaseConnectModule,
             controllers: [],
             providers: [],
             exports: [module],
@@ -47,20 +56,12 @@ export class DatabaseModule {
     }
 }
 
-@Global()
-@Module({
-    providers: [DatabaseTransactionService],
-    exports: [DatabaseTransactionService],
-    imports: [],
-})
-export class DatabaseTransactionModule {}
-
 @Module({})
-export class DatabaseConnectionModule {
+export class DatabaseInitModule {
     static register(): DynamicModule {
         if (process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO) {
             return {
-                module: DatabaseConnectionModule,
+                module: DatabaseInitModule,
                 controllers: [],
                 providers: [],
                 exports: [],
@@ -78,7 +79,7 @@ export class DatabaseConnectionModule {
         }
 
         return {
-            module: DatabaseConnectionModule,
+            module: DatabaseInitModule,
             controllers: [],
             providers: [],
             exports: [],

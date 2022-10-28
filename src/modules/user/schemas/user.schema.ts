@@ -7,16 +7,13 @@ import {
     DatabaseSchema,
     DatabasePropPrimary,
 } from 'src/common/database/decorators/database.decorator';
-import {
-    DatabaseKeyType,
-    DatabaseSchemaType,
-} from 'src/common/database/interfaces/database.interface';
+import { IDatabaseSchema } from 'src/common/database/interfaces/database.interface';
 import { RoleEntity } from 'src/modules/role/schemas/role.schema';
 
 @DatabaseEntity({ timestamps: true, versionKey: false })
 export class UserEntity {
     @DatabasePropPrimary()
-    _id?: DatabaseKeyType;
+    _id?: string;
 
     @DatabaseProp({
         required: true,
@@ -56,7 +53,7 @@ export class UserEntity {
         ref: RoleEntity.name,
         index: true,
     })
-    role: DatabaseKeyType;
+    role: string;
 
     @DatabaseProp({
         required: true,
@@ -106,4 +103,4 @@ export class UserEntity {
 export const UserDatabaseName = 'users';
 
 export const User = DatabaseSchema(UserEntity);
-export type User = DatabaseSchemaType<UserEntity>;
+export type User = IDatabaseSchema<UserEntity>;

@@ -17,8 +17,8 @@ import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum.
 import { AppLanguage } from 'src/app/constants/app.constant';
 import { SettingModule } from 'src/common/setting/setting.module';
 import {
-    DatabaseConnectionModule,
-    DatabaseTransactionModule,
+    DatabaseInitModule,
+    DatabaseModule,
 } from 'src/common/database/database.module';
 
 @Module({
@@ -134,8 +134,8 @@ import {
                 abortEarly: true,
             },
         }),
-        DatabaseConnectionModule.register(),
-        DatabaseTransactionModule,
+        DatabaseInitModule.register(),
+        DatabaseModule,
         MessageModule,
         HelperModule,
         PaginationModule,

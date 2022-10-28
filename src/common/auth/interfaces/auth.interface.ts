@@ -1,5 +1,3 @@
-import { DatabaseKeyType } from 'src/common/database/interfaces/database.interface';
-
 // Auth API
 export interface IAuthApiPayload {
     _id: string;
@@ -8,7 +6,7 @@ export interface IAuthApiPayload {
 }
 
 export interface IAuthApi {
-    _id: DatabaseKeyType;
+    _id: string;
     secret: string;
     passphrase: string;
     encryptionKey: string;

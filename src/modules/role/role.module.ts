@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
-import { DatabaseModule } from 'src/common/database/database.module';
+import { DatabaseConnectModule } from 'src/common/database/database.module';
 import { RoleBulkRepository } from './repositories/role.bulk.repository';
 import { RoleRepository } from './repositories/role.repository';
 import { RoleDatabaseName, RoleEntity, Role } from './schemas/role.schema';
@@ -17,7 +17,7 @@ import { RoleService } from './services/role.service';
     ],
     exports: [RoleService, RoleBulkService],
     imports: [
-        DatabaseModule.register({
+        DatabaseConnectModule.register({
             name: RoleEntity.name,
             schema: Role,
             collection: RoleDatabaseName,

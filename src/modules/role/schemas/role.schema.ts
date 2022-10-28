@@ -7,16 +7,13 @@ import {
     DatabasePropPrimary,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
-import {
-    DatabaseKeyType,
-    DatabaseSchemaType,
-} from 'src/common/database/interfaces/database.interface';
+import { IDatabaseSchema } from 'src/common/database/interfaces/database.interface';
 import { PermissionEntity } from 'src/modules/permission/schemas/permission.schema';
 
 @DatabaseEntity({ timestamps: true, versionKey: false })
 export class RoleEntity {
     @DatabasePropPrimary()
-    _id?: DatabaseKeyType;
+    _id?: string;
 
     @DatabaseProp({
         required: true,
@@ -27,15 +24,13 @@ export class RoleEntity {
     })
     name: string;
 
-    @DatabasePropForeign(
-        {
-            required: true,
-            default: [],
-            ref: PermissionEntity.name,
-        },
-        true
-    )
-    permissions: DatabaseKeyType[];
+    @DatabasePropForeign({
+        required: true,
+        default: [],
+        type: Array<string>,
+        ref: PermissionEntity.name,
+    })
+    permissions: string[];
 
     @DatabaseProp({
         required: true,
@@ -60,4 +55,4 @@ export class RoleEntity {
 export const RoleDatabaseName = 'roles';
 
 export const Role = DatabaseSchema(RoleEntity);
-export type Role = DatabaseSchemaType<RoleEntity>;
+export type Role = IDatabaseSchema<RoleEntity>;

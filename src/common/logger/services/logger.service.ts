@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
+import { DatabaseService } from 'src/common/database/services/database.service';
 import { ENUM_LOGGER_LEVEL } from 'src/common/logger/constants/logger.enum.constant';
 import {
     ILogger,
@@ -11,7 +11,10 @@ import { Logger, LoggerEntity } from 'src/common/logger/schemas/logger.schema';
 
 @Injectable()
 export class LoggerService implements ILoggerService {
-    constructor(private readonly loggerRepository: LoggerRepository) {}
+    constructor(
+        private readonly loggerRepository: LoggerRepository,
+        private readonly databaseService: DatabaseService
+    ) {}
 
     async info({
         action,
@@ -29,14 +32,14 @@ export class LoggerService implements ILoggerService {
     }: ILogger): Promise<Logger> {
         const create: LoggerEntity = {
             level: ENUM_LOGGER_LEVEL.INFO,
-            user: user ? DatabaseKey(user) : undefined,
-            apiKey: apiKey ? DatabaseKey(apiKey) : undefined,
+            user: user,
+            apiKey: apiKey,
             anonymous: user ? false : true,
             action,
             description,
             method,
             requestId,
-            role: role ? DatabaseKey(role._id) : undefined,
+            role: role ? role._id : undefined,
             accessFor: role && role.accessFor ? role.accessFor : undefined,
             params,
             bodies,
@@ -64,15 +67,15 @@ export class LoggerService implements ILoggerService {
     }: ILogger): Promise<Logger> {
         const create: LoggerEntity = {
             level: ENUM_LOGGER_LEVEL.DEBUG,
-            user: user ? DatabaseKey(user) : undefined,
-            apiKey: apiKey ? DatabaseKey(apiKey) : undefined,
+            user: user,
+            apiKey: apiKey,
             anonymous: user ? false : true,
             action,
             description,
             method,
             requestId,
-            role: role ? DatabaseKey(role._id) : undefined,
-            accessFor: role && role.accessFor ? role.accessFor : undefined,
+            role: role ? role._id : undefined,
+            accessFor: role ? role.accessFor : undefined,
             params,
             bodies,
             path,
@@ -99,14 +102,14 @@ export class LoggerService implements ILoggerService {
     }: ILogger): Promise<Logger> {
         const create: LoggerEntity = {
             level: ENUM_LOGGER_LEVEL.WARM,
-            user: user ? DatabaseKey(user) : undefined,
-            apiKey: apiKey ? DatabaseKey(apiKey) : undefined,
+            user: user,
+            apiKey: apiKey,
             anonymous: user ? false : true,
             action,
             description,
             method,
             requestId,
-            role: role ? DatabaseKey(role._id) : undefined,
+            role: role ? role._id : undefined,
             accessFor: role && role.accessFor ? role.accessFor : undefined,
             params,
             bodies,
@@ -134,14 +137,14 @@ export class LoggerService implements ILoggerService {
     }: ILogger): Promise<Logger> {
         const create: LoggerEntity = {
             level: ENUM_LOGGER_LEVEL.FATAL,
-            user: user ? DatabaseKey(user) : undefined,
-            apiKey: apiKey ? DatabaseKey(apiKey) : undefined,
+            user: user,
+            apiKey: apiKey,
             anonymous: user ? false : true,
             action,
             description,
             method,
             requestId,
-            role: role ? DatabaseKey(role._id) : undefined,
+            role: role ? role._id : undefined,
             accessFor: role && role.accessFor ? role.accessFor : undefined,
             params,
             bodies,
@@ -170,14 +173,14 @@ export class LoggerService implements ILoggerService {
     }: ILoggerRaw): Promise<Logger> {
         const create: LoggerEntity = {
             level,
-            user: user ? DatabaseKey(user) : undefined,
-            apiKey: apiKey ? DatabaseKey(apiKey) : undefined,
+            user: user,
+            apiKey: apiKey,
             anonymous: user ? false : true,
             action,
             description,
             method,
             requestId,
-            role: role ? DatabaseKey(role._id) : undefined,
+            role: role ? role._id : undefined,
             accessFor: role && role.accessFor ? role.accessFor : undefined,
             params,
             bodies,

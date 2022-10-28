@@ -212,7 +212,9 @@ export class RoleAdminController {
         @Body()
         { name, permissions, accessFor }: RoleUpdateDto
     ): Promise<IResponse> {
-        const check: boolean = await this.roleService.exists(name, role._id);
+        const check: boolean = await this.roleService.exists(name, {
+            excludeId: [role._id],
+        });
         if (check) {
             throw new BadRequestException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR,

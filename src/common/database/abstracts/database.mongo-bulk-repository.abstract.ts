@@ -1,12 +1,11 @@
 import { ClientSession, Model, PopulateOptions } from 'mongoose';
-import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseBulkRepositoryAbstract } from 'src/common/database/interfaces/database.bulk.repository.interface';
 import {
     IDatabaseCreateManyOptions,
     IDatabaseManyOptions,
     IDatabaseSoftDeleteManyOptions,
     IDatabaseRestoreManyOptions,
-    DatabaseKeyType,
+    IDatabaseRepositoryJoinOptions,
 } from 'src/common/database/interfaces/database.interface';
 
 export abstract class DatabaseMongoBulkRepositoryAbstract<T>
@@ -17,10 +16,54 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
 
     constructor(
         repository: Model<T>,
-        populateOnFind?: PopulateOptions | PopulateOptions[]
+        options?:
+            | IDatabaseRepositoryJoinOptions
+            | IDatabaseRepositoryJoinOptions[]
     ) {
         this._repository = repository;
-        this._populateOnFind = populateOnFind;
+        this._populateOnFind = this.__populateOnFind(options);
+    }
+
+    private __populateOnFind(
+        options?:
+            | IDatabaseRepositoryJoinOptions
+            | IDatabaseRepositoryJoinOptions[]
+    ): PopulateOptions | PopulateOptions[] {
+        if (options) {
+            if (Array.isArray(options) && options.length > 0) {
+                return this.__convertToPopulateArray(
+                    options as IDatabaseRepositoryJoinOptions[]
+                );
+            }
+
+            return this.__convertToPopulate(
+                options as IDatabaseRepositoryJoinOptions
+            );
+        }
+
+        return;
+    }
+
+    private __convertToPopulate(
+        options: IDatabaseRepositoryJoinOptions
+    ): PopulateOptions {
+        const populate: PopulateOptions = {
+            path: options.field,
+            match: options.foreignField,
+            model: options.with,
+        };
+
+        if (options.deepJoin) {
+            populate.populate = this.__populateOnFind(options.deepJoin);
+        }
+
+        return populate;
+    }
+
+    private __convertToPopulateArray(
+        options: IDatabaseRepositoryJoinOptions[]
+    ): PopulateOptions[] {
+        return options.map((val) => this.__convertToPopulate(val));
     }
 
     async createMany<N>(
@@ -43,11 +86,9 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
         _id: string[],
         options?: IDatabaseManyOptions
     ): Promise<boolean> {
-        const map: DatabaseKeyType[] = _id.map((val) => DatabaseKey(val));
-
         const del = this._repository.deleteMany({
             _id: {
-                $in: map,
+                $in: _id,
             },
         });
 
@@ -105,13 +146,11 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
         _id: string[],
         options?: IDatabaseSoftDeleteManyOptions
     ): Promise<boolean> {
-        const map: DatabaseKeyType[] = _id.map((val) => DatabaseKey(val));
-
         const softDel = this._repository
             .updateMany(
                 {
                     _id: {
-                        $in: map,
+                        $in: _id,
                     },
                 },
                 {
@@ -172,13 +211,11 @@ export abstract class DatabaseMongoBulkRepositoryAbstract<T>
         _id: string[],
         options?: IDatabaseRestoreManyOptions
     ): Promise<boolean> {
-        const map: DatabaseKeyType[] = _id.map((val) => DatabaseKey(val));
-
         const rest = this._repository
             .updateMany(
                 {
                     _id: {
-                        $in: map,
+                        $in: _id,
                     },
                 },
                 {

@@ -1,5 +1,4 @@
 import { ClientSession, Model, PipelineStage, PopulateOptions } from 'mongoose';
-import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,
@@ -11,6 +10,7 @@ import {
     IDatabaseOptions,
     IDatabaseRestoreOptions,
     IDatabaseAggregateOptions,
+    IDatabaseRepositoryJoinOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IDatabaseRepositoryAbstract } from 'src/common/database/interfaces/database.repository.interface';
 
@@ -22,10 +22,54 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
 
     constructor(
         repository: Model<T>,
-        populateOnFind?: PopulateOptions | PopulateOptions[]
+        options?:
+            | IDatabaseRepositoryJoinOptions
+            | IDatabaseRepositoryJoinOptions[]
     ) {
         this._repository = repository;
-        this._populateOnFind = populateOnFind;
+        this._populateOnFind = this.__populateOnFind(options);
+    }
+
+    private __populateOnFind(
+        options?:
+            | IDatabaseRepositoryJoinOptions
+            | IDatabaseRepositoryJoinOptions[]
+    ): PopulateOptions | PopulateOptions[] {
+        if (options) {
+            if (Array.isArray(options) && options.length > 0) {
+                return this.__convertToPopulateArray(
+                    options as IDatabaseRepositoryJoinOptions[]
+                );
+            }
+
+            return this.__convertToPopulate(
+                options as IDatabaseRepositoryJoinOptions
+            );
+        }
+
+        return;
+    }
+
+    private __convertToPopulate(
+        options: IDatabaseRepositoryJoinOptions
+    ): PopulateOptions {
+        const populate: PopulateOptions = {
+            path: options.field,
+            match: options.foreignField,
+            model: options.with,
+        };
+
+        if (options.deepJoin) {
+            populate.populate = this.__populateOnFind(options.deepJoin);
+        }
+
+        return populate;
+    }
+
+    private __convertToPopulateArray(
+        options: IDatabaseRepositoryJoinOptions[]
+    ): PopulateOptions[] {
+        return options.map((val) => this.__convertToPopulate(val));
     }
 
     async findAll<Y = T>(
@@ -149,7 +193,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         _id: string,
         options?: IDatabaseFindOneOptions
     ): Promise<Y> {
-        const findOne = this._repository.findById(DatabaseKey(_id));
+        const findOne = this._repository.findById(_id);
 
         if (options && options.withDeleted) {
             findOne.where('deletedAt').exists(true);
@@ -274,10 +318,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         const exist = this._repository.exists({
             ...find,
             _id: {
-                $nin:
-                    options && options.excludeId
-                        ? options.excludeId.map((val) => DatabaseKey(val))
-                        : [],
+                $nin: options && options.excludeId ? options.excludeId : [],
             },
         });
 
@@ -331,7 +372,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     async create<N>(data: N, options?: IDatabaseCreateOptions): Promise<T> {
         const dataCreate: Record<string, any> = data;
         if (options && options._id) {
-            dataCreate._id = DatabaseKey(options._id);
+            dataCreate._id = options._id;
         }
 
         const create = await this._repository.create([dataCreate], {
@@ -346,29 +387,27 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         data: N,
         options?: IDatabaseOptions
     ): Promise<T> {
-        console.log('hhh', DatabaseKey(_id));
         const update = this._repository.findByIdAndUpdate(
-            DatabaseKey(_id),
+            _id,
             {
                 $set: data,
             },
             { new: true }
         );
 
-        // if (options && options.withDeleted) {
-        //     update.where('deletedAt').exists(true);
-        // } else {
-        //     update.where('deletedAt').exists(false);
-        // }
+        if (options && options.withDeleted) {
+            update.where('deletedAt').exists(true);
+        } else {
+            update.where('deletedAt').exists(false);
+        }
 
-        // if (options && options.populate) {
-        //     update.populate(this._populateOnFind);
-        // }
+        if (options && options.populate) {
+            update.populate(this._populateOnFind);
+        }
 
-        // if (options && options.session) {
-        //     update.session(options.session as ClientSession);
-        // }
-        console.log('kkkk');
+        if (options && options.session) {
+            update.session(options.session as ClientSession);
+        }
 
         return update;
     }
@@ -427,7 +466,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     }
 
     async deleteOneById(_id: string, options?: IDatabaseOptions): Promise<T> {
-        const del = this._repository.findByIdAndDelete(DatabaseKey(_id), {
+        const del = this._repository.findByIdAndDelete(_id, {
             new: true,
         });
 
@@ -454,7 +493,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     ): Promise<T> {
         const del = this._repository
             .findByIdAndUpdate(
-                DatabaseKey(_id),
+                _id,
                 {
                     $set: { deletedAt: new Date() },
                 },
@@ -503,7 +542,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     async restore(_id: string, options?: IDatabaseRestoreOptions): Promise<T> {
         const rest = this._repository
             .findByIdAndUpdate(
-                DatabaseKey(_id),
+                _id,
                 {
                     $set: { deletedAt: undefined },
                 },

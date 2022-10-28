@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
-import { DatabaseModule } from 'src/common/database/database.module';
+import { DatabaseConnectModule } from 'src/common/database/database.module';
 import { SettingBulkRepository } from 'src/common/setting/repositories/setting.bulk.repository';
 import { SettingRepository } from 'src/common/setting/repositories/setting.repository';
 import {
@@ -14,7 +14,7 @@ import { SettingService } from './services/setting.service';
 @Global()
 @Module({
     imports: [
-        DatabaseModule.register({
+        DatabaseConnectModule.register({
             name: SettingEntity.name,
             schema: Setting,
             collection: SettingDatabaseName,

@@ -5,15 +5,12 @@ import {
     DatabasePropPrimary,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
-import {
-    DatabaseKeyType,
-    DatabaseSchemaType,
-} from 'src/common/database/interfaces/database.interface';
+import { IDatabaseSchema } from 'src/common/database/interfaces/database.interface';
 
 @DatabaseEntity({ timestamps: true, versionKey: false })
 export class AuthApiEntity {
     @DatabasePropPrimary()
-    _id?: DatabaseKeyType;
+    _id?: string;
 
     @DatabaseProp({
         required: true,
@@ -70,4 +67,4 @@ export class AuthApiEntity {
 export const AuthApiDatabaseName = 'authapis';
 
 export const AuthApi = DatabaseSchema(AuthApiEntity);
-export type AuthApi = DatabaseSchemaType<AuthApiEntity>;
+export type AuthApi = IDatabaseSchema<AuthApiEntity>;

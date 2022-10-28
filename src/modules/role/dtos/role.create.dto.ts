@@ -6,10 +6,10 @@ import {
     IsNotEmpty,
     MaxLength,
     MinLength,
-    IsMongoId,
     IsEnum,
     IsArray,
     ArrayNotEmpty,
+    IsUUID,
 } from 'class-validator';
 import { ENUM_AUTH_ACCESS_FOR_DEFAULT } from 'src/common/auth/constants/auth.enum.constant';
 
@@ -34,7 +34,7 @@ export class RoleCreateDto {
         ],
         required: true,
     })
-    @IsMongoId({ each: true })
+    @IsUUID('4', { each: true })
     @ArrayNotEmpty()
     @IsArray()
     @IsNotEmpty()

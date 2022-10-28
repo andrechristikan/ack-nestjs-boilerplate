@@ -7,10 +7,7 @@ import {
     DatabasePropPrimary,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
-import {
-    DatabaseKeyType,
-    DatabaseSchemaType,
-} from 'src/common/database/interfaces/database.interface';
+import { IDatabaseSchema } from 'src/common/database/interfaces/database.interface';
 import {
     ENUM_LOGGER_ACTION,
     ENUM_LOGGER_LEVEL,
@@ -20,7 +17,7 @@ import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.c
 @DatabaseEntity({ timestamps: true, versionKey: false })
 export class LoggerEntity {
     @DatabasePropPrimary()
-    _id?: DatabaseKeyType;
+    _id?: string;
 
     @DatabaseProp({
         required: true,
@@ -42,28 +39,33 @@ export class LoggerEntity {
 
     @DatabaseProp({
         required: false,
+        type: String,
     })
     requestId?: string;
 
     @DatabasePropForeign({
         required: false,
+        type: String,
     })
-    user?: DatabaseKeyType;
+    user?: string;
 
     @DatabasePropForeign({
         required: false,
+        type: String,
     })
-    role?: DatabaseKeyType;
+    role?: string;
 
     @DatabasePropForeign({
         required: false,
         ref: AuthApiEntity.name,
+        type: String,
     })
-    apiKey?: DatabaseKeyType;
+    apiKey?: string;
 
     @DatabaseProp({
         required: true,
         default: true,
+        type: Boolean,
     })
     anonymous: boolean;
 
@@ -75,6 +77,7 @@ export class LoggerEntity {
 
     @DatabaseProp({
         required: true,
+        type: String,
     })
     description: string;
 
@@ -92,11 +95,13 @@ export class LoggerEntity {
 
     @DatabaseProp({
         required: false,
+        type: Number,
     })
     statusCode?: number;
 
     @DatabaseProp({
         required: false,
+        type: String,
     })
     path?: string;
 
@@ -110,4 +115,4 @@ export class LoggerEntity {
 export const LoggerDatabaseName = 'loggers';
 
 export const Logger = DatabaseSchema(LoggerEntity);
-export type Logger = DatabaseSchemaType<LoggerEntity>;
+export type Logger = IDatabaseSchema<LoggerEntity>;

@@ -1,24 +1,37 @@
-import { ClientSession, Connection, Document, Types } from 'mongoose';
+import { ClientSession, Connection, Document } from 'mongoose';
 import { IPaginationOptions } from 'src/common/pagination/interfaces/pagination.interface';
 import { DataSource, QueryRunner } from 'typeorm';
 
-export type DatabaseSchemaType<T> = T | (T & Document);
-export type DatabaseKeyType = string | Types.ObjectId;
-export interface DatabaseOptions {
+export type IDatabaseSchema<T> = T | (T & Document<string>);
+export interface IDatabaseConnectOptions {
     name: string;
     schema: any;
     collection: string;
     connectionName?: string;
 }
-export type DatabaseConnectionType = Connection | DataSource;
-export type DatabaseSessionType = ClientSession | QueryRunner;
+export type IDatabaseConnection = Connection | DataSource;
+export type IDatabaseSession = ClientSession | QueryRunner;
+
+// repository
+export interface IDatabaseRepositoryJoinOptions
+    extends IDatabaseRepositoryDeepJoinOptions {
+    deepJoin?:
+        | IDatabaseRepositoryDeepJoinOptions
+        | IDatabaseRepositoryDeepJoinOptions[];
+}
+
+export interface IDatabaseRepositoryDeepJoinOptions {
+    field: string;
+    foreignField: string;
+    with: string;
+}
 
 // find one
 export interface IDatabaseFindOneOptions
     extends Pick<IPaginationOptions, 'sort'> {
     select?: Record<string, number> | Record<string, string>;
     populate?: boolean;
-    session?: DatabaseSessionType;
+    session?: IDatabaseSession;
     withDeleted?: boolean;
 }
 

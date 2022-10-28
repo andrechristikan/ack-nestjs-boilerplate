@@ -5,15 +5,12 @@ import {
     DatabasePropPrimary,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
-import {
-    DatabaseKeyType,
-    DatabaseSchemaType,
-} from 'src/common/database/interfaces/database.interface';
+import { IDatabaseSchema } from 'src/common/database/interfaces/database.interface';
 
 @DatabaseEntity({ timestamps: true, versionKey: false })
 export class SettingEntity {
     @DatabasePropPrimary()
-    _id?: DatabaseKeyType;
+    _id?: string;
 
     @DatabaseProp({
         required: true,
@@ -39,4 +36,4 @@ export class SettingEntity {
 export const SettingDatabaseName = 'settings';
 
 export const Setting = DatabaseSchema(SettingEntity);
-export type Setting = DatabaseSchemaType<SettingEntity>;
+export type Setting = IDatabaseSchema<SettingEntity>;

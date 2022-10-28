@@ -5,15 +5,12 @@ import {
     DatabasePropPrimary,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
-import {
-    DatabaseKeyType,
-    DatabaseSchemaType,
-} from 'src/common/database/interfaces/database.interface';
+import { IDatabaseSchema } from 'src/common/database/interfaces/database.interface';
 
 @DatabaseEntity({ timestamps: true, versionKey: false })
 export class PermissionEntity {
     @DatabasePropPrimary()
-    _id?: DatabaseKeyType;
+    _id?: string;
 
     @DatabaseProp({
         required: true,
@@ -53,4 +50,4 @@ export class PermissionEntity {
 export const PermissionDatabaseName = 'permissions';
 
 export const Permission = DatabaseSchema(PermissionEntity);
-export type Permission = DatabaseSchemaType<PermissionEntity>;
+export type Permission = IDatabaseSchema<PermissionEntity>;

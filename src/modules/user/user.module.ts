@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
-import { DatabaseModule } from 'src/common/database/database.module';
+import { DatabaseConnectModule } from 'src/common/database/database.module';
 import { UserBulkRepository } from './repositories/user.bulk.repository';
 import { UserRepository } from './repositories/user.repository';
 import { UserDatabaseName, UserEntity, User } from './schemas/user.schema';
@@ -8,7 +8,7 @@ import { UserBulkService } from './services/user.bulk.service';
 import { UserService } from './services/user.service';
 @Module({
     imports: [
-        DatabaseModule.register({
+        DatabaseConnectModule.register({
             name: UserEntity.name,
             schema: User,
             collection: UserDatabaseName,

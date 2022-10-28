@@ -8,7 +8,7 @@ import {
     SchemaFactory,
     SchemaOptions,
 } from '@nestjs/mongoose';
-import { CallbackWithoutResultAndOptionalError, Types } from 'mongoose';
+import { CallbackWithoutResultAndOptionalError } from 'mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum.constant';
 import { Skip } from 'src/common/request/validations/request.skip.validation';
@@ -21,11 +21,10 @@ import {
     PrimaryGeneratedColumn,
 } from 'typeorm';
 import { v4 as uuidV4 } from 'uuid';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 
 // for load env
 import { config } from 'dotenv';
-import { DatabaseKeyType } from 'src/common/database/interfaces/database.interface';
-import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 config();
 
 export function DatabaseConnection(
@@ -36,7 +35,7 @@ export function DatabaseConnection(
         : InjectDataSource(connectionName || DATABASE_CONNECTION_NAME);
 }
 
-export function DatabaseRepository(
+export function DatabaseModel(
     entity: any,
     connectionName?: string
 ): ParameterDecorator {
@@ -60,20 +59,21 @@ export function DatabaseProp(options?: PropOptions<any>): PropertyDecorator {
 }
 
 export function DatabasePropForeign(
-    options?: Omit<PropOptions<any>, 'type'>,
-    multiple?: boolean
+    options?: PropOptions<any>
 ): PropertyDecorator {
     return process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO
-        ? Prop({
-              ...(options as object),
-              type: multiple ? Array<Types.ObjectId> : Types.ObjectId,
-          })
+        ? Prop(options)
         : Column();
 }
 
 export function DatabasePropPrimary(): PropertyDecorator {
     return process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO
-        ? Prop({ type: Types.ObjectId })
+        ? Prop({
+              type: String,
+              default: function genUUID() {
+                  return uuidV4();
+              },
+          })
         : PrimaryGeneratedColumn;
 }
 
@@ -97,7 +97,6 @@ export function DatabaseSchema<T>(entity: T): any {
                     bHook();
                 }
 
-                this._id = DatabaseKey();
                 next();
             }
         );
@@ -106,12 +105,4 @@ export function DatabaseSchema<T>(entity: T): any {
     }
 
     return entity;
-}
-
-export function DatabaseKey(_id?: string): DatabaseKeyType {
-    if (process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO) {
-        return new Types.ObjectId(_id);
-    }
-
-    return _id ? _id : uuidV4();
 }
