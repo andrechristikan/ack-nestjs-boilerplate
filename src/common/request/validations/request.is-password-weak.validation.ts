@@ -29,7 +29,7 @@ export function IsPasswordWeak(
     minLength = 8,
     validationOptions?: ValidationOptions
 ) {
-    return function (object: Record<string, any>, propertyName: string): any {
+    return function (object: Record<string, any>, propertyName: string): void {
         registerDecorator({
             name: 'IsPasswordWeak',
             target: object.constructor,

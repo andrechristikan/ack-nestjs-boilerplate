@@ -10,7 +10,7 @@ import { UserGetSerialization } from 'src/modules/user/serializations/user.get.s
 import { UserImportSerialization } from 'src/modules/user/serializations/user.import.serialization';
 import { UserListSerialization } from 'src/modules/user/serializations/user.list.serialization';
 
-export function UserListDoc(): any {
+export function UserListDoc(): MethodDecorator {
     return applyDecorators(
         DocPaging<UserListSerialization>('user.list', {
             auth: {
@@ -30,7 +30,7 @@ export function UserListDoc(): any {
     );
 }
 
-export function UserGetDoc(): any {
+export function UserGetDoc(): MethodDecorator {
     return applyDecorators(
         Doc<UserGetSerialization>('user.get', {
             auth: {
@@ -49,7 +49,7 @@ export function UserGetDoc(): any {
     );
 }
 
-export function UserCreateDoc(): any {
+export function UserCreateDoc(): MethodDecorator {
     return applyDecorators(
         Doc<ResponseIdSerialization>('user.create', {
             auth: {
@@ -68,7 +68,7 @@ export function UserCreateDoc(): any {
     );
 }
 
-export function UserUpdateDoc(): any {
+export function UserUpdateDoc(): MethodDecorator {
     return applyDecorators(
         Doc<ResponseIdSerialization>('user.update', {
             auth: {
@@ -87,7 +87,7 @@ export function UserUpdateDoc(): any {
     );
 }
 
-export function UserDeleteDoc(): any {
+export function UserDeleteDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('user.delete', {
             auth: {
@@ -105,7 +105,7 @@ export function UserDeleteDoc(): any {
     );
 }
 
-export function UserActiveDoc(): any {
+export function UserActiveDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('user.active', {
             auth: {
@@ -123,7 +123,7 @@ export function UserActiveDoc(): any {
     );
 }
 
-export function UserInactiveDoc(): any {
+export function UserInactiveDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('user.inactive', {
             auth: {
@@ -141,7 +141,7 @@ export function UserInactiveDoc(): any {
     );
 }
 
-export function UserImportDoc(): any {
+export function UserImportDoc(): MethodDecorator {
     return applyDecorators(
         Doc<UserImportSerialization>('user.import', {
             auth: {

@@ -5,9 +5,9 @@ import {
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { ApiKeyProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
-import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
-import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
+import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import {
     RequestParamGuard,
@@ -39,11 +39,11 @@ export class SettingAdminController {
     })
     @SettingUpdateGuard()
     @RequestParamGuard(SettingRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.SETTING_READ,
         ENUM_AUTH_PERMISSIONS.SETTING_UPDATE
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Put('/update/:setting')

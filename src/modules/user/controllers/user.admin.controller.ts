@@ -13,9 +13,9 @@ import {
     UploadedFile,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { ApiKeyProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
-import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
-import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
+import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { UploadFileSingle } from 'src/common/file/decorators/file.decorator';
@@ -92,8 +92,8 @@ export class UserAdminController {
     @ResponsePaging('user.list', {
         classSerialization: UserListSerialization,
     })
-    @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.USER_READ)
-    @AuthApiKey()
+    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.USER_READ)
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('/list')
@@ -141,8 +141,8 @@ export class UserAdminController {
     })
     @UserGetGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.USER_READ)
-    @AuthApiKey()
+    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.USER_READ)
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('get/:user')
@@ -154,11 +154,11 @@ export class UserAdminController {
     @Response('user.create', {
         classSerialization: ResponseIdSerialization,
     })
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_CREATE
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Post('/create')
@@ -229,11 +229,11 @@ export class UserAdminController {
     @Response('user.delete')
     @UserDeleteGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_DELETE
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Delete('/delete/:user')
@@ -257,11 +257,11 @@ export class UserAdminController {
     })
     @UserUpdateGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_UPDATE
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Put('/update/:user')
@@ -289,11 +289,11 @@ export class UserAdminController {
     @Response('user.inactive')
     @UserUpdateInactiveGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_UPDATE
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Patch('/update/:user/inactive')
@@ -315,11 +315,11 @@ export class UserAdminController {
     @Response('user.active')
     @UserUpdateActiveGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_UPDATE
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Patch('/update/:user/active')
@@ -342,12 +342,12 @@ export class UserAdminController {
         classSerialization: UserImportSerialization,
     })
     @UploadFileSingle('file')
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_CREATE,
         ENUM_AUTH_PERMISSIONS.USER_IMPORT
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Post('/import')

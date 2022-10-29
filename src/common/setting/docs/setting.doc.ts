@@ -11,7 +11,7 @@ import {
     SETTING_DEFAULT_AVAILABLE_SORT,
 } from 'src/common/setting/constants/setting.list.constant';
 
-export function SettingListDoc(): any {
+export function SettingListDoc(): MethodDecorator {
     return applyDecorators(
         DocPaging<SettingListSerialization>('setting.list', {
             auth: {
@@ -31,7 +31,7 @@ export function SettingListDoc(): any {
     );
 }
 
-export function SettingGetByNameDoc(): any {
+export function SettingGetByNameDoc(): MethodDecorator {
     return applyDecorators(
         Doc<SettingGetSerialization>('setting.getByName', {
             auth: {
@@ -50,7 +50,7 @@ export function SettingGetByNameDoc(): any {
     );
 }
 
-export function SettingGetDoc(): any {
+export function SettingGetDoc(): MethodDecorator {
     return applyDecorators(
         Doc<SettingGetSerialization>('setting.get', {
             auth: {

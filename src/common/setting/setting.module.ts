@@ -1,10 +1,9 @@
 import { Global, Module } from '@nestjs/common';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { DatabaseConnectModule } from 'src/common/database/database.module';
-import { SettingBulkRepository } from 'src/common/setting/repositories/setting.bulk.repository';
 import { SettingRepository } from 'src/common/setting/repositories/setting.repository';
 import {
-    Setting,
+    SettingSchema,
     SettingDatabaseName,
     SettingEntity,
 } from './schemas/setting.schema';
@@ -16,18 +15,13 @@ import { SettingService } from './services/setting.service';
     imports: [
         DatabaseConnectModule.register({
             name: SettingEntity.name,
-            schema: Setting,
+            schema: { mongo: SettingSchema },
             collection: SettingDatabaseName,
             connectionName: DATABASE_CONNECTION_NAME,
         }),
     ],
     exports: [SettingService, SettingBulkService],
-    providers: [
-        SettingService,
-        SettingBulkService,
-        SettingRepository,
-        SettingBulkRepository,
-    ],
+    providers: [SettingService, SettingBulkService, SettingRepository],
     controllers: [],
 })
 export class SettingModule {}

@@ -5,13 +5,13 @@ import {
     SettingPutToRequestGuard,
 } from 'src/common/setting/guards/setting.put-to-request.guard';
 
-export function SettingGetGuard(): any {
+export function SettingGetGuard(): MethodDecorator {
     return applyDecorators(
         UseGuards(SettingPutToRequestGuard, SettingNotFoundGuard)
     );
 }
 
-export function SettingGetByNameGuard(): any {
+export function SettingGetByNameGuard(): MethodDecorator {
     return applyDecorators(
         UseGuards(SettingPutToRequestByNameGuard, SettingNotFoundGuard)
     );

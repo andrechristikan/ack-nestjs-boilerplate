@@ -14,29 +14,29 @@ import { FileCustomMaxFilesInterceptor } from 'src/common/file/interceptors/file
 import { FileCustomSizeInterceptor } from 'src/common/file/interceptors/file.custom-size.interceptor';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
-export function UploadFileSingle(field: string): any {
+export function UploadFileSingle(field: string): MethodDecorator {
     return applyDecorators(UseInterceptors(FileInterceptor(field)));
 }
 
-export function UploadFileMultiple(field: string): any {
+export function UploadFileMultiple(field: string): MethodDecorator {
     return applyDecorators(UseInterceptors(FilesInterceptor(field)));
 }
 
-export function FileCustomMaxFile(customMaxFiles: number): any {
+export function FileCustomMaxFile(customMaxFiles: number): MethodDecorator {
     return applyDecorators(
         UseInterceptors(FileCustomMaxFilesInterceptor),
         SetMetadata(FILE_CUSTOM_MAX_FILES_META_KEY, customMaxFiles)
     );
 }
 
-export function FileCustomSize(customSize: string): any {
+export function FileCustomSize(customSize: string): MethodDecorator {
     return applyDecorators(
         UseInterceptors(FileCustomSizeInterceptor),
         SetMetadata(FILE_CUSTOM_SIZE_META_KEY, customSize)
     );
 }
 
-export const FilePartNumber = createParamDecorator(
+export const FilePartNumber: () => ParameterDecorator = createParamDecorator(
     (data: string, ctx: ExecutionContext): number => {
         const request = ctx.switchToHttp().getRequest() as IRequestApp;
         return request.headers['x-part-number']

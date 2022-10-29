@@ -22,7 +22,7 @@ export function IsStartWith(
     prefix: string[],
     validationOptions?: ValidationOptions
 ) {
-    return function (object: Record<string, any>, propertyName: string): any {
+    return function (object: Record<string, any>, propertyName: string): void {
         registerDecorator({
             name: 'IsStartWith',
             target: object.constructor,

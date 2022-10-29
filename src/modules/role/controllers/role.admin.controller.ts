@@ -12,9 +12,9 @@ import {
     Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { ApiKeyProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
-import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
-import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
+import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import {
@@ -78,8 +78,8 @@ export class RoleAdminController {
     @ResponsePaging('role.list', {
         classSerialization: RoleListSerialization,
     })
-    @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.ROLE_READ)
-    @AuthApiKey()
+    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.ROLE_READ)
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('/list')
@@ -128,8 +128,8 @@ export class RoleAdminController {
     })
     @RoleGetGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.ROLE_READ)
-    @AuthApiKey()
+    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.ROLE_READ)
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('get/:role')
@@ -141,11 +141,11 @@ export class RoleAdminController {
     @Response('role.create', {
         classSerialization: ResponseIdSerialization,
     })
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_CREATE
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Post('/create')
@@ -199,11 +199,11 @@ export class RoleAdminController {
     })
     @RoleUpdateGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Put('/update/:role')
@@ -258,11 +258,11 @@ export class RoleAdminController {
     @Response('role.delete')
     @RoleDeleteGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_DELETE
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Delete('/delete/:role')
@@ -283,11 +283,11 @@ export class RoleAdminController {
     @Response('role.inactive')
     @RoleUpdateInactiveGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Patch('/update/:role/inactive')
@@ -309,11 +309,11 @@ export class RoleAdminController {
     @Response('role.active')
     @RoleUpdateActiveGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Patch('/update/:role/active')

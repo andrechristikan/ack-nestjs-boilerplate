@@ -35,5 +35,5 @@ export class SettingEntity {
 
 export const SettingDatabaseName = 'settings';
 
-export const Setting = DatabaseSchema(SettingEntity);
+export const SettingSchema = DatabaseSchema(SettingEntity);
 export type Setting = IDatabaseSchema<SettingEntity>;

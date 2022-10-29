@@ -12,7 +12,7 @@ export class RolePutToRequestGuard implements CanActivate {
         const { role } = params;
 
         const check: IRole = await this.roleService.findOneById<IRole>(role, {
-            populate: true,
+            join: true,
         });
         request.__role = check;
 

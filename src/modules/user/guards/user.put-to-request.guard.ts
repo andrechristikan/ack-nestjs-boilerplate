@@ -12,7 +12,7 @@ export class UserPutToRequestGuard implements CanActivate {
         const { user } = params;
 
         const check: IUser = await this.userService.findOneById<IUser>(user, {
-            populate: true,
+            join: true,
         });
         request.__user = check;
 

@@ -2,9 +2,10 @@ import { applyDecorators } from '@nestjs/common';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.constant';
 import { Doc } from 'src/common/doc/decorators/doc.decorator';
 import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
+import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 
-export function UserProfileDoc(): any {
+export function UserProfileDoc(): MethodDecorator {
     return applyDecorators(
         Doc<UserProfileSerialization>('user.profile', {
             auth: {
@@ -22,7 +23,7 @@ export function UserProfileDoc(): any {
     );
 }
 
-export function UserChangePasswordDoc(): any {
+export function UserChangePasswordDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('user.changePassword', {
             auth: {
@@ -37,7 +38,7 @@ export function UserChangePasswordDoc(): any {
     );
 }
 
-export function UserUploadProfileDoc(): any {
+export function UserUploadProfileDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('user.upload', {
             auth: {
@@ -58,7 +59,7 @@ export function UserUploadProfileDoc(): any {
     );
 }
 
-export function UserLoginDoc(): any {
+export function UserLoginDoc(): MethodDecorator {
     return applyDecorators(
         Doc<UserLoginSerialization>('user.login', {
             auth: {
@@ -76,7 +77,7 @@ export function UserLoginDoc(): any {
     );
 }
 
-export function UserRefreshDoc(): any {
+export function UserRefreshDoc(): MethodDecorator {
     return applyDecorators(
         Doc<UserLoginSerialization>('user.refresh', {
             auth: {
@@ -89,6 +90,24 @@ export function UserRefreshDoc(): any {
             },
             response: {
                 classSerialization: UserLoginSerialization,
+            },
+        })
+    );
+}
+
+export function UserInfoDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc<UserPayloadSerialization>('user.info', {
+            auth: {
+                jwtAccessToken: true,
+                apiKey: true,
+            },
+            requestHeader: {
+                userAgent: true,
+                timestamp: true,
+            },
+            response: {
+                classSerialization: UserPayloadSerialization,
             },
         })
     );

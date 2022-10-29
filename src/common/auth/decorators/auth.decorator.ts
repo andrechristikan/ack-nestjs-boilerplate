@@ -1,13 +1,13 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
-export const AuthUser = createParamDecorator(
+export const AuthJwtPayloadUser = createParamDecorator(
     (data: string, ctx: ExecutionContext): Record<string, any> => {
         const { user } = ctx.switchToHttp().getRequest();
         return data ? user[data] : user;
     }
 );
 
-export const AuthToken = createParamDecorator(
+export const AuthJwtToken = createParamDecorator(
     (data: string, ctx: ExecutionContext): string => {
         const { headers } = ctx.switchToHttp().getRequest();
         const { authorization } = headers;

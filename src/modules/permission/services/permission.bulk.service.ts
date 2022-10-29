@@ -5,14 +5,12 @@ import {
     IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IPermissionBulkService } from 'src/modules/permission/interfaces/permission.bulk-service.interface';
-import { PermissionBulkRepository } from 'src/modules/permission/repositories/permission.bulk.repository';
+import { PermissionRepository } from 'src/modules/permission/repositories/permission.repository';
 import { PermissionEntity } from 'src/modules/permission/schemas/permission.schema';
 
 @Injectable()
 export class PermissionBulkService implements IPermissionBulkService {
-    constructor(
-        private readonly permissionBulkRepository: PermissionBulkRepository
-    ) {}
+    constructor(private readonly permissionRepository: PermissionRepository) {}
 
     async createMany(
         data: IAuthPermission[],
@@ -30,7 +28,7 @@ export class PermissionBulkService implements IPermissionBulkService {
             }
         );
 
-        return this.permissionBulkRepository.createMany<PermissionEntity>(
+        return this.permissionRepository.createMany<PermissionEntity>(
             map,
             options
         );
@@ -40,6 +38,6 @@ export class PermissionBulkService implements IPermissionBulkService {
         find: Record<string, any>,
         options?: IDatabaseManyOptions
     ): Promise<boolean> {
-        return this.permissionBulkRepository.deleteMany(find, options);
+        return this.permissionRepository.deleteMany(find, options);
     }
 }

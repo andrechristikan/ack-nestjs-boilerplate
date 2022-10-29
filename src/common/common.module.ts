@@ -6,7 +6,7 @@ import { ErrorModule } from 'src/common/error/error.module';
 import { ResponseModule } from 'src/common/response/response.module';
 import { RequestModule } from 'src/common/request/request.module';
 import { MiddlewareModule } from 'src/common/middleware/middleware.module';
-import { AuthApiModule, AuthModule } from 'src/common/auth/auth.module';
+import { AuthModule } from 'src/common/auth/auth.module';
 import { MessageModule } from 'src/common/message/message.module';
 import { LoggerModule } from 'src/common/logger/logger.module';
 import { PaginationModule } from 'src/common/pagination/pagination.module';
@@ -20,6 +20,7 @@ import {
     DatabaseInitModule,
     DatabaseModule,
 } from 'src/common/database/database.module';
+import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 
 @Module({
     controllers: [],
@@ -146,7 +147,7 @@ import {
         RequestModule,
         MiddlewareModule,
         SettingModule,
-        AuthApiModule,
+        ApiKeyModule,
         AuthModule,
     ],
 })

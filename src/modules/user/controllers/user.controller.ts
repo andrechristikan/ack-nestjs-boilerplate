@@ -13,10 +13,13 @@ import {
     UploadedFile,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { AuthToken, AuthUser } from 'src/common/auth/decorators/auth.decorator';
 import {
-    AuthJwtGuard,
-    AuthRefreshJwtGuard,
+    AuthJwtPayloadUser,
+    AuthJwtToken,
+} from 'src/common/auth/decorators/auth.decorator';
+import {
+    AuthJwtAccessProtected,
+    AuthJwtRefreshProtected,
 } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
@@ -40,6 +43,7 @@ import { GetUser } from 'src/modules/user/decorators/user.decorator';
 import { UserProfileGuard } from 'src/modules/user/decorators/user.public.decorator';
 import {
     UserChangePasswordDoc,
+    UserInfoDoc,
     UserLoginDoc,
     UserProfileDoc,
     UserRefreshDoc,
@@ -71,7 +75,7 @@ export class UserController {
         classSerialization: UserProfileSerialization,
     })
     @UserProfileGuard()
-    @AuthJwtGuard()
+    @AuthJwtAccessProtected()
     @Get('/profile')
     async profile(@GetUser() user: IUser): Promise<IResponse> {
         return user;
@@ -80,7 +84,7 @@ export class UserController {
     @UserUploadProfileDoc()
     @Response('user.upload')
     @UserProfileGuard()
-    @AuthJwtGuard()
+    @AuthJwtAccessProtected()
     @UploadFileSingle('file')
     @HttpCode(HttpStatus.OK)
     @Post('/profile/upload')
@@ -121,11 +125,11 @@ export class UserController {
 
     @UserChangePasswordDoc()
     @Response('user.changePassword')
-    @AuthJwtGuard()
+    @AuthJwtAccessProtected()
     @Patch('/change-password')
     async changePassword(
         @Body() body: UserChangePasswordDto,
-        @AuthUser('_id') _id: string
+        @AuthJwtPayloadUser('_id') _id: string
     ): Promise<void> {
         const user: User = await this.userService.findOneById(_id);
         if (!user) {
@@ -189,7 +193,7 @@ export class UserController {
                 email: body.email,
             },
             {
-                populate: true,
+                join: true,
             }
         );
 
@@ -289,16 +293,16 @@ export class UserController {
 
     @UserRefreshDoc()
     @Response('user.refresh', { classSerialization: UserLoginSerialization })
-    @AuthRefreshJwtGuard()
+    @AuthJwtRefreshProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
     async refresh(
-        @AuthUser()
+        @AuthJwtPayloadUser()
         { _id, rememberMe, loginDate }: Record<string, any>,
-        @AuthToken() refreshToken: string
+        @AuthJwtToken() refreshToken: string
     ): Promise<IResponse> {
         const user: IUser = await this.userService.findOneById<IUser>(_id, {
-            populate: true,
+            join: true,
         });
 
         if (!user) {
@@ -356,5 +360,15 @@ export class UserController {
             accessToken,
             refreshToken,
         };
+    }
+
+    @UserInfoDoc()
+    @Response('user.info', { classSerialization: UserPayloadSerialization })
+    @AuthJwtAccessProtected()
+    @Get('/info')
+    async info(
+        @AuthJwtPayloadUser() user: Record<string, any>
+    ): Promise<IResponse> {
+        return user;
     }
 }

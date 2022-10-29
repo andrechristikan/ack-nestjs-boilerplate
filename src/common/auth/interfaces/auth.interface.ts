@@ -1,23 +1,3 @@
-// Auth API
-export interface IAuthApiPayload {
-    _id: string;
-    key: string;
-    name: string;
-}
-
-export interface IAuthApi {
-    _id: string;
-    secret: string;
-    passphrase: string;
-    encryptionKey: string;
-}
-
-export interface IAuthApiRequestHashedData {
-    key: string;
-    timestamp: number;
-    hash: string;
-}
-
 // Auth
 export interface IAuthPassword {
     salt: string;

@@ -23,7 +23,7 @@ export function MinGreaterThanEqual(
     property: string,
     validationOptions?: ValidationOptions
 ) {
-    return function (object: Record<string, any>, propertyName: string): any {
+    return function (object: Record<string, any>, propertyName: string): void {
         registerDecorator({
             name: 'MinGreaterThanEqual',
             target: object.constructor,

@@ -6,7 +6,7 @@ export function RequestAddDatePipe(days: number): Type<PipeTransform> {
     class MixinRequestAddDatePipe implements PipeTransform {
         constructor(private readonly helperDateService: HelperDateService) {}
 
-        async transform(value: any) {
+        async transform(value: string | number | Date) {
             return this.helperDateService.forwardInDays(days, {
                 fromDate: this.helperDateService.create({
                     date: value,

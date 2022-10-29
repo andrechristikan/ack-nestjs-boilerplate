@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
 
 @Injectable()
-export class JwtRefreshStrategy extends PassportStrategy(
+export class AuthJwtRefreshStrategy extends PassportStrategy(
     Strategy,
     'jwtRefresh'
 ) {

@@ -54,5 +54,5 @@ export class RoleEntity {
 
 export const RoleDatabaseName = 'roles';
 
-export const Role = DatabaseSchema(RoleEntity);
+export const RoleSchema = DatabaseSchema(RoleEntity);
 export type Role = IDatabaseSchema<RoleEntity>;

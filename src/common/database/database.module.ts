@@ -26,7 +26,7 @@ export class DatabaseConnectModule {
                       [
                           {
                               name: options.name,
-                              schema: options.schema,
+                              schema: options.schema.mongo,
                               collection: options.collection,
                           },
                       ],
@@ -34,12 +34,12 @@ export class DatabaseConnectModule {
                   )
                 : TypeOrmModule.forFeature(
                       [
-                          options.schema,
+                          options.schema.postgres,
                           {
                               options: {
                                   name: options.name,
                                   tableName: options.collection,
-                                  schema: options.schema,
+                                  schema: options.schema.postgres,
                               },
                           },
                       ],

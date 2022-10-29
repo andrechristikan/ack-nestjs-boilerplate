@@ -1,5 +1,5 @@
+import { ApiKeyEntity } from 'src/common/api-key/schemas/api-key.schema';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
-import { AuthApiEntity } from 'src/common/auth/schemas/auth.api.schema';
 import {
     DatabaseEntity,
     DatabasePropForeign,
@@ -57,7 +57,7 @@ export class LoggerEntity {
 
     @DatabasePropForeign({
         required: false,
-        ref: AuthApiEntity.name,
+        ref: ApiKeyEntity.name,
         type: String,
     })
     apiKey?: string;
@@ -114,5 +114,5 @@ export class LoggerEntity {
 
 export const LoggerDatabaseName = 'loggers';
 
-export const Logger = DatabaseSchema(LoggerEntity);
+export const LoggerSchema = DatabaseSchema(LoggerEntity);
 export type Logger = IDatabaseSchema<LoggerEntity>;

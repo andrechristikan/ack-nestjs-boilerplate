@@ -26,7 +26,7 @@ export class StringOrNumberOrBooleanConstraint
 }
 
 export function StringOrNumberOrBoolean(validationOptions?: ValidationOptions) {
-    return function (object: Record<string, any>, propertyName: string): any {
+    return function (object: Record<string, any>, propertyName: string): void {
         registerDecorator({
             name: 'StringOrNumberOrBoolean',
             target: object.constructor,

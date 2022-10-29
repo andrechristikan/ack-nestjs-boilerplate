@@ -102,5 +102,5 @@ export class UserEntity {
 
 export const UserDatabaseName = 'users';
 
-export const User = DatabaseSchema(UserEntity);
+export const UserSchema = DatabaseSchema(UserEntity);
 export type User = IDatabaseSchema<UserEntity>;

@@ -11,7 +11,7 @@ import {
 } from 'src/common/message/interfaces/message.interface';
 
 export interface IMessageService {
-    setMessage(lang: string, key: string, options?: IMessageSetOptions): any;
+    setMessage(lang: string, key: string, options?: IMessageSetOptions): string;
 
     getRequestErrorsMessage(
         requestErrors: ValidationError[],

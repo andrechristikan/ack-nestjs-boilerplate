@@ -4,13 +4,13 @@ import { PermissionActiveGuard } from 'src/modules/permission/guards/permission.
 import { PermissionNotFoundGuard } from 'src/modules/permission/guards/permission.not-found.guard';
 import { PermissionPutToRequestGuard } from 'src/modules/permission/guards/permission.put-to-request.guard';
 
-export function PermissionGetGuard(): any {
+export function PermissionGetGuard(): MethodDecorator {
     return applyDecorators(
         UseGuards(PermissionPutToRequestGuard, PermissionNotFoundGuard)
     );
 }
 
-export function PermissionUpdateGuard(): any {
+export function PermissionUpdateGuard(): MethodDecorator {
     return applyDecorators(
         UseGuards(
             PermissionPutToRequestGuard,
@@ -21,7 +21,7 @@ export function PermissionUpdateGuard(): any {
     );
 }
 
-export function PermissionUpdateActiveGuard(): any {
+export function PermissionUpdateActiveGuard(): MethodDecorator {
     return applyDecorators(
         UseGuards(
             PermissionPutToRequestGuard,
@@ -32,7 +32,7 @@ export function PermissionUpdateActiveGuard(): any {
     );
 }
 
-export function PermissionUpdateInactiveGuard(): any {
+export function PermissionUpdateInactiveGuard(): MethodDecorator {
     return applyDecorators(
         UseGuards(
             PermissionPutToRequestGuard,

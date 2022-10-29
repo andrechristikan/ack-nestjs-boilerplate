@@ -8,7 +8,7 @@ import {
     MongooseHealthIndicator,
 } from '@nestjs/terminus';
 import { Connection } from 'mongoose';
-import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
+import { ApiKeyProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import {
     RequestValidateTimestamp,
@@ -38,7 +38,7 @@ export class HealthController {
     @HealthCheckDoc()
     @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('/aws')
@@ -51,7 +51,7 @@ export class HealthController {
     @HealthCheckDoc()
     @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('/database')
@@ -67,7 +67,7 @@ export class HealthController {
     @HealthCheckDoc()
     @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('/memory-heap')
@@ -84,7 +84,7 @@ export class HealthController {
     @HealthCheckDoc()
     @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('/memory-rss')
@@ -101,7 +101,7 @@ export class HealthController {
     @HealthCheckDoc()
     @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('/storage')

@@ -11,6 +11,10 @@ import {
     IDatabaseRestoreOptions,
     IDatabaseAggregateOptions,
     IDatabaseRepositoryJoinOptions,
+    IDatabaseCreateManyOptions,
+    IDatabaseManyOptions,
+    IDatabaseSoftDeleteManyOptions,
+    IDatabaseRestoreManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IDatabaseRepositoryAbstract } from 'src/common/database/interfaces/database.repository.interface';
 
@@ -18,7 +22,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     implements IDatabaseRepositoryAbstract<T>
 {
     protected _repository: Model<T>;
-    protected _populateOnFind?: PopulateOptions | PopulateOptions[];
+    protected _joinOnFind?: PopulateOptions | PopulateOptions[];
 
     constructor(
         repository: Model<T>,
@@ -27,22 +31,22 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             | IDatabaseRepositoryJoinOptions[]
     ) {
         this._repository = repository;
-        this._populateOnFind = this.__populateOnFind(options);
+        this._joinOnFind = this.__joinOnFind(options);
     }
 
-    private __populateOnFind(
+    private __joinOnFind(
         options?:
             | IDatabaseRepositoryJoinOptions
             | IDatabaseRepositoryJoinOptions[]
     ): PopulateOptions | PopulateOptions[] {
         if (options) {
             if (Array.isArray(options) && options.length > 0) {
-                return this.__convertToPopulateArray(
+                return this.__convertToJoinArray(
                     options as IDatabaseRepositoryJoinOptions[]
                 );
             }
 
-            return this.__convertToPopulate(
+            return this.__convertToJoin(
                 options as IDatabaseRepositoryJoinOptions
             );
         }
@@ -50,7 +54,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         return;
     }
 
-    private __convertToPopulate(
+    private __convertToJoin(
         options: IDatabaseRepositoryJoinOptions
     ): PopulateOptions {
         const populate: PopulateOptions = {
@@ -60,21 +64,21 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         };
 
         if (options.deepJoin) {
-            populate.populate = this.__populateOnFind(options.deepJoin);
+            populate.populate = this.__joinOnFind(options.deepJoin);
         }
 
         return populate;
     }
 
-    private __convertToPopulateArray(
+    private __convertToJoinArray(
         options: IDatabaseRepositoryJoinOptions[]
     ): PopulateOptions[] {
-        return options.map((val) => this.__convertToPopulate(val));
+        return options.map((val) => this.__convertToJoin(val));
     }
 
     async findAll<Y = T>(
         find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
+        options?: IDatabaseFindAllOptions<ClientSession>
     ): Promise<Y[]> {
         const findAll = this._repository.find(find);
 
@@ -100,8 +104,8 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             findAll.sort(options.sort);
         }
 
-        if (options && options.populate) {
-            findAll.populate(this._populateOnFind);
+        if (options && options.join) {
+            findAll.populate(this._joinOnFind);
         }
 
         if (options && options.session) {
@@ -113,7 +117,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
 
     async findAllAggregate<N>(
         pipeline: PipelineStage[],
-        options?: IDatabaseFindAllAggregateOptions
+        options?: IDatabaseFindAllAggregateOptions<ClientSession>
     ): Promise<N[]> {
         if (options && options.withDeleted) {
             pipeline.push({
@@ -160,7 +164,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
 
     async findOne<Y = T>(
         find: Record<string, any>,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseFindOneOptions<ClientSession>
     ): Promise<Y> {
         const findOne = this._repository.findOne(find);
 
@@ -174,8 +178,8 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             findOne.select(options.select);
         }
 
-        if (options && options.populate) {
-            findOne.populate(this._populateOnFind);
+        if (options && options.join) {
+            findOne.populate(this._joinOnFind);
         }
 
         if (options && options.session) {
@@ -191,7 +195,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
 
     async findOneById<Y = T>(
         _id: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseFindOneOptions<ClientSession>
     ): Promise<Y> {
         const findOne = this._repository.findById(_id);
 
@@ -205,8 +209,8 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             findOne.select(options.select);
         }
 
-        if (options && options.populate) {
-            findOne.populate(this._populateOnFind);
+        if (options && options.join) {
+            findOne.populate(this._joinOnFind);
         }
 
         if (options && options.session) {
@@ -222,7 +226,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
 
     async findOneAggregate<N>(
         pipeline: PipelineStage[],
-        options?: IDatabaseAggregateOptions
+        options?: IDatabaseAggregateOptions<ClientSession>
     ): Promise<N> {
         if (options && options.withDeleted) {
             pipeline.push({
@@ -254,7 +258,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
 
     async getTotal(
         find?: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseOptions<ClientSession>
     ): Promise<number> {
         const count = this._repository.countDocuments(find);
 
@@ -268,15 +272,15 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             count.session(options.session as ClientSession);
         }
 
-        if (options && options.populate) {
-            count.populate(this._populateOnFind);
+        if (options && options.join) {
+            count.populate(this._joinOnFind);
         }
 
         return count;
     }
     async getTotalAggregate(
         pipeline: PipelineStage[],
-        options?: IDatabaseGetTotalAggregateOptions
+        options?: IDatabaseGetTotalAggregateOptions<ClientSession>
     ): Promise<number> {
         if (options && options.withDeleted) {
             pipeline.push({
@@ -313,7 +317,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
 
     async exists(
         find: Record<string, any>,
-        options?: IDatabaseExistOptions
+        options?: IDatabaseExistOptions<ClientSession>
     ): Promise<boolean> {
         const exist = this._repository.exists({
             ...find,
@@ -332,8 +336,8 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             exist.session(options.session as ClientSession);
         }
 
-        if (options && options.populate) {
-            exist.populate(this._populateOnFind);
+        if (options && options.join) {
+            exist.populate(this._joinOnFind);
         }
 
         const result = await exist;
@@ -342,7 +346,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
 
     async aggregate<N>(
         pipeline: Record<string, any>[],
-        options?: IDatabaseAggregateOptions
+        options?: IDatabaseAggregateOptions<ClientSession>
     ): Promise<N[]> {
         if (options && options.withDeleted) {
             pipeline.push({
@@ -369,7 +373,10 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         return aggregate;
     }
 
-    async create<N>(data: N, options?: IDatabaseCreateOptions): Promise<T> {
+    async create<N>(
+        data: N,
+        options?: IDatabaseCreateOptions<ClientSession>
+    ): Promise<T> {
         const dataCreate: Record<string, any> = data;
         if (options && options._id) {
             dataCreate._id = options._id;
@@ -385,7 +392,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     async updateOneById<N>(
         _id: string,
         data: N,
-        options?: IDatabaseOptions
+        options?: IDatabaseOptions<ClientSession>
     ): Promise<T> {
         const update = this._repository.findByIdAndUpdate(
             _id,
@@ -401,8 +408,8 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             update.where('deletedAt').exists(false);
         }
 
-        if (options && options.populate) {
-            update.populate(this._populateOnFind);
+        if (options && options.join) {
+            update.populate(this._joinOnFind);
         }
 
         if (options && options.session) {
@@ -415,7 +422,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     async updateOne<N>(
         find: Record<string, any>,
         data: N,
-        options?: IDatabaseOptions
+        options?: IDatabaseOptions<ClientSession>
     ): Promise<T> {
         const update = this._repository.findOneAndUpdate(
             find,
@@ -431,8 +438,8 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             update.where('deletedAt').exists(false);
         }
 
-        if (options && options.populate) {
-            update.populate(this._populateOnFind);
+        if (options && options.join) {
+            update.populate(this._joinOnFind);
         }
 
         if (options && options.session) {
@@ -444,7 +451,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
 
     async deleteOne(
         find: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseOptions<ClientSession>
     ): Promise<T> {
         const del = this._repository.findOneAndDelete(find, { new: true });
 
@@ -454,8 +461,8 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             del.where('deletedAt').exists(false);
         }
 
-        if (options && options.populate) {
-            del.populate(this._populateOnFind);
+        if (options && options.join) {
+            del.populate(this._joinOnFind);
         }
 
         if (options && options.session) {
@@ -465,7 +472,10 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         return del;
     }
 
-    async deleteOneById(_id: string, options?: IDatabaseOptions): Promise<T> {
+    async deleteOneById(
+        _id: string,
+        options?: IDatabaseOptions<ClientSession>
+    ): Promise<T> {
         const del = this._repository.findByIdAndDelete(_id, {
             new: true,
         });
@@ -476,8 +486,8 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             del.where('deletedAt').exists(false);
         }
 
-        if (options && options.populate) {
-            del.populate(this._populateOnFind);
+        if (options && options.join) {
+            del.populate(this._joinOnFind);
         }
 
         if (options && options.session) {
@@ -489,7 +499,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
 
     async softDeleteOneById(
         _id: string,
-        options?: IDatabaseSoftDeleteOptions
+        options?: IDatabaseSoftDeleteOptions<ClientSession>
     ): Promise<T> {
         const del = this._repository
             .findByIdAndUpdate(
@@ -502,8 +512,8 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             .where('deletedAt')
             .exists(false);
 
-        if (options && options.populate) {
-            del.populate(this._populateOnFind);
+        if (options && options.join) {
+            del.populate(this._joinOnFind);
         }
 
         if (options && options.session) {
@@ -515,7 +525,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
 
     async softDeleteOne(
         find: Record<string, any>,
-        options?: IDatabaseSoftDeleteOptions
+        options?: IDatabaseSoftDeleteOptions<ClientSession>
     ): Promise<T> {
         const del = this._repository
             .findOneAndUpdate(
@@ -528,8 +538,8 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             .where('deletedAt')
             .exists(false);
 
-        if (options && options.populate) {
-            del.populate(this._populateOnFind);
+        if (options && options.join) {
+            del.populate(this._joinOnFind);
         }
 
         if (options && options.session) {
@@ -539,7 +549,10 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         return del;
     }
 
-    async restore(_id: string, options?: IDatabaseRestoreOptions): Promise<T> {
+    async restore(
+        _id: string,
+        options?: IDatabaseRestoreOptions<ClientSession>
+    ): Promise<T> {
         const rest = this._repository
             .findByIdAndUpdate(
                 _id,
@@ -551,8 +564,8 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             .where('deletedAt')
             .exists(true);
 
-        if (options && options.populate) {
-            rest.populate(this._populateOnFind);
+        if (options && options.join) {
+            rest.populate(this._joinOnFind);
         }
 
         if (options && options.session) {
@@ -560,5 +573,214 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         }
 
         return rest;
+    }
+
+    // bulk
+    async createMany<N>(
+        data: N[],
+        options?: IDatabaseCreateManyOptions<ClientSession>
+    ): Promise<boolean> {
+        const create = this._repository.insertMany(data, {
+            session: options ? (options.session as ClientSession) : undefined,
+        });
+
+        try {
+            await create;
+            return true;
+        } catch (err: unknown) {
+            throw err;
+        }
+    }
+
+    async deleteManyById(
+        _id: string[],
+        options?: IDatabaseManyOptions<ClientSession>
+    ): Promise<boolean> {
+        const del = this._repository.deleteMany({
+            _id: {
+                $in: _id,
+            },
+        });
+
+        if (options && options.withDeleted) {
+            del.where('deletedAt').exists(true);
+        } else {
+            del.where('deletedAt').exists(false);
+        }
+
+        if (options && options.session) {
+            del.session(options.session as ClientSession);
+        }
+
+        if (options && options.join) {
+            del.populate(this._joinOnFind);
+        }
+
+        try {
+            await del;
+            return true;
+        } catch (err: unknown) {
+            throw err;
+        }
+    }
+
+    async deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseManyOptions<ClientSession>
+    ): Promise<boolean> {
+        const del = this._repository.deleteMany(find);
+
+        if (options && options.withDeleted) {
+            del.where('deletedAt').exists(true);
+        } else {
+            del.where('deletedAt').exists(false);
+        }
+
+        if (options && options.session) {
+            del.session(options.session as ClientSession);
+        }
+
+        if (options && options.join) {
+            del.populate(this._joinOnFind);
+        }
+
+        try {
+            await del;
+            return true;
+        } catch (err: unknown) {
+            throw err;
+        }
+    }
+
+    async softDeleteManyById(
+        _id: string[],
+        options?: IDatabaseSoftDeleteManyOptions<ClientSession>
+    ): Promise<boolean> {
+        const softDel = this._repository
+            .updateMany(
+                {
+                    _id: {
+                        $in: _id,
+                    },
+                },
+                {
+                    $set: {
+                        deletedAt: new Date(),
+                    },
+                }
+            )
+            .where('deletedAt')
+            .exists(false);
+
+        if (options && options.session) {
+            softDel.session(options.session as ClientSession);
+        }
+
+        if (options && options.join) {
+            softDel.populate(this._joinOnFind);
+        }
+
+        try {
+            await softDel;
+            return true;
+        } catch (err: unknown) {
+            throw err;
+        }
+    }
+
+    async softDeleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseSoftDeleteManyOptions<ClientSession>
+    ): Promise<boolean> {
+        const softDel = this._repository
+            .updateMany(find, {
+                $set: {
+                    deletedAt: new Date(),
+                },
+            })
+            .where('deletedAt')
+            .exists(false);
+
+        if (options && options.session) {
+            softDel.session(options.session as ClientSession);
+        }
+
+        if (options && options.join) {
+            softDel.populate(this._joinOnFind);
+        }
+
+        try {
+            await softDel;
+            return true;
+        } catch (err: unknown) {
+            throw err;
+        }
+    }
+
+    async restoreMany(
+        _id: string[],
+        options?: IDatabaseRestoreManyOptions<ClientSession>
+    ): Promise<boolean> {
+        const rest = this._repository
+            .updateMany(
+                {
+                    _id: {
+                        $in: _id,
+                    },
+                },
+                {
+                    $set: {
+                        deletedAt: undefined,
+                    },
+                }
+            )
+            .where('deletedAt')
+            .exists(true);
+
+        if (options && options.session) {
+            rest.session(options.session as ClientSession);
+        }
+
+        if (options && options.join) {
+            rest.populate(this._joinOnFind);
+        }
+
+        try {
+            await rest;
+            return true;
+        } catch (err: unknown) {
+            throw err;
+        }
+    }
+
+    async updateMany<N>(
+        find: Record<string, any>,
+        data: N,
+        options?: IDatabaseManyOptions<ClientSession>
+    ): Promise<boolean> {
+        const update = this._repository.updateMany(find, {
+            $set: data,
+        });
+
+        if (options && options.withDeleted) {
+            update.where('deletedAt').exists(true);
+        } else {
+            update.where('deletedAt').exists(false);
+        }
+
+        if (options && options.session) {
+            update.session(options.session as ClientSession);
+        }
+
+        if (options && options.join) {
+            update.populate(this._joinOnFind);
+        }
+
+        try {
+            await update;
+            return true;
+        } catch (err: unknown) {
+            throw err;
+        }
     }
 }

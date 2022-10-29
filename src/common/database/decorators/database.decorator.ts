@@ -20,11 +20,11 @@ import {
     EntityOptions,
     PrimaryGeneratedColumn,
 } from 'typeorm';
-import { v4 as uuidV4 } from 'uuid';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 
 // for load env
 import { config } from 'dotenv';
+import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 config();
 
 export function DatabaseConnection(
@@ -70,9 +70,7 @@ export function DatabasePropPrimary(): PropertyDecorator {
     return process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO
         ? Prop({
               type: String,
-              default: function genUUID() {
-                  return uuidV4();
-              },
+              default: DatabaseDefaultUUID,
           })
         : PrimaryGeneratedColumn;
 }

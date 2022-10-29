@@ -1,16 +1,18 @@
-import { ClientSession, Connection, Document } from 'mongoose';
+import { Document } from 'mongoose';
 import { IPaginationOptions } from 'src/common/pagination/interfaces/pagination.interface';
-import { DataSource, QueryRunner } from 'typeorm';
 
-export type IDatabaseSchema<T> = T | (T & Document<string>);
+export type IDatabaseSchema<T = any> = T | (T & Document<string>);
 export interface IDatabaseConnectOptions {
     name: string;
-    schema: any;
+    schema: IDatabaseConnectSchema;
     collection: string;
     connectionName?: string;
 }
-export type IDatabaseConnection = Connection | DataSource;
-export type IDatabaseSession = ClientSession | QueryRunner;
+
+export interface IDatabaseConnectSchema {
+    mongo?: any;
+    postgres?: any;
+}
 
 // repository
 export interface IDatabaseRepositoryJoinOptions
@@ -27,75 +29,79 @@ export interface IDatabaseRepositoryDeepJoinOptions {
 }
 
 // find one
-export interface IDatabaseFindOneOptions
+export interface IDatabaseFindOneOptions<T = any>
     extends Pick<IPaginationOptions, 'sort'> {
     select?: Record<string, number> | Record<string, string>;
-    populate?: boolean;
-    session?: IDatabaseSession;
+    join?: boolean;
+    session?: T;
     withDeleted?: boolean;
 }
 
-export type IDatabaseOptions = Pick<
-    IDatabaseFindOneOptions,
-    'session' | 'withDeleted' | 'populate'
+export type IDatabaseOptions<T = any> = Pick<
+    IDatabaseFindOneOptions<T>,
+    'session' | 'withDeleted' | 'join'
 >;
 
 // aggregate
 
-export type IDatabaseAggregateOptions = Omit<IDatabaseOptions, 'populate'>;
+export type IDatabaseAggregateOptions<T = any> = Omit<
+    IDatabaseOptions<T>,
+    'join'
+>;
 
-export interface IDatabaseFindAllAggregateOptions
+export interface IDatabaseFindAllAggregateOptions<T = any>
     extends IPaginationOptions,
-        IDatabaseAggregateOptions {}
+        IDatabaseAggregateOptions<T> {}
 
-export interface IDatabaseGetTotalAggregateOptions extends IDatabaseOptions {
+export interface IDatabaseGetTotalAggregateOptions<T = any>
+    extends IDatabaseOptions<T> {
     field?: Record<string, string> | string;
     sumField?: string;
 }
 
 // find
-export interface IDatabaseFindAllOptions
+export interface IDatabaseFindAllOptions<T = any>
     extends IPaginationOptions,
-        Omit<IDatabaseFindOneOptions, 'sort'> {}
+        Omit<IDatabaseFindOneOptions<T>, 'sort'> {}
 
 // create
 
-export interface IDatabaseCreateOptions
-    extends Omit<IDatabaseOptions, 'withDeleted' | 'populate'> {
+export interface IDatabaseCreateOptions<T = any>
+    extends Omit<IDatabaseOptions<T>, 'withDeleted' | 'join'> {
     _id?: string;
 }
 
 // exist
 
-export interface IDatabaseExistOptions extends IDatabaseOptions {
+export interface IDatabaseExistOptions<T = any> extends IDatabaseOptions<T> {
     excludeId?: string[];
 }
 
 // soft delete
 
-export type IDatabaseSoftDeleteOptions = Pick<
-    IDatabaseFindOneOptions,
-    'session' | 'populate'
+export type IDatabaseSoftDeleteOptions<T = any> = Pick<
+    IDatabaseFindOneOptions<T>,
+    'session' | 'join'
 >;
 
 // restore delete
 
-export type IDatabaseRestoreOptions = IDatabaseSoftDeleteOptions;
+export type IDatabaseRestoreOptions<T = any> = IDatabaseSoftDeleteOptions<T>;
 
 // bulk
-export type IDatabaseManyOptions = IDatabaseOptions;
+export type IDatabaseManyOptions<T = any> = IDatabaseOptions<T>;
 
-export type IDatabaseCreateManyOptions = Pick<
-    IDatabaseFindOneOptions,
+export type IDatabaseCreateManyOptions<T = any> = Pick<
+    IDatabaseFindOneOptions<T>,
     'session'
 >;
 
-export type IDatabaseSoftDeleteManyOptions = Pick<
-    IDatabaseFindOneOptions,
-    'session' | 'populate'
+export type IDatabaseSoftDeleteManyOptions<T = any> = Pick<
+    IDatabaseFindOneOptions<T>,
+    'session' | 'join'
 >;
 
-export type IDatabaseRestoreManyOptions = Pick<
-    IDatabaseFindOneOptions,
-    'session' | 'populate'
+export type IDatabaseRestoreManyOptions<T = any> = Pick<
+    IDatabaseFindOneOptions<T>,
+    'session' | 'join'
 >;

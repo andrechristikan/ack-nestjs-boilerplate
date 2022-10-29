@@ -22,7 +22,7 @@ export class MinDateTodayEqualConstraint
 }
 
 export function MinDateTodayEqual(validationOptions?: ValidationOptions) {
-    return function (object: Record<string, any>, propertyName: string): any {
+    return function (object: Record<string, any>, propertyName: string): void {
         registerDecorator({
             name: 'MinDateTodayEqual',
             target: object.constructor,

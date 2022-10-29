@@ -11,40 +11,31 @@ import { REQUEST_PARAM_CLASS_DTOS_META_KEY } from 'src/common/request/constants/
 import { RequestParamRawGuard } from 'src/common/request/guards/request.param.guard';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { IResult } from 'ua-parser-js';
-import 'dotenv/config';
 import { RequestTimestampInterceptor } from 'src/common/request/interceptors/request.timestamp.interceptor';
 import { RequestUserAgentInterceptor } from 'src/common/request/interceptors/request.user-agent.interceptor';
 
-export const RequestUserAgent = createParamDecorator(
+export const RequestUserAgent: () => ParameterDecorator = createParamDecorator(
     (data: string, ctx: ExecutionContext): IResult => {
         const { userAgent } = ctx.switchToHttp().getRequest() as IRequestApp;
         return userAgent;
     }
 );
 
-export function RequestValidateUserAgent(): any {
-    return applyDecorators(UseInterceptors(RequestUserAgentInterceptor));
-}
-
-export function RequestValidateTimestamp(): any {
-    return applyDecorators(UseInterceptors(RequestTimestampInterceptor));
-}
-
-export const RequestId = createParamDecorator(
+export const RequestId: () => ParameterDecorator = createParamDecorator(
     (data: string, ctx: ExecutionContext): string => {
         const { id } = ctx.switchToHttp().getRequest() as IRequestApp;
         return id;
     }
 );
 
-export const RequestTimestamp = createParamDecorator(
+export const RequestTimestamp: () => ParameterDecorator = createParamDecorator(
     (data: string, ctx: ExecutionContext): number => {
         const { timestamp } = ctx.switchToHttp().getRequest() as IRequestApp;
         return timestamp;
     }
 );
 
-export const RequestCustomLang = createParamDecorator(
+export const RequestCustomLang: () => ParameterDecorator = createParamDecorator(
     (data: string, ctx: ExecutionContext): string[] => {
         const { customLang } = ctx.switchToHttp().getRequest() as IRequestApp;
         return customLang;
@@ -53,9 +44,17 @@ export const RequestCustomLang = createParamDecorator(
 
 export function RequestParamGuard(
     ...classValidation: ClassConstructor<any>[]
-): any {
+): MethodDecorator {
     return applyDecorators(
         UseGuards(RequestParamRawGuard),
         SetMetadata(REQUEST_PARAM_CLASS_DTOS_META_KEY, classValidation)
     );
+}
+
+export function RequestValidateUserAgent(): MethodDecorator {
+    return applyDecorators(UseInterceptors(RequestUserAgentInterceptor));
+}
+
+export function RequestValidateTimestamp(): MethodDecorator {
+    return applyDecorators(UseInterceptors(RequestTimestampInterceptor));
 }

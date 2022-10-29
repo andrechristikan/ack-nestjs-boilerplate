@@ -14,7 +14,7 @@ export class SkipConstraint implements ValidatorConstraintInterface {
 }
 
 export function Skip() {
-    return function (object: Record<string, any>, propertyName: string): any {
+    return function (object: Record<string, any>, propertyName: string): void {
         registerDecorator({
             name: 'Skip',
             target: object.constructor,

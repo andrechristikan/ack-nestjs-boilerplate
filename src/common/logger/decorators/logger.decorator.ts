@@ -10,7 +10,7 @@ import { ILoggerOptions } from 'src/common/logger/interfaces/logger.interface';
 export function Logger(
     action: ENUM_LOGGER_ACTION,
     options?: ILoggerOptions
-): any {
+): MethodDecorator {
     return applyDecorators(
         UseInterceptors(LoggerInterceptor),
         SetMetadata(LOGGER_ACTION_META_KEY, action),

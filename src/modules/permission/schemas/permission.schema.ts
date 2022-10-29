@@ -49,5 +49,5 @@ export class PermissionEntity {
 
 export const PermissionDatabaseName = 'permissions';
 
-export const Permission = DatabaseSchema(PermissionEntity);
+export const PermissionSchema = DatabaseSchema(PermissionEntity);
 export type Permission = IDatabaseSchema<PermissionEntity>;

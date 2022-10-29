@@ -78,7 +78,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
                     },
                     exception
                 );
-            } catch (err: any) {}
+            } catch (err: unknown) {}
 
             // Restructure
             const response = exception.getResponse();
@@ -200,7 +200,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
                     },
                     exception
                 );
-            } catch (err: any) {}
+            } catch (err: unknown) {}
 
             httpAdapter.reply(
                 responseExpress,

@@ -9,7 +9,7 @@ import {
 import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
 import { RoleListSerialization } from 'src/modules/role/serializations/role.list.serialization';
 
-export function RoleListDoc(): any {
+export function RoleListDoc(): MethodDecorator {
     return applyDecorators(
         DocPaging<RoleListSerialization>('role.list', {
             auth: {
@@ -29,7 +29,7 @@ export function RoleListDoc(): any {
     );
 }
 
-export function RoleGetDoc(): any {
+export function RoleGetDoc(): MethodDecorator {
     return applyDecorators(
         Doc<RoleGetSerialization>('role.get', {
             auth: {
@@ -48,7 +48,7 @@ export function RoleGetDoc(): any {
     );
 }
 
-export function RoleCreateDoc(): any {
+export function RoleCreateDoc(): MethodDecorator {
     return applyDecorators(
         Doc<ResponseIdSerialization>('role.create', {
             auth: {
@@ -67,7 +67,7 @@ export function RoleCreateDoc(): any {
     );
 }
 
-export function RoleUpdateDoc(): any {
+export function RoleUpdateDoc(): MethodDecorator {
     return applyDecorators(
         Doc<ResponseIdSerialization>('role.update', {
             auth: {
@@ -86,7 +86,7 @@ export function RoleUpdateDoc(): any {
     );
 }
 
-export function RoleDeleteDoc(): any {
+export function RoleDeleteDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('role.delete', {
             auth: {
@@ -104,7 +104,7 @@ export function RoleDeleteDoc(): any {
     );
 }
 
-export function RoleActiveDoc(): any {
+export function RoleActiveDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('role.active', {
             auth: {
@@ -122,7 +122,7 @@ export function RoleActiveDoc(): any {
     );
 }
 
-export function RoleInactiveDoc(): any {
+export function RoleInactiveDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('role.inactive', {
             auth: {

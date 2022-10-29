@@ -1,6 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
+import { ApiKeyProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import {
     RequestParamGuard,
@@ -47,7 +47,7 @@ export class SettingController {
     @ResponsePaging('setting.list', {
         classSerialization: SettingListSerialization,
     })
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('/list')
@@ -95,7 +95,7 @@ export class SettingController {
     })
     @SettingGetGuard()
     @RequestParamGuard(SettingRequestDto)
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('get/:setting')
@@ -108,7 +108,7 @@ export class SettingController {
         classSerialization: SettingGetSerialization,
     })
     @SettingGetByNameGuard()
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('get/name/:settingName')
