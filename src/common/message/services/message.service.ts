@@ -25,12 +25,12 @@ export class MessageService implements IMessageService {
         this.defaultLanguage = this.configService.get<string>('app.language');
     }
 
-    setMessage(
+    setMessage<T = string>(
         lang: string,
         key: string,
         options?: IMessageSetOptions
-    ): string {
-        return this.i18n.translate<string>(key, {
+    ): T {
+        return this.i18n.translate<T>(key, {
             lang: lang || this.defaultLanguage,
             args:
                 options && options.properties ? options.properties : undefined,

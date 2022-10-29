@@ -46,5 +46,5 @@ export interface ISettingService {
         options?: IDatabaseSoftDeleteOptions
     ): Promise<Setting>;
 
-    convertValue(value: string): Promise<string | number | boolean>;
+    getValue<T>(setting: Setting): Promise<T>;
 }

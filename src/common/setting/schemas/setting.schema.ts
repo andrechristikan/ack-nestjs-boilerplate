@@ -1,13 +1,13 @@
-import { Schema as MongooseSchema } from 'mongoose';
 import {
     DatabaseEntity,
+    DatabaseHookBeforeSave,
     DatabaseProp,
     DatabasePropPrimary,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseSchema } from 'src/common/database/interfaces/database.interface';
 
-@DatabaseEntity({ timestamps: true, versionKey: false })
+@DatabaseEntity()
 export class SettingEntity {
     @DatabasePropPrimary()
     _id?: string;
@@ -16,21 +16,27 @@ export class SettingEntity {
         required: true,
         index: true,
         unique: true,
-        trim: true,
+        type: String,
     })
     name: string;
 
     @DatabaseProp({
         required: false,
+        type: String,
     })
     description?: string;
 
     @DatabaseProp({
         required: true,
-        trim: true,
-        type: MongooseSchema.Types.Mixed,
+        type: String,
     })
-    value: string | number | boolean;
+    value: string;
+
+    @DatabaseHookBeforeSave()
+    hookBeforeSave?() {
+        this.name = this.name.trim();
+        this.value = this.value.trim();
+    }
 }
 
 export const SettingDatabaseName = 'settings';

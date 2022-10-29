@@ -4,20 +4,20 @@ import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { ApiKeyBulkKeyService } from 'src/common/api-key/services/api-key.bulk.service';
 
 @Injectable()
-export class AuthApiKeySeed {
+export class ApiKeySeed {
     constructor(
         private readonly apiKeyService: ApiKeyService,
         private readonly apiKeyBulkService: ApiKeyBulkKeyService
     ) {}
 
     @Command({
-        command: 'insert:authapis',
-        describe: 'insert authapiss',
+        command: 'insert:apikeys',
+        describe: 'insert apikeys',
     })
     async insert(): Promise<void> {
         try {
             await this.apiKeyService.createRaw({
-                name: 'Auth Api Key Migration',
+                name: 'Api Key Migration',
                 description: 'From migration',
                 key: 'qwertyuiop12345zxcvbnmkjh',
                 secret: '5124512412412asdasdasdasdasdASDASDASD',
@@ -32,8 +32,8 @@ export class AuthApiKeySeed {
     }
 
     @Command({
-        command: 'remove:authapis',
-        describe: 'remove authapis',
+        command: 'remove:apikeys',
+        describe: 'remove apikeys',
     })
     async remove(): Promise<void> {
         try {

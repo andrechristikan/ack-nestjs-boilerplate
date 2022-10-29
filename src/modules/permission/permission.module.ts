@@ -17,7 +17,7 @@ import { PermissionService } from './services/permission.service';
     imports: [
         DatabaseConnectModule.register({
             name: PermissionEntity.name,
-            schema: { mongo: PermissionSchema },
+            schema: PermissionSchema,
             collection: PermissionDatabaseName,
             connectionName: DATABASE_CONNECTION_NAME,
         }),

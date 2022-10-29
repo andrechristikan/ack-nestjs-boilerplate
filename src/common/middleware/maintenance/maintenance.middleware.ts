@@ -18,11 +18,14 @@ export class MaintenanceMiddleware implements NestMiddleware {
         res: Response,
         next: NextFunction
     ): Promise<void> {
-        const maintenance: Setting = await this.settingService.findOneByName(
+        const setting: Setting = await this.settingService.findOneByName(
             'maintenance'
         );
+        const value: boolean = await this.settingService.getValue<boolean>(
+            setting
+        );
 
-        if (maintenance.value as boolean) {
+        if (value) {
             throw new ServiceUnavailableException({
                 statusCode:
                     ENUM_ERROR_STATUS_CODE_ERROR.ERROR_SERVICE_UNAVAILABLE,

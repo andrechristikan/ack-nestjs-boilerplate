@@ -1,5 +1,5 @@
 import {
-    DatabaseHookBefore,
+    DatabaseHookBeforeSave,
     DatabaseEntity,
     DatabaseProp,
     DatabasePropPrimary,
@@ -7,7 +7,7 @@ import {
 } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseSchema } from 'src/common/database/interfaces/database.interface';
 
-@DatabaseEntity({ timestamps: true, versionKey: false })
+@DatabaseEntity()
 export class PermissionEntity {
     @DatabasePropPrimary()
     _id?: string;
@@ -15,21 +15,21 @@ export class PermissionEntity {
     @DatabaseProp({
         required: true,
         index: true,
-        uppercase: true,
         unique: true,
-        trim: true,
+        type: String,
     })
     code: string;
 
     @DatabaseProp({
         required: true,
-        lowercase: true,
         index: true,
+        type: String,
     })
     name: string;
 
     @DatabaseProp({
         required: true,
+        type: String,
     })
     description: string;
 
@@ -37,13 +37,14 @@ export class PermissionEntity {
         required: true,
         default: true,
         index: true,
+        type: Boolean,
     })
     isActive: boolean;
 
-    @DatabaseHookBefore()
-    hookBefore() {
-        this.code = this.code.toUpperCase();
-        this.name = this.name.toLowerCase();
+    @DatabaseHookBeforeSave()
+    hookBeforeSave?() {
+        this.code = this.code.toUpperCase().trim();
+        this.name = this.name.toLowerCase().trim();
     }
 }
 

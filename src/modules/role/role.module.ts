@@ -18,7 +18,7 @@ import { RoleService } from './services/role.service';
     imports: [
         DatabaseConnectModule.register({
             name: RoleEntity.name,
-            schema: { mongo: RoleSchema },
+            schema: RoleSchema,
             collection: RoleDatabaseName,
             connectionName: DATABASE_CONNECTION_NAME,
         }),

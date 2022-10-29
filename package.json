@@ -1,6 +1,6 @@
 {
   "name": "ack-nestjs-boilerplate",
-  "version": "3.6.0",
+  "version": "4.0.0",
   "description": "Ack NestJs Boilerplate",
   "repository": {
     "type": "git",
@@ -37,15 +37,15 @@
     "spell": "yarn spell:src && yarn spell:test",
     "spell:src": "cspell lint --config cspell.json src/**/*.ts --color --gitignore --no-must-find-files --no-summary --no-progress || true",
     "spell:test": "cspell lint --config cspell.json test/**/*.ts --color --gitignore --no-must-find-files --no-summary --no-progress || true",
-    "migrate": "yarn migrate:setting && yarn migrate:authapis && yarn migrate:permission && yarn migrate:role && yarn migrate:user",
+    "migrate": "yarn migrate:setting && yarn migrate:apikeys && yarn migrate:permission && yarn migrate:role && yarn migrate:user",
     "migrate:setting": "nestjs-command insert:setting",
-    "migrate:authapis": "nestjs-command insert:authapis",
+    "migrate:apikeys": "nestjs-command insert:apikeys",
     "migrate:permission": "nestjs-command insert:permission",
     "migrate:role": "nestjs-command insert:role",
     "migrate:user": "nestjs-command insert:user",
-    "rollback": "yarn rollback:user && yarn rollback:role && yarn rollback:permission && yarn rollback:setting && yarn rollback:authapis",
+    "rollback": "yarn rollback:user && yarn rollback:role && yarn rollback:permission && yarn rollback:setting && yarn rollback:apikeys",
     "rollback:setting": "nestjs-command remove:setting",
-    "rollback:authapis": "nestjs-command remove:authapis",
+    "rollback:apikeys": "nestjs-command remove:apikeys",
     "rollback:permission": "nestjs-command remove:permission",
     "rollback:role": "nestjs-command remove:role",
     "rollback:user": "nestjs-command remove:user"

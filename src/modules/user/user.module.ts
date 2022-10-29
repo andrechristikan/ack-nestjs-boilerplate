@@ -13,7 +13,7 @@ import { UserService } from './services/user.service';
     imports: [
         DatabaseConnectModule.register({
             name: UserEntity.name,
-            schema: { mongo: UserSchema },
+            schema: UserSchema,
             collection: UserDatabaseName,
             connectionName: DATABASE_CONNECTION_NAME,
         }),

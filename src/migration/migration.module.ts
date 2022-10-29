@@ -10,7 +10,7 @@ import { UserSeed } from 'src/migration/seeds/user.seed';
 import { PermissionModule } from 'src/modules/permission/permission.module';
 import { RoleModule } from 'src/modules/role/role.module';
 import { UserModule } from 'src/modules/user/user.module';
-import { AuthApiKeySeed } from './seeds/auth.api-key.seed';
+import { ApiKeySeed } from './seeds/api-key.seed';
 
 @Module({
     imports: [
@@ -22,13 +22,7 @@ import { AuthApiKeySeed } from './seeds/auth.api-key.seed';
         RoleModule,
         UserModule,
     ],
-    providers: [
-        AuthApiKeySeed,
-        SettingSeed,
-        PermissionSeed,
-        RoleSeed,
-        UserSeed,
-    ],
+    providers: [ApiKeySeed, SettingSeed, PermissionSeed, RoleSeed, UserSeed],
     exports: [],
 })
 export class MigrationModule {}

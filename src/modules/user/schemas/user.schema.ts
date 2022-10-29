@@ -3,14 +3,14 @@ import {
     DatabaseEntity,
     DatabasePropForeign,
     DatabaseProp,
-    DatabaseHookBefore,
+    DatabaseHookBeforeSave,
     DatabaseSchema,
     DatabasePropPrimary,
 } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseSchema } from 'src/common/database/interfaces/database.interface';
 import { RoleEntity } from 'src/modules/role/schemas/role.schema';
 
-@DatabaseEntity({ timestamps: true, versionKey: false })
+@DatabaseEntity()
 export class UserEntity {
     @DatabasePropPrimary()
     _id?: string;
@@ -18,16 +18,14 @@ export class UserEntity {
     @DatabaseProp({
         required: true,
         index: true,
-        lowercase: true,
-        trim: true,
+        type: String,
     })
     firstName: string;
 
     @DatabaseProp({
         required: true,
         index: true,
-        lowercase: true,
-        trim: true,
+        type: String,
     })
     lastName: string;
 
@@ -35,7 +33,7 @@ export class UserEntity {
         required: true,
         index: true,
         unique: true,
-        trim: true,
+        type: String,
     })
     mobileNumber: string;
 
@@ -43,8 +41,7 @@ export class UserEntity {
         required: true,
         index: true,
         unique: true,
-        lowercase: true,
-        trim: true,
+        type: String,
     })
     email: string;
 
@@ -57,17 +54,19 @@ export class UserEntity {
 
     @DatabaseProp({
         required: true,
+        type: String,
     })
     password: string;
 
     @DatabaseProp({
         required: true,
-        index: true,
+        type: String,
     })
     passwordExpired: Date;
 
     @DatabaseProp({
         required: true,
+        type: String,
     })
     salt: string;
 
@@ -75,12 +74,12 @@ export class UserEntity {
         required: true,
         default: true,
         index: true,
+        type: Boolean,
     })
     isActive: boolean;
 
     @DatabaseProp({
         required: false,
-        _id: false,
         type: {
             path: String,
             pathWithFilename: String,
@@ -92,11 +91,12 @@ export class UserEntity {
     })
     photo?: AwsS3Serialization;
 
-    @DatabaseHookBefore()
-    hookBefore() {
-        this.email = this.email.toLowerCase();
-        this.firstName = this.firstName.toLowerCase();
-        this.lastName = this.lastName.toLowerCase();
+    @DatabaseHookBeforeSave()
+    hookBeforeSave?() {
+        this.email = this.email.toLowerCase().trim();
+        this.firstName = this.firstName.toLowerCase().trim();
+        this.lastName = this.lastName.toLowerCase().trim();
+        this.mobileNumber = this.mobileNumber.trim();
     }
 }
 

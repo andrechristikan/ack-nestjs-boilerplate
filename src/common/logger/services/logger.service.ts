@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { DatabaseService } from 'src/common/database/services/database.service';
 import { ENUM_LOGGER_LEVEL } from 'src/common/logger/constants/logger.enum.constant';
 import {
     ILogger,
@@ -11,10 +10,7 @@ import { Logger, LoggerEntity } from 'src/common/logger/schemas/logger.schema';
 
 @Injectable()
 export class LoggerService implements ILoggerService {
-    constructor(
-        private readonly loggerRepository: LoggerRepository,
-        private readonly databaseService: DatabaseService
-    ) {}
+    constructor(private readonly loggerRepository: LoggerRepository) {}
 
     async info({
         action,
@@ -30,25 +26,24 @@ export class LoggerService implements ILoggerService {
         statusCode,
         tags,
     }: ILogger): Promise<Logger> {
-        const create: LoggerEntity = {
-            level: ENUM_LOGGER_LEVEL.INFO,
-            user: user,
-            apiKey: apiKey,
-            anonymous: user ? false : true,
-            action,
-            description,
-            method,
-            requestId,
-            role: role ? role._id : undefined,
-            accessFor: role && role.accessFor ? role.accessFor : undefined,
-            params,
-            bodies,
-            path,
-            statusCode,
-            tags,
-        };
+        const create: LoggerEntity = new LoggerEntity();
+        create.level = ENUM_LOGGER_LEVEL.INFO;
+        create.user = user;
+        create.apiKey = apiKey;
+        create.anonymous = user ? false : true;
+        create.action = action;
+        create.description = description;
+        create.method = method;
+        create.requestId = requestId;
+        create.role = role ? role._id : undefined;
+        create.accessFor = role && role.accessFor ? role.accessFor : undefined;
+        create.params = params;
+        create.bodies = bodies;
+        create.path = path;
+        create.statusCode = statusCode;
+        create.tags = tags;
 
-        return this.loggerRepository.create(create);
+        return this.loggerRepository.create<LoggerEntity>(create);
     }
 
     async debug({
@@ -65,25 +60,24 @@ export class LoggerService implements ILoggerService {
         statusCode,
         tags,
     }: ILogger): Promise<Logger> {
-        const create: LoggerEntity = {
-            level: ENUM_LOGGER_LEVEL.DEBUG,
-            user: user,
-            apiKey: apiKey,
-            anonymous: user ? false : true,
-            action,
-            description,
-            method,
-            requestId,
-            role: role ? role._id : undefined,
-            accessFor: role ? role.accessFor : undefined,
-            params,
-            bodies,
-            path,
-            statusCode,
-            tags,
-        };
+        const create: LoggerEntity = new LoggerEntity();
+        create.level = ENUM_LOGGER_LEVEL.DEBUG;
+        create.user = user;
+        create.apiKey = apiKey;
+        create.anonymous = user ? false : true;
+        create.action = action;
+        create.description = description;
+        create.method = method;
+        create.requestId = requestId;
+        create.role = role ? role._id : undefined;
+        create.accessFor = role && role.accessFor ? role.accessFor : undefined;
+        create.params = params;
+        create.bodies = bodies;
+        create.path = path;
+        create.statusCode = statusCode;
+        create.tags = tags;
 
-        return this.loggerRepository.create(create);
+        return this.loggerRepository.create<LoggerEntity>(create);
     }
 
     async warning({
@@ -100,25 +94,24 @@ export class LoggerService implements ILoggerService {
         statusCode,
         tags,
     }: ILogger): Promise<Logger> {
-        const create: LoggerEntity = {
-            level: ENUM_LOGGER_LEVEL.WARM,
-            user: user,
-            apiKey: apiKey,
-            anonymous: user ? false : true,
-            action,
-            description,
-            method,
-            requestId,
-            role: role ? role._id : undefined,
-            accessFor: role && role.accessFor ? role.accessFor : undefined,
-            params,
-            bodies,
-            path,
-            statusCode,
-            tags,
-        };
+        const create: LoggerEntity = new LoggerEntity();
+        create.level = ENUM_LOGGER_LEVEL.WARM;
+        create.user = user;
+        create.apiKey = apiKey;
+        create.anonymous = user ? false : true;
+        create.action = action;
+        create.description = description;
+        create.method = method;
+        create.requestId = requestId;
+        create.role = role ? role._id : undefined;
+        create.accessFor = role && role.accessFor ? role.accessFor : undefined;
+        create.params = params;
+        create.bodies = bodies;
+        create.path = path;
+        create.statusCode = statusCode;
+        create.tags = tags;
 
-        return this.loggerRepository.create(create);
+        return this.loggerRepository.create<LoggerEntity>(create);
     }
 
     async fatal({
@@ -135,25 +128,24 @@ export class LoggerService implements ILoggerService {
         statusCode,
         tags,
     }: ILogger): Promise<Logger> {
-        const create: LoggerEntity = {
-            level: ENUM_LOGGER_LEVEL.FATAL,
-            user: user,
-            apiKey: apiKey,
-            anonymous: user ? false : true,
-            action,
-            description,
-            method,
-            requestId,
-            role: role ? role._id : undefined,
-            accessFor: role && role.accessFor ? role.accessFor : undefined,
-            params,
-            bodies,
-            path,
-            statusCode,
-            tags,
-        };
+        const create: LoggerEntity = new LoggerEntity();
+        create.level = ENUM_LOGGER_LEVEL.FATAL;
+        create.user = user;
+        create.apiKey = apiKey;
+        create.anonymous = user ? false : true;
+        create.action = action;
+        create.description = description;
+        create.method = method;
+        create.requestId = requestId;
+        create.role = role ? role._id : undefined;
+        create.accessFor = role && role.accessFor ? role.accessFor : undefined;
+        create.params = params;
+        create.bodies = bodies;
+        create.path = path;
+        create.statusCode = statusCode;
+        create.tags = tags;
 
-        return this.loggerRepository.create(create);
+        return this.loggerRepository.create<LoggerEntity>(create);
     }
 
     async raw({
@@ -171,24 +163,23 @@ export class LoggerService implements ILoggerService {
         statusCode,
         tags,
     }: ILoggerRaw): Promise<Logger> {
-        const create: LoggerEntity = {
-            level,
-            user: user,
-            apiKey: apiKey,
-            anonymous: user ? false : true,
-            action,
-            description,
-            method,
-            requestId,
-            role: role ? role._id : undefined,
-            accessFor: role && role.accessFor ? role.accessFor : undefined,
-            params,
-            bodies,
-            path,
-            statusCode,
-            tags,
-        };
+        const create: LoggerEntity = new LoggerEntity();
+        create.level = level;
+        create.user = user;
+        create.apiKey = apiKey;
+        create.anonymous = user ? false : true;
+        create.action = action;
+        create.description = description;
+        create.method = method;
+        create.requestId = requestId;
+        create.role = role ? role._id : undefined;
+        create.accessFor = role && role.accessFor ? role.accessFor : undefined;
+        create.params = params;
+        create.bodies = bodies;
+        create.path = path;
+        create.statusCode = statusCode;
+        create.tags = tags;
 
-        return this.loggerRepository.create(create);
+        return this.loggerRepository.create<LoggerEntity>(create);
     }
 }

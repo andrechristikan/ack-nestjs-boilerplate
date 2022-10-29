@@ -16,9 +16,7 @@ import { LoggerService } from './services/logger.service';
     imports: [
         DatabaseConnectModule.register({
             name: LoggerEntity.name,
-            schema: {
-                mongo: LoggerSchema,
-            },
+            schema: LoggerSchema,
             collection: LoggerDatabaseName,
             connectionName: DATABASE_CONNECTION_NAME,
         }),

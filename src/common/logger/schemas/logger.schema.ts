@@ -14,7 +14,7 @@ import {
 } from 'src/common/logger/constants/logger.enum.constant';
 import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
 
-@DatabaseEntity({ timestamps: true, versionKey: false })
+@DatabaseEntity()
 export class LoggerEntity {
     @DatabasePropPrimary()
     _id?: string;
@@ -22,18 +22,21 @@ export class LoggerEntity {
     @DatabaseProp({
         required: true,
         enum: ENUM_LOGGER_LEVEL,
+        type: String,
     })
     level: string;
 
     @DatabaseProp({
         required: true,
         enum: ENUM_LOGGER_ACTION,
+        type: String,
     })
     action: string;
 
     @DatabaseProp({
         required: true,
         enum: ENUM_REQUEST_METHOD,
+        type: String,
     })
     method: string;
 
@@ -72,6 +75,7 @@ export class LoggerEntity {
     @DatabaseProp({
         required: false,
         enum: ENUM_AUTH_ACCESS_FOR,
+        type: String,
     })
     accessFor?: ENUM_AUTH_ACCESS_FOR;
 
@@ -108,6 +112,7 @@ export class LoggerEntity {
     @DatabaseProp({
         required: false,
         default: [],
+        type: Array<string>,
     })
     tags: string[];
 }

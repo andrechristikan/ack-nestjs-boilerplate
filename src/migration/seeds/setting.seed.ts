@@ -25,7 +25,7 @@ export class SettingSeed {
             await this.settingService.create({
                 name: 'limitMaxPartNumber',
                 description: 'Max Part Number Aws Chunk File',
-                value: 10000,
+                value: '10000',
             });
         } catch (err: any) {
             throw new Error(err.message);

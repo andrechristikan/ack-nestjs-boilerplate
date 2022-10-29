@@ -35,5 +35,5 @@ export class SettingCreateDto {
             { type: 'boolean', readOnly: true, examples: [true, false] },
         ],
     })
-    readonly value: string | boolean | number;
+    readonly value: string;
 }

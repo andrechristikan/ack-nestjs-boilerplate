@@ -55,16 +55,10 @@ export class SettingService implements ISettingService {
         { name, description, value }: SettingCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<Setting> {
-        let convertValue = value;
-        if (typeof value === 'string') {
-            convertValue = await this.convertValue(value as string);
-        }
-
-        const create: SettingEntity = {
-            name,
-            description,
-            value: convertValue,
-        };
+        const create: SettingEntity = new SettingEntity();
+        create.name = name;
+        create.description = description;
+        create.value = value;
 
         return this.settingRepository.create<SettingEntity>(create, options);
     }
@@ -74,14 +68,9 @@ export class SettingService implements ISettingService {
         { description, value }: SettingUpdateDto,
         options?: IDatabaseOptions
     ): Promise<Setting> {
-        let convertValue = value;
-        if (typeof value === 'string') {
-            convertValue = await this.convertValue(value as string);
-        }
-
         const update: SettingUpdateDto = {
             description,
-            value: convertValue,
+            value,
         };
 
         return this.settingRepository.updateOneById<SettingUpdateDto>(
@@ -98,9 +87,9 @@ export class SettingService implements ISettingService {
         return this.settingRepository.deleteOne(find, options);
     }
 
-    async convertValue(value: string): Promise<string | number | boolean> {
-        return this.helperStringService.convertStringToNumberOrBooleanIfPossible(
-            value
+    async getValue<T>(setting: Setting): Promise<T> {
+        return this.helperStringService.convertStringToNumberOrBooleanIfPossible<T>(
+            setting.value
         );
     }
 }

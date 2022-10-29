@@ -83,7 +83,8 @@ export class RoleService implements IRoleService {
     async createSuperAdmin(options?: IDatabaseCreateOptions): Promise<Role> {
         const create: RoleEntity = new RoleEntity();
         create.name = 'superadmin';
-        (create.permissions = []), (create.isActive = true);
+        create.permissions = [];
+        create.isActive = true;
         create.accessFor = ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN;
 
         return this.roleRepository.create<RoleEntity>(create, options);

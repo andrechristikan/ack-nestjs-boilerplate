@@ -1,6 +1,6 @@
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import {
-    DatabaseHookBefore,
+    DatabaseHookBeforeSave,
     DatabaseEntity,
     DatabasePropForeign,
     DatabaseProp,
@@ -10,7 +10,7 @@ import {
 import { IDatabaseSchema } from 'src/common/database/interfaces/database.interface';
 import { PermissionEntity } from 'src/modules/permission/schemas/permission.schema';
 
-@DatabaseEntity({ timestamps: true, versionKey: false })
+@DatabaseEntity()
 export class RoleEntity {
     @DatabasePropPrimary()
     _id?: string;
@@ -19,8 +19,7 @@ export class RoleEntity {
         required: true,
         index: true,
         unique: true,
-        lowercase: true,
-        trim: true,
+        type: String,
     })
     name: string;
 
@@ -36,6 +35,7 @@ export class RoleEntity {
         required: true,
         default: true,
         index: true,
+        type: Boolean,
     })
     isActive: boolean;
 
@@ -43,12 +43,13 @@ export class RoleEntity {
         required: true,
         enum: ENUM_AUTH_ACCESS_FOR,
         index: true,
+        type: String,
     })
     accessFor: ENUM_AUTH_ACCESS_FOR;
 
-    @DatabaseHookBefore()
-    hookBefore() {
-        this.name = this.name.toLowerCase();
+    @DatabaseHookBeforeSave()
+    hookBeforeSave?() {
+        this.name = this.name.toLowerCase().trim();
     }
 }
 

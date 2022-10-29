@@ -1,17 +1,52 @@
-import { Document } from 'mongoose';
+import { Document, SchemaTypeOptions } from 'mongoose';
 import { IPaginationOptions } from 'src/common/pagination/interfaces/pagination.interface';
+import { ColumnType } from 'typeorm';
 
-export type IDatabaseSchema<T = any> = T | (T & Document<string>);
+export type IDatabaseSchema<T> = T | (T & Document<string>);
 export interface IDatabaseConnectOptions {
     name: string;
-    schema: IDatabaseConnectSchema;
+    schema: any | IDatabaseConnectSchemaOptions;
     collection: string;
     connectionName?: string;
 }
 
-export interface IDatabaseConnectSchema {
+export interface IDatabaseConnectSchemaOptions {
     mongo?: any;
     postgres?: any;
+}
+
+export interface IDatabaseSchemeOptions {
+    timestamps?: boolean;
+    softDelete?: boolean;
+    hooks?: {
+        beforeSave?: () => void;
+        beforeUpdate?: () => void;
+        beforeCreate?: () => void;
+        beforeFind?: () => void;
+        beforeDelete?: () => void;
+        afterSave?: () => void;
+        afterUpdate?: () => void;
+        afterCreate?: () => void;
+        afterFind?: () => void;
+        afterDelete?: () => void;
+    };
+}
+
+export interface IDatabasePropOptions {
+    required?: boolean;
+    unique?: boolean;
+    minLength?: number;
+    maxLength?: number;
+    default?: any;
+    enum?:
+        | (string | number)[]
+        | Record<string, number>
+        | Record<string, string>
+        | Record<number, string>;
+    type: SchemaTypeOptions<any> | ColumnType;
+
+    // only for mongoose
+    index?: boolean;
 }
 
 // repository

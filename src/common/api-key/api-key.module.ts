@@ -15,15 +15,15 @@ import { DatabaseConnectModule } from 'src/common/database/database.module';
     providers: [
         ApiKeyService,
         ApiKeyBulkKeyService,
-        ApiKeyRepository,
         ApiKeyKeyStrategy,
+        ApiKeyRepository,
     ],
     exports: [ApiKeyService, ApiKeyBulkKeyService],
     controllers: [],
     imports: [
         DatabaseConnectModule.register({
             name: ApiKeyEntity.name,
-            schema: { mongo: ApiKeySchema },
+            schema: ApiKeySchema,
             collection: ApiKeyDatabaseName,
             connectionName: DATABASE_CONNECTION_NAME,
         }),

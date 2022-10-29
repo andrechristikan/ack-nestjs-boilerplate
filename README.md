@@ -68,8 +68,10 @@ Next development
 * [x] Optimize Swagger
 * [ ] Add Relational Database Repository, ex: mysql, postgres (Ongoing)
     1. ~~Database Module include mongoose and typeorm with conditional~~
-    2. typeorm module add
-    3. repository with conditional
+    2. ~~Database module hooks~~
+    3. Database prop foreign
+    4. typeorm module add
+    5. repository with conditional
 * [ ] Update Documentation, include an diagram for easier comprehension
 * [ ] Export to excel and Import from excel add options to background process
 * [ ] OAuth2 Client Credentials

@@ -15,7 +15,7 @@ import { SettingService } from './services/setting.service';
     imports: [
         DatabaseConnectModule.register({
             name: SettingEntity.name,
-            schema: { mongo: SettingSchema },
+            schema: SettingSchema,
             collection: SettingDatabaseName,
             connectionName: DATABASE_CONNECTION_NAME,
         }),

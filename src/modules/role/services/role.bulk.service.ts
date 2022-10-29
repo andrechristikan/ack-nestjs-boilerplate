@@ -6,6 +6,7 @@ import {
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { IRoleBulkService } from 'src/modules/role/interfaces/role.bulk-service.interface';
 import { RoleRepository } from 'src/modules/role/repositories/role.repository';
+import { RoleEntity } from 'src/modules/role/schemas/role.schema';
 
 @Injectable()
 export class RoleBulkService implements IRoleBulkService {
@@ -22,6 +23,15 @@ export class RoleBulkService implements IRoleBulkService {
         data: RoleCreateDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean> {
-        return this.roleRepository.createMany<RoleCreateDto>(data, options);
+        const create: RoleEntity[] = data.map((val) => {
+            const r = new RoleEntity();
+            r.name = val.name;
+            r.accessFor = val.accessFor;
+            r.permissions = val.permissions;
+            r.isActive = true;
+
+            return r;
+        });
+        return this.roleRepository.createMany<RoleEntity>(create, options);
     }
 }

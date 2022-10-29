@@ -1,13 +1,13 @@
 import {
-    DatabaseHookBefore,
     DatabaseEntity,
+    DatabaseHookBeforeSave,
     DatabaseProp,
     DatabasePropPrimary,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseSchema } from 'src/common/database/interfaces/database.interface';
 
-@DatabaseEntity({ timestamps: true, versionKey: false })
+@DatabaseEntity()
 export class ApiKeyEntity {
     @DatabasePropPrimary()
     _id?: string;
@@ -15,17 +15,19 @@ export class ApiKeyEntity {
     @DatabaseProp({
         required: true,
         index: true,
+        type: String,
     })
     name: string;
 
     @DatabaseProp({
         required: false,
+        type: String,
     })
     description?: string;
 
     @DatabaseProp({
         required: true,
-        trim: true,
+        type: String,
         unique: true,
         index: true,
     })
@@ -33,20 +35,20 @@ export class ApiKeyEntity {
 
     @DatabaseProp({
         required: true,
-        trim: true,
+        type: String,
     })
     hash: string;
 
     @DatabaseProp({
         required: true,
-        trim: true,
+        type: String,
         index: true,
     })
     encryptionKey: string;
 
     @DatabaseProp({
         required: true,
-        trim: true,
+        type: String,
         minLength: 16,
         maxLength: 16,
     })
@@ -55,12 +57,17 @@ export class ApiKeyEntity {
     @DatabaseProp({
         required: true,
         index: true,
+        type: Boolean,
     })
     isActive: boolean;
 
-    @DatabaseHookBefore()
-    hookBefore() {
-        this.name = this.name.toLowerCase();
+    @DatabaseHookBeforeSave()
+    hookBeforeSave?() {
+        this.name = this.name.toLowerCase().trim();
+        this.key = this.key.trim();
+        this.hash = this.hash.trim();
+        this.encryptionKey = this.encryptionKey.trim();
+        this.passphrase = this.passphrase.trim();
     }
 }
 

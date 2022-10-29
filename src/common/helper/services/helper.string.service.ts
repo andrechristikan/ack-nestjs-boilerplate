@@ -62,9 +62,7 @@ export class HelperStringService implements IHelperStringService {
         return regex.test(text);
     }
 
-    convertStringToNumberOrBooleanIfPossible(
-        text: string
-    ): string | number | boolean {
+    convertStringToNumberOrBooleanIfPossible<T>(text: string): T {
         let convertValue: string | boolean | number = text;
 
         const regexNumber = /^-?\d+$/;
@@ -74,7 +72,7 @@ export class HelperStringService implements IHelperStringService {
             convertValue = Number(text);
         }
 
-        return convertValue;
+        return convertValue as T;
     }
 
     checkPasswordWeak(password: string, length?: number): boolean {

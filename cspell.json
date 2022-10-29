@@ -26,7 +26,8 @@
         "superadmin",
         "alphanum",
         "dtos",
-        "typeorm"
+        "typeorm",
+        "apikeys"
     ],
     "ignoreWords": [
         "psheon",
