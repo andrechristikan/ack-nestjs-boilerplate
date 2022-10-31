@@ -27,7 +27,7 @@ import {
 } from 'src/common/setting/docs/setting.doc';
 import { SettingListDto } from 'src/common/setting/dtos/setting.list.dto';
 import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
-import { Setting } from 'src/common/setting/schemas/setting.schema';
+import { SettingEntity } from 'src/common/setting/schemas/setting.schema';
 import { SettingGetSerialization } from 'src/common/setting/serializations/setting.get.serialization';
 import { SettingListSerialization } from 'src/common/setting/serializations/setting.list.serialization';
 import { SettingService } from 'src/common/setting/services/setting.service';
@@ -67,11 +67,14 @@ export class SettingController {
             ...search,
         };
 
-        const settings: Setting[] = await this.settingService.findAll(find, {
-            limit: perPage,
-            skip: skip,
-            sort,
-        });
+        const settings: SettingEntity[] = await this.settingService.findAll(
+            find,
+            {
+                limit: perPage,
+                skip: skip,
+                sort,
+            }
+        );
         const totalData: number = await this.settingService.getTotal(find);
         const totalPage: number = await this.paginationService.totalPage(
             totalData,
@@ -99,7 +102,7 @@ export class SettingController {
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('get/:setting')
-    async get(@GetSetting() setting: Setting): Promise<IResponse> {
+    async get(@GetSetting() setting: SettingEntity): Promise<IResponse> {
         return setting;
     }
 
@@ -112,7 +115,7 @@ export class SettingController {
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('get/name/:settingName')
-    async getByName(@GetSetting() setting: Setting): Promise<IResponse> {
+    async getByName(@GetSetting() setting: SettingEntity): Promise<IResponse> {
         return setting;
     }
 }

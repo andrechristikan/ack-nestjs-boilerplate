@@ -22,7 +22,7 @@ import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
 import { SettingUpdateDoc } from 'src/common/setting/docs/setting.admin.doc';
 import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
 import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
-import { Setting } from 'src/common/setting/schemas/setting.schema';
+import { SettingEntity } from 'src/common/setting/schemas/setting.schema';
 import { SettingService } from 'src/common/setting/services/setting.service';
 
 @ApiTags('admin.setting')
@@ -48,7 +48,7 @@ export class SettingAdminController {
     @RequestValidateTimestamp()
     @Put('/update/:setting')
     async update(
-        @GetSetting() setting: Setting,
+        @GetSetting() setting: SettingEntity,
         @Body()
         body: SettingUpdateDto
     ): Promise<IResponse> {

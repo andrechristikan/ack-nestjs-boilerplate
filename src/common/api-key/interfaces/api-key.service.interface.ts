@@ -7,7 +7,7 @@ import {
     IApiKey,
     IApiKeyRequestHashedData,
 } from 'src/common/api-key/interfaces/api-key.interface';
-import { ApiKey } from 'src/common/api-key/schemas/api-key.schema';
+import { ApiKeyEntity } from 'src/common/api-key/schemas/api-key.schema';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,
@@ -20,31 +20,31 @@ export interface IApiKeyService {
     findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<ApiKey[]>;
+    ): Promise<ApiKeyEntity[]>;
 
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKey>;
+    ): Promise<ApiKeyEntity>;
 
     findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKey>;
+    ): Promise<ApiKeyEntity>;
 
     findOneByKey(
         key: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKey>;
+    ): Promise<ApiKeyEntity>;
 
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseOptions
     ): Promise<number>;
 
-    inactive(_id: string, options?: IDatabaseOptions): Promise<ApiKey>;
+    inactive(_id: string, options?: IDatabaseOptions): Promise<ApiKeyEntity>;
 
-    active(_id: string, options?: IDatabaseOptions): Promise<ApiKey>;
+    active(_id: string, options?: IDatabaseOptions): Promise<ApiKeyEntity>;
 
     create(
         data: ApiKeyCreateDto,
@@ -60,19 +60,19 @@ export interface IApiKeyService {
         _id: string,
         data: ApiKeyUpdateDto,
         options?: IDatabaseOptions
-    ): Promise<ApiKey>;
+    ): Promise<ApiKeyEntity>;
 
     updateHashById(_id: string, options?: IDatabaseOptions): Promise<IApiKey>;
 
     deleteOneById(
         _id: string,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<ApiKey>;
+    ): Promise<ApiKeyEntity>;
 
     deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<ApiKey>;
+    ): Promise<ApiKeyEntity>;
 
     createKey(): Promise<string>;
 

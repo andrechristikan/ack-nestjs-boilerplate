@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import Strategy from 'passport-headerapikey';
 import { IApiKeyRequestHashedData } from 'src/common/api-key/interfaces/api-key.interface';
-import { ApiKey } from 'src/common/api-key/schemas/api-key.schema';
+import { ApiKeyEntity } from 'src/common/api-key/schemas/api-key.schema';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
@@ -29,7 +29,7 @@ export class ApiKeyKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
         apiKey: string,
         verified: (
             error: Error,
-            user?: ApiKey,
+            user?: ApiKeyEntity,
             info?: string | number
         ) => Promise<void>,
         req: IRequestApp
@@ -38,7 +38,9 @@ export class ApiKeyKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
         const key = xApiKey[0];
         const encrypted = xApiKey[1];
 
-        const authApi: ApiKey = await this.apiKeyService.findOneByKey(key);
+        const authApi: ApiKeyEntity = await this.apiKeyService.findOneByKey(
+            key
+        );
 
         if (!authApi) {
             verified(

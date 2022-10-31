@@ -3,7 +3,6 @@ import { MongooseModuleOptions } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { IDatabaseOptionsService } from 'src/common/database/interfaces/database.options-service.interface';
-import qs from 'qs';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
 @Injectable()
@@ -62,15 +61,23 @@ export class DatabaseOptionsService implements IDatabaseOptionsService {
     }
 
     createTypeOrmOptions(): TypeOrmModuleOptions {
-        const options: Record<string, any> = qs.parse(this.options);
-        return {
+        let uri = `${this.host}`;
+
+        if (this.database) {
+            uri = `${uri}/${this.database}${this.options}`;
+        }
+
+        const typeormOptions: Record<string, any> = {
             type: 'postgres',
-            url: this.host,
-            username: this.user,
-            password: this.password,
-            database: this.database,
+            url: uri,
             retryDelay: 5000,
-            ...options,
         };
+
+        if (this.user && this.password) {
+            typeormOptions.username = this.user;
+            typeormOptions.password = this.password;
+        }
+
+        return typeormOptions;
     }
 }

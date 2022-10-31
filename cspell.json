@@ -27,7 +27,8 @@
         "alphanum",
         "dtos",
         "typeorm",
-        "apikeys"
+        "apikeys",
+        "apikey"
     ],
     "ignoreWords": [
         "psheon",

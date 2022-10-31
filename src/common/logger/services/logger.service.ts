@@ -1,16 +1,21 @@
 import { Injectable } from '@nestjs/common';
+import { DatabaseRepository } from 'src/common/database/decorators/database.decorator';
+import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
+import { LOGGER_REPOSITORY } from 'src/common/logger/constants/logger.constant';
 import { ENUM_LOGGER_LEVEL } from 'src/common/logger/constants/logger.enum.constant';
 import {
-    ILogger,
-    ILoggerRaw,
-} from 'src/common/logger/interfaces/logger.interface';
+    LoggerCreateDto,
+    LoggerCreateRawDto,
+} from 'src/common/logger/dtos/logger.create.dto';
 import { ILoggerService } from 'src/common/logger/interfaces/logger.service.interface';
-import { LoggerRepository } from 'src/common/logger/repositories/logger.repository';
-import { Logger, LoggerEntity } from 'src/common/logger/schemas/logger.schema';
+import { LoggerEntity } from 'src/common/logger/schemas/logger.schema';
 
 @Injectable()
 export class LoggerService implements ILoggerService {
-    constructor(private readonly loggerRepository: LoggerRepository) {}
+    constructor(
+        @DatabaseRepository(LOGGER_REPOSITORY)
+        private readonly loggerRepository: IDatabaseRepository<LoggerEntity>
+    ) {}
 
     async info({
         action,
@@ -25,7 +30,7 @@ export class LoggerService implements ILoggerService {
         path,
         statusCode,
         tags,
-    }: ILogger): Promise<Logger> {
+    }: LoggerCreateDto): Promise<LoggerEntity> {
         const create: LoggerEntity = new LoggerEntity();
         create.level = ENUM_LOGGER_LEVEL.INFO;
         create.user = user;
@@ -59,7 +64,7 @@ export class LoggerService implements ILoggerService {
         path,
         statusCode,
         tags,
-    }: ILogger): Promise<Logger> {
+    }: LoggerCreateDto): Promise<LoggerEntity> {
         const create: LoggerEntity = new LoggerEntity();
         create.level = ENUM_LOGGER_LEVEL.DEBUG;
         create.user = user;
@@ -93,7 +98,7 @@ export class LoggerService implements ILoggerService {
         path,
         statusCode,
         tags,
-    }: ILogger): Promise<Logger> {
+    }: LoggerCreateDto): Promise<LoggerEntity> {
         const create: LoggerEntity = new LoggerEntity();
         create.level = ENUM_LOGGER_LEVEL.WARM;
         create.user = user;
@@ -127,7 +132,7 @@ export class LoggerService implements ILoggerService {
         path,
         statusCode,
         tags,
-    }: ILogger): Promise<Logger> {
+    }: LoggerCreateDto): Promise<LoggerEntity> {
         const create: LoggerEntity = new LoggerEntity();
         create.level = ENUM_LOGGER_LEVEL.FATAL;
         create.user = user;
@@ -162,7 +167,7 @@ export class LoggerService implements ILoggerService {
         path,
         statusCode,
         tags,
-    }: ILoggerRaw): Promise<Logger> {
+    }: LoggerCreateRawDto): Promise<LoggerEntity> {
         const create: LoggerEntity = new LoggerEntity();
         create.level = level;
         create.user = user;

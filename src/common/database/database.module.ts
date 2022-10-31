@@ -1,4 +1,4 @@
-import { DynamicModule, Global, Module } from '@nestjs/common';
+import { ClassProvider, DynamicModule, Global, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
@@ -20,45 +20,61 @@ export class DatabaseModule {}
 @Module({})
 export class DatabaseConnectModule {
     static register(options: IDatabaseConnectOptions): DynamicModule {
+        if (
+            process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO &&
+            (!options.schema.mongo || !options.repository.mongo)
+        ) {
+            throw new Error(
+                `${ENUM_DATABASE_TYPE.MONGO} must have schema and repository`
+            );
+        } else if (
+            process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.POSTGRES &&
+            (!options.schema.postgres || !options.repository.postgres)
+        ) {
+            throw new Error(
+                `${ENUM_DATABASE_TYPE.POSTGRES} must have schema and repository`
+            );
+        }
+
         const module =
             process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO
                 ? MongooseModule.forFeature(
                       [
                           {
-                              name: options.name,
-                              schema:
-                                  'mongo' in options.schema
-                                      ? options.schema.mongo
-                                      : options.schema,
+                              name: options.schema.name,
+                              schema: options.schema.mongo,
                               collection: options.collection,
                           },
                       ],
-                      options.connectionName
+                      options.connectionName ?? DATABASE_CONNECTION_NAME
                   )
                 : TypeOrmModule.forFeature(
                       [
-                          'postgres' in options.schema
-                              ? options.schema.postgres
-                              : options.schema,
+                          options.schema.postgres,
                           {
                               options: {
-                                  name: options.name,
+                                  name: options.schema.name,
                                   tableName: options.collection,
-                                  schema:
-                                      'postgres' in options.schema
-                                          ? options.schema.postgres
-                                          : options.schema,
+                                  schema: options.schema.postgres,
                               },
                           },
                       ],
-                      options.connectionName
+                      options.connectionName ?? DATABASE_CONNECTION_NAME
                   );
+
+        const repository: ClassProvider<any> = {
+            useClass:
+                process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO
+                    ? options.repository.mongo
+                    : options.repository.postgres,
+            provide: options.repository.name,
+        };
 
         return {
             module: DatabaseConnectModule,
             controllers: [],
-            providers: [],
-            exports: [module],
+            providers: [repository],
+            exports: [module, repository],
             imports: [module],
         };
     }

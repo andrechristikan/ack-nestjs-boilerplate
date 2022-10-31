@@ -34,6 +34,19 @@ export class DatabaseService {
         return session.startTransaction();
     }
 
+    async runTransaction<T>(session: T, operation: any): Promise<void> {
+        if (this.databaseType === ENUM_DATABASE_TYPE.MONGO) {
+            await operation;
+
+            return;
+        }
+
+        const s = session as QueryRunner;
+        await s.manager.save(operation, { transaction: true });
+
+        return;
+    }
+
     async commitTransaction<T>(
         session: T & { commitTransaction: any }
     ): Promise<void> {

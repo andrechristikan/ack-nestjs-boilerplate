@@ -11,10 +11,7 @@ import {
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IApiKeyService } from 'src/common/api-key/interfaces/api-key.service.interface';
-import {
-    ApiKey,
-    ApiKeyEntity,
-} from 'src/common/api-key/schemas/api-key.schema';
+import { ApiKeyEntity } from 'src/common/api-key/schemas/api-key.schema';
 import {
     ApiKeyCreateDto,
     ApiKeyCreateRawDto,
@@ -24,14 +21,17 @@ import {
     IApiKeyRequestHashedData,
 } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
-import { ApiKeyRepository } from 'src/common/api-key/repositories/auth.api-key.repository';
+import { API_KEY_REPOSITORY } from 'src/common/api-key/constants/api-key.constant';
+import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
+import { DatabaseRepository } from 'src/common/database/decorators/database.decorator';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
     private readonly env: string;
 
     constructor(
-        private readonly apiKeyRepository: ApiKeyRepository,
+        @DatabaseRepository(API_KEY_REPOSITORY)
+        private readonly apiKeyRepository: IDatabaseRepository<ApiKeyEntity>,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService,
         private readonly helperHashService: HelperHashService,
@@ -43,8 +43,8 @@ export class ApiKeyService implements IApiKeyService {
     async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<ApiKey[]> {
-        return this.apiKeyRepository.findAll<ApiKey>(find, {
+    ): Promise<ApiKeyEntity[]> {
+        return this.apiKeyRepository.findAll<ApiKeyEntity>(find, {
             ...options,
             select: {
                 name: 1,
@@ -58,22 +58,22 @@ export class ApiKeyService implements IApiKeyService {
     async findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKey> {
-        return this.apiKeyRepository.findOneById<ApiKey>(_id, options);
+    ): Promise<ApiKeyEntity> {
+        return this.apiKeyRepository.findOneById<ApiKeyEntity>(_id, options);
     }
 
     async findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKey> {
-        return this.apiKeyRepository.findOne<ApiKey>(find, options);
+    ): Promise<ApiKeyEntity> {
+        return this.apiKeyRepository.findOne<ApiKeyEntity>(find, options);
     }
 
     async findOneByKey(
         key: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKey> {
-        return this.apiKeyRepository.findOne<ApiKey>({ key }, options);
+    ): Promise<ApiKeyEntity> {
+        return this.apiKeyRepository.findOne<ApiKeyEntity>({ key }, options);
     }
 
     async getTotal(
@@ -83,7 +83,10 @@ export class ApiKeyService implements IApiKeyService {
         return this.apiKeyRepository.getTotal(find, options);
     }
 
-    async inactive(_id: string, options?: IDatabaseOptions): Promise<ApiKey> {
+    async inactive(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<ApiKeyEntity> {
         const update = {
             isActive: false,
         };
@@ -91,7 +94,10 @@ export class ApiKeyService implements IApiKeyService {
         return this.apiKeyRepository.updateOneById(_id, update, options);
     }
 
-    async active(_id: string, options?: IDatabaseOptions): Promise<ApiKey> {
+    async active(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<ApiKeyEntity> {
         const update = {
             isActive: true,
         };
@@ -170,7 +176,7 @@ export class ApiKeyService implements IApiKeyService {
         _id: string,
         data: ApiKeyUpdateDto,
         options?: IDatabaseOptions
-    ): Promise<ApiKey> {
+    ): Promise<ApiKeyEntity> {
         return this.apiKeyRepository.updateOneById<ApiKeyUpdateDto>(
             _id,
             data,
@@ -182,7 +188,9 @@ export class ApiKeyService implements IApiKeyService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<IApiKey> {
-        const apiKey: ApiKey = await this.apiKeyRepository.findOneById(_id);
+        const apiKey: ApiKeyEntity = await this.apiKeyRepository.findOneById(
+            _id
+        );
         const secret: string = await this.createSecret();
         const hash: string = await this.createHashApiKey(apiKey.key, secret);
         const passphrase: string = await this.createPassphrase();
@@ -207,14 +215,14 @@ export class ApiKeyService implements IApiKeyService {
     async deleteOneById(
         _id: string,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<ApiKey> {
+    ): Promise<ApiKeyEntity> {
         return this.apiKeyRepository.deleteOneById(_id, options);
     }
 
     async deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<ApiKey> {
+    ): Promise<ApiKeyEntity> {
         return this.apiKeyRepository.deleteOne(find, options);
     }
 

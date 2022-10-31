@@ -6,7 +6,7 @@ import {
 import { Response, NextFunction } from 'express';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { Setting } from 'src/common/setting/schemas/setting.schema';
+import { SettingEntity } from 'src/common/setting/schemas/setting.schema';
 import { SettingService } from 'src/common/setting/services/setting.service';
 
 @Injectable()
@@ -18,7 +18,7 @@ export class MaintenanceMiddleware implements NestMiddleware {
         res: Response,
         next: NextFunction
     ): Promise<void> {
-        const setting: Setting = await this.settingService.findOneByName(
+        const setting: SettingEntity = await this.settingService.findOneByName(
             'maintenance'
         );
         const value: boolean = await this.settingService.getValue<boolean>(
