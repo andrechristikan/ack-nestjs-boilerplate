@@ -1,9 +1,10 @@
 import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
+import { ApiKeyDatabaseName } from 'src/common/api-key/schemas/api-key.schema';
 import { ApiKeyBeforeSaveHook } from 'src/common/api-key/schemas/hooks/api-key.before-save.hook';
 import { DatabasePostgresEntity } from 'src/common/database/schemas/database.postgres.schema';
 import { BeforeInsert, BeforeUpdate, Column, Entity } from 'typeorm';
 
-@Entity()
+@Entity({ name: ApiKeyDatabaseName })
 export class ApiKeyPostgresEntity
     extends DatabasePostgresEntity
     implements IApiKeyEntity

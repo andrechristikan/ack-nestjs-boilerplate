@@ -1,36 +1,31 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
-import { ApiKeyEntity } from 'src/common/api-key/schemas/api-key.schema';
-import { DatabaseRepository } from 'src/common/database/decorators/database.decorator';
-import { API_KEY_REPOSITORY } from 'src/common/api-key/constants/api-key.constant';
-import { SETTING_REPOSITORY } from 'src/common/setting/constants/setting.constant';
-import { LOGGER_REPOSITORY } from 'src/common/logger/constants/logger.constant';
-import { SettingEntity } from 'src/common/setting/schemas/setting.schema';
-import { LoggerEntity } from 'src/common/logger/schemas/logger.schema';
+import { DebuggerService } from 'src/common/debugger/services/debugger.service';
+import { Connection } from 'mongoose';
+import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { ApiKeyDatabaseName } from 'src/common/api-key/schemas/api-key.schema';
+import { LoggerDatabaseName } from 'src/common/logger/schemas/logger.schema';
+import { SettingDatabaseName } from 'src/common/setting/schemas/setting.schema';
 
 @Injectable()
 export class MigrationMongoMigrate {
     constructor(
-        @DatabaseRepository(API_KEY_REPOSITORY)
-        private readonly apiKeyRepository: IDatabaseRepository<ApiKeyEntity>,
-        @DatabaseRepository(SETTING_REPOSITORY)
-        private readonly settingRepository: IDatabaseRepository<SettingEntity>,
-        @DatabaseRepository(LOGGER_REPOSITORY)
-        private readonly loggerRepository: IDatabaseRepository<LoggerEntity>
+        @DatabaseConnection() private readonly connection: Connection,
+        private readonly debuggerService: DebuggerService
     ) {}
 
     @Command({
         command: 'migrate',
-        describe: 'migrate mongo',
+        describe: 'migrates mongo',
     })
     async migrate(): Promise<void> {
         try {
-            await this.apiKeyRepository.createTable();
-            await this.settingRepository.createTable();
-            await this.loggerRepository.createTable();
+            this.debuggerService.info(MigrationMongoMigrate.name, {
+                description: 'Mongo migrate success',
+                class: MigrationMongoMigrate.name,
+                function: 'migrate',
+            });
         } catch (err: any) {
-            console.error('err', err);
             throw new Error(err.message);
         }
 
@@ -43,11 +38,16 @@ export class MigrationMongoMigrate {
     })
     async rollback(): Promise<void> {
         try {
-            await this.apiKeyRepository.clearTable();
-            await this.settingRepository.clearTable();
-            await this.loggerRepository.clearTable();
+            await this.connection.dropCollection(ApiKeyDatabaseName);
+            await this.connection.dropCollection(LoggerDatabaseName);
+            await this.connection.dropCollection(SettingDatabaseName);
+
+            this.debuggerService.info(MigrationMongoMigrate.name, {
+                description: 'Mongo rollback success',
+                class: MigrationMongoMigrate.name,
+                function: 'rollback',
+            });
         } catch (err: any) {
-            console.error('err', err);
             throw new Error(err.message);
         }
 

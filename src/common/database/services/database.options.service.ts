@@ -46,6 +46,7 @@ export class DatabaseOptionsService implements IDatabaseOptionsService {
             useNewUrlParser: true,
             useUnifiedTopology: true,
             serverSelectionTimeoutMS: 5000,
+            autoCreate: true,
             // useMongoClient: true,
         };
 
@@ -71,6 +72,7 @@ export class DatabaseOptionsService implements IDatabaseOptionsService {
             type: 'postgres',
             url: uri,
             retryDelay: 5000,
+            synchronize: this.env === 'production' ? false : true,
         };
 
         if (this.user && this.password) {

@@ -201,24 +201,6 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         return aggregate;
     }
 
-    async createTable(): Promise<boolean> {
-        try {
-            await this._repository.findOne({});
-            return true;
-        } catch (err: unknown) {
-            throw err;
-        }
-    }
-
-    async clearTable(): Promise<boolean> {
-        try {
-            await this._repository.deleteMany({});
-            return true;
-        } catch (err: unknown) {
-            throw err;
-        }
-    }
-
     async create<N>(
         data: N,
         options?: IDatabaseCreateOptions<ClientSession>

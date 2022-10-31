@@ -28,7 +28,6 @@ export class MigrationSettingSeed {
                 value: '10000',
             });
         } catch (err: any) {
-            console.error(err);
             throw new Error(err.message);
         }
 

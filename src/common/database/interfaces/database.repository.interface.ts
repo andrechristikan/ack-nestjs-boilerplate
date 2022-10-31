@@ -46,10 +46,6 @@ export interface IDatabaseRepository<T> {
         options?: IDatabaseRawOptions<any>
     ): Promise<N[]>;
 
-    createTable<N>(schema?: N): Promise<boolean>;
-
-    clearTable(): Promise<boolean>;
-
     create<N>(data: N, options?: IDatabaseCreateOptions<any>): Promise<T>;
 
     updateOneById<N>(

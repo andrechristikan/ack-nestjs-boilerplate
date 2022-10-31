@@ -23,7 +23,6 @@ import {
     Repository,
     In,
     QueryRunner,
-    Table,
 } from 'typeorm';
 
 export abstract class DatabasePostgresRepositoryAbstract<T>
@@ -245,26 +244,6 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         }
 
         return this._repository.query(rawOperation);
-    }
-
-    async createTable<N = Table>(schema?: N): Promise<boolean> {
-        try {
-            await this._repository.queryRunner.createTable(schema as Table);
-            return true;
-        } catch (err: unknown) {
-            throw err;
-        }
-    }
-
-    async clearTable(): Promise<boolean> {
-        try {
-            await this._repository.queryRunner.clearTable(
-                this._repository.metadata.tableName
-            );
-            return true;
-        } catch (err: unknown) {
-            throw err;
-        }
     }
 
     async create<N>(

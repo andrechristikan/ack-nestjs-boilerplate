@@ -7,10 +7,11 @@ import {
     ENUM_LOGGER_LEVEL,
 } from 'src/common/logger/constants/logger.enum.constant';
 import { ILoggerEntity } from 'src/common/logger/interfaces/logger.interface';
+import { LoggerDatabaseName } from 'src/common/logger/schemas/logger.schema';
 import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 
-@Entity()
+@Entity({ name: LoggerDatabaseName })
 export class LoggerPostgresEntity
     extends DatabasePostgresEntity
     implements ILoggerEntity
@@ -113,7 +114,8 @@ export class LoggerPostgresEntity
     @Column({
         nullable: true,
         default: [],
-        type: 'array',
+        type: 'char',
+        array: true,
     })
     tags: string[];
 }

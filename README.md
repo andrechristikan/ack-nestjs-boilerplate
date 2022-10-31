@@ -48,6 +48,8 @@
 
 ## Important
 
+> For Mongo. If you want to implement `database transaction`, we must run mongodb as a `Replication Set`.
+
 If you change the environment value of `APP_ENV` to `production`, that will trigger.
 
 1. CorsMiddleware will implement `src/configs/middleware.config.ts`, else the default is `*`.
@@ -69,13 +71,19 @@ Next development
 * [ ] Add Relational Database Repository, ex: mysql, postgres (Ongoing)
     1. ~~Database Module include mongoose and typeorm with conditional~~
     2. ~~Database module hooks~~
-    3. Database prop foreign
-    4. typeorm module add
-    5. repository with conditional
-* [ ] Update Documentation, include an diagram for easier comprehension
+    3. ~~Database prop foreign~~
+    4. ~~typeorm module add~~
+    5. ~~repository with conditional~~
+    6. Migration
+    7. Transaction
+    8. Update all modules
+    9. Update test
+    10. Init document
 * [ ] Export to excel and Import from excel add options to background process
-* [ ] OAuth2 Client Credentials
+* [ ] SSO Google
 * [ ] AuthApi Controller
+* [ ] Update Documentation, include an diagram for easier comprehension
+* [ ] OAuth2 Client Credentials
 * [ ] Maybe will adopt [CQRS][ref-nestjs-cqrs]
 
 ## Build with
@@ -84,17 +92,18 @@ Describes which version .
 
 | Name       | Version  |
 | ---------- | -------- |
-| NestJs     | v9.x     |
-| NodeJs     | v18.x    |
-| Typescript | v4.x     |
-| Mongoose   | v6.x     |
-| MongoDB    | v6.x     |
-| PostgreSQL    | -     |
-| Yarn       | v1.x     |
-| NPM        | v8.x     |
-| Docker     | v20.x    |
-| Docker Compose | v2.x |
-| Swagger | v6.x |
+| NestJs     | v9.1.x     |
+| NodeJs     | v18.4.x    |
+| Typescript | v4.8.x     |
+| Mongoose   | v6.6.x     |
+| MongoDB    | v6.0.x     |
+| TypeORM    | v0.3.x     |
+| PostgreSQL    | v14.5     |
+| Yarn       | v1.22.x     |
+| NPM        | v8.12.x     |
+| Docker     | v20.10.x    |
+| Docker Compose | v2.6.x |
+| Swagger | v6.1.x |
 
 ## Objective
 
@@ -112,7 +121,7 @@ Describes which version .
 * Typescript 🚀
 * Production ready 🔥
 * Swagger included
-* Authentication and authorization (`JWT`, `API Key`) 💪
+* Authentication and authorization (`JWT`, `API Key`, `SSO`) 💪
 * Role management system
 * Storage integration with `AwsS3`
 * Upload file `single` and `multipart` to AwsS3
@@ -126,7 +135,7 @@ Describes which version .
 ## Database
 
 * MongoDB integrate by using [mongoose][ref-mongoose] 🎉
-* PostgreSQL integrate by using [typeorm][ref-typeorm] 🎊 (Ongoing)
+* PostgreSQL integrate by using [typeorm][ref-typeorm] 🎊
 * Multi Database
 * Database Transaction
 * Database Soft Delete
@@ -194,6 +203,7 @@ Full structure of module
     ├── pipes
     ├── repositories // repository or persistent layer
     ├── schemas // database schema
+        └── hooks // database hooks
     ├── serializations
     ├── services
     ├── tasks // task for cron job
@@ -310,7 +320,7 @@ cp .env.example .env
 
 ### Database Migration
 
-> Mongodb. If you want to implement `database transaction`, we must run mongodb as a `Replication Set`.
+> The migration only do migrate to Mongo or Postgres. Make sure to check the value of `DATABASE_TYPE` and `DATABASE_HOST` in environment file.
 
 Database migration used [NestJs-Command][ref-nestjscommand]
 
@@ -328,7 +338,7 @@ yarn rollback
 
 ### Test
 
-> The automation is still not good net. I'm still lazy too do that.
+> The test is still not good net. I'm still lazy too do that.
 
 The project provide 3 automation testing `unit testing`, `integration testing`, and `e2e testing`.
 
@@ -483,17 +493,19 @@ Detail information about the environment
 
 ## Api Key Encryption
 
-> Please keep the `secret` private.
+> Please keep the `secret and passphrase` private.<br>
 
 ApiKeyHashed uses `sha256` encryption, and `dataObject` encryption is `AES256`.
 
 To do the encryption.
 
+> The encryption process must be client-side.
+
 1. Make sure we have value of
     * `key`: You can find the key for apiKey in the database.
-    * `secret`: `This value is only generated when the apiKey is created`. After that, if you lose the secret, you need to recreate the apiKey.
+    * `secret`: This value is `only generated when the apiKey is created`. After that, if you lose the secret, you need to recreate the apiKey.
     * `encryptionKey`: You can find the key for encryption in the database.
-    * `passphrase`: You can find the secret for encryption in the database. (Actually, is need to be private too. Same with `secret`). This is IV for encrypt AES 256.
+    * `passphrase`: This is IV for encrypt AES 256. This is need to be private too. Same with `secret`.
 
 2. Concat the `key` and `secret`.
 
@@ -510,9 +522,10 @@ To do the encryption.
 4. Then create `dataObject` and put the `apiKeyHashed` into it
 
     ```typescript
+    const timestamp: number = this.helperDateService.timestamp();
     const dataObject: IAuthApiRequestHashedData = {
         key, // from 1.key
-        timestamp: this.helperDateService.timestamp(), // ms timestamp
+        timestamp, // ms timestamp
         hash: apiKeyHashed, // from 3
     }
     ```
@@ -542,8 +555,8 @@ To do the encryption.
     ```json
     {
         "headers": {
-            "x-api-key": "${xApiKey}",
-
+            "x-api-key": "${xApiKey}", // from 6.xApiKey
+            "x-timestamp": "${timestamp}" // from 4.timestamp
             ...
             ...
             ...

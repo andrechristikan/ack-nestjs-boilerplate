@@ -13,12 +13,16 @@ export class ApiKeyMongoEntity
         required: true,
         index: true,
         type: String,
+        minlength: 1,
+        maxlength: 100,
     })
     name: string;
 
     @Prop({
         required: false,
         type: String,
+        minlength: 1,
+        maxlength: 255,
     })
     description?: string;
 
