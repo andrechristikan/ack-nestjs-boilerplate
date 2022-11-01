@@ -73,7 +73,7 @@
     "express-rate-limit": "^6.6.0",
     "geolib": "^3.3.3",
     "helmet": "^6.0.0",
-    "joi": "^17.6.3",
+    "joi": "^17.6.4",
     "moment": "^2.29.4",
     "mongoose": "^6.6.7",
     "morgan": "^1.10.0",
