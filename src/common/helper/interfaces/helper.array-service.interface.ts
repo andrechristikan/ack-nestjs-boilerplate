@@ -45,4 +45,6 @@ export interface IHelperArrayService {
     in<T>(a: T[], b: T[]): boolean;
 
     includes<T>(a: T[], b: T): boolean;
+
+    chunk<T>(a: T[], size: number): Array<T[]>;
 }
