@@ -2020,10 +2020,10 @@
     "@types/jsonwebtoken" "8.5.8"
     jsonwebtoken "8.5.1"
 
-"@nestjs/mapped-types@1.1.0":
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/@nestjs/mapped-types/-/mapped-types-1.1.0.tgz#54a9fa61079635dd6c3c75fd9593f20b2302a55b"
-  integrity sha512-+2kSly4P1QI+9eGt+/uGyPdEG1hVz7nbpqPHWZVYgoqz8eOHljpXPag+UCVRw9zo2XCu4sgNUIGe8Uk0+OvUQg==
+"@nestjs/mapped-types@1.2.0":
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@nestjs/mapped-types/-/mapped-types-1.2.0.tgz#1bbdbb5c956f0adb3fd76add929137bc6ad3183f"
+  integrity sha512-NTFwPZkQWsArQH8QSyFWGZvJ08gR+R4TofglqZoihn/vU+ktHEJjMqsIsADwb7XD97DhiD+TVv5ac+jG33BHrg==
 
 "@nestjs/mongoose@^9.2.0":
   version "9.2.0"
@@ -2076,16 +2076,16 @@
     jsonc-parser "3.2.0"
     pluralize "8.0.0"
 
-"@nestjs/swagger@^6.1.2":
-  version "6.1.2"
-  resolved "https://registry.yarnpkg.com/@nestjs/swagger/-/swagger-6.1.2.tgz#5eb9c134fc976f16c139ecaf80a7f02a5d33da46"
-  integrity sha512-RU1DeTDyuN/lRXKFWaf7I9LYF34/ale3IIGeY3romAcXL/N9W0+50Ek3ou+Ajd5FqpLqzt7saYhnaQegVuU4UQ==
+"@nestjs/swagger@^6.1.3":
+  version "6.1.3"
+  resolved "https://registry.yarnpkg.com/@nestjs/swagger/-/swagger-6.1.3.tgz#ee274ceb645cb73cb7986027663a742394d51869"
+  integrity sha512-H9C/yRgLFb5QrAt6iGrYmIX9X7Q0zXkgZaTNUATljUBra+RCWrEUbLHBcGjTAOtcIyGV/vmyCLv68YSVcZoE0Q==
   dependencies:
-    "@nestjs/mapped-types" "1.1.0"
+    "@nestjs/mapped-types" "1.2.0"
     js-yaml "4.1.0"
     lodash "4.17.21"
     path-to-regexp "3.2.0"
-    swagger-ui-dist "4.14.0"
+    swagger-ui-dist "4.15.1"
 
 "@nestjs/terminus@^9.1.2":
   version "9.1.2"
@@ -7092,10 +7092,10 @@ supports-preserve-symlinks-flag@^1.0.0:
   resolved "https://registry.yarnpkg.com/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz#6eda4bd344a3c94aea376d4cc31bc77311039e09"
   integrity sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==
 
-swagger-ui-dist@4.14.0:
-  version "4.14.0"
-  resolved "https://registry.yarnpkg.com/swagger-ui-dist/-/swagger-ui-dist-4.14.0.tgz#e34d807464eb84578c43902e393084a1a6fbda52"
-  integrity sha512-TBzhheU15s+o54Cgk9qxuYcZMiqSm/SkvKnapoGHOF66kz0Y5aGjpzj5BT/vpBbn6rTPJ9tUYXQxuDWfsjiGMw==
+swagger-ui-dist@4.15.1:
+  version "4.15.1"
+  resolved "https://registry.yarnpkg.com/swagger-ui-dist/-/swagger-ui-dist-4.15.1.tgz#79952306cfb0d18cc05b10dff4c9896193f673c9"
+  integrity sha512-DlZARu6ckUFqDe0j5IPayO4k0gQvYQw9Un02MhxAgaMtVnTH2vmyyDe+yKeV0r1LiiPx3JbasdS/5Yyb/AV3iw==
 
 symbol-observable@4.0.0:
   version "4.0.0"
