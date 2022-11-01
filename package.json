@@ -55,7 +55,7 @@
     "@faker-js/faker": "^7.6.0",
     "@joi/date": "^2.1.0",
     "@nestjs/axios": "^0.1.0",
-    "@nestjs/common": "^9.1.5",
+    "@nestjs/common": "^9.1.6",
     "@nestjs/config": "^2.2.0",
     "@nestjs/core": "^9.1.5",
     "@nestjs/jwt": "^9.0.0",
