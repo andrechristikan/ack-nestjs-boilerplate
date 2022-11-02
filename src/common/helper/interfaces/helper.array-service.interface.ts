@@ -46,5 +46,5 @@ export interface IHelperArrayService {
 
     includes<T>(a: T[], b: T): boolean;
 
-    chunk<T>(a: T[], size: number): Array<T[]>;
+    split<T>(a: T[], size: number): T[][];
 }

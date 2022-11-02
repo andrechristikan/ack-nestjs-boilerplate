@@ -15,6 +15,7 @@ export class MigrationApiKeySeed {
         describe: 'seeds apikeys',
     })
     async seeds(): Promise<void> {
+        console.log('this.apiKeyService', this.apiKeyService);
         try {
             await this.apiKeyService.createRaw({
                 name: 'Api Key Migration',
@@ -25,6 +26,7 @@ export class MigrationApiKeySeed {
                 encryptionKey: 'opbUwdiS1FBsrDUoPgZdx',
             });
         } catch (err: any) {
+            console.error('err', err);
             throw new Error(err.message);
         }
 

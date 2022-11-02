@@ -20,6 +20,8 @@ export class MigrationPostgresMigrate {
     })
     async migrate(): Promise<void> {
         try {
+            // typeorm can automaticlly create the collection
+            // but not for index
             // todo create index
             this.debuggerService.info(MigrationPostgresMigrate.name, {
                 description: 'Postgres migrate success',

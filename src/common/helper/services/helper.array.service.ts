@@ -102,7 +102,7 @@ export class HelperArrayService implements IHelperArrayService {
         return _.includes(a, b);
     }
 
-    chunk<T>(a: T[], size: number): Array<T[]> {
-        return _.chunk(a, size);
+    split<T>(a: T[], size: number): T[][] {
+        return _.chunk<T>(a, size);
     }
 }

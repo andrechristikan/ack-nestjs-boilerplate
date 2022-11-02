@@ -21,6 +21,9 @@ import {
     DatabaseModule,
 } from 'src/common/database/database.module';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
+import { ApiKeyPostgresEntity } from 'src/common/api-key/schemas/api-key.postgres.schema';
+import { LoggerPostgresEntity } from 'src/common/logger/schemas/logger.postgres.schema';
+import { SettingPostgresEntity } from 'src/common/setting/schemas/setting.postgres.schema';
 
 @Module({
     controllers: [],
@@ -135,7 +138,13 @@ import { ApiKeyModule } from 'src/common/api-key/api-key.module';
                 abortEarly: true,
             },
         }),
-        DatabaseInitModule.register(),
+        DatabaseInitModule.register({
+            entities: [
+                ApiKeyPostgresEntity,
+                LoggerPostgresEntity,
+                SettingPostgresEntity,
+            ],
+        }),
         DatabaseModule,
         MessageModule,
         HelperModule,

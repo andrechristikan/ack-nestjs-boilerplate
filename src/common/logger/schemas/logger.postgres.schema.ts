@@ -1,6 +1,7 @@
 import { SchemaFactory } from '@nestjs/mongoose';
 import { ApiKeyPostgresEntity } from 'src/common/api-key/schemas/api-key.postgres.schema';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import { DatabasePostgresEntity } from 'src/common/database/schemas/database.postgres.schema';
 import {
     ENUM_LOGGER_ACTION,
@@ -11,7 +12,7 @@ import { LoggerDatabaseName } from 'src/common/logger/schemas/logger.schema';
 import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 
-@Entity({ name: LoggerDatabaseName })
+@DatabaseEntity({ name: LoggerDatabaseName })
 export class LoggerPostgresEntity
     extends DatabasePostgresEntity
     implements ILoggerEntity

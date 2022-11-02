@@ -1,4 +1,10 @@
+import { PopulateOptions } from 'mongoose';
 import { IPaginationOptions } from 'src/common/pagination/interfaces/pagination.interface';
+import { FindOptionsRelations } from 'typeorm';
+
+export interface IDatabaseInitOptions {
+    entities: any[];
+}
 
 export interface IDatabaseConnectOptions {
     schema: IDatabaseConnectSchemaOptions;
@@ -19,7 +25,11 @@ export type IDatabaseConnectRepositoryOptions = IDatabaseConnectSchemaOptions;
 export interface IDatabaseFindOneOptions<T = any>
     extends Pick<IPaginationOptions, 'sort'> {
     select?: Record<string, number | string>;
-    join?: boolean;
+    join?:
+        | boolean
+        | FindOptionsRelations<T>
+        | PopulateOptions
+        | PopulateOptions[];
     session?: T;
     withDeleted?: boolean;
 }

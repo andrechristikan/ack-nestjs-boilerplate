@@ -97,7 +97,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         }
 
         if (options && options.join) {
-            findAll.relations = this._joinOnFind;
+            findAll.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         if (options && options.session) {
@@ -128,7 +131,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         }
 
         if (options && options.join) {
-            findOne.relations = this._joinOnFind;
+            findOne.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         if (options && options.session) {
@@ -167,7 +173,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         }
 
         if (options && options.join) {
-            findOne.relations = this._joinOnFind;
+            findOne.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         if (options && options.sort) {
@@ -202,7 +211,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         }
 
         if (options && options.join) {
-            count.relations = this._joinOnFind;
+            count.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         return this._repository.count(count) as any;
@@ -226,7 +238,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         }
 
         if (options && options.join) {
-            findOne.relations = this._joinOnFind;
+            findOne.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         if (options && options.session) {
@@ -269,7 +284,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         };
 
         if (options && options.join) {
-            findOne.relations = this._joinOnFind;
+            findOne.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         if (options && options.session) {
@@ -295,7 +313,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         };
 
         if (options && options.join) {
-            findOne.relations = this._joinOnFind;
+            findOne.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         if (options && options.session) {
@@ -319,7 +340,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         };
 
         if (options && options.join) {
-            findOne.relations = this._joinOnFind;
+            findOne.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         if (options && options.session) {
@@ -343,7 +367,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         };
 
         if (options && options.join) {
-            findOne.relations = this._joinOnFind;
+            findOne.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         if (options && options.session) {
@@ -368,7 +395,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         };
 
         if (options && options.join) {
-            findOne.relations = this._joinOnFind;
+            findOne.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         if (options && options.session) {
@@ -393,7 +423,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         };
 
         if (options && options.join) {
-            findOne.relations = this._joinOnFind;
+            findOne.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         if (options && options.session) {
@@ -418,7 +451,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         };
 
         if (options && options.join) {
-            findOne.relations = this._joinOnFind;
+            findOne.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         if (options && options.session) {
@@ -443,7 +479,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         };
 
         if (options && options.join) {
-            findOne.relations = this._joinOnFind;
+            findOne.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         if (options && options.session) {
@@ -482,7 +521,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         }
 
         if (options && options.join) {
-            findAll.relations = this._joinOnFind;
+            findAll.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         try {
@@ -511,7 +553,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         }
 
         if (options && options.join) {
-            findAll.relations = this._joinOnFind;
+            findAll.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         try {
@@ -542,7 +587,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         }
 
         if (options && options.join) {
-            findAll.relations = this._joinOnFind;
+            findAll.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         try {
@@ -571,7 +619,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         }
 
         if (options && options.join) {
-            findAll.relations = this._joinOnFind;
+            findAll.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         try {
@@ -602,7 +653,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         }
 
         if (options && options.join) {
-            findAll.relations = this._joinOnFind;
+            findAll.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         try {
@@ -631,7 +685,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         }
 
         if (options && options.join) {
-            findAll.relations = this._joinOnFind;
+            findAll.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         try {
@@ -657,7 +714,10 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         };
 
         if (options && options.join) {
-            findAll.relations = this._joinOnFind;
+            findAll.relations =
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as FindOptionsRelations<T>);
         }
 
         if (options && options.session) {

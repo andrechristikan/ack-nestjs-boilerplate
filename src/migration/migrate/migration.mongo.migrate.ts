@@ -20,6 +20,7 @@ export class MigrationMongoMigrate {
     })
     async migrate(): Promise<void> {
         try {
+            // mongoose can automaticlly create the collection
             this.debuggerService.info(MigrationMongoMigrate.name, {
                 description: 'Mongo migrate success',
                 class: MigrationMongoMigrate.name,

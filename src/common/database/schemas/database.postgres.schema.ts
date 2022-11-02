@@ -1,4 +1,9 @@
 import {
+    DATABASE_CREATED_AT_FIELD_NAME,
+    DATABASE_DELETED_AT_FIELD_NAME,
+    DATABASE_UPDATED_AT_FIELD_NAME,
+} from 'src/common/database/constants/database.constant';
+import {
     CreateDateColumn,
     DeleteDateColumn,
     PrimaryGeneratedColumn,
@@ -12,21 +17,21 @@ export class DatabasePostgresEntity {
     _id: string;
 
     @CreateDateColumn({
-        name: 'createdAt',
+        name: DATABASE_CREATED_AT_FIELD_NAME,
         type: Date,
     })
-    createdAt: Date;
+    [DATABASE_CREATED_AT_FIELD_NAME]: Date;
 
     @UpdateDateColumn({
-        name: 'updatedAt',
+        name: DATABASE_UPDATED_AT_FIELD_NAME,
         type: Date,
     })
-    updatedAt: Date;
+    [DATABASE_UPDATED_AT_FIELD_NAME]: Date;
 
     @DeleteDateColumn({
         nullable: true,
-        name: 'deletedAt',
+        name: DATABASE_DELETED_AT_FIELD_NAME,
         type: Date,
     })
-    deletedAt?: Date;
+    [DATABASE_DELETED_AT_FIELD_NAME]?: Date;
 }

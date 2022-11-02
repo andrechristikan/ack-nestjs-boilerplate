@@ -17,24 +17,7 @@ import { MigrationApiKeySeed } from 'src/migration/seeds/migration.api-key.seed'
 import { MigrationSettingSeed } from 'src/migration/seeds/migration.setting.seed';
 
 @Module({
-    imports: [
-        CommonModule,
-        CommandModule,
-        ApiKeyModule,
-        TypeOrmModule.forRootAsync({
-            name: `${DATABASE_CONNECTION_NAME}-MIGRATION`,
-            inject: [DatabaseOptionsService],
-            imports: [DatabaseOptionsModule],
-            useFactory: (databaseOptionsService: DatabaseOptionsService) => ({
-                ...databaseOptionsService.createTypeOrmOptions(),
-                entities: [
-                    ApiKeyPostgresEntity,
-                    LoggerPostgresEntity,
-                    SettingPostgresEntity,
-                ],
-            }),
-        }),
-    ],
+    imports: [CommonModule, CommandModule, ApiKeyModule],
     providers: [
         {
             useClass:

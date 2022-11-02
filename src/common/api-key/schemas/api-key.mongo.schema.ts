@@ -2,9 +2,10 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { CallbackWithoutResultAndOptionalError } from 'mongoose';
 import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyBeforeSaveHook } from 'src/common/api-key/schemas/hooks/api-key.before-save.hook';
+import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import { DatabaseMongoEntity } from 'src/common/database/schemas/database.mongo.schema';
 
-@Schema({ timestamps: true, versionKey: false })
+@DatabaseEntity()
 export class ApiKeyMongoEntity
     extends DatabaseMongoEntity
     implements IApiKeyEntity

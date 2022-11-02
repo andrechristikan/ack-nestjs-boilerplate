@@ -4,7 +4,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum.constant';
 import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
-import { IDatabaseConnectOptions } from 'src/common/database/interfaces/database.interface';
+import {
+    IDatabaseConnectOptions,
+    IDatabaseInitOptions,
+} from 'src/common/database/interfaces/database.interface';
 import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
 import { DatabaseService } from 'src/common/database/services/database.service';
 
@@ -80,9 +83,10 @@ export class DatabaseConnectModule {
     }
 }
 
+// for mongo integration, you dont need to import entities
 @Module({})
 export class DatabaseInitModule {
-    static register(): DynamicModule {
+    static register(options?: IDatabaseInitOptions): DynamicModule {
         if (process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO) {
             return {
                 module: DatabaseInitModule,
@@ -114,7 +118,11 @@ export class DatabaseInitModule {
                     imports: [DatabaseOptionsModule],
                     useFactory: (
                         databaseOptionsService: DatabaseOptionsService
-                    ) => databaseOptionsService.createTypeOrmOptions(),
+                    ) => ({
+                        ...databaseOptionsService.createTypeOrmOptions(),
+                        entities: options ? options.entities : [],
+                        autoLoadEntities: true,
+                    }),
                 }),
             ],
         };
