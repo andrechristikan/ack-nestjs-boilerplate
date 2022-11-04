@@ -27,7 +27,7 @@ import {
 } from 'src/common/setting/docs/setting.doc';
 import { SettingListDto } from 'src/common/setting/dtos/setting.list.dto';
 import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
-import { SettingEntity } from 'src/common/setting/schemas/setting.schema';
+import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingGetSerialization } from 'src/common/setting/serializations/setting.get.serialization';
 import { SettingListSerialization } from 'src/common/setting/serializations/setting.list.serialization';
 import { SettingService } from 'src/common/setting/services/setting.service';

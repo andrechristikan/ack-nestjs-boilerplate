@@ -39,7 +39,7 @@
     * [Test](#test)
     * [Run Project](#run-project)
     * [Run Project with Docker](#run-project-with-docker)
-* [API Reference](#api-reference)
+* [AP6I Reference](#api-reference)
 * [Environment](#environment)
 * [Api Key Encryption](#api-key-encryption)
 * [Adjust Mongoose Setting](#adjust-mongoose-setting)
@@ -74,10 +74,10 @@ Next development
     3. ~~Database prop foreign~~
     4. ~~typeorm module add~~
     5. ~~repository with conditional~~
-    6. Migration
-    7. Transaction
-    8. Update all modules
-    9. Update test
+    6. example postgres repository
+    7. update migration
+    8. update interface
+    9. update test
     10. Init document
 * [ ] Export to excel and Import from excel add options to background process
 * [ ] SSO Google
@@ -201,9 +201,9 @@ Full structure of module
     ├── interceptors // custom interceptors
     ├── interfaces
     ├── pipes
-    ├── repositories // repository or persistent layer
-    ├── schemas // database schema
-        └── hooks // database hooks
+    ├── repository
+        ├── entities // database entities
+        └── repositories // database repositories
     ├── serializations
     ├── services
     ├── tasks // task for cron job

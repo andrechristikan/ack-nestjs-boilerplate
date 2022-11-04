@@ -1,19 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseRepository } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
-import { LOGGER_REPOSITORY } from 'src/common/logger/constants/logger.constant';
 import { ENUM_LOGGER_LEVEL } from 'src/common/logger/constants/logger.enum.constant';
 import {
     LoggerCreateDto,
     LoggerCreateRawDto,
 } from 'src/common/logger/dtos/logger.create.dto';
 import { ILoggerService } from 'src/common/logger/interfaces/logger.service.interface';
-import { LoggerEntity } from 'src/common/logger/schemas/logger.schema';
+import {
+    LoggerEntity,
+    LoggerRepositoryName,
+} from 'src/common/logger/repository/entities/logger.entity';
 
 @Injectable()
 export class LoggerService implements ILoggerService {
     constructor(
-        @DatabaseRepository(LOGGER_REPOSITORY)
+        @DatabaseRepository(LoggerRepositoryName)
         private readonly loggerRepository: IDatabaseRepository<LoggerEntity>
     ) {}
 

@@ -1,46 +1,58 @@
 import { Inject } from '@nestjs/common';
 import { InjectConnection, InjectModel, Schema } from '@nestjs/mongoose';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import {
     DATABASE_CONNECTION_NAME,
     DATABASE_CREATED_AT_FIELD_NAME,
     DATABASE_UPDATED_AT_FIELD_NAME,
 } from 'src/common/database/constants/database.constant';
-import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum.constant';
-import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Entity } from 'typeorm';
 
-// for load env
-import 'dotenv/config';
-
-export function DatabaseConnection(
-    connectionName?: string
-): ParameterDecorator {
-    return process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO
-        ? InjectConnection(connectionName || DATABASE_CONNECTION_NAME)
-        : InjectDataSource(connectionName || DATABASE_CONNECTION_NAME);
+export function DatabaseRepository(name: string): ParameterDecorator {
+    return Inject(name);
 }
 
-export function DatabaseModel(
+// mongo
+export function DatabaseMongoConnection(
+    connectionName?: string
+): ParameterDecorator {
+    return InjectConnection(connectionName || DATABASE_CONNECTION_NAME);
+}
+
+export function DatabaseMongoModel(
     entity: any,
     connectionName?: string
 ): ParameterDecorator {
-    return process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO
-        ? InjectModel(entity, connectionName || DATABASE_CONNECTION_NAME)
-        : InjectRepository(entity, connectionName || DATABASE_CONNECTION_NAME);
+    return InjectModel(entity.name, connectionName || DATABASE_CONNECTION_NAME);
 }
 
-export function DatabaseRepository(repositoryName: string): ParameterDecorator {
-    return Inject(repositoryName);
+export function DatabaseMongoSchema(): ClassDecorator {
+    return Schema({
+        versionKey: false,
+        timestamps: {
+            createdAt: DATABASE_CREATED_AT_FIELD_NAME,
+            updatedAt: DATABASE_UPDATED_AT_FIELD_NAME,
+        },
+    });
 }
 
-export function DatabaseEntity(options?: { name: string }): ClassDecorator {
-    return process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO
-        ? Schema({
-              timestamps: {
-                  createdAt: DATABASE_CREATED_AT_FIELD_NAME,
-                  updatedAt: DATABASE_UPDATED_AT_FIELD_NAME,
-              },
-              versionKey: false,
-          })
-        : Entity(options ? { name: options.name } : {});
+// postgres
+
+export function DatabasePostgresModel(
+    entity: any,
+    connectionName?: string
+): ParameterDecorator {
+    return InjectRepository(entity, connectionName || DATABASE_CONNECTION_NAME);
+}
+
+export function DatabasePostgresConnection(
+    connectionName?: string
+): ParameterDecorator {
+    return InjectDataSource(connectionName || DATABASE_CONNECTION_NAME);
+}
+
+export function DatabasePostgresSchema(name: string): ClassDecorator {
+    return Entity({
+        name,
+    });
 }

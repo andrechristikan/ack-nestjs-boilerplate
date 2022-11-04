@@ -9,16 +9,18 @@ import {
 } from 'src/common/database/interfaces/database.interface';
 import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
-import { SETTING_REPOSITORY } from 'src/common/setting/constants/setting.constant';
 import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
 import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
 import { ISettingService } from 'src/common/setting/interfaces/setting.service.interface';
-import { SettingEntity } from 'src/common/setting/schemas/setting.schema';
+import {
+    SettingEntity,
+    SettingRepositoryName,
+} from 'src/common/setting/repository/entities/setting.entity';
 
 @Injectable()
 export class SettingService implements ISettingService {
     constructor(
-        @DatabaseRepository(SETTING_REPOSITORY)
+        @DatabaseRepository(SettingRepositoryName)
         private readonly settingRepository: IDatabaseRepository<SettingEntity>,
         private readonly helperStringService: HelperStringService
     ) {}

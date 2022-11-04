@@ -1,4 +1,4 @@
-import { ApiKeyEntity } from 'src/common/api-key/schemas/api-key.schema';
+import { ApiKeyEntity } from 'src/common/api-key/repository/entity/api-key.entity';
 
 export interface IApiKeyPayload {
     _id: string;
@@ -12,14 +12,4 @@ export interface IApiKeyRequestHashedData {
     key: string;
     timestamp: number;
     hash: string;
-}
-
-export interface IApiKeyEntity {
-    name: string;
-    description?: string;
-    key: string;
-    hash: string;
-    encryptionKey: string;
-    passphrase: string;
-    isActive: boolean;
 }

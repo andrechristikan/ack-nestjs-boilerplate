@@ -22,7 +22,7 @@ import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
 import { SettingUpdateDoc } from 'src/common/setting/docs/setting.admin.doc';
 import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
 import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
-import { SettingEntity } from 'src/common/setting/schemas/setting.schema';
+import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingService } from 'src/common/setting/services/setting.service';
 
 @ApiTags('admin.setting')

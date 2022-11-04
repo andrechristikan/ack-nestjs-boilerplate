@@ -2,25 +2,6 @@ import { PopulateOptions } from 'mongoose';
 import { IPaginationOptions } from 'src/common/pagination/interfaces/pagination.interface';
 import { FindOptionsRelations } from 'typeorm';
 
-export interface IDatabaseInitOptions {
-    entities: any[];
-}
-
-export interface IDatabaseConnectOptions {
-    schema: IDatabaseConnectSchemaOptions;
-    repository: IDatabaseConnectRepositoryOptions;
-    collection: string;
-    connectionName?: string;
-}
-
-export interface IDatabaseConnectSchemaOptions {
-    name: string;
-    mongo?: any;
-    postgres?: any;
-}
-
-export type IDatabaseConnectRepositoryOptions = IDatabaseConnectSchemaOptions;
-
 // find one
 export interface IDatabaseFindOneOptions<T = any>
     extends Pick<IPaginationOptions, 'sort'> {

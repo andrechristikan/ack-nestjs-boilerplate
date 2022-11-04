@@ -1,4 +1,5 @@
 import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
 import {
     DiskHealthIndicator,
@@ -6,10 +7,10 @@ import {
     HealthCheckService,
     MemoryHealthIndicator,
     MongooseHealthIndicator,
+    TypeOrmHealthIndicator,
 } from '@nestjs/terminus';
-import { Connection } from 'mongoose';
 import { ApiKeyProtected } from 'src/common/api-key/decorators/api-key.decorator';
-import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum';
 import {
     RequestValidateTimestamp,
     RequestValidateUserAgent,
@@ -17,7 +18,7 @@ import {
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { HealthCheckDoc } from 'src/health/docs/health.doc';
-import { AwsHealthIndicator } from 'src/health/indicators/health.aws.indicator';
+import { HealthAwsIndicator } from 'src/health/indicators/health.aws.indicator';
 import { HealthSerialization } from 'src/health/serializations/health.serialization';
 
 @ApiTags('health')
@@ -27,12 +28,13 @@ import { HealthSerialization } from 'src/health/serializations/health.serializat
 })
 export class HealthController {
     constructor(
-        @DatabaseConnection() private readonly databaseConnection: Connection,
         private readonly health: HealthCheckService,
         private readonly memoryHealthIndicator: MemoryHealthIndicator,
         private readonly diskHealthIndicator: DiskHealthIndicator,
-        private readonly databaseIndicator: MongooseHealthIndicator,
-        private readonly awsIndicator: AwsHealthIndicator
+        private readonly mongooseIndicator: MongooseHealthIndicator,
+        private readonly typeormIndicator: TypeOrmHealthIndicator,
+        private readonly awsIndicator: HealthAwsIndicator,
+        private readonly configService: ConfigService
     ) {}
 
     @HealthCheckDoc()
@@ -56,11 +58,17 @@ export class HealthController {
     @RequestValidateTimestamp()
     @Get('/database')
     async checkDatabase(): Promise<IResponse> {
+        if (
+            this.configService.get<ENUM_DATABASE_TYPE>('database.type') ===
+            ENUM_DATABASE_TYPE.MONGO
+        ) {
+            return this.health.check([
+                () => this.mongooseIndicator.pingCheck('database'),
+            ]);
+        }
+
         return this.health.check([
-            () =>
-                this.databaseIndicator.pingCheck('database', {
-                    connection: this.databaseConnection,
-                }),
+            () => this.typeormIndicator.pingCheck('database'),
         ]);
     }
 

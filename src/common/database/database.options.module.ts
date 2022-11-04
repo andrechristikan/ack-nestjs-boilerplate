@@ -5,5 +5,6 @@ import { DatabaseOptionsService } from 'src/common/database/services/database.op
     providers: [DatabaseOptionsService],
     exports: [DatabaseOptionsService],
     imports: [],
+    controllers: [],
 })
 export class DatabaseOptionsModule {}

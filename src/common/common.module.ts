@@ -13,17 +13,11 @@ import { PaginationModule } from 'src/common/pagination/pagination.module';
 import Joi from 'joi';
 import { ENUM_MESSAGE_LANGUAGE } from './message/constants/message.enum.constant';
 import configs from 'src/configs';
-import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum.constant';
 import { AppLanguage } from 'src/app/constants/app.constant';
 import { SettingModule } from 'src/common/setting/setting.module';
-import {
-    DatabaseInitModule,
-    DatabaseModule,
-} from 'src/common/database/database.module';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
-import { ApiKeyPostgresEntity } from 'src/common/api-key/schemas/api-key.postgres.schema';
-import { LoggerPostgresEntity } from 'src/common/logger/schemas/logger.postgres.schema';
-import { SettingPostgresEntity } from 'src/common/setting/schemas/setting.postgres.schema';
+import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum';
+import { DatabaseConnectorModule } from 'src/common/database/database.connector.module';
 
 @Module({
     controllers: [],
@@ -138,14 +132,7 @@ import { SettingPostgresEntity } from 'src/common/setting/schemas/setting.postgr
                 abortEarly: true,
             },
         }),
-        DatabaseInitModule.register({
-            entities: [
-                ApiKeyPostgresEntity,
-                LoggerPostgresEntity,
-                SettingPostgresEntity,
-            ],
-        }),
-        DatabaseModule,
+        DatabaseConnectorModule.register(),
         MessageModule,
         HelperModule,
         PaginationModule,

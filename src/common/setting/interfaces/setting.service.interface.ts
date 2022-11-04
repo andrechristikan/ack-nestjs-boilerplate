@@ -7,7 +7,7 @@ import {
 } from 'src/common/database/interfaces/database.interface';
 import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
 import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
-import { SettingEntity } from 'src/common/setting/schemas/setting.schema';
+import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 
 export interface ISettingService {
     findAll(

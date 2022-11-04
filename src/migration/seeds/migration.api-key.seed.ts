@@ -15,7 +15,6 @@ export class MigrationApiKeySeed {
         describe: 'seeds apikeys',
     })
     async seeds(): Promise<void> {
-        console.log('this.apiKeyService', this.apiKeyService);
         try {
             await this.apiKeyService.createRaw({
                 name: 'Api Key Migration',

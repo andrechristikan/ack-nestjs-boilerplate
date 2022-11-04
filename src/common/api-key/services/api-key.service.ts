@@ -11,7 +11,7 @@ import {
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IApiKeyService } from 'src/common/api-key/interfaces/api-key.service.interface';
-import { ApiKeyEntity } from 'src/common/api-key/schemas/api-key.schema';
+
 import {
     ApiKeyCreateDto,
     ApiKeyCreateRawDto,
@@ -21,16 +21,19 @@ import {
     IApiKeyRequestHashedData,
 } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
-import { API_KEY_REPOSITORY } from 'src/common/api-key/constants/api-key.constant';
 import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
 import { DatabaseRepository } from 'src/common/database/decorators/database.decorator';
+import {
+    ApiKeyEntity,
+    ApiKeyRepositoryName,
+} from 'src/common/api-key/repository/entity/api-key.entity';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
     private readonly env: string;
 
     constructor(
-        @DatabaseRepository(API_KEY_REPOSITORY)
+        @DatabaseRepository(ApiKeyRepositoryName)
         private readonly apiKeyRepository: IDatabaseRepository<ApiKeyEntity>,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService,

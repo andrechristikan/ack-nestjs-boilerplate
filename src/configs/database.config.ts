@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum.constant';
+import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum';
 
 export default registerAs(
     'database',

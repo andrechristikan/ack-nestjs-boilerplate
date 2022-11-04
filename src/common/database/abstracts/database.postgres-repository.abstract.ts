@@ -270,7 +270,8 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
             dataCreate._id = options._id;
         }
 
-        return this._repository.create(dataCreate as T);
+        const create = this._repository.create(dataCreate as T);
+        return this._repository.save(create);
     }
 
     async updateOneById<N>(
@@ -500,7 +501,8 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
     // bulk
     async createMany<N>(data: N[]): Promise<boolean> {
         try {
-            this._repository.create(data as any);
+            const create = this._repository.create(data as any[]);
+            await this._repository.save(create);
             return true;
         } catch (err: any) {
             throw err;

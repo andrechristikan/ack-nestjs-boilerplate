@@ -7,7 +7,7 @@ import {
 import { AwsS3Service } from 'src/common/aws/services/aws.s3.service';
 
 @Injectable()
-export class AwsHealthIndicator extends HealthIndicator {
+export class HealthAwsIndicator extends HealthIndicator {
     constructor(private readonly awsS3Service: AwsS3Service) {
         super();
     }
