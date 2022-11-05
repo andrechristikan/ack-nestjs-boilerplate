@@ -1,18 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { ApiKeyPostgresEntity } from 'src/common/api-key/repository/entities/api-key.postgres.entity';
 import { DatabasePostgresRepositoryAbstract } from 'src/common/database/abstracts/database.postgres-repository.abstract';
 import { DatabasePostgresModel } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
+import { LoggerPostgresEntity } from 'src/common/logger/repository/entities/logger.postgres.entity';
 import { Repository } from 'typeorm';
 
 @Injectable()
-export class ApiKeyPostgresRepository
-    extends DatabasePostgresRepositoryAbstract<ApiKeyPostgresEntity>
-    implements IDatabaseRepository<ApiKeyPostgresEntity>
+export class LoggerPostgresRepository
+    extends DatabasePostgresRepositoryAbstract<LoggerPostgresEntity>
+    implements IDatabaseRepository<LoggerPostgresEntity>
 {
     constructor(
-        @DatabasePostgresModel(ApiKeyPostgresEntity)
-        private readonly apiKeyModel: Repository<ApiKeyPostgresEntity>
+        @DatabasePostgresModel(LoggerPostgresEntity)
+        private readonly apiKeyModel: Repository<LoggerPostgresEntity>
     ) {
         super(apiKeyModel);
     }

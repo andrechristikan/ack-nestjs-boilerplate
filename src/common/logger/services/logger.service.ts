@@ -9,13 +9,13 @@ import {
 import { ILoggerService } from 'src/common/logger/interfaces/logger.service.interface';
 import {
     LoggerEntity,
-    LoggerRepositoryName,
+    LoggerRepository,
 } from 'src/common/logger/repository/entities/logger.entity';
 
 @Injectable()
 export class LoggerService implements ILoggerService {
     constructor(
-        @DatabaseRepository(LoggerRepositoryName)
+        @DatabaseRepository(LoggerRepository)
         private readonly loggerRepository: IDatabaseRepository<LoggerEntity>
     ) {}
 

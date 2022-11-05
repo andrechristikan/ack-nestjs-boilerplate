@@ -72,6 +72,7 @@ export class DatabaseOptionsService implements IDatabaseOptionsService {
             type: 'postgres',
             url: uri,
             retryDelay: 5000,
+            keepConnectionAlive: this.env === 'production' ? true : false,
             synchronize: this.env === 'production' ? false : true,
         };
 

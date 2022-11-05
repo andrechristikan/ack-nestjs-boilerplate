@@ -1,4 +1,4 @@
-import { ApiKeyDatabaseName } from 'src/common/api-key/repository/entity/api-key.entity';
+import { ApiKeyDatabaseName } from 'src/common/api-key/repository/entities/api-key.entity';
 import { DatabasePostgresEntityAbstract } from 'src/common/database/abstracts/database.postgres-entity.abstract';
 import { BeforeInsert, BeforeUpdate, Column, Entity } from 'typeorm';
 

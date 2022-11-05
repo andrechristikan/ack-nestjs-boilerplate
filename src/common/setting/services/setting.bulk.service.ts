@@ -5,13 +5,13 @@ import { IDatabaseRepository } from 'src/common/database/interfaces/database.rep
 import { ISettingBulkService } from 'src/common/setting/interfaces/setting.bulk-service.interface';
 import {
     SettingEntity,
-    SettingRepositoryName,
+    SettingRepository,
 } from 'src/common/setting/repository/entities/setting.entity';
 
 @Injectable()
 export class SettingBulkService implements ISettingBulkService {
     constructor(
-        @DatabaseRepository(SettingRepositoryName)
+        @DatabaseRepository(SettingRepository)
         private readonly settingRepository: IDatabaseRepository<SettingEntity>
     ) {}
 

@@ -14,13 +14,13 @@ import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
 import { ISettingService } from 'src/common/setting/interfaces/setting.service.interface';
 import {
     SettingEntity,
-    SettingRepositoryName,
+    SettingRepository,
 } from 'src/common/setting/repository/entities/setting.entity';
 
 @Injectable()
 export class SettingService implements ISettingService {
     constructor(
-        @DatabaseRepository(SettingRepositoryName)
+        @DatabaseRepository(SettingRepository)
         private readonly settingRepository: IDatabaseRepository<SettingEntity>,
         private readonly helperStringService: HelperStringService
     ) {}

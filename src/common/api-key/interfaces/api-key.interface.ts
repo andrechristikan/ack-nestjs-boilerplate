@@ -1,4 +1,4 @@
-import { ApiKeyEntity } from 'src/common/api-key/repository/entity/api-key.entity';
+import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 
 export interface IApiKeyPayload {
     _id: string;

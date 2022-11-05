@@ -5,6 +5,7 @@ import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database
 import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum';
 import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
 import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
+import { DataSource } from 'typeorm';
 
 @Module({})
 export class DatabaseConnectorModule {
@@ -30,7 +31,7 @@ export class DatabaseConnectorModule {
                     ...databaseOptionsService.createTypeOrmOptions(),
                     entities: [
                         __dirname +
-                            '/../../{modules,common}/**/schemas/*.postgres.schema{.ts,.js}',
+                            '/../../{modules,common}/**/repository/**/**/*.postgres.entity{.ts,.js}',
                     ],
                     autoLoadEntities: true,
                 }),

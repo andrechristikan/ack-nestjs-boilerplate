@@ -2,7 +2,7 @@ import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.consta
 import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.repository';
 
 export const LoggerDatabaseName = 'loggers';
-export const LoggerRepositoryName = 'LoggerRepository';
+export const LoggerRepository = 'LoggerRepositoryToken';
 
 export class LoggerEntity extends DatabaseEntityAbstract {
     level: string;

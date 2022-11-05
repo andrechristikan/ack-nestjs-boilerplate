@@ -25,7 +25,6 @@ export class MigrationApiKeySeed {
                 encryptionKey: 'opbUwdiS1FBsrDUoPgZdx',
             });
         } catch (err: any) {
-            console.error('err', err);
             throw new Error(err.message);
         }
 

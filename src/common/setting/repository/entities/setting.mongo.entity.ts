@@ -1,14 +1,15 @@
 import { Prop, SchemaFactory } from '@nestjs/mongoose';
-import { CallbackWithoutResultAndOptionalError } from 'mongoose';
 import { DatabaseMongoEntityAbstract } from 'src/common/database/abstracts/database.mongo-entity.abstract';
 import { DatabaseMongoSchema } from 'src/common/database/decorators/database.decorator';
+import { SettingDatabaseName } from 'src/common/setting/repository/entities/setting.entity';
 
-@DatabaseMongoSchema()
+@DatabaseMongoSchema({ collection: SettingDatabaseName })
 export class SettingMongoEntity extends DatabaseMongoEntityAbstract {
     @Prop({
         required: true,
         index: true,
         unique: true,
+        trim: true,
         type: String,
     })
     name: string;
@@ -21,6 +22,7 @@ export class SettingMongoEntity extends DatabaseMongoEntityAbstract {
 
     @Prop({
         required: true,
+        trim: true,
         type: String,
     })
     value: string;
@@ -28,13 +30,3 @@ export class SettingMongoEntity extends DatabaseMongoEntityAbstract {
 
 export const SettingMongoSchema =
     SchemaFactory.createForClass(SettingMongoEntity);
-
-SettingMongoSchema.pre(
-    'save',
-    function (next: CallbackWithoutResultAndOptionalError) {
-        this.name = this.name.trim();
-        this.value = this.value.trim();
-
-        next();
-    }
-);

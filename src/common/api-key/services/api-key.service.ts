@@ -25,15 +25,15 @@ import { IDatabaseRepository } from 'src/common/database/interfaces/database.rep
 import { DatabaseRepository } from 'src/common/database/decorators/database.decorator';
 import {
     ApiKeyEntity,
-    ApiKeyRepositoryName,
-} from 'src/common/api-key/repository/entity/api-key.entity';
+    ApiKeyRepository,
+} from 'src/common/api-key/repository/entities/api-key.entity';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
     private readonly env: string;
 
     constructor(
-        @DatabaseRepository(ApiKeyRepositoryName)
+        @DatabaseRepository(ApiKeyRepository)
         private readonly apiKeyRepository: IDatabaseRepository<ApiKeyEntity>,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService,

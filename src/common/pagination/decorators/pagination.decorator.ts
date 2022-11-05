@@ -29,6 +29,7 @@ import { RequestAddDatePipe } from 'src/common/request/pipes/request.add-date.pi
 import { MinGreaterThan } from 'src/common/request/validations/request.min-greater-than.validation';
 import { Skip } from 'src/common/request/validations/request.skip.validation';
 
+// todo postgres / typeorm
 export function PaginationSearch(availableSearch: string[]): PropertyDecorator {
     return applyDecorators(
         Expose(),

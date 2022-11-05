@@ -11,7 +11,7 @@ export class LoggerMongoRepository
     implements IDatabaseRepository<LoggerMongoEntity>
 {
     constructor(
-        @DatabaseMongoModel(LoggerMongoEntity.name)
+        @DatabaseMongoModel(LoggerMongoEntity)
         private readonly loggerModel: Model<LoggerMongoEntity>
     ) {
         super(loggerModel);

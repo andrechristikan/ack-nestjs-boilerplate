@@ -1,9 +1,10 @@
 import { Prop, SchemaFactory } from '@nestjs/mongoose';
 import { CallbackWithoutResultAndOptionalError } from 'mongoose';
+import { ApiKeyDatabaseName } from 'src/common/api-key/repository/entities/api-key.entity';
 import { DatabaseMongoEntityAbstract } from 'src/common/database/abstracts/database.mongo-entity.abstract';
 import { DatabaseMongoSchema } from 'src/common/database/decorators/database.decorator';
 
-@DatabaseMongoSchema()
+@DatabaseMongoSchema({ collection: ApiKeyDatabaseName })
 export class ApiKeyMongoEntity extends DatabaseMongoEntityAbstract {
     @Prop({
         required: true,
@@ -11,6 +12,7 @@ export class ApiKeyMongoEntity extends DatabaseMongoEntityAbstract {
         type: String,
         minlength: 1,
         maxlength: 100,
+        trim: true,
     })
     name: string;
 
@@ -27,11 +29,13 @@ export class ApiKeyMongoEntity extends DatabaseMongoEntityAbstract {
         type: String,
         unique: true,
         index: true,
+        trim: true,
     })
     key: string;
 
     @Prop({
         required: true,
+        trim: true,
         type: String,
     })
     hash: string;
@@ -40,6 +44,7 @@ export class ApiKeyMongoEntity extends DatabaseMongoEntityAbstract {
         required: true,
         type: String,
         index: true,
+        trim: true,
     })
     encryptionKey: string;
 
@@ -48,6 +53,7 @@ export class ApiKeyMongoEntity extends DatabaseMongoEntityAbstract {
         type: String,
         minLength: 16,
         maxLength: 16,
+        trim: true,
     })
     passphrase: string;
 
@@ -65,11 +71,7 @@ export const ApiKeyMongoSchema =
 ApiKeyMongoSchema.pre(
     'save',
     function (next: CallbackWithoutResultAndOptionalError) {
-        this.name = this.name.toLowerCase().trim();
-        this.key = this.key.trim();
-        this.hash = this.hash.trim();
-        this.encryptionKey = this.encryptionKey.trim();
-        this.passphrase = this.passphrase.trim();
+        this.name = this.name.toLowerCase();
 
         next();
     }

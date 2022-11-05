@@ -18,7 +18,6 @@ import { SettingModule } from 'src/common/setting/setting.module';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum';
 import { DatabaseConnectorModule } from 'src/common/database/database.connector.module';
-import { DatabaseModule } from 'src/common/database/database.module';
 
 @Module({
     controllers: [],
@@ -77,14 +76,14 @@ import { DatabaseModule } from 'src/common/database/database.module';
                     .valid(...Object.values(ENUM_DATABASE_TYPE))
                     .default(ENUM_DATABASE_TYPE.MONGO)
                     .required(),
-                DATABASE_HOST: Joi.any()
+                DATABASE_HOST: Joi.string()
                     .default('mongodb://localhost:27017')
                     .required(),
-                DATABASE_NAME: Joi.any().default('ack').required(),
-                DATABASE_USER: Joi.any().optional(),
-                DATABASE_PASSWORD: Joi.any().optional(),
+                DATABASE_NAME: Joi.string().default('ack').required(),
+                DATABASE_USER: Joi.string().allow(null, '').optional(),
+                DATABASE_PASSWORD: Joi.string().allow(null, '').optional(),
                 DATABASE_DEBUG: Joi.boolean().default(false).required(),
-                DATABASE_OPTIONS: Joi.any().optional(),
+                DATABASE_OPTIONS: Joi.string().allow(null, '').optional(),
 
                 AUTH_JWT_SUBJECT: Joi.string().required(),
                 AUTH_JWT_AUDIENCE: Joi.string().required(),
@@ -99,9 +98,13 @@ import { DatabaseModule } from 'src/common/database/database.module';
                     .default('30m')
                     .required(),
 
-                AUTH_JWT_ACCESS_TOKEN_ENCRYPT_KEY: Joi.string().required(),
+                AUTH_JWT_ACCESS_TOKEN_ENCRYPT_KEY: Joi.string()
+                    .min(20)
+                    .max(50)
+                    .required(),
                 AUTH_JWT_ACCESS_TOKEN_ENCRYPT_IV: Joi.string()
-                    .length(16)
+                    .min(16)
+                    .max(50)
                     .required(),
 
                 AUTH_JWT_REFRESH_TOKEN_SECRET_KEY: Joi.string()
@@ -118,15 +121,19 @@ import { DatabaseModule } from 'src/common/database/database.module';
                 AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION:
                     Joi.string().required(),
 
-                AUTH_JWT_REFRESH_TOKEN_ENCRYPT_KEY: Joi.string().required(),
+                AUTH_JWT_REFRESH_TOKEN_ENCRYPT_KEY: Joi.string()
+                    .min(20)
+                    .max(50)
+                    .required(),
                 AUTH_JWT_REFRESH_TOKEN_ENCRYPT_IV: Joi.string()
-                    .length(16)
+                    .min(16)
+                    .max(50)
                     .required(),
 
-                AWS_CREDENTIAL_KEY: Joi.string().optional(),
-                AWS_CREDENTIAL_SECRET: Joi.string().optional(),
-                AWS_S3_REGION: Joi.string().optional(),
-                AWS_S3_BUCKET: Joi.string().optional(),
+                AWS_CREDENTIAL_KEY: Joi.string().allow(null, '').optional(),
+                AWS_CREDENTIAL_SECRET: Joi.string().allow(null, '').optional(),
+                AWS_S3_REGION: Joi.string().allow(null, '').optional(),
+                AWS_S3_BUCKET: Joi.string().allow(null, '').optional(),
             }),
             validationOptions: {
                 allowUnknown: true,

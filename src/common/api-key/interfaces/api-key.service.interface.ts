@@ -7,7 +7,7 @@ import {
     IApiKey,
     IApiKeyRequestHashedData,
 } from 'src/common/api-key/interfaces/api-key.interface';
-import { ApiKeyEntity } from 'src/common/api-key/repository/entity/api-key.entity';
+import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,

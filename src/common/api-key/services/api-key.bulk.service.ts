@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { IApiKeyBulkService } from 'src/common/api-key/interfaces/api-key.bulk-service.interface';
 import {
     ApiKeyEntity,
-    ApiKeyRepositoryName,
-} from 'src/common/api-key/repository/entity/api-key.entity';
+    ApiKeyRepository,
+} from 'src/common/api-key/repository/entities/api-key.entity';
 import { DatabaseRepository } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseManyOptions } from 'src/common/database/interfaces/database.interface';
 import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
@@ -11,7 +11,7 @@ import { IDatabaseRepository } from 'src/common/database/interfaces/database.rep
 @Injectable()
 export class ApiKeyBulkKeyService implements IApiKeyBulkService {
     constructor(
-        @DatabaseRepository(ApiKeyRepositoryName)
+        @DatabaseRepository(ApiKeyRepository)
         private readonly apiKeyRepository: IDatabaseRepository<ApiKeyEntity>
     ) {}
 

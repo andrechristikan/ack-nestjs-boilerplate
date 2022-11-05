@@ -74,11 +74,14 @@ Next development
     3. ~~Database prop foreign~~
     4. ~~typeorm module add~~
     5. ~~repository with conditional~~
-    6. example postgres repository
-    7. update migration
-    8. update interface
-    9. update test
-    10. Init document
+    6. ~~example postgres repository~~
+    7. ~~update migration~~
+    8. ~~update migration~~
+    9. update modules/**
+    10. pagination search decorator for postgres
+    11. interface of service
+    12. unit test
+    13. readme update
 * [ ] Export to excel and Import from excel add options to background process
 * [ ] SSO Google
 * [ ] AuthApi Controller
@@ -189,8 +192,8 @@ Full structure of module
 .
 └── module1
     ├── abstracts
-    ├── constants // constant like enum, static value, etc
-    ├── controllers // business logic for rest
+    ├── constants // constant like enum, static value, status code, etc
+    ├── controllers // business logic for rest api
     ├── decorators // warper decorator, custom decorator, etc
     ├── dtos // request validation
     ├── docs // swagger
@@ -204,7 +207,7 @@ Full structure of module
     ├── repository
         ├── entities // database entities
         └── repositories // database repositories
-    ├── serializations
+    ├── serializations // response serialization
     ├── services
     ├── tasks // task for cron job
     └── module1.module.ts

@@ -1,5 +1,10 @@
 import { Inject } from '@nestjs/common';
-import { InjectConnection, InjectModel, Schema } from '@nestjs/mongoose';
+import {
+    InjectConnection,
+    InjectModel,
+    Schema,
+    SchemaOptions,
+} from '@nestjs/mongoose';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import {
     DATABASE_CONNECTION_NAME,
@@ -20,14 +25,15 @@ export function DatabaseMongoConnection(
 }
 
 export function DatabaseMongoModel(
-    name: string,
+    entity: any,
     connectionName?: string
 ): ParameterDecorator {
-    return InjectModel(name, connectionName || DATABASE_CONNECTION_NAME);
+    return InjectModel(entity.name, connectionName || DATABASE_CONNECTION_NAME);
 }
 
-export function DatabaseMongoSchema(): ClassDecorator {
+export function DatabaseMongoSchema(options?: SchemaOptions): ClassDecorator {
     return Schema({
+        ...options,
         versionKey: false,
         timestamps: {
             createdAt: DATABASE_CREATED_AT_FIELD_NAME,

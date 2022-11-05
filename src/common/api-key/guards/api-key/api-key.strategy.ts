@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import Strategy from 'passport-headerapikey';
 import { IApiKeyRequestHashedData } from 'src/common/api-key/interfaces/api-key.interface';
-import { ApiKeyEntity } from 'src/common/api-key/repository/entity/api-key.entity';
+import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';

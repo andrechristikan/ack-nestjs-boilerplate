@@ -11,7 +11,7 @@ export class SettingMongoRepository
     implements IDatabaseRepository<SettingMongoEntity>
 {
     constructor(
-        @DatabaseMongoModel(SettingMongoEntity.name)
+        @DatabaseMongoModel(SettingMongoEntity)
         private readonly settingModel: Model<SettingMongoEntity>
     ) {
         super(settingModel);
