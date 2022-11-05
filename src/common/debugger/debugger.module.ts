@@ -12,7 +12,7 @@ export class DebuggerOptionsModule {}
 @Global()
 @Module({})
 export class DebuggerModule {
-    static register(): DynamicModule {
+    static forRoot(): DynamicModule {
         let module: DynamicModule;
 
         if (

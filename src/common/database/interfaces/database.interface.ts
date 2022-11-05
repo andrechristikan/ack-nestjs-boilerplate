@@ -1,6 +1,37 @@
+import { ModuleMetadata, Type } from '@nestjs/common';
 import { PopulateOptions } from 'mongoose';
+import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum';
 import { IPaginationOptions } from 'src/common/pagination/interfaces/pagination.interface';
 import { FindOptionsRelations } from 'typeorm';
+
+export interface IDatabaseRepositoryModuleOptions {
+    type: ENUM_DATABASE_TYPE;
+    name: string;
+    databaseName: string;
+    entity: {
+        mongo?: any;
+        postgres?: any;
+    };
+}
+
+export interface IDatabaseRepositoryModuleOptionsFactory {
+    createMassiveConnectOptions():
+        | Promise<IDatabaseRepositoryModuleOptions>
+        | IDatabaseRepositoryModuleOptions;
+}
+
+export interface IDatabaseRepositoryAsyncModuleOptions
+    extends Pick<ModuleMetadata, 'imports'> {
+    name: string;
+    inject?: any[];
+    useExisting?: Type<IDatabaseRepositoryModuleOptionsFactory>;
+    useClass?: Type<IDatabaseRepositoryModuleOptionsFactory>;
+    useFactory?: (
+        ...args: any[]
+    ) =>
+        | Promise<IDatabaseRepositoryModuleOptions>
+        | IDatabaseRepositoryModuleOptions;
+}
 
 // find one
 export interface IDatabaseFindOneOptions<T = any>

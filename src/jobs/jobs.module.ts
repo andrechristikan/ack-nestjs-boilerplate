@@ -4,7 +4,7 @@ import { JobsRouterModule } from './router/jobs.router.module';
 
 @Module({})
 export class JobsModule {
-    static register(): DynamicModule {
+    static forRoot(): DynamicModule {
         if (process.env.JOB_ENABLE === 'true') {
             return {
                 module: JobsModule,

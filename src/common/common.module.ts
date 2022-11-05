@@ -18,6 +18,7 @@ import { SettingModule } from 'src/common/setting/setting.module';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum';
 import { DatabaseConnectorModule } from 'src/common/database/database.connector.module';
+import { DatabaseModule } from 'src/common/database/database.module';
 
 @Module({
     controllers: [],
@@ -132,17 +133,17 @@ import { DatabaseConnectorModule } from 'src/common/database/database.connector.
                 abortEarly: true,
             },
         }),
-        DatabaseConnectorModule.register(),
+        DatabaseConnectorModule.forRoot(),
         MessageModule,
         HelperModule,
         PaginationModule,
         ErrorModule,
-        LoggerModule,
-        DebuggerModule.register(),
+        DebuggerModule.forRoot(),
         ResponseModule,
         RequestModule,
         MiddlewareModule,
         SettingModule,
+        LoggerModule,
         ApiKeyModule,
         AuthModule,
     ],

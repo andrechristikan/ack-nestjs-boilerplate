@@ -8,7 +8,7 @@ import { DatabaseOptionsService } from 'src/common/database/services/database.op
 
 @Module({})
 export class DatabaseConnectorModule {
-    static register(): DynamicModule {
+    static forRoot(): DynamicModule {
         let module: DynamicModule;
 
         if (process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO) {
