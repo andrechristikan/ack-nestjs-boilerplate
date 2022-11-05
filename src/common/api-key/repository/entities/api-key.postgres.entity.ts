@@ -1,8 +1,9 @@
 import { ApiKeyDatabaseName } from 'src/common/api-key/repository/entities/api-key.entity';
 import { DatabasePostgresEntityAbstract } from 'src/common/database/abstracts/database.postgres-entity.abstract';
-import { BeforeInsert, BeforeUpdate, Column, Entity } from 'typeorm';
+import { DatabasePostgresSchema } from 'src/common/database/decorators/database.decorator';
+import { BeforeInsert, BeforeUpdate, Column } from 'typeorm';
 
-@Entity({ name: ApiKeyDatabaseName })
+@DatabasePostgresSchema({ name: ApiKeyDatabaseName })
 export class ApiKeyPostgresEntity extends DatabasePostgresEntityAbstract {
     @Column({
         nullable: false,

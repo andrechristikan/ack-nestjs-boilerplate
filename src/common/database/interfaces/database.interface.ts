@@ -1,6 +1,6 @@
-import { PopulateOptions } from 'mongoose';
+import { Connection, PopulateOptions } from 'mongoose';
 import { IPaginationOptions } from 'src/common/pagination/interfaces/pagination.interface';
-import { FindOptionsRelations } from 'typeorm';
+import { DataSource, FindOptionsRelations } from 'typeorm';
 
 export interface IDatabaseRepositoryModuleOptions {
     name: string;
@@ -19,6 +19,8 @@ export type IDatabasePostgresRepositoryModuleOptions = Omit<
     IDatabaseMongoRepositoryModuleOptions,
     'schema'
 >;
+
+export type IDatabaseConnection = DataSource | Connection;
 
 // find one
 export interface IDatabaseFindOneOptions<T = any>

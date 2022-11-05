@@ -1,8 +1,9 @@
 import { DatabasePostgresEntityAbstract } from 'src/common/database/abstracts/database.postgres-entity.abstract';
+import { DatabasePostgresSchema } from 'src/common/database/decorators/database.decorator';
 import { SettingDatabaseName } from 'src/common/setting/repository/entities/setting.entity';
-import { BeforeInsert, BeforeUpdate, Column, Entity } from 'typeorm';
+import { BeforeInsert, BeforeUpdate, Column } from 'typeorm';
 
-@Entity({ name: SettingDatabaseName })
+@DatabasePostgresSchema({ name: SettingDatabaseName })
 export class SettingPostgresEntity extends DatabasePostgresEntityAbstract {
     @Column({
         nullable: false,

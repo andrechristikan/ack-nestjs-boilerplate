@@ -1,13 +1,7 @@
 import { DynamicModule, Global, Module } from '@nestjs/common';
 import { WinstonModule } from 'nest-winston';
+import { DebuggerOptionsModule } from 'src/common/debugger/debugger.options.module';
 import { DebuggerOptionService } from 'src/common/debugger/services/debugger.options.service';
-
-@Module({
-    providers: [DebuggerOptionService],
-    exports: [DebuggerOptionService],
-    imports: [],
-})
-export class DebuggerOptionsModule {}
 
 @Global()
 @Module({})

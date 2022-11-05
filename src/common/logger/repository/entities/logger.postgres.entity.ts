@@ -1,15 +1,16 @@
 import { ApiKeyPostgresEntity } from 'src/common/api-key/repository/entities/api-key.postgres.entity';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { DatabasePostgresEntityAbstract } from 'src/common/database/abstracts/database.postgres-entity.abstract';
+import { DatabasePostgresSchema } from 'src/common/database/decorators/database.decorator';
 import {
     ENUM_LOGGER_ACTION,
     ENUM_LOGGER_LEVEL,
 } from 'src/common/logger/constants/logger.enum.constant';
 import { LoggerDatabaseName } from 'src/common/logger/repository/entities/logger.entity';
 import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, JoinColumn, ManyToOne } from 'typeorm';
 
-@Entity({ name: LoggerDatabaseName })
+@DatabasePostgresSchema({ name: LoggerDatabaseName })
 export class LoggerPostgresEntity extends DatabasePostgresEntityAbstract {
     @Column({
         nullable: false,

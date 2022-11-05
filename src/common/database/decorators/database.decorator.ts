@@ -11,10 +11,19 @@ import {
     DATABASE_CREATED_AT_FIELD_NAME,
     DATABASE_UPDATED_AT_FIELD_NAME,
 } from 'src/common/database/constants/database.constant';
-import { Entity } from 'typeorm';
+import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum';
+import { Entity, EntityOptions } from 'typeorm';
 
 export function DatabaseRepository(name: string): ParameterDecorator {
     return Inject(name);
+}
+
+// TODO database connection dynamic and support transaction
+
+export function DatabaseConnection(connectionName?: string) {
+    return process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO
+        ? InjectConnection(connectionName || DATABASE_CONNECTION_NAME)
+        : InjectDataSource(connectionName || DATABASE_CONNECTION_NAME);
 }
 
 // mongo
@@ -43,6 +52,11 @@ export function DatabaseMongoSchema(options?: SchemaOptions): ClassDecorator {
 }
 
 // postgres
+export function DatabasePostgresConnection(
+    connectionName?: string
+): ParameterDecorator {
+    return InjectDataSource(connectionName || DATABASE_CONNECTION_NAME);
+}
 
 export function DatabasePostgresModel(
     entity: any,
@@ -51,14 +65,8 @@ export function DatabasePostgresModel(
     return InjectRepository(entity, connectionName || DATABASE_CONNECTION_NAME);
 }
 
-export function DatabasePostgresConnection(
-    connectionName?: string
-): ParameterDecorator {
-    return InjectDataSource(connectionName || DATABASE_CONNECTION_NAME);
-}
-
-export function DatabasePostgresSchema(name: string): ClassDecorator {
-    return Entity({
-        name,
-    });
+export function DatabasePostgresSchema(
+    options?: EntityOptions
+): ClassDecorator {
+    return Entity(options);
 }
