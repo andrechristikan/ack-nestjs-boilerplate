@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { ApiKeyEntity } from 'src/common/api-key/repository/entity/api-key.entity';
 import { ApiKeyMongoEntity } from 'src/common/api-key/repository/entity/api-key.mongo.entity';
 import { DatabaseMongoRepositoryAbstract } from 'src/common/database/abstracts/database.mongo-repository.abstract';
 import { DatabaseMongoModel } from 'src/common/database/decorators/database.decorator';
@@ -12,7 +11,7 @@ export class ApiKeyMongoRepository
     implements IDatabaseRepository<ApiKeyMongoEntity>
 {
     constructor(
-        @DatabaseMongoModel(ApiKeyEntity)
+        @DatabaseMongoModel(ApiKeyMongoEntity.name)
         private readonly apiKeyModel: Model<ApiKeyMongoEntity>
     ) {
         super(apiKeyModel);

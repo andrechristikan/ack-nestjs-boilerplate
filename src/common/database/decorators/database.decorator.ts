@@ -20,10 +20,10 @@ export function DatabaseMongoConnection(
 }
 
 export function DatabaseMongoModel(
-    entity: any,
+    name: string,
     connectionName?: string
 ): ParameterDecorator {
-    return InjectModel(entity.name, connectionName || DATABASE_CONNECTION_NAME);
+    return InjectModel(name, connectionName || DATABASE_CONNECTION_NAME);
 }
 
 export function DatabaseMongoSchema(): ClassDecorator {

@@ -1,27 +1,21 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { LoggerDatabaseName } from 'src/common/logger/repository/entities/logger.entity';
 import {
-    LoggerDatabaseName,
-    LoggerEntity,
-    LoggerRepositoryName,
-} from 'src/common/logger/repository/entities/logger.entity';
-import { LoggerMongoSchema } from 'src/common/logger/repository/entities/logger.mongo.entity';
-import { LoggerMongoRepository } from 'src/common/logger/repository/repositories/logger.mongo.repository';
-
-const provider = {
-    useClass: LoggerMongoRepository,
-    provide: LoggerRepositoryName,
-};
+    LoggerMongoEntity,
+    LoggerMongoSchema,
+} from 'src/common/logger/repository/entities/logger.mongo.entity';
+import { LoggerRepositoryProvider } from 'src/common/logger/repository/providers/logger.repository.provider';
 
 @Module({
-    providers: [provider],
-    exports: [provider],
+    providers: [LoggerRepositoryProvider],
+    exports: [LoggerRepositoryProvider],
     imports: [
         MongooseModule.forFeature(
             [
                 {
-                    name: LoggerEntity.name,
+                    name: LoggerMongoEntity.name,
                     schema: LoggerMongoSchema,
                     collection: LoggerDatabaseName,
                 },

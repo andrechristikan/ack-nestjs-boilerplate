@@ -1,25 +1,19 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { SettingDatabaseName } from 'src/common/setting/repository/entities/setting.entity';
 import {
-    SettingDatabaseName,
-    SettingEntity,
-    SettingRepositoryName,
-} from 'src/common/setting/repository/entities/setting.entity';
-import { SettingMongoSchema } from 'src/common/setting/repository/entities/setting.mongo.entity';
-import { SettingMongoRepository } from 'src/common/setting/repository/repositories/setting.mongo.repository';
-
-const provider = {
-    useClass: SettingMongoRepository,
-    provide: SettingRepositoryName,
-};
+    SettingMongoEntity,
+    SettingMongoSchema,
+} from 'src/common/setting/repository/entities/setting.mongo.entity';
+import { SettingRepositoryProvider } from 'src/common/setting/repository/providers/setting.repository.provider';
 
 @Module({
     imports: [
         MongooseModule.forFeature(
             [
                 {
-                    name: SettingEntity.name,
+                    name: SettingMongoEntity.name,
                     schema: SettingMongoSchema,
                     collection: SettingDatabaseName,
                 },
@@ -27,8 +21,8 @@ const provider = {
             DATABASE_CONNECTION_NAME
         ),
     ],
-    exports: [provider],
-    providers: [provider],
+    exports: [SettingRepositoryProvider],
+    providers: [SettingRepositoryProvider],
     controllers: [],
 })
 export class SettingRepositoryModule {}

@@ -1,28 +1,22 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ApiKeyDatabaseName } from 'src/common/api-key/repository/entity/api-key.entity';
 import {
-    ApiKeyDatabaseName,
-    ApiKeyEntity,
-    ApiKeyRepositoryName,
-} from 'src/common/api-key/repository/entity/api-key.entity';
-import { ApiKeyMongoSchema } from 'src/common/api-key/repository/entity/api-key.mongo.entity';
-import { ApiKeyMongoRepository } from 'src/common/api-key/repository/repositories/api-key.mongo.repository';
+    ApiKeyMongoEntity,
+    ApiKeyMongoSchema,
+} from 'src/common/api-key/repository/entity/api-key.mongo.entity';
+import { ApiKeyRepositoryProvider } from 'src/common/api-key/repository/providers/api-key.repository.provider';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 
-const provider = {
-    useClass: ApiKeyMongoRepository,
-    provide: ApiKeyRepositoryName,
-};
-
 @Module({
-    providers: [provider],
-    exports: [provider],
+    providers: [ApiKeyRepositoryProvider],
+    exports: [ApiKeyRepositoryProvider],
     controllers: [],
     imports: [
         MongooseModule.forFeature(
             [
                 {
-                    name: ApiKeyEntity.name,
+                    name: ApiKeyMongoEntity.name,
                     schema: ApiKeyMongoSchema,
                     collection: ApiKeyDatabaseName,
                 },
