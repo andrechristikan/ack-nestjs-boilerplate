@@ -78,7 +78,7 @@ Next development
     7. ~~update migration~~
     8. ~~update migration~~
     9. update modules/**
-    10. pagination search decorator for postgres
+    10. ~pagination search decorator for postgres~
     11. interface of service
     12. unit test
     13. readme update

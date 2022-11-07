@@ -17,7 +17,7 @@ import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.stat
 import {
     ENUM_DOC_REQUEST_BODY_TYPE,
     ENUM_DOC_RESPONSE_BODY_TYPE,
-} from 'src/common/doc/constants/doc.constant';
+} from 'src/common/doc/constants/doc.enum.constant';
 import {
     IDocDefaultOptions,
     IDocOfOptions,

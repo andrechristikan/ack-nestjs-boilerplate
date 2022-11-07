@@ -9,8 +9,6 @@ export interface IHelperStringService {
 
     censor(value: string): string;
 
-    checkStringOrNumber(text: string): boolean;
-
     convertStringToNumberOrBooleanIfPossible(
         text: string
     ): string | number | boolean;

@@ -13,6 +13,8 @@ import {
     IDatabaseDeleteOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
+import { ENUM_PAGINATION_AVAILABLE_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { IPaginationSort } from 'src/common/pagination/interfaces/pagination.interface';
 import {
     FindManyOptions,
     FindOneOptions,
@@ -53,6 +55,20 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         return map;
     }
 
+    private _convertSort(
+        sort: IPaginationSort
+    ): Record<string, ENUM_PAGINATION_AVAILABLE_SORT_TYPE> {
+        const data: Record<string, ENUM_PAGINATION_AVAILABLE_SORT_TYPE> = {};
+        Object.keys(sort).forEach((val) => {
+            data[val] =
+                sort[val] === ENUM_PAGINATION_AVAILABLE_SORT_TYPE.ASC
+                    ? ENUM_PAGINATION_AVAILABLE_SORT_TYPE.ASC
+                    : ENUM_PAGINATION_AVAILABLE_SORT_TYPE.DESC;
+        });
+
+        return data;
+    }
+
     private _updateEntity<T, N>(entity: T, data: N): T {
         Object.keys(data).forEach((val) => {
             entity[val] = data[val];
@@ -62,7 +78,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
     }
 
     async findAll<Y = T>(
-        find?: Record<string, any>,
+        find?: Record<string, any> | Record<string, any>[],
         options?: IDatabaseFindAllOptions<QueryRunner>
     ): Promise<Y[]> {
         const findAll: FindManyOptions<T> = {
@@ -91,7 +107,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         }
 
         if (options && options.sort) {
-            findAll.order = this._convertToObjectOfBoolean(
+            findAll.order = this._convertSort(
                 options.sort
             ) as FindOptionsOrder<T>;
         }
@@ -111,7 +127,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
     }
 
     async findOne<Y = T>(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseFindOneOptions<QueryRunner>
     ): Promise<Y> {
         const findOne: FindOneOptions<T> = {
@@ -142,8 +158,8 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         }
 
         if (options && options.sort) {
-            findOne.order = this._convertToObjectOfBoolean(
-                options.select
+            findOne.order = this._convertSort(
+                options.sort
             ) as FindOptionsOrder<T>;
         }
 
@@ -180,8 +196,8 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         }
 
         if (options && options.sort) {
-            findOne.order = this._convertToObjectOfBoolean(
-                options.select
+            findOne.order = this._convertSort(
+                options.sort
             ) as FindOptionsOrder<T>;
         }
 
@@ -193,7 +209,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
     }
 
     async getTotal(
-        find?: Record<string, any>,
+        find?: Record<string, any> | Record<string, any>[],
         options?: IDatabaseOptions<QueryRunner>
     ): Promise<number> {
         const count: FindManyOptions<any> = {
@@ -221,7 +237,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
     }
 
     async exists(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseExistOptions<QueryRunner>
     ): Promise<boolean> {
         const findOne: FindOneOptions<T> = {
@@ -304,7 +320,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
     }
 
     async updateOne<N>(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         data: N,
         options?: IDatabaseUpdateOptions<QueryRunner>
     ): Promise<T> {
@@ -333,7 +349,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
     }
 
     async deleteOne(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseDeleteOptions<QueryRunner>
     ): Promise<T> {
         const findOne: FindOneOptions = {
@@ -415,7 +431,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
     }
 
     async softDeleteOne(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseSoftDeleteOptions<QueryRunner>
     ): Promise<T> {
         const findOne: FindOneOptions = {
@@ -471,7 +487,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
     }
 
     async restoreOne(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseRestoreOptions<QueryRunner>
     ): Promise<T> {
         const findOne: FindOneOptions = {
@@ -542,7 +558,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
     }
 
     async deleteMany(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseManyOptions<QueryRunner>
     ): Promise<boolean> {
         const findAll: FindManyOptions<any> = {
@@ -608,7 +624,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
     }
 
     async softDeleteMany(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseSoftDeleteManyOptions<QueryRunner>
     ): Promise<boolean> {
         const findAll: FindManyOptions<any> = {
@@ -674,7 +690,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
     }
 
     async restoreMany(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseRestoreManyOptions<QueryRunner>
     ): Promise<boolean> {
         const findAll: FindManyOptions<any> = {
@@ -706,7 +722,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
     }
 
     async updateMany<N>(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         data: N,
         options?: IDatabaseManyOptions<QueryRunner>
     ): Promise<boolean> {

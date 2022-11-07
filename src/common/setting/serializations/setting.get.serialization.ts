@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { Exclude, Type } from 'class-transformer';
+import { Exclude, Transform, Type } from 'class-transformer';
 
 export class SettingGetSerialization {
     @ApiProperty({
@@ -34,6 +34,18 @@ export class SettingGetSerialization {
         ],
         required: true,
     })
+    @Transform(({ value }) => {
+        let convertValue: string | boolean | number = value;
+
+        const regexNumber = /^-?\d+$/;
+        if (value === 'true' || value === 'false') {
+            convertValue = value === 'true';
+        } else if (regexNumber.test(value)) {
+            convertValue = Number(value);
+        }
+
+        return convertValue;
+    })
     readonly value: string | number | boolean;
 
     @ApiProperty({
@@ -43,6 +55,13 @@ export class SettingGetSerialization {
     })
     readonly createdAt: Date;
 
-    @Exclude()
+    @ApiProperty({
+        description: 'Date updated at',
+        example: faker.date.recent(),
+        required: false,
+    })
     readonly updatedAt: Date;
+
+    @Exclude()
+    readonly deletedAt: Date;
 }

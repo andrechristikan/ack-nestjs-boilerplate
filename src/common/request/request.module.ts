@@ -19,7 +19,6 @@ import { MinGreaterThanConstraint } from './validations/request.min-greater-than
 import { IsOnlyDigitsConstraint } from './validations/request.only-digits.validation';
 import { SafeStringConstraint } from './validations/request.safe-string.validation';
 import { SkipConstraint } from './validations/request.skip.validation';
-import { StringOrNumberOrBooleanConstraint } from './validations/request.string-or-number-or-boolean.validation';
 
 @Module({
     controllers: [],
@@ -51,7 +50,6 @@ import { StringOrNumberOrBooleanConstraint } from './validations/request.string-
         MinGreaterThanEqualConstraint,
         MinGreaterThanConstraint,
         SkipConstraint,
-        StringOrNumberOrBooleanConstraint,
         SafeStringConstraint,
         IsOnlyDigitsConstraint,
         MinDateTodayEqualConstraint,

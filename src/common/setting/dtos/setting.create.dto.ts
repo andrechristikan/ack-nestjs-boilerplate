@@ -2,7 +2,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsString, IsNotEmpty, IsOptional, ValidateIf } from 'class-validator';
 import { SafeString } from 'src/common/request/validations/request.safe-string.validation';
-import { StringOrNumberOrBoolean } from 'src/common/request/validations/request.string-or-number-or-boolean.validation';
 
 export class SettingCreateDto {
     @IsString()
@@ -24,7 +23,7 @@ export class SettingCreateDto {
     readonly description?: string;
 
     @IsNotEmpty()
-    @StringOrNumberOrBoolean()
+    @Type(() => String)
     @ApiProperty({
         name: 'value',
         description: 'The value of setting',

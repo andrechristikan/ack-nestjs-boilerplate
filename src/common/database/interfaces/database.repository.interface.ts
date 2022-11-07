@@ -17,12 +17,12 @@ import {
 
 export interface IDatabaseRepository<T> {
     findAll<Y = T>(
-        find?: Record<string, any>,
+        find?: Record<string, any> | Record<string, any>[],
         options?: IDatabaseFindAllOptions<any>
     ): Promise<Y[]>;
 
     findOne<Y = T>(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseFindOneOptions<any>
     ): Promise<Y>;
 
@@ -32,12 +32,12 @@ export interface IDatabaseRepository<T> {
     ): Promise<Y>;
 
     getTotal(
-        find?: Record<string, any>,
+        find?: Record<string, any> | Record<string, any>[],
         options?: IDatabaseOptions<any>
     ): Promise<number>;
 
     exists(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseExistOptions<any>
     ): Promise<boolean>;
 
@@ -55,13 +55,13 @@ export interface IDatabaseRepository<T> {
     ): Promise<T>;
 
     updateOne<N>(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         data: N,
         options?: IDatabaseUpdateOptions<any>
     ): Promise<T>;
 
     deleteOne(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseDeleteOptions<any>
     ): Promise<T>;
 
@@ -76,7 +76,7 @@ export interface IDatabaseRepository<T> {
     ): Promise<T>;
 
     softDeleteOne(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseSoftDeleteOptions<any>
     ): Promise<T>;
 
@@ -86,7 +86,7 @@ export interface IDatabaseRepository<T> {
     ): Promise<T>;
 
     restoreOne(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseRestoreOptions<any>
     ): Promise<T>;
 
@@ -102,7 +102,7 @@ export interface IDatabaseRepository<T> {
     ): Promise<boolean>;
 
     deleteMany(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseManyOptions<any>
     ): Promise<boolean>;
 
@@ -112,7 +112,7 @@ export interface IDatabaseRepository<T> {
     ): Promise<boolean>;
 
     softDeleteMany(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseSoftDeleteManyOptions<any>
     ): Promise<boolean>;
 
@@ -122,12 +122,12 @@ export interface IDatabaseRepository<T> {
     ): Promise<boolean>;
 
     restoreMany(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseRestoreManyOptions<any>
     ): Promise<boolean>;
 
     updateMany<N>(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         data: N,
         options?: IDatabaseManyOptions<any>
     ): Promise<boolean>;

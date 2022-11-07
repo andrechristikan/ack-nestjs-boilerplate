@@ -1,4 +1,7 @@
-import { ENUM_PAGINATION_AVAILABLE_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import {
+    ENUM_PAGINATION_AVAILABLE_SORT_TYPE,
+    ENUM_PAGINATION_FILTER_CASE_OPTIONS,
+} from 'src/common/pagination/constants/pagination.enum.constant';
 
 export type IPaginationSort = Record<
     string,
@@ -11,17 +14,17 @@ export interface IPaginationOptions {
     sort?: IPaginationSort;
 }
 
-export interface IPaginationFilterOptions {
-    required?: boolean;
-}
-
-export interface IPaginationFilterDateOptions extends IPaginationFilterOptions {
-    asEndDate?: {
-        moreThanField: string;
+export interface IPaginationFilterDateOptions {
+    endOfDate?: boolean;
+    operation?: {
+        moreThanEqualToday?: boolean;
+        lessThanEqualToday?: boolean;
+        moreThanToday?: boolean;
+        lessThanToday?: boolean;
     };
 }
 
-export interface IPaginationFilterStringOptions
-    extends IPaginationFilterOptions {
-    lowercase?: boolean;
+export interface IPaginationFilterStringOptions {
+    case?: ENUM_PAGINATION_FILTER_CASE_OPTIONS;
+    trim?: boolean;
 }

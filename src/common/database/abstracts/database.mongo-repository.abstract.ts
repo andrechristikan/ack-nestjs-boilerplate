@@ -1,4 +1,10 @@
-import { ClientSession, Model, PipelineStage, PopulateOptions } from 'mongoose';
+import {
+    ClientSession,
+    Model,
+    PipelineStage,
+    PopulateOptions,
+    SortOrder,
+} from 'mongoose';
 import { DATABASE_DELETED_AT_FIELD_NAME } from 'src/common/database/constants/database.constant';
 import {
     IDatabaseCreateOptions,
@@ -17,6 +23,8 @@ import {
     IDatabaseDeleteOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
+import { ENUM_PAGINATION_AVAILABLE_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { IPaginationSort } from 'src/common/pagination/interfaces/pagination.interface';
 
 export abstract class DatabaseMongoRepositoryAbstract<T>
     implements IDatabaseRepository<T>
@@ -32,8 +40,18 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         this._joinOnFind = options;
     }
 
+    private _convertSort(sort: IPaginationSort): Record<string, number> {
+        const data: Record<string, number> = {};
+        Object.keys(sort).forEach((val) => {
+            data[val] =
+                sort[val] === ENUM_PAGINATION_AVAILABLE_SORT_TYPE.ASC ? 1 : -1;
+        });
+
+        return data;
+    }
+
     async findAll<Y = T>(
-        find?: Record<string, any>,
+        find?: Record<string, any> | Record<string, any>[],
         options?: IDatabaseFindAllOptions<ClientSession>
     ): Promise<Y[]> {
         const findAll = this._repository.find(find);
@@ -57,7 +75,9 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         }
 
         if (options && options.sort) {
-            findAll.sort(options.sort);
+            findAll.sort(
+                this._convertSort(options.sort) as { [key: string]: SortOrder }
+            );
         }
 
         if (options && options.join) {
@@ -76,7 +96,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     }
 
     async findOne<Y = T>(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseFindOneOptions<ClientSession>
     ): Promise<Y> {
         const findOne = this._repository.findOne(find);
@@ -104,7 +124,9 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         }
 
         if (options && options.sort) {
-            findOne.sort(options.sort);
+            findOne.sort(
+                this._convertSort(options.sort) as { [key: string]: SortOrder }
+            );
         }
 
         return findOne.lean();
@@ -139,14 +161,16 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         }
 
         if (options && options.sort) {
-            findOne.sort(options.sort);
+            findOne.sort(
+                this._convertSort(options.sort) as { [key: string]: SortOrder }
+            );
         }
 
         return findOne.lean();
     }
 
     async getTotal(
-        find?: Record<string, any>,
+        find?: Record<string, any> | Record<string, any>[],
         options?: IDatabaseOptions<ClientSession>
     ): Promise<number> {
         const count = this._repository.countDocuments(find);
@@ -173,7 +197,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     }
 
     async exists(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseExistOptions<ClientSession>
     ): Promise<boolean> {
         const exist = this._repository.exists({
@@ -270,7 +294,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     }
 
     async updateOne<N>(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         data: N,
         options?: IDatabaseUpdateOptions<ClientSession>
     ): Promise<T> {
@@ -301,7 +325,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     }
 
     async deleteOne(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseDeleteOptions<ClientSession>
     ): Promise<T> {
         const del = this._repository.findOneAndDelete(find, { new: true });
@@ -375,7 +399,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     }
 
     async softDeleteOne(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseSoftDeleteOptions<ClientSession>
     ): Promise<T> {
         const del = this._repository
@@ -435,7 +459,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     }
 
     async restoreOne(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseRestoreOptions<ClientSession>
     ): Promise<T> {
         const rest = this._repository
@@ -515,7 +539,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     }
 
     async deleteMany(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseManyOptions<ClientSession>
     ): Promise<boolean> {
         const del = this._repository
@@ -584,7 +608,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     }
 
     async softDeleteMany(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseSoftDeleteManyOptions<ClientSession>
     ): Promise<boolean> {
         const softDel = this._repository
@@ -657,7 +681,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     }
 
     async restoreMany(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseRestoreManyOptions<ClientSession>
     ): Promise<boolean> {
         const rest = this._repository
@@ -690,7 +714,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     }
 
     async updateMany<N>(
-        find: Record<string, any>,
+        find: Record<string, any> | Record<string, any>[],
         data: N,
         options?: IDatabaseManyOptions<ClientSession>
     ): Promise<boolean> {

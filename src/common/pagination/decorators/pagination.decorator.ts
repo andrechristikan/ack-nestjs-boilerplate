@@ -1,16 +1,8 @@
-import { applyDecorators, UsePipes } from '@nestjs/common';
+import { applyDecorators } from '@nestjs/common';
 import { Expose, Transform, Type } from 'class-transformer';
-import {
-    IsBoolean,
-    IsMongoId,
-    IsOptional,
-    ValidateIf,
-    IsEnum,
-    IsNotEmpty,
-    IsDate,
-    IsString,
-    IsObject,
-} from 'class-validator';
+import { IsBoolean, IsOptional, ValidateIf } from 'class-validator';
+import { Types } from 'mongoose';
+import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum';
 import {
     PAGINATION_AVAILABLE_SORT,
     PAGINATION_MAX_PAGE,
@@ -19,35 +11,44 @@ import {
     PAGINATION_PER_PAGE,
     PAGINATION_SORT,
 } from 'src/common/pagination/constants/pagination.constant';
-import { ENUM_PAGINATION_AVAILABLE_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import {
+    ENUM_PAGINATION_AVAILABLE_SORT_TYPE,
+    ENUM_PAGINATION_FILTER_CASE_OPTIONS,
+} from 'src/common/pagination/constants/pagination.enum.constant';
 import {
     IPaginationFilterDateOptions,
-    IPaginationFilterOptions,
     IPaginationFilterStringOptions,
 } from 'src/common/pagination/interfaces/pagination.interface';
-import { RequestAddDatePipe } from 'src/common/request/pipes/request.add-date.pipe';
-import { MinGreaterThan } from 'src/common/request/validations/request.min-greater-than.validation';
-import { Skip } from 'src/common/request/validations/request.skip.validation';
+import { ILike } from 'typeorm';
 
-// TODO pagination for postgres / typeorm
 export function PaginationSearch(availableSearch: string[]): PropertyDecorator {
     return applyDecorators(
         Expose(),
         IsOptional(),
-        IsObject(),
         ValidateIf((e) => e.search !== ''),
-        Transform(({ value }) =>
-            value
-                ? {
-                      $or: availableSearch.map((val) => ({
-                          [val]: {
-                              $regex: new RegExp(value),
-                              $options: 'i',
-                          },
-                      })),
-                  }
-                : undefined
-        )
+        Transform(({ value }) => {
+            if (!value) {
+                return undefined;
+            }
+
+            if (process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO) {
+                return {
+                    $or: availableSearch.map((val) => ({
+                        [val]: {
+                            $regex: new RegExp(value),
+                            $options: 'i',
+                        },
+                    })),
+                };
+            }
+
+            const data: Record<string, any> = {};
+            availableSearch.forEach((val) => {
+                data[val] = ILike(`%${value}%`);
+            });
+
+            return data;
+        })
     );
 }
 
@@ -106,10 +107,19 @@ export function PaginationSort(
             const convertField: string = rAvailableSort.includes(field)
                 ? field
                 : bSort;
-            const convertType: number =
-                type === 'desc'
+
+            let convertType: string | number =
+                type.toUpperCase() === ENUM_PAGINATION_AVAILABLE_SORT_TYPE.DESC
                     ? ENUM_PAGINATION_AVAILABLE_SORT_TYPE.DESC
                     : ENUM_PAGINATION_AVAILABLE_SORT_TYPE.ASC;
+
+            if (process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO) {
+                convertType =
+                    type.toUpperCase() ===
+                    ENUM_PAGINATION_AVAILABLE_SORT_TYPE.DESC
+                        ? -1
+                        : 1;
+            }
 
             return { [convertField]: convertType };
         })
@@ -131,13 +141,37 @@ export function PaginationFilterBoolean(
     return applyDecorators(
         Expose(),
         IsBoolean({ each: true }),
-        Transform(({ value }) =>
-            value
-                ? value
-                      .split(',')
-                      .map((val: string) => (val === 'true' ? true : false))
-                : defaultValue
-        )
+        Transform(({ value, key }) => {
+            if (process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO) {
+                return value
+                    ? {
+                          [key]: {
+                              $in: value
+                                  .split(',')
+                                  .map((val: string) =>
+                                      val === 'true' ? true : false
+                                  ),
+                          },
+                      }
+                    : { [key]: { $in: defaultValue } };
+            }
+
+            return value
+                ? {
+                      [key]: value
+                          .split(',')
+                          .map((val: string) =>
+                              val === 'true'
+                                  ? { [key]: true }
+                                  : { [key]: false }
+                          ),
+                  }
+                : {
+                      [key]: defaultValue.map((val: boolean) => ({
+                          [key]: val,
+                      })),
+                  };
+        })
     );
 }
 
@@ -145,76 +179,109 @@ export function PaginationFilterEnum<T>(
     defaultValue: T[],
     defaultEnum: Record<string, any>
 ): PropertyDecorator {
-    const cEnum = defaultEnum as unknown;
     return applyDecorators(
         Expose(),
-        IsEnum(cEnum as object, { each: true }),
-        Transform(({ value }) =>
-            value
-                ? value.split(',').map((val: string) => defaultEnum[val])
-                : defaultValue
-        )
+        Transform(({ value, key }) => {
+            if (process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO) {
+                return value
+                    ? {
+                          [key]: {
+                              $in: value
+                                  .split(',')
+                                  .map((val: string) => defaultEnum[val]),
+                          },
+                      }
+                    : { [key]: { $in: defaultValue } };
+            }
+
+            return value
+                ? { [key]: value.split(',').map((val: T) => ({ [key]: val })) }
+                : { [key]: defaultValue.map((val: T) => ({ [key]: val })) };
+        })
     );
 }
 
-export function PaginationFilterId(
-    field: string,
-    options?: IPaginationFilterOptions
-): PropertyDecorator {
+export function PaginationFilterId(): PropertyDecorator {
     return applyDecorators(
         Expose(),
-        IsMongoId(),
-        options && options.required ? IsNotEmpty() : Skip(),
-        options && options.required
-            ? Skip()
-            : ValidateIf((e) => e[field] !== '' && e[field])
+        Transform(({ value, key }) => {
+            if (process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO) {
+                return value ? { [key]: new Types.ObjectId(value) } : undefined;
+            }
+
+            return value ? { [key]: value } : undefined;
+        })
     );
 }
 
 export function PaginationFilterDate(
-    field: string,
     options?: IPaginationFilterDateOptions
 ): PropertyDecorator {
     return applyDecorators(
         Expose(),
-        IsDate(),
-        Type(() => Date),
-        options && options.required ? IsNotEmpty() : IsOptional(),
-        options && options.required
-            ? Skip()
-            : options.asEndDate
-            ? ValidateIf(
-                  (e) =>
-                      e[field] !== '' &&
-                      e[options.asEndDate.moreThanField] !== '' &&
-                      e[field] &&
-                      e[options.asEndDate.moreThanField]
-              )
-            : ValidateIf((e) => e[field] !== '' && e[field]),
-        options && options.asEndDate
-            ? MinGreaterThan(options.asEndDate.moreThanField)
-            : Skip(),
-        options && options.asEndDate ? UsePipes(RequestAddDatePipe(1)) : Skip()
+        Transform(({ value, key }) => {
+            let valDate = new Date(value);
+            if (options) {
+                const today = new Date();
+
+                if (
+                    options?.operation?.lessThanEqualToday &&
+                    valDate <= today
+                ) {
+                    valDate = today;
+                } else if (
+                    options?.operation?.lessThanToday &&
+                    valDate < today
+                ) {
+                    valDate = today;
+                } else if (
+                    options?.operation?.moreThanEqualToday &&
+                    valDate >= today
+                ) {
+                    valDate = today;
+                } else if (
+                    options?.operation?.moreThanToday &&
+                    valDate > today
+                ) {
+                    valDate = today;
+                }
+
+                if (options?.endOfDate) {
+                    valDate = valDate ?? today;
+                    valDate.setHours(23, 59, 59, 999);
+                }
+            }
+
+            return value ? { [key]: valDate } : undefined;
+        })
     );
 }
 
 export function PaginationFilterString(
-    field: string,
     options?: IPaginationFilterStringOptions
 ): PropertyDecorator {
     return applyDecorators(
         Expose(),
-        IsString(),
-        options && options.lowercase
-            ? Transform(({ value }) =>
-                  value
-                      ? value.split(',').map((val: string) => val.toLowerCase())
-                      : undefined
-              )
-            : Skip(),
-        options && options.required ? IsNotEmpty() : IsOptional(),
-        options && options.required
-            ? Skip()
-            : ValidateIf((e) => e[field] !== '' && e[field])
+        Transform(({ value, key }) => {
+            if (options) {
+                if (
+                    options?.case ===
+                    ENUM_PAGINATION_FILTER_CASE_OPTIONS.UPPERCASE
+                ) {
+                    value = value.toUpperCase();
+                } else if (
+                    options?.case ===
+                    ENUM_PAGINATION_FILTER_CASE_OPTIONS.LOWERCASE
+                ) {
+                    value = value.toUpperCase();
+                }
+
+                if (options?.trim) {
+                    value = value.trim();
+                }
+            }
+
+            return value ? { [key]: value } : undefined;
+        })
     );
 }

@@ -56,12 +56,6 @@ export class HelperStringService implements IHelperStringService {
         return `${censorString}${visibleString}`;
     }
 
-    checkStringOrNumber(text: string): boolean {
-        const regex = new RegExp(/^[\w.-]+$/);
-
-        return regex.test(text);
-    }
-
     convertStringToNumberOrBooleanIfPossible<T>(text: string): T {
         let convertValue: string | boolean | number = text;
 
