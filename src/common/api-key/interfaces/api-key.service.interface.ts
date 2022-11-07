@@ -1,7 +1,4 @@
-import {
-    ApiKeyCreateDto,
-    ApiKeyCreateRawDto,
-} from 'src/common/api-key/dtos/api-key.create.dto';
+import { ApiKeyCreateRawDto } from 'src/common/api-key/dtos/api-key.create.dto';
 import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
 import {
     IApiKey,
@@ -45,11 +42,6 @@ export interface IApiKeyService {
     inactive(_id: string, options?: IDatabaseOptions): Promise<ApiKeyEntity>;
 
     active(_id: string, options?: IDatabaseOptions): Promise<ApiKeyEntity>;
-
-    create(
-        data: ApiKeyCreateDto,
-        options?: IDatabaseCreateOptions
-    ): Promise<IApiKey>;
 
     createRaw(
         data: ApiKeyCreateRawDto,

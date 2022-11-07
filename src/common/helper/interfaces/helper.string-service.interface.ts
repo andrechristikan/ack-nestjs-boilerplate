@@ -9,9 +9,7 @@ export interface IHelperStringService {
 
     censor(value: string): string;
 
-    convertStringToNumberOrBooleanIfPossible(
-        text: string
-    ): string | number | boolean;
+    convertStringToNumberOrBooleanIfPossible<T>(text: string): T;
 
     checkPasswordWeak(password: string, length?: number): boolean;
 

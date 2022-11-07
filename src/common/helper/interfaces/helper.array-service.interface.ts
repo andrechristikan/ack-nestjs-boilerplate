@@ -30,6 +30,7 @@ export interface IHelperArrayService {
     shuffle<T>(array: T[]): T[];
 
     merge<T>(a: T[], b: T[]): T[];
+
     mergeUnique<T>(a: T[], b: T[]): T[];
 
     filterNotIncludeByValue<T>(array: T[], value: T): T[];
