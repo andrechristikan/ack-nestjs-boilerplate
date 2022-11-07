@@ -1,6 +1,6 @@
 import { applyDecorators } from '@nestjs/common';
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsBoolean, IsOptional, ValidateIf } from 'class-validator';
+import { IsOptional, ValidateIf } from 'class-validator';
 import { Types } from 'mongoose';
 import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum';
 import {
@@ -19,7 +19,7 @@ import {
     IPaginationFilterDateOptions,
     IPaginationFilterStringOptions,
 } from 'src/common/pagination/interfaces/pagination.interface';
-import { ILike } from 'typeorm';
+import { ILike, In } from 'typeorm';
 
 export function PaginationSearch(availableSearch: string[]): PropertyDecorator {
     return applyDecorators(
@@ -140,7 +140,6 @@ export function PaginationFilterBoolean(
 ): PropertyDecorator {
     return applyDecorators(
         Expose(),
-        IsBoolean({ each: true }),
         Transform(({ value, key }) => {
             if (process.env.DATABASE_TYPE === ENUM_DATABASE_TYPE.MONGO) {
                 return value
@@ -158,18 +157,16 @@ export function PaginationFilterBoolean(
 
             return value
                 ? {
-                      [key]: value
-                          .split(',')
-                          .map((val: string) =>
-                              val === 'true'
-                                  ? { [key]: true }
-                                  : { [key]: false }
-                          ),
+                      [key]: In(
+                          value
+                              .split(',')
+                              .map((val: string) =>
+                                  val === 'true' ? true : false
+                              )
+                      ),
                   }
                 : {
-                      [key]: defaultValue.map((val: boolean) => ({
-                          [key]: val,
-                      })),
+                      [key]: In(defaultValue),
                   };
         })
     );
@@ -195,8 +192,15 @@ export function PaginationFilterEnum<T>(
             }
 
             return value
-                ? { [key]: value.split(',').map((val: T) => ({ [key]: val })) }
-                : { [key]: defaultValue.map((val: T) => ({ [key]: val })) };
+                ? {
+                      [key]: In(
+                          value
+                              .split(',')
+                              .map((val: string) => defaultEnum[val])
+                              .filter((val: string) => val !== undefined)
+                      ),
+                  }
+                : { [key]: In(defaultValue) };
         })
     );
 }

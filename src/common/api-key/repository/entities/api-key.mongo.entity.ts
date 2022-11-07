@@ -12,6 +12,7 @@ export class ApiKeyMongoEntity extends DatabaseMongoEntityAbstract {
         type: String,
         minlength: 1,
         maxlength: 100,
+        lowercase: true,
         trim: true,
     })
     name: string;
