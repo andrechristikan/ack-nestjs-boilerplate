@@ -23,7 +23,7 @@ export class MigrationSettingSeed {
             });
 
             await this.settingService.create({
-                name: 'limitMaxPartNumber',
+                name: 'limitAwsMaxPartNumber',
                 description: 'Max Part Number Aws Chunk File',
                 value: '10000',
             });
