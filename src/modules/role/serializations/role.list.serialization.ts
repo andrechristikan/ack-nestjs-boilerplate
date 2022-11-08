@@ -1,11 +1,16 @@
-import { OmitType } from '@nestjs/swagger';
-import { Exclude } from 'class-transformer';
-import { Permission } from 'src/modules/permission/schemas/permission.schema';
+import { faker } from '@faker-js/faker';
+import { ApiProperty, OmitType } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { RoleGetSerialization } from './role.get.serialization';
 
 export class RoleListSerialization extends OmitType(RoleGetSerialization, [
     'permissions',
 ] as const) {
-    @Exclude()
-    readonly permissions: Permission[];
+    @ApiProperty({
+        description: 'Count of permissions',
+        example: faker.random.numeric(2, { allowLeadingZeros: false }),
+        required: true,
+    })
+    @Transform(({ value }) => value.length)
+    readonly permissions: number;
 }

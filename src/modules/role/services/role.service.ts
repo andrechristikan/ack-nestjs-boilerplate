@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+import { DatabaseRepository } from 'src/common/database/decorators/database.decorator';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,
@@ -8,20 +9,21 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { DatabaseService } from 'src/common/database/services/database.service';
+import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
 import { RoleActiveDto } from 'src/modules/role/dtos/role.active.dto';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
-import { IRoleUpdate } from 'src/modules/role/interfaces/role.interface';
 import { IRoleService } from 'src/modules/role/interfaces/role.service.interface';
-import { RoleRepository } from 'src/modules/role/repositories/role.repository';
-import { Role, RoleEntity } from 'src/modules/role/schemas/role.schema';
+import {
+    RoleEntity,
+    RoleRepository,
+} from 'src/modules/role/repository/entities/role.entity';
 
 @Injectable()
 export class RoleService implements IRoleService {
     constructor(
-        private readonly roleRepository: RoleRepository,
-        private readonly databaseService: DatabaseService
+        @DatabaseRepository(RoleRepository)
+        private readonly roleRepository: IDatabaseRepository<RoleEntity>
     ) {}
 
     async findAll<T>(
@@ -70,7 +72,7 @@ export class RoleService implements IRoleService {
     async create(
         { name, permissions, accessFor }: RoleCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<Role> {
+    ): Promise<RoleEntity> {
         const create: RoleEntity = new RoleEntity();
         create.name = name;
         create.permissions = permissions;
@@ -80,7 +82,9 @@ export class RoleService implements IRoleService {
         return this.roleRepository.create<RoleEntity>(create, options);
     }
 
-    async createSuperAdmin(options?: IDatabaseCreateOptions): Promise<Role> {
+    async createSuperAdmin(
+        options?: IDatabaseCreateOptions
+    ): Promise<RoleEntity> {
         const create: RoleEntity = new RoleEntity();
         create.name = 'superadmin';
         create.permissions = [];
@@ -92,23 +96,20 @@ export class RoleService implements IRoleService {
 
     async update(
         _id: string,
-        { name, permissions, accessFor }: RoleUpdateDto,
+        data: RoleUpdateDto,
         options?: IDatabaseOptions
-    ): Promise<Role> {
-        const update: IRoleUpdate = {
-            name,
-            accessFor,
-            permissions: permissions,
-        };
-
-        return this.roleRepository.updateOneById<IRoleUpdate>(
+    ): Promise<RoleEntity> {
+        return this.roleRepository.updateOneById<RoleUpdateDto>(
             _id,
-            update,
+            data,
             options
         );
     }
 
-    async inactive(_id: string, options?: IDatabaseOptions): Promise<Role> {
+    async inactive(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<RoleEntity> {
         const update: RoleActiveDto = {
             isActive: false,
         };
@@ -116,7 +117,7 @@ export class RoleService implements IRoleService {
         return this.roleRepository.updateOneById(_id, update, options);
     }
 
-    async active(_id: string, options?: IDatabaseOptions): Promise<Role> {
+    async active(_id: string, options?: IDatabaseOptions): Promise<RoleEntity> {
         const update: RoleActiveDto = {
             isActive: true,
         };
@@ -127,13 +128,13 @@ export class RoleService implements IRoleService {
     async deleteOneById(
         _id: string,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<Role> {
+    ): Promise<RoleEntity> {
         return this.roleRepository.deleteOneById(_id, options);
     }
     async deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<Role> {
+    ): Promise<RoleEntity> {
         return this.roleRepository.deleteOne(find, options);
     }
 }

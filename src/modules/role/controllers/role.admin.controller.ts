@@ -32,7 +32,7 @@ import {
 } from 'src/common/response/interfaces/response.interface';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/constants/permission.status-code.constant';
-import { Permission } from 'src/modules/permission/schemas/permission.schema';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import {
@@ -56,8 +56,8 @@ import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleListDto } from 'src/modules/role/dtos/role.list.dto';
 import { RoleRequestDto } from 'src/modules/role/dtos/role.request.dto';
 import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
-import { IRole } from 'src/modules/role/interfaces/role.interface';
-import { Role } from 'src/modules/role/schemas/role.schema';
+import { IRoleEntity } from 'src/modules/role/interfaces/role.interface';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
 import { RoleListSerialization } from 'src/modules/role/serializations/role.list.serialization';
 import { RoleService } from 'src/modules/role/services/role.service';
@@ -99,7 +99,7 @@ export class RoleAdminController {
             ...search,
         };
 
-        const roles: Role[] = await this.roleService.findAll(find, {
+        const roles: RoleEntity[] = await this.roleService.findAll(find, {
             skip: skip,
             limit: perPage,
             sort,
@@ -133,7 +133,7 @@ export class RoleAdminController {
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('get/:role')
-    async get(@GetRole() role: IRole): Promise<IResponse> {
+    async get(@GetRole() role: IRoleEntity): Promise<IResponse> {
         return role;
     }
 
@@ -162,7 +162,7 @@ export class RoleAdminController {
         }
 
         for (const permission of permissions) {
-            const checkPermission: Permission =
+            const checkPermission: PermissionEntity =
                 await this.permissionService.findOneById(permission);
 
             if (!checkPermission) {
@@ -208,7 +208,7 @@ export class RoleAdminController {
     @RequestValidateTimestamp()
     @Put('/update/:role')
     async update(
-        @GetRole() role: Role,
+        @GetRole() role: IRoleEntity,
         @Body()
         { name, permissions, accessFor }: RoleUpdateDto
     ): Promise<IResponse> {
@@ -223,7 +223,7 @@ export class RoleAdminController {
         }
 
         for (const permission of permissions) {
-            const checkPermission: Permission =
+            const checkPermission: PermissionEntity =
                 await this.permissionService.findOneById(permission);
 
             if (!checkPermission) {
@@ -266,7 +266,7 @@ export class RoleAdminController {
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Delete('/delete/:role')
-    async delete(@GetRole() role: IRole): Promise<void> {
+    async delete(@GetRole() role: IRoleEntity): Promise<void> {
         try {
             await this.roleService.deleteOneById(role._id);
         } catch (err: any) {
@@ -291,7 +291,7 @@ export class RoleAdminController {
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Patch('/update/:role/inactive')
-    async inactive(@GetRole() role: IRole): Promise<void> {
+    async inactive(@GetRole() role: IRoleEntity): Promise<void> {
         try {
             await this.roleService.inactive(role._id);
         } catch (err: any) {
@@ -317,7 +317,7 @@ export class RoleAdminController {
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Patch('/update/:role/active')
-    async active(@GetRole() role: IRole): Promise<void> {
+    async active(@GetRole() role: IRoleEntity): Promise<void> {
         try {
             await this.roleService.active(role._id);
         } catch (err: any) {

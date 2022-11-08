@@ -1,13 +1,6 @@
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
-import { Permission } from 'src/modules/permission/schemas/permission.schema';
-import { Role } from 'src/modules/role/schemas/role.schema';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 
-export interface IRole extends Omit<Role, 'permissions'> {
-    permissions: Permission[];
-}
-
-export interface IRoleUpdate {
-    name: string;
-    accessFor: ENUM_AUTH_ACCESS_FOR;
-    permissions: string[];
+export interface IRoleEntity extends Omit<RoleEntity, 'permissions'> {
+    permissions: PermissionEntity[];
 }

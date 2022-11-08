@@ -1,5 +1,5 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import { IRole } from 'src/modules/role/interfaces/role.interface';
+import { IRoleEntity } from 'src/modules/role/interfaces/role.interface';
 import { RoleService } from 'src/modules/role/services/role.service';
 
 @Injectable()
@@ -11,9 +11,10 @@ export class RolePutToRequestGuard implements CanActivate {
         const { params } = request;
         const { role } = params;
 
-        const check: IRole = await this.roleService.findOneById<IRole>(role, {
-            join: true,
-        });
+        const check: IRoleEntity =
+            await this.roleService.findOneById<IRoleEntity>(role, {
+                join: true,
+            });
         request.__role = check;
 
         return true;

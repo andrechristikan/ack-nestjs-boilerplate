@@ -1,24 +1,17 @@
 import { Prop, SchemaFactory } from '@nestjs/mongoose';
 import { CallbackWithoutResultAndOptionalError } from 'mongoose';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { DatabaseMongoEntityAbstract } from 'src/common/database/abstracts/database.mongo-entity.abstract';
 import { DatabaseMongoSchema } from 'src/common/database/decorators/database.decorator';
-import { PermissionDatabaseName } from 'src/modules/permission/repository/entities/permission.entity';
+import { PermissionMongoEntity } from 'src/modules/permission/repository/entities/permission.mongo.entity';
+import { RoleDatabaseName } from 'src/modules/role/repository/entities/role.entity';
 
-@DatabaseMongoSchema({ collection: PermissionDatabaseName })
-export class PermissionMongoEntity extends DatabaseMongoEntityAbstract {
+@DatabaseMongoSchema({ collection: RoleDatabaseName })
+export class RoleMongoEntity extends DatabaseMongoEntityAbstract {
     @Prop({
         required: true,
         index: true,
         unique: true,
-        uppercase: true,
-        trim: true,
-        type: String,
-    })
-    code: string;
-
-    @Prop({
-        required: true,
-        index: true,
         lowercase: true,
         trim: true,
         type: String,
@@ -27,9 +20,11 @@ export class PermissionMongoEntity extends DatabaseMongoEntityAbstract {
 
     @Prop({
         required: true,
-        type: String,
+        default: [],
+        type: Array<string>,
+        ref: PermissionMongoEntity.name,
     })
-    description: string;
+    permissions: string[];
 
     @Prop({
         required: true,
@@ -38,16 +33,21 @@ export class PermissionMongoEntity extends DatabaseMongoEntityAbstract {
         type: Boolean,
     })
     isActive: boolean;
+
+    @Prop({
+        required: true,
+        enum: ENUM_AUTH_ACCESS_FOR,
+        index: true,
+        type: String,
+    })
+    accessFor: ENUM_AUTH_ACCESS_FOR;
 }
 
-export const PermissionMongoSchema = SchemaFactory.createForClass(
-    PermissionMongoEntity
-);
+export const RoleMongoSchema = SchemaFactory.createForClass(RoleMongoEntity);
 
-PermissionMongoSchema.pre(
+RoleMongoSchema.pre(
     'save',
     function (next: CallbackWithoutResultAndOptionalError) {
-        this.code = this.code.toUpperCase();
         this.name = this.name.toLowerCase();
 
         next();
