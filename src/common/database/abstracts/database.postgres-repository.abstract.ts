@@ -25,6 +25,7 @@ import {
     Repository,
     In,
     QueryRunner,
+    SelectQueryBuilder,
 } from 'typeorm';
 
 export abstract class DatabasePostgresRepositoryAbstract<T>
@@ -307,9 +308,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
                     : (options.join as FindOptionsRelations<T>);
         }
 
-        if (options && options.session) {
-            findOne.transaction = true;
-        }
+        findOne.transaction = options && options.session ? true : false;
 
         let update = await this._repository.findOneOrFail(findOne);
         update = this._updateEntity(update, data);
@@ -336,9 +335,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
                     : (options.join as FindOptionsRelations<T>);
         }
 
-        if (options && options.session) {
-            findOne.transaction = true;
-        }
+        findOne.transaction = options && options.session ? true : false;
 
         let update = await this._repository.findOneOrFail(findOne);
         update = this._updateEntity(update, data);
@@ -363,9 +360,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
                     : (options.join as FindOptionsRelations<T>);
         }
 
-        if (options && options.session) {
-            findOne.transaction = true;
-        }
+        findOne.transaction = options && options.session ? true : false;
 
         const del = await this._repository.findOneOrFail(findOne);
         await this._repository.remove(del, {
@@ -390,9 +385,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
                     : (options.join as FindOptionsRelations<T>);
         }
 
-        if (options && options.session) {
-            findOne.transaction = true;
-        }
+        findOne.transaction = options && options.session ? true : false;
 
         const del = await this._repository.findOneOrFail(findOne);
         await this._repository.remove(del, {
@@ -418,9 +411,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
                     : (options.join as FindOptionsRelations<T>);
         }
 
-        if (options && options.session) {
-            findOne.transaction = true;
-        }
+        findOne.transaction = options && options.session ? true : false;
 
         const del = await this._repository.findOneOrFail(findOne);
         await this._repository.softRemove(del, {
@@ -446,9 +437,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
                     : (options.join as FindOptionsRelations<T>);
         }
 
-        if (options && options.session) {
-            findOne.transaction = true;
-        }
+        findOne.transaction = options && options.session ? true : false;
 
         const del = await this._repository.findOneOrFail(findOne);
         await this._repository.softRemove(del, {
@@ -474,9 +463,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
                     : (options.join as FindOptionsRelations<T>);
         }
 
-        if (options && options.session) {
-            findOne.transaction = true;
-        }
+        findOne.transaction = options && options.session ? true : false;
 
         const rec = await this._repository.findOneOrFail(findOne);
         await this._repository.recover(rec, {
@@ -502,9 +489,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
                     : (options.join as FindOptionsRelations<T>);
         }
 
-        if (options && options.session) {
-            findOne.transaction = true;
-        }
+        findOne.transaction = options && options.session ? true : false;
 
         const rec = await this._repository.findOneOrFail(findOne);
         await this._repository.recover(rec, {
@@ -534,16 +519,14 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
             withDeleted: false,
         };
 
-        if (options && options.session) {
-            findAll.transaction = true;
-        }
-
         if (options && options.join) {
             findAll.relations =
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
                     : (options.join as FindOptionsRelations<T>);
         }
+
+        findAll.transaction = options && options.session ? true : false;
 
         try {
             const del = await this._repository.find(findAll);
@@ -566,16 +549,14 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
             withDeleted: false,
         };
 
-        if (options && options.session) {
-            findAll.transaction = true;
-        }
-
         if (options && options.join) {
             findAll.relations =
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
                     : (options.join as FindOptionsRelations<T>);
         }
+
+        findAll.transaction = options && options.session ? true : false;
 
         try {
             const del = await this._repository.find(findAll);
@@ -600,16 +581,14 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
             withDeleted: false,
         };
 
-        if (options && options.session) {
-            findAll.transaction = true;
-        }
-
         if (options && options.join) {
             findAll.relations =
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
                     : (options.join as FindOptionsRelations<T>);
         }
+
+        findAll.transaction = options && options.session ? true : false;
 
         try {
             const del = await this._repository.find(findAll);
@@ -632,16 +611,14 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
             withDeleted: false,
         };
 
-        if (options && options.session) {
-            findAll.transaction = true;
-        }
-
         if (options && options.join) {
             findAll.relations =
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
                     : (options.join as FindOptionsRelations<T>);
         }
+
+        findAll.transaction = options && options.session ? true : false;
 
         try {
             const del = await this._repository.find(findAll);
@@ -666,16 +643,14 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
             withDeleted: true,
         };
 
-        if (options && options.session) {
-            findAll.transaction = true;
-        }
-
         if (options && options.join) {
             findAll.relations =
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
                     : (options.join as FindOptionsRelations<T>);
         }
+
+        findAll.transaction = options && options.session ? true : false;
 
         try {
             const rec = await this._repository.find(findAll);
@@ -698,16 +673,14 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
             withDeleted: true,
         };
 
-        if (options && options.session) {
-            findAll.transaction = true;
-        }
-
         if (options && options.join) {
             findAll.relations =
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
                     : (options.join as FindOptionsRelations<T>);
         }
+
+        findAll.transaction = options && options.session ? true : false;
 
         try {
             const rec = await this._repository.find(findAll);
@@ -738,9 +711,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
                     : (options.join as FindOptionsRelations<T>);
         }
 
-        if (options && options.session) {
-            findAll.transaction = true;
-        }
+        findAll.transaction = options && options.session ? true : false;
 
         try {
             let update = await this._repository.find(findAll);
@@ -754,5 +725,9 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
         } catch (err: any) {
             throw err;
         }
+    }
+
+    async model<N = SelectQueryBuilder<T>>(): Promise<N> {
+        return this._repository.createQueryBuilder() as N;
     }
 }

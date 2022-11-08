@@ -744,4 +744,8 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             throw err;
         }
     }
+
+    async model<N = T>(): Promise<N> {
+        return this._repository as N;
+    }
 }
