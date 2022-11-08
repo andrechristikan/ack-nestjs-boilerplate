@@ -12,6 +12,7 @@ export class PermissionMongoEntity extends DatabaseMongoEntityAbstract {
         unique: true,
         uppercase: true,
         trim: true,
+        maxlength: 10,
         type: String,
     })
     code: string;
@@ -21,6 +22,7 @@ export class PermissionMongoEntity extends DatabaseMongoEntityAbstract {
         index: true,
         lowercase: true,
         trim: true,
+        maxlength: 100,
         type: String,
     })
     name: string;
@@ -28,6 +30,7 @@ export class PermissionMongoEntity extends DatabaseMongoEntityAbstract {
     @Prop({
         required: true,
         type: String,
+        maxlength: 255,
     })
     description: string;
 

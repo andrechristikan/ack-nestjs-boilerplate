@@ -14,6 +14,7 @@ export class RoleMongoEntity extends DatabaseMongoEntityAbstract {
         unique: true,
         lowercase: true,
         trim: true,
+        maxlength: 100,
         type: String,
     })
     name: string;

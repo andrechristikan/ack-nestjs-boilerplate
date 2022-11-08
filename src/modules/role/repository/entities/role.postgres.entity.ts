@@ -10,6 +10,7 @@ export class RolePostgresEntity extends DatabasePostgresEntityAbstract {
         nullable: false,
         unique: true,
         type: String,
+        length: 100,
     })
     name: string;
 

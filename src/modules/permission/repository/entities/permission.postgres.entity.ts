@@ -9,18 +9,21 @@ export class PermissionPostgresEntity extends DatabasePostgresEntityAbstract {
         nullable: false,
         unique: true,
         type: String,
+        length: 10,
     })
     code: string;
 
     @Column({
         nullable: false,
         type: String,
+        length: 100,
     })
     name: string;
 
     @Column({
         nullable: true,
         type: String,
+        length: 255,
     })
     description: string;
 
