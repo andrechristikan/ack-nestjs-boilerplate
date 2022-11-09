@@ -12,6 +12,7 @@ export class UserMongoEntity extends DatabaseMongoEntityAbstract {
         required: true,
         index: true,
         trim: true,
+        unique: true,
         type: String,
         maxlength: 100,
     })

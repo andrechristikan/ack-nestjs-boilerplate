@@ -1,4 +1,9 @@
-import { applyDecorators, SetMetadata, UseInterceptors } from '@nestjs/common';
+import {
+    applyDecorators,
+    SerializeOptions,
+    SetMetadata,
+    UseInterceptors,
+} from '@nestjs/common';
 import { ENUM_PAGINATION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import {
     RESPONSE_CUSTOM_TIMEOUT_META_KEY,
@@ -81,3 +86,5 @@ export function ResponseTimeout(seconds: string): MethodDecorator {
         SetMetadata(RESPONSE_CUSTOM_TIMEOUT_VALUE_META_KEY, seconds)
     );
 }
+
+export const ResponseSerializationOptions = SerializeOptions;

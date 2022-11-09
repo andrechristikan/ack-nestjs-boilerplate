@@ -8,7 +8,7 @@ import {
 } from 'src/common/logger/constants/logger.enum.constant';
 import { LoggerDatabaseName } from 'src/common/logger/repository/entities/logger.entity';
 import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
-import { Column, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 
 @DatabasePostgresSchema({ name: LoggerDatabaseName })
 export class LoggerPostgresEntity extends DatabasePostgresEntityAbstract {
@@ -51,10 +51,11 @@ export class LoggerPostgresEntity extends DatabasePostgresEntityAbstract {
     })
     role?: string;
 
-    @ManyToOne(() => ApiKeyPostgresEntity, {
+    @OneToMany(() => ApiKeyPostgresEntity, (apiKey) => apiKey._id, {
         cascade: true,
         lazy: true,
         eager: false,
+        onDelete: 'CASCADE',
     })
     @JoinColumn({ name: 'apiKey', referencedColumnName: '_id' })
     @Column({

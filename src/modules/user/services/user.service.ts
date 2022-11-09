@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { plainToInstance } from 'class-transformer';
 import { IUserService } from 'src/modules/user/interfaces/user.service.interface';
-import { UserRepository } from 'src/modules/user/repositories/user.repository';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,
@@ -13,11 +12,10 @@ import {
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import {
-    IUser,
     IUserCheckExist,
     IUserCreate,
+    IUserEntity,
 } from 'src/modules/user/interfaces/user.interface';
-import { User, UserEntity } from 'src/modules/user/schemas/user.schema';
 import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
@@ -26,17 +24,22 @@ import { UserPhotoDto } from 'src/modules/user/dtos/user.photo.dto';
 import { UserPasswordDto } from 'src/modules/user/dtos/user.password.dto';
 import { UserPasswordExpiredDto } from 'src/modules/user/dtos/user.password-expired.dto';
 import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
-import { DatabaseService } from 'src/common/database/services/database.service';
+import {
+    UserEntity,
+    UserRepository,
+} from 'src/modules/user/repository/entities/user.entity';
+import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
+import { DatabaseRepository } from 'src/common/database/decorators/database.decorator';
 
 @Injectable()
 export class UserService implements IUserService {
     private readonly uploadPath: string;
 
     constructor(
-        private readonly userRepository: UserRepository,
+        @DatabaseRepository(UserRepository)
+        private readonly userRepository: IDatabaseRepository<UserEntity>,
         private readonly helperStringService: HelperStringService,
-        private readonly configService: ConfigService,
-        private readonly databaseService: DatabaseService
+        private readonly configService: ConfigService
     ) {
         this.uploadPath = this.configService.get<string>('user.uploadPath');
     }
@@ -81,7 +84,7 @@ export class UserService implements IUserService {
             role,
         }: IUserCreate,
         options?: IDatabaseCreateOptions
-    ): Promise<User> {
+    ): Promise<UserEntity> {
         const user: UserEntity = new UserEntity();
         user.firstName = firstName;
         user.email = email;
@@ -99,14 +102,14 @@ export class UserService implements IUserService {
     async deleteOneById(
         _id: string,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<User> {
+    ): Promise<UserEntity> {
         return this.userRepository.deleteOneById(_id, options);
     }
 
     async deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<User> {
+    ): Promise<UserEntity> {
         return this.userRepository.deleteOne(find, options);
     }
 
@@ -114,8 +117,7 @@ export class UserService implements IUserService {
         _id: string,
         data: UserUpdateDto,
         options?: IDatabaseOptions
-    ): Promise<User> {
-        console.log('ggg');
+    ): Promise<UserEntity> {
         return this.userRepository.updateOneById<UserUpdateDto>(
             _id,
             data,
@@ -155,7 +157,7 @@ export class UserService implements IUserService {
         _id: string,
         aws: AwsS3Serialization,
         options?: IDatabaseOptions
-    ): Promise<User> {
+    ): Promise<UserEntity> {
         const update: UserPhotoDto = {
             photo: aws,
         };
@@ -180,7 +182,7 @@ export class UserService implements IUserService {
         _id: string,
         { salt, passwordHash, passwordExpired }: IAuthPassword,
         options?: IDatabaseOptions
-    ): Promise<User> {
+    ): Promise<UserEntity> {
         const update: UserPasswordDto = {
             password: passwordHash,
             passwordExpired: passwordExpired,
@@ -198,7 +200,7 @@ export class UserService implements IUserService {
         _id: string,
         passwordExpired: Date,
         options?: IDatabaseOptions
-    ): Promise<User> {
+    ): Promise<UserEntity> {
         const update: UserPasswordExpiredDto = {
             passwordExpired: passwordExpired,
         };
@@ -206,7 +208,10 @@ export class UserService implements IUserService {
         return this.userRepository.updateOneById(_id, update, options);
     }
 
-    async inactive(_id: string, options?: IDatabaseOptions): Promise<User> {
+    async inactive(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
         const update: UserActiveDto = {
             isActive: false,
         };
@@ -214,7 +219,7 @@ export class UserService implements IUserService {
         return this.userRepository.updateOneById(_id, update, options);
     }
 
-    async active(_id: string, options?: IDatabaseOptions): Promise<User> {
+    async active(_id: string, options?: IDatabaseOptions): Promise<UserEntity> {
         const update: UserActiveDto = {
             isActive: true,
         };
@@ -222,7 +227,9 @@ export class UserService implements IUserService {
         return this.userRepository.updateOneById(_id, update, options);
     }
 
-    async payloadSerialization(data: IUser): Promise<UserPayloadSerialization> {
+    async payloadSerialization(
+        data: IUserEntity
+    ): Promise<UserPayloadSerialization> {
         return plainToInstance(UserPayloadSerialization, data);
     }
 }

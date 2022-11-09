@@ -47,9 +47,6 @@ export class SettingController {
     @ResponsePaging('setting.list', {
         classSerialization: SettingListSerialization,
     })
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Get('/list')
     async list(
         @Query()
@@ -98,9 +95,6 @@ export class SettingController {
     })
     @SettingGetGuard()
     @RequestParamGuard(SettingRequestDto)
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Get('get/:setting')
     async get(@GetSetting() setting: SettingEntity): Promise<IResponse> {
         return setting;
@@ -111,9 +105,6 @@ export class SettingController {
         classSerialization: SettingGetSerialization,
     })
     @SettingGetByNameGuard()
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Get('get/name/:settingName')
     async getByName(@GetSetting() setting: SettingEntity): Promise<IResponse> {
         return setting;

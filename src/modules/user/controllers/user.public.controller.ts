@@ -11,7 +11,7 @@ import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { Role } from 'src/modules/role/schemas/role.schema';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { UserSignUpDoc } from 'src/modules/user/docs/user.public.doc';
@@ -38,7 +38,7 @@ export class UserPublicController {
         @Body()
         { email, mobileNumber, ...body }: UserSignUpDto
     ): Promise<void> {
-        const role: Role = await this.roleService.findOne<Role>({
+        const role: RoleEntity = await this.roleService.findOne<RoleEntity>({
             name: 'user',
         });
         if (!role) {

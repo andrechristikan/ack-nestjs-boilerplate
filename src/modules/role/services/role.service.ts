@@ -10,6 +10,7 @@ import {
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { RoleActiveDto } from 'src/modules/role/dtos/role.active.dto';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
@@ -60,10 +61,7 @@ export class RoleService implements IRoleService {
     ): Promise<boolean> {
         return this.roleRepository.exists(
             {
-                name: {
-                    $regex: new RegExp(name),
-                    $options: 'i',
-                },
+                name,
             },
             options
         );
@@ -73,13 +71,14 @@ export class RoleService implements IRoleService {
         { name, permissions, accessFor }: RoleCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<RoleEntity> {
-        const create: RoleEntity = new RoleEntity();
-        create.name = name;
-        create.permissions = permissions;
-        create.isActive = true;
-        create.accessFor = accessFor;
+        const create = {
+            name,
+            permissions: permissions.map((val) => ({ _id: val })),
+            isActive: true,
+            accessFor,
+        };
 
-        return this.roleRepository.create<RoleEntity>(create, options);
+        return this.roleRepository.create(create, options);
     }
 
     async createSuperAdmin(

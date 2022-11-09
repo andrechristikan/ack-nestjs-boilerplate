@@ -1,10 +1,10 @@
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
-import { IRole } from 'src/modules/role/interfaces/role.interface';
+import { IRoleEntity } from 'src/modules/role/interfaces/role.interface';
 import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
-import { User } from 'src/modules/user/schemas/user.schema';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
-export interface IUser extends Omit<User, 'role'> {
-    role: IRole;
+export interface IUserEntity extends Omit<UserEntity, 'role'> {
+    role: IRoleEntity;
 }
 
 export interface IUserCreate extends UserCreateDto {

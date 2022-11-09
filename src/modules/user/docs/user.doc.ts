@@ -1,5 +1,5 @@
 import { applyDecorators } from '@nestjs/common';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.constant';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import { Doc } from 'src/common/doc/decorators/doc.decorator';
 import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';

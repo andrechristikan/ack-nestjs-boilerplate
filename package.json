@@ -47,8 +47,8 @@
     "remove:permission": "nestjs-command remove:permission",
     "remove:role": "nestjs-command remove:role",
     "remove:user": "nestjs-command remove:user",
-    "seed": "yarn seed:setting && yarn seed:apikey",
-    "remove": "yarn remove:setting && yarn remove:apikey"
+    "seed": "yarn seed:setting && yarn seed:apikey && yarn seed:permission && yarn seed:role && yarn seed:user",
+    "remove": "yarn remove:setting && yarn remove:apikey && yarn remove:user && yarn remove:role && yarn remove:permission"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.204.0",

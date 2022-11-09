@@ -65,9 +65,6 @@ export class PermissionAdminController {
         classSerialization: PermissionListSerialization,
     })
     @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Get('/list')
     async list(
         @Query()
@@ -118,9 +115,6 @@ export class PermissionAdminController {
     @PermissionGetGuard()
     @RequestParamGuard(PermissionRequestDto)
     @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Get('/get/:permission')
     async get(
         @GetPermission() permission: PermissionEntity
@@ -138,9 +132,6 @@ export class PermissionAdminController {
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Put('/update/:permission')
     async update(
         @GetPermission() permission: PermissionEntity,
@@ -169,9 +160,6 @@ export class PermissionAdminController {
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Patch('/update/:permission/inactive')
     async inactive(
         @GetPermission() permission: PermissionEntity
@@ -197,9 +185,6 @@ export class PermissionAdminController {
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Patch('/update/:permission/active')
     async active(@GetPermission() permission: PermissionEntity): Promise<void> {
         try {

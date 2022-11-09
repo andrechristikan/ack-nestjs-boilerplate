@@ -120,9 +120,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
                     : (options.join as FindOptionsRelations<T>);
         }
 
-        if (options && options.session) {
-            findAll.transaction = true;
-        }
+        findAll.transaction = options && options.session ? true : false;
 
         return this._repository.find(findAll) as any;
     }
@@ -154,9 +152,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
                     : (options.join as FindOptionsRelations<T>);
         }
 
-        if (options && options.session) {
-            findOne.transaction = true;
-        }
+        findOne.transaction = options && options.session ? true : false;
 
         if (options && options.sort) {
             findOne.order = this._convertSort(
@@ -202,9 +198,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
             ) as FindOptionsOrder<T>;
         }
 
-        if (options && options.session) {
-            findOne.transaction = true;
-        }
+        findOne.transaction = options && options.session ? true : false;
 
         return this._repository.findOneOrFail(findOne) as any;
     }
@@ -223,9 +217,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
             count.withDeleted = false;
         }
 
-        if (options && options.session) {
-            count.transaction = true;
-        }
+        count.transaction = options && options.session ? true : false;
 
         if (options && options.join) {
             count.relations =
@@ -245,7 +237,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
             where: find,
             select: {
                 _id: true,
-            } as FindOptionsWhere<any>,
+            } as FindOptionsSelect<any>,
         };
 
         if (options && options.withDeleted) {
@@ -261,9 +253,7 @@ export abstract class DatabasePostgresRepositoryAbstract<T>
                     : (options.join as FindOptionsRelations<T>);
         }
 
-        if (options && options.session) {
-            findOne.transaction = true;
-        }
+        findOne.transaction = options && options.session ? true : false;
 
         const exist: T = await this._repository.findOneOrFail(findOne);
 

@@ -40,9 +40,6 @@ export class HealthController {
     @HealthCheckDoc()
     @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Get('/aws')
     async checkAws(): Promise<IResponse> {
         return this.health.check([
@@ -53,9 +50,6 @@ export class HealthController {
     @HealthCheckDoc()
     @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Get('/database')
     async checkDatabase(): Promise<IResponse> {
         if (
@@ -75,9 +69,6 @@ export class HealthController {
     @HealthCheckDoc()
     @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Get('/memory-heap')
     async checkMemoryHeap(): Promise<IResponse> {
         return this.health.check([
@@ -92,9 +83,6 @@ export class HealthController {
     @HealthCheckDoc()
     @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Get('/memory-rss')
     async checkMemoryRss(): Promise<IResponse> {
         return this.health.check([
@@ -109,9 +97,6 @@ export class HealthController {
     @HealthCheckDoc()
     @Response('health.check', { classSerialization: HealthSerialization })
     @HealthCheck()
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Get('/storage')
     async checkStorage(): Promise<IResponse> {
         return this.health.check([

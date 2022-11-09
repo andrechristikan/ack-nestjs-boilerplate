@@ -43,9 +43,6 @@ export class SettingAdminController {
         ENUM_AUTH_PERMISSIONS.SETTING_READ,
         ENUM_AUTH_PERMISSIONS.SETTING_UPDATE
     )
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Put('/update/:setting')
     async update(
         @GetSetting() setting: SettingEntity,

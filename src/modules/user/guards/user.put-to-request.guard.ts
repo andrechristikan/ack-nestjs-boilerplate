@@ -1,5 +1,5 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import { IUser } from 'src/modules/user/interfaces/user.interface';
+import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { UserService } from 'src/modules/user/services/user.service';
 
 @Injectable()
@@ -11,9 +11,10 @@ export class UserPutToRequestGuard implements CanActivate {
         const { params } = request;
         const { user } = params;
 
-        const check: IUser = await this.userService.findOneById<IUser>(user, {
-            join: true,
-        });
+        const check: IUserEntity =
+            await this.userService.findOneById<IUserEntity>(user, {
+                join: true,
+            });
         request.__user = check;
 
         return true;

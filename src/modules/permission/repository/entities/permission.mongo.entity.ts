@@ -12,7 +12,7 @@ export class PermissionMongoEntity extends DatabaseMongoEntityAbstract {
         unique: true,
         uppercase: true,
         trim: true,
-        maxlength: 10,
+        maxlength: 25,
         type: String,
     })
     code: string;

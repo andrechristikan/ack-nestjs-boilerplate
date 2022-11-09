@@ -35,7 +35,6 @@ export class RoleCreateDto {
         required: true,
     })
     @IsUUID('4', { each: true })
-    @ArrayNotEmpty()
     @IsArray()
     @IsNotEmpty()
     readonly permissions: string[];

@@ -30,15 +30,11 @@ export class RoleBulkService implements IRoleBulkService {
         data: RoleCreateDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean> {
-        const create: RoleEntity[] = data.map((val) => {
-            const r = new RoleEntity();
-            r.name = val.name;
-            r.accessFor = val.accessFor;
-            r.permissions = val.permissions;
-            r.isActive = true;
+        const create = data.map((val) => ({
+            ...val,
+            permissions: val.permissions.map((l) => ({ _id: l })),
+        }));
 
-            return r;
-        });
-        return this.roleRepository.createMany<RoleEntity>(create, options);
+        return this.roleRepository.createMany(create, options);
     }
 }
