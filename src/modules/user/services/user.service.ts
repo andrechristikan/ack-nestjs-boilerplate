@@ -12,7 +12,6 @@ import {
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import {
-    IUserCheckExist,
     IUserCreate,
     IUserEntity,
 } from 'src/modules/user/interfaces/user.interface';
@@ -24,21 +23,18 @@ import { UserPhotoDto } from 'src/modules/user/dtos/user.photo.dto';
 import { UserPasswordDto } from 'src/modules/user/dtos/user.password.dto';
 import { UserPasswordExpiredDto } from 'src/modules/user/dtos/user.password-expired.dto';
 import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
-import {
-    UserEntity,
-    UserRepository,
-} from 'src/modules/user/repository/entities/user.entity';
-import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
-import { DatabaseRepository } from 'src/common/database/decorators/database.decorator';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
+import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 
 @Injectable()
 export class UserService implements IUserService {
     private readonly uploadPath: string;
 
     constructor(
-        @DatabaseRepository(UserRepository)
-        private readonly userRepository: IDatabaseRepository<UserEntity>,
+        private readonly userRepository: UserRepository,
         private readonly helperStringService: HelperStringService,
+        private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
         this.uploadPath = this.configService.get<string>('user.uploadPath');
@@ -65,6 +61,13 @@ export class UserService implements IUserService {
         return this.userRepository.findOne<T>(find, options);
     }
 
+    async findOneByUsername<T>(
+        username: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<T> {
+        return this.userRepository.findOne<T>({ username }, options);
+    }
+
     async getTotal(
         find?: Record<string, any>,
         options?: IDatabaseOptions
@@ -74,6 +77,7 @@ export class UserService implements IUserService {
 
     async create(
         {
+            username,
             firstName,
             lastName,
             password,
@@ -86,15 +90,21 @@ export class UserService implements IUserService {
         options?: IDatabaseCreateOptions
     ): Promise<UserEntity> {
         const user: UserEntity = new UserEntity();
+        user.username = username;
         user.firstName = firstName;
         user.email = email;
-        user.mobileNumber = mobileNumber;
         user.password = password;
         user.role = role;
         user.isActive = true;
         user.lastName = lastName;
         user.salt = salt;
         user.passwordExpired = passwordExpired;
+        user.signUpDate = this.helperDateService.create();
+        user.passwordAttempt = 0;
+
+        if (mobileNumber) {
+            user.mobileNumber = mobileNumber;
+        }
 
         return this.userRepository.create<UserEntity>(user, options);
     }
@@ -125,12 +135,11 @@ export class UserService implements IUserService {
         );
     }
 
-    async checkExist(
+    async existEmail(
         email: string,
-        mobileNumber: string,
         options?: IDatabaseExistOptions
-    ): Promise<IUserCheckExist> {
-        const existEmail: boolean = await this.userRepository.exists(
+    ): Promise<boolean> {
+        return this.userRepository.exists(
             {
                 email: {
                     $regex: new RegExp(email),
@@ -139,18 +148,25 @@ export class UserService implements IUserService {
             },
             options
         );
+    }
 
-        const existMobileNumber: boolean = await this.userRepository.exists(
+    async existMobileNumber(
+        mobileNumber: string,
+        options?: IDatabaseExistOptions
+    ): Promise<boolean> {
+        return this.userRepository.exists(
             {
                 mobileNumber,
             },
             options
         );
+    }
 
-        return {
-            email: existEmail,
-            mobileNumber: existMobileNumber,
-        };
+    async existUsername(
+        username: string,
+        options?: IDatabaseExistOptions
+    ): Promise<boolean> {
+        return this.userRepository.exists({ username }, options);
     }
 
     async updatePhoto(
@@ -162,9 +178,9 @@ export class UserService implements IUserService {
             photo: aws,
         };
 
-        return this.userRepository.updateOneById<{ photo: UserPhotoDto }>(
+        return this.userRepository.updateOneById<UserPhotoDto>(
             _id,
-            { photo: update },
+            update,
             options
         );
     }
@@ -231,5 +247,18 @@ export class UserService implements IUserService {
         data: IUserEntity
     ): Promise<UserPayloadSerialization> {
         return plainToInstance(UserPayloadSerialization, data);
+    }
+
+    async increasePasswordAttempt(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const user: UserEntity = await this.findOneById(_id, options);
+
+        const update = {
+            passwordAttempt: ++user.passwordAttempt,
+        };
+
+        return this.userRepository.updateOneById(_id, update, options);
     }
 }

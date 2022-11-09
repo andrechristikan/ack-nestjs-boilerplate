@@ -16,8 +16,10 @@ import configs from 'src/configs';
 import { AppLanguage } from 'src/app/constants/app.constant';
 import { SettingModule } from 'src/common/setting/setting.module';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
-import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum';
-import { DatabaseConnectorModule } from 'src/common/database/database.connector.module';
+import { MongooseModule } from '@nestjs/mongoose';
+import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
+import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
+import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 
 @Module({
     controllers: [],
@@ -72,10 +74,6 @@ import { DatabaseConnectorModule } from 'src/common/database/database.connector.
 
                 JOB_ENABLE: Joi.boolean().default(false).required(),
 
-                DATABASE_TYPE: Joi.string()
-                    .valid(...Object.values(ENUM_DATABASE_TYPE))
-                    .default(ENUM_DATABASE_TYPE.MONGO)
-                    .required(),
                 DATABASE_HOST: Joi.string()
                     .default('mongodb://localhost:27017')
                     .required(),
@@ -84,6 +82,10 @@ import { DatabaseConnectorModule } from 'src/common/database/database.connector.
                 DATABASE_PASSWORD: Joi.string().allow(null, '').optional(),
                 DATABASE_DEBUG: Joi.boolean().default(false).required(),
                 DATABASE_OPTIONS: Joi.string().allow(null, '').optional(),
+
+                AUTH_JWT_PAYLOAD_ENCRYPTION: Joi.boolean()
+                    .default(false)
+                    .required(),
 
                 AUTH_JWT_SUBJECT: Joi.string().required(),
                 AUTH_JWT_AUDIENCE: Joi.string().required(),
@@ -140,7 +142,13 @@ import { DatabaseConnectorModule } from 'src/common/database/database.connector.
                 abortEarly: true,
             },
         }),
-        DatabaseConnectorModule.forRoot(),
+        MongooseModule.forRootAsync({
+            connectionName: DATABASE_CONNECTION_NAME,
+            imports: [DatabaseOptionsModule],
+            inject: [DatabaseOptionsService],
+            useFactory: (databaseOptionsService: DatabaseOptionsService) =>
+                databaseOptionsService.createOptions(),
+        }),
         MessageModule,
         HelperModule,
         PaginationModule,

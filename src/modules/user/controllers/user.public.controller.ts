@@ -16,7 +16,6 @@ import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { UserSignUpDoc } from 'src/modules/user/docs/user.public.doc';
 import { UserSignUpDto } from 'src/modules/user/dtos/user.sign-up.dto';
-import { IUserCheckExist } from 'src/modules/user/interfaces/user.interface';
 import { UserService } from 'src/modules/user/services/user.service';
 
 @ApiTags('modules.public.user')
@@ -36,7 +35,7 @@ export class UserPublicController {
     @Post('/sign-up')
     async signUp(
         @Body()
-        { email, mobileNumber, ...body }: UserSignUpDto
+        { email, mobileNumber, username, ...body }: UserSignUpDto
     ): Promise<void> {
         const role: RoleEntity = await this.roleService.findOne<RoleEntity>({
             name: 'user',
@@ -48,27 +47,35 @@ export class UserPublicController {
             });
         }
 
-        const checkExist: IUserCheckExist = await this.userService.checkExist(
-            email,
-            mobileNumber
+        const usernameExist: boolean = await this.userService.existUsername(
+            username
         );
-
-        if (checkExist.email && checkExist.mobileNumber) {
+        if (usernameExist) {
             throw new BadRequestException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EXISTS_ERROR,
-                message: 'user.error.exist',
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_USERNAME_EXISTS_ERROR,
+                message: 'user.error.usernameExist',
             });
-        } else if (checkExist.email) {
+        }
+
+        const emailExist: boolean = await this.userService.existEmail(email);
+        if (emailExist) {
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
                 message: 'user.error.emailExist',
             });
-        } else if (checkExist.mobileNumber) {
-            throw new BadRequestException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
-                message: 'user.error.mobileNumberExist',
-            });
+        }
+
+        if (mobileNumber) {
+            const mobileNumberExist: boolean =
+                await this.userService.existMobileNumber(mobileNumber);
+            if (mobileNumberExist) {
+                throw new BadRequestException({
+                    statusCode:
+                        ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
+                    message: 'user.error.mobileNumberExist',
+                });
+            }
         }
 
         try {
@@ -77,6 +84,7 @@ export class UserPublicController {
             );
 
             await this.userService.create({
+                username,
                 firstName: body.firstName,
                 lastName: body.lastName,
                 email,

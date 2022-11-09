@@ -56,19 +56,6 @@ export class HelperStringService implements IHelperStringService {
         return `${censorString}${visibleString}`;
     }
 
-    convertStringToNumberOrBooleanIfPossible<T>(text: string): T {
-        let convertValue: string | boolean | number = text;
-
-        const regexNumber = /^-?\d+$/;
-        if (text === 'true' || text === 'false') {
-            convertValue = text === 'true';
-        } else if (regexNumber.test(text)) {
-            convertValue = Number(text);
-        }
-
-        return convertValue as T;
-    }
-
     checkPasswordWeak(password: string, length?: number): boolean {
         const regex = new RegExp(
             `^(?=.*?[A-Z])(?=.*?[a-z]).{${length || 8},}$`

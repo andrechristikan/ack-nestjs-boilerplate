@@ -3,11 +3,8 @@ import { Exclude } from 'class-transformer';
 import { UserGetSerialization } from './user.get.serialization';
 
 export class UserProfileSerialization extends OmitType(UserGetSerialization, [
-    'passwordExpired',
-    'createdAt',
-]) {
-    readonly passwordExpired: Date;
-
+    'passwordAttempt',
+] as const) {
     @Exclude()
-    readonly createdAt: Date;
+    passwordAttempt: number;
 }

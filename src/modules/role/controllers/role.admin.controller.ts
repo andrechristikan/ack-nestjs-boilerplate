@@ -12,20 +12,14 @@ import {
     Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ApiKeyProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import {
-    RequestParamGuard,
-    RequestValidateTimestamp,
-    RequestValidateUserAgent,
-} from 'src/common/request/decorators/request.decorator';
+import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
     Response,
     ResponsePaging,
-    ResponseSerializationOptions,
 } from 'src/common/response/decorators/response.decorator';
 import {
     IResponse,
@@ -103,8 +97,6 @@ export class RoleAdminController {
             sort,
         });
 
-        console.log('roles', roles);
-
         const totalData: number = await this.roleService.getTotal({});
         const totalPage: number = await this.paginationService.totalPage(
             totalData,
@@ -138,35 +130,30 @@ export class RoleAdminController {
     @Response('role.create', {
         classSerialization: ResponseIdSerialization,
     })
-    // @AuthJwtAdminAccessProtected(
-    //     ENUM_AUTH_PERMISSIONS.ROLE_READ,
-    //     ENUM_AUTH_PERMISSIONS.ROLE_CREATE
-    // )
+    @AuthJwtAdminAccessProtected(
+        ENUM_AUTH_PERMISSIONS.ROLE_READ,
+        ENUM_AUTH_PERMISSIONS.ROLE_CREATE
+    )
     @Post('/create')
     async create(
         @Body()
         { name, permissions, accessFor }: RoleCreateDto
     ): Promise<IResponse> {
-        console.log('aaa');
         const exist: boolean = await this.roleService.exists(name, {
             join: true,
         });
         if (exist) {
-            console.log('bbb');
             throw new BadRequestException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR,
                 message: 'role.error.exist',
             });
         }
 
-        console.log('ccc');
         for (const permission of permissions) {
             const checkPermission: PermissionEntity =
                 await this.permissionService.findOneById(permission);
 
-            console.log('ddd');
             if (!checkPermission) {
-                console.log('eee');
                 throw new NotFoundException({
                     statusCode:
                         ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR,
@@ -175,7 +162,6 @@ export class RoleAdminController {
             }
         }
 
-        console.log('fff');
         try {
             const create = await this.roleService.create({
                 name,
@@ -183,12 +169,10 @@ export class RoleAdminController {
                 accessFor,
             });
 
-            console.log('ggg');
             return {
                 _id: create._id,
             };
         } catch (err: any) {
-            console.log('hhh');
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
@@ -203,10 +187,10 @@ export class RoleAdminController {
     })
     @RoleUpdateGuard()
     @RequestParamGuard(RoleRequestDto)
-    // @AuthJwtAdminAccessProtected(
-    //     ENUM_AUTH_PERMISSIONS.ROLE_READ,
-    //     ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
-    // )
+    @AuthJwtAdminAccessProtected(
+        ENUM_AUTH_PERMISSIONS.ROLE_READ,
+        ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
+    )
     @Put('/update/:role')
     async update(
         @GetRole() role: IRoleEntity,
@@ -259,10 +243,10 @@ export class RoleAdminController {
     @Response('role.delete')
     @RoleDeleteGuard()
     @RequestParamGuard(RoleRequestDto)
-    // @AuthJwtAdminAccessProtected(
-    //     ENUM_AUTH_PERMISSIONS.ROLE_READ,
-    //     ENUM_AUTH_PERMISSIONS.ROLE_DELETE
-    // )
+    @AuthJwtAdminAccessProtected(
+        ENUM_AUTH_PERMISSIONS.ROLE_READ,
+        ENUM_AUTH_PERMISSIONS.ROLE_DELETE
+    )
     @Delete('/delete/:role')
     async delete(@GetRole() role: IRoleEntity): Promise<void> {
         try {
@@ -281,10 +265,10 @@ export class RoleAdminController {
     @Response('role.inactive')
     @RoleUpdateInactiveGuard()
     @RequestParamGuard(RoleRequestDto)
-    // @AuthJwtAdminAccessProtected(
-    //     ENUM_AUTH_PERMISSIONS.ROLE_READ,
-    //     ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
-    // )
+    @AuthJwtAdminAccessProtected(
+        ENUM_AUTH_PERMISSIONS.ROLE_READ,
+        ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
+    )
     @Patch('/update/:role/inactive')
     async inactive(@GetRole() role: IRoleEntity): Promise<void> {
         try {
@@ -304,10 +288,10 @@ export class RoleAdminController {
     @Response('role.active')
     @RoleUpdateActiveGuard()
     @RequestParamGuard(RoleRequestDto)
-    // @AuthJwtAdminAccessProtected(
-    //     ENUM_AUTH_PERMISSIONS.ROLE_READ,
-    //     ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
-    // )
+    @AuthJwtAdminAccessProtected(
+        ENUM_AUTH_PERMISSIONS.ROLE_READ,
+        ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
+    )
     @Patch('/update/:role/active')
     async active(@GetRole() role: IRoleEntity): Promise<void> {
         try {

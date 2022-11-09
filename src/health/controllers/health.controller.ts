@@ -1,5 +1,4 @@
 import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
 import {
     DiskHealthIndicator,
@@ -7,14 +6,7 @@ import {
     HealthCheckService,
     MemoryHealthIndicator,
     MongooseHealthIndicator,
-    TypeOrmHealthIndicator,
 } from '@nestjs/terminus';
-import { ApiKeyProtected } from 'src/common/api-key/decorators/api-key.decorator';
-import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum';
-import {
-    RequestValidateTimestamp,
-    RequestValidateUserAgent,
-} from 'src/common/request/decorators/request.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { HealthCheckDoc } from 'src/health/docs/health.doc';
@@ -32,9 +24,7 @@ export class HealthController {
         private readonly memoryHealthIndicator: MemoryHealthIndicator,
         private readonly diskHealthIndicator: DiskHealthIndicator,
         private readonly mongooseIndicator: MongooseHealthIndicator,
-        private readonly typeormIndicator: TypeOrmHealthIndicator,
-        private readonly awsIndicator: HealthAwsIndicator,
-        private readonly configService: ConfigService
+        private readonly awsIndicator: HealthAwsIndicator
     ) {}
 
     @HealthCheckDoc()
@@ -52,17 +42,8 @@ export class HealthController {
     @HealthCheck()
     @Get('/database')
     async checkDatabase(): Promise<IResponse> {
-        if (
-            this.configService.get<ENUM_DATABASE_TYPE>('database.type') ===
-            ENUM_DATABASE_TYPE.MONGO
-        ) {
-            return this.health.check([
-                () => this.mongooseIndicator.pingCheck('database'),
-            ]);
-        }
-
         return this.health.check([
-            () => this.typeormIndicator.pingCheck('database'),
+            () => this.mongooseIndicator.pingCheck('database'),
         ]);
     }
 

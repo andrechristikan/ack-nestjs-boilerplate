@@ -66,10 +66,7 @@ import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 import { UserListDto } from 'src/modules/user/dtos/user.list.dto';
 import { UserRequestDto } from 'src/modules/user/dtos/user.request.dto';
 import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
-import {
-    IUserCheckExist,
-    IUserEntity,
-} from 'src/modules/user/interfaces/user.interface';
+import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
 import { UserImportSerialization } from 'src/modules/user/serializations/user.import.serialization';
 import { UserListSerialization } from 'src/modules/user/serializations/user.list.serialization';
@@ -164,37 +161,45 @@ export class UserAdminController {
     @Post('/create')
     async create(
         @Body()
-        body: UserCreateDto
+        { username, email, mobileNumber, role, ...body }: UserCreateDto
     ): Promise<IResponse> {
-        const checkExist: IUserCheckExist = await this.userService.checkExist(
-            body.email,
-            body.mobileNumber
-        );
-
-        if (checkExist.email && checkExist.mobileNumber) {
-            throw new BadRequestException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EXISTS_ERROR,
-                message: 'user.error.exist',
-            });
-        } else if (checkExist.email) {
-            throw new BadRequestException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
-                message: 'user.error.emailExist',
-            });
-        } else if (checkExist.mobileNumber) {
-            throw new BadRequestException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
-                message: 'user.error.mobileNumberExist',
-            });
-        }
-
-        const role = await this.roleService.findOneById(body.role);
-        if (!role) {
+        const checkRole = await this.roleService.findOneById(role);
+        if (!checkRole) {
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
                 message: 'role.error.notFound',
             });
+        }
+
+        const usernameExist: boolean = await this.userService.existUsername(
+            username
+        );
+        if (usernameExist) {
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_USERNAME_EXISTS_ERROR,
+                message: 'user.error.usernameExist',
+            });
+        }
+
+        const emailExist: boolean = await this.userService.existEmail(email);
+        if (emailExist) {
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
+                message: 'user.error.emailExist',
+            });
+        }
+
+        if (mobileNumber) {
+            const mobileNumberExist: boolean =
+                await this.userService.existMobileNumber(mobileNumber);
+            if (mobileNumberExist) {
+                throw new BadRequestException({
+                    statusCode:
+                        ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
+                    message: 'user.error.mobileNumberExist',
+                });
+            }
         }
 
         try {
@@ -205,12 +210,13 @@ export class UserAdminController {
             const create = await this.userService.create({
                 firstName: body.firstName,
                 lastName: body.lastName,
-                email: body.email,
-                mobileNumber: body.mobileNumber,
-                role: body.role,
+                role,
                 password: password.passwordHash,
                 passwordExpired: password.passwordExpired,
                 salt: password.salt,
+                username,
+                email,
+                mobileNumber,
             });
 
             return {

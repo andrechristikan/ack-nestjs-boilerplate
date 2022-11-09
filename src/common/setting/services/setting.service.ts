@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { DatabaseRepository } from 'src/common/database/decorators/database.decorator';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,
@@ -7,22 +6,19 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
-import { HelperStringService } from 'src/common/helper/services/helper.string.service';
+import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
+import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
 import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
 import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
 import { ISettingService } from 'src/common/setting/interfaces/setting.service.interface';
-import {
-    SettingEntity,
-    SettingRepository,
-} from 'src/common/setting/repository/entities/setting.entity';
+import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
+import { SettingRepository } from 'src/common/setting/repository/repositories/setting.repository';
 
 @Injectable()
 export class SettingService implements ISettingService {
     constructor(
-        @DatabaseRepository(SettingRepository)
-        private readonly settingRepository: IDatabaseRepository<SettingEntity>,
-        private readonly helperStringService: HelperStringService
+        private readonly settingRepository: SettingRepository,
+        private readonly helperNumberService: HelperNumberService
     ) {}
 
     async findAll(
@@ -54,25 +50,27 @@ export class SettingService implements ISettingService {
     }
 
     async create(
-        { name, description, value }: SettingCreateDto,
+        { name, description, value, type }: SettingCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<SettingEntity> {
         const create: SettingEntity = new SettingEntity();
         create.name = name;
         create.description = description;
         create.value = value;
+        create.type = type;
 
         return this.settingRepository.create<SettingEntity>(create, options);
     }
 
     async updateOneById(
         _id: string,
-        { description, value }: SettingUpdateDto,
+        { description, value, type }: SettingUpdateDto,
         options?: IDatabaseOptions
     ): Promise<SettingEntity> {
         const update: SettingUpdateDto = {
             description,
             value,
+            type,
         };
 
         return this.settingRepository.updateOneById<SettingUpdateDto>(
@@ -90,8 +88,41 @@ export class SettingService implements ISettingService {
     }
 
     async getValue<T>(setting: SettingEntity): Promise<T> {
-        return this.helperStringService.convertStringToNumberOrBooleanIfPossible<T>(
-            setting.value
-        );
+        if (
+            setting.type === ENUM_SETTING_DATA_TYPE.BOOLEAN &&
+            (setting.value === 'true' || setting.value === 'false')
+        ) {
+            return (setting.value === 'true' ? true : false) as any;
+        } else if (
+            setting.type === ENUM_SETTING_DATA_TYPE.NUMBER &&
+            this.helperNumberService.check(setting.value)
+        ) {
+            return this.helperNumberService.create(setting.value) as any;
+        } else if (setting.type === ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING) {
+            return setting.value.split(',') as any;
+        }
+
+        return setting.value as any;
+    }
+
+    async checkValue(
+        value: string,
+        type: ENUM_SETTING_DATA_TYPE
+    ): Promise<boolean> {
+        let check = false;
+
+        if (
+            type === ENUM_SETTING_DATA_TYPE.BOOLEAN &&
+            (value === 'true' || value === 'false')
+        ) {
+            check = true;
+        } else if (
+            type === ENUM_SETTING_DATA_TYPE.NUMBER &&
+            this.helperNumberService.check(value)
+        ) {
+            check = true;
+        }
+
+        return check;
     }
 }

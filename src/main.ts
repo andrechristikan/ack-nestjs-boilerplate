@@ -4,14 +4,11 @@ import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
 import { useContainer } from 'class-validator';
 import swaggerInit from './swagger';
-import { ENUM_DATABASE_TYPE } from 'src/common/database/constants/database.enum';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
     const databaseUri: string = configService.get<string>('database.host');
-    const databaseType: ENUM_DATABASE_TYPE =
-        configService.get<ENUM_DATABASE_TYPE>('database.type');
     const env: string = configService.get<string>('app.env');
     const host: string = configService.get<string>('app.http.host');
     const port: number = configService.get<number>('app.http.port');
@@ -56,7 +53,6 @@ async function bootstrap() {
         `Http Server running on ${await app.getUrl()}`,
         'NestApplication'
     );
-    logger.log(`Database type ${databaseType}`, 'NestApplication');
     logger.log(`Database uri ${databaseUri}`, 'NestApplication');
 
     logger.log(`==========================================================`);

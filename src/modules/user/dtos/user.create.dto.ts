@@ -8,11 +8,23 @@ import {
     MaxLength,
     MinLength,
     IsUUID,
+    IsOptional,
+    ValidateIf,
 } from 'class-validator';
 import { IsPasswordStrong } from 'src/common/request/validations/request.is-password-strong.validation';
-import { IsStartWith } from 'src/common/request/validations/request.is-start-with.validation';
+import { MobileNumberAllowed } from 'src/common/request/validations/request.mobile-number-allowed.validation';
 
 export class UserCreateDto {
+    @ApiProperty({
+        example: faker.internet.userName(),
+        required: true,
+    })
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(100)
+    @Type(() => String)
+    readonly username: string;
+
     @ApiProperty({
         example: faker.internet.email(),
         required: true,
@@ -50,12 +62,13 @@ export class UserCreateDto {
         required: true,
     })
     @IsString()
-    @IsNotEmpty()
+    @IsOptional()
     @MinLength(10)
     @MaxLength(14)
+    @ValidateIf((e) => e.mobileNumber !== '')
     @Type(() => String)
-    @IsStartWith(['628'])
-    readonly mobileNumber: string;
+    @MobileNumberAllowed()
+    readonly mobileNumber?: string;
 
     @ApiProperty({
         example: faker.database.mongodbObjectId(),

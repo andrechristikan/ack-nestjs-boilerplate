@@ -3,7 +3,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
     IsNotEmpty,
-    IsEmail,
     MaxLength,
     IsBoolean,
     IsOptional,
@@ -13,13 +12,14 @@ import {
 
 export class UserLoginDto {
     @ApiProperty({
-        example: faker.name.firstName(),
+        example: faker.internet.userName(),
         required: true,
     })
-    @IsEmail()
+    @IsString()
     @IsNotEmpty()
     @MaxLength(100)
-    readonly email: string;
+    @Type(() => String)
+    readonly username: string;
 
     @ApiProperty({
         description:

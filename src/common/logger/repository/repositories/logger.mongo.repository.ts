@@ -1,24 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { ApiKeyMongoEntity } from 'src/common/api-key/repository/entities/api-key.mongo.entity';
+import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { DatabaseMongoRepositoryAbstract } from 'src/common/database/abstracts/database.mongo-repository.abstract';
-import { DatabaseMongoModel } from 'src/common/database/decorators/database.decorator';
+import { DatabaseModel } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
-import { LoggerMongoEntity } from 'src/common/logger/repository/entities/logger.mongo.entity';
+import { LoggerEntity } from 'src/common/logger/repository/entities/logger.entity';
 
 @Injectable()
-export class LoggerMongoRepository
-    extends DatabaseMongoRepositoryAbstract<LoggerMongoEntity>
-    implements IDatabaseRepository<LoggerMongoEntity>
+export class LoggerRepository
+    extends DatabaseMongoRepositoryAbstract<LoggerEntity>
+    implements IDatabaseRepository<LoggerEntity>
 {
     constructor(
-        @DatabaseMongoModel(LoggerMongoEntity)
-        private readonly loggerModel: Model<LoggerMongoEntity>
+        @DatabaseModel(LoggerEntity)
+        private readonly loggerModel: Model<LoggerEntity>
     ) {
         super(loggerModel, {
             path: 'apiKey',
             match: '_id',
-            model: ApiKeyMongoEntity.name,
+            model: ApiKeyEntity.name,
         });
     }
 }

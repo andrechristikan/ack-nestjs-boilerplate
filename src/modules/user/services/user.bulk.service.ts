@@ -1,19 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { DatabaseRepository } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseManyOptions } from 'src/common/database/interfaces/database.interface';
-import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
 import { IUserBulkService } from 'src/modules/user/interfaces/user.bulk-service.interface';
-import {
-    UserEntity,
-    UserRepository,
-} from 'src/modules/user/repository/entities/user.entity';
+import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
 
 @Injectable()
 export class UserBulkService implements IUserBulkService {
-    constructor(
-        @DatabaseRepository(UserRepository)
-        private readonly userRepository: IDatabaseRepository<UserEntity>
-    ) {}
+    constructor(private readonly userRepository: UserRepository) {}
 
     async deleteMany(
         find: Record<string, any>,

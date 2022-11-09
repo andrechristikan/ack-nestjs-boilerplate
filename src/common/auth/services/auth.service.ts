@@ -85,7 +85,7 @@ export class AuthService implements IAuthService {
     async encryptAccessToken(
         payload: Record<string, any>
     ): Promise<string | Record<string, any>> {
-        return this.configService.get('app.env') === 'production'
+        return this.configService.get<boolean>('auth.jwt.payloadEncryption')
             ? this.helperEncryptionService.aes256Encrypt(
                   payload,
                   this.accessTokenEncryptKey,
@@ -136,7 +136,7 @@ export class AuthService implements IAuthService {
     async encryptRefreshToken(
         payload: Record<string, any>
     ): Promise<string | Record<string, any>> {
-        return this.configService.get('app.env') === 'production'
+        return this.configService.get<boolean>('auth.jwt.payloadEncryption')
             ? this.helperEncryptionService.aes256Encrypt(
                   payload,
                   this.refreshTokenEncryptKey,

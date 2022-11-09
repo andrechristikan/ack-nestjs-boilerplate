@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
-import { DatabaseRepository } from 'src/common/database/decorators/database.decorator';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,
@@ -9,23 +8,16 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
-import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { RoleActiveDto } from 'src/modules/role/dtos/role.active.dto';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
 import { IRoleService } from 'src/modules/role/interfaces/role.service.interface';
-import {
-    RoleEntity,
-    RoleRepository,
-} from 'src/modules/role/repository/entities/role.entity';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
+import { RoleRepository } from 'src/modules/role/repository/repositories/role.repository';
 
 @Injectable()
 export class RoleService implements IRoleService {
-    constructor(
-        @DatabaseRepository(RoleRepository)
-        private readonly roleRepository: IDatabaseRepository<RoleEntity>
-    ) {}
+    constructor(private readonly roleRepository: RoleRepository) {}
 
     async findAll<T>(
         find?: Record<string, any>,
@@ -71,14 +63,13 @@ export class RoleService implements IRoleService {
         { name, permissions, accessFor }: RoleCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<RoleEntity> {
-        const create = {
-            name,
-            permissions: permissions.map((val) => ({ _id: val })),
-            isActive: true,
-            accessFor,
-        };
+        const create: RoleEntity = new RoleEntity();
+        create.accessFor = accessFor;
+        create.permissions = permissions.map((val) => `${val}`);
+        create.isActive = true;
+        create.name = name;
 
-        return this.roleRepository.create(create, options);
+        return this.roleRepository.create<RoleEntity>(create, options);
     }
 
     async createSuperAdmin(
@@ -130,6 +121,7 @@ export class RoleService implements IRoleService {
     ): Promise<RoleEntity> {
         return this.roleRepository.deleteOneById(_id, options);
     }
+
     async deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions

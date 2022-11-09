@@ -34,11 +34,10 @@ import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.enum.cons
 import { Logger } from 'src/common/logger/decorators/logger.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
+import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
+import { SettingService } from 'src/common/setting/services/setting.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import {
-    ENUM_USER_STATUS_CODE_ERROR,
-    ENUM_USER_STATUS_CODE_SUCCESS,
-} from 'src/modules/user/constants/user.status-code.constant';
+import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
 import { UserProfileGuard } from 'src/modules/user/decorators/user.public.decorator';
 import {
@@ -53,6 +52,7 @@ import { UserChangePasswordDto } from 'src/modules/user/dtos/user.change-passwor
 import { UserLoginDto } from 'src/modules/user/dtos/user.login.dto';
 import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
+import { UserInfoSerialization } from 'src/modules/user/serializations/user.info.serialization';
 import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
@@ -67,7 +67,8 @@ export class UserController {
     constructor(
         private readonly authService: AuthService,
         private readonly userService: UserService,
-        private readonly awsService: AwsS3Service
+        private readonly awsService: AwsS3Service,
+        private readonly settingService: SettingService
     ) {}
 
     @UserProfileDoc()
@@ -187,16 +188,13 @@ export class UserController {
     @Logger(ENUM_LOGGER_ACTION.LOGIN, { tags: ['login', 'withEmail'] })
     @HttpCode(HttpStatus.OK)
     @Post('/login')
-    async login(@Body() body: UserLoginDto): Promise<IResponse> {
-        const user: IUserEntity = await this.userService.findOne<IUserEntity>(
-            {
-                email: body.email,
-            },
-            {
+    async login(
+        @Body() { password, username, rememberMe }: UserLoginDto
+    ): Promise<IResponse> {
+        const user: IUserEntity =
+            await this.userService.findOneByUsername<IUserEntity>(username, {
                 join: true,
-            }
-        );
-
+            });
         if (!user) {
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
@@ -204,12 +202,35 @@ export class UserController {
             });
         }
 
+        const passwordAttempt: SettingEntity =
+            await this.settingService.findOneByName('passwordAttempt');
+
+        const passwordAttemptValue: boolean =
+            await this.settingService.getValue<boolean>(passwordAttempt);
+
+        if (passwordAttemptValue) {
+            const maxPasswordAttempt: SettingEntity =
+                await this.settingService.findOneByName('maxPasswordAttempt');
+            const value: number = await this.settingService.getValue<number>(
+                maxPasswordAttempt
+            );
+
+            if (user.passwordAttempt >= value) {
+                throw new ForbiddenException({
+                    statusCode:
+                        ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_ATTEMPT_MAX_ERROR,
+                    message: 'user.error.passwordAttemptMax',
+                });
+            }
+        }
+
         const validate: boolean = await this.authService.validateUser(
-            body.password,
+            password,
             user.password
         );
-
         if (!validate) {
+            await this.userService.increasePasswordAttempt(user._id);
+
             throw new BadRequestException({
                 statusCode:
                     ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_NOT_MATCH_ERROR,
@@ -232,7 +253,7 @@ export class UserController {
         const tokenType: string = await this.authService.getTokenType();
         const expiresIn: number =
             await this.authService.getAccessTokenExpirationTime();
-        const rememberMe: boolean = body.rememberMe ? true : false;
+        rememberMe = rememberMe ? true : false;
         const payloadAccessToken: Record<string, any> =
             await this.authService.createPayloadAccessToken(
                 payload,
@@ -280,10 +301,6 @@ export class UserController {
         }
 
         return {
-            metadata: {
-                // override status code
-                statusCode: ENUM_USER_STATUS_CODE_SUCCESS.USER_LOGIN_SUCCESS,
-            },
             tokenType,
             expiresIn,
             accessToken,
@@ -364,7 +381,7 @@ export class UserController {
     }
 
     @UserInfoDoc()
-    @Response('user.info', { classSerialization: UserPayloadSerialization })
+    @Response('user.info', { classSerialization: UserInfoSerialization })
     @AuthJwtAccessProtected()
     @Get('/info')
     async info(

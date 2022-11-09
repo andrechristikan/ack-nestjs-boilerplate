@@ -1,14 +1,80 @@
-import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.repository';
+import { Prop, SchemaFactory } from '@nestjs/mongoose';
+import { CallbackWithoutResultAndOptionalError } from 'mongoose';
+
+import { DatabaseMongoEntityAbstract } from 'src/common/database/abstracts/database.mongo-entity.abstract';
+import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 
 export const ApiKeyDatabaseName = 'apikeys';
-export const ApiKeyRepository = 'ApiKeyRepositoryToken';
 
-export class ApiKeyEntity extends DatabaseEntityAbstract {
+@DatabaseEntity({ collection: ApiKeyDatabaseName })
+export class ApiKeyEntity extends DatabaseMongoEntityAbstract {
+    @Prop({
+        required: true,
+        index: true,
+        type: String,
+        minlength: 1,
+        maxlength: 100,
+        lowercase: true,
+        trim: true,
+    })
     name: string;
+
+    @Prop({
+        required: false,
+        type: String,
+        minlength: 1,
+        maxlength: 255,
+    })
     description?: string;
+
+    @Prop({
+        required: true,
+        type: String,
+        unique: true,
+        index: true,
+        trim: true,
+    })
     key: string;
+
+    @Prop({
+        required: true,
+        trim: true,
+        type: String,
+    })
     hash: string;
+
+    @Prop({
+        required: true,
+        type: String,
+        index: true,
+        trim: true,
+    })
     encryptionKey: string;
+
+    @Prop({
+        required: true,
+        type: String,
+        minLength: 16,
+        maxLength: 16,
+        trim: true,
+    })
     passphrase: string;
+
+    @Prop({
+        required: true,
+        index: true,
+        type: Boolean,
+    })
     isActive: boolean;
 }
+
+export const ApiKeySchema = SchemaFactory.createForClass(ApiKeyEntity);
+
+ApiKeySchema.pre(
+    'save',
+    function (next: CallbackWithoutResultAndOptionalError) {
+        this.name = this.name.toLowerCase();
+
+        next();
+    }
+);

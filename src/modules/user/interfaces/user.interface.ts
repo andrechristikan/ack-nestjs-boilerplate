@@ -12,11 +12,6 @@ export interface IUserCreate extends UserCreateDto {
     salt: string;
 }
 
-export interface IUserCheckExist {
-    email: boolean;
-    mobileNumber: boolean;
-}
-
 export interface IUserRolePayload {
     name: string;
     permissions: string[];

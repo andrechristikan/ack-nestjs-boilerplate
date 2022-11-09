@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
-import { Exclude, Expose, Transform, Type } from 'class-transformer';
+import { Exclude, Transform, Type } from 'class-transformer';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { IRoleEntity } from 'src/modules/role/interfaces/role.interface';
 
@@ -63,14 +63,6 @@ export class UserGetSerialization {
     })
     readonly photo?: AwsS3Serialization;
 
-    @ApiProperty({
-        example: faker.name.fullName(),
-    })
-    @Expose()
-    get fullName(): string {
-        return `${this.firstName} ${this.lastName}`;
-    }
-
     @Exclude()
     readonly password: string;
 
@@ -78,6 +70,16 @@ export class UserGetSerialization {
         example: faker.date.future(),
     })
     readonly passwordExpired: Date;
+
+    @ApiProperty({
+        example: [1, 0],
+    })
+    readonly passwordAttempt: number;
+
+    @ApiProperty({
+        example: faker.date.recent(),
+    })
+    readonly signUpDate: Date;
 
     @Exclude()
     readonly salt: string;
@@ -87,6 +89,8 @@ export class UserGetSerialization {
     })
     readonly createdAt: Date;
 
-    @Exclude()
+    @ApiProperty({
+        example: faker.date.past(),
+    })
     readonly updatedAt: Date;
 }

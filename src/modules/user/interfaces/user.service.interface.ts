@@ -11,7 +11,7 @@ import {
 import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
-import { IUserCheckExist, IUserCreate, IUserEntity } from './user.interface';
+import { IUserCreate, IUserEntity } from './user.interface';
 
 export interface IUserService {
     findAll<T>(
@@ -23,6 +23,11 @@ export interface IUserService {
 
     findOne<T>(
         find: Record<string, any>,
+        options?: IDatabaseFindOneOptions
+    ): Promise<T>;
+
+    findOneByUsername<T>(
+        username: string,
         options?: IDatabaseFindOneOptions
     ): Promise<T>;
 
@@ -52,11 +57,20 @@ export interface IUserService {
         options?: IDatabaseOptions
     ): Promise<UserEntity>;
 
-    checkExist(
+    existEmail(
         email: string,
+        options?: IDatabaseExistOptions
+    ): Promise<boolean>;
+
+    existMobileNumber(
         mobileNumber: string,
         options?: IDatabaseExistOptions
-    ): Promise<IUserCheckExist>;
+    ): Promise<boolean>;
+
+    existUsername(
+        username: string,
+        options?: IDatabaseExistOptions
+    ): Promise<boolean>;
 
     updatePhoto(
         _id: string,
@@ -83,4 +97,9 @@ export interface IUserService {
     active(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
 
     payloadSerialization(data: IUserEntity): Promise<UserPayloadSerialization>;
+
+    increasePasswordAttempt(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity>;
 }

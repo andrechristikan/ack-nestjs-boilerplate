@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { DatabaseRepository } from 'src/common/database/decorators/database.decorator';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,
@@ -7,22 +6,16 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
 import { PermissionActiveDto } from 'src/modules/permission/dtos/permission.active.dto';
 import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
 import { IPermissionService } from 'src/modules/permission/interfaces/permission.service.interface';
-import {
-    PermissionEntity,
-    PermissionRepository,
-} from 'src/modules/permission/repository/entities/permission.entity';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
+import { PermissionRepository } from 'src/modules/permission/repository/repositories/permission.mongo.repository';
 
 @Injectable()
 export class PermissionService implements IPermissionService {
-    constructor(
-        @DatabaseRepository(PermissionRepository)
-        private readonly permissionRepository: IDatabaseRepository<PermissionEntity>
-    ) {}
+    constructor(private readonly permissionRepository: PermissionRepository) {}
 
     async findAll(
         find?: Record<string, any>,

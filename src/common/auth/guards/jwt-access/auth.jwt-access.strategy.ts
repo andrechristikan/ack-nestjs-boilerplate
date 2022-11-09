@@ -30,7 +30,7 @@ export class AuthJwtAccessStrategy extends PassportStrategy(Strategy, 'jwt') {
     async validate({
         data,
     }: Record<string, any>): Promise<Record<string, any>> {
-        return this.configService.get<string>('app.env') === 'production'
+        return this.configService.get<boolean>('auth.jwt.payloadEncryption')
             ? (this.helperEncryptionService.aes256Decrypt(
                   data,
                   this.configService.get<string>(

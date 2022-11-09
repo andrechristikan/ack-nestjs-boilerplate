@@ -35,7 +35,7 @@ export interface IRoleService {
         options?: IDatabaseCreateOptions
     ): Promise<RoleEntity>;
 
-    createSuperAdmin(options?: IDatabaseOptions): Promise<RoleEntity>;
+    createSuperAdmin(options?: IDatabaseCreateOptions): Promise<RoleEntity>;
 
     update(
         _id: string,

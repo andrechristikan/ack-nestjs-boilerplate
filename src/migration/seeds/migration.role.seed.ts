@@ -1,7 +1,6 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
-import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { RoleBulkService } from 'src/modules/role/services/role.bulk.service';
 import { RoleService } from 'src/modules/role/services/role.service';

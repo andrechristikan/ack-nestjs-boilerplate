@@ -1,18 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { DatabaseMongoRepositoryAbstract } from 'src/common/database/abstracts/database.mongo-repository.abstract';
-import { DatabaseMongoModel } from 'src/common/database/decorators/database.decorator';
+import { DatabaseModel } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
-import { PermissionMongoEntity } from 'src/modules/permission/repository/entities/permission.mongo.entity';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 
 @Injectable()
-export class PermissionMongoRepository
-    extends DatabaseMongoRepositoryAbstract<PermissionMongoEntity>
-    implements IDatabaseRepository<PermissionMongoEntity>
+export class PermissionRepository
+    extends DatabaseMongoRepositoryAbstract<PermissionEntity>
+    implements IDatabaseRepository<PermissionEntity>
 {
     constructor(
-        @DatabaseMongoModel(PermissionMongoEntity)
-        private readonly permissionModel: Model<PermissionMongoEntity>
+        @DatabaseModel(PermissionEntity)
+        private readonly permissionModel: Model<PermissionEntity>
     ) {
         super(permissionModel);
     }

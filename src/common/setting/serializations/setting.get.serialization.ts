@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Transform, Type } from 'class-transformer';
+import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
 
 export class SettingGetSerialization {
     @ApiProperty({
@@ -26,6 +27,14 @@ export class SettingGetSerialization {
     readonly description?: string;
 
     @ApiProperty({
+        description: 'Data type of setting',
+        example: 'BOOLEAN',
+        required: true,
+        enum: ENUM_SETTING_DATA_TYPE,
+    })
+    readonly type: ENUM_SETTING_DATA_TYPE;
+
+    @ApiProperty({
         description: 'Value of string, can be type string/boolean/number',
         oneOf: [
             { type: 'string', readOnly: true, examples: ['on', 'off'] },
@@ -34,17 +43,22 @@ export class SettingGetSerialization {
         ],
         required: true,
     })
-    @Transform(({ value }) => {
-        let convertValue: string | boolean | number = value;
+    @Transform(({ value, obj }) => {
+        const regex = /^-?\d+$/;
+        const checkNum = regex.test(value);
 
-        const regexNumber = /^-?\d+$/;
-        if (value === 'true' || value === 'false') {
-            convertValue = value === 'true';
-        } else if (regexNumber.test(value)) {
-            convertValue = Number(value);
+        if (
+            obj.type === ENUM_SETTING_DATA_TYPE.BOOLEAN &&
+            (value === 'true' || value === 'false')
+        ) {
+            return value === 'true' ? true : false;
+        } else if (obj.type === ENUM_SETTING_DATA_TYPE.NUMBER && checkNum) {
+            return Number(value);
+        } else if (obj.type === ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING) {
+            return value.split(',');
         }
 
-        return convertValue;
+        return value;
     })
     readonly value: string | number | boolean;
 

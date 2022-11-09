@@ -41,6 +41,10 @@ export default registerAs(
             audience: process.env.AUTH_JWT_AUDIENCE || 'https://example.com',
             issuer: process.env.AUTH_JWT_ISSUER || 'ack',
             prefixAuthorization: 'Bearer',
+            payloadEncryption:
+                process.env.AUTH_JWT_PAYLOAD_ENCRYPTION === 'true'
+                    ? true
+                    : false,
         },
 
         password: {

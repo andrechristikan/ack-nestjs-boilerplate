@@ -60,13 +60,14 @@ jobs:
 
           echo JOB_ENABLE="true" >> .env
 
-          echo DATABASE_TYPE="MONGO" >> .env
           echo DATABASE_HOST="mongodb://localhost:27017" >> .env
           echo DATABASE_NAME="ack" >> .env
           echo DATABASE_USER="" >> .env
           echo DATABASE_PASSWORD="" >> .env
           echo DATABASE_DEBUG="false" >> .env
           echo DATABASE_OPTIONS="replicaSet=test-rs" >> .env
+
+          echo AUTH_JWT_PAYLOAD_ENCRYPTION="false" >> .env
 
           echo AUTH_JWT_SUBJECT="AckDevelopment" >> .env
           echo AUTH_JWT_AUDIENCE="https://example.com" >> .env

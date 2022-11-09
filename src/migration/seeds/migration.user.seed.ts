@@ -40,6 +40,7 @@ export class UserSeed {
             );
 
             await this.userService.create({
+                username: 'superadmin',
                 firstName: 'superadmin',
                 lastName: 'test',
                 email: 'superadmin@mail.com',
@@ -51,6 +52,7 @@ export class UserSeed {
             });
 
             await this.userService.create({
+                username: 'admin',
                 firstName: 'admin',
                 lastName: 'test',
                 email: 'admin@mail.com',
@@ -62,6 +64,7 @@ export class UserSeed {
             });
 
             await this.userService.create({
+                username: 'user',
                 firstName: 'user',
                 lastName: 'test',
                 email: 'user@mail.com',

@@ -1,25 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { DatabaseMongoRepositoryAbstract } from 'src/common/database/abstracts/database.mongo-repository.abstract';
-import { DatabaseMongoModel } from 'src/common/database/decorators/database.decorator';
+import { DatabaseModel } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
-import { RoleMongoEntity } from 'src/modules/role/repository/entities/role.mongo.entity';
-import { UserMongoEntity } from 'src/modules/user/repository/entities/user.mongo.entity';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
 @Injectable()
-export class UserMongoRepository
-    extends DatabaseMongoRepositoryAbstract<UserMongoEntity>
-    implements IDatabaseRepository<UserMongoEntity>
+export class UserRepository
+    extends DatabaseMongoRepositoryAbstract<UserEntity>
+    implements IDatabaseRepository<UserEntity>
 {
     constructor(
-        @DatabaseMongoModel(UserMongoEntity)
-        private readonly userModel: Model<UserMongoEntity>
+        @DatabaseModel(UserEntity)
+        private readonly userModel: Model<UserEntity>
     ) {
         super(userModel, {
             path: 'role',
             match: '_id',
-            model: RoleMongoEntity.name,
+            model: RoleEntity.name,
             populate: {
                 path: 'permissions',
                 match: '_id',

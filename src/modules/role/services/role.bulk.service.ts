@@ -1,23 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { DatabaseRepository } from 'src/common/database/decorators/database.decorator';
 import {
     IDatabaseCreateManyOptions,
     IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { IRoleBulkService } from 'src/modules/role/interfaces/role.bulk-service.interface';
-import {
-    RoleEntity,
-    RoleRepository,
-} from 'src/modules/role/repository/entities/role.entity';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
+import { RoleRepository } from 'src/modules/role/repository/repositories/role.repository';
 
 @Injectable()
 export class RoleBulkService implements IRoleBulkService {
-    constructor(
-        @DatabaseRepository(RoleRepository)
-        private readonly roleRepository: IDatabaseRepository<RoleEntity>
-    ) {}
+    constructor(private readonly roleRepository: RoleRepository) {}
 
     async deleteMany(
         find: Record<string, any>,
@@ -30,11 +23,16 @@ export class RoleBulkService implements IRoleBulkService {
         data: RoleCreateDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean> {
-        const create = data.map((val) => ({
-            ...val,
-            permissions: val.permissions.map((l) => ({ _id: l })),
-        }));
+        const create: RoleEntity[] = data.map((val) => {
+            const role = new RoleEntity();
+            role.accessFor = val.accessFor;
+            role.permissions = val.permissions.map((l) => `${l}`);
+            role.isActive = true;
+            role.name = val.name;
 
-        return this.roleRepository.createMany(create, options);
+            return role;
+        });
+
+        return this.roleRepository.createMany<RoleEntity>(create, options);
     }
 }

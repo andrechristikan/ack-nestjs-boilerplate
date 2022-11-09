@@ -8,16 +8,11 @@ import {
     Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ApiKeyProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import {
-    RequestParamGuard,
-    RequestValidateTimestamp,
-    RequestValidateUserAgent,
-} from 'src/common/request/decorators/request.decorator';
+import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
     Response,
     ResponsePaging,

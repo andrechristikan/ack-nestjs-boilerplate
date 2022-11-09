@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsString, IsNotEmpty, IsOptional, ValidateIf } from 'class-validator';
 import { SafeString } from 'src/common/request/validations/request.safe-string.validation';
+import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
 
 export class SettingCreateDto {
     @IsString()
@@ -21,6 +22,16 @@ export class SettingCreateDto {
         nullable: true,
     })
     readonly description?: string;
+
+    @IsString()
+    @IsNotEmpty()
+    @ApiProperty({
+        description: 'Data type of setting',
+        example: 'BOOLEAN',
+        required: true,
+        enum: ENUM_SETTING_DATA_TYPE,
+    })
+    readonly type: ENUM_SETTING_DATA_TYPE;
 
     @IsNotEmpty()
     @Type(() => String)
