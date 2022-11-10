@@ -29,7 +29,7 @@ describe('DebuggerService', () => {
                     expandVariables: true,
                 }),
                 HelperModule,
-                DebuggerModule.register(),
+                DebuggerModule.forRoot(),
             ],
         }).compile();
 

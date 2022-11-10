@@ -6,6 +6,7 @@ import {
     ValidationPipe,
 } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
+import { MobileNumberAllowedConstraint } from 'src/common/request/validations/request.mobile-number-allowed.validation';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from './constants/request.status-code.constant';
 import { IsPasswordMediumConstraint } from './validations/request.is-password-medium.validation';
 import { IsPasswordStrongConstraint } from './validations/request.is-password-strong.validation';
@@ -19,7 +20,6 @@ import { MinGreaterThanConstraint } from './validations/request.min-greater-than
 import { IsOnlyDigitsConstraint } from './validations/request.only-digits.validation';
 import { SafeStringConstraint } from './validations/request.safe-string.validation';
 import { SkipConstraint } from './validations/request.skip.validation';
-import { StringOrNumberOrBooleanConstraint } from './validations/request.string-or-number-or-boolean.validation';
 
 @Module({
     controllers: [],
@@ -51,10 +51,10 @@ import { StringOrNumberOrBooleanConstraint } from './validations/request.string-
         MinGreaterThanEqualConstraint,
         MinGreaterThanConstraint,
         SkipConstraint,
-        StringOrNumberOrBooleanConstraint,
         SafeStringConstraint,
         IsOnlyDigitsConstraint,
         MinDateTodayEqualConstraint,
+        MobileNumberAllowedConstraint,
     ],
     imports: [],
 })

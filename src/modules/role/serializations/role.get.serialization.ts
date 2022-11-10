@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Transform, Type } from 'class-transformer';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
-import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 
 export class RoleGetSerialization {
     @ApiProperty({
@@ -47,14 +47,14 @@ export class RoleGetSerialization {
         required: true,
     })
     @Transform(({ obj }) =>
-        obj.permissions.map((val: PermissionDocument) => ({
+        obj.permissions.map((val: PermissionEntity) => ({
             _id: `${val._id}`,
             code: val.code,
             name: val.name,
             isActive: val.isActive,
         }))
     )
-    readonly permissions: PermissionDocument[];
+    readonly permissions: PermissionEntity[];
 
     @ApiProperty({
         description: 'Date created at',

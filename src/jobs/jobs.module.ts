@@ -1,18 +1,19 @@
-import { DynamicModule, Module } from '@nestjs/common';
+import { DynamicModule, ForwardReference, Module, Type } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { JobsRouterModule } from './router/jobs.router.module';
 
 @Module({})
 export class JobsModule {
-    static register(): DynamicModule {
+    static forRoot(): DynamicModule {
+        const imports: (
+            | DynamicModule
+            | Type<any>
+            | Promise<DynamicModule>
+            | ForwardReference<any>
+        )[] = [];
+
         if (process.env.JOB_ENABLE === 'true') {
-            return {
-                module: JobsModule,
-                controllers: [],
-                providers: [],
-                exports: [],
-                imports: [ScheduleModule.forRoot(), JobsRouterModule],
-            };
+            imports.push(ScheduleModule.forRoot(), JobsRouterModule);
         }
 
         return {
@@ -20,7 +21,7 @@ export class JobsModule {
             providers: [],
             exports: [],
             controllers: [],
-            imports: [],
+            imports,
         };
     }
 }

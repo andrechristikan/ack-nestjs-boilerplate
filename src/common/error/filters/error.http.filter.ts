@@ -42,6 +42,8 @@ export class ErrorHttpFilter implements ExceptionFilter {
         const ctx: HttpArgumentsHost = host.switchToHttp();
         const request = ctx.getRequest<IRequestApp>();
 
+        console.error('exception', exception);
+
         // get request headers
         const customLang =
             ctx.getRequest<IRequestApp>().customLang ||
@@ -78,7 +80,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
                     },
                     exception
                 );
-            } catch (err: any) {}
+            } catch (err: unknown) {}
 
             // Restructure
             const response = exception.getResponse();
@@ -200,7 +202,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
                     },
                     exception
                 );
-            } catch (err: any) {}
+            } catch (err: unknown) {}
 
             httpAdapter.reply(
                 responseExpress,

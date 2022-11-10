@@ -11,7 +11,9 @@ export interface IAuthService {
 
     decryptAccessToken(data: Record<string, any>): Promise<Record<string, any>>;
 
-    createAccessToken(payloadHashed: string): Promise<string>;
+    createAccessToken(
+        payloadHashed: string | Record<string, any>
+    ): Promise<string>;
 
     validateAccessToken(token: string): Promise<boolean>;
 
@@ -26,7 +28,7 @@ export interface IAuthService {
     ): Promise<Record<string, any>>;
 
     createRefreshToken(
-        payloadHashed: string,
+        payloadHashed: string | Record<string, any>,
         options?: IAuthRefreshTokenOptions
     ): Promise<string>;
 
@@ -66,4 +68,6 @@ export interface IAuthService {
     getAudience(): Promise<string>;
 
     getSubject(): Promise<string>;
+
+    getPayloadEncryption(): Promise<boolean>;
 }

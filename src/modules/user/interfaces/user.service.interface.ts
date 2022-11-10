@@ -9,9 +9,9 @@ import {
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
-import { UserDocument } from 'src/modules/user/schemas/user.schema';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
-import { IUserCheckExist, IUserCreate, IUserDocument } from './user.interface';
+import { IUserCreate, IUserEntity } from './user.interface';
 
 export interface IUserService {
     findAll<T>(
@@ -26,6 +26,11 @@ export interface IUserService {
         options?: IDatabaseFindOneOptions
     ): Promise<T>;
 
+    findOneByUsername<T>(
+        username: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<T>;
+
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseOptions
@@ -34,35 +39,44 @@ export interface IUserService {
     create(
         data: IUserCreate,
         options?: IDatabaseCreateOptions
-    ): Promise<UserDocument>;
+    ): Promise<UserEntity>;
 
     deleteOneById(
         _id: string,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<UserDocument>;
+    ): Promise<UserEntity>;
 
     deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<UserDocument>;
+    ): Promise<UserEntity>;
 
     updateOneById(
         _id: string,
         data: UserUpdateDto,
         options?: IDatabaseOptions
-    ): Promise<UserDocument>;
+    ): Promise<UserEntity>;
 
-    checkExist(
+    existEmail(
         email: string,
+        options?: IDatabaseExistOptions
+    ): Promise<boolean>;
+
+    existMobileNumber(
         mobileNumber: string,
         options?: IDatabaseExistOptions
-    ): Promise<IUserCheckExist>;
+    ): Promise<boolean>;
+
+    existUsername(
+        username: string,
+        options?: IDatabaseExistOptions
+    ): Promise<boolean>;
 
     updatePhoto(
         _id: string,
         aws: AwsS3Serialization,
         options?: IDatabaseOptions
-    ): Promise<UserDocument>;
+    ): Promise<UserEntity>;
 
     createRandomFilename(): Promise<Record<string, any>>;
 
@@ -70,19 +84,22 @@ export interface IUserService {
         _id: string,
         data: IAuthPassword,
         options?: IDatabaseOptions
-    ): Promise<UserDocument>;
+    ): Promise<UserEntity>;
 
     updatePasswordExpired(
         _id: string,
         passwordExpired: Date,
         options?: IDatabaseOptions
-    ): Promise<UserDocument>;
+    ): Promise<UserEntity>;
 
-    inactive(_id: string, options?: IDatabaseOptions): Promise<UserDocument>;
+    inactive(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
 
-    active(_id: string, options?: IDatabaseOptions): Promise<UserDocument>;
+    active(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
 
-    payloadSerialization(
-        data: IUserDocument
-    ): Promise<UserPayloadSerialization>;
+    payloadSerialization(data: IUserEntity): Promise<UserPayloadSerialization>;
+
+    increasePasswordAttempt(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity>;
 }

@@ -12,24 +12,25 @@ import {
     E2E_ROLE_ADMIN_UPDATE_URL,
     E2E_ROLE_PAYLOAD_TEST,
 } from './role.constant';
-import { connection, Types } from 'mongoose';
+import { connection } from 'mongoose';
 import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { RoleService } from 'src/modules/role/services/role.service';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
-import { RoleBulkService } from 'src/modules/role/services/role.bulk.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { RoleDocument } from 'src/modules/role/schemas/role.schema';
-import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
-import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+import { RoleService } from 'src/modules/role/services/role.service';
+import { RoleBulkService } from 'src/modules/role/services/role.bulk.service';
+import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
+import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
+import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 
 describe('E2E Role Admin', () => {
     let app: INestApplication;
@@ -38,10 +39,10 @@ describe('E2E Role Admin', () => {
     let permissionService: PermissionService;
     let roleBulkService: RoleBulkService;
     let helperDateService: HelperDateService;
-    let authApiService: AuthApiService;
+    let apiKeyService: ApiKeyService;
 
-    let role: RoleDocument;
-    let roleUpdate: RoleDocument;
+    let role: RoleEntity;
+    let roleUpdate: RoleEntity;
 
     let accessToken: string;
 
@@ -54,6 +55,8 @@ describe('E2E Role Admin', () => {
     let timestamp: number;
 
     beforeAll(async () => {
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+
         const modRef = await Test.createTestingModule({
             imports: [
                 CommonModule,
@@ -74,10 +77,10 @@ describe('E2E Role Admin', () => {
         roleBulkService = app.get(RoleBulkService);
         permissionService = app.get(PermissionService);
         helperDateService = app.get(HelperDateService);
-        authApiService = app.get(AuthApiService);
+        apiKeyService = app.get(ApiKeyService);
 
-        const permissions: PermissionDocument[] =
-            await permissionService.findAll({
+        const permissions: PermissionEntity[] = await permissionService.findAll(
+            {
                 code: {
                     $in: [
                         ENUM_AUTH_PERMISSIONS.ROLE_READ,
@@ -90,7 +93,8 @@ describe('E2E Role Admin', () => {
                         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
                     ],
                 },
-            });
+            }
+        );
 
         successData = {
             name: 'testRole1',
@@ -118,16 +122,17 @@ describe('E2E Role Admin', () => {
 
         role = await roleService.create(existData);
 
-        const payloadHashed = await authService.encryptAccessToken({
-            ...E2E_ROLE_PAYLOAD_TEST,
-            loginDate: new Date(),
-            rememberMe: false,
-        });
-
-        accessToken = await authService.createAccessToken(payloadHashed);
+        const payload = await authService.createPayloadAccessToken(
+            {
+                ...E2E_ROLE_PAYLOAD_TEST,
+                loginDate: new Date(),
+            },
+            false
+        );
+        accessToken = await authService.createAccessToken(payload);
 
         timestamp = helperDateService.timestamp();
-        const apiEncryption = await authApiService.encryptApiKey(
+        const apiEncryption = await apiKeyService.encryptApiKey(
             {
                 key: apiKey,
                 timestamp,
@@ -160,7 +165,7 @@ describe('E2E Role Admin', () => {
             .get(
                 E2E_ROLE_ADMIN_GET_BY_ID_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${DatabaseDefaultUUID()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -265,7 +270,7 @@ describe('E2E Role Admin', () => {
             .put(
                 E2E_ROLE_ADMIN_UPDATE_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${DatabaseDefaultUUID()}`
                 )
             )
             .send(updateData)
@@ -319,7 +324,7 @@ describe('E2E Role Admin', () => {
             .patch(
                 E2E_ROLE_ADMIN_INACTIVE_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${DatabaseDefaultUUID()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -370,7 +375,7 @@ describe('E2E Role Admin', () => {
             .patch(
                 E2E_ROLE_ADMIN_ACTIVE_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${DatabaseDefaultUUID()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
@@ -421,7 +426,7 @@ describe('E2E Role Admin', () => {
             .delete(
                 E2E_ROLE_ADMIN_DELETE_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${DatabaseDefaultUUID()}`
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)

@@ -11,10 +11,10 @@ import { CommonModule } from 'src/common/common.module';
         CommonModule,
 
         // Jobs
-        JobsModule.register(),
+        JobsModule.forRoot(),
 
         // Routes
-        RouterModule.register(),
+        RouterModule.forRoot(),
     ],
 })
 export class AppModule {}

@@ -1,12 +1,12 @@
 import { Request } from 'express';
-import { IAuthApiPayload } from 'src/common/auth/interfaces/auth.interface';
+import { IApiKeyPayload } from 'src/common/api-key/interfaces/api-key.interface';
 import { IResult } from 'ua-parser-js';
 
 export interface IRequestApp extends Request {
     id: string;
     timestamp: number;
     customLang: string[];
-    apiKey?: IAuthApiPayload;
+    apiKey?: IApiKeyPayload;
     version: string;
     repoVersion: string;
     userAgent: IResult;

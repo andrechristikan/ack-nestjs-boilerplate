@@ -27,6 +27,9 @@
 * [Objective](#objective)
 * [Features](#features)
 * [Structure](#structure)
+    * [Folder Structure](#folder-structure)
+    * [Module Structure](#module-structure)
+    * [Response Structure](#response-structure)
 * [Prerequisites](#prerequisites)
 * [Getting Started](#getting-started)
     * [Clone Repo](#clone-repo)
@@ -36,7 +39,6 @@
     * [Test](#test)
     * [Run Project](#run-project)
     * [Run Project with Docker](#run-project-with-docker)
-* [Response Structure](#response-structure)
 * [API Reference](#api-reference)
 * [Environment](#environment)
 * [Api Key Encryption](#api-key-encryption)
@@ -46,11 +48,12 @@
 
 ## Important
 
+> If you want to implement `database transactions`, you must run MongoDB as a `replication set`.
+
 If you change the environment value of `APP_ENV` to `production`, that will trigger.
 
-1. CorsMiddleware will implement `src/configs/middleware.config.ts`, else the default is `*`.
+1. CorsMiddleware will implement `src/configs/middleware.config.ts`.Otherwise is `*`.
 2. Documentation will `disable`.
-3. Encrypt the payload of JWT.
 
 ## Next Todo
 
@@ -64,30 +67,29 @@ Next development
 * [x] Optimize Unit Testing
 * [x] Make serverless separate repo
 * [x] Optimize Swagger
-* [ ] Add Relational Database Repository, ex: mysql, postgres (Ongoing)
-* [ ] Update Documentation, include an diagram for easier comprehension
 * [ ] Export to excel and Import from excel add options to background process
-* [ ] OAuth2 Client Credentials
+* [ ] SSO Google
 * [ ] AuthApi Controller
+* [ ] Update Documentation, include an diagram for easier comprehension
+* [ ] OAuth2 Client Credentials
 * [ ] Maybe will adopt [CQRS][ref-nestjs-cqrs]
 
 ## Build with
 
-Describes which version .
+Describes which version.
 
 | Name       | Version  |
 | ---------- | -------- |
-| NestJs     | v9.x     |
-| NodeJs     | v18.x    |
-| Typescript | v4.x     |
-| Mongoose   | v6.x     |
-| MongoDB    | v6.x     |
-| PostgreSQL    | -     |
-| Yarn       | v1.x     |
-| NPM        | v8.x     |
-| Docker     | v20.x    |
-| Docker Compose | v2.x |
-| Swagger | v6.x |
+| NestJs     | v9.1.x     |
+| NodeJs     | v18.4.x    |
+| Typescript | v4.8.x     |
+| Mongoose   | v6.6.x     |
+| MongoDB    | v6.0.x     |
+| Yarn       | v1.22.x     |
+| NPM        | v8.12.x     |
+| Docker     | v20.10.x    |
+| Docker Compose | v2.6.x |
+| Swagger | v6.1.x |
 
 ## Objective
 
@@ -95,7 +97,7 @@ Describes which version .
 * NestJs Habit
 * Component based folder structure
 * Repository Design Pattern or Data Access Layer Design Pattern
-* Support Microservice Architecture, Clean Architecture, and/or Hexagonal Architecture
+* Support Microservice Architecture, Serverless Architecture, Clean Architecture, and/or Hexagonal Architecture
 * Follow The Twelve-Factor App
 * Adopt SOLID and KISS principle
 
@@ -104,6 +106,7 @@ Describes which version .
 * NestJs v9.x 🥳
 * Typescript 🚀
 * Production ready 🔥
+* Repository Design Pattern
 * Swagger included
 * Authentication and authorization (`JWT`, `API Key`) 💪
 * Role management system
@@ -119,7 +122,6 @@ Describes which version .
 ## Database
 
 * MongoDB integrate by using [mongoose][ref-mongoose] 🎉
-* PostgreSQL integrate by using [typeorm][ref-typeorm] 🎊 (Ongoing)
 * Multi Database
 * Database Transaction
 * Database Soft Delete
@@ -127,7 +129,8 @@ Describes which version .
 
 ### Logger and Debugger
 
-* Logger `Morgan` and Debugger `Winston` 📝
+* Logger with `Morgan`
+* Debugger with `Winston` 📝
 
 ### Security
 
@@ -156,14 +159,14 @@ Describes which version .
 ### Folder Structure
 
 1. `/app` The final wrapper module
-2. `/common` The main module
-3. `/configs` The all configs for this project
+2. `/common` The common module
+3. `/configs` The configurations for this project
 4. `/health` health check module for every service integrated
-5. `/jobs` cron job, or schedule task
-6. `/language` -
+5. `/jobs` cron job or schedule task
+6. `/language` json languages
 7. `/migration` migrate all init data for test the project
-8. `/modules` other modules based on service/project. So, this will difference for every service/project
-9. `/router` endpoint router, `the controller` will put in this
+8. `/modules` other modules based on service/project
+9. `/router` endpoint router. `Controller` will put in this
 
 ### Module structure
 
@@ -173,8 +176,8 @@ Full structure of module
 .
 └── module1
     ├── abstracts
-    ├── constants // constant like enum, static value, etc
-    ├── controllers // business logic for rest
+    ├── constants // constant like enum, static value, status code, etc
+    ├── controllers // business logic for rest api
     ├── decorators // warper decorator, custom decorator, etc
     ├── dtos // request validation
     ├── docs // swagger
@@ -185,12 +188,67 @@ Full structure of module
     ├── interceptors // custom interceptors
     ├── interfaces
     ├── pipes
-    ├── repositories // repository or persistent layer
-    ├── schemas // database schema
-    ├── serializations
+    ├── repository
+        ├── entities // database entities
+        └── repositories // database repositories
+    ├── serializations // response serialization
     ├── services
     ├── tasks // task for cron job
     └── module1.module.ts
+```
+
+### Response Structure
+
+This section will describe the structure of the response.
+
+#### Response Metadata
+
+This is useful when we need to give the frontend some information that is not related to the endpoint.
+
+```ts
+export interface IResponseMetadata {
+    languages: ENUM_MESSAGE_LANGUAGE[];
+    timestamp: number;
+    timezone: string;
+    requestId: string;
+    path: string;
+    version: string;
+    repoVersion: string;
+    nextPage?: string;
+    previousPage?: string;
+    firstPage?: string;
+    lastPage?: string;
+    [key: string]: any;
+}
+```
+
+#### Response Default
+
+Default response for the response
+
+```ts
+export interface IResponse {
+    metadata?: IResponseMetadata;
+    [key: string]: any;
+}
+```
+
+#### Response Paging
+
+Default response for pagination.
+
+```ts
+export interface IResponsePaging {
+    totalData: number;
+    totalPage?: number;
+    currentPage?: number;
+    perPage?: number;
+    availableSearch?: string[];
+    availableSort?: string[];
+    metadata?: IResponseMetadata;
+    data: Record<string, any>[];
+}
+
 ```
 
 ## Prerequisites
@@ -209,13 +267,13 @@ We assume that everyone who comes here is **`programmer with intermediate knowle
 
 ## Getting Started
 
-Before we start, we need to install some packages and tools.
+Before start, we need to install some packages and tools.
 The recommended version is the LTS version for every tool and package.
 
 > Make sure to check that the tools have been installed successfully.
 
 1. [NodeJs][ref-nodejs]
-2. [MongoDB as Replication][ref-mongodb]
+2. [MongoDB][ref-mongodb]
 3. [Yarn][ref-yarn]
 4. [Git][ref-git]
 5. [Docker][ref-docker]
@@ -249,17 +307,17 @@ cp .env.example .env
 
 ### Database Migration
 
-> Mongodb. If you want to implement `database transaction`, we must run mongodb as a `Replication Set`.
+> The migration will do data seeding to MongoDB. Make sure to check the value of the `DATABASE_` prefix in your`.env` file.
 
-Database migration used [NestJs-Command][ref-nestjscommand]
+The Database migration used [NestJs-Command][ref-nestjscommand]
 
-For migrate
+For seeding
 
 ```bash
-yarn migrate
+yarn seed
 ```
 
-For rollback
+For remove all data do
 
 ```bash
 yarn rollback
@@ -267,7 +325,7 @@ yarn rollback
 
 ### Test
 
-> The automation is still not good net. I'm still lazy too do that.
+> The test is still not good net. I'm still lazy too do that.
 
 The project provide 3 automation testing `unit testing`, `integration testing`, and `e2e testing`.
 
@@ -275,7 +333,7 @@ The project provide 3 automation testing `unit testing`, `integration testing`, 
 yarn test
 ```
 
-For specific test use this
+For specific test do this
 
 * Unit testing
 
@@ -297,9 +355,9 @@ For specific test use this
 
 ### Run Project
 
-Finally, Cheers 🍻🍻 !!! we passed all steps.
+Finally, Cheers 🍻🍻 !!! you passed all steps.
 
-Now we can run the project.
+Now you can run the project.
 
 ```bash
 yarn start:dev
@@ -309,60 +367,6 @@ yarn start:dev
 
 ```bash
 docker-compose up -d
-```
-
-## Response Interface
-
-This section till describe structure of the response.
-
-### Response Metadata
-
-This is useful when we need to give the frontend some information that is not related to the endpoint.
-
-```ts
-export interface IResponseMetadata {
-    languages: ENUM_MESSAGE_LANGUAGE[],
-    timestamp: number
-    timezone: string,
-    requestId: string,
-    path: string,
-    version: string,
-    repoVersion: string,
-    nextPage?: string,
-    previousPage?: string,
-    firstPage?: string,
-    lastPage?: string,
-    [key: string]: any;
-}
-```
-
-### Response Default
-
-Default response for the response
-
-```ts
-export interface IResponse {
-    metadata?: IResponseMetadata;
-    [key: string]: any;
-}
-```
-
-### Response Paging
-
-Default response for pagination.
-
-```ts
-export interface IResponsePaging {
-    totalData: number;
-    totalPage?: number;
-    currentPage?: number;
-    perPage?: number;
-    availableSearch?: string[];
-    availableSort?: string[];
-    metadata?: IResponseMetadata;
-    data: Record<string, any>[];
-}
-
 ```
 
 ## API Reference
@@ -424,6 +428,7 @@ Detail information about the environment
 
 | Key | Type | Description |
 | ---- | ---- | ---- |
+| DATABASE\_TYPE | `string` | Enum of database Type `MONGODB` or `POSTGRES` |
 | DATABASE\_HOST | `string` | Mongodb URL. Support `standard url`, `replication`, or `srv` |
 | DATABASE\_NAME | `string` | Database name |
 | DATABASE\_USER | `string` | Database user |
@@ -475,17 +480,19 @@ Detail information about the environment
 
 ## Api Key Encryption
 
-> Please keep the `secret` private.
+> Please keep the `secret and passphrase` private.<br>
 
 ApiKeyHashed uses `sha256` encryption, and `dataObject` encryption is `AES256`.
 
 To do the encryption.
 
-1. Make sure we have value of
+> The encryption process must be client-side.
+
+1. Make sure to have value of
     * `key`: You can find the key for apiKey in the database.
-    * `secret`: `This value is only generated when the apiKey is created`. After that, if you lose the secret, you need to recreate the apiKey.
+    * `secret`: This value is `only generated when the apiKey is created`. After that, if you lose the secret, you need to recreate the apiKey.
     * `encryptionKey`: You can find the key for encryption in the database.
-    * `passphrase`: You can find the secret for encryption in the database. (Actually, is need to be private too. Same with `secret`). This is IV for encrypt AES 256.
+    * `passphrase`: This is IV for encrypt AES 256. This is need to be private too. Same with `secret`.
 
 2. Concat the `key` and `secret`.
 
@@ -502,9 +509,10 @@ To do the encryption.
 4. Then create `dataObject` and put the `apiKeyHashed` into it
 
     ```typescript
+    const timestamp: number = this.helperDateService.timestamp();
     const dataObject: IAuthApiRequestHashedData = {
         key, // from 1.key
-        timestamp: this.helperDateService.timestamp(), // ms timestamp
+        timestamp, // ms timestamp
         hash: apiKeyHashed, // from 3
     }
     ```
@@ -534,8 +542,8 @@ To do the encryption.
     ```json
     {
         "headers": {
-            "x-api-key": "${xApiKey}",
-
+            "x-api-key": "${xApiKey}", // from 6.xApiKey
+            "x-timestamp": "${timestamp}" // from 4.timestamp
             ...
             ...
             ...
@@ -568,24 +576,38 @@ Distributed under [MIT licensed][license].
 How to contribute in this repo
 
 1. Fork the project with click `Fork` button of this repo.
-2. Clone the fork project `git clone "url you just copied"`
-3. Create a branch `git switch -c your-new-branch-name`
-4. Make necessary changes and commit those changes
-5. Commit the changes `git commit -m "your message"`
-6. Push changes to GitHub `git push origin -u main`
-7. Back to browser, goto your fork repo github. Then, click `Compare & pull request`
+2. Clone the fork project
 
-If your code behind commit with the original, please update your code and resolve the conflict. Then, repeat from number 5.
+    ```bash
+    git clone "url you just copied"
+    ```
+
+3. Make necessary changes and commit those changes
+4. Commit the changes
+
+    ```bash
+    git commit -m "your message"
+    ```
+
+5. Push changes to fork project
+
+    ```bash
+    git push origin -u main
+    ```
+
+6. Back to browser, goto your fork repo github. Then, click `Compare & pull request`
+
+If your code behind commit with the original, please update your code and resolve the conflict. Then, repeat from number 6.
 
 ### Rule
 
 * Avoid Circular Dependency
 * Consume component folder structure, and repository design pattern
 * Always make `service` for every module is independently.
-* Do not put `controller` into modules, cause this will break the dependency. Only put the controller into `router` and then inject the dependency.
+* Do not put `controller` into service modules, cause this will break the dependency. Only put the controller into `router` and then inject the dependency.
 * Put the config in `/configs` folder, and for dynamic config put as `environment variable`
 * `CommonModule` only for main package, and put the module that related of service/project into `/src/modules`. So, if we want to clear the unnecessary module, we just need to delete the `src/modules/**`
-* If there a new service in CommonModule. Make sure to create the unit test in `/test/unit`
+* If there a new service in CommonModule. Make sure to create the unit test in `/test/unit`.
 * If there a new controller, make sure to create the e2e testing in `test/e2e`
 
 ## Contact
@@ -635,7 +657,6 @@ If your code behind commit with the original, please update your code and resolv
 [ref-nestjs]: http://nestjs.com
 [ref-nestjs-cqrs]: https://docs.nestjs.com/recipes/cqrs
 [ref-mongoose]: https://mongoosejs.com
-[ref-typeorm]: https://typeorm.io
 [ref-mongodb]: https://docs.mongodb.com/
 [ref-nodejs]: https://nodejs.org/
 [ref-typescript]: https://www.typescriptlang.org/

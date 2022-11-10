@@ -2,24 +2,27 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
-import { Types, connection } from 'mongoose';
+import { connection } from 'mongoose';
 import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { RoleService } from 'src/modules/role/services/role.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { UserDocument } from 'src/modules/user/schemas/user.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
-import { RoleDocument } from 'src/modules/role/schemas/role.schema';
 import { plainToInstance } from 'class-transformer';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { E2E_USER_REFRESH_URL } from './user.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
+import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { IUserDocument } from 'src/modules/user/interfaces/user.interface';
+import { RoleModule } from 'src/modules/role/role.module';
+import { PermissionModule } from 'src/modules/permission/permission.module';
+import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
+import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
+import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 
 describe('E2E User Refresh', () => {
     let app: INestApplication;
@@ -27,7 +30,7 @@ describe('E2E User Refresh', () => {
     let authService: AuthService;
     let roleService: RoleService;
     let helperDateService: HelperDateService;
-    let authApiService: AuthApiService;
+    let apiKeyService: ApiKeyService;
 
     const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
         .firstName()
@@ -37,7 +40,7 @@ describe('E2E User Refresh', () => {
     let xApiKey: string;
     let timestamp: number;
 
-    let user: UserDocument;
+    let user: UserEntity;
     let passwordExpired: Date;
     let passwordExpiredForward: Date;
 
@@ -45,9 +48,13 @@ describe('E2E User Refresh', () => {
     let refreshTokenNotFound: string;
 
     beforeAll(async () => {
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+
         const modRef = await Test.createTestingModule({
             imports: [
                 CommonModule,
+                RoleModule,
+                PermissionModule,
                 RoutesModule,
                 RouterModule.register([
                     {
@@ -64,9 +71,9 @@ describe('E2E User Refresh', () => {
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
         helperDateService = app.get(HelperDateService);
-        authApiService = app.get(AuthApiService);
+        apiKeyService = app.get(ApiKeyService);
 
-        const role: RoleDocument = await roleService.findOne({
+        const role: RoleEntity = await roleService.findOne({
             name: 'user',
         });
 
@@ -76,6 +83,7 @@ describe('E2E User Refresh', () => {
         const passwordHash = await authService.createPassword(password);
 
         user = await userService.create({
+            username: faker.internet.userName(),
             firstName: faker.name.firstName(),
             lastName: faker.name.lastName(),
             password: passwordHash.passwordHash,
@@ -86,10 +94,10 @@ describe('E2E User Refresh', () => {
             role: `${role._id}`,
         });
 
-        const userPopulate = await userService.findOneById<IUserDocument>(
+        const userPopulate = await userService.findOneById<IUserEntity>(
             user._id,
             {
-                populate: true,
+                join: true,
             }
         );
 
@@ -100,20 +108,15 @@ describe('E2E User Refresh', () => {
         );
         const payloadNotFound = {
             ...payload,
-            _id: `${new Types.ObjectId()}`,
+            _id: `${DatabaseDefaultUUID()}`,
         };
 
-        const payloadHashed = await authService.encryptRefreshToken(payload);
-        const payloadHashedNotFound = await authService.encryptRefreshToken(
-            payloadNotFound
-        );
-
-        refreshToken = await authService.createRefreshToken(payloadHashed, {
+        refreshToken = await authService.createRefreshToken(payload, {
             rememberMe: false,
             notBeforeExpirationTime: '0',
         });
         refreshTokenNotFound = await authService.createRefreshToken(
-            payloadHashedNotFound,
+            payloadNotFound,
             {
                 rememberMe: false,
                 notBeforeExpirationTime: '0',
@@ -121,7 +124,7 @@ describe('E2E User Refresh', () => {
         );
 
         timestamp = helperDateService.timestamp();
-        const apiEncryption = await authApiService.encryptApiKey(
+        const apiEncryption = await apiKeyService.encryptApiKey(
             {
                 key: apiKey,
                 timestamp,

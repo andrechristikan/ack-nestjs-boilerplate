@@ -6,48 +6,40 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { HelperStringService } from 'src/common/helper/services/helper.string.service';
+import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
+import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
 import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
 import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
 import { ISettingService } from 'src/common/setting/interfaces/setting.service.interface';
-import { SettingRepository } from 'src/common/setting/repositories/setting.repository';
-import {
-    SettingDocument,
-    SettingEntity,
-} from 'src/common/setting/schemas/setting.schema';
+import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
+import { SettingRepository } from 'src/common/setting/repository/repositories/setting.repository';
 
 @Injectable()
 export class SettingService implements ISettingService {
     constructor(
         private readonly settingRepository: SettingRepository,
-        private readonly helperStringService: HelperStringService
+        private readonly helperNumberService: HelperNumberService
     ) {}
 
     async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<SettingDocument[]> {
-        return this.settingRepository.findAll<SettingDocument>(find, options);
+    ): Promise<SettingEntity[]> {
+        return this.settingRepository.findAll<SettingEntity>(find, options);
     }
 
     async findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<SettingDocument> {
-        return this.settingRepository.findOneById<SettingDocument>(
-            _id,
-            options
-        );
+    ): Promise<SettingEntity> {
+        return this.settingRepository.findOneById<SettingEntity>(_id, options);
     }
 
     async findOneByName(
         name: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<SettingDocument> {
-        return this.settingRepository.findOne<SettingDocument>(
-            { name },
-            options
-        );
+    ): Promise<SettingEntity> {
+        return this.settingRepository.findOne<SettingEntity>({ name }, options);
     }
 
     async getTotal(
@@ -58,36 +50,27 @@ export class SettingService implements ISettingService {
     }
 
     async create(
-        { name, description, value }: SettingCreateDto,
+        { name, description, value, type }: SettingCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<SettingDocument> {
-        let convertValue = value;
-        if (typeof value === 'string') {
-            convertValue = await this.convertValue(value as string);
-        }
-
-        const create: SettingEntity = {
-            name,
-            description,
-            value: convertValue,
-        };
+    ): Promise<SettingEntity> {
+        const create: SettingEntity = new SettingEntity();
+        create.name = name;
+        create.description = description;
+        create.value = value;
+        create.type = type;
 
         return this.settingRepository.create<SettingEntity>(create, options);
     }
 
     async updateOneById(
         _id: string,
-        { description, value }: SettingUpdateDto,
+        { description, value, type }: SettingUpdateDto,
         options?: IDatabaseOptions
-    ): Promise<SettingDocument> {
-        let convertValue = value;
-        if (typeof value === 'string') {
-            convertValue = await this.convertValue(value as string);
-        }
-
+    ): Promise<SettingEntity> {
         const update: SettingUpdateDto = {
             description,
-            value: convertValue,
+            value,
+            type,
         };
 
         return this.settingRepository.updateOneById<SettingUpdateDto>(
@@ -100,13 +83,52 @@ export class SettingService implements ISettingService {
     async deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<SettingDocument> {
+    ): Promise<SettingEntity> {
         return this.settingRepository.deleteOne(find, options);
     }
 
-    async convertValue(value: string): Promise<string | number | boolean> {
-        return this.helperStringService.convertStringToNumberOrBooleanIfPossible(
-            value
-        );
+    async getValue<T>(setting: SettingEntity): Promise<T> {
+        if (
+            setting.type === ENUM_SETTING_DATA_TYPE.BOOLEAN &&
+            (setting.value === 'true' || setting.value === 'false')
+        ) {
+            return (setting.value === 'true' ? true : false) as any;
+        } else if (
+            setting.type === ENUM_SETTING_DATA_TYPE.NUMBER &&
+            this.helperNumberService.check(setting.value)
+        ) {
+            return this.helperNumberService.create(setting.value) as any;
+        } else if (setting.type === ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING) {
+            return setting.value.split(',') as any;
+        }
+
+        return setting.value as any;
+    }
+
+    async checkValue(
+        value: string,
+        type: ENUM_SETTING_DATA_TYPE
+    ): Promise<boolean> {
+        let check = false;
+
+        if (
+            type === ENUM_SETTING_DATA_TYPE.BOOLEAN &&
+            (value === 'true' || value === 'false')
+        ) {
+            check = true;
+        } else if (
+            type === ENUM_SETTING_DATA_TYPE.NUMBER &&
+            this.helperNumberService.check(value)
+        ) {
+            check = true;
+        } else if (
+            (type === ENUM_SETTING_DATA_TYPE.STRING ||
+                type === ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING) &&
+            typeof value === 'string'
+        ) {
+            check = true;
+        }
+
+        return check;
     }
 }

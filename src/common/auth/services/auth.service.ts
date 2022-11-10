@@ -25,6 +25,7 @@ export class AuthService implements IAuthService {
     private readonly refreshTokenEncryptKey: string;
     private readonly refreshTokenEncryptIv: string;
 
+    private readonly payloadEncryption: boolean;
     private readonly prefixAuthorization: string;
     private readonly audience: string;
     private readonly issuer: string;
@@ -74,6 +75,9 @@ export class AuthService implements IAuthService {
             'auth.jwt.refreshToken.encryptIv'
         );
 
+        this.payloadEncryption = this.configService.get<boolean>(
+            'auth.jwt.payloadEncryption'
+        );
         this.prefixAuthorization = this.configService.get<string>(
             'auth.jwt.prefixAuthorization'
         );
@@ -82,16 +86,12 @@ export class AuthService implements IAuthService {
         this.issuer = this.configService.get<string>('auth.jwt.issuer');
     }
 
-    async encryptAccessToken(
-        payload: Record<string, any>
-    ): Promise<string | Record<string, any>> {
-        return this.configService.get('app.env') === 'production'
-            ? this.helperEncryptionService.aes256Encrypt(
-                  payload,
-                  this.accessTokenEncryptKey,
-                  this.accessTokenEncryptIv
-              )
-            : payload;
+    async encryptAccessToken(payload: Record<string, any>): Promise<string> {
+        return this.helperEncryptionService.aes256Encrypt(
+            payload,
+            this.accessTokenEncryptKey,
+            this.accessTokenEncryptIv
+        );
     }
 
     async decryptAccessToken({
@@ -133,16 +133,12 @@ export class AuthService implements IAuthService {
         return this.helperEncryptionService.jwtDecrypt(token);
     }
 
-    async encryptRefreshToken(
-        payload: Record<string, any>
-    ): Promise<string | Record<string, any>> {
-        return this.configService.get('app.env') === 'production'
-            ? this.helperEncryptionService.aes256Encrypt(
-                  payload,
-                  this.refreshTokenEncryptKey,
-                  this.refreshTokenEncryptIv
-              )
-            : payload;
+    async encryptRefreshToken(payload: Record<string, any>): Promise<string> {
+        return this.helperEncryptionService.aes256Encrypt(
+            payload,
+            this.refreshTokenEncryptKey,
+            this.refreshTokenEncryptIv
+        );
     }
 
     async decryptRefreshToken({
@@ -286,5 +282,9 @@ export class AuthService implements IAuthService {
 
     async getSubject(): Promise<string> {
         return this.subject;
+    }
+
+    async getPayloadEncryption(): Promise<boolean> {
+        return this.payloadEncryption;
     }
 }

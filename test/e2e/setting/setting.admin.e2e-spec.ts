@@ -2,40 +2,44 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { RouterModule } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { useContainer } from 'class-validator';
-import { connection, Types } from 'mongoose';
+import { connection } from 'mongoose';
 import {
     E2E_SETTING_ADMIN_PAYLOAD_TEST,
     E2E_SETTING_ADMIN_UPDATE_URL,
 } from './setting.constant';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
-import { SettingService } from 'src/common/setting/services/setting.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/common/setting/constants/setting.status-code.constant';
+import { SettingService } from 'src/common/setting/services/setting.service';
+import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
+import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
+import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
+import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 
 describe('E2E Setting Admin', () => {
     let app: INestApplication;
     let settingService: SettingService;
     let authService: AuthService;
     let helperDateService: HelperDateService;
-    let authApiService: AuthApiService;
+    let apiKeyService: ApiKeyService;
 
     const apiKey = 'qwertyuiop12345zxcvbnmkjh';
     let xApiKey: string;
     let timestamp: number;
 
-    let setting: SettingDocument;
+    let setting: SettingEntity;
     const settingName: string = faker.random.alphaNumeric(10);
 
     let accessToken: string;
 
     beforeAll(async () => {
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+
         const modRef = await Test.createTestingModule({
             imports: [
                 CommonModule,
@@ -54,20 +58,26 @@ describe('E2E Setting Admin', () => {
         authService = app.get(AuthService);
         settingService = app.get(SettingService);
         helperDateService = app.get(HelperDateService);
-        authApiService = app.get(AuthApiService);
+        apiKeyService = app.get(ApiKeyService);
 
         const payload = await authService.createPayloadAccessToken(
-            E2E_SETTING_ADMIN_PAYLOAD_TEST,
+            {
+                ...E2E_SETTING_ADMIN_PAYLOAD_TEST,
+                loginDate: new Date(),
+            },
             false
         );
-        const payloadHashed = await authService.encryptAccessToken(payload);
-        accessToken = await authService.createAccessToken(payloadHashed);
+        accessToken = await authService.createAccessToken(payload);
 
-        await settingService.create({ name: settingName, value: true });
+        await settingService.create({
+            name: settingName,
+            value: 'true',
+            type: ENUM_SETTING_DATA_TYPE.BOOLEAN,
+        });
         setting = await settingService.findOneByName(settingName);
 
         timestamp = helperDateService.timestamp();
-        const apiEncryption = await authApiService.encryptApiKey(
+        const apiEncryption = await apiKeyService.encryptApiKey(
             {
                 key: apiKey,
                 timestamp,
@@ -86,14 +96,14 @@ describe('E2E Setting Admin', () => {
             .put(
                 E2E_SETTING_ADMIN_UPDATE_URL.replace(
                     ':_id',
-                    `${new Types.ObjectId()}`
+                    `${DatabaseDefaultUUID()}`
                 )
             )
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-api-key', xApiKey)
-            .send({ value: true });
+            .send({ value: 'true', type: ENUM_SETTING_DATA_TYPE.BOOLEAN });
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -110,7 +120,9 @@ describe('E2E Setting Admin', () => {
             .set('x-timestamp', timestamp.toString())
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-api-key', xApiKey)
-            .send({ value: { test: 'aaa' } });
+            .send({
+                value: { test: 'aaa', type: ENUM_SETTING_DATA_TYPE.STRING },
+            });
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
@@ -127,9 +139,7 @@ describe('E2E Setting Admin', () => {
             .set('x-timestamp', timestamp.toString())
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-api-key', xApiKey)
-            .send({ value: 'test' });
-
-        await settingService.updateOneById(setting._id, { value: false });
+            .send({ value: 'test', type: ENUM_SETTING_DATA_TYPE.STRING });
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -144,9 +154,7 @@ describe('E2E Setting Admin', () => {
             .set('x-timestamp', timestamp.toString())
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-api-key', xApiKey)
-            .send({ value: 123 });
-
-        await settingService.updateOneById(setting._id, { value: false });
+            .send({ value: 123, type: ENUM_SETTING_DATA_TYPE.NUMBER });
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -161,7 +169,7 @@ describe('E2E Setting Admin', () => {
             .set('x-timestamp', timestamp.toString())
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-api-key', xApiKey)
-            .send({ value: 'false' });
+            .send({ value: 'false', type: ENUM_SETTING_DATA_TYPE.BOOLEAN });
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -176,7 +184,7 @@ describe('E2E Setting Admin', () => {
             .set('x-timestamp', timestamp.toString())
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-api-key', xApiKey)
-            .send({ value: false });
+            .send({ value: false, type: ENUM_SETTING_DATA_TYPE.BOOLEAN });
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

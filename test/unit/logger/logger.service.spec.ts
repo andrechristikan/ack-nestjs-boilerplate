@@ -1,38 +1,40 @@
 import { ConfigModule } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
-import { Types } from 'mongoose';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
-import { DatabaseModule } from 'src/common/database/database.module';
+import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
+import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
+import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
 import { HelperModule } from 'src/common/helper/helper.module';
 import {
     ENUM_LOGGER_ACTION,
     ENUM_LOGGER_LEVEL,
 } from 'src/common/logger/constants/logger.enum.constant';
-import { ILogger } from 'src/common/logger/interfaces/logger.interface';
+import { LoggerCreateDto } from 'src/common/logger/dtos/logger.create.dto';
 import { LoggerModule } from 'src/common/logger/logger.module';
 import { LoggerService } from 'src/common/logger/services/logger.service';
 import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
 import configs from 'src/configs';
-import { v4 } from 'uuid';
 
 describe('LoggerService', () => {
     let loggerService: LoggerService;
     const loggerLevel: ENUM_LOGGER_LEVEL = ENUM_LOGGER_LEVEL.INFO;
-    const logger: ILogger = {
+    const logger: LoggerCreateDto = {
         action: ENUM_LOGGER_ACTION.TEST,
         description: 'test aaa',
         method: ENUM_REQUEST_METHOD.GET,
         tags: [],
         path: '/path',
     };
-    const loggerComplete: ILogger = {
+    const loggerComplete: LoggerCreateDto = {
         action: ENUM_LOGGER_ACTION.TEST,
         description: 'test aaa',
-        user: `${new Types.ObjectId()}`,
-        apiKey: `${new Types.ObjectId()}`,
-        requestId: v4(),
+        user: DatabaseDefaultUUID(),
+        apiKey: DatabaseDefaultUUID(),
+        requestId: DatabaseDefaultUUID(),
         role: {
-            _id: `${new Types.ObjectId()}`,
+            _id: DatabaseDefaultUUID(),
             accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
         },
         method: ENUM_REQUEST_METHOD.GET,
@@ -50,7 +52,14 @@ describe('LoggerService', () => {
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
-                DatabaseModule,
+                MongooseModule.forRootAsync({
+                    connectionName: DATABASE_CONNECTION_NAME,
+                    imports: [DatabaseOptionsModule],
+                    inject: [DatabaseOptionsService],
+                    useFactory: (
+                        databaseOptionsService: DatabaseOptionsService
+                    ) => databaseOptionsService.createOptions(),
+                }),
                 ConfigModule.forRoot({
                     load: configs,
                     isGlobal: true,

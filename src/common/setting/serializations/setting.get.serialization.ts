@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { Exclude, Type } from 'class-transformer';
+import { Exclude, Transform, Type } from 'class-transformer';
+import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
 
 export class SettingGetSerialization {
     @ApiProperty({
@@ -26,6 +27,14 @@ export class SettingGetSerialization {
     readonly description?: string;
 
     @ApiProperty({
+        description: 'Data type of setting',
+        example: 'BOOLEAN',
+        required: true,
+        enum: ENUM_SETTING_DATA_TYPE,
+    })
+    readonly type: ENUM_SETTING_DATA_TYPE;
+
+    @ApiProperty({
         description: 'Value of string, can be type string/boolean/number',
         oneOf: [
             { type: 'string', readOnly: true, examples: ['on', 'off'] },
@@ -33,6 +42,23 @@ export class SettingGetSerialization {
             { type: 'boolean', readOnly: true, examples: [true, false] },
         ],
         required: true,
+    })
+    @Transform(({ value, obj }) => {
+        const regex = /^-?\d+$/;
+        const checkNum = regex.test(value);
+
+        if (
+            obj.type === ENUM_SETTING_DATA_TYPE.BOOLEAN &&
+            (value === 'true' || value === 'false')
+        ) {
+            return value === 'true' ? true : false;
+        } else if (obj.type === ENUM_SETTING_DATA_TYPE.NUMBER && checkNum) {
+            return Number(value);
+        } else if (obj.type === ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING) {
+            return value.split(',');
+        }
+
+        return value;
     })
     readonly value: string | number | boolean;
 
@@ -43,6 +69,13 @@ export class SettingGetSerialization {
     })
     readonly createdAt: Date;
 
-    @Exclude()
+    @ApiProperty({
+        description: 'Date updated at',
+        example: faker.date.recent(),
+        required: false,
+    })
     readonly updatedAt: Date;
+
+    @Exclude()
+    readonly deletedAt: Date;
 }

@@ -18,7 +18,7 @@ export class SafeStringConstraint implements ValidatorConstraintInterface {
 }
 
 export function SafeString(validationOptions?: ValidationOptions) {
-    return function (object: Record<string, any>, propertyName: string): any {
+    return function (object: Record<string, any>, propertyName: string): void {
         registerDecorator({
             name: 'SafeString',
             target: object.constructor,

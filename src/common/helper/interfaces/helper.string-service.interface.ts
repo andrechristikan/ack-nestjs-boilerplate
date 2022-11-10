@@ -9,12 +9,6 @@ export interface IHelperStringService {
 
     censor(value: string): string;
 
-    checkStringOrNumber(text: string): boolean;
-
-    convertStringToNumberOrBooleanIfPossible(
-        text: string
-    ): string | number | boolean;
-
     checkPasswordWeak(password: string, length?: number): boolean;
 
     checkPasswordMedium(password: string, length?: number): boolean;

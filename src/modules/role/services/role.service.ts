@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { Types } from 'mongoose';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import {
     IDatabaseCreateOptions,
@@ -12,10 +11,9 @@ import {
 import { RoleActiveDto } from 'src/modules/role/dtos/role.active.dto';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
-import { IRoleUpdate } from 'src/modules/role/interfaces/role.interface';
 import { IRoleService } from 'src/modules/role/interfaces/role.service.interface';
-import { RoleRepository } from 'src/modules/role/repositories/role.repository';
-import { RoleDocument, RoleEntity } from 'src/modules/role/schemas/role.schema';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
+import { RoleRepository } from 'src/modules/role/repository/repositories/role.repository';
 
 @Injectable()
 export class RoleService implements IRoleService {
@@ -55,10 +53,7 @@ export class RoleService implements IRoleService {
     ): Promise<boolean> {
         return this.roleRepository.exists(
             {
-                name: {
-                    $regex: new RegExp(name),
-                    $options: 'i',
-                },
+                name,
             },
             options
         );
@@ -67,44 +62,36 @@ export class RoleService implements IRoleService {
     async create(
         { name, permissions, accessFor }: RoleCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<RoleDocument> {
-        const create: RoleEntity = {
-            name: name,
-            permissions: permissions.map((val) => new Types.ObjectId(val)),
-            isActive: true,
-            accessFor,
-        };
+    ): Promise<RoleEntity> {
+        const create: RoleEntity = new RoleEntity();
+        create.accessFor = accessFor;
+        create.permissions = permissions.map((val) => `${val}`);
+        create.isActive = true;
+        create.name = name;
 
         return this.roleRepository.create<RoleEntity>(create, options);
     }
 
     async createSuperAdmin(
         options?: IDatabaseCreateOptions
-    ): Promise<RoleDocument> {
-        const create: RoleEntity = {
-            name: 'superadmin',
-            permissions: [],
-            isActive: true,
-            accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
-        };
+    ): Promise<RoleEntity> {
+        const create: RoleEntity = new RoleEntity();
+        create.name = 'superadmin';
+        create.permissions = [];
+        create.isActive = true;
+        create.accessFor = ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN;
 
         return this.roleRepository.create<RoleEntity>(create, options);
     }
 
     async update(
         _id: string,
-        { name, permissions, accessFor }: RoleUpdateDto,
+        data: RoleUpdateDto,
         options?: IDatabaseOptions
-    ): Promise<RoleDocument> {
-        const update: IRoleUpdate = {
-            name,
-            accessFor,
-            permissions: permissions.map((val) => new Types.ObjectId(val)),
-        };
-
-        return this.roleRepository.updateOneById<IRoleUpdate>(
+    ): Promise<RoleEntity> {
+        return this.roleRepository.updateOneById<RoleUpdateDto>(
             _id,
-            update,
+            data,
             options
         );
     }
@@ -112,7 +99,7 @@ export class RoleService implements IRoleService {
     async inactive(
         _id: string,
         options?: IDatabaseOptions
-    ): Promise<RoleDocument> {
+    ): Promise<RoleEntity> {
         const update: RoleActiveDto = {
             isActive: false,
         };
@@ -120,10 +107,7 @@ export class RoleService implements IRoleService {
         return this.roleRepository.updateOneById(_id, update, options);
     }
 
-    async active(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<RoleDocument> {
+    async active(_id: string, options?: IDatabaseOptions): Promise<RoleEntity> {
         const update: RoleActiveDto = {
             isActive: true,
         };
@@ -134,13 +118,14 @@ export class RoleService implements IRoleService {
     async deleteOneById(
         _id: string,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<RoleDocument> {
+    ): Promise<RoleEntity> {
         return this.roleRepository.deleteOneById(_id, options);
     }
+
     async deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<RoleDocument> {
+    ): Promise<RoleEntity> {
         return this.roleRepository.deleteOne(find, options);
     }
 }

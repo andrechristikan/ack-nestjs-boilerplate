@@ -1,6 +1,6 @@
 import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { DatabaseOptionsModule } from 'src/common/database/database.module';
+import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
 import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
 import { HelperModule } from 'src/common/helper/helper.module';
 import configs from 'src/configs';
@@ -32,39 +32,32 @@ describe('DatabaseOptionsService', () => {
         expect(databaseOptionsService).toBeDefined();
     });
 
-    describe('createMongooseOptions', () => {
+    describe('createOptions', () => {
         it('should be called', async () => {
-            const test = jest.spyOn(
-                databaseOptionsService,
-                'createMongooseOptions'
-            );
+            const test = jest.spyOn(databaseOptionsService, 'createOptions');
 
-            databaseOptionsService.createMongooseOptions();
+            databaseOptionsService.createOptions();
             expect(test).toHaveBeenCalled();
         });
 
         it('should be success', async () => {
-            const options = databaseOptionsService.createMongooseOptions();
+            const options = databaseOptionsService.createOptions();
             jest.spyOn(
                 databaseOptionsService,
-                'createMongooseOptions'
+                'createOptions'
             ).mockImplementation(() => options);
 
-            expect(databaseOptionsService.createMongooseOptions()).toBe(
-                options
-            );
+            expect(databaseOptionsService.createOptions()).toBe(options);
         });
 
         it('should be success', async () => {
-            const options = databaseOptionsService.createMongooseOptions();
+            const options = databaseOptionsService.createOptions();
             jest.spyOn(
                 databaseOptionsService,
-                'createMongooseOptions'
+                'createOptions'
             ).mockImplementation(() => options);
 
-            expect(databaseOptionsService.createMongooseOptions()).toBe(
-                options
-            );
+            expect(databaseOptionsService.createOptions()).toBe(options);
         });
     });
 });

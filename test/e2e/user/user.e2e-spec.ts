@@ -6,21 +6,24 @@ import {
     E2E_USER_PROFILE_UPLOAD_URL,
     E2E_USER_PROFILE_URL,
 } from './user.constant';
-import { Types, connection } from 'mongoose';
+import { connection } from 'mongoose';
 import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { RoleService } from 'src/modules/role/services/role.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { UserDocument } from 'src/modules/user/schemas/user.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
-import { RoleDocument } from 'src/modules/role/schemas/role.schema';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
-import { IUserDocument } from 'src/modules/user/interfaces/user.interface';
+import { RoleService } from 'src/modules/role/services/role.service';
+import { RoleModule } from 'src/modules/role/role.module';
+import { PermissionModule } from 'src/modules/permission/permission.module';
+import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
+import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
+import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 
 describe('E2E User', () => {
     let app: INestApplication;
@@ -28,9 +31,9 @@ describe('E2E User', () => {
     let authService: AuthService;
     let roleService: RoleService;
     let helperDateService: HelperDateService;
-    let authApiService: AuthApiService;
+    let apiKeyService: ApiKeyService;
 
-    let user: UserDocument;
+    let user: UserEntity;
 
     let accessToken: string;
     let accessTokenNotFound: string;
@@ -40,9 +43,13 @@ describe('E2E User', () => {
     let timestamp: number;
 
     beforeAll(async () => {
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+
         const modRef = await Test.createTestingModule({
             imports: [
                 CommonModule,
+                RoleModule,
+                PermissionModule,
                 RoutesModule,
                 RouterModule.register([
                     {
@@ -59,9 +66,9 @@ describe('E2E User', () => {
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
         helperDateService = app.get(HelperDateService);
-        authApiService = app.get(AuthApiService);
+        apiKeyService = app.get(ApiKeyService);
 
-        const role: RoleDocument = await roleService.findOne({
+        const role: RoleEntity = await roleService.findOne({
             name: 'user',
         });
 
@@ -70,6 +77,7 @@ describe('E2E User', () => {
         );
 
         user = await userService.create({
+            username: faker.internet.userName(),
             firstName: faker.name.firstName(),
             lastName: faker.name.lastName(),
             password: passwordHash.passwordHash,
@@ -80,10 +88,10 @@ describe('E2E User', () => {
             role: `${role._id}`,
         });
 
-        const userPopulate = await userService.findOneById<IUserDocument>(
+        const userPopulate = await userService.findOneById<IUserEntity>(
             user._id,
             {
-                populate: true,
+                join: true,
             }
         );
 
@@ -91,21 +99,16 @@ describe('E2E User', () => {
         const payload = await authService.createPayloadAccessToken(map, false);
         const payloadNotFound = {
             ...payload,
-            _id: `${new Types.ObjectId()}`,
+            _id: `${DatabaseDefaultUUID()}`,
         };
 
-        const payloadHashed = await authService.encryptAccessToken(payload);
-        const payloadHashedNotFound = await authService.encryptAccessToken(
+        accessToken = await authService.createAccessToken(payload);
+        accessTokenNotFound = await authService.createAccessToken(
             payloadNotFound
         );
 
-        accessToken = await authService.createAccessToken(payloadHashed);
-        accessTokenNotFound = await authService.createAccessToken(
-            payloadHashedNotFound
-        );
-
         timestamp = helperDateService.timestamp();
-        const apiEncryption = await authApiService.encryptApiKey(
+        const apiEncryption = await apiKeyService.encryptApiKey(
             {
                 key: apiKey,
                 timestamp,

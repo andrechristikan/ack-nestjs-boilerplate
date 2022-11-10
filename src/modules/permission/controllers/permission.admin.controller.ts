@@ -9,15 +9,10 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
-import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
-import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
+import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import {
-    RequestParamGuard,
-    RequestValidateTimestamp,
-    RequestValidateUserAgent,
-} from 'src/common/request/decorators/request.decorator';
+import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
     Response,
     ResponsePaging,
@@ -44,7 +39,7 @@ import {
 import { PermissionListDto } from 'src/modules/permission/dtos/permission.list.dto';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
 import { PermissionRequestDto } from 'src/modules/permission/dtos/permissions.request.dto';
-import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { PermissionGetSerialization } from 'src/modules/permission/serializations/permission.get.serialization';
 import { PermissionListSerialization } from 'src/modules/permission/serializations/permission.list.serialization';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
@@ -64,10 +59,7 @@ export class PermissionAdminController {
     @ResponsePaging('permission.list', {
         classSerialization: PermissionListSerialization,
     })
-    @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
+    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
     @Get('/list')
     async list(
         @Query()
@@ -83,13 +75,11 @@ export class PermissionAdminController {
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
         const find: Record<string, any> = {
-            isActive: {
-                $in: isActive,
-            },
+            ...isActive,
             ...search,
         };
 
-        const permissions: PermissionDocument[] =
+        const permissions: PermissionEntity[] =
             await this.permissionService.findAll(find, {
                 skip: skip,
                 limit: perPage,
@@ -119,13 +109,10 @@ export class PermissionAdminController {
     })
     @PermissionGetGuard()
     @RequestParamGuard(PermissionRequestDto)
-    @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
+    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
     @Get('/get/:permission')
     async get(
-        @GetPermission() permission: PermissionDocument
+        @GetPermission() permission: PermissionEntity
     ): Promise<IResponse> {
         return permission;
     }
@@ -136,16 +123,13 @@ export class PermissionAdminController {
     })
     @PermissionUpdateGuard()
     @RequestParamGuard(PermissionRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Put('/update/:permission')
     async update(
-        @GetPermission() permission: PermissionDocument,
+        @GetPermission() permission: PermissionEntity,
         @Body() body: PermissionUpdateDto
     ): Promise<IResponse> {
         try {
@@ -167,16 +151,13 @@ export class PermissionAdminController {
     @Response('permission.inactive', {})
     @PermissionUpdateInactiveGuard()
     @RequestParamGuard(PermissionRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Patch('/update/:permission/inactive')
     async inactive(
-        @GetPermission() permission: PermissionDocument
+        @GetPermission() permission: PermissionEntity
     ): Promise<void> {
         try {
             await this.permissionService.inactive(permission._id);
@@ -195,17 +176,12 @@ export class PermissionAdminController {
     @Response('permission.active', {})
     @PermissionUpdateActiveGuard()
     @RequestParamGuard(PermissionRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Patch('/update/:permission/active')
-    async active(
-        @GetPermission() permission: PermissionDocument
-    ): Promise<void> {
+    async active(@GetPermission() permission: PermissionEntity): Promise<void> {
         try {
             await this.permissionService.active(permission._id);
         } catch (err: any) {

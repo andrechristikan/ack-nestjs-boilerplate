@@ -500,4 +500,22 @@ describe('HelperArrayService', () => {
             expect(helperArrayService.includes(arrays, 1)).toBe(result);
         });
     });
+
+    describe('split', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(helperArrayService, 'split');
+
+            helperArrayService.split(arrays, 1);
+            expect(test).toHaveBeenCalledWith(arrays, 1);
+        });
+
+        it('should be success', async () => {
+            const result = helperArrayService.split(arrays, 1);
+            jest.spyOn(helperArrayService, 'split').mockImplementation(
+                () => result
+            );
+
+            expect(helperArrayService.split(arrays, 1)).toBe(result);
+        });
+    });
 });

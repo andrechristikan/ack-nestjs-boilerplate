@@ -12,7 +12,7 @@ import {
 import { PermissionGetSerialization } from 'src/modules/permission/serializations/permission.get.serialization';
 import { PermissionListSerialization } from 'src/modules/permission/serializations/permission.list.serialization';
 
-export function PermissionListDoc(): any {
+export function PermissionListDoc(): MethodDecorator {
     return applyDecorators(
         DocPaging<PermissionListSerialization>('permission.list', {
             auth: {
@@ -35,7 +35,7 @@ export function PermissionListDoc(): any {
     );
 }
 
-export function PermissionGetDoc(): any {
+export function PermissionGetDoc(): MethodDecorator {
     return applyDecorators(
         Doc<PermissionGetSerialization>('permission.get', {
             auth: {
@@ -54,7 +54,7 @@ export function PermissionGetDoc(): any {
     );
 }
 
-export function PermissionUpdateDoc(): any {
+export function PermissionUpdateDoc(): MethodDecorator {
     return applyDecorators(
         Doc<ResponseIdSerialization>('permission.update', {
             auth: {
@@ -73,7 +73,7 @@ export function PermissionUpdateDoc(): any {
     );
 }
 
-export function PermissionActiveDoc(): any {
+export function PermissionActiveDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('permission.active', {
             auth: {
@@ -91,7 +91,7 @@ export function PermissionActiveDoc(): any {
     );
 }
 
-export function PermissionInactiveDoc(): any {
+export function PermissionInactiveDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('permission.inactive', {
             auth: {

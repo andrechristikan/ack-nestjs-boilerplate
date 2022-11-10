@@ -10,11 +10,8 @@ import { PermissionActiveDto } from 'src/modules/permission/dtos/permission.acti
 import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
 import { IPermissionService } from 'src/modules/permission/interfaces/permission.service.interface';
-import { PermissionRepository } from 'src/modules/permission/repositories/permission.repository';
-import {
-    PermissionDocument,
-    PermissionEntity,
-} from 'src/modules/permission/schemas/permission.schema';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
+import { PermissionRepository } from 'src/modules/permission/repository/repositories/permission.mongo.repository';
 
 @Injectable()
 export class PermissionService implements IPermissionService {
@@ -23,8 +20,8 @@ export class PermissionService implements IPermissionService {
     async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<PermissionDocument[]> {
-        return this.permissionRepository.findAll<PermissionDocument>(
+    ): Promise<PermissionEntity[]> {
+        return this.permissionRepository.findAll<PermissionEntity>(
             find,
             options
         );
@@ -33,8 +30,8 @@ export class PermissionService implements IPermissionService {
     async findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<PermissionDocument> {
-        return this.permissionRepository.findOneById<PermissionDocument>(
+    ): Promise<PermissionEntity> {
+        return this.permissionRepository.findOneById<PermissionEntity>(
             _id,
             options
         );
@@ -43,8 +40,8 @@ export class PermissionService implements IPermissionService {
     async findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<PermissionDocument> {
-        return this.permissionRepository.findOne<PermissionDocument>(
+    ): Promise<PermissionEntity> {
+        return this.permissionRepository.findOne<PermissionEntity>(
             find,
             options
         );
@@ -60,18 +57,18 @@ export class PermissionService implements IPermissionService {
     async deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
-    ): Promise<PermissionDocument> {
+    ): Promise<PermissionEntity> {
         return this.permissionRepository.deleteOne(find, options);
     }
 
     async create(
         data: PermissionCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<PermissionDocument> {
-        const create: PermissionEntity = {
-            ...data,
-            isActive: true,
-        };
+    ): Promise<PermissionEntity> {
+        const create: PermissionEntity = new PermissionEntity();
+        create.name = data.name;
+        create.code = data.code;
+        create.description = data.description;
 
         return this.permissionRepository.create<PermissionEntity>(
             create,
@@ -83,7 +80,7 @@ export class PermissionService implements IPermissionService {
         _id: string,
         data: PermissionUpdateDto,
         options?: IDatabaseOptions
-    ): Promise<PermissionDocument> {
+    ): Promise<PermissionEntity> {
         return this.permissionRepository.updateOneById<PermissionUpdateDto>(
             _id,
             data,
@@ -94,7 +91,7 @@ export class PermissionService implements IPermissionService {
     async inactive(
         _id: string,
         options?: IDatabaseOptions
-    ): Promise<PermissionDocument> {
+    ): Promise<PermissionEntity> {
         const update: PermissionActiveDto = {
             isActive: false,
         };
@@ -109,7 +106,7 @@ export class PermissionService implements IPermissionService {
     async active(
         _id: string,
         options?: IDatabaseOptions
-    ): Promise<PermissionDocument> {
+    ): Promise<PermissionEntity> {
         const update: PermissionActiveDto = {
             isActive: true,
         };

@@ -11,12 +11,12 @@ import { UserModule } from 'src/modules/user/user.module';
 @Module({
     controllers: [
         SettingAdminController,
-        UserAdminController,
-        RoleAdminController,
         PermissionAdminController,
+        RoleAdminController,
+        UserAdminController,
     ],
     providers: [],
     exports: [],
-    imports: [UserModule, AuthModule, RoleModule, PermissionModule],
+    imports: [PermissionModule, RoleModule, UserModule, AuthModule],
 })
 export class RoutesAdminModule {}

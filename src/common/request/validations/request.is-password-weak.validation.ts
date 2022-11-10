@@ -14,10 +14,6 @@ export class IsPasswordWeakConstraint implements ValidatorConstraintInterface {
     constructor(protected readonly helperStringService: HelperStringService) {}
 
     validate(value: string, args: ValidationArguments): boolean {
-        // At least one upper case English letter, (?=.*?[A-Z])
-        // At least one lower case English letter, (?=.*?[a-z])
-        // Minimum eight in length .{8,} (with the anchors)
-
         const [length] = args.constraints;
         return value
             ? this.helperStringService.checkPasswordMedium(value, length)
@@ -29,7 +25,7 @@ export function IsPasswordWeak(
     minLength = 8,
     validationOptions?: ValidationOptions
 ) {
-    return function (object: Record<string, any>, propertyName: string): any {
+    return function (object: Record<string, any>, propertyName: string): void {
         registerDecorator({
             name: 'IsPasswordWeak',
             target: object.constructor,

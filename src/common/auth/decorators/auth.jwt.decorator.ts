@@ -5,24 +5,26 @@ import {
 } from 'src/common/auth/constants/auth.constant';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
-import { JwtRefreshGuard } from 'src/common/auth/guards/jwt-refresh/auth.jwt-refresh.guard';
-import { JwtGuard } from 'src/common/auth/guards/jwt/auth.jwt.guard';
+import { AuthJwtAccessGuard } from 'src/common/auth/guards/jwt-access/auth.jwt-access.guard';
+import { AuthJwtRefreshGuard } from 'src/common/auth/guards/jwt-refresh/auth.jwt-refresh.guard';
 import { AuthPayloadAccessForGuard } from 'src/common/auth/guards/payload/auth.payload.access-for.guard';
 import { AuthPayloadPermissionGuard } from 'src/common/auth/guards/payload/auth.payload.permission.guard';
 
-export function AuthJwtGuard(...permissions: ENUM_AUTH_PERMISSIONS[]): any {
+export function AuthJwtAccessProtected(
+    ...permissions: ENUM_AUTH_PERMISSIONS[]
+): MethodDecorator {
     return applyDecorators(
-        UseGuards(JwtGuard, AuthPayloadPermissionGuard),
+        UseGuards(AuthJwtAccessGuard, AuthPayloadPermissionGuard),
         SetMetadata(AUTH_PERMISSION_META_KEY, permissions)
     );
 }
 
-export function AuthPublicJwtGuard(
+export function AuthJwtPublicAccessProtected(
     ...permissions: ENUM_AUTH_PERMISSIONS[]
-): any {
+): MethodDecorator {
     return applyDecorators(
         UseGuards(
-            JwtGuard,
+            AuthJwtAccessGuard,
             AuthPayloadAccessForGuard,
             AuthPayloadPermissionGuard
         ),
@@ -31,10 +33,12 @@ export function AuthPublicJwtGuard(
     );
 }
 
-export function AuthAdminJwtGuard(...permissions: ENUM_AUTH_PERMISSIONS[]) {
+export function AuthJwtAdminAccessProtected(
+    ...permissions: ENUM_AUTH_PERMISSIONS[]
+): MethodDecorator {
     return applyDecorators(
         UseGuards(
-            JwtGuard,
+            AuthJwtAccessGuard,
             AuthPayloadAccessForGuard,
             AuthPayloadPermissionGuard
         ),
@@ -46,6 +50,6 @@ export function AuthAdminJwtGuard(...permissions: ENUM_AUTH_PERMISSIONS[]) {
     );
 }
 
-export function AuthRefreshJwtGuard(): any {
-    return applyDecorators(UseGuards(JwtRefreshGuard));
+export function AuthJwtRefreshProtected(): MethodDecorator {
+    return applyDecorators(UseGuards(AuthJwtRefreshGuard));
 }

@@ -2,7 +2,7 @@ import { applyDecorators } from '@nestjs/common';
 import { AppHelloSerialization } from 'src/app/serializations/app.hello.serialization';
 import { Doc } from 'src/common/doc/decorators/doc.decorator';
 
-export function AppHelloDoc(): any {
+export function AppHelloDoc(): MethodDecorator {
     return applyDecorators(
         Doc<AppHelloSerialization>('app.hello', {
             response: {
@@ -12,6 +12,6 @@ export function AppHelloDoc(): any {
     );
 }
 
-export function AppHelloTimeoutDoc(): any {
+export function AppHelloTimeoutDoc(): MethodDecorator {
     return applyDecorators(Doc<void>('app.helloTimeout'));
 }

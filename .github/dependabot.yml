@@ -5,15 +5,23 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+      day: tuesday
       time: "01:00"
     open-pull-requests-limit: 10
+    target-branch: "development"
     commit-message:
       prefix: "npm"
+    labels:
+      - dependabot
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
-      time: "01:00"
+      day: tuesday
+      time: "00:00"
     open-pull-requests-limit: 5
+    target-branch: "development"
     commit-message:
       prefix: "github-action"
+    labels:
+      - dependabot

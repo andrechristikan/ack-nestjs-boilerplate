@@ -13,9 +13,9 @@ import {
     UploadedFile,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { ApiKeyProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
-import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
-import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
+import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { UploadFileSingle } from 'src/common/file/decorators/file.decorator';
@@ -66,10 +66,7 @@ import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 import { UserListDto } from 'src/modules/user/dtos/user.list.dto';
 import { UserRequestDto } from 'src/modules/user/dtos/user.request.dto';
 import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
-import {
-    IUserCheckExist,
-    IUserDocument,
-} from 'src/modules/user/interfaces/user.interface';
+import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
 import { UserImportSerialization } from 'src/modules/user/serializations/user.import.serialization';
 import { UserListSerialization } from 'src/modules/user/serializations/user.list.serialization';
@@ -92,8 +89,8 @@ export class UserAdminController {
     @ResponsePaging('user.list', {
         classSerialization: UserListSerialization,
     })
-    @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.USER_READ)
-    @AuthApiKey()
+    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.USER_READ)
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('/list')
@@ -113,7 +110,7 @@ export class UserAdminController {
             ...search,
         };
 
-        const users: IUserDocument[] = await this.userService.findAll(find, {
+        const users: IUserEntity[] = await this.userService.findAll(find, {
             limit: perPage,
             skip: skip,
             sort,
@@ -141,12 +138,12 @@ export class UserAdminController {
     })
     @UserGetGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.USER_READ)
-    @AuthApiKey()
+    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.USER_READ)
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Get('get/:user')
-    async get(@GetUser() user: IUserDocument): Promise<IResponse> {
+    async get(@GetUser() user: IUserEntity): Promise<IResponse> {
         return user;
     }
 
@@ -154,47 +151,55 @@ export class UserAdminController {
     @Response('user.create', {
         classSerialization: ResponseIdSerialization,
     })
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_CREATE
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Post('/create')
     async create(
         @Body()
-        body: UserCreateDto
+        { username, email, mobileNumber, role, ...body }: UserCreateDto
     ): Promise<IResponse> {
-        const checkExist: IUserCheckExist = await this.userService.checkExist(
-            body.email,
-            body.mobileNumber
-        );
-
-        if (checkExist.email && checkExist.mobileNumber) {
-            throw new BadRequestException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EXISTS_ERROR,
-                message: 'user.error.exist',
-            });
-        } else if (checkExist.email) {
-            throw new BadRequestException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
-                message: 'user.error.emailExist',
-            });
-        } else if (checkExist.mobileNumber) {
-            throw new BadRequestException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
-                message: 'user.error.mobileNumberExist',
-            });
-        }
-
-        const role = await this.roleService.findOneById(body.role);
-        if (!role) {
+        const checkRole = await this.roleService.findOneById(role);
+        if (!checkRole) {
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
                 message: 'role.error.notFound',
             });
+        }
+
+        const usernameExist: boolean = await this.userService.existUsername(
+            username
+        );
+        if (usernameExist) {
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_USERNAME_EXISTS_ERROR,
+                message: 'user.error.usernameExist',
+            });
+        }
+
+        const emailExist: boolean = await this.userService.existEmail(email);
+        if (emailExist) {
+            throw new BadRequestException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
+                message: 'user.error.emailExist',
+            });
+        }
+
+        if (mobileNumber) {
+            const mobileNumberExist: boolean =
+                await this.userService.existMobileNumber(mobileNumber);
+            if (mobileNumberExist) {
+                throw new BadRequestException({
+                    statusCode:
+                        ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
+                    message: 'user.error.mobileNumberExist',
+                });
+            }
         }
 
         try {
@@ -205,12 +210,13 @@ export class UserAdminController {
             const create = await this.userService.create({
                 firstName: body.firstName,
                 lastName: body.lastName,
-                email: body.email,
-                mobileNumber: body.mobileNumber,
-                role: body.role,
+                role,
                 password: password.passwordHash,
                 passwordExpired: password.passwordExpired,
                 salt: password.salt,
+                username,
+                email,
+                mobileNumber,
             });
 
             return {
@@ -229,15 +235,15 @@ export class UserAdminController {
     @Response('user.delete')
     @UserDeleteGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_DELETE
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Delete('/delete/:user')
-    async delete(@GetUser() user: IUserDocument): Promise<void> {
+    async delete(@GetUser() user: IUserEntity): Promise<void> {
         try {
             await this.userService.deleteOneById(user._id);
         } catch (err: any) {
@@ -257,16 +263,16 @@ export class UserAdminController {
     })
     @UserUpdateGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_UPDATE
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Put('/update/:user')
     async update(
-        @GetUser() user: IUserDocument,
+        @GetUser() user: IUserEntity,
         @Body()
         body: UserUpdateDto
     ): Promise<IResponse> {
@@ -289,15 +295,15 @@ export class UserAdminController {
     @Response('user.inactive')
     @UserUpdateInactiveGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_UPDATE
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Patch('/update/:user/inactive')
-    async inactive(@GetUser() user: IUserDocument): Promise<void> {
+    async inactive(@GetUser() user: IUserEntity): Promise<void> {
         try {
             await this.userService.inactive(user._id);
         } catch (err: any) {
@@ -315,15 +321,15 @@ export class UserAdminController {
     @Response('user.active')
     @UserUpdateActiveGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_UPDATE
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Patch('/update/:user/active')
-    async active(@GetUser() user: IUserDocument): Promise<void> {
+    async active(@GetUser() user: IUserEntity): Promise<void> {
         try {
             await this.userService.active(user._id);
         } catch (err: any) {
@@ -342,12 +348,12 @@ export class UserAdminController {
         classSerialization: UserImportSerialization,
     })
     @UploadFileSingle('file')
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_CREATE,
         ENUM_AUTH_PERMISSIONS.USER_IMPORT
     )
-    @AuthApiKey()
+    @ApiKeyProtected()
     @RequestValidateUserAgent()
     @RequestValidateTimestamp()
     @Post('/import')

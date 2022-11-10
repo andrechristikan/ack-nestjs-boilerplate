@@ -1,8 +1,8 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 
 export const GetPermission = createParamDecorator(
-    (data: string, ctx: ExecutionContext): PermissionDocument => {
+    (data: string, ctx: ExecutionContext): PermissionEntity => {
         const { __permission } = ctx.switchToHttp().getRequest();
         return __permission;
     }

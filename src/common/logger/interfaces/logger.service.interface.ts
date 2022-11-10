@@ -1,17 +1,17 @@
 import {
-    ILogger,
-    ILoggerRaw,
-} from 'src/common/logger/interfaces/logger.interface';
-import { LoggerDocument } from 'src/common/logger/schemas/logger.schema';
+    LoggerCreateDto,
+    LoggerCreateRawDto,
+} from 'src/common/logger/dtos/logger.create.dto';
+import { LoggerEntity } from 'src/common/logger/repository/entities/logger.entity';
 
 export interface ILoggerService {
-    info(data: ILogger): Promise<LoggerDocument>;
+    info(data: LoggerCreateDto): Promise<LoggerEntity>;
 
-    debug(data: ILogger): Promise<LoggerDocument>;
+    debug(data: LoggerCreateDto): Promise<LoggerEntity>;
 
-    warning(data: ILogger): Promise<LoggerDocument>;
+    warning(data: LoggerCreateDto): Promise<LoggerEntity>;
 
-    fatal(data: ILogger): Promise<LoggerDocument>;
+    fatal(data: LoggerCreateDto): Promise<LoggerEntity>;
 
-    raw(data: ILoggerRaw): Promise<LoggerDocument>;
+    raw(data: LoggerCreateRawDto): Promise<LoggerEntity>;
 }

@@ -4,7 +4,7 @@ import { ClassConstructor } from 'class-transformer';
 import {
     ENUM_DOC_REQUEST_BODY_TYPE,
     ENUM_DOC_RESPONSE_BODY_TYPE,
-} from 'src/common/doc/constants/doc.constant';
+} from 'src/common/doc/constants/doc.enum.constant';
 
 export interface IDocOfOptions {
     messagePath: string;

@@ -1,33 +1,34 @@
 import { Injectable } from '@nestjs/common';
-import { IAuthPermission } from 'src/common/auth/interfaces/auth.interface';
 import {
     IDatabaseCreateManyOptions,
     IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
 import { IPermissionBulkService } from 'src/modules/permission/interfaces/permission.bulk-service.interface';
-import { PermissionBulkRepository } from 'src/modules/permission/repositories/permission.bulk.repository';
-import { PermissionEntity } from 'src/modules/permission/schemas/permission.schema';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
+import { PermissionRepository } from 'src/modules/permission/repository/repositories/permission.mongo.repository';
 
 @Injectable()
 export class PermissionBulkService implements IPermissionBulkService {
-    constructor(
-        private readonly permissionBulkRepository: PermissionBulkRepository
-    ) {}
+    constructor(private readonly permissionRepository: PermissionRepository) {}
 
     async createMany(
-        data: IAuthPermission[],
+        data: PermissionCreateDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean> {
         const map: PermissionEntity[] = data.map(
-            ({ isActive, code, description, name }) => ({
-                code: code,
-                name: name,
-                description: description,
-                isActive: isActive || true,
-            })
+            ({ code, description, name }) => {
+                const create = new PermissionEntity();
+                create.code = code;
+                create.name = name;
+                create.description = description;
+                create.isActive = true;
+
+                return create;
+            }
         );
 
-        return this.permissionBulkRepository.createMany<PermissionEntity>(
+        return this.permissionRepository.createMany<PermissionEntity>(
             map,
             options
         );
@@ -37,6 +38,6 @@ export class PermissionBulkService implements IPermissionBulkService {
         find: Record<string, any>,
         options?: IDatabaseManyOptions
     ): Promise<boolean> {
-        return this.permissionBulkRepository.deleteMany(find, options);
+        return this.permissionRepository.deleteMany(find, options);
     }
 }

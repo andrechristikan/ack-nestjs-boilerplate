@@ -1,9 +1,6 @@
 import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import {
-    DebuggerModule,
-    DebuggerOptionsModule,
-} from 'src/common/debugger/debugger.module';
+import { DebuggerOptionsModule } from 'src/common/debugger/debugger.options.module';
 import { DebuggerOptionService } from 'src/common/debugger/services/debugger.options.service';
 import { HelperModule } from 'src/common/helper/helper.module';
 import configs from 'src/configs';
@@ -27,7 +24,6 @@ describe('DebuggerOptionService', () => {
                     expandVariables: true,
                 }),
                 HelperModule,
-                DebuggerModule,
                 DebuggerOptionsModule,
             ],
         }).compile();

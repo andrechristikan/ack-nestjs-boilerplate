@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsString, IsNotEmpty, IsOptional, ValidateIf } from 'class-validator';
 import { SafeString } from 'src/common/request/validations/request.safe-string.validation';
-import { StringOrNumberOrBoolean } from 'src/common/request/validations/request.string-or-number-or-boolean.validation';
+import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
 
 export class SettingCreateDto {
     @IsString()
@@ -23,8 +23,18 @@ export class SettingCreateDto {
     })
     readonly description?: string;
 
+    @IsString()
     @IsNotEmpty()
-    @StringOrNumberOrBoolean()
+    @ApiProperty({
+        description: 'Data type of setting',
+        example: 'BOOLEAN',
+        required: true,
+        enum: ENUM_SETTING_DATA_TYPE,
+    })
+    readonly type: ENUM_SETTING_DATA_TYPE;
+
+    @IsNotEmpty()
+    @Type(() => String)
     @ApiProperty({
         name: 'value',
         description: 'The value of setting',
@@ -35,5 +45,5 @@ export class SettingCreateDto {
             { type: 'boolean', readOnly: true, examples: [true, false] },
         ],
     })
-    readonly value: string | boolean | number;
+    readonly value: string;
 }

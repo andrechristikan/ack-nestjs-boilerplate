@@ -7,16 +7,14 @@ import configs from 'src/configs';
 import { ConfigModule } from '@nestjs/config';
 import { HelperModule } from 'src/common/helper/helper.module';
 
-describe('AuthService Production Env', () => {
+describe('AuthService', () => {
     let authService: AuthService;
 
     const rememberMe = false;
 
     let payloadHashedAccessToken: string | Record<string, any>;
-    let payloadAccessToken: Record<string, any>;
 
     let payloadHashedRefreshToken: string | Record<string, any>;
-    let payloadRefreshToken: Record<string, any>;
 
     // cSpell:ignore ZfqgaDMPpWQ3lJEGQ8Ueu stnk
     const user: Record<string, any> = {
@@ -40,8 +38,6 @@ describe('AuthService Production Env', () => {
     };
 
     beforeEach(async () => {
-        process.env.APP_ENV = 'production';
-
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({
@@ -58,12 +54,6 @@ describe('AuthService Production Env', () => {
         }).compile();
 
         authService = moduleRef.get<AuthService>(AuthService);
-
-        payloadHashedAccessToken = await authService.encryptAccessToken(user);
-        payloadAccessToken = { data: payloadHashedAccessToken };
-
-        payloadHashedRefreshToken = await authService.encryptRefreshToken(user);
-        payloadRefreshToken = { data: payloadHashedRefreshToken };
     });
 
     it('should be defined', async () => {
@@ -95,21 +85,29 @@ describe('AuthService Production Env', () => {
         it('should be called', async () => {
             const test = jest.spyOn(authService, 'decryptAccessToken');
 
-            await authService.decryptAccessToken(payloadAccessToken);
-            expect(test).toHaveBeenCalledWith(payloadAccessToken);
+            const encryptionPayload = await authService.encryptAccessToken(
+                user
+            );
+            await authService.decryptAccessToken({ data: encryptionPayload });
+            expect(test).toHaveBeenCalledWith({ data: encryptionPayload });
         });
 
         it('should be success', async () => {
-            const user = await authService.decryptAccessToken(
-                payloadAccessToken
+            const encryptionPayload = await authService.encryptAccessToken(
+                user
             );
+            const payload = await authService.decryptAccessToken({
+                data: encryptionPayload,
+            });
             jest.spyOn(authService, 'decryptAccessToken').mockImplementation(
-                async () => user
+                async () => payload
             );
 
             expect(
-                await authService.decryptAccessToken(payloadAccessToken)
-            ).toBe(user);
+                await authService.decryptAccessToken({
+                    data: encryptionPayload,
+                })
+            ).toBe(payload);
         });
     });
 
@@ -238,21 +236,29 @@ describe('AuthService Production Env', () => {
         it('should be called', async () => {
             const test = jest.spyOn(authService, 'decryptRefreshToken');
 
-            await authService.decryptRefreshToken(payloadRefreshToken);
-            expect(test).toHaveBeenCalledWith(payloadRefreshToken);
+            const encryptionPayload = await authService.encryptRefreshToken(
+                user
+            );
+            await authService.decryptRefreshToken({ data: encryptionPayload });
+            expect(test).toHaveBeenCalledWith({ data: encryptionPayload });
         });
 
         it('should be success', async () => {
-            const user = await authService.decryptRefreshToken(
-                payloadRefreshToken
+            const encryptionPayload = await authService.encryptRefreshToken(
+                user
             );
+            const payload = await authService.decryptRefreshToken({
+                data: encryptionPayload,
+            });
             jest.spyOn(authService, 'decryptRefreshToken').mockImplementation(
-                async () => user
+                async () => payload
             );
 
             expect(
-                await authService.decryptRefreshToken(payloadRefreshToken)
-            ).toBe(user);
+                await authService.decryptRefreshToken({
+                    data: encryptionPayload,
+                })
+            ).toBe(payload);
         });
     });
 
@@ -748,96 +754,23 @@ describe('AuthService Production Env', () => {
             expect(await authService.getSubject()).toBe(audiences);
         });
     });
-});
 
-describe('AuthService Development Env', () => {
-    let authService: AuthService;
-
-    // cSpell:ignore ZfqgaDMPpWQ3lJEGQ8Ueu stnk
-    const user: Record<string, any> = {
-        _id: '623cb7fd37a861a10bac2c91',
-        isActive: true,
-        salt: '$2b$08$GZfqgaDMPpWQ3lJEGQ8Ueu',
-        passwordExpired: new Date('2023-03-24T18:27:09.500Z'),
-        password:
-            '$2b$08$GZfqgaDMPpWQ3lJEGQ8Ueu1vJ3C6G3stnkS/5e61bK/4f1.Fuw2Eq',
-        role: {
-            _id: '623cb7f7965a74bf7a0e9e53',
-            accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
-            isActive: true,
-            permissions: [],
-            name: 'admin',
-        },
-        email: 'admin@mail.com',
-        mobileNumber: '08111111111',
-        lastName: 'test',
-        firstName: 'admin@mail.com',
-    };
-
-    beforeEach(async () => {
-        process.env.APP_ENV = 'development';
-
-        const moduleRef = await Test.createTestingModule({
-            imports: [
-                ConfigModule.forRoot({
-                    load: configs,
-                    isGlobal: true,
-                    cache: true,
-                    envFilePath: ['.env'],
-                    expandVariables: true,
-                }),
-                HelperModule,
-                AuthModule,
-            ],
-            providers: [],
-        }).compile();
-
-        authService = moduleRef.get<AuthService>(AuthService);
-    });
-
-    it('should be defined', async () => {
-        expect(authService).toBeDefined();
-    });
-
-    describe('encryptAccessToken', () => {
+    describe('getPayloadEncryption', () => {
         it('should be called', async () => {
-            const test = jest.spyOn(authService, 'encryptAccessToken');
+            const test = jest.spyOn(authService, 'getPayloadEncryption');
+            await authService.getPayloadEncryption();
 
-            await authService.encryptAccessToken(user);
-            expect(test).toHaveBeenCalledWith(user);
+            expect(test).toHaveBeenCalled();
         });
 
-        it('should be success with development env', async () => {
-            const payloadHashedAccessToken =
-                await authService.encryptAccessToken(user);
-            jest.spyOn(authService, 'encryptAccessToken').mockImplementation(
-                async () => payloadHashedAccessToken
+        it('should be success', async () => {
+            const audiences = await authService.getPayloadEncryption();
+
+            jest.spyOn(authService, 'getPayloadEncryption').mockImplementation(
+                async () => audiences
             );
 
-            expect(await authService.encryptAccessToken(user)).toBe(
-                payloadHashedAccessToken
-            );
-        });
-    });
-
-    describe('encryptRefreshToken', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(authService, 'encryptRefreshToken');
-
-            await authService.encryptRefreshToken(user);
-            expect(test).toHaveBeenCalledWith(user);
-        });
-
-        it('should be success with development env', async () => {
-            const payloadHashedRefreshToken =
-                await authService.encryptRefreshToken(user);
-            jest.spyOn(authService, 'encryptRefreshToken').mockImplementation(
-                async () => payloadHashedRefreshToken
-            );
-
-            expect(await authService.encryptRefreshToken(user)).toBe(
-                payloadHashedRefreshToken
-            );
+            expect(await authService.getPayloadEncryption()).toBe(audiences);
         });
     });
 });

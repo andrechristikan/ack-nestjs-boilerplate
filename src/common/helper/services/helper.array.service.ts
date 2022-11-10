@@ -101,4 +101,8 @@ export class HelperArrayService implements IHelperArrayService {
     includes<T>(a: T[], b: T): boolean {
         return _.includes(a, b);
     }
+
+    split<T>(a: T[], size: number): T[][] {
+        return _.chunk<T>(a, size);
+    }
 }

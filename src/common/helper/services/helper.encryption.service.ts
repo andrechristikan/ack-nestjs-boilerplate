@@ -82,7 +82,7 @@ export class HelperEncryptionService implements IHelperEncryptionService {
                 subject: options.subject,
             });
             return true;
-        } catch (err: any) {
+        } catch (err: unknown) {
             return false;
         }
     }

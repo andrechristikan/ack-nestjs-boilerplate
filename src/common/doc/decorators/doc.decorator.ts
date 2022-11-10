@@ -17,7 +17,7 @@ import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.stat
 import {
     ENUM_DOC_REQUEST_BODY_TYPE,
     ENUM_DOC_RESPONSE_BODY_TYPE,
-} from 'src/common/doc/constants/doc.constant';
+} from 'src/common/doc/constants/doc.enum.constant';
 import {
     IDocDefaultOptions,
     IDocOfOptions,
@@ -33,7 +33,10 @@ import { Skip } from 'src/common/request/validations/request.skip.validation';
 import { ResponseDefaultSerialization } from 'src/common/response/serializations/response.default.serialization';
 import { ResponsePagingSerialization } from 'src/common/response/serializations/response.paging.serialization';
 
-export function Doc<T>(messagePath: string, options?: IDocOptions<T>): any {
+export function Doc<T>(
+    messagePath: string,
+    options?: IDocOptions<T>
+): MethodDecorator {
     const docs = [];
     const normDoc: IDocDefaultOptions = {
         httpStatus: options?.response?.httpStatus ?? HttpStatus.OK,
@@ -251,7 +254,7 @@ export function Doc<T>(messagePath: string, options?: IDocOptions<T>): any {
 export function DocPaging<T>(
     messagePath: string,
     options?: IDocPagingOptions<T>
-): any {
+): MethodDecorator {
     // paging
     const docs = [];
 
@@ -489,7 +492,7 @@ export function DocPaging<T>(
     );
 }
 
-export function DocDefault<T>(options: IDocDefaultOptions): any {
+export function DocDefault<T>(options: IDocDefaultOptions): MethodDecorator {
     const docs = [];
     const schema: Record<string, any> = {
         allOf: [{ $ref: getSchemaPath(ResponseDefaultSerialization<T>) }],
@@ -527,7 +530,7 @@ export function DocDefault<T>(options: IDocDefaultOptions): any {
 export function DocOneOf<T>(
     httpStatus: HttpStatus,
     ...documents: IDocOfOptions[]
-): any {
+): MethodDecorator {
     const docs = [];
     const oneOf = [];
 
@@ -573,7 +576,7 @@ export function DocOneOf<T>(
 export function DocAnyOf<T>(
     httpStatus: HttpStatus,
     ...documents: IDocOfOptions[]
-): any {
+): MethodDecorator {
     const docs = [];
     const anyOf = [];
 
@@ -619,7 +622,7 @@ export function DocAnyOf<T>(
 export function DocAllOf<T>(
     httpStatus: HttpStatus,
     ...documents: IDocOfOptions[]
-): any {
+): MethodDecorator {
     const docs = [];
     const allOf = [];
 

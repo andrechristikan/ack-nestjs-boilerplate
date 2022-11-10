@@ -1,4 +1,9 @@
-import { applyDecorators, SetMetadata, UseInterceptors } from '@nestjs/common';
+import {
+    applyDecorators,
+    SerializeOptions,
+    SetMetadata,
+    UseInterceptors,
+} from '@nestjs/common';
 import { ENUM_PAGINATION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import {
     RESPONSE_CUSTOM_TIMEOUT_META_KEY,
@@ -20,7 +25,7 @@ import {
 export function Response<T>(
     messagePath: string,
     options?: IResponseOptions<T>
-): any {
+): MethodDecorator {
     return applyDecorators(
         UseInterceptors(ResponseDefaultInterceptor<T>),
         SetMetadata(RESPONSE_MESSAGE_PATH_META_KEY, messagePath),
@@ -35,11 +40,15 @@ export function Response<T>(
     );
 }
 
-export function ResponsePagingType(type: ENUM_PAGINATION_TYPE) {
+export function ResponsePagingType(
+    type: ENUM_PAGINATION_TYPE
+): MethodDecorator {
     return applyDecorators(SetMetadata(RESPONSE_PAGING_TYPE_META_KEY, type));
 }
 
-export function ResponseExcel(options?: IResponseExcelOptions<void>) {
+export function ResponseExcel(
+    options?: IResponseExcelOptions<void>
+): MethodDecorator {
     return applyDecorators(
         UseInterceptors(ResponseExcelInterceptor),
         SetMetadata(
@@ -56,7 +65,7 @@ export function ResponseExcel(options?: IResponseExcelOptions<void>) {
 export function ResponsePaging<T>(
     messagePath: string,
     options?: IResponsePagingOptions<T>
-): any {
+): MethodDecorator {
     return applyDecorators(
         UseInterceptors(ResponsePagingInterceptor<T>),
         SetMetadata(RESPONSE_MESSAGE_PATH_META_KEY, messagePath),
@@ -71,9 +80,11 @@ export function ResponsePaging<T>(
     );
 }
 
-export function ResponseTimeout(seconds: string): any {
+export function ResponseTimeout(seconds: string): MethodDecorator {
     return applyDecorators(
         SetMetadata(RESPONSE_CUSTOM_TIMEOUT_META_KEY, true),
         SetMetadata(RESPONSE_CUSTOM_TIMEOUT_VALUE_META_KEY, seconds)
     );
 }
+
+export const ResponseSerializationOptions = SerializeOptions;

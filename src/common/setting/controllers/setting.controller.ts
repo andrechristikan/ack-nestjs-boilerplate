@@ -1,12 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import {
-    RequestParamGuard,
-    RequestValidateTimestamp,
-    RequestValidateUserAgent,
-} from 'src/common/request/decorators/request.decorator';
+import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
     Response,
     ResponsePaging,
@@ -27,7 +22,7 @@ import {
 } from 'src/common/setting/docs/setting.doc';
 import { SettingListDto } from 'src/common/setting/dtos/setting.list.dto';
 import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
-import { SettingDocument } from 'src/common/setting/schemas/setting.schema';
+import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingGetSerialization } from 'src/common/setting/serializations/setting.get.serialization';
 import { SettingListSerialization } from 'src/common/setting/serializations/setting.list.serialization';
 import { SettingService } from 'src/common/setting/services/setting.service';
@@ -47,9 +42,6 @@ export class SettingController {
     @ResponsePaging('setting.list', {
         classSerialization: SettingListSerialization,
     })
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Get('/list')
     async list(
         @Query()
@@ -67,7 +59,7 @@ export class SettingController {
             ...search,
         };
 
-        const settings: SettingDocument[] = await this.settingService.findAll(
+        const settings: SettingEntity[] = await this.settingService.findAll(
             find,
             {
                 limit: perPage,
@@ -98,11 +90,8 @@ export class SettingController {
     })
     @SettingGetGuard()
     @RequestParamGuard(SettingRequestDto)
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Get('get/:setting')
-    async get(@GetSetting() setting: SettingDocument): Promise<IResponse> {
+    async get(@GetSetting() setting: SettingEntity): Promise<IResponse> {
         return setting;
     }
 
@@ -111,13 +100,8 @@ export class SettingController {
         classSerialization: SettingGetSerialization,
     })
     @SettingGetByNameGuard()
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Get('get/name/:settingName')
-    async getByName(
-        @GetSetting() setting: SettingDocument
-    ): Promise<IResponse> {
+    async getByName(@GetSetting() setting: SettingEntity): Promise<IResponse> {
         return setting;
     }
 }

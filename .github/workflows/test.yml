@@ -67,6 +67,8 @@ jobs:
           echo DATABASE_DEBUG="false" >> .env
           echo DATABASE_OPTIONS="replicaSet=test-rs" >> .env
 
+          echo AUTH_JWT_PAYLOAD_ENCRYPTION="false" >> .env
+
           echo AUTH_JWT_SUBJECT="AckDevelopment" >> .env
           echo AUTH_JWT_AUDIENCE="https://example.com" >> .env
           echo AUTH_JWT_ISSUER="ack" >> .env
@@ -96,7 +98,7 @@ jobs:
           AWS_S3_REGION: ${{ secrets.AWS_S3_REGION }}
           
       - name: Migration
-        run: yarn migrate
+        run: yarn seed
 
       - name: Unit Test
         run: yarn test:unit

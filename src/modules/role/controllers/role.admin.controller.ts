@@ -13,15 +13,10 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
-import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
-import { AuthAdminJwtGuard } from 'src/common/auth/decorators/auth.jwt.decorator';
+import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import {
-    RequestParamGuard,
-    RequestValidateTimestamp,
-    RequestValidateUserAgent,
-} from 'src/common/request/decorators/request.decorator';
+import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
     Response,
     ResponsePaging,
@@ -32,7 +27,7 @@ import {
 } from 'src/common/response/interfaces/response.interface';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/constants/permission.status-code.constant';
-import { PermissionDocument } from 'src/modules/permission/schemas/permission.schema';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import {
@@ -56,8 +51,8 @@ import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleListDto } from 'src/modules/role/dtos/role.list.dto';
 import { RoleRequestDto } from 'src/modules/role/dtos/role.request.dto';
 import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
-import { IRoleDocument } from 'src/modules/role/interfaces/role.interface';
-import { RoleDocument } from 'src/modules/role/schemas/role.schema';
+import { IRoleEntity } from 'src/modules/role/interfaces/role.interface';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
 import { RoleListSerialization } from 'src/modules/role/serializations/role.list.serialization';
 import { RoleService } from 'src/modules/role/services/role.service';
@@ -78,10 +73,7 @@ export class RoleAdminController {
     @ResponsePaging('role.list', {
         classSerialization: RoleListSerialization,
     })
-    @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.ROLE_READ)
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
+    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.ROLE_READ)
     @Get('/list')
     async list(
         @Query()
@@ -99,7 +91,7 @@ export class RoleAdminController {
             ...search,
         };
 
-        const roles: RoleDocument[] = await this.roleService.findAll(find, {
+        const roles: RoleEntity[] = await this.roleService.findAll(find, {
             skip: skip,
             limit: perPage,
             sort,
@@ -128,12 +120,9 @@ export class RoleAdminController {
     })
     @RoleGetGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthAdminJwtGuard(ENUM_AUTH_PERMISSIONS.ROLE_READ)
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
+    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.ROLE_READ)
     @Get('get/:role')
-    async get(@GetRole() role: IRoleDocument): Promise<IResponse> {
+    async get(@GetRole() role: IRoleEntity): Promise<IResponse> {
         return role;
     }
 
@@ -141,19 +130,18 @@ export class RoleAdminController {
     @Response('role.create', {
         classSerialization: ResponseIdSerialization,
     })
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_CREATE
     )
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Post('/create')
     async create(
         @Body()
         { name, permissions, accessFor }: RoleCreateDto
     ): Promise<IResponse> {
-        const exist: boolean = await this.roleService.exists(name);
+        const exist: boolean = await this.roleService.exists(name, {
+            join: true,
+        });
         if (exist) {
             throw new BadRequestException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR,
@@ -162,7 +150,7 @@ export class RoleAdminController {
         }
 
         for (const permission of permissions) {
-            const checkPermission: PermissionDocument =
+            const checkPermission: PermissionEntity =
                 await this.permissionService.findOneById(permission);
 
             if (!checkPermission) {
@@ -199,20 +187,19 @@ export class RoleAdminController {
     })
     @RoleUpdateGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
     )
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Put('/update/:role')
     async update(
-        @GetRole() role: RoleDocument,
+        @GetRole() role: IRoleEntity,
         @Body()
         { name, permissions, accessFor }: RoleUpdateDto
     ): Promise<IResponse> {
-        const check: boolean = await this.roleService.exists(name, role._id);
+        const check: boolean = await this.roleService.exists(name, {
+            excludeId: [role._id],
+        });
         if (check) {
             throw new BadRequestException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR,
@@ -221,7 +208,7 @@ export class RoleAdminController {
         }
 
         for (const permission of permissions) {
-            const checkPermission: PermissionDocument =
+            const checkPermission: PermissionEntity =
                 await this.permissionService.findOneById(permission);
 
             if (!checkPermission) {
@@ -256,15 +243,12 @@ export class RoleAdminController {
     @Response('role.delete')
     @RoleDeleteGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_DELETE
     )
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Delete('/delete/:role')
-    async delete(@GetRole() role: IRoleDocument): Promise<void> {
+    async delete(@GetRole() role: IRoleEntity): Promise<void> {
         try {
             await this.roleService.deleteOneById(role._id);
         } catch (err: any) {
@@ -281,15 +265,12 @@ export class RoleAdminController {
     @Response('role.inactive')
     @RoleUpdateInactiveGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
     )
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Patch('/update/:role/inactive')
-    async inactive(@GetRole() role: IRoleDocument): Promise<void> {
+    async inactive(@GetRole() role: IRoleEntity): Promise<void> {
         try {
             await this.roleService.inactive(role._id);
         } catch (err: any) {
@@ -307,15 +288,12 @@ export class RoleAdminController {
     @Response('role.active')
     @RoleUpdateActiveGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthAdminJwtGuard(
+    @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
     )
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Patch('/update/:role/active')
-    async active(@GetRole() role: IRoleDocument): Promise<void> {
+    async active(@GetRole() role: IRoleEntity): Promise<void> {
         try {
             await this.roleService.active(role._id);
         } catch (err: any) {

@@ -24,4 +24,18 @@ export class PaginationService implements IPaginationService {
             ? PAGINATION_MAX_PAGE
             : totalPage;
     }
+
+    async skipWithoutMax(page: number, perPage: number): Promise<number> {
+        const skip: number = (page - 1) * perPage;
+        return skip;
+    }
+
+    async totalPageWithoutMax(
+        totalData: number,
+        limit: number
+    ): Promise<number> {
+        let totalPage = Math.ceil(totalData / limit);
+        totalPage = totalPage === 0 ? 1 : totalPage;
+        return totalPage;
+    }
 }

@@ -25,7 +25,11 @@
         "jenkinsfile",
         "superadmin",
         "alphanum",
-        "dtos"
+        "dtos",
+        "typeorm",
+        "apikeys",
+        "apikey",
+        "maxlength"
     ],
     "ignoreWords": [
         "psheon",

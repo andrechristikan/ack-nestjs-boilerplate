@@ -1,20 +1,25 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DebuggerModule } from 'src/common/debugger/debugger.module';
-import { DatabaseModule } from 'src/common/database/database.module';
 import { HelperModule } from 'src/common/helper/helper.module';
 import { ErrorModule } from 'src/common/error/error.module';
 import { ResponseModule } from 'src/common/response/response.module';
 import { RequestModule } from 'src/common/request/request.module';
 import { MiddlewareModule } from 'src/common/middleware/middleware.module';
-import { AuthApiModule, AuthModule } from 'src/common/auth/auth.module';
+import { AuthModule } from 'src/common/auth/auth.module';
 import { MessageModule } from 'src/common/message/message.module';
 import { LoggerModule } from 'src/common/logger/logger.module';
 import { PaginationModule } from 'src/common/pagination/pagination.module';
-import { SettingModule } from 'src/common/setting/setting.module';
 import Joi from 'joi';
 import { ENUM_MESSAGE_LANGUAGE } from './message/constants/message.enum.constant';
 import configs from 'src/configs';
+import { AppLanguage } from 'src/app/constants/app.constant';
+import { SettingModule } from 'src/common/setting/setting.module';
+import { ApiKeyModule } from 'src/common/api-key/api-key.module';
+import { MongooseModule } from '@nestjs/mongoose';
+import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
+import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
+import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 
 @Module({
     controllers: [],
@@ -34,7 +39,7 @@ import configs from 'src/configs';
                     .required(),
                 APP_LANGUAGE: Joi.string()
                     .valid(...Object.values(ENUM_MESSAGE_LANGUAGE))
-                    .default('en')
+                    .default(AppLanguage)
                     .required(),
 
                 HTTP_ENABLE: Joi.boolean().default(true).required(),
@@ -69,14 +74,18 @@ import configs from 'src/configs';
 
                 JOB_ENABLE: Joi.boolean().default(false).required(),
 
-                DATABASE_HOST: Joi.any()
+                DATABASE_HOST: Joi.string()
                     .default('mongodb://localhost:27017')
                     .required(),
-                DATABASE_NAME: Joi.any().default('ack').required(),
-                DATABASE_USER: Joi.any().optional(),
-                DATABASE_PASSWORD: Joi.any().optional(),
+                DATABASE_NAME: Joi.string().default('ack').required(),
+                DATABASE_USER: Joi.string().allow(null, '').optional(),
+                DATABASE_PASSWORD: Joi.string().allow(null, '').optional(),
                 DATABASE_DEBUG: Joi.boolean().default(false).required(),
-                DATABASE_OPTIONS: Joi.any().optional(),
+                DATABASE_OPTIONS: Joi.string().allow(null, '').optional(),
+
+                AUTH_JWT_PAYLOAD_ENCRYPTION: Joi.boolean()
+                    .default(false)
+                    .required(),
 
                 AUTH_JWT_SUBJECT: Joi.string().required(),
                 AUTH_JWT_AUDIENCE: Joi.string().required(),
@@ -91,9 +100,13 @@ import configs from 'src/configs';
                     .default('30m')
                     .required(),
 
-                AUTH_JWT_ACCESS_TOKEN_ENCRYPT_KEY: Joi.string().required(),
+                AUTH_JWT_ACCESS_TOKEN_ENCRYPT_KEY: Joi.string()
+                    .min(20)
+                    .max(50)
+                    .required(),
                 AUTH_JWT_ACCESS_TOKEN_ENCRYPT_IV: Joi.string()
-                    .length(16)
+                    .min(16)
+                    .max(50)
                     .required(),
 
                 AUTH_JWT_REFRESH_TOKEN_SECRET_KEY: Joi.string()
@@ -110,34 +123,44 @@ import configs from 'src/configs';
                 AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION:
                     Joi.string().required(),
 
-                AUTH_JWT_REFRESH_TOKEN_ENCRYPT_KEY: Joi.string().required(),
+                AUTH_JWT_REFRESH_TOKEN_ENCRYPT_KEY: Joi.string()
+                    .min(20)
+                    .max(50)
+                    .required(),
                 AUTH_JWT_REFRESH_TOKEN_ENCRYPT_IV: Joi.string()
-                    .length(16)
+                    .min(16)
+                    .max(50)
                     .required(),
 
-                AWS_CREDENTIAL_KEY: Joi.string().optional(),
-                AWS_CREDENTIAL_SECRET: Joi.string().optional(),
-                AWS_S3_REGION: Joi.string().optional(),
-                AWS_S3_BUCKET: Joi.string().optional(),
+                AWS_CREDENTIAL_KEY: Joi.string().allow(null, '').optional(),
+                AWS_CREDENTIAL_SECRET: Joi.string().allow(null, '').optional(),
+                AWS_S3_REGION: Joi.string().allow(null, '').optional(),
+                AWS_S3_BUCKET: Joi.string().allow(null, '').optional(),
             }),
             validationOptions: {
                 allowUnknown: true,
                 abortEarly: true,
             },
         }),
-        DatabaseModule,
+        MongooseModule.forRootAsync({
+            connectionName: DATABASE_CONNECTION_NAME,
+            imports: [DatabaseOptionsModule],
+            inject: [DatabaseOptionsService],
+            useFactory: (databaseOptionsService: DatabaseOptionsService) =>
+                databaseOptionsService.createOptions(),
+        }),
         MessageModule,
         HelperModule,
         PaginationModule,
         ErrorModule,
-        LoggerModule,
-        DebuggerModule.register(),
+        DebuggerModule.forRoot(),
         ResponseModule,
         RequestModule,
         MiddlewareModule,
-        AuthApiModule,
-        AuthModule,
         SettingModule,
+        LoggerModule,
+        ApiKeyModule,
+        AuthModule,
     ],
 })
 export class CommonModule {}

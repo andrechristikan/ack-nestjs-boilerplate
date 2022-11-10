@@ -1,6 +1,9 @@
 import { ConfigModule } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
-import { DatabaseModule } from 'src/common/database/database.module';
+import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
+import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
 import { HelperModule } from 'src/common/helper/helper.module';
 import { SettingBulkService } from 'src/common/setting/services/setting.bulk.service';
 import { SettingModule } from 'src/common/setting/setting.module';
@@ -12,7 +15,14 @@ describe('SettingBulkService', () => {
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
-                DatabaseModule,
+                MongooseModule.forRootAsync({
+                    connectionName: DATABASE_CONNECTION_NAME,
+                    imports: [DatabaseOptionsModule],
+                    inject: [DatabaseOptionsService],
+                    useFactory: (
+                        databaseOptionsService: DatabaseOptionsService
+                    ) => databaseOptionsService.createOptions(),
+                }),
                 ConfigModule.forRoot({
                     load: configs,
                     isGlobal: true,

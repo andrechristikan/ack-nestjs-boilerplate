@@ -3,17 +3,12 @@ import { Logger, VersioningType } from '@nestjs/common';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
 import { useContainer } from 'class-validator';
-import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
 import swaggerInit from './swagger';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
-    const databaseOptionsService: DatabaseOptionsService = app.get(
-        DatabaseOptionsService
-    );
-    const databaseUri: string =
-        databaseOptionsService.createMongooseOptions().uri;
+    const databaseUri: string = configService.get<string>('database.host');
     const env: string = configService.get<string>('app.env');
     const host: string = configService.get<string>('app.http.host');
     const port: number = configService.get<number>('app.http.port');

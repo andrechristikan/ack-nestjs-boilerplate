@@ -21,7 +21,7 @@ export function MaxGreaterThan(
     property: string,
     validationOptions?: ValidationOptions
 ) {
-    return function (object: Record<string, any>, propertyName: string): any {
+    return function (object: Record<string, any>, propertyName: string): void {
         registerDecorator({
             name: 'MaxGreaterThan',
             target: object.constructor,

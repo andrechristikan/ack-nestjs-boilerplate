@@ -46,6 +46,13 @@ export class PermissionGetSerialization {
     })
     readonly createdAt: Date;
 
-    @Exclude()
+    @ApiProperty({
+        description: 'Date updated at',
+        example: faker.date.recent(),
+        required: false,
+    })
     readonly updatedAt: Date;
+
+    @Exclude()
+    readonly deletedAt: Date;
 }

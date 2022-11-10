@@ -13,11 +13,13 @@ import {
     UploadedFile,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { AuthApiKey } from 'src/common/auth/decorators/auth.api-key.decorator';
-import { Token, User } from 'src/common/auth/decorators/auth.decorator';
 import {
-    AuthJwtGuard,
-    AuthRefreshJwtGuard,
+    AuthJwtPayload,
+    AuthJwtToken,
+} from 'src/common/auth/decorators/auth.decorator';
+import {
+    AuthJwtAccessProtected,
+    AuthJwtRefreshProtected,
 } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
@@ -30,21 +32,17 @@ import { FileSizeImagePipe } from 'src/common/file/pipes/file.size.pipe';
 import { FileTypeImagePipe } from 'src/common/file/pipes/file.type.pipe';
 import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.enum.constant';
 import { Logger } from 'src/common/logger/decorators/logger.decorator';
-import {
-    RequestValidateTimestamp,
-    RequestValidateUserAgent,
-} from 'src/common/request/decorators/request.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
+import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
+import { SettingService } from 'src/common/setting/services/setting.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import {
-    ENUM_USER_STATUS_CODE_ERROR,
-    ENUM_USER_STATUS_CODE_SUCCESS,
-} from 'src/modules/user/constants/user.status-code.constant';
+import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
 import { UserProfileGuard } from 'src/modules/user/decorators/user.public.decorator';
 import {
     UserChangePasswordDoc,
+    UserInfoDoc,
     UserLoginDoc,
     UserProfileDoc,
     UserRefreshDoc,
@@ -52,8 +50,9 @@ import {
 } from 'src/modules/user/docs/user.doc';
 import { UserChangePasswordDto } from 'src/modules/user/dtos/user.change-password.dto';
 import { UserLoginDto } from 'src/modules/user/dtos/user.login.dto';
-import { IUserDocument } from 'src/modules/user/interfaces/user.interface';
-import { UserDocument } from 'src/modules/user/schemas/user.schema';
+import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
+import { UserInfoSerialization } from 'src/modules/user/serializations/user.info.serialization';
 import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
@@ -68,7 +67,8 @@ export class UserController {
     constructor(
         private readonly authService: AuthService,
         private readonly userService: UserService,
-        private readonly awsService: AwsS3Service
+        private readonly awsService: AwsS3Service,
+        private readonly settingService: SettingService
     ) {}
 
     @UserProfileDoc()
@@ -76,27 +76,21 @@ export class UserController {
         classSerialization: UserProfileSerialization,
     })
     @UserProfileGuard()
-    @AuthJwtGuard()
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
+    @AuthJwtAccessProtected()
     @Get('/profile')
-    async profile(@GetUser() user: IUserDocument): Promise<IResponse> {
+    async profile(@GetUser() user: IUserEntity): Promise<IResponse> {
         return user;
     }
 
     @UserUploadProfileDoc()
     @Response('user.upload')
     @UserProfileGuard()
-    @AuthJwtGuard()
-    @AuthApiKey()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
+    @AuthJwtAccessProtected()
     @UploadFileSingle('file')
     @HttpCode(HttpStatus.OK)
     @Post('/profile/upload')
     async upload(
-        @GetUser() user: IUserDocument,
+        @GetUser() user: IUserEntity,
         @UploadedFile(FileRequiredPipe, FileSizeImagePipe, FileTypeImagePipe)
         file: IFile
     ): Promise<void> {
@@ -132,13 +126,13 @@ export class UserController {
 
     @UserChangePasswordDoc()
     @Response('user.changePassword')
-    @AuthJwtGuard()
+    @AuthJwtAccessProtected()
     @Patch('/change-password')
     async changePassword(
         @Body() body: UserChangePasswordDto,
-        @User('_id') _id: string
+        @AuthJwtPayload('_id') _id: string
     ): Promise<void> {
-        const user: UserDocument = await this.userService.findOneById(_id);
+        const user: UserEntity = await this.userService.findOneById(_id);
         if (!user) {
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
@@ -194,17 +188,13 @@ export class UserController {
     @Logger(ENUM_LOGGER_ACTION.LOGIN, { tags: ['login', 'withEmail'] })
     @HttpCode(HttpStatus.OK)
     @Post('/login')
-    async login(@Body() body: UserLoginDto): Promise<IResponse> {
-        const user: IUserDocument =
-            await this.userService.findOne<IUserDocument>(
-                {
-                    email: body.email,
-                },
-                {
-                    populate: true,
-                }
-            );
-
+    async login(
+        @Body() { password, username, rememberMe }: UserLoginDto
+    ): Promise<IResponse> {
+        const user: IUserEntity =
+            await this.userService.findOneByUsername<IUserEntity>(username, {
+                join: true,
+            });
         if (!user) {
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
@@ -212,12 +202,35 @@ export class UserController {
             });
         }
 
+        const passwordAttempt: SettingEntity =
+            await this.settingService.findOneByName('passwordAttempt');
+
+        const passwordAttemptValue: boolean =
+            await this.settingService.getValue<boolean>(passwordAttempt);
+
+        if (passwordAttemptValue) {
+            const maxPasswordAttempt: SettingEntity =
+                await this.settingService.findOneByName('maxPasswordAttempt');
+            const value: number = await this.settingService.getValue<number>(
+                maxPasswordAttempt
+            );
+
+            if (user.passwordAttempt >= value) {
+                throw new ForbiddenException({
+                    statusCode:
+                        ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_ATTEMPT_MAX_ERROR,
+                    message: 'user.error.passwordAttemptMax',
+                });
+            }
+        }
+
         const validate: boolean = await this.authService.validateUser(
-            body.password,
+            password,
             user.password
         );
-
         if (!validate) {
+            await this.userService.increasePasswordAttempt(user._id);
+
             throw new BadRequestException({
                 statusCode:
                     ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_NOT_MATCH_ERROR,
@@ -240,7 +253,7 @@ export class UserController {
         const tokenType: string = await this.authService.getTokenType();
         const expiresIn: number =
             await this.authService.getAccessTokenExpirationTime();
-        const rememberMe: boolean = body.rememberMe ? true : false;
+        rememberMe = rememberMe ? true : false;
         const payloadAccessToken: Record<string, any> =
             await this.authService.createPayloadAccessToken(
                 payload,
@@ -255,10 +268,18 @@ export class UserController {
                 }
             );
 
-        const payloadHashedAccessToken =
-            await this.authService.encryptAccessToken(payloadAccessToken);
-        const payloadHashedRefreshToken =
-            await this.authService.encryptAccessToken(payloadRefreshToken);
+        const payloadEncryption = await this.authService.getPayloadEncryption();
+        let payloadHashedAccessToken: Record<string, any> | string =
+            payloadAccessToken;
+        let payloadHashedRefreshToken: Record<string, any> | string =
+            payloadRefreshToken;
+
+        if (payloadEncryption) {
+            payloadHashedAccessToken =
+                await this.authService.encryptAccessToken(payloadAccessToken);
+            payloadHashedRefreshToken =
+                await this.authService.encryptRefreshToken(payloadRefreshToken);
+        }
 
         const accessToken: string = await this.authService.createAccessToken(
             payloadHashedAccessToken
@@ -288,10 +309,6 @@ export class UserController {
         }
 
         return {
-            metadata: {
-                // override status code
-                statusCode: ENUM_USER_STATUS_CODE_SUCCESS.USER_LOGIN_SUCCESS,
-            },
             tokenType,
             expiresIn,
             accessToken,
@@ -301,17 +318,17 @@ export class UserController {
 
     @UserRefreshDoc()
     @Response('user.refresh', { classSerialization: UserLoginSerialization })
-    @AuthRefreshJwtGuard()
+    @AuthJwtRefreshProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
     async refresh(
-        @User()
+        @AuthJwtPayload()
         { _id, rememberMe, loginDate }: Record<string, any>,
-        @Token() refreshToken: string
+        @AuthJwtToken() refreshToken: string
     ): Promise<IResponse> {
-        const user: IUserDocument =
-            await this.userService.findOneById<IUserDocument>(_id, {
-                populate: true,
+        const user: IUserEntity =
+            await this.userService.findOneById<IUserEntity>(_id, {
+                join: true,
             });
 
         if (!user) {
@@ -356,8 +373,14 @@ export class UserController {
                 }
             );
 
-        const payloadHashedAccessToken =
-            await this.authService.encryptAccessToken(payloadAccessToken);
+        const payloadEncryption = await this.authService.getPayloadEncryption();
+        let payloadHashedAccessToken: Record<string, any> | string =
+            payloadAccessToken;
+
+        if (payloadEncryption) {
+            payloadHashedAccessToken =
+                await this.authService.encryptAccessToken(payloadAccessToken);
+        }
 
         const accessToken: string = await this.authService.createAccessToken(
             payloadHashedAccessToken
@@ -369,5 +392,15 @@ export class UserController {
             accessToken,
             refreshToken,
         };
+    }
+
+    @UserInfoDoc()
+    @Response('user.info', { classSerialization: UserInfoSerialization })
+    @AuthJwtAccessProtected()
+    @Get('/info')
+    async info(
+        @AuthJwtPayload() user: Record<string, any>
+    ): Promise<IResponse> {
+        return user;
     }
 }
