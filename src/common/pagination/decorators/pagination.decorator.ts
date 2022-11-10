@@ -11,7 +11,7 @@ import {
     PAGINATION_SORT,
 } from 'src/common/pagination/constants/pagination.constant';
 import {
-    ENUM_PAGINATION_AVAILABLE_SORT_TYPE,
+    ENUM_PAGINATION_SORT_TYPE,
     ENUM_PAGINATION_FILTER_CASE_OPTIONS,
 } from 'src/common/pagination/constants/pagination.enum.constant';
 import {
@@ -98,9 +98,7 @@ export function PaginationSort(
                 : bSort;
 
             const convertType =
-                type.toUpperCase() === ENUM_PAGINATION_AVAILABLE_SORT_TYPE.DESC
-                    ? -1
-                    : 1;
+                type.toUpperCase() === ENUM_PAGINATION_SORT_TYPE.DESC ? -1 : 1;
 
             return { [convertField]: convertType };
         })

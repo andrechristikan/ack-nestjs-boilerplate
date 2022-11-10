@@ -1,12 +1,9 @@
 import {
-    ENUM_PAGINATION_AVAILABLE_SORT_TYPE,
+    ENUM_PAGINATION_SORT_TYPE,
     ENUM_PAGINATION_FILTER_CASE_OPTIONS,
 } from 'src/common/pagination/constants/pagination.enum.constant';
 
-export type IPaginationSort = Record<
-    string,
-    ENUM_PAGINATION_AVAILABLE_SORT_TYPE
->;
+export type IPaginationSort = Record<string, ENUM_PAGINATION_SORT_TYPE>;
 
 export interface IPaginationOptions {
     limit: number;

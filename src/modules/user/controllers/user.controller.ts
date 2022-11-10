@@ -268,10 +268,18 @@ export class UserController {
                 }
             );
 
-        const payloadHashedAccessToken =
-            await this.authService.encryptAccessToken(payloadAccessToken);
-        const payloadHashedRefreshToken =
-            await this.authService.encryptAccessToken(payloadRefreshToken);
+        const payloadEncryption = await this.authService.getPayloadEncryption();
+        let payloadHashedAccessToken: Record<string, any> | string =
+            payloadAccessToken;
+        let payloadHashedRefreshToken: Record<string, any> | string =
+            payloadRefreshToken;
+
+        if (payloadEncryption) {
+            payloadHashedAccessToken =
+                await this.authService.encryptAccessToken(payloadAccessToken);
+            payloadHashedRefreshToken =
+                await this.authService.encryptRefreshToken(payloadRefreshToken);
+        }
 
         const accessToken: string = await this.authService.createAccessToken(
             payloadHashedAccessToken
@@ -365,8 +373,14 @@ export class UserController {
                 }
             );
 
-        const payloadHashedAccessToken =
-            await this.authService.encryptAccessToken(payloadAccessToken);
+        const payloadEncryption = await this.authService.getPayloadEncryption();
+        let payloadHashedAccessToken: Record<string, any> | string =
+            payloadAccessToken;
+
+        if (payloadEncryption) {
+            payloadHashedAccessToken =
+                await this.authService.encryptAccessToken(payloadAccessToken);
+        }
 
         const accessToken: string = await this.authService.createAccessToken(
             payloadHashedAccessToken

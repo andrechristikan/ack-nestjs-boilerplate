@@ -68,4 +68,6 @@ export interface IAuthService {
     getAudience(): Promise<string>;
 
     getSubject(): Promise<string>;
+
+    getPayloadEncryption(): Promise<boolean>;
 }

@@ -32,61 +32,32 @@ describe('DatabaseOptionsService', () => {
         expect(databaseOptionsService).toBeDefined();
     });
 
-    describe('createMongooseOptions', () => {
+    describe('createOptions', () => {
         it('should be called', async () => {
-            const test = jest.spyOn(
-                databaseOptionsService,
-                'createMongooseOptions'
-            );
+            const test = jest.spyOn(databaseOptionsService, 'createOptions');
 
-            databaseOptionsService.createMongooseOptions();
+            databaseOptionsService.createOptions();
             expect(test).toHaveBeenCalled();
         });
 
         it('should be success', async () => {
-            const options = databaseOptionsService.createMongooseOptions();
+            const options = databaseOptionsService.createOptions();
             jest.spyOn(
                 databaseOptionsService,
-                'createMongooseOptions'
+                'createOptions'
             ).mockImplementation(() => options);
 
-            expect(databaseOptionsService.createMongooseOptions()).toBe(
-                options
-            );
+            expect(databaseOptionsService.createOptions()).toBe(options);
         });
 
         it('should be success', async () => {
-            const options = databaseOptionsService.createMongooseOptions();
+            const options = databaseOptionsService.createOptions();
             jest.spyOn(
                 databaseOptionsService,
-                'createMongooseOptions'
+                'createOptions'
             ).mockImplementation(() => options);
 
-            expect(databaseOptionsService.createMongooseOptions()).toBe(
-                options
-            );
-        });
-    });
-
-    describe('createTypeOrmOptions', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(
-                databaseOptionsService,
-                'createTypeOrmOptions'
-            );
-
-            databaseOptionsService.createTypeOrmOptions();
-            expect(test).toHaveBeenCalled();
-        });
-
-        it('should be success', async () => {
-            const options = databaseOptionsService.createTypeOrmOptions();
-            jest.spyOn(
-                databaseOptionsService,
-                'createTypeOrmOptions'
-            ).mockImplementation(() => options);
-
-            expect(databaseOptionsService.createTypeOrmOptions()).toBe(options);
+            expect(databaseOptionsService.createOptions()).toBe(options);
         });
     });
 });

@@ -1,4 +1,4 @@
-export enum ENUM_PAGINATION_AVAILABLE_SORT_TYPE {
+export enum ENUM_PAGINATION_SORT_TYPE {
     ASC = 'ASC',
     DESC = 'DESC',
 }

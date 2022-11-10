@@ -7,6 +7,8 @@ import {
     MemoryHealthIndicator,
     MongooseHealthIndicator,
 } from '@nestjs/terminus';
+import { Connection } from 'mongoose';
+import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { HealthCheckDoc } from 'src/health/docs/health.doc';
@@ -20,6 +22,7 @@ import { HealthSerialization } from 'src/health/serializations/health.serializat
 })
 export class HealthController {
     constructor(
+        @DatabaseConnection() private readonly databaseConnection: Connection,
         private readonly health: HealthCheckService,
         private readonly memoryHealthIndicator: MemoryHealthIndicator,
         private readonly diskHealthIndicator: DiskHealthIndicator,
@@ -43,7 +46,10 @@ export class HealthController {
     @Get('/database')
     async checkDatabase(): Promise<IResponse> {
         return this.health.check([
-            () => this.mongooseIndicator.pingCheck('database'),
+            () =>
+                this.mongooseIndicator.pingCheck('database', {
+                    connection: this.databaseConnection,
+                }),
         ]);
     }
 

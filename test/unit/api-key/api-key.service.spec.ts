@@ -1,30 +1,40 @@
 import { Test } from '@nestjs/testing';
-import { AuthApiService } from 'src/common/auth/services/auth.api.service';
 import { faker } from '@faker-js/faker';
-import { AuthApiBulkService } from 'src/common/auth/services/auth.api.bulk.service';
-import {
-    IAuthApi,
-    IAuthApiRequestHashedData,
-} from 'src/common/auth/interfaces/auth.interface';
-import { AuthApiModule } from 'src/common/auth/auth.module';
 import { HelperModule } from 'src/common/helper/helper.module';
 import { ConfigModule } from '@nestjs/config';
 import configs from 'src/configs';
-import { AuthApi } from 'src/common/auth/schemas/auth.api.schema';
-import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
-import { DatabaseConnectionModule } from 'src/common/database/database.module';
+import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
+import { ApiKeyBulkKeyService } from 'src/common/api-key/services/api-key.bulk.service';
+import { MongooseModule } from '@nestjs/mongoose';
+import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
+import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
+import {
+    IApiKey,
+    IApiKeyRequestHashedData,
+} from 'src/common/api-key/interfaces/api-key.interface';
+import { ApiKeyModule } from 'src/common/api-key/api-key.module';
+import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
+import { ENUM_PAGINATION_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 
-describe('AuthApiService', () => {
-    let authApiService: AuthApiService;
-    let authApiBulkService: AuthApiBulkService;
+describe('ApiKeyService', () => {
+    let apiKeyService: ApiKeyService;
+    let apiKeyBulkService: ApiKeyBulkKeyService;
     const authApiName: string = faker.random.alphaNumeric(5);
 
-    let authApi: IAuthApi;
+    let authApi: IApiKey;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
-                DatabaseConnectionModule.register(),
+                MongooseModule.forRootAsync({
+                    connectionName: DATABASE_CONNECTION_NAME,
+                    imports: [DatabaseOptionsModule],
+                    inject: [DatabaseOptionsService],
+                    useFactory: (
+                        databaseOptionsService: DatabaseOptionsService
+                    ) => databaseOptionsService.createOptions(),
+                }),
                 ConfigModule.forRoot({
                     load: configs,
                     isGlobal: true,
@@ -33,16 +43,16 @@ describe('AuthApiService', () => {
                     expandVariables: true,
                 }),
                 HelperModule,
-                AuthApiModule,
+                ApiKeyModule,
             ],
             providers: [],
         }).compile();
 
-        authApiService = moduleRef.get<AuthApiService>(AuthApiService);
-        authApiBulkService =
-            moduleRef.get<AuthApiBulkService>(AuthApiBulkService);
+        apiKeyService = moduleRef.get<ApiKeyService>(ApiKeyService);
+        apiKeyBulkService =
+            moduleRef.get<ApiKeyBulkKeyService>(ApiKeyBulkKeyService);
 
-        authApi = await authApiService.create({
+        authApi = await apiKeyService.create({
             name: authApiName,
             description: faker.random.alphaNumeric(),
         });
@@ -55,12 +65,12 @@ describe('AuthApiService', () => {
                 description: faker.random.alphaNumeric(),
             };
 
-            const result: IAuthApi = await authApiService.create(data);
-            jest.spyOn(authApiService, 'create').mockImplementation(
+            const result: IApiKey = await apiKeyService.create(data);
+            jest.spyOn(apiKeyService, 'create').mockImplementation(
                 async () => result
             );
 
-            expect(await authApiService.create(data)).toBe(result);
+            expect(await apiKeyService.create(data)).toBe(result);
         });
     });
 
@@ -69,42 +79,42 @@ describe('AuthApiService', () => {
             const data = {
                 name: authApiName,
                 description: faker.random.alphaNumeric(),
-                key: await authApiService.createKey(),
-                secret: await authApiService.createSecret(),
-                passphrase: await authApiService.createPassphrase(),
-                encryptionKey: await authApiService.createEncryptionKey(),
+                key: await apiKeyService.createKey(),
+                secret: await apiKeyService.createSecret(),
+                passphrase: await apiKeyService.createPassphrase(),
+                encryptionKey: await apiKeyService.createEncryptionKey(),
             };
 
-            const result: IAuthApi = await authApiService.createRaw(data);
-            jest.spyOn(authApiService, 'createRaw').mockImplementation(
+            const result: IApiKey = await apiKeyService.createRaw(data);
+            jest.spyOn(apiKeyService, 'createRaw').mockImplementation(
                 async () => result
             );
 
-            expect(await authApiService.createRaw(data)).toBe(result);
+            expect(await apiKeyService.createRaw(data)).toBe(result);
         });
     });
 
     describe('getTotal', () => {
         it('should return an success', async () => {
-            const result: number = await authApiService.getTotal({});
-            jest.spyOn(authApiService, 'getTotal').mockImplementation(
+            const result: number = await apiKeyService.getTotal({});
+            jest.spyOn(apiKeyService, 'getTotal').mockImplementation(
                 async () => result
             );
 
-            expect(await authApiService.getTotal({})).toBe(result);
+            expect(await apiKeyService.getTotal({})).toBe(result);
         });
     });
 
     describe('findOneById', () => {
         it('should return an success', async () => {
-            const result: AuthApi = await authApiService.findOneById(
+            const result: ApiKeyEntity = await apiKeyService.findOneById(
                 `${authApi._id}`
             );
-            jest.spyOn(authApiService, 'findOneById').mockImplementation(
+            jest.spyOn(apiKeyService, 'findOneById').mockImplementation(
                 async () => result
             );
 
-            expect(await authApiService.findOneById(`${authApi._id}`)).toBe(
+            expect(await apiKeyService.findOneById(`${authApi._id}`)).toBe(
                 result
             );
         });
@@ -112,14 +122,14 @@ describe('AuthApiService', () => {
 
     describe('findOne', () => {
         it('should return an success', async () => {
-            const result: AuthApi = await authApiService.findOne({
+            const result: ApiKeyEntity = await apiKeyService.findOne({
                 _id: authApi._id,
             });
-            jest.spyOn(authApiService, 'findOne').mockImplementation(
+            jest.spyOn(apiKeyService, 'findOne').mockImplementation(
                 async () => result
             );
 
-            expect(await authApiService.findOne({ _id: authApi._id })).toBe(
+            expect(await apiKeyService.findOne({ _id: authApi._id })).toBe(
                 result
             );
         });
@@ -127,91 +137,97 @@ describe('AuthApiService', () => {
 
     describe('findOneByKey', () => {
         it('should return an success', async () => {
-            const findOne: AuthApi = await authApiService.findOneById(
+            const findOne: ApiKeyEntity = await apiKeyService.findOneById(
                 `${authApi._id}`
             );
 
-            const result: AuthApi = await authApiService.findOneByKey(
+            const result: ApiKeyEntity = await apiKeyService.findOneByKey(
                 findOne.key
             );
-            jest.spyOn(authApiService, 'findOneByKey').mockImplementation(
+            jest.spyOn(apiKeyService, 'findOneByKey').mockImplementation(
                 async () => result
             );
 
-            expect(await authApiService.findOneByKey(findOne.key)).toBe(result);
+            expect(await apiKeyService.findOneByKey(findOne.key)).toBe(result);
         });
     });
 
     describe('inactive', () => {
         it('should return an success', async () => {
-            const result: AuthApi = await authApiService.inactive(
+            const result: ApiKeyEntity = await apiKeyService.inactive(
                 `${authApi._id}`
             );
-            jest.spyOn(authApiService, 'inactive').mockImplementation(
+            jest.spyOn(apiKeyService, 'inactive').mockImplementation(
                 async () => result
             );
 
-            expect(await authApiService.inactive(`${authApi._id}`)).toBe(
-                result
-            );
+            expect(await apiKeyService.inactive(`${authApi._id}`)).toBe(result);
         });
     });
 
     describe('active', () => {
         it('should return an success', async () => {
-            const result: AuthApi = await authApiService.active(
+            const result: ApiKeyEntity = await apiKeyService.active(
                 `${authApi._id}`
             );
-            jest.spyOn(authApiService, 'active').mockImplementation(
+            jest.spyOn(apiKeyService, 'active').mockImplementation(
                 async () => result
             );
 
-            expect(await authApiService.active(`${authApi._id}`)).toBe(result);
+            expect(await apiKeyService.active(`${authApi._id}`)).toBe(result);
         });
     });
 
     describe('findAll', () => {
         it('should return an success', async () => {
-            const result: AuthApi[] = await authApiService.findAll(
+            const result: ApiKeyEntity[] = await apiKeyService.findAll(
                 {},
                 { limit: 1, skip: 1 }
             );
-            jest.spyOn(authApiService, 'findAll').mockImplementation(
+            jest.spyOn(apiKeyService, 'findAll').mockImplementation(
                 async () => result
             );
 
-            expect(
-                await authApiService.findAll({}, { limit: 1, skip: 1 })
-            ).toBe(result);
+            expect(await apiKeyService.findAll({}, { limit: 1, skip: 1 })).toBe(
+                result
+            );
         });
 
         it('should return an success with limit and offset', async () => {
-            const result: AuthApi[] = await authApiService.findAll(
+            const result: ApiKeyEntity[] = await apiKeyService.findAll(
                 {},
                 { limit: 1, skip: 1 }
             );
-            jest.spyOn(authApiService, 'findAll').mockImplementation(
+            jest.spyOn(apiKeyService, 'findAll').mockImplementation(
                 async () => result
             );
 
-            expect(
-                await authApiService.findAll({}, { limit: 1, skip: 1 })
-            ).toBe(result);
+            expect(await apiKeyService.findAll({}, { limit: 1, skip: 1 })).toBe(
+                result
+            );
         });
 
         it('should return an success with limit, offset, and sort', async () => {
-            const result: AuthApi[] = await authApiService.findAll(
+            const result: ApiKeyEntity[] = await apiKeyService.findAll(
                 {},
-                { limit: 1, skip: 1, sort: { name: 1 } }
+                {
+                    limit: 1,
+                    skip: 1,
+                    sort: { name: ENUM_PAGINATION_SORT_TYPE.ASC },
+                }
             );
-            jest.spyOn(authApiService, 'findAll').mockImplementation(
+            jest.spyOn(apiKeyService, 'findAll').mockImplementation(
                 async () => result
             );
 
             expect(
-                await authApiService.findAll(
+                await apiKeyService.findAll(
                     {},
-                    { limit: 1, skip: 1, sort: { name: 1 } }
+                    {
+                        limit: 1,
+                        skip: 1,
+                        sort: { name: ENUM_PAGINATION_SORT_TYPE.ASC },
+                    }
                 )
             ).toBe(result);
         });
@@ -219,19 +235,19 @@ describe('AuthApiService', () => {
 
     describe('updateOneById', () => {
         it('should return an success', async () => {
-            const result: AuthApi = await authApiService.updateOneById(
+            const result: ApiKeyEntity = await apiKeyService.updateOneById(
                 `${authApi._id}`,
                 {
                     name: faker.random.alphaNumeric(10),
                     description: faker.random.alphaNumeric(20),
                 }
             );
-            jest.spyOn(authApiService, 'updateOneById').mockImplementation(
+            jest.spyOn(apiKeyService, 'updateOneById').mockImplementation(
                 async () => result
             );
 
             expect(
-                await authApiService.updateOneById(`${authApi._id}`, {
+                await apiKeyService.updateOneById(`${authApi._id}`, {
                     name: faker.random.alphaNumeric(10),
                     description: faker.random.alphaNumeric(20),
                 })
@@ -241,14 +257,14 @@ describe('AuthApiService', () => {
 
     describe('updateHashById', () => {
         it('should return an success', async () => {
-            const result: IAuthApi = await authApiService.updateHashById(
+            const result: IApiKey = await apiKeyService.updateHashById(
                 `${authApi._id}`
             );
-            jest.spyOn(authApiService, 'updateHashById').mockImplementation(
+            jest.spyOn(apiKeyService, 'updateHashById').mockImplementation(
                 async () => result
             );
 
-            expect(await authApiService.updateHashById(`${authApi._id}`)).toBe(
+            expect(await apiKeyService.updateHashById(`${authApi._id}`)).toBe(
                 result
             );
         });
@@ -256,14 +272,14 @@ describe('AuthApiService', () => {
 
     describe('deleteOneById', () => {
         it('should return an success', async () => {
-            const result: AuthApi = await authApiService.deleteOneById(
+            const result: ApiKeyEntity = await apiKeyService.deleteOneById(
                 `${authApi._id}`
             );
-            jest.spyOn(authApiService, 'deleteOneById').mockImplementation(
+            jest.spyOn(apiKeyService, 'deleteOneById').mockImplementation(
                 async () => result
             );
 
-            expect(await authApiService.deleteOneById(`${authApi._id}`)).toBe(
+            expect(await apiKeyService.deleteOneById(`${authApi._id}`)).toBe(
                 result
             );
         });
@@ -271,61 +287,60 @@ describe('AuthApiService', () => {
 
     describe('deleteOne', () => {
         it('should return an success', async () => {
-            const result: AuthApi = await authApiService.deleteOne({
+            const result: ApiKeyEntity = await apiKeyService.deleteOne({
                 _id: `${authApi._id}`,
             });
-            jest.spyOn(authApiService, 'deleteOne').mockImplementation(
+            jest.spyOn(apiKeyService, 'deleteOne').mockImplementation(
                 async () => result
             );
 
             expect(
-                await authApiService.deleteOne({ _id: `${authApi._id}` })
+                await apiKeyService.deleteOne({ _id: `${authApi._id}` })
             ).toBe(result);
         });
     });
 
     describe('createKey', () => {
         it('should return an success', async () => {
-            const result: string = await authApiService.createKey();
-            jest.spyOn(authApiService, 'createKey').mockImplementation(
+            const result: string = await apiKeyService.createKey();
+            jest.spyOn(apiKeyService, 'createKey').mockImplementation(
                 async () => result
             );
 
-            expect(await authApiService.createKey()).toBe(result);
+            expect(await apiKeyService.createKey()).toBe(result);
         });
     });
 
     describe('createEncryptionKey', () => {
         it('should return an success', async () => {
-            const result: string = await authApiService.createEncryptionKey();
-            jest.spyOn(
-                authApiService,
-                'createEncryptionKey'
-            ).mockImplementation(async () => result);
+            const result: string = await apiKeyService.createEncryptionKey();
+            jest.spyOn(apiKeyService, 'createEncryptionKey').mockImplementation(
+                async () => result
+            );
 
-            expect(await authApiService.createEncryptionKey()).toBe(result);
+            expect(await apiKeyService.createEncryptionKey()).toBe(result);
         });
     });
 
     describe('createSecret', () => {
         it('should return an success', async () => {
-            const result: string = await authApiService.createSecret();
-            jest.spyOn(authApiService, 'createSecret').mockImplementation(
+            const result: string = await apiKeyService.createSecret();
+            jest.spyOn(apiKeyService, 'createSecret').mockImplementation(
                 async () => result
             );
 
-            expect(await authApiService.createSecret()).toBe(result);
+            expect(await apiKeyService.createSecret()).toBe(result);
         });
     });
 
     describe('createPassphrase', () => {
         it('should return an success', async () => {
-            const result: string = await authApiService.createPassphrase();
-            jest.spyOn(authApiService, 'createPassphrase').mockImplementation(
+            const result: string = await apiKeyService.createPassphrase();
+            jest.spyOn(apiKeyService, 'createPassphrase').mockImplementation(
                 async () => result
             );
 
-            expect(await authApiService.createPassphrase()).toBe(result);
+            expect(await apiKeyService.createPassphrase()).toBe(result);
         });
     });
 
@@ -333,15 +348,15 @@ describe('AuthApiService', () => {
         it('should return an success', async () => {
             const key = faker.random.alpha(5);
             const secret = faker.random.alpha(10);
-            const result: string = await authApiService.createHashApiKey(
+            const result: string = await apiKeyService.createHashApiKey(
                 key,
                 secret
             );
-            jest.spyOn(authApiService, 'createHashApiKey').mockImplementation(
+            jest.spyOn(apiKeyService, 'createHashApiKey').mockImplementation(
                 async () => result
             );
 
-            expect(await authApiService.createHashApiKey(key, secret)).toBe(
+            expect(await apiKeyService.createHashApiKey(key, secret)).toBe(
                 result
             );
         });
@@ -349,20 +364,20 @@ describe('AuthApiService', () => {
 
     describe('validateHashApiKey', () => {
         it('should return an success', async () => {
-            const findOne: AuthApi = await authApiService.findOneById(
+            const findOne: ApiKeyEntity = await apiKeyService.findOneById(
                 `${authApi._id}`
             );
             const hashFormRequest = findOne.hash;
-            const result: boolean = await authApiService.validateHashApiKey(
+            const result: boolean = await apiKeyService.validateHashApiKey(
                 hashFormRequest,
                 hashFormRequest
             );
-            jest.spyOn(authApiService, 'validateHashApiKey').mockImplementation(
+            jest.spyOn(apiKeyService, 'validateHashApiKey').mockImplementation(
                 async () => result
             );
 
             expect(
-                await authApiService.validateHashApiKey(
+                await apiKeyService.validateHashApiKey(
                     hashFormRequest,
                     hashFormRequest
                 )
@@ -370,21 +385,21 @@ describe('AuthApiService', () => {
         });
 
         it('should return an failed', async () => {
-            const findOne: AuthApi = await authApiService.findOneById(
+            const findOne: ApiKeyEntity = await apiKeyService.findOneById(
                 `${authApi._id}`
             );
             const hashFormRequest = findOne.hash;
             const hashWrong = faker.random.alphaNumeric(10);
-            const result: boolean = await authApiService.validateHashApiKey(
+            const result: boolean = await apiKeyService.validateHashApiKey(
                 hashFormRequest,
                 hashWrong
             );
-            jest.spyOn(authApiService, 'validateHashApiKey').mockImplementation(
+            jest.spyOn(apiKeyService, 'validateHashApiKey').mockImplementation(
                 async () => result
             );
 
             expect(
-                await authApiService.validateHashApiKey(
+                await apiKeyService.validateHashApiKey(
                     hashFormRequest,
                     hashWrong
                 )
@@ -394,15 +409,15 @@ describe('AuthApiService', () => {
 
     describe('decryptApiKey', () => {
         it('should return an success', async () => {
-            const findOne: AuthApi = await authApiService.findOneById(
+            const findOne: ApiKeyEntity = await apiKeyService.findOneById(
                 `${authApi._id}`
             );
             const timestamp = new Date().valueOf();
-            const apiHash = await authApiService.createHashApiKey(
+            const apiHash = await apiKeyService.createHashApiKey(
                 findOne.key,
                 authApi.secret
             );
-            const encryptedApiKey: string = await authApiService.encryptApiKey(
+            const encryptedApiKey: string = await apiKeyService.encryptApiKey(
                 {
                     key: findOne.key,
                     timestamp,
@@ -412,19 +427,19 @@ describe('AuthApiService', () => {
                 authApi.passphrase
             );
 
-            const result: IAuthApiRequestHashedData =
-                await authApiService.decryptApiKey(
+            const result: IApiKeyRequestHashedData =
+                await apiKeyService.decryptApiKey(
                     encryptedApiKey,
                     findOne.encryptionKey,
                     authApi.passphrase
                 );
 
-            jest.spyOn(authApiService, 'decryptApiKey').mockImplementation(
+            jest.spyOn(apiKeyService, 'decryptApiKey').mockImplementation(
                 async () => result
             );
 
             expect(
-                await authApiService.decryptApiKey(
+                await apiKeyService.decryptApiKey(
                     encryptedApiKey,
                     findOne.encryptionKey,
                     authApi.passphrase
@@ -435,16 +450,16 @@ describe('AuthApiService', () => {
 
     describe('encryptApiKey', () => {
         it('should return an success', async () => {
-            const findOne: AuthApi = await authApiService.findOneById(
+            const findOne: ApiKeyEntity = await apiKeyService.findOneById(
                 `${authApi._id}`
             );
 
             const timestamp = new Date().valueOf();
-            const apiHash = await authApiService.createHashApiKey(
+            const apiHash = await apiKeyService.createHashApiKey(
                 findOne.key,
                 authApi.secret
             );
-            const result: string = await authApiService.encryptApiKey(
+            const result: string = await apiKeyService.encryptApiKey(
                 {
                     key: findOne.key,
                     timestamp,
@@ -453,12 +468,12 @@ describe('AuthApiService', () => {
                 findOne.encryptionKey,
                 authApi.passphrase
             );
-            jest.spyOn(authApiService, 'encryptApiKey').mockImplementation(
+            jest.spyOn(apiKeyService, 'encryptApiKey').mockImplementation(
                 async () => result
             );
 
             expect(
-                await authApiService.encryptApiKey(
+                await apiKeyService.encryptApiKey(
                     {
                         key: findOne.key,
                         timestamp,
@@ -475,16 +490,16 @@ describe('AuthApiService', () => {
         it('should return an success', async () => {
             const clientId = faker.random.alphaNumeric(10);
             const clientSecret = faker.random.alphaNumeric(10);
-            const result: string = await authApiService.createBasicToken(
+            const result: string = await apiKeyService.createBasicToken(
                 clientId,
                 clientSecret
             );
-            jest.spyOn(authApiService, 'createBasicToken').mockImplementation(
+            jest.spyOn(apiKeyService, 'createBasicToken').mockImplementation(
                 async () => result
             );
 
             expect(
-                await authApiService.createBasicToken(clientId, clientSecret)
+                await apiKeyService.createBasicToken(clientId, clientSecret)
             ).toBe(result);
         });
     });
@@ -493,20 +508,20 @@ describe('AuthApiService', () => {
         it('should return an success', async () => {
             const clientId = faker.random.alphaNumeric(10);
             const clientSecret = faker.random.alphaNumeric(10);
-            const basicToken: string = await authApiService.createBasicToken(
+            const basicToken: string = await apiKeyService.createBasicToken(
                 clientId,
                 clientSecret
             );
-            const result: boolean = await authApiService.validateBasicToken(
+            const result: boolean = await apiKeyService.validateBasicToken(
                 basicToken,
                 basicToken
             );
-            jest.spyOn(authApiService, 'validateBasicToken').mockImplementation(
+            jest.spyOn(apiKeyService, 'validateBasicToken').mockImplementation(
                 async () => result
             );
 
             expect(
-                await authApiService.validateBasicToken(basicToken, basicToken)
+                await apiKeyService.validateBasicToken(basicToken, basicToken)
             ).toBe(result);
         });
 
@@ -514,20 +529,20 @@ describe('AuthApiService', () => {
             const clientId = faker.random.alphaNumeric(10);
             const clientSecret = faker.random.alphaNumeric(10);
             const clientSecret2 = faker.random.alphaNumeric(10);
-            const basicToken: string = await authApiService.createBasicToken(
+            const basicToken: string = await apiKeyService.createBasicToken(
                 clientId,
                 clientSecret
             );
-            const result: boolean = await authApiService.validateBasicToken(
+            const result: boolean = await apiKeyService.validateBasicToken(
                 basicToken,
                 clientSecret2
             );
-            jest.spyOn(authApiService, 'validateBasicToken').mockImplementation(
+            jest.spyOn(apiKeyService, 'validateBasicToken').mockImplementation(
                 async () => result
             );
 
             expect(
-                await authApiService.validateBasicToken(
+                await apiKeyService.validateBasicToken(
                     basicToken,
                     clientSecret2
                 )
@@ -537,10 +552,10 @@ describe('AuthApiService', () => {
 
     afterEach(async () => {
         try {
-            await authApiService.deleteOne({
-                _id: DatabaseKey(`${authApi._id}`),
+            await apiKeyService.deleteOne({
+                _id: authApi._id,
             });
-            await authApiBulkService.deleteMany({
+            await apiKeyBulkService.deleteMany({
                 name: authApiName,
             });
         } catch (e) {

@@ -2,7 +2,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
+import { AuthService } from 'src/common/auth/services/auth.service';
 
 @Injectable()
 export class AuthJwtRefreshStrategy extends PassportStrategy(
@@ -11,7 +11,7 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
 ) {
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperEncryptionService: HelperEncryptionService
+        private readonly authService: AuthService
     ) {
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderWithScheme(
@@ -34,15 +34,7 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
         data,
     }: Record<string, any>): Promise<Record<string, any>> {
         return this.configService.get<boolean>('auth.jwt.payloadEncryption')
-            ? (this.helperEncryptionService.aes256Decrypt(
-                  data,
-                  this.configService.get<string>(
-                      'auth.jwt.refreshToken.encryptKey'
-                  ),
-                  this.configService.get<string>(
-                      'auth.jwt.refreshToken.encryptIv'
-                  )
-              ) as Record<string, any>)
+            ? this.authService.decryptRefreshToken(data)
             : data;
     }
 }

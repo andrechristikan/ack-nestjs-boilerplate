@@ -4,14 +4,14 @@ import { INTEGRATION_AWS_URL } from './aws.s3.constant';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { AuthApiService } from 'src/common/auth/services/auth.api.service';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
+import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 
 describe('Aws S3 Integration', () => {
     let app: INestApplication;
     let helperDateService: HelperDateService;
-    let authApiService: AuthApiService;
+    let apiKeyService: ApiKeyService;
 
     const apiKey = 'qwertyuiop12345zxcvbnmkjh';
     let xApiKey: string;
@@ -25,10 +25,10 @@ describe('Aws S3 Integration', () => {
 
         app = moduleRef.createNestApplication();
         helperDateService = app.get(HelperDateService);
-        authApiService = app.get(AuthApiService);
+        apiKeyService = app.get(ApiKeyService);
 
         timestamp = helperDateService.timestamp();
-        const apiEncryption = await authApiService.encryptApiKey(
+        const apiEncryption = await apiKeyService.encryptApiKey(
             {
                 key: apiKey,
                 timestamp,

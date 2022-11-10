@@ -1,22 +1,34 @@
 import { faker } from '@faker-js/faker';
 import { ConfigModule } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
-import { DatabaseConnectionModule } from 'src/common/database/database.module';
-import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
+import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
+import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
+import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
 import { HelperModule } from 'src/common/helper/helper.module';
+import { ENUM_PAGINATION_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
 import { SettingService } from 'src/common/setting/services/setting.service';
 import { SettingModule } from 'src/common/setting/setting.module';
 import configs from 'src/configs';
 
 describe('SettingService', () => {
     let settingService: SettingService;
-    const _id = DatabaseKey();
+    const _id = DatabaseDefaultUUID();
     const _idString = `${_id}`;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
-                DatabaseConnectionModule.register(),
+                MongooseModule.forRootAsync({
+                    connectionName: DATABASE_CONNECTION_NAME,
+                    imports: [DatabaseOptionsModule],
+                    inject: [DatabaseOptionsService],
+                    useFactory: (
+                        databaseOptionsService: DatabaseOptionsService
+                    ) => databaseOptionsService.createOptions(),
+                }),
                 ConfigModule.forRoot({
                     load: configs,
                     isGlobal: true,
@@ -70,7 +82,11 @@ describe('SettingService', () => {
         it('should be success with options limit, skip, sort', async () => {
             const result = await settingService.findAll(
                 {},
-                { limit: 1, skip: 0, sort: { name: 1 } }
+                {
+                    limit: 1,
+                    skip: 0,
+                    sort: { name: ENUM_PAGINATION_SORT_TYPE.ASC },
+                }
             );
             jest.spyOn(settingService, 'findAll').mockImplementation(
                 async () => result
@@ -79,7 +95,11 @@ describe('SettingService', () => {
             expect(
                 await settingService.findAll(
                     {},
-                    { limit: 1, skip: 0, sort: { name: 1 } }
+                    {
+                        limit: 1,
+                        skip: 0,
+                        sort: { name: ENUM_PAGINATION_SORT_TYPE.ASC },
+                    }
                 )
             ).toBe(result);
         });
@@ -146,11 +166,13 @@ describe('SettingService', () => {
             const setting = await settingService.create({
                 name: faker.name.firstName(),
                 description: 'test',
-                value: 1,
+                type: ENUM_SETTING_DATA_TYPE.NUMBER,
+                value: '1',
             });
             expect(test).toHaveBeenCalledWith({
                 name: setting.name,
                 description: setting.description,
+                type: ENUM_SETTING_DATA_TYPE.NUMBER,
                 value: setting.value,
             });
 
@@ -161,7 +183,8 @@ describe('SettingService', () => {
             const result = await settingService.create({
                 name: faker.name.firstName(),
                 description: 'test',
-                value: 1,
+                type: ENUM_SETTING_DATA_TYPE.NUMBER,
+                value: '1',
             });
 
             jest.spyOn(settingService, 'create').mockImplementation(
@@ -172,6 +195,7 @@ describe('SettingService', () => {
                 await settingService.create({
                     name: result.name,
                     description: result.description,
+                    type: ENUM_SETTING_DATA_TYPE.NUMBER,
                     value: result.value,
                 })
             ).toBe(result);
@@ -183,6 +207,7 @@ describe('SettingService', () => {
             const result = await settingService.create({
                 name: faker.name.firstName(),
                 description: 'test',
+                type: ENUM_SETTING_DATA_TYPE.STRING,
                 value: '1',
             });
             jest.spyOn(settingService, 'create').mockImplementation(
@@ -193,6 +218,7 @@ describe('SettingService', () => {
                 await settingService.create({
                     name: result.name,
                     description: 'test',
+                    type: ENUM_SETTING_DATA_TYPE.STRING,
                     value: '1',
                 })
             ).toBe(result);
@@ -208,10 +234,17 @@ describe('SettingService', () => {
             const setting = await settingService.create({
                 name: faker.name.firstName(),
                 description: 'test',
-                value: 1,
+                type: ENUM_SETTING_DATA_TYPE.NUMBER,
+                value: '1',
             });
-            await settingService.updateOneById(setting._id, { value: 2 });
-            expect(test).toHaveBeenCalledWith(setting._id, { value: 2 });
+            await settingService.updateOneById(setting._id, {
+                value: '2',
+                type: ENUM_SETTING_DATA_TYPE.NUMBER,
+            });
+            expect(test).toHaveBeenCalledWith(setting._id, {
+                value: '2',
+                type: ENUM_SETTING_DATA_TYPE.NUMBER,
+            });
 
             await settingService.deleteOne({ _id: setting._id });
         });
@@ -220,11 +253,13 @@ describe('SettingService', () => {
             const setting = await settingService.create({
                 name: faker.name.firstName(),
                 description: 'test',
-                value: 1,
+                type: ENUM_SETTING_DATA_TYPE.NUMBER,
+                value: '1',
             });
 
             const result = await settingService.updateOneById(setting._id, {
-                value: 1,
+                value: '1',
+                type: ENUM_SETTING_DATA_TYPE.NUMBER,
             });
             jest.spyOn(settingService, 'updateOneById').mockImplementation(
                 async () => result
@@ -232,7 +267,8 @@ describe('SettingService', () => {
 
             expect(
                 await settingService.updateOneById(setting._id, {
-                    value: 1,
+                    value: '1',
+                    type: ENUM_SETTING_DATA_TYPE.NUMBER,
                 })
             ).toBe(result);
 
@@ -243,11 +279,13 @@ describe('SettingService', () => {
             const setting = await settingService.create({
                 name: faker.name.firstName(),
                 description: 'test',
-                value: 1,
+                value: '1',
+                type: ENUM_SETTING_DATA_TYPE.NUMBER,
             });
 
             const result = await settingService.updateOneById(setting._id, {
                 value: '2',
+                type: ENUM_SETTING_DATA_TYPE.NUMBER,
             });
             jest.spyOn(settingService, 'updateOneById').mockImplementation(
                 async () => result
@@ -256,6 +294,7 @@ describe('SettingService', () => {
             expect(
                 await settingService.updateOneById(setting._id, {
                     value: '2',
+                    type: ENUM_SETTING_DATA_TYPE.NUMBER,
                 })
             ).toBe(result);
 
@@ -270,7 +309,8 @@ describe('SettingService', () => {
             const setting = await settingService.create({
                 name: faker.name.firstName(),
                 description: 'test',
-                value: 1,
+                value: '1',
+                type: ENUM_SETTING_DATA_TYPE.NUMBER,
             });
             await settingService.deleteOne({ _id: setting._id });
             expect(test).toHaveBeenCalledWith({ _id: setting._id });
@@ -280,7 +320,8 @@ describe('SettingService', () => {
             const setting = await settingService.create({
                 name: faker.name.firstName(),
                 description: 'test',
-                value: 1,
+                value: '1',
+                type: ENUM_SETTING_DATA_TYPE.NUMBER,
             });
             const result = await settingService.deleteOne({ _id: setting._id });
             jest.spyOn(settingService, 'deleteOne').mockImplementation(
@@ -295,21 +336,190 @@ describe('SettingService', () => {
         });
     });
 
-    describe('convertValue', () => {
+    describe('getValue', () => {
         it('should be called', async () => {
-            const test = jest.spyOn(settingService, 'convertValue');
+            const test = jest.spyOn(settingService, 'getValue');
 
-            await settingService.convertValue('1');
-            expect(test).toHaveBeenCalledWith('1');
+            const setting = await settingService.create({
+                name: faker.name.firstName(),
+                description: 'test',
+                value: '1',
+                type: ENUM_SETTING_DATA_TYPE.NUMBER,
+            });
+            await settingService.getValue(setting);
+            expect(test).toHaveBeenCalledWith(setting);
+
+            await settingService.deleteOne({ _id: setting._id });
         });
 
-        it('should be success', async () => {
-            const result = await settingService.convertValue('1');
-            jest.spyOn(settingService, 'convertValue').mockImplementation(
+        it('should be success number', async () => {
+            const setting = await settingService.create({
+                name: faker.name.firstName(),
+                description: 'test',
+                value: '1',
+                type: ENUM_SETTING_DATA_TYPE.NUMBER,
+            });
+            await settingService.getValue(setting);
+            const result = await settingService.getValue(setting);
+            jest.spyOn(settingService, 'getValue').mockImplementation(
                 async () => result
             );
 
-            expect(await settingService.convertValue('1')).toBe(result);
+            expect(await settingService.getValue(setting)).toBe(result);
+
+            await settingService.deleteOne({ _id: setting._id });
+        });
+
+        it('should be success string', async () => {
+            const setting = await settingService.create({
+                name: faker.name.firstName(),
+                description: 'test',
+                value: 'aaa',
+                type: ENUM_SETTING_DATA_TYPE.STRING,
+            });
+            await settingService.getValue(setting);
+            const result = await settingService.getValue(setting);
+            jest.spyOn(settingService, 'getValue').mockImplementation(
+                async () => result
+            );
+
+            expect(await settingService.getValue(setting)).toBe(result);
+
+            await settingService.deleteOne({ _id: setting._id });
+        });
+
+        it('should be success boolean', async () => {
+            const setting = await settingService.create({
+                name: faker.name.firstName(),
+                description: 'test',
+                value: 'false',
+                type: ENUM_SETTING_DATA_TYPE.BOOLEAN,
+            });
+            await settingService.getValue(setting);
+            const result = await settingService.getValue(setting);
+            jest.spyOn(settingService, 'getValue').mockImplementation(
+                async () => result
+            );
+
+            expect(await settingService.getValue(setting)).toBe(result);
+
+            await settingService.deleteOne({ _id: setting._id });
+        });
+
+        it('should be success boolean', async () => {
+            const setting = await settingService.create({
+                name: faker.name.firstName(),
+                description: 'test',
+                value: 'true',
+                type: ENUM_SETTING_DATA_TYPE.BOOLEAN,
+            });
+            await settingService.getValue(setting);
+            const result = await settingService.getValue(setting);
+            jest.spyOn(settingService, 'getValue').mockImplementation(
+                async () => result
+            );
+
+            expect(await settingService.getValue(setting)).toBe(result);
+
+            await settingService.deleteOne({ _id: setting._id });
+        });
+
+        it('should be success array of string', async () => {
+            const setting = await settingService.create({
+                name: faker.name.firstName(),
+                description: 'test',
+                value: 'aaa,bb,cc',
+                type: ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING,
+            });
+            await settingService.getValue(setting);
+            const result = await settingService.getValue(setting);
+            jest.spyOn(settingService, 'getValue').mockImplementation(
+                async () => result
+            );
+
+            expect(await settingService.getValue(setting)).toBe(result);
+
+            await settingService.deleteOne({ _id: setting._id });
+        });
+    });
+
+    describe('checkValue', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(settingService, 'checkValue');
+
+            await settingService.checkValue('1', ENUM_SETTING_DATA_TYPE.NUMBER);
+            expect(test).toHaveBeenCalledWith(
+                '1',
+                ENUM_SETTING_DATA_TYPE.NUMBER
+            );
+        });
+
+        it('should be success number', async () => {
+            const result = await settingService.checkValue(
+                '1',
+                ENUM_SETTING_DATA_TYPE.NUMBER
+            );
+            jest.spyOn(settingService, 'checkValue').mockImplementation(
+                async () => result
+            );
+
+            expect(
+                await settingService.checkValue(
+                    '1',
+                    ENUM_SETTING_DATA_TYPE.NUMBER
+                )
+            ).toBe(result);
+        });
+
+        it('should be success string', async () => {
+            const result = await settingService.checkValue(
+                'aaa',
+                ENUM_SETTING_DATA_TYPE.STRING
+            );
+            jest.spyOn(settingService, 'checkValue').mockImplementation(
+                async () => result
+            );
+
+            expect(
+                await settingService.checkValue(
+                    'aaa',
+                    ENUM_SETTING_DATA_TYPE.STRING
+                )
+            ).toBe(result);
+        });
+
+        it('should be success boolean', async () => {
+            const result = await settingService.checkValue(
+                'false',
+                ENUM_SETTING_DATA_TYPE.BOOLEAN
+            );
+            jest.spyOn(settingService, 'checkValue').mockImplementation(
+                async () => result
+            );
+
+            expect(
+                await settingService.checkValue(
+                    'false',
+                    ENUM_SETTING_DATA_TYPE.BOOLEAN
+                )
+            ).toBe(result);
+        });
+
+        it('should be success array of string', async () => {
+            const result = await settingService.checkValue(
+                'aaa,bb,cc',
+                ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING
+            );
+            jest.spyOn(settingService, 'checkValue').mockImplementation(
+                async () => result
+            );
+
+            expect(
+                await settingService.checkValue(
+                    'aaa,bb,cc',
+                    ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING
+                )
+            ).toBe(result);
         });
     });
 });
