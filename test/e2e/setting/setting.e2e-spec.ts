@@ -11,28 +11,31 @@ import {
     E2E_SETTING_COMMON_LIST_URL,
 } from './setting.constant';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { AuthApiService } from 'src/common/auth/services/auth.api.service';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
 import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/common/setting/constants/setting.status-code.constant';
 import { SettingService } from 'src/common/setting/services/setting.service';
-import { Setting } from 'src/common/setting/schemas/setting.schema';
-import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
+import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
+import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
+import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
+import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 
 describe('E2E Setting', () => {
     let app: INestApplication;
     let settingService: SettingService;
     let helperDateService: HelperDateService;
-    let authApiService: AuthApiService;
+    let apiKeyService: ApiKeyService;
 
     const apiKey = 'qwertyuiop12345zxcvbnmkjh';
     let xApiKey: string;
     let timestamp: number;
 
-    let setting: Setting;
+    let setting: SettingEntity;
     const settingName: string = faker.random.alphaNumeric(10);
 
     beforeAll(async () => {
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+
         const modRef = await Test.createTestingModule({
             imports: [
                 CommonModule,
@@ -50,13 +53,17 @@ describe('E2E Setting', () => {
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         settingService = app.get(SettingService);
         helperDateService = app.get(HelperDateService);
-        authApiService = app.get(AuthApiService);
+        apiKeyService = app.get(ApiKeyService);
 
-        await settingService.create({ name: settingName, value: true });
+        await settingService.create({
+            name: settingName,
+            value: 'true',
+            type: ENUM_SETTING_DATA_TYPE.BOOLEAN,
+        });
         setting = await settingService.findOneByName(settingName);
 
         timestamp = helperDateService.timestamp();
-        const apiEncryption = await authApiService.encryptApiKey(
+        const apiEncryption = await apiKeyService.encryptApiKey(
             {
                 key: apiKey,
                 timestamp,
@@ -85,7 +92,12 @@ describe('E2E Setting', () => {
 
     it(`GET ${E2E_SETTING_COMMON_GET_URL} Get Not Found`, async () => {
         const response = await request(app.getHttpServer())
-            .get(E2E_SETTING_COMMON_GET_URL.replace(':_id', `${DatabaseKey()}`))
+            .get(
+                E2E_SETTING_COMMON_GET_URL.replace(
+                    ':_id',
+                    `${DatabaseDefaultUUID()}`
+                )
+            )
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);

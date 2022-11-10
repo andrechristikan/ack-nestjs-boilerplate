@@ -5,18 +5,18 @@ import request from 'supertest';
 import { faker } from '@faker-js/faker';
 import { useContainer } from 'class-validator';
 import {
-    E2E_ENUM_AUTH_ACCESS_FOR_URL,
+    E2E_ENUM_ROLE_ACCESS_FOR_URL,
     E2E_ENUM_MESSAGE_LANGUAGE_URL,
 } from './enum.constant';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { AuthApiService } from 'src/common/auth/services/auth.api.service';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesEnumModule } from 'src/router/routes/routes.enum.module';
+import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 
 describe('E2E Enum', () => {
     let app: INestApplication;
     let helperDateService: HelperDateService;
-    let authApiService: AuthApiService;
+    let apiKeyService: ApiKeyService;
 
     const apiKey = 'qwertyuiop12345zxcvbnmkjh';
     let xApiKey: string;
@@ -39,10 +39,10 @@ describe('E2E Enum', () => {
         app = modRef.createNestApplication();
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         helperDateService = app.get(HelperDateService);
-        authApiService = app.get(AuthApiService);
+        apiKeyService = app.get(ApiKeyService);
 
         timestamp = helperDateService.timestamp();
-        const apiEncryption = await authApiService.encryptApiKey(
+        const apiEncryption = await apiKeyService.encryptApiKey(
             {
                 key: apiKey,
                 timestamp,
@@ -57,9 +57,9 @@ describe('E2E Enum', () => {
         await app.init();
     });
 
-    it(`GET ${E2E_ENUM_AUTH_ACCESS_FOR_URL} Success`, async () => {
+    it(`GET ${E2E_ENUM_ROLE_ACCESS_FOR_URL} Success`, async () => {
         const response = await request(app.getHttpServer())
-            .get(E2E_ENUM_AUTH_ACCESS_FOR_URL)
+            .get(E2E_ENUM_ROLE_ACCESS_FOR_URL)
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);

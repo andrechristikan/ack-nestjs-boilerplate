@@ -5,16 +5,19 @@ import request from 'supertest';
 import { faker } from '@faker-js/faker';
 import { useContainer } from 'class-validator';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { AuthApiService } from 'src/common/auth/services/auth.api.service';
 import { CommonModule } from 'src/common/common.module';
-import { E2E_AUTH_INFO_URL, E2E_AUTH_PAYLOAD_TEST } from './auth.constant';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { RoutesModule } from 'src/router/routes/routes.module';
+import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
+import {
+    E2E_USER_INFO,
+    E2E_USER_PAYLOAD_TEST,
+} from 'test/e2e/user/user.constant';
 
-describe('E2E Auth', () => {
+describe('E2E User', () => {
     let app: INestApplication;
     let helperDateService: HelperDateService;
-    let authApiService: AuthApiService;
+    let apiKeyService: ApiKeyService;
     let authService: AuthService;
 
     const apiKey = 'qwertyuiop12345zxcvbnmkjh';
@@ -24,6 +27,8 @@ describe('E2E Auth', () => {
     let accessToken: string;
 
     beforeAll(async () => {
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+
         const modRef = await Test.createTestingModule({
             imports: [
                 CommonModule,
@@ -40,18 +45,17 @@ describe('E2E Auth', () => {
         app = modRef.createNestApplication();
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         helperDateService = app.get(HelperDateService);
-        authApiService = app.get(AuthApiService);
+        apiKeyService = app.get(ApiKeyService);
         authService = app.get(AuthService);
 
         const payload = await authService.createPayloadAccessToken(
-            E2E_AUTH_PAYLOAD_TEST,
+            E2E_USER_PAYLOAD_TEST,
             false
         );
-        const payloadHashed = await authService.encryptAccessToken(payload);
-        accessToken = await authService.createAccessToken(payloadHashed);
+        accessToken = await authService.createAccessToken(payload);
 
         timestamp = helperDateService.timestamp();
-        const apiEncryption = await authApiService.encryptApiKey(
+        const apiEncryption = await apiKeyService.encryptApiKey(
             {
                 key: apiKey,
                 timestamp,
@@ -66,9 +70,9 @@ describe('E2E Auth', () => {
         await app.init();
     });
 
-    it(`GET ${E2E_AUTH_INFO_URL} Success`, async () => {
+    it(`GET ${E2E_USER_INFO} Success`, async () => {
         const response = await request(app.getHttpServer())
-            .get(E2E_AUTH_INFO_URL)
+            .get(E2E_USER_INFO)
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
             .set('Authorization', `Bearer ${accessToken}`)

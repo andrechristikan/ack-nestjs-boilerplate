@@ -121,6 +121,12 @@ export class SettingService implements ISettingService {
             this.helperNumberService.check(value)
         ) {
             check = true;
+        } else if (
+            (type === ENUM_SETTING_DATA_TYPE.STRING ||
+                type === ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING) &&
+            typeof value === 'string'
+        ) {
+            check = true;
         }
 
         return check;

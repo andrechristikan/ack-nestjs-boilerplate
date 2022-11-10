@@ -7,9 +7,7 @@ import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { AuthApiService } from 'src/common/auth/services/auth.api.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { User } from 'src/modules/user/schemas/user.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
 import { plainToInstance } from 'class-transformer';
@@ -17,18 +15,20 @@ import { UserPayloadSerialization } from 'src/modules/user/serializations/user.p
 import { E2E_USER_CHANGE_PASSWORD_URL } from './user.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
-import { IUser } from 'src/modules/user/interfaces/user.interface';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { Role } from 'src/modules/role/schemas/role.schema';
-import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 import { RoleModule } from 'src/modules/role/role.module';
 import { PermissionModule } from 'src/modules/permission/permission.module';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
+import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
+import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
+import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 
 describe('E2E User Change Password', () => {
     let app: INestApplication;
     let userService: UserService;
     let authService: AuthService;
-    let authApiService: AuthApiService;
+    let apiKeyService: ApiKeyService;
     let roleService: RoleService;
     let helperDateService: HelperDateService;
 
@@ -39,12 +39,14 @@ describe('E2E User Change Password', () => {
     const password = `aaAA@!123`;
     const newPassword = `bbBB@!456`;
 
-    let user: User;
+    let user: UserEntity;
 
     let accessToken: string;
     let accessTokenNotFound: string;
 
     beforeAll(async () => {
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+
         const modRef = await Test.createTestingModule({
             imports: [
                 CommonModule,
@@ -64,17 +66,18 @@ describe('E2E User Change Password', () => {
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
         authService = app.get(AuthService);
-        authApiService = app.get(AuthApiService);
+        apiKeyService = app.get(ApiKeyService);
         roleService = app.get(RoleService);
         helperDateService = app.get(HelperDateService);
 
-        const role: Role = await roleService.findOne({
+        const role: RoleEntity = await roleService.findOne({
             name: 'user',
         });
 
         const passwordHash = await authService.createPassword(password);
 
         user = await userService.create({
+            username: faker.internet.userName(),
             firstName: faker.name.firstName(),
             lastName: faker.name.lastName(),
             password: passwordHash.passwordHash,
@@ -85,12 +88,15 @@ describe('E2E User Change Password', () => {
             role: `${role._id}`,
         });
 
-        const userPopulate = await userService.findOneById<IUser>(user._id, {
-            populate: true,
-        });
+        const userPopulate = await userService.findOneById<IUserEntity>(
+            user._id,
+            {
+                join: true,
+            }
+        );
 
         timestamp = helperDateService.timestamp();
-        const apiEncryption = await authApiService.encryptApiKey(
+        const apiEncryption = await apiKeyService.encryptApiKey(
             {
                 key: apiKey,
                 timestamp,
@@ -105,16 +111,12 @@ describe('E2E User Change Password', () => {
         const payload = await authService.createPayloadAccessToken(map, false);
         const payloadNotFound = {
             ...payload,
-            _id: `${DatabaseKey()}`,
+            _id: `${DatabaseDefaultUUID()}`,
         };
-        const payloadHashed = await authService.encryptAccessToken(payload);
-        const payloadHashedNotFound = await authService.encryptAccessToken(
-            payloadNotFound
-        );
 
-        accessToken = await authService.createAccessToken(payloadHashed);
+        accessToken = await authService.createAccessToken(payload);
         accessTokenNotFound = await authService.createAccessToken(
-            payloadHashedNotFound
+            payloadNotFound
         );
         await app.init();
     });

@@ -5,7 +5,6 @@ import { ConfigModule } from '@nestjs/config';
 import { HelperModule } from 'src/common/helper/helper.module';
 import { ApiKeyBulkKeyService } from 'src/common/api-key/services/api-key.bulk.service';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
-import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { DatabaseOptionsModule } from 'src/common/database/database.options.module';

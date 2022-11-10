@@ -7,23 +7,20 @@ import { connection } from 'mongoose';
 import { useContainer } from 'class-validator';
 import { E2E_USER_LOGIN_URL } from './user.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
-import {
-    ENUM_USER_STATUS_CODE_ERROR,
-    ENUM_USER_STATUS_CODE_SUCCESS,
-} from 'src/modules/user/constants/user.status-code.constant';
+import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
-import { User } from 'src/modules/user/schemas/user.schema';
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { AuthApiService } from 'src/common/auth/services/auth.api.service';
 import { ENUM_AUTH_ACCESS_FOR_DEFAULT } from 'src/common/auth/constants/auth.enum.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { Role } from 'src/modules/role/schemas/role.schema';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { RoleModule } from 'src/modules/role/role.module';
 import { PermissionModule } from 'src/modules/permission/permission.module';
+import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 
 describe('E2E User Login', () => {
     let app: INestApplication;
@@ -31,7 +28,7 @@ describe('E2E User Login', () => {
     let authService: AuthService;
     let roleService: RoleService;
     let helperDateService: HelperDateService;
-    let authApiService: AuthApiService;
+    let apiKeyService: ApiKeyService;
 
     const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
         .firstName()
@@ -41,13 +38,15 @@ describe('E2E User Login', () => {
     let xApiKey: string;
     let timestamp: number;
 
-    let user: User;
+    let user: UserEntity;
 
     const roleName = faker.random.alphaNumeric(5);
 
     let passwordExpired: Date;
 
     beforeAll(async () => {
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+
         const modRef = await Test.createTestingModule({
             imports: [
                 CommonModule,
@@ -69,14 +68,14 @@ describe('E2E User Login', () => {
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
         helperDateService = app.get(HelperDateService);
-        authApiService = app.get(AuthApiService);
+        apiKeyService = app.get(ApiKeyService);
 
         await roleService.create({
             name: roleName,
             accessFor: ENUM_AUTH_ACCESS_FOR_DEFAULT.USER,
             permissions: [],
         });
-        const role: Role = await roleService.findOne({
+        const role: RoleEntity = await roleService.findOne({
             name: roleName,
         });
 
@@ -85,6 +84,7 @@ describe('E2E User Login', () => {
         const passwordHash = await authService.createPassword(password);
 
         user = await userService.create({
+            username: faker.internet.userName(),
             firstName: faker.name.firstName(),
             lastName: faker.name.lastName(),
             password: passwordHash.passwordHash,
@@ -96,7 +96,7 @@ describe('E2E User Login', () => {
         });
 
         timestamp = helperDateService.timestamp();
-        const apiEncryption = await authApiService.encryptApiKey(
+        const apiEncryption = await apiKeyService.encryptApiKey(
             {
                 key: apiKey,
                 timestamp,
@@ -118,7 +118,7 @@ describe('E2E User Login', () => {
             .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
-                email: [1231],
+                username: [1231],
                 password,
                 rememberMe: false,
             });
@@ -139,7 +139,7 @@ describe('E2E User Login', () => {
             .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
-                email: faker.internet.email(),
+                username: faker.internet.userName(),
                 password,
                 rememberMe: false,
             });
@@ -160,7 +160,7 @@ describe('E2E User Login', () => {
             .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
-                email: user.email,
+                username: user.username,
                 password: 'Password@@1231',
                 rememberMe: false,
             });
@@ -183,7 +183,7 @@ describe('E2E User Login', () => {
             .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
-                email: user.email,
+                username: user.username,
                 password,
                 rememberMe: false,
             });
@@ -207,7 +207,7 @@ describe('E2E User Login', () => {
             .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
-                email: user.email,
+                username: user.username,
                 password,
                 rememberMe: false,
             });
@@ -229,15 +229,13 @@ describe('E2E User Login', () => {
             .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
-                email: user.email,
+                username: user.username,
                 password,
                 rememberMe: false,
             });
 
         expect(response.status).toEqual(HttpStatus.OK);
-        expect(response.body.statusCode).toEqual(
-            ENUM_USER_STATUS_CODE_SUCCESS.USER_LOGIN_SUCCESS
-        );
+        expect(response.body.statusCode).toEqual(HttpStatus.OK);
 
         return;
     });
@@ -251,7 +249,7 @@ describe('E2E User Login', () => {
             .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
-                email: user.email,
+                username: user.username,
                 password,
                 rememberMe: false,
             });

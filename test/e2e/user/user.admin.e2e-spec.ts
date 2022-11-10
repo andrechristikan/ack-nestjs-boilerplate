@@ -17,19 +17,19 @@ import { useContainer } from 'class-validator';
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { AuthApiService } from 'src/common/auth/services/auth.api.service';
-import { User } from 'src/modules/user/schemas/user.schema';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
 import { plainToInstance } from 'class-transformer';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
-import { IUser } from 'src/modules/user/interfaces/user.interface';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { Role } from 'src/modules/role/schemas/role.schema';
-import { DatabaseKey } from 'src/common/database/decorators/database.decorator';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
+import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
+import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
+import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 
 describe('E2E User Admin', () => {
     let app: INestApplication;
@@ -37,7 +37,7 @@ describe('E2E User Admin', () => {
     let authService: AuthService;
     let roleService: RoleService;
     let helperDateService: HelperDateService;
-    let authApiService: AuthApiService;
+    let apiKeyService: ApiKeyService;
 
     const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
         .firstName()
@@ -48,11 +48,13 @@ describe('E2E User Admin', () => {
     let timestamp: number;
 
     let userData: Record<string, any>;
-    let userExist: User;
+    let userExist: UserEntity;
 
     let accessToken: string;
 
     beforeAll(async () => {
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+
         const modRef = await Test.createTestingModule({
             imports: [
                 CommonModule,
@@ -72,9 +74,9 @@ describe('E2E User Admin', () => {
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
         helperDateService = app.get(HelperDateService);
-        authApiService = app.get(AuthApiService);
+        apiKeyService = app.get(ApiKeyService);
 
-        const role: Role = await roleService.findOne({
+        const role: RoleEntity = await roleService.findOne({
             name: 'user',
         });
 
@@ -84,6 +86,7 @@ describe('E2E User Admin', () => {
             password: password,
             email: faker.internet.email(),
             mobileNumber: faker.phone.number('62812#########'),
+            username: faker.internet.userName(),
             role: `${role._id}`,
         };
 
@@ -92,6 +95,7 @@ describe('E2E User Admin', () => {
         );
 
         userExist = await userService.create({
+            username: faker.internet.userName(),
             firstName: faker.name.firstName(),
             lastName: faker.name.lastName(),
             password: passwordHash.passwordHash,
@@ -102,22 +106,21 @@ describe('E2E User Admin', () => {
             role: `${role._id}`,
         });
 
-        const user = await userService.findOne<IUser>(
+        const user = await userService.findOne<IUserEntity>(
             {
                 email: 'admin@mail.com',
             },
             {
-                populate: true,
+                join: true,
             }
         );
 
         const map = plainToInstance(UserPayloadSerialization, user);
         const payload = await authService.createPayloadAccessToken(map, false);
-        const payloadHashed = await authService.encryptAccessToken(payload);
-        accessToken = await authService.createAccessToken(payloadHashed);
+        accessToken = await authService.createAccessToken(payload);
 
         timestamp = helperDateService.timestamp();
-        const apiEncryption = await authApiService.encryptApiKey(
+        const apiEncryption = await apiKeyService.encryptApiKey(
             {
                 key: apiKey,
                 timestamp,
@@ -168,7 +171,7 @@ describe('E2E User Admin', () => {
     it(`POST ${E2E_USER_ADMIN_CREATE_URL} Create, Role Not Found`, async () => {
         const req = {
             ...userData,
-            role: `${DatabaseKey()}`,
+            role: `${DatabaseDefaultUUID()}`,
             password,
         };
 
@@ -188,7 +191,7 @@ describe('E2E User Admin', () => {
         return;
     });
 
-    it(`POST ${E2E_USER_ADMIN_CREATE_URL} Create, Exist`, async () => {
+    it(`POST ${E2E_USER_ADMIN_CREATE_URL} Create, Username Exist`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
@@ -197,14 +200,13 @@ describe('E2E User Admin', () => {
             .set('x-api-key', xApiKey)
             .send({
                 ...userData,
-                email: userExist.email,
-                mobileNumber: userExist.mobileNumber,
+                username: userExist.username,
                 password,
             });
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
-            ENUM_USER_STATUS_CODE_ERROR.USER_EXISTS_ERROR
+            ENUM_USER_STATUS_CODE_ERROR.USER_USERNAME_EXISTS_ERROR
         );
 
         return;
@@ -270,7 +272,12 @@ describe('E2E User Admin', () => {
 
     it(`GET ${E2E_USER_ADMIN_GET_URL} Get Not Found`, async () => {
         const response = await request(app.getHttpServer())
-            .get(E2E_USER_ADMIN_GET_URL.replace(':_id', `${DatabaseKey()}`))
+            .get(
+                E2E_USER_ADMIN_GET_URL.replace(
+                    ':_id',
+                    `${DatabaseDefaultUUID()}`
+                )
+            )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
@@ -321,7 +328,12 @@ describe('E2E User Admin', () => {
 
     it(`PUT ${E2E_USER_ADMIN_UPDATE_URL} Update, not found`, async () => {
         const response = await request(app.getHttpServer())
-            .put(E2E_USER_ADMIN_UPDATE_URL.replace(':_id', `${DatabaseKey()}`))
+            .put(
+                E2E_USER_ADMIN_UPDATE_URL.replace(
+                    ':_id',
+                    `${DatabaseDefaultUUID()}`
+                )
+            )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
@@ -362,7 +374,10 @@ describe('E2E User Admin', () => {
     it(`PATCH ${E2E_USER_ADMIN_INACTIVE_URL} Inactive, Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .patch(
-                E2E_USER_ADMIN_INACTIVE_URL.replace(':_id', `${DatabaseKey()}`)
+                E2E_USER_ADMIN_INACTIVE_URL.replace(
+                    ':_id',
+                    `${DatabaseDefaultUUID()}`
+                )
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
@@ -413,7 +428,10 @@ describe('E2E User Admin', () => {
     it(`PATCH ${E2E_USER_ADMIN_ACTIVE_URL} Active, Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .patch(
-                E2E_USER_ADMIN_ACTIVE_URL.replace(':_id', `${DatabaseKey()}`)
+                E2E_USER_ADMIN_ACTIVE_URL.replace(
+                    ':_id',
+                    `${DatabaseDefaultUUID()}`
+                )
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
@@ -464,7 +482,10 @@ describe('E2E User Admin', () => {
     it(`DELETE ${E2E_USER_ADMIN_DELETE_URL} Delete, Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .delete(
-                E2E_USER_ADMIN_DELETE_URL.replace(':_id', `${DatabaseKey()}`)
+                E2E_USER_ADMIN_DELETE_URL.replace(
+                    ':_id',
+                    `${DatabaseDefaultUUID()}`
+                )
             )
             .set('Authorization', `Bearer ${accessToken}`)
             .set('user-agent', faker.internet.userAgent())
