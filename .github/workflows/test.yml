@@ -98,7 +98,7 @@ jobs:
           AWS_S3_REGION: ${{ secrets.AWS_S3_REGION }}
           
       - name: Migration
-        run: yarn migrate
+        run: yarn seed
 
       - name: Unit Test
         run: yarn test:unit
