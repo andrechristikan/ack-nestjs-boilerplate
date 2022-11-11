@@ -13,6 +13,7 @@ import {
     getSchemaPath,
 } from '@nestjs/swagger';
 import { AppLanguage } from 'src/app/constants/app.constant';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
 import {
     ENUM_DOC_REQUEST_BODY_TYPE,
@@ -132,34 +133,43 @@ export function Doc<T>(
         auths.push(ApiBearerAuth('apiKey'));
         oneOfUnauthorized.push(
             {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_API_KEY_NEEDED_ERROR,
-                messagePath: 'auth.apiKey.error.keyNeeded',
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NEEDED_ERROR,
+                messagePath: 'apiKey.error.keyNeeded',
             },
             {
                 statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_API_KEY_PREFIX_INVALID_ERROR,
-                messagePath: 'auth.apiKey.error.prefixInvalid',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_PREFIX_INVALID_ERROR,
+                messagePath: 'apiKey.error.prefixInvalid',
             },
             {
                 statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_API_KEY_SCHEMA_INVALID_ERROR,
-                messagePath: 'auth.apiKey.error.schemaInvalid',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_PASSPHRASE_NOT_FOUND_ERROR,
+                messagePath: 'apiKey.error.passphraseNotFound',
             },
             {
                 statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_API_KEY_NOT_FOUND_ERROR,
-                messagePath: 'auth.apiKey.error.notFound',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_PASSPHRASE_INVALID_ERROR,
+                messagePath: 'apiKey.error.passphraseInvalid',
             },
             {
                 statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_API_KEY_INACTIVE_ERROR,
-                messagePath: 'auth.apiKey.error.inactive',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_SCHEMA_INVALID_ERROR,
+                messagePath: 'apiKey.error.schemaInvalid',
             },
             {
                 statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_API_KEY_INVALID_ERROR,
-                messagePath: 'auth.apiKey.error.invalid',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR,
+                messagePath: 'apiKey.error.notFound',
+            },
+            {
+                statusCode:
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INACTIVE_ERROR,
+                messagePath: 'apiKey.error.inactive',
+            },
+            {
+                statusCode:
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INVALID_ERROR,
+                messagePath: 'apiKey.error.invalid',
             }
         );
     }
@@ -304,34 +314,43 @@ export function DocPaging<T>(
         auths.push(ApiBearerAuth('apiKey'));
         oneOfUnauthorized.push(
             {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_API_KEY_NEEDED_ERROR,
-                messagePath: 'auth.apiKey.error.keyNeeded',
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NEEDED_ERROR,
+                messagePath: 'apiKey.error.keyNeeded',
             },
             {
                 statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_API_KEY_PREFIX_INVALID_ERROR,
-                messagePath: 'auth.apiKey.error.prefixInvalid',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_PREFIX_INVALID_ERROR,
+                messagePath: 'apiKey.error.prefixInvalid',
             },
             {
                 statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_API_KEY_SCHEMA_INVALID_ERROR,
-                messagePath: 'auth.apiKey.error.schemaInvalid',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_PASSPHRASE_NOT_FOUND_ERROR,
+                messagePath: 'apiKey.error.passphraseNotFound',
             },
             {
                 statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_API_KEY_NOT_FOUND_ERROR,
-                messagePath: 'auth.apiKey.error.notFound',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_PASSPHRASE_INVALID_ERROR,
+                messagePath: 'apiKey.error.passphraseInvalid',
             },
             {
                 statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_API_KEY_INACTIVE_ERROR,
-                messagePath: 'auth.apiKey.error.inactive',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_SCHEMA_INVALID_ERROR,
+                messagePath: 'apiKey.error.schemaInvalid',
             },
             {
                 statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_API_KEY_INVALID_ERROR,
-                messagePath: 'auth.apiKey.error.invalid',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR,
+                messagePath: 'apiKey.error.notFound',
+            },
+            {
+                statusCode:
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INACTIVE_ERROR,
+                messagePath: 'apiKey.error.inactive',
+            },
+            {
+                statusCode:
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INVALID_ERROR,
+                messagePath: 'apiKey.error.invalid',
             }
         );
     }

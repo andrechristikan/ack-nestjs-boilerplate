@@ -98,10 +98,10 @@ export interface IApiKeyService {
         passphrase: string
     ): Promise<string>;
 
-    createBasicToken(clientId: string, clientSecret: string): Promise<string>;
+    hashPassphrase(passphrase: string): Promise<string>;
 
-    validateBasicToken(
-        clientBasicToken: string,
-        ourBasicToken: string
+    comparePassphrase(
+        passphrase: string,
+        hashPassphrase: string
     ): Promise<boolean>;
 }
