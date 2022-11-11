@@ -1,0 +1,12 @@
+{
+    "error": {
+        "timestampInvalid": "Request timestamp not acceptable",
+        "keyNeeded": "Need API Key",
+        "prefixInvalid": "Prefix API Key invalid",
+        "schemaInvalid": "API Key Schema invalid",
+        "timestampNotMatchWithRequest": "Timestamp not match with request",
+        "notFound": "Auth API not found",
+        "inactive": "Auth API Inactive",
+        "invalid": "Invalid API Key"
+    }
+}

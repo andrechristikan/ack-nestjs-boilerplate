@@ -112,13 +112,14 @@ export class ApiKeyService implements IApiKeyService {
         const passphrase = await this.createPassphrase();
         const encryptionKey = await this.createEncryptionKey();
         const hash: string = await this.createHashApiKey(key, secret);
+        const hashPassphrase = await this.hashPassphrase(passphrase);
 
         const create: ApiKeyEntity = new ApiKeyEntity();
         create.name = name;
         create.description = description;
         create.key = key;
         create.hash = hash;
-        create.passphrase = passphrase;
+        create.passphrase = hashPassphrase;
         create.encryptionKey = encryptionKey;
         create.isActive = true;
 
@@ -147,13 +148,14 @@ export class ApiKeyService implements IApiKeyService {
         options?: IDatabaseCreateOptions
     ): Promise<IApiKey> {
         const hash: string = await this.createHashApiKey(key, secret);
+        const hashPassphrase = await this.hashPassphrase(passphrase);
 
         const create: ApiKeyEntity = new ApiKeyEntity();
         create.name = name;
         create.description = description;
         create.key = key;
         create.hash = hash;
-        create.passphrase = passphrase;
+        create.passphrase = hashPassphrase;
         create.encryptionKey = encryptionKey;
         create.isActive = true;
 
@@ -193,10 +195,11 @@ export class ApiKeyService implements IApiKeyService {
         const hash: string = await this.createHashApiKey(apiKey.key, secret);
         const passphrase: string = await this.createPassphrase();
         const encryptionKey: string = await this.createEncryptionKey();
+        const hashPassphrase = await this.hashPassphrase(passphrase);
 
         const update = {
             hash,
-            passphrase,
+            passphrase: hashPassphrase,
             encryptionKey,
         };
 
@@ -290,21 +293,15 @@ export class ApiKeyService implements IApiKeyService {
         );
     }
 
-    async createBasicToken(
-        clientId: string,
-        clientSecret: string
-    ): Promise<string> {
-        const token = `${clientId}:${clientSecret}`;
-        return this.helperEncryptionService.base64Decrypt(token);
+    async hashPassphrase(passphrase: string): Promise<string> {
+        return this.helperHashService.sha256(passphrase);
     }
 
-    async validateBasicToken(
-        clientBasicToken: string,
-        ourBasicToken: string
+    async comparePassphrase(
+        passphrase: string,
+        hashPassphrase: string
     ): Promise<boolean> {
-        return this.helperEncryptionService.base64Compare(
-            clientBasicToken,
-            ourBasicToken
-        );
+        const hashOne = this.helperHashService.sha256(passphrase);
+        return this.helperHashService.sha256Compare(hashOne, hashPassphrase);
     }
 }

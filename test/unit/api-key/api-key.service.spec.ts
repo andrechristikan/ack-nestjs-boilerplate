@@ -486,67 +486,33 @@ describe('ApiKeyService', () => {
         });
     });
 
-    describe('createBasicToken', () => {
+    describe('hashPassphrase', () => {
         it('should return an success', async () => {
-            const clientId = faker.random.alphaNumeric(10);
-            const clientSecret = faker.random.alphaNumeric(10);
-            const result: string = await apiKeyService.createBasicToken(
-                clientId,
-                clientSecret
-            );
-            jest.spyOn(apiKeyService, 'createBasicToken').mockImplementation(
+            const pass = faker.random.alphaNumeric(10);
+            const result: string = await apiKeyService.hashPassphrase(pass);
+            jest.spyOn(apiKeyService, 'hashPassphrase').mockImplementation(
                 async () => result
             );
 
-            expect(
-                await apiKeyService.createBasicToken(clientId, clientSecret)
-            ).toBe(result);
+            expect(await apiKeyService.hashPassphrase(pass)).toBe(result);
         });
     });
 
-    describe('validateBasicToken', () => {
+    describe('comparePassphrase', () => {
         it('should return an success', async () => {
-            const clientId = faker.random.alphaNumeric(10);
-            const clientSecret = faker.random.alphaNumeric(10);
-            const basicToken: string = await apiKeyService.createBasicToken(
-                clientId,
-                clientSecret
+            const pass = faker.random.alphaNumeric(10);
+            const hash: string = await apiKeyService.hashPassphrase(pass);
+            const result: boolean = await apiKeyService.comparePassphrase(
+                pass,
+                hash
             );
-            const result: boolean = await apiKeyService.validateBasicToken(
-                basicToken,
-                basicToken
-            );
-            jest.spyOn(apiKeyService, 'validateBasicToken').mockImplementation(
+            jest.spyOn(apiKeyService, 'comparePassphrase').mockImplementation(
                 async () => result
             );
 
-            expect(
-                await apiKeyService.validateBasicToken(basicToken, basicToken)
-            ).toBe(result);
-        });
-
-        it('should return an failed', async () => {
-            const clientId = faker.random.alphaNumeric(10);
-            const clientSecret = faker.random.alphaNumeric(10);
-            const clientSecret2 = faker.random.alphaNumeric(10);
-            const basicToken: string = await apiKeyService.createBasicToken(
-                clientId,
-                clientSecret
+            expect(await apiKeyService.comparePassphrase(pass, hash)).toBe(
+                result
             );
-            const result: boolean = await apiKeyService.validateBasicToken(
-                basicToken,
-                clientSecret2
-            );
-            jest.spyOn(apiKeyService, 'validateBasicToken').mockImplementation(
-                async () => result
-            );
-
-            expect(
-                await apiKeyService.validateBasicToken(
-                    basicToken,
-                    clientSecret2
-                )
-            ).toBe(result);
         });
     });
 
