@@ -1,9 +1,9 @@
 version: '3.8'
 services:
-  service:
+  ackService:
     build: .
-    container_name: ack
-    hostname: ack
+    container_name: ackService
+    hostname: ackService
     ports:
       - 3000:3000
     networks:
@@ -13,11 +13,11 @@ services:
       - .env/:/app/.env
     restart: unless-stopped
     depends_on: 
-      - mongodb
-  mongodb:
+      - ackDatabase
+  ackDatabase:
     image: mongo:latest
-    container_name: mongo
-    hostname: mongo
+    container_name: ackDatabase
+    hostname: ackDatabase
     ports:
       - 27017:27017
     environment:

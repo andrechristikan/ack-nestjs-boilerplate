@@ -14,7 +14,6 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
     IDatabaseRestoreOptions,
-    IDatabaseRawOptions,
     IDatabaseCreateManyOptions,
     IDatabaseManyOptions,
     IDatabaseSoftDeleteManyOptions,
@@ -224,21 +223,12 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         return result ? true : false;
     }
 
-    async raw<N, R = PipelineStage[]>(
-        rawOperation: R,
-        options?: IDatabaseRawOptions<ClientSession>
-    ): Promise<N[]> {
+    async raw<N, R = PipelineStage[]>(rawOperation: R): Promise<N[]> {
         if (!Array.isArray(rawOperation)) {
             throw new Error('Must in array');
         }
 
-        const aggregate = this._repository.aggregate<N>(rawOperation);
-
-        if (options && options.session) {
-            aggregate.session(options.session);
-        }
-
-        return aggregate;
+        return this._repository.aggregate<N>(rawOperation);
     }
 
     async create<N>(

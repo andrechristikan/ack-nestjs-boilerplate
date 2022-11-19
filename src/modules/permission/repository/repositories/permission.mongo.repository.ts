@@ -11,7 +11,7 @@ export class PermissionRepository
     implements IDatabaseRepository<PermissionEntity>
 {
     constructor(
-        @DatabaseModel(PermissionEntity)
+        @DatabaseModel(PermissionEntity.name)
         private readonly permissionModel: Model<PermissionEntity>
     ) {
         super(permissionModel);

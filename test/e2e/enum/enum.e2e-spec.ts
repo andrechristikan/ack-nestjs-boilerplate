@@ -7,6 +7,7 @@ import { useContainer } from 'class-validator';
 import {
     E2E_ENUM_ROLE_ACCESS_FOR_URL,
     E2E_ENUM_MESSAGE_LANGUAGE_URL,
+    E2E_ENUM_PERMISSION_GROUP_URL,
 } from './enum.constant';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { CommonModule } from 'src/common/common.module';
@@ -71,6 +72,17 @@ describe('E2E Enum', () => {
     it(`GET ${E2E_ENUM_MESSAGE_LANGUAGE_URL} Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_ENUM_MESSAGE_LANGUAGE_URL)
+            .set('user-agent', faker.internet.userAgent())
+            .set('x-timestamp', timestamp.toString())
+            .set('x-api-key', xApiKey);
+
+        expect(response.status).toEqual(HttpStatus.OK);
+        expect(response.body.statusCode).toEqual(HttpStatus.OK);
+    });
+
+    it(`GET ${E2E_ENUM_PERMISSION_GROUP_URL} Success`, async () => {
+        const response = await request(app.getHttpServer())
+            .get(E2E_ENUM_PERMISSION_GROUP_URL)
             .set('user-agent', faker.internet.userAgent())
             .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);

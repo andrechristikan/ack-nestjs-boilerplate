@@ -6,7 +6,7 @@ import {
 } from 'src/common/logger/dtos/logger.create.dto';
 import { ILoggerService } from 'src/common/logger/interfaces/logger.service.interface';
 import { LoggerEntity } from 'src/common/logger/repository/entities/logger.entity';
-import { LoggerRepository } from 'src/common/logger/repository/repositories/logger.mongo.repository';
+import { LoggerRepository } from 'src/common/logger/repository/repositories/logger.repository';
 
 @Injectable()
 export class LoggerService implements ILoggerService {
