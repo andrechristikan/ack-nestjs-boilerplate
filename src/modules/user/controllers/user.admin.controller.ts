@@ -24,10 +24,12 @@ import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
 import { FileSizeExcelPipe } from 'src/common/file/pipes/file.size.pipe';
 import { FileTypeExcelPipe } from 'src/common/file/pipes/file.type.pipe';
 import { FileValidationPipe } from 'src/common/file/pipes/file.validation.pipe';
+import { ENUM_HELPER_FILE_TYPE } from 'src/common/helper/constants/helper.enum.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
     Response,
+    ResponseExcel,
     ResponsePaging,
 } from 'src/common/response/decorators/response.decorator';
 import {
@@ -50,6 +52,7 @@ import {
     UserActiveDoc,
     UserCreateDoc,
     UserDeleteDoc,
+    UserExportDoc,
     UserGetDoc,
     UserImportDoc,
     UserInactiveDoc,
@@ -103,8 +106,10 @@ export class UserAdminController {
         };
 
         const users: IUserEntity[] = await this.userService.findAll(find, {
-            limit: perPage,
-            skip: skip,
+            paging: {
+                limit: perPage,
+                skip: skip,
+            },
             sort,
         });
         const totalData: number = await this.userService.getTotal(find);
@@ -339,5 +344,19 @@ export class UserAdminController {
         file: IFileExtract<UserImportDto>
     ): Promise<IResponse> {
         return { file };
+    }
+
+    @UserExportDoc()
+    @ResponseExcel({
+        classSerialization: UserListSerialization,
+        type: ENUM_HELPER_FILE_TYPE.CSV,
+    })
+    @AuthJwtAdminAccessProtected(
+        ENUM_AUTH_PERMISSIONS.USER_READ,
+        ENUM_AUTH_PERMISSIONS.USER_EXPORT
+    )
+    @Post('/export')
+    async export(): Promise<IResponse> {
+        return this.userService.findAll({});
     }
 }

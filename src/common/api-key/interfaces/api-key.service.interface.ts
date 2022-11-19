@@ -97,11 +97,4 @@ export interface IApiKeyService {
         encryptionKey: string,
         passphrase: string
     ): Promise<string>;
-
-    hashPassphrase(passphrase: string): Promise<string>;
-
-    comparePassphrase(
-        passphrase: string,
-        hashPassphrase: string
-    ): Promise<boolean>;
 }

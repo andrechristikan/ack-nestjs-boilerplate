@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum } from 'class-validator';
+import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 
 export class PermissionCreateDto {
     @ApiProperty({
@@ -11,6 +12,15 @@ export class PermissionCreateDto {
     @IsString()
     @IsNotEmpty()
     readonly name: string;
+
+    @ApiProperty({
+        description: 'Permission group',
+        example: 'PERMISSION',
+        required: true,
+    })
+    @IsEnum(ENUM_PERMISSION_GROUP)
+    @IsNotEmpty()
+    readonly group: ENUM_PERMISSION_GROUP;
 
     @ApiProperty({
         description: 'Unique code of permission',

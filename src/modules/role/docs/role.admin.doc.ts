@@ -14,11 +14,6 @@ export function RoleListDoc(): MethodDecorator {
         DocPaging<RoleListSerialization>('role.list', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             response: {
                 classSerialization: RoleListSerialization,
@@ -34,11 +29,6 @@ export function RoleGetDoc(): MethodDecorator {
         Doc<RoleGetSerialization>('role.get', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             request: {
                 params: RoleDocParamsGet,
@@ -53,11 +43,6 @@ export function RoleCreateDoc(): MethodDecorator {
         Doc<ResponseIdSerialization>('role.create', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             response: {
                 httpStatus: HttpStatus.CREATED,
@@ -72,11 +57,6 @@ export function RoleUpdateDoc(): MethodDecorator {
         Doc<ResponseIdSerialization>('role.update', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             request: {
                 params: RoleDocParamsGet,
@@ -91,11 +71,6 @@ export function RoleDeleteDoc(): MethodDecorator {
         Doc<void>('role.delete', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             request: {
                 params: RoleDocParamsGet,
@@ -109,11 +84,6 @@ export function RoleActiveDoc(): MethodDecorator {
         Doc<void>('role.active', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             request: {
                 params: RoleDocParamsGet,
@@ -127,11 +97,6 @@ export function RoleInactiveDoc(): MethodDecorator {
         Doc<void>('role.inactive', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             request: {
                 params: RoleDocParamsGet,

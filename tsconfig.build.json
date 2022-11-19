@@ -1,10 +1,12 @@
 {
   "extends": "./tsconfig.json",
   "exclude": [
-    "node_modules", 
+    "node_modules",
     "dist", 
-    "test", 
-    "docker"
+    "*coverage",
+    "test",
+    "logs",
+    "scripts",
   ],
   "include": [
     "src"

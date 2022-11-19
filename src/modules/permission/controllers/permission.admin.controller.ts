@@ -81,8 +81,10 @@ export class PermissionAdminController {
 
         const permissions: PermissionEntity[] =
             await this.permissionService.findAll(find, {
-                skip: skip,
-                limit: perPage,
+                paging: {
+                    limit: perPage,
+                    skip: skip,
+                },
                 sort,
             });
 

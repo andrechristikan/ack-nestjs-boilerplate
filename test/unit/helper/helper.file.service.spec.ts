@@ -1,13 +1,14 @@
 import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { readFileSync } from 'fs';
 import { HelperModule } from 'src/common/helper/helper.module';
 import { HelperFileService } from 'src/common/helper/services/helper.file.service';
 import configs from 'src/configs';
+import { WorkBook } from 'xlsx';
 
 describe('HelperFileService', () => {
     let helperFileService: HelperFileService;
-    const file = readFileSync('./test/unit/helper/data/test.xlsx');
+    let workbook: WorkBook;
+    let file: Buffer;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
@@ -24,50 +25,90 @@ describe('HelperFileService', () => {
         }).compile();
 
         helperFileService = moduleRef.get<HelperFileService>(HelperFileService);
+
+        workbook = helperFileService.createExcelWorkbook([
+            { test: 1 },
+            { test: 2 },
+        ]);
+        file = helperFileService.writeExcelToBuffer(workbook);
     });
 
     it('should be defined', () => {
         expect(helperFileService).toBeDefined();
     });
 
-    describe('writeExcel', () => {
+    describe('createExcelWorkbook', () => {
         it('should be called', async () => {
-            const test = jest.spyOn(helperFileService, 'writeExcel');
+            const test = jest.spyOn(helperFileService, 'createExcelWorkbook');
 
-            helperFileService.writeExcel([{ test: 1 }, { test: 2 }]);
+            helperFileService.createExcelWorkbook([{ test: 1 }, { test: 2 }]);
             expect(test).toHaveBeenCalledWith([{ test: 1 }, { test: 2 }]);
         });
 
         it('should be success', async () => {
-            const result = helperFileService.writeExcel([
+            const result = helperFileService.createExcelWorkbook([
                 { test: 1 },
                 { test: 2 },
             ]);
-            jest.spyOn(helperFileService, 'writeExcel').mockImplementation(
-                () => result
-            );
+            jest.spyOn(
+                helperFileService,
+                'createExcelWorkbook'
+            ).mockImplementation(() => result);
 
             expect(
-                helperFileService.writeExcel([{ test: 1 }, { test: 2 }])
+                helperFileService.createExcelWorkbook([
+                    { test: 1 },
+                    { test: 2 },
+                ])
             ).toBe(result);
+        });
+
+        it('should be success if data null', async () => {
+            const result = helperFileService.createExcelWorkbook([]);
+            jest.spyOn(
+                helperFileService,
+                'createExcelWorkbook'
+            ).mockImplementation(() => result);
+
+            expect(helperFileService.createExcelWorkbook([])).toBe(result);
         });
     });
 
-    describe('readExcel', () => {
+    describe('writeExcelToBuffer', () => {
         it('should be called', async () => {
-            const test = jest.spyOn(helperFileService, 'readExcel');
+            const test = jest.spyOn(helperFileService, 'writeExcelToBuffer');
 
-            helperFileService.readExcel(file);
+            helperFileService.writeExcelToBuffer(workbook);
+            expect(test).toHaveBeenCalledWith(workbook);
+        });
+
+        it('should be success', async () => {
+            const result = helperFileService.writeExcelToBuffer(workbook);
+            jest.spyOn(
+                helperFileService,
+                'writeExcelToBuffer'
+            ).mockImplementation(() => result);
+
+            expect(helperFileService.writeExcelToBuffer(workbook)).toBe(result);
+        });
+    });
+
+    describe('readExcelFromBuffer', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(helperFileService, 'readExcelFromBuffer');
+
+            helperFileService.readExcelFromBuffer(file);
             expect(test).toHaveBeenCalledWith(file);
         });
 
         it('should be success', async () => {
-            const result = helperFileService.readExcel(file);
-            jest.spyOn(helperFileService, 'readExcel').mockImplementation(
-                () => result
-            );
+            const result = helperFileService.readExcelFromBuffer(file);
+            jest.spyOn(
+                helperFileService,
+                'readExcelFromBuffer'
+            ).mockImplementation(() => result);
 
-            expect(helperFileService.readExcel(file)).toBe(result);
+            expect(helperFileService.readExcelFromBuffer(file)).toBe(result);
         });
     });
 

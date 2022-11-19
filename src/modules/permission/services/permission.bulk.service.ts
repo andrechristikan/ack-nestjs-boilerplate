@@ -17,11 +17,12 @@ export class PermissionBulkService implements IPermissionBulkService {
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean> {
         const map: PermissionEntity[] = data.map(
-            ({ code, description, name }) => {
+            ({ code, description, name, group }) => {
                 const create = new PermissionEntity();
                 create.code = code;
                 create.name = name;
                 create.description = description;
+                create.group = group;
                 create.isActive = true;
 
                 return create;

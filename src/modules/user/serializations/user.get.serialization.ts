@@ -26,6 +26,7 @@ export class UserGetSerialization {
         permissions: value.permissions.map((val: Record<string, any>) => ({
             name: val.name,
             isActive: val.isActive,
+            group: val.group,
             code: val.code,
         })),
         accessFor: value.accessFor,

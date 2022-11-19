@@ -2,6 +2,7 @@ import { Prop, SchemaFactory } from '@nestjs/mongoose';
 import { CallbackWithoutResultAndOptionalError } from 'mongoose';
 import { DatabaseMongoEntityAbstract } from 'src/common/database/abstracts/database.mongo-entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 
 export const PermissionDatabaseName = 'permissions';
 
@@ -17,6 +18,15 @@ export class PermissionEntity extends DatabaseMongoEntityAbstract {
         type: String,
     })
     code: string;
+
+    @Prop({
+        required: true,
+        index: true,
+        trim: true,
+        enum: ENUM_PERMISSION_GROUP,
+        type: String,
+    })
+    group: ENUM_PERMISSION_GROUP;
 
     @Prop({
         required: true,

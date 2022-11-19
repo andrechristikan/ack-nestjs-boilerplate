@@ -182,37 +182,42 @@ describe('ApiKeyService', () => {
         it('should return an success', async () => {
             const result: ApiKeyEntity[] = await apiKeyService.findAll(
                 {},
-                { limit: 1, skip: 1 }
+                { paging: { limit: 1, skip: 1 } }
             );
             jest.spyOn(apiKeyService, 'findAll').mockImplementation(
                 async () => result
             );
 
-            expect(await apiKeyService.findAll({}, { limit: 1, skip: 1 })).toBe(
-                result
-            );
+            expect(
+                await apiKeyService.findAll(
+                    {},
+                    { paging: { limit: 1, skip: 1 } }
+                )
+            ).toBe(result);
         });
 
         it('should return an success with limit and offset', async () => {
             const result: ApiKeyEntity[] = await apiKeyService.findAll(
                 {},
-                { limit: 1, skip: 1 }
+                { paging: { limit: 1, skip: 1 } }
             );
             jest.spyOn(apiKeyService, 'findAll').mockImplementation(
                 async () => result
             );
 
-            expect(await apiKeyService.findAll({}, { limit: 1, skip: 1 })).toBe(
-                result
-            );
+            expect(
+                await apiKeyService.findAll(
+                    {},
+                    { paging: { limit: 1, skip: 1 } }
+                )
+            ).toBe(result);
         });
 
         it('should return an success with limit, offset, and sort', async () => {
             const result: ApiKeyEntity[] = await apiKeyService.findAll(
                 {},
                 {
-                    limit: 1,
-                    skip: 1,
+                    paging: { limit: 1, skip: 1 },
                     sort: { name: ENUM_PAGINATION_SORT_TYPE.ASC },
                 }
             );
@@ -224,8 +229,7 @@ describe('ApiKeyService', () => {
                 await apiKeyService.findAll(
                     {},
                     {
-                        limit: 1,
-                        skip: 1,
+                        paging: { limit: 1, skip: 1 },
                         sort: { name: ENUM_PAGINATION_SORT_TYPE.ASC },
                     }
                 )
@@ -483,36 +487,6 @@ describe('ApiKeyService', () => {
                     authApi.passphrase
                 )
             ).toBe(result);
-        });
-    });
-
-    describe('hashPassphrase', () => {
-        it('should return an success', async () => {
-            const pass = faker.random.alphaNumeric(10);
-            const result: string = await apiKeyService.hashPassphrase(pass);
-            jest.spyOn(apiKeyService, 'hashPassphrase').mockImplementation(
-                async () => result
-            );
-
-            expect(await apiKeyService.hashPassphrase(pass)).toBe(result);
-        });
-    });
-
-    describe('comparePassphrase', () => {
-        it('should return an success', async () => {
-            const pass = faker.random.alphaNumeric(10);
-            const hash: string = await apiKeyService.hashPassphrase(pass);
-            const result: boolean = await apiKeyService.comparePassphrase(
-                pass,
-                hash
-            );
-            jest.spyOn(apiKeyService, 'comparePassphrase').mockImplementation(
-                async () => result
-            );
-
-            expect(await apiKeyService.comparePassphrase(pass, hash)).toBe(
-                result
-            );
         });
     });
 

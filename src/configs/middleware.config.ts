@@ -54,10 +54,6 @@ export default registerAs(
                 process.env.MIDDLEWARE_TIMESTAMP_TOLERANCE || '5m'
             ), // 5 mins
         },
-        cache: {
-            ttl: ms('30s'), // 30sec
-            max: 100, // maximum number of items in cache,
-        },
         timeout: {
             in: ms(process.env.MIDDLEWARE_TIMEOUT || '30s'), // 30s based on ms module
         },

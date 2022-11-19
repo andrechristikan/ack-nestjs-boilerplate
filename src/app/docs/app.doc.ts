@@ -15,6 +15,13 @@ export function AppHelloDoc(): MethodDecorator {
 export function AppHelloApiKeyDoc(): MethodDecorator {
     return applyDecorators(
         Doc<AppHelloSerialization>('app.helloApiKey', {
+            auth: {
+                apiKey: true,
+            },
+            requestHeader: {
+                timestamp: true,
+                userAgent: true,
+            },
             response: {
                 classSerialization: AppHelloSerialization,
             },

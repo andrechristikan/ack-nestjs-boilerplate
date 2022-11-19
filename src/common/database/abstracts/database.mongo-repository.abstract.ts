@@ -65,12 +65,8 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             findAll.select(options.select);
         }
 
-        if (
-            options &&
-            options.limit !== undefined &&
-            options.skip !== undefined
-        ) {
-            findAll.limit(options.limit).skip(options.skip);
+        if (options && options.paging) {
+            findAll.limit(options.paging.limit).skip(options.paging.skip);
         }
 
         if (options && options.sort) {

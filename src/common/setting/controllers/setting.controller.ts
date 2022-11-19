@@ -62,8 +62,10 @@ export class SettingController {
         const settings: SettingEntity[] = await this.settingService.findAll(
             find,
             {
-                limit: perPage,
-                skip: skip,
+                paging: {
+                    limit: perPage,
+                    skip: skip,
+                },
                 sort,
             }
         );

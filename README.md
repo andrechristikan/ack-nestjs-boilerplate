@@ -15,6 +15,8 @@
 
 # ACK NestJs Boilerplate  🔥 🚀
 
+> Amazon web service will be the cloud provider. This is why this project is focused on AWS features.
+
 [Http NestJs v9.x][ref-nestjs] boilerplate. Best uses for backend service.
 
 *You can [request feature][ack-issues] or [report bug][ack-issues] with following this link*
@@ -477,9 +479,22 @@ Detail information about the environment
 
 ## Api Key Encryption
 
-> Please keep the `secret and passphrase` private.<br>
+> Please keep the `secret and passphrase` private.
 
-ApiKeyHashed uses `sha256` encryption, `dataObject` encryption is `AES256`, and passphrase hash with `sha256`.
+ApiKeyHashed uses `sha256` encryption, `dataObject` encryption is `AES256`.
+
+Here ApiKey data from seeding
+
+```json
+{
+    "name": "Api Key Migration",
+    "description": "From migration",
+    "key": "qwertyuiop12345zxcvbnmkjh",
+    "secret": "5124512412412asdasdasdasdasdASDASDASD",
+    "passphrase": "cuwakimacojulawu",
+    "encryptionKey": "opbUwdiS1FBsrDUoPgZdx"
+}
+```
 
 To do the encryption.
 
@@ -489,7 +504,7 @@ To do the encryption.
     * `key`: You can find the key for apiKey in the database.
     * `secret`: This value is `only generated when the apiKey is created`. After that, if you lose the secret, you need to recreate the apiKey.
     * `encryptionKey`: You can find the key for encryption in the database.
-    * `passphrase`: This value is `only generated when the apiKey is created`. This is IV for encrypt AES 256. This is need to be private too. Same with `secret`.
+    * `passphrase`: This is IV for encrypt AES 256. This is need to be private too. Same with `secret`.
 
 2. Concat the `key` and `secret`.
 

@@ -1,4 +1,5 @@
 import {
+    IHelperDateExtractDate,
     IHelperDateOptionsBackward,
     IHelperDateOptionsCreate,
     IHelperDateOptionsDiff,
@@ -78,4 +79,6 @@ export interface IHelperDateService {
     endOfDay(date?: Date): Date;
 
     startOfDay(date?: Date): Date;
+
+    extractDate(date: string | Date | number): IHelperDateExtractDate;
 }

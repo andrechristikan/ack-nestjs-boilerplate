@@ -17,3 +17,9 @@ export enum ENUM_HELPER_DATE_DIFF {
     DAYS = 'days',
     MINUTES = 'minutes',
 }
+
+export enum ENUM_HELPER_FILE_TYPE {
+    XLSX = 'xlsx',
+    XLS = 'xls',
+    CSV = 'csv',
+}

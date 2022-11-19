@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
+import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 
 export class PermissionGetSerialization {
     @ApiProperty({
@@ -31,6 +32,13 @@ export class PermissionGetSerialization {
         required: true,
     })
     readonly code: string;
+
+    @ApiProperty({
+        enum: ENUM_PERMISSION_GROUP,
+        type: 'array',
+        isArray: true,
+    })
+    readonly group: ENUM_PERMISSION_GROUP;
 
     @ApiProperty({
         description: 'Description of permission',

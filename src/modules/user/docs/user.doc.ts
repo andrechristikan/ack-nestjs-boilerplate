@@ -10,11 +10,6 @@ export function UserProfileDoc(): MethodDecorator {
         Doc<UserProfileSerialization>('user.profile', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             response: {
                 classSerialization: UserProfileSerialization,
@@ -28,11 +23,6 @@ export function UserChangePasswordDoc(): MethodDecorator {
         Doc<void>('user.changePassword', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
         })
     );
@@ -43,11 +33,6 @@ export function UserUploadProfileDoc(): MethodDecorator {
         Doc<void>('user.upload', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             request: {
                 bodyType: ENUM_DOC_REQUEST_BODY_TYPE.FORM_DATA,
@@ -64,11 +49,6 @@ export function UserLoginDoc(): MethodDecorator {
         Doc<UserLoginSerialization>('user.login', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             response: {
                 classSerialization: UserLoginSerialization,
@@ -81,12 +61,7 @@ export function UserRefreshDoc(): MethodDecorator {
     return applyDecorators(
         Doc<UserLoginSerialization>('user.refresh', {
             auth: {
-                jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
+                jwtRefreshToken: true,
             },
             response: {
                 classSerialization: UserLoginSerialization,
@@ -100,11 +75,6 @@ export function UserInfoDoc(): MethodDecorator {
         Doc<UserPayloadSerialization>('user.info', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             response: {
                 classSerialization: UserPayloadSerialization,

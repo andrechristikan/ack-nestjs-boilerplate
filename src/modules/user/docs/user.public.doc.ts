@@ -6,11 +6,6 @@ export function UserSignUpDoc(): MethodDecorator {
         Doc('user.signUp', {
             auth: {
                 jwtAccessToken: false,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             response: {
                 httpStatus: HttpStatus.CREATED,

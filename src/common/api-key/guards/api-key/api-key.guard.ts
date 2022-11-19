@@ -50,36 +50,10 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
                 info as string
             );
 
-            console.log('err', err);
-            console.log('user', user);
-            console.log('info', info);
-            console.log('111');
-
             if (
-                statusCode ===
-                ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_PASSPHRASE_NOT_FOUND_ERROR
-            ) {
-                console.log('000');
-                throw new UnauthorizedException({
-                    statusCode:
-                        ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_PASSPHRASE_NOT_FOUND_ERROR,
-                    message: 'apiKey.error.passphraseNotFound',
-                });
-            } else if (
-                statusCode ===
-                ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_PASSPHRASE_INVALID_ERROR
-            ) {
-                console.log('222');
-                throw new UnauthorizedException({
-                    statusCode:
-                        ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_PASSPHRASE_INVALID_ERROR,
-                    message: 'apiKey.error.passphraseInvalid',
-                });
-            } else if (
                 statusCode ===
                 ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_SCHEMA_INVALID_ERROR
             ) {
-                console.log('333');
                 throw new UnauthorizedException({
                     statusCode:
                         ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_SCHEMA_INVALID_ERROR,
@@ -89,7 +63,6 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
                 statusCode ===
                 ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_TIMESTAMP_NOT_MATCH_WITH_REQUEST_ERROR
             ) {
-                console.log('444');
                 throw new UnauthorizedException({
                     statusCode:
                         ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_TIMESTAMP_NOT_MATCH_WITH_REQUEST_ERROR,
@@ -99,7 +72,6 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
                 statusCode ===
                 ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR
             ) {
-                console.log('555');
                 throw new UnauthorizedException({
                     statusCode:
                         ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
@@ -109,7 +81,6 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
                 statusCode ===
                 ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR
             ) {
-                console.log('666');
                 throw new UnauthorizedException({
                     statusCode:
                         ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR,
@@ -119,7 +90,6 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
                 statusCode ===
                 ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INACTIVE_ERROR
             ) {
-                console.log('777');
                 throw new UnauthorizedException({
                     statusCode:
                         ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INACTIVE_ERROR,
@@ -127,7 +97,6 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
                 });
             }
 
-            console.log('888');
             throw new UnauthorizedException({
                 statusCode:
                     ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INVALID_ERROR,

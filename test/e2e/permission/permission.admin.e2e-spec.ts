@@ -24,6 +24,7 @@ import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/req
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
+import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 
 describe('E2E Permission Admin', () => {
     let app: INestApplication;
@@ -80,6 +81,7 @@ describe('E2E Permission Admin', () => {
             name: 'testPermission',
             code: 'TEST_PERMISSION_XXXX',
             description: 'test description',
+            group: ENUM_PERMISSION_GROUP.PERMISSION,
         });
 
         timestamp = helperDateService.timestamp();
