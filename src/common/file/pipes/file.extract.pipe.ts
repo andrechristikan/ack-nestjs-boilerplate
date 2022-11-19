@@ -50,7 +50,9 @@ export class FileExtractPipe implements PipeTransform {
     }
 
     async extract(value: IFile): Promise<IFileExtract> {
-        const extract = await this.helperFileService.readExcel(value.buffer);
+        const extract = this.helperFileService.readExcelFromBuffer(
+            value.buffer
+        );
 
         return {
             ...value,

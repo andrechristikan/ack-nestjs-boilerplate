@@ -13,7 +13,6 @@ import {
     UploadedFile,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ApiKeyProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
@@ -25,14 +24,12 @@ import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
 import { FileSizeExcelPipe } from 'src/common/file/pipes/file.size.pipe';
 import { FileTypeExcelPipe } from 'src/common/file/pipes/file.type.pipe';
 import { FileValidationPipe } from 'src/common/file/pipes/file.validation.pipe';
+import { ENUM_HELPER_FILE_TYPE } from 'src/common/helper/constants/helper.enum.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import {
-    RequestParamGuard,
-    RequestValidateTimestamp,
-    RequestValidateUserAgent,
-} from 'src/common/request/decorators/request.decorator';
+import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
     Response,
+    ResponseExcel,
     ResponsePaging,
 } from 'src/common/response/decorators/response.decorator';
 import {
@@ -55,6 +52,7 @@ import {
     UserActiveDoc,
     UserCreateDoc,
     UserDeleteDoc,
+    UserExportDoc,
     UserGetDoc,
     UserImportDoc,
     UserInactiveDoc,
@@ -90,9 +88,6 @@ export class UserAdminController {
         classSerialization: UserListSerialization,
     })
     @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.USER_READ)
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Get('/list')
     async list(
         @Query()
@@ -111,8 +106,10 @@ export class UserAdminController {
         };
 
         const users: IUserEntity[] = await this.userService.findAll(find, {
-            limit: perPage,
-            skip: skip,
+            paging: {
+                limit: perPage,
+                skip: skip,
+            },
             sort,
         });
         const totalData: number = await this.userService.getTotal(find);
@@ -139,9 +136,6 @@ export class UserAdminController {
     @UserGetGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.USER_READ)
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Get('get/:user')
     async get(@GetUser() user: IUserEntity): Promise<IResponse> {
         return user;
@@ -155,9 +149,6 @@ export class UserAdminController {
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_CREATE
     )
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Post('/create')
     async create(
         @Body()
@@ -239,9 +230,6 @@ export class UserAdminController {
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_DELETE
     )
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Delete('/delete/:user')
     async delete(@GetUser() user: IUserEntity): Promise<void> {
         try {
@@ -267,9 +255,6 @@ export class UserAdminController {
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_UPDATE
     )
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Put('/update/:user')
     async update(
         @GetUser() user: IUserEntity,
@@ -299,9 +284,6 @@ export class UserAdminController {
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_UPDATE
     )
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Patch('/update/:user/inactive')
     async inactive(@GetUser() user: IUserEntity): Promise<void> {
         try {
@@ -325,9 +307,6 @@ export class UserAdminController {
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_UPDATE
     )
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Patch('/update/:user/active')
     async active(@GetUser() user: IUserEntity): Promise<void> {
         try {
@@ -353,9 +332,6 @@ export class UserAdminController {
         ENUM_AUTH_PERMISSIONS.USER_CREATE,
         ENUM_AUTH_PERMISSIONS.USER_IMPORT
     )
-    @ApiKeyProtected()
-    @RequestValidateUserAgent()
-    @RequestValidateTimestamp()
     @Post('/import')
     async import(
         @UploadedFile(
@@ -368,5 +344,19 @@ export class UserAdminController {
         file: IFileExtract<UserImportDto>
     ): Promise<IResponse> {
         return { file };
+    }
+
+    @UserExportDoc()
+    @ResponseExcel({
+        classSerialization: UserListSerialization,
+        type: ENUM_HELPER_FILE_TYPE.CSV,
+    })
+    @AuthJwtAdminAccessProtected(
+        ENUM_AUTH_PERMISSIONS.USER_READ,
+        ENUM_AUTH_PERMISSIONS.USER_EXPORT
+    )
+    @Post('/export')
+    async export(): Promise<IResponse> {
+        return this.userService.findAll({});
     }
 }

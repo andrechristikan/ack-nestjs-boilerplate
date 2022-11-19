@@ -182,37 +182,42 @@ describe('ApiKeyService', () => {
         it('should return an success', async () => {
             const result: ApiKeyEntity[] = await apiKeyService.findAll(
                 {},
-                { limit: 1, skip: 1 }
+                { paging: { limit: 1, skip: 1 } }
             );
             jest.spyOn(apiKeyService, 'findAll').mockImplementation(
                 async () => result
             );
 
-            expect(await apiKeyService.findAll({}, { limit: 1, skip: 1 })).toBe(
-                result
-            );
+            expect(
+                await apiKeyService.findAll(
+                    {},
+                    { paging: { limit: 1, skip: 1 } }
+                )
+            ).toBe(result);
         });
 
         it('should return an success with limit and offset', async () => {
             const result: ApiKeyEntity[] = await apiKeyService.findAll(
                 {},
-                { limit: 1, skip: 1 }
+                { paging: { limit: 1, skip: 1 } }
             );
             jest.spyOn(apiKeyService, 'findAll').mockImplementation(
                 async () => result
             );
 
-            expect(await apiKeyService.findAll({}, { limit: 1, skip: 1 })).toBe(
-                result
-            );
+            expect(
+                await apiKeyService.findAll(
+                    {},
+                    { paging: { limit: 1, skip: 1 } }
+                )
+            ).toBe(result);
         });
 
         it('should return an success with limit, offset, and sort', async () => {
             const result: ApiKeyEntity[] = await apiKeyService.findAll(
                 {},
                 {
-                    limit: 1,
-                    skip: 1,
+                    paging: { limit: 1, skip: 1 },
                     sort: { name: ENUM_PAGINATION_SORT_TYPE.ASC },
                 }
             );
@@ -224,8 +229,7 @@ describe('ApiKeyService', () => {
                 await apiKeyService.findAll(
                     {},
                     {
-                        limit: 1,
-                        skip: 1,
+                        paging: { limit: 1, skip: 1 },
                         sort: { name: ENUM_PAGINATION_SORT_TYPE.ASC },
                     }
                 )

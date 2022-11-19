@@ -15,6 +15,8 @@
 
 # ACK NestJs Boilerplate  🔥 🚀
 
+> Amazon web service will be the cloud provider. This is why this project is focused on AWS features.
+
 [Http NestJs v9.x][ref-nestjs] boilerplate. Best uses for backend service.
 
 *You can [request feature][ack-issues] or [report bug][ack-issues] with following this link*

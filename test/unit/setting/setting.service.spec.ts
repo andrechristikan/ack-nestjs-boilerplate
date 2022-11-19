@@ -68,14 +68,17 @@ describe('SettingService', () => {
         it('should be success with options limit and skip', async () => {
             const result = await settingService.findAll(
                 {},
-                { limit: 1, skip: 0 }
+                { paging: { limit: 1, skip: 1 } }
             );
             jest.spyOn(settingService, 'findAll').mockImplementation(
                 async () => result
             );
 
             expect(
-                await settingService.findAll({}, { limit: 1, skip: 0 })
+                await settingService.findAll(
+                    {},
+                    { paging: { limit: 1, skip: 1 } }
+                )
             ).toBe(result);
         });
 
@@ -83,8 +86,7 @@ describe('SettingService', () => {
             const result = await settingService.findAll(
                 {},
                 {
-                    limit: 1,
-                    skip: 0,
+                    paging: { limit: 1, skip: 1 },
                     sort: { name: ENUM_PAGINATION_SORT_TYPE.ASC },
                 }
             );
@@ -96,8 +98,7 @@ describe('SettingService', () => {
                 await settingService.findAll(
                     {},
                     {
-                        limit: 1,
-                        skip: 0,
+                        paging: { limit: 1, skip: 1 },
                         sort: { name: ENUM_PAGINATION_SORT_TYPE.ASC },
                     }
                 )

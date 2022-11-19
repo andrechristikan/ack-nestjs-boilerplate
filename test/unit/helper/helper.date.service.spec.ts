@@ -1060,4 +1060,22 @@ describe('HelperDateService', () => {
             expect(helperDateService.startOfDay(new Date())).toBe(result);
         });
     });
+
+    describe('extractDate', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(helperDateService, 'extractDate');
+
+            helperDateService.extractDate(date1);
+            expect(test).toHaveBeenCalledWith(date1);
+        });
+
+        it('should be success', async () => {
+            const result = helperDateService.extractDate(date1);
+            jest.spyOn(helperDateService, 'extractDate').mockImplementation(
+                () => result
+            );
+
+            expect(helperDateService.extractDate(date1)).toBe(result);
+        });
+    });
 });

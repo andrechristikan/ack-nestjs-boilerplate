@@ -15,11 +15,6 @@ export function UserListDoc(): MethodDecorator {
         DocPaging<UserListSerialization>('user.list', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             response: {
                 classSerialization: UserListSerialization,
@@ -35,11 +30,6 @@ export function UserGetDoc(): MethodDecorator {
         Doc<UserGetSerialization>('user.get', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             request: {
                 params: UserDocParamsGet,
@@ -54,11 +44,6 @@ export function UserCreateDoc(): MethodDecorator {
         Doc<ResponseIdSerialization>('user.create', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             response: {
                 httpStatus: HttpStatus.CREATED,
@@ -73,11 +58,6 @@ export function UserUpdateDoc(): MethodDecorator {
         Doc<ResponseIdSerialization>('user.update', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             request: {
                 params: UserDocParamsGet,
@@ -92,11 +72,6 @@ export function UserDeleteDoc(): MethodDecorator {
         Doc<void>('user.delete', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             request: {
                 params: UserDocParamsGet,
@@ -110,11 +85,6 @@ export function UserActiveDoc(): MethodDecorator {
         Doc<void>('user.active', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             request: {
                 params: UserDocParamsGet,
@@ -128,11 +98,6 @@ export function UserInactiveDoc(): MethodDecorator {
         Doc<void>('user.inactive', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             request: {
                 params: UserDocParamsGet,
@@ -146,15 +111,23 @@ export function UserImportDoc(): MethodDecorator {
         Doc<UserImportSerialization>('user.import', {
             auth: {
                 jwtAccessToken: true,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             response: {
                 httpStatus: HttpStatus.CREATED,
                 classSerialization: UserImportSerialization,
+            },
+        })
+    );
+}
+
+export function UserExportDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc('user.export', {
+            auth: {
+                jwtAccessToken: true,
+            },
+            response: {
+                httpStatus: HttpStatus.OK,
             },
         })
     );

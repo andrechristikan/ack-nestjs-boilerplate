@@ -11,7 +11,3 @@ export function AppHelloDoc(): MethodDecorator {
         })
     );
 }
-
-export function AppHelloTimeoutDoc(): MethodDecorator {
-    return applyDecorators(Doc<void>('app.helloTimeout'));
-}

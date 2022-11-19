@@ -41,6 +41,7 @@ export class RoleGetSerialization {
                 _id: faker.database.mongodbObjectId(),
                 code: faker.random.alpha(5),
                 name: faker.name.jobDescriptor(),
+                group: faker.name.jobDescriptor(),
                 isActive: true,
             },
         ],
@@ -51,6 +52,7 @@ export class RoleGetSerialization {
             _id: `${val._id}`,
             code: val.code,
             name: val.name,
+            group: val.group,
             isActive: val.isActive,
         }))
     )

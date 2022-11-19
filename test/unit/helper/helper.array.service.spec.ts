@@ -1,5 +1,6 @@
 import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import { ENUM_HELPER_DATE_DIFF } from 'src/common/helper/constants/helper.enum.constant';
 import { HelperModule } from 'src/common/helper/helper.module';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
 import configs from 'src/configs';
@@ -516,6 +517,46 @@ describe('HelperArrayService', () => {
             );
 
             expect(helperArrayService.split(arrays, 1)).toBe(result);
+        });
+    });
+
+    describe('getKeys', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(helperArrayService, 'getKeys');
+
+            helperArrayService.getKeys(ENUM_HELPER_DATE_DIFF);
+            expect(test).toHaveBeenCalledWith(ENUM_HELPER_DATE_DIFF);
+        });
+
+        it('should be success', async () => {
+            const result = helperArrayService.getKeys(ENUM_HELPER_DATE_DIFF);
+            jest.spyOn(helperArrayService, 'getKeys').mockImplementation(
+                () => result
+            );
+
+            expect(helperArrayService.getKeys(ENUM_HELPER_DATE_DIFF)).toBe(
+                result
+            );
+        });
+    });
+
+    describe('getValues', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(helperArrayService, 'getValues');
+
+            helperArrayService.getValues(ENUM_HELPER_DATE_DIFF);
+            expect(test).toHaveBeenCalledWith(ENUM_HELPER_DATE_DIFF);
+        });
+
+        it('should be success', async () => {
+            const result = helperArrayService.getValues(ENUM_HELPER_DATE_DIFF);
+            jest.spyOn(helperArrayService, 'getValues').mockImplementation(
+                () => result
+            );
+
+            expect(helperArrayService.getValues(ENUM_HELPER_DATE_DIFF)).toBe(
+                result
+            );
         });
     });
 });

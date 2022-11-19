@@ -1,6 +1,7 @@
 import {
     ENUM_HELPER_DATE_DIFF,
     ENUM_HELPER_DATE_FORMAT,
+    ENUM_HELPER_FILE_TYPE,
 } from 'src/common/helper/constants/helper.enum.constant';
 
 // Helper Encryption
@@ -34,6 +35,13 @@ export interface IHelperGeoRules extends IHelperGeoCurrent {
 }
 
 // Helper Date
+export interface IHelperDateExtractDate {
+    date: Date;
+    day: string;
+    month: string;
+    year: string;
+}
+
 export interface IHelperDateOptionsDiff {
     format?: ENUM_HELPER_DATE_DIFF;
 }
@@ -58,4 +66,18 @@ export interface IHelperDateOptionsMonth {
 
 // Helper File
 
-export type IHelperFileExcelRows = Record<string, string | number>;
+export type IHelperFileRows = Record<string, string | number | Date>;
+
+export interface IHelperFileWriteExcelOptions {
+    password?: string;
+    type?: ENUM_HELPER_FILE_TYPE;
+}
+
+export interface IHelperFileCreateExcelWorkbookOptions {
+    sheetName?: string;
+}
+
+export interface IHelperFileReadExcelOptions {
+    sheet?: string | number;
+    password?: string;
+}

@@ -6,6 +6,7 @@ import {
 } from 'src/common/helper/constants/helper.enum.constant';
 import { IHelperDateService } from 'src/common/helper/interfaces/helper.date-service.interface';
 import {
+    IHelperDateExtractDate,
     IHelperDateOptionsBackward,
     IHelperDateOptionsCreate,
     IHelperDateOptionsDiff,
@@ -209,5 +210,25 @@ export class HelperDateService implements IHelperDateService {
 
     startOfDay(date?: Date): Date {
         return moment(date).startOf('day').toDate();
+    }
+
+    extractDate(date: string | Date | number): IHelperDateExtractDate {
+        const newDate = this.create({ date });
+        const day: string = this.format(newDate, {
+            format: ENUM_HELPER_DATE_FORMAT.ONLY_DATE,
+        });
+        const month: string = this.format(newDate, {
+            format: ENUM_HELPER_DATE_FORMAT.ONLY_MONTH,
+        });
+        const year: string = this.format(newDate, {
+            format: ENUM_HELPER_DATE_FORMAT.ONLY_YEAR,
+        });
+
+        return {
+            date: newDate,
+            day,
+            month,
+            year,
+        };
     }
 }

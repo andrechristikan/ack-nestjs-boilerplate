@@ -92,8 +92,10 @@ export class RoleAdminController {
         };
 
         const roles: RoleEntity[] = await this.roleService.findAll(find, {
-            skip: skip,
-            limit: perPage,
+            paging: {
+                limit: perPage,
+                skip: skip,
+            },
             sort,
         });
 

@@ -105,4 +105,12 @@ export class HelperArrayService implements IHelperArrayService {
     split<T>(a: T[], size: number): T[][] {
         return _.chunk<T>(a, size);
     }
+
+    getKeys(a: Record<string, any>): string[] {
+        return Object.keys(a);
+    }
+
+    getValues<T>(a: Record<string, any>): T[] {
+        return Object.values(a);
+    }
 }

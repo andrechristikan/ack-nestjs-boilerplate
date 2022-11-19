@@ -31,9 +31,7 @@ export class DebuggerOptionService implements IDebuggerOptionService {
     createLogger(): LoggerOptions {
         const transports = [];
 
-        /* istanbul ignore next */
         if (this.writeIntoFile) {
-            /* istanbul ignore next */
             transports.push(
                 new DailyRotateFile({
                     filename: `%DATE%.log`,
@@ -45,7 +43,6 @@ export class DebuggerOptionService implements IDebuggerOptionService {
                     level: 'error',
                 })
             );
-            /* istanbul ignore next */
             transports.push(
                 new DailyRotateFile({
                     filename: `%DATE%.log`,
@@ -57,7 +54,6 @@ export class DebuggerOptionService implements IDebuggerOptionService {
                     level: 'info',
                 })
             );
-            /* istanbul ignore next */
             transports.push(
                 new DailyRotateFile({
                     filename: `%DATE%.log`,

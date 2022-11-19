@@ -8,6 +8,7 @@ import {
 } from 'src/common/database/interfaces/database.interface';
 import { PermissionActiveDto } from 'src/modules/permission/dtos/permission.active.dto';
 import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
+import { PermissionUpdateGroupDto } from 'src/modules/permission/dtos/permission.update-group.dto';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
 import { IPermissionService } from 'src/modules/permission/interfaces/permission.service.interface';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
@@ -67,6 +68,7 @@ export class PermissionService implements IPermissionService {
     ): Promise<PermissionEntity> {
         const create: PermissionEntity = new PermissionEntity();
         create.name = data.name;
+        create.group = data.group;
         create.code = data.code;
         create.description = data.description;
 
@@ -82,6 +84,18 @@ export class PermissionService implements IPermissionService {
         options?: IDatabaseOptions
     ): Promise<PermissionEntity> {
         return this.permissionRepository.updateOneById<PermissionUpdateDto>(
+            _id,
+            data,
+            options
+        );
+    }
+
+    async updateGroup(
+        _id: string,
+        data: PermissionUpdateGroupDto,
+        options?: IDatabaseOptions
+    ): Promise<PermissionEntity> {
+        return this.permissionRepository.updateOneById<PermissionUpdateGroupDto>(
             _id,
             data,
             options

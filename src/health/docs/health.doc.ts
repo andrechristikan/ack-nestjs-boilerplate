@@ -7,11 +7,6 @@ export function HealthCheckDoc(): MethodDecorator {
         Doc<HealthSerialization>('health.check', {
             auth: {
                 jwtAccessToken: false,
-                apiKey: true,
-            },
-            requestHeader: {
-                userAgent: true,
-                timestamp: true,
             },
             response: { classSerialization: HealthSerialization },
         })

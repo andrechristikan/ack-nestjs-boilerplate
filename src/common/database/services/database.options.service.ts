@@ -22,7 +22,6 @@ export class DatabaseOptionsService implements IDatabaseOptionsService {
         this.password = this.configService.get<string>('database.password');
         this.debug = this.configService.get<boolean>('database.debug');
 
-        /* istanbul ignore next */
         this.options = this.configService.get<string>('database.options')
             ? `?${this.configService.get<string>('database.options')}`
             : '';
@@ -35,7 +34,6 @@ export class DatabaseOptionsService implements IDatabaseOptionsService {
             uri = `${uri}/${this.database}${this.options}`;
         }
 
-        /* istanbul ignore next */
         if (this.env !== 'production') {
             mongoose.set('debug', this.debug);
         }
@@ -49,7 +47,6 @@ export class DatabaseOptionsService implements IDatabaseOptionsService {
             // useMongoClient: true,
         };
 
-        /* istanbul ignore next */
         if (this.user && this.password) {
             mongooseOptions.auth = {
                 username: this.user,

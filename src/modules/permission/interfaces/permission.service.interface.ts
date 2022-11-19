@@ -6,6 +6,7 @@ import {
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
+import { PermissionUpdateGroupDto } from 'src/modules/permission/dtos/permission.update-group.dto';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 
@@ -43,6 +44,12 @@ export interface IPermissionService {
     update(
         _id: string,
         data: PermissionUpdateDto,
+        options?: IDatabaseOptions
+    ): Promise<PermissionEntity>;
+
+    updateGroup(
+        _id: string,
+        data: PermissionUpdateGroupDto,
         options?: IDatabaseOptions
     ): Promise<PermissionEntity>;
 

@@ -25,6 +25,8 @@
   "exclude": [
     "node_modules",
     "dist", 
-    "docker"
+    "*coverage",
+    "logs",
+    "scripts",
   ]
 }

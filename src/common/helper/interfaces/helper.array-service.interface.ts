@@ -48,4 +48,8 @@ export interface IHelperArrayService {
     includes<T>(a: T[], b: T): boolean;
 
     split<T>(a: T[], size: number): T[][];
+
+    getKeys(a: Record<string, any>): string[];
+
+    getValues<T>(a: Record<string, any>): T[];
 }
