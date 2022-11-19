@@ -11,7 +11,7 @@ export class SettingRepository
     implements IDatabaseRepository<SettingEntity>
 {
     constructor(
-        @DatabaseModel(SettingEntity)
+        @DatabaseModel(SettingEntity.name)
         private readonly settingModel: Model<SettingEntity>
     ) {
         super(settingModel);

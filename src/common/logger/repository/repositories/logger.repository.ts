@@ -12,7 +12,7 @@ export class LoggerRepository
     implements IDatabaseRepository<LoggerEntity>
 {
     constructor(
-        @DatabaseModel(LoggerEntity)
+        @DatabaseModel(LoggerEntity.name)
         private readonly loggerModel: Model<LoggerEntity>
     ) {
         super(loggerModel, {

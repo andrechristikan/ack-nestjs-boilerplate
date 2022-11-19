@@ -13,7 +13,7 @@ export class UserRepository
     implements IDatabaseRepository<UserEntity>
 {
     constructor(
-        @DatabaseModel(UserEntity)
+        @DatabaseModel(UserEntity.name)
         private readonly userModel: Model<UserEntity>
     ) {
         super(userModel, {

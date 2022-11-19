@@ -12,7 +12,7 @@ export class RoleRepository
     implements IDatabaseRepository<RoleEntity>
 {
     constructor(
-        @DatabaseModel(RoleEntity)
+        @DatabaseModel(RoleEntity.name)
         private readonly roleModel: Model<RoleEntity>
     ) {
         super(roleModel, {

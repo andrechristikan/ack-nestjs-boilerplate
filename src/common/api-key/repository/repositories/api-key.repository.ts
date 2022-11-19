@@ -11,7 +11,7 @@ export class ApiKeyRepository
     implements IDatabaseRepository<ApiKeyEntity>
 {
     constructor(
-        @DatabaseModel(ApiKeyEntity)
+        @DatabaseModel(ApiKeyEntity.name)
         private readonly apiKeyModel: Model<ApiKeyEntity>
     ) {
         super(apiKeyModel);

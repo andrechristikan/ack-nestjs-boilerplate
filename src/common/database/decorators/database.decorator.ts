@@ -20,7 +20,7 @@ export function DatabaseModel(
     entity: any,
     connectionName?: string
 ): ParameterDecorator {
-    return InjectModel(entity.name, connectionName || DATABASE_CONNECTION_NAME);
+    return InjectModel(entity, connectionName || DATABASE_CONNECTION_NAME);
 }
 
 export function DatabaseEntity(options?: SchemaOptions): ClassDecorator {

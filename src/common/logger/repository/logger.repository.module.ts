@@ -5,7 +5,7 @@ import {
     LoggerEntity,
     LoggerSchema,
 } from 'src/common/logger/repository/entities/logger.entity';
-import { LoggerRepository } from 'src/common/logger/repository/repositories/logger.mongo.repository';
+import { LoggerRepository } from 'src/common/logger/repository/repositories/logger.repository';
 
 @Module({
     providers: [LoggerRepository],

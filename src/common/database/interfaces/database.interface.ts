@@ -22,10 +22,6 @@ export type IDatabaseUpdateOptions<T = any> = Pick<
 
 export type IDatabaseDeleteOptions<T = any> = IDatabaseUpdateOptions<T>;
 
-// Raw
-
-export type IDatabaseRawOptions<T = any> = Pick<IDatabaseOptions<T>, 'session'>;
-
 // find
 export interface IDatabaseFindAllOptions<T = any>
     extends IPaginationOptions,
@@ -61,7 +57,10 @@ export type IDatabaseManyOptions<T = any> = Pick<
     'session' | 'join'
 >;
 
-export type IDatabaseCreateManyOptions<T = any> = IDatabaseRawOptions<T>;
+export type IDatabaseCreateManyOptions<T = any> = Pick<
+    IDatabaseOptions<T>,
+    'session'
+>;
 
 export type IDatabaseSoftDeleteManyOptions<T = any> = IDatabaseManyOptions<T>;
 
