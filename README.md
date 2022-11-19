@@ -438,22 +438,24 @@ Detail information about the environment
 | DATABASE\_DEBUG | `boolean` | Trigger database `DEBUG` |
 | DATABASE\_OPTIONS | `string` | Mongodb connect options |
 
+### Auth JWT Environment
+
+| Key | Type | Description |
+| ---- | ---- | ---- |
+| AUTH_JWT_PAYLOAD_ENCRYPTION | `boolean` | Jwt payload encrypt |
+| AUTH\_JWT\_SUBJECT | `string` | Jwt subject |
+| AUTH\_JWT\_SUBJECT | `string` | Jwt subject |
+| AUTH\_JWT\_AUDIENCE | `string` | Jwt audience |
+| AUTH\_JWT\_ISSUER| `string` | JWT issuer |
+
 ### Auth JWT Access Token Environment
 
 | Key | Type | Description |
 | ---- | ---- | ---- |
-| AUTH\_JWT\_SUBJECT | `setting` | Jwt subject |
-| AUTH\_JWT\_AUDIENCE | `string` | Jwt audience |
-| AUTH\_JWT\_ISSUER| `string` | JWT issuer |
 | AUTH\_JWT\_ACCESS\_TOKEN\_SECRET\_KEY | `string` | Secret access token, free text. |
 | AUTH\_JWT\_ACCESS\_TOKEN\_EXPIRED | `string` | Expiration time for access token. `ms` package value |
-
-### Auth JWT Encrypt Access Token Environment
-
-| Key | Type | Description |
-| ---- | ---- | ---- |
-| AUTH_JWT_ACCESS_TOKEN_ENCRYPT_KEY | `string` | Encrypt key for access token payload |
-| AUTH_JWT_ACCESS_TOKEN_ENCRYPT_IV | `string` | Encrypt IV for access token payload |
+| AUTH\_JWT\_ACCESS\_TOKEN\_ENCRYPT\_KEY | `string` | Encrypt key for access token payload |
+| AUTH\_JWT\_ACCESS\_TOKEN\_ENCRYPT\_IV | `string` | Encrypt IV for access token payload |
 
 ### Auth JWT Refresh Token Environment
 
@@ -463,13 +465,8 @@ Detail information about the environment
 | AUTH\_JWT\_REFRESH\_TOKEN\_EXPIRED | `string` | Expiration time for refresh token. `ms` package value |
 | AUTH\_JWT\_REFRESH\_TOKEN\_REMEMBER\_ME\_EXPIRED | `string` | Expiration time for refresh token when remember me is checked. `ms` package value |
 | AUTH\_JWT\_REFRESH\_TOKEN\_NOT\_BEFORE\_EXPIRATION | `string` | Token active for refresh token before `x` time. `ms` package value |
-
-### Auth JWT Encrypt Refresh Token Environment
-
-| Key | Type | Description |
-| ---- | ---- | ---- |
-| AUTH_JWT_REFRESH_TOKEN_ENCRYPT_KEY | `string` | Encrypt key for refresh token payload |
-| AUTH_JWT_REFRESH_TOKEN_ENCRYPT_IV | `string` | Encrypt IV for refresh token payload |
+| AUTH\_JWT\_REFRESH\_TOKEN\_ENCRYPT\_KEY | `string` | Encrypt key for refresh token payload |
+| AUTH\_JWT\_REFRESH\_TOKEN\_ENCRYPT\_IV | `string` | Encrypt IV for refresh token payload |
 
 ### AWS Environment
 
@@ -482,13 +479,26 @@ Detail information about the environment
 
 ## Api Key Encryption
 
-> Please keep the `secret and passphrase` private.<br>
+> Please keep the `secret and passphrase` private.
 
-ApiKeyHashed uses `sha256` encryption, and `dataObject` encryption is `AES256`.
+ApiKeyHashed uses `sha256` encryption, `dataObject` encryption is `AES256`.
+
+Here ApiKey data from seeding
+
+```json
+{
+    "name": "Api Key Migration",
+    "description": "From migration",
+    "key": "qwertyuiop12345zxcvbnmkjh",
+    "secret": "5124512412412asdasdasdasdasdASDASDASD",
+    "passphrase": "cuwakimacojulawu",
+    "encryptionKey": "opbUwdiS1FBsrDUoPgZdx"
+}
+```
 
 To do the encryption.
 
-> The encryption process must be client-side.
+> The encryption process must be on client-side.
 
 1. Make sure to have value of
     * `key`: You can find the key for apiKey in the database.
@@ -539,13 +549,14 @@ To do the encryption.
     const xApiKey = `${key}:${apiEncryption}`;
     ```
 
-7. Send into request. Put the `xApiKey` in request headers
+7. Send into request. Put the `xApiKey`, `timestamp`, and `passphrase` in the request headers
 
     ```json
     {
         "headers": {
             "x-api-key": "${xApiKey}", // from 6.xApiKey
             "x-timestamp": "${timestamp}" // from 4.timestamp
+            "x-api-key-passphrase": "${passphrase}" // from 5.passphrase
             ...
             ...
             ...

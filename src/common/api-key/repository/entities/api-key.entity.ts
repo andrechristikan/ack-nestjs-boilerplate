@@ -54,8 +54,6 @@ export class ApiKeyEntity extends DatabaseMongoEntityAbstract {
     @Prop({
         required: true,
         type: String,
-        minLength: 16,
-        maxLength: 16,
         trim: true,
     })
     passphrase: string;

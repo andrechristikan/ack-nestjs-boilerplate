@@ -97,11 +97,4 @@ export interface IApiKeyService {
         encryptionKey: string,
         passphrase: string
     ): Promise<string>;
-
-    createBasicToken(clientId: string, clientSecret: string): Promise<string>;
-
-    validateBasicToken(
-        clientBasicToken: string,
-        ourBasicToken: string
-    ): Promise<boolean>;
 }

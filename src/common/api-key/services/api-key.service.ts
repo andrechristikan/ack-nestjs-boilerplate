@@ -289,22 +289,4 @@ export class ApiKeyService implements IApiKeyService {
             passphrase
         );
     }
-
-    async createBasicToken(
-        clientId: string,
-        clientSecret: string
-    ): Promise<string> {
-        const token = `${clientId}:${clientSecret}`;
-        return this.helperEncryptionService.base64Decrypt(token);
-    }
-
-    async validateBasicToken(
-        clientBasicToken: string,
-        ourBasicToken: string
-    ): Promise<boolean> {
-        return this.helperEncryptionService.base64Compare(
-            clientBasicToken,
-            ourBasicToken
-        );
-    }
 }
