@@ -16,7 +16,6 @@ import configs from 'src/configs';
 describe('SettingService', () => {
     let settingService: SettingService;
     const _id = DatabaseDefaultUUID();
-    const _idString = `${_id}`;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
@@ -128,17 +127,17 @@ describe('SettingService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(settingService, 'findOneById');
 
-            await settingService.findOneById(_idString);
-            expect(test).toHaveBeenCalledWith(_idString);
+            await settingService.findOneById(_id);
+            expect(test).toHaveBeenCalledWith(_id);
         });
 
         it('should be success', async () => {
-            const result = await settingService.findOneById(_idString);
+            const result = await settingService.findOneById(_id);
             jest.spyOn(settingService, 'findOneById').mockImplementation(
                 async () => result
             );
 
-            expect(await settingService.findOneById(_idString)).toBe(result);
+            expect(await settingService.findOneById(_id)).toBe(result);
         });
     });
 
@@ -146,17 +145,17 @@ describe('SettingService', () => {
         it('should be called', async () => {
             const test = jest.spyOn(settingService, 'findOneByName');
 
-            await settingService.findOneByName(_idString);
-            expect(test).toHaveBeenCalledWith(_idString);
+            await settingService.findOneByName(_id);
+            expect(test).toHaveBeenCalledWith(_id);
         });
 
         it('should be success', async () => {
-            const result = await settingService.findOneByName(_idString);
+            const result = await settingService.findOneByName(_id);
             jest.spyOn(settingService, 'findOneByName').mockImplementation(
                 async () => result
             );
 
-            expect(await settingService.findOneByName(_idString)).toBe(result);
+            expect(await settingService.findOneByName(_id)).toBe(result);
         });
     });
 
