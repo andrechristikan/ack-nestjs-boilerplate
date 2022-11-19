@@ -12,6 +12,7 @@ describe('DatabaseOptionsService', () => {
         process.env.APP_ENV = 'development';
         process.env.DATABASE_USER = 'AckUser';
         process.env.DATABASE_PASSWORD = 'AckUserTestPassword';
+        process.env.DATABASE_DEBUG = 'true';
         process.env.DATABASE_OPTIONS =
             'replicaSet=rs0&retryWrites=true&w=majority';
 

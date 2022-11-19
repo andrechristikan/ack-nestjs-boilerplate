@@ -1,6 +1,6 @@
 {
   "name": "ack-nestjs-boilerplate",
-  "version": "3.6.3",
+  "version": "3.6.4",
   "description": "Ack NestJs Boilerplate",
   "repository": {
     "type": "git",
@@ -27,9 +27,9 @@
     "lint:src": "eslint --ext .ts,.tsx 'src/**/*.ts' --no-error-on-unmatched-pattern",
     "lint:test": "eslint --ext .ts,.tsx 'test/**/*.ts' --no-error-on-unmatched-pattern",
     "test": "yarn test:unit && yarn test:integration && yarn test:e2e",
-    "test:unit": "jest --config test/unit/jest.json --passWithNoTests --forceExit --silent",
-    "test:integration": "jest --config test/integration/jest.json --passWithNoTests --forceExit --silent",
-    "test:e2e": "jest --runInBand --config test/e2e/jest.json --verbose --passWithNoTests --forceExit --silent",
+    "test:unit": "jest --config test/unit/jest.json --passWithNoTests --forceExit",
+    "test:integration": "jest --config test/integration/jest.json --passWithNoTests --forceExit",
+    "test:e2e": "jest --runInBand --config test/e2e/jest.json --verbose --passWithNoTests --forceExit",
     "prepare": "husky install",
     "deadcode": "ts-prune --project tsconfig.json",
     "deadcode:filter": "ts-prune --project tsconfig.json | grep -v '(used in module)'",

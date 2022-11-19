@@ -17,7 +17,7 @@ describe('Aws S3 Integration', () => {
     let xApiKey: string;
     let timestamp: number;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [CommonModule, RoutesModule],
             controllers: [],
