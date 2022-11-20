@@ -1,7 +1,6 @@
 import { applyDecorators } from '@nestjs/common';
 import { Expose, Transform, Type } from 'class-transformer';
 import { IsOptional, ValidateIf } from 'class-validator';
-import { Types } from 'mongoose';
 import {
     PAGINATION_AVAILABLE_SORT,
     PAGINATION_MAX_PAGE,
@@ -159,7 +158,7 @@ export function PaginationFilterId(): PropertyDecorator {
     return applyDecorators(
         Expose(),
         Transform(({ value, key }) => {
-            return value ? { [key]: new Types.ObjectId(value) } : undefined;
+            return value ? { [key]: value } : undefined;
         })
     );
 }
@@ -232,6 +231,17 @@ export function PaginationFilterString(
             }
 
             return value ? { [key]: value } : undefined;
+        })
+    );
+}
+
+export function PaginationFilterNumber(): PropertyDecorator {
+    return applyDecorators(
+        Expose(),
+        Transform(({ value, key }) => {
+            return value && (!Number.isNaN(value) || !Number.isFinite(value))
+                ? { [key]: Number(value) }
+                : undefined;
         })
     );
 }
