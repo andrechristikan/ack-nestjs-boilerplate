@@ -2,7 +2,6 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
-import { connection } from 'mongoose';
 import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { UserService } from 'src/modules/user/services/user.service';
@@ -225,8 +224,5 @@ describe('E2E User Change Password', () => {
         } catch (e) {
             console.error(e);
         }
-
-        connection.close();
-        await app.close();
     });
 });

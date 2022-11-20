@@ -54,8 +54,4 @@ describe('Database Integration', () => {
 
         return;
     });
-
-    afterAll(async () => {
-        await app.close();
-    });
 });

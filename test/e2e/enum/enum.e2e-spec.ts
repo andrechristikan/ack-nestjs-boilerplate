@@ -90,8 +90,4 @@ describe('E2E Enum', () => {
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
     });
-
-    afterAll(async () => {
-        await app.close();
-    });
 });

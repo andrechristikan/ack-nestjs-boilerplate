@@ -12,7 +12,6 @@ import {
     E2E_ROLE_ADMIN_UPDATE_URL,
     E2E_ROLE_PAYLOAD_TEST,
 } from './role.constant';
-import { connection } from 'mongoose';
 import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { AuthService } from 'src/common/auth/services/auth.service';
@@ -471,8 +470,5 @@ describe('E2E Role Admin', () => {
                 name: 'testRole3',
             });
         } catch (e) {}
-
-        connection.close();
-        await app.close();
     });
 });

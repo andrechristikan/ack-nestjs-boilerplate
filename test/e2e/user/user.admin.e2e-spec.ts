@@ -2,7 +2,6 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
-import { connection } from 'mongoose';
 import {
     E2E_USER_ADMIN_ACTIVE_URL,
     E2E_USER_ADMIN_CREATE_URL,
@@ -523,8 +522,5 @@ describe('E2E User Admin', () => {
         } catch (e) {
             console.error(e);
         }
-
-        connection.close();
-        await app.close();
     });
 });

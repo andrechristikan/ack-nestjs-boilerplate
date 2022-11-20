@@ -3,7 +3,6 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
 import { RouterModule } from '@nestjs/core';
-import { connection } from 'mongoose';
 import { useContainer } from 'class-validator';
 import { UserService } from 'src/modules/user/services/user.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
@@ -181,8 +180,5 @@ describe('E2E User Public', () => {
         } catch (e) {
             console.error(e);
         }
-
-        connection.close();
-        await app.close();
     });
 });
