@@ -6,7 +6,6 @@ import {
     E2E_USER_PROFILE_UPLOAD_URL,
     E2E_USER_PROFILE_URL,
 } from './user.constant';
-import { connection } from 'mongoose';
 import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { UserService } from 'src/modules/user/services/user.service';
@@ -228,8 +227,5 @@ describe('E2E User', () => {
         try {
             await userService.deleteOneById(user._id);
         } catch (e) {}
-
-        connection.close();
-        await app.close();
     });
 });

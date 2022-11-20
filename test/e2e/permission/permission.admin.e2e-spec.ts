@@ -10,7 +10,6 @@ import {
     E2E_PERMISSION_ADMIN_UPDATE_URL,
     E2E_PERMISSION_PAYLOAD_TEST,
 } from './permission.constant';
-import { connection } from 'mongoose';
 import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { AuthService } from 'src/common/auth/services/auth.service';
@@ -332,8 +331,5 @@ describe('E2E Permission Admin', () => {
         } catch (e) {
             console.error(e);
         }
-
-        connection.close();
-        await app.close();
     });
 });

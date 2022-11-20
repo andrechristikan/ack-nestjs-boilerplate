@@ -3,7 +3,6 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
 import { RouterModule } from '@nestjs/core';
-import { connection } from 'mongoose';
 import { useContainer } from 'class-validator';
 import { E2E_USER_LOGIN_URL } from './user.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
@@ -269,8 +268,5 @@ describe('E2E User Login', () => {
         } catch (e) {
             console.error(e);
         }
-
-        connection.close();
-        await app.close();
     });
 });

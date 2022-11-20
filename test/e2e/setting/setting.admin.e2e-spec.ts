@@ -2,7 +2,6 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { RouterModule } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { useContainer } from 'class-validator';
-import { connection } from 'mongoose';
 import {
     E2E_SETTING_ADMIN_PAYLOAD_TEST,
     E2E_SETTING_ADMIN_UPDATE_URL,
@@ -198,8 +197,5 @@ describe('E2E Setting Admin', () => {
         } catch (e) {
             console.error(e);
         }
-
-        connection.close();
-        await app.close();
     });
 });

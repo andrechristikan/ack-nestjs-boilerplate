@@ -54,8 +54,4 @@ describe('Aws S3 Integration', () => {
 
         return;
     });
-
-    afterAll(async () => {
-        await app.close();
-    });
 });

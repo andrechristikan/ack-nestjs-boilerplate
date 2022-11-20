@@ -2,7 +2,6 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { RouterModule } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { useContainer } from 'class-validator';
-import { connection } from 'mongoose';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
 import {
@@ -167,8 +166,5 @@ describe('E2E Setting', () => {
         } catch (e) {
             console.error(e);
         }
-
-        connection.close();
-        await app.close();
     });
 });
