@@ -42,7 +42,7 @@ export class DebuggerModule {
         return {
             module: DebuggerModule,
             providers,
-            exports: [],
+            exports: providers,
             controllers: [],
             imports,
         };

@@ -1,6 +1,6 @@
 {
   "name": "ack-nestjs-boilerplate",
-  "version": "3.6.5",
+  "version": "4.0.0",
   "description": "Ack NestJs Boilerplate",
   "repository": {
     "type": "git",
@@ -31,9 +31,9 @@
     "test:integration": "jest --config test/integration/jest.json --passWithNoTests --forceExit",
     "test:e2e": "jest --runInBand --config test/e2e/jest.json --verbose --passWithNoTests --forceExit",
     "prepare": "husky install",
-    "deadcode": "ts-prune --project tsconfig.json",
-    "deadcode:filter": "ts-prune --project tsconfig.json | grep -v '(used in module)'",
-    "deadcode:count": "ts-prune --project tsconfig.json | grep -v '(used in module)' | wc -l",
+    "deadcode": "ts-prune --project tsconfig.json --skip *.json",
+    "deadcode:filter": "ts-prune --project tsconfig.json --skip *.json | grep -v '(used in module)'",
+    "deadcode:count": "ts-prune --project tsconfig.json --skip *.json | grep -v '(used in module)' | wc -l",
     "spell": "yarn spell:src && yarn spell:test",
     "spell:src": "cspell lint --config cspell.json src/**/*.ts --color --gitignore --no-must-find-files --no-summary --no-progress || true",
     "spell:test": "cspell lint --config cspell.json test/**/*.ts --color --gitignore --no-must-find-files --no-summary --no-progress || true",
