@@ -9,10 +9,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
 import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
-import {
-    IApiKey,
-    IApiKeyRequestHashedData,
-} from 'src/common/api-key/interfaces/api-key.interface';
+import { IApiKey } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ENUM_PAGINATION_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
@@ -81,8 +78,6 @@ describe('ApiKeyService', () => {
                 description: faker.random.alphaNumeric(),
                 key: await apiKeyService.createKey(),
                 secret: await apiKeyService.createSecret(),
-                passphrase: await apiKeyService.createPassphrase(),
-                encryptionKey: await apiKeyService.createEncryptionKey(),
             };
 
             const result: IApiKey = await apiKeyService.createRaw(data);
@@ -315,17 +310,6 @@ describe('ApiKeyService', () => {
         });
     });
 
-    describe('createEncryptionKey', () => {
-        it('should return an success', async () => {
-            const result: string = await apiKeyService.createEncryptionKey();
-            jest.spyOn(apiKeyService, 'createEncryptionKey').mockImplementation(
-                async () => result
-            );
-
-            expect(await apiKeyService.createEncryptionKey()).toBe(result);
-        });
-    });
-
     describe('createSecret', () => {
         it('should return an success', async () => {
             const result: string = await apiKeyService.createSecret();
@@ -334,17 +318,6 @@ describe('ApiKeyService', () => {
             );
 
             expect(await apiKeyService.createSecret()).toBe(result);
-        });
-    });
-
-    describe('createPassphrase', () => {
-        it('should return an success', async () => {
-            const result: string = await apiKeyService.createPassphrase();
-            jest.spyOn(apiKeyService, 'createPassphrase').mockImplementation(
-                async () => result
-            );
-
-            expect(await apiKeyService.createPassphrase()).toBe(result);
         });
     });
 
@@ -406,85 +379,6 @@ describe('ApiKeyService', () => {
                 await apiKeyService.validateHashApiKey(
                     hashFormRequest,
                     hashWrong
-                )
-            ).toBe(result);
-        });
-    });
-
-    describe('decryptApiKey', () => {
-        it('should return an success', async () => {
-            const findOne: ApiKeyEntity = await apiKeyService.findOneById(
-                `${authApi._id}`
-            );
-            const timestamp = new Date().valueOf();
-            const apiHash = await apiKeyService.createHashApiKey(
-                findOne.key,
-                authApi.secret
-            );
-            const encryptedApiKey: string = await apiKeyService.encryptApiKey(
-                {
-                    key: findOne.key,
-                    timestamp,
-                    hash: apiHash,
-                },
-                findOne.encryptionKey,
-                authApi.passphrase
-            );
-
-            const result: IApiKeyRequestHashedData =
-                await apiKeyService.decryptApiKey(
-                    encryptedApiKey,
-                    findOne.encryptionKey,
-                    authApi.passphrase
-                );
-
-            jest.spyOn(apiKeyService, 'decryptApiKey').mockImplementation(
-                async () => result
-            );
-
-            expect(
-                await apiKeyService.decryptApiKey(
-                    encryptedApiKey,
-                    findOne.encryptionKey,
-                    authApi.passphrase
-                )
-            ).toBe(result);
-        });
-    });
-
-    describe('encryptApiKey', () => {
-        it('should return an success', async () => {
-            const findOne: ApiKeyEntity = await apiKeyService.findOneById(
-                `${authApi._id}`
-            );
-
-            const timestamp = new Date().valueOf();
-            const apiHash = await apiKeyService.createHashApiKey(
-                findOne.key,
-                authApi.secret
-            );
-            const result: string = await apiKeyService.encryptApiKey(
-                {
-                    key: findOne.key,
-                    timestamp,
-                    hash: apiHash,
-                },
-                findOne.encryptionKey,
-                authApi.passphrase
-            );
-            jest.spyOn(apiKeyService, 'encryptApiKey').mockImplementation(
-                async () => result
-            );
-
-            expect(
-                await apiKeyService.encryptApiKey(
-                    {
-                        key: findOne.key,
-                        timestamp,
-                        hash: apiHash,
-                    },
-                    findOne.encryptionKey,
-                    authApi.passphrase
                 )
             ).toBe(result);
         });

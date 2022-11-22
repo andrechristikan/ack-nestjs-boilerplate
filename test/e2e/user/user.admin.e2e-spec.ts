@@ -35,21 +35,20 @@ describe('E2E User Admin', () => {
     let userService: UserService;
     let authService: AuthService;
     let roleService: RoleService;
-    let helperDateService: HelperDateService;
-    let apiKeyService: ApiKeyService;
 
     const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
         .firstName()
         .toUpperCase()}${faker.datatype.number({ min: 1, max: 99 })}`;
 
-    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    let xApiKey: string;
-    let timestamp: number;
-
     let userData: Record<string, any>;
     let userExist: UserEntity;
 
     let accessToken: string;
+
+    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
+    const apiKeyHashed =
+        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
+    const xApiKey = `${apiKey}:${apiKeyHashed}`;
 
     beforeAll(async () => {
         process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
@@ -72,8 +71,6 @@ describe('E2E User Admin', () => {
         userService = app.get(UserService);
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
-        helperDateService = app.get(HelperDateService);
-        apiKeyService = app.get(ApiKeyService);
 
         const role: RoleEntity = await roleService.findOne({
             name: 'user',
@@ -118,26 +115,12 @@ describe('E2E User Admin', () => {
         const payload = await authService.createPayloadAccessToken(map, false);
         accessToken = await authService.createAccessToken(payload);
 
-        timestamp = helperDateService.timestamp();
-        const apiEncryption = await apiKeyService.encryptApiKey(
-            {
-                key: apiKey,
-                timestamp,
-                hash: 'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54',
-            },
-            'opbUwdiS1FBsrDUoPgZdx',
-            'cuwakimacojulawu'
-        );
-        xApiKey = `${apiKey}:${apiEncryption}`;
-
         await app.init();
     });
 
     it(`GET ${E2E_USER_ADMIN_LIST_URL} List Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_USER_ADMIN_LIST_URL)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-api-key', xApiKey);
 
@@ -151,8 +134,6 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 role: 'test_roles',
@@ -177,8 +158,6 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send(req);
 
@@ -194,8 +173,6 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 ...userData,
@@ -215,8 +192,6 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 ...userData,
@@ -236,8 +211,6 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 ...userData,
@@ -257,8 +230,6 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send(userData);
 
@@ -278,8 +249,6 @@ describe('E2E User Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
@@ -294,8 +263,6 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .get(E2E_USER_ADMIN_GET_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);
@@ -308,8 +275,6 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .put(E2E_USER_ADMIN_UPDATE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 firstName: [],
@@ -334,8 +299,6 @@ describe('E2E User Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 firstName: faker.name.firstName(),
@@ -355,8 +318,6 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .put(E2E_USER_ADMIN_UPDATE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 firstName: faker.name.firstName(),
@@ -379,8 +340,6 @@ describe('E2E User Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .expect(404);
 
@@ -396,8 +355,6 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_USER_ADMIN_INACTIVE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .expect(200);
 
@@ -411,8 +368,6 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_USER_ADMIN_INACTIVE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .expect(400);
 
@@ -433,8 +388,6 @@ describe('E2E User Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .expect(404);
 
@@ -450,8 +403,6 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_USER_ADMIN_ACTIVE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .expect(200);
 
@@ -465,8 +416,6 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_USER_ADMIN_ACTIVE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .expect(400);
 
@@ -487,8 +436,6 @@ describe('E2E User Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .expect(404);
 
@@ -504,8 +451,6 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .delete(E2E_USER_ADMIN_DELETE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .expect(200);
 

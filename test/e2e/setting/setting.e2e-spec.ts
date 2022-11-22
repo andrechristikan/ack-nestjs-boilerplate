@@ -22,12 +22,11 @@ import { DatabaseDefaultUUID } from 'src/common/database/constants/database.func
 describe('E2E Setting', () => {
     let app: INestApplication;
     let settingService: SettingService;
-    let helperDateService: HelperDateService;
-    let apiKeyService: ApiKeyService;
 
     const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    let xApiKey: string;
-    let timestamp: number;
+    const apiKeyHashed =
+        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
+    const xApiKey = `${apiKey}:${apiKeyHashed}`;
 
     let setting: SettingEntity;
     const settingName: string = faker.random.alphaNumeric(10);
@@ -51,8 +50,6 @@ describe('E2E Setting', () => {
         app = modRef.createNestApplication();
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         settingService = app.get(SettingService);
-        helperDateService = app.get(HelperDateService);
-        apiKeyService = app.get(ApiKeyService);
 
         await settingService.create({
             name: settingName,
@@ -61,26 +58,12 @@ describe('E2E Setting', () => {
         });
         setting = await settingService.findOneByName(settingName);
 
-        timestamp = helperDateService.timestamp();
-        const apiEncryption = await apiKeyService.encryptApiKey(
-            {
-                key: apiKey,
-                timestamp,
-                hash: 'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54',
-            },
-            'opbUwdiS1FBsrDUoPgZdx',
-            'cuwakimacojulawu'
-        );
-        xApiKey = `${apiKey}:${apiEncryption}`;
-
         await app.init();
     });
 
     it(`GET ${E2E_SETTING_COMMON_LIST_URL} List Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_SETTING_COMMON_LIST_URL)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);
@@ -97,8 +80,6 @@ describe('E2E Setting', () => {
                     `${DatabaseDefaultUUID()}`
                 )
             )
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
@@ -112,8 +93,6 @@ describe('E2E Setting', () => {
     it(`GET ${E2E_SETTING_COMMON_GET_URL} Get Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_SETTING_COMMON_GET_URL.replace(':_id', `${setting._id}`))
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);
@@ -130,8 +109,6 @@ describe('E2E Setting', () => {
                     faker.name.firstName()
                 )
             )
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
@@ -150,8 +127,6 @@ describe('E2E Setting', () => {
                     setting.name
                 )
             )
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);

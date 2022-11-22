@@ -4,7 +4,6 @@ import {
     IsOptional,
     IsString,
     MaxLength,
-    MinLength,
     ValidateIf,
 } from 'class-validator';
 
@@ -31,15 +30,4 @@ export class ApiKeyCreateRawDto extends PartialType(ApiKeyCreateDto) {
     @IsString()
     @MaxLength(100)
     secret: string;
-
-    @IsNotEmpty()
-    @IsString()
-    @MinLength(16)
-    @MaxLength(20)
-    passphrase: string;
-
-    @IsNotEmpty()
-    @IsString()
-    @MaxLength(100)
-    encryptionKey: string;
 }

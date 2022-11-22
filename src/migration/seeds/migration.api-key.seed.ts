@@ -21,8 +21,6 @@ export class MigrationApiKeySeed {
                 description: 'From migration',
                 key: 'qwertyuiop12345zxcvbnmkjh',
                 secret: '5124512412412asdasdasdasdasdASDASDASD',
-                passphrase: 'cuwakimacojulawu',
-                encryptionKey: 'opbUwdiS1FBsrDUoPgZdx',
             });
         } catch (err: any) {
             throw new Error(err.message);

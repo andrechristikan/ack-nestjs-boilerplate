@@ -5,7 +5,6 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
 
 @Injectable()
@@ -18,12 +17,12 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
         return super.canActivate(context);
     }
 
-    handleRequest<TUser = any>(
+    handleRequest<IApiKeyPayload = any>(
         err: Record<string, any>,
-        user: TUser,
+        apiKey: IApiKeyPayload,
         info: Error | string
-    ): TUser {
-        if (err || !user) {
+    ): IApiKeyPayload {
+        if (err || !apiKey) {
             if (
                 info instanceof Error &&
                 info.name === 'BadRequestError' &&
@@ -47,37 +46,10 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
             }
 
             const statusCode: number = this.helperNumberService.create(
-                info as string
+                err.message as string
             );
 
             if (
-                statusCode ===
-                ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_SCHEMA_INVALID_ERROR
-            ) {
-                throw new UnauthorizedException({
-                    statusCode:
-                        ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_SCHEMA_INVALID_ERROR,
-                    message: 'apiKey.error.schemaInvalid',
-                });
-            } else if (
-                statusCode ===
-                ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_TIMESTAMP_NOT_MATCH_WITH_REQUEST_ERROR
-            ) {
-                throw new UnauthorizedException({
-                    statusCode:
-                        ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_TIMESTAMP_NOT_MATCH_WITH_REQUEST_ERROR,
-                    message: 'apiKey.error.timestampNotMatchWithRequest',
-                });
-            } else if (
-                statusCode ===
-                ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR
-            ) {
-                throw new UnauthorizedException({
-                    statusCode:
-                        ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
-                    message: 'apiKey.error.timestampInvalid',
-                });
-            } else if (
                 statusCode ===
                 ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR
             ) {
@@ -104,6 +76,6 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
             });
         }
 
-        return user;
+        return apiKey;
     }
 }

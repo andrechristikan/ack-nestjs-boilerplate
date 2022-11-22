@@ -27,13 +27,7 @@ describe('E2E User Change Password', () => {
     let app: INestApplication;
     let userService: UserService;
     let authService: AuthService;
-    let apiKeyService: ApiKeyService;
     let roleService: RoleService;
-    let helperDateService: HelperDateService;
-
-    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    let xApiKey: string;
-    let timestamp: number;
 
     const password = `aaAA@!123`;
     const newPassword = `bbBB@!456`;
@@ -42,6 +36,11 @@ describe('E2E User Change Password', () => {
 
     let accessToken: string;
     let accessTokenNotFound: string;
+
+    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
+    const apiKeyHashed =
+        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
+    const xApiKey = `${apiKey}:${apiKeyHashed}`;
 
     beforeAll(async () => {
         process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
@@ -65,9 +64,7 @@ describe('E2E User Change Password', () => {
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
         authService = app.get(AuthService);
-        apiKeyService = app.get(ApiKeyService);
         roleService = app.get(RoleService);
-        helperDateService = app.get(HelperDateService);
 
         const role: RoleEntity = await roleService.findOne({
             name: 'user',
@@ -94,18 +91,6 @@ describe('E2E User Change Password', () => {
             }
         );
 
-        timestamp = helperDateService.timestamp();
-        const apiEncryption = await apiKeyService.encryptApiKey(
-            {
-                key: apiKey,
-                timestamp,
-                hash: 'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54',
-            },
-            'opbUwdiS1FBsrDUoPgZdx',
-            'cuwakimacojulawu'
-        );
-        xApiKey = `${apiKey}:${apiEncryption}`;
-
         const map = plainToInstance(UserPayloadSerialization, userPopulate);
         const payload = await authService.createPayloadAccessToken(map, false);
         const payloadNotFound = {
@@ -128,8 +113,6 @@ describe('E2E User Change Password', () => {
                 newPassword: '123',
             })
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
@@ -148,8 +131,6 @@ describe('E2E User Change Password', () => {
                 newPassword,
             })
             .set('Authorization', `Bearer ${accessTokenNotFound}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
@@ -168,8 +149,6 @@ describe('E2E User Change Password', () => {
                 newPassword,
             })
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
@@ -188,8 +167,6 @@ describe('E2E User Change Password', () => {
                 newPassword: password,
             })
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
@@ -208,8 +185,6 @@ describe('E2E User Change Password', () => {
                 newPassword,
             })
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);

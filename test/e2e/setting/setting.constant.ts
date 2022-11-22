@@ -14,9 +14,10 @@ export const E2E_SETTING_ADMIN_PAYLOAD_TEST = {
         accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
         permissions: [],
     },
-    phoneNumber: '628121231241',
-    email: 'test@mail.com',
+    phoneNumber: '628123123112',
+    email: 'test@kadence.com',
     _id: '613ee8e5b2fdd012b94484ca',
     rememberMe: false,
-    isActive: true,
+    loginWith: 'EMAIL',
+    loginDate: '2021-9-13',
 };

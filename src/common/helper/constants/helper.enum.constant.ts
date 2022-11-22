@@ -8,6 +8,8 @@ export enum ENUM_HELPER_DATE_FORMAT {
     ONLY_MONTH = 'MM',
     ONLY_DATE = 'DD',
     ISO_DATE = 'YYYY-MM-DDTHH:MM:SSZ',
+    DAY_LONG = 'ddd',
+    DAY_SHORT = 'dddd',
 }
 
 export enum ENUM_HELPER_DATE_DIFF {

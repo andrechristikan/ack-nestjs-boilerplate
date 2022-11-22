@@ -24,17 +24,16 @@ describe('E2E Setting Admin', () => {
     let app: INestApplication;
     let settingService: SettingService;
     let authService: AuthService;
-    let helperDateService: HelperDateService;
-    let apiKeyService: ApiKeyService;
-
-    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    let xApiKey: string;
-    let timestamp: number;
 
     let setting: SettingEntity;
     const settingName: string = faker.random.alphaNumeric(10);
 
     let accessToken: string;
+
+    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
+    const apiKeyHashed =
+        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
+    const xApiKey = `${apiKey}:${apiKeyHashed}`;
 
     beforeAll(async () => {
         process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
@@ -56,8 +55,6 @@ describe('E2E Setting Admin', () => {
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         authService = app.get(AuthService);
         settingService = app.get(SettingService);
-        helperDateService = app.get(HelperDateService);
-        apiKeyService = app.get(ApiKeyService);
 
         const payload = await authService.createPayloadAccessToken(
             {
@@ -75,18 +72,6 @@ describe('E2E Setting Admin', () => {
         });
         setting = await settingService.findOneByName(settingName);
 
-        timestamp = helperDateService.timestamp();
-        const apiEncryption = await apiKeyService.encryptApiKey(
-            {
-                key: apiKey,
-                timestamp,
-                hash: 'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54',
-            },
-            'opbUwdiS1FBsrDUoPgZdx',
-            'cuwakimacojulawu'
-        );
-        xApiKey = `${apiKey}:${apiEncryption}`;
-
         await app.init();
     });
 
@@ -98,8 +83,6 @@ describe('E2E Setting Admin', () => {
                     `${DatabaseDefaultUUID()}`
                 )
             )
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-api-key', xApiKey)
             .send({ value: 'true', type: ENUM_SETTING_DATA_TYPE.BOOLEAN });
@@ -115,8 +98,6 @@ describe('E2E Setting Admin', () => {
     it(`PUT ${E2E_SETTING_ADMIN_UPDATE_URL} Update Error Request`, async () => {
         const response = await request(app.getHttpServer())
             .put(E2E_SETTING_ADMIN_UPDATE_URL.replace(':_id', `${setting._id}`))
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-api-key', xApiKey)
             .send({
@@ -134,8 +115,6 @@ describe('E2E Setting Admin', () => {
     it(`PUT ${E2E_SETTING_ADMIN_UPDATE_URL} Update String Success`, async () => {
         const response = await request(app.getHttpServer())
             .put(E2E_SETTING_ADMIN_UPDATE_URL.replace(':_id', `${setting._id}`))
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-api-key', xApiKey)
             .send({ value: 'test', type: ENUM_SETTING_DATA_TYPE.STRING });
@@ -149,8 +128,6 @@ describe('E2E Setting Admin', () => {
     it(`PUT ${E2E_SETTING_ADMIN_UPDATE_URL} Update Number Success`, async () => {
         const response = await request(app.getHttpServer())
             .put(E2E_SETTING_ADMIN_UPDATE_URL.replace(':_id', `${setting._id}`))
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-api-key', xApiKey)
             .send({ value: 123, type: ENUM_SETTING_DATA_TYPE.NUMBER });
@@ -164,8 +141,6 @@ describe('E2E Setting Admin', () => {
     it(`PUT ${E2E_SETTING_ADMIN_UPDATE_URL} Update String Convert If Possible Success`, async () => {
         const response = await request(app.getHttpServer())
             .put(E2E_SETTING_ADMIN_UPDATE_URL.replace(':_id', `${setting._id}`))
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-api-key', xApiKey)
             .send({ value: 'false', type: ENUM_SETTING_DATA_TYPE.BOOLEAN });
@@ -179,8 +154,6 @@ describe('E2E Setting Admin', () => {
     it(`PUT ${E2E_SETTING_ADMIN_UPDATE_URL} Update Boolean Success`, async () => {
         const response = await request(app.getHttpServer())
             .put(E2E_SETTING_ADMIN_UPDATE_URL.replace(':_id', `${setting._id}`))
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-api-key', xApiKey)
             .send({ value: false, type: ENUM_SETTING_DATA_TYPE.BOOLEAN });

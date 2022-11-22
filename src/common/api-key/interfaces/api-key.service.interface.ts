@@ -3,17 +3,14 @@ import {
     ApiKeyCreateRawDto,
 } from 'src/common/api-key/dtos/api-key.create.dto';
 import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
-import {
-    IApiKey,
-    IApiKeyRequestHashedData,
-} from 'src/common/api-key/interfaces/api-key.interface';
+import { IApiKey } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import {
     IDatabaseCreateOptions,
-    IDatabaseSoftDeleteOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
+    IDatabaseSoftDeleteOptions,
 } from 'src/common/database/interfaces/database.interface';
 
 export interface IApiKeyService {
@@ -76,25 +73,9 @@ export interface IApiKeyService {
 
     createKey(): Promise<string>;
 
-    createEncryptionKey(): Promise<string>;
-
     createSecret(): Promise<string>;
-
-    createPassphrase(): Promise<string>;
 
     createHashApiKey(key: string, secret: string): Promise<string>;
 
     validateHashApiKey(hashFromRequest: string, hash: string): Promise<boolean>;
-
-    decryptApiKey(
-        encryptedApiKey: string,
-        encryptionKey: string,
-        passphrase: string
-    ): Promise<IApiKeyRequestHashedData>;
-
-    encryptApiKey(
-        data: IApiKeyRequestHashedData,
-        encryptionKey: string,
-        passphrase: string
-    ): Promise<string>;
 }

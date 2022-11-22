@@ -18,14 +18,7 @@ export const E2E_PERMISSION_PAYLOAD_TEST = {
     phoneNumber: '628123123112',
     email: 'test@kadence.com',
     _id: '613ee8e5b2fdd012b94484ca',
-    user: '6141b7d9b8822a162d427323',
     rememberMe: false,
     loginWith: 'EMAIL',
-    isActive: true,
-    verification: { email: true, phoneNumber: true },
-    agreement: {
-        tnc: true,
-    },
-    signUpFrom: 'MOBILE',
-    signUpDate: '2021-9-13',
+    loginDate: '2021-9-13',
 };

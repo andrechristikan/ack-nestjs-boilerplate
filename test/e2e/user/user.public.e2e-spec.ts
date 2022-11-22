@@ -16,16 +16,14 @@ import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 describe('E2E User Public', () => {
     let app: INestApplication;
     let userService: UserService;
-    let helperDateService: HelperDateService;
-    let apiKeyService: ApiKeyService;
 
     const password = `@!aaAA@123`;
+    let userData: Record<string, any>;
 
     const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    let xApiKey: string;
-    let timestamp: number;
-
-    let userData: Record<string, any>;
+    const apiKeyHashed =
+        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
+    const xApiKey = `${apiKey}:${apiKeyHashed}`;
 
     beforeAll(async () => {
         process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
@@ -46,8 +44,6 @@ describe('E2E User Public', () => {
         app = modRef.createNestApplication();
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
-        helperDateService = app.get(HelperDateService);
-        apiKeyService = app.get(ApiKeyService);
 
         userData = {
             firstName: faker.name.firstName(),
@@ -58,18 +54,6 @@ describe('E2E User Public', () => {
             username: faker.internet.userName(),
         };
 
-        timestamp = helperDateService.timestamp();
-        const apiEncryption = await apiKeyService.encryptApiKey(
-            {
-                key: apiKey,
-                timestamp,
-                hash: 'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54',
-            },
-            'opbUwdiS1FBsrDUoPgZdx',
-            'cuwakimacojulawu'
-        );
-        xApiKey = `${apiKey}:${apiEncryption}`;
-
         await app.init();
     });
 
@@ -77,8 +61,6 @@ describe('E2E User Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 username: faker.name.firstName().toLowerCase(),
@@ -99,8 +81,6 @@ describe('E2E User Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send(userData);
 
@@ -112,8 +92,6 @@ describe('E2E User Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 ...userData,
@@ -133,8 +111,6 @@ describe('E2E User Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 ...userData,
@@ -154,8 +130,6 @@ describe('E2E User Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 ...userData,

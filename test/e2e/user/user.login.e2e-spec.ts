@@ -27,21 +27,19 @@ describe('E2E User Login', () => {
     let authService: AuthService;
     let roleService: RoleService;
     let helperDateService: HelperDateService;
-    let apiKeyService: ApiKeyService;
 
     const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
         .firstName()
         .toUpperCase()}${faker.datatype.number({ min: 1, max: 99 })}`;
 
-    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    let xApiKey: string;
-    let timestamp: number;
-
     let user: UserEntity;
-
     const roleName = faker.random.alphaNumeric(5);
-
     let passwordExpired: Date;
+
+    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
+    const apiKeyHashed =
+        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
+    const xApiKey = `${apiKey}:${apiKeyHashed}`;
 
     beforeAll(async () => {
         process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
@@ -67,7 +65,6 @@ describe('E2E User Login', () => {
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
         helperDateService = app.get(HelperDateService);
-        apiKeyService = app.get(ApiKeyService);
 
         await roleService.create({
             name: roleName,
@@ -94,18 +91,6 @@ describe('E2E User Login', () => {
             role: `${role._id}`,
         });
 
-        timestamp = helperDateService.timestamp();
-        const apiEncryption = await apiKeyService.encryptApiKey(
-            {
-                key: apiKey,
-                timestamp,
-                hash: 'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54',
-            },
-            'opbUwdiS1FBsrDUoPgZdx',
-            'cuwakimacojulawu'
-        );
-        xApiKey = `${apiKey}:${apiEncryption}`;
-
         await app.init();
     });
 
@@ -113,8 +98,6 @@ describe('E2E User Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 username: [1231],
@@ -134,8 +117,6 @@ describe('E2E User Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 username: faker.internet.userName(),
@@ -155,8 +136,6 @@ describe('E2E User Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 username: user.username,
@@ -178,8 +157,6 @@ describe('E2E User Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 username: user.username,
@@ -202,8 +179,6 @@ describe('E2E User Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 username: user.username,
@@ -224,8 +199,6 @@ describe('E2E User Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 username: user.username,
@@ -244,8 +217,6 @@ describe('E2E User Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey)
             .send({
                 username: user.username,

@@ -13,8 +13,9 @@ export default registerAs(
                 ), // recommendation for production is 30m
                 notBeforeExpirationTime: ms(0), // keep it in zero value
 
-                encryptKey: process.env.AUTH_JWT_ACCESS_TOKEN_ENCRYPT_KEY,
-                encryptIv: process.env.AUTH_JWT_ACCESS_TOKEN_ENCRYPT_IV, // must int length 16
+                encryptKey:
+                    process.env.AUTH_JWT_PAYLOAD_ACCESS_TOKEN_ENCRYPT_KEY,
+                encryptIv: process.env.AUTH_JWT_PAYLOAD_ACCESS_TOKEN_ENCRYPT_IV, // must int length 16
             },
 
             refreshToken: {
@@ -33,8 +34,10 @@ export default registerAs(
                         '30m'
                 ), // recommendation for production is 30m
 
-                encryptKey: process.env.AUTH_JWT_REFRESH_TOKEN_ENCRYPT_KEY,
-                encryptIv: process.env.AUTH_JWT_REFRESH_TOKEN_ENCRYPT_IV, // must int length 16
+                encryptKey:
+                    process.env.AUTH_JWT_PAYLOAD_REFRESH_TOKEN_ENCRYPT_KEY,
+                encryptIv:
+                    process.env.AUTH_JWT_PAYLOAD_REFRESH_TOKEN_ENCRYPT_IV, // must int length 16
             },
 
             subject: process.env.AUTH_JWT_SUBJECT || 'ackDevelopment',
@@ -42,9 +45,7 @@ export default registerAs(
             issuer: process.env.AUTH_JWT_ISSUER || 'ack',
             prefixAuthorization: 'Bearer',
             payloadEncryption:
-                process.env.AUTH_JWT_PAYLOAD_ENCRYPTION === 'true'
-                    ? true
-                    : false,
+                process.env.AUTH_JWT_PAYLOAD_ENCRYPT === 'true' ? true : false,
         },
 
         password: {

@@ -29,15 +29,10 @@ describe('E2E User Refresh', () => {
     let authService: AuthService;
     let roleService: RoleService;
     let helperDateService: HelperDateService;
-    let apiKeyService: ApiKeyService;
 
     const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
         .firstName()
         .toUpperCase()}${faker.datatype.number({ min: 1, max: 99 })}`;
-
-    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    let xApiKey: string;
-    let timestamp: number;
 
     let user: UserEntity;
     let passwordExpired: Date;
@@ -45,6 +40,11 @@ describe('E2E User Refresh', () => {
 
     let refreshToken: string;
     let refreshTokenNotFound: string;
+
+    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
+    const apiKeyHashed =
+        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
+    const xApiKey = `${apiKey}:${apiKeyHashed}`;
 
     beforeAll(async () => {
         process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
@@ -70,7 +70,6 @@ describe('E2E User Refresh', () => {
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
         helperDateService = app.get(HelperDateService);
-        apiKeyService = app.get(ApiKeyService);
 
         const role: RoleEntity = await roleService.findOne({
             name: 'user',
@@ -122,18 +121,6 @@ describe('E2E User Refresh', () => {
             }
         );
 
-        timestamp = helperDateService.timestamp();
-        const apiEncryption = await apiKeyService.encryptApiKey(
-            {
-                key: apiKey,
-                timestamp,
-                hash: 'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54',
-            },
-            'opbUwdiS1FBsrDUoPgZdx',
-            'cuwakimacojulawu'
-        );
-        xApiKey = `${apiKey}:${apiEncryption}`;
-
         await app.init();
     });
 
@@ -141,8 +128,6 @@ describe('E2E User Refresh', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshTokenNotFound}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
@@ -158,8 +143,6 @@ describe('E2E User Refresh', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         await userService.active(user._id);
@@ -176,8 +159,6 @@ describe('E2E User Refresh', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         await roleService.active(`${user.role}`);
@@ -194,8 +175,6 @@ describe('E2E User Refresh', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         await userService.updatePasswordExpired(
@@ -214,8 +193,6 @@ describe('E2E User Refresh', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);

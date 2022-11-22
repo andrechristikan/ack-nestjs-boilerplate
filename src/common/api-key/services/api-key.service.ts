@@ -16,10 +16,7 @@ import {
     ApiKeyCreateDto,
     ApiKeyCreateRawDto,
 } from 'src/common/api-key/dtos/api-key.create.dto';
-import {
-    IApiKey,
-    IApiKeyRequestHashedData,
-} from 'src/common/api-key/interfaces/api-key.interface';
+import { IApiKey } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyRepository } from 'src/common/api-key/repository/repositories/api-key.repository';
@@ -109,8 +106,6 @@ export class ApiKeyService implements IApiKeyService {
     ): Promise<IApiKey> {
         const key = await this.createKey();
         const secret = await this.createSecret();
-        const passphrase = await this.createPassphrase();
-        const encryptionKey = await this.createEncryptionKey();
         const hash: string = await this.createHashApiKey(key, secret);
 
         const create: ApiKeyEntity = new ApiKeyEntity();
@@ -118,8 +113,6 @@ export class ApiKeyService implements IApiKeyService {
         create.description = description;
         create.key = key;
         create.hash = hash;
-        create.passphrase = passphrase;
-        create.encryptionKey = encryptionKey;
         create.isActive = true;
 
         const created = await this.apiKeyRepository.create<ApiKeyEntity>(
@@ -130,20 +123,11 @@ export class ApiKeyService implements IApiKeyService {
         return {
             _id: created._id,
             secret,
-            passphrase,
-            encryptionKey,
         };
     }
 
     async createRaw(
-        {
-            name,
-            description,
-            key,
-            secret,
-            passphrase,
-            encryptionKey,
-        }: ApiKeyCreateRawDto,
+        { name, description, key, secret }: ApiKeyCreateRawDto,
         options?: IDatabaseCreateOptions
     ): Promise<IApiKey> {
         const hash: string = await this.createHashApiKey(key, secret);
@@ -153,8 +137,6 @@ export class ApiKeyService implements IApiKeyService {
         create.description = description;
         create.key = key;
         create.hash = hash;
-        create.passphrase = passphrase;
-        create.encryptionKey = encryptionKey;
         create.isActive = true;
 
         const created = await this.apiKeyRepository.create<ApiKeyEntity>(
@@ -165,8 +147,6 @@ export class ApiKeyService implements IApiKeyService {
         return {
             _id: created._id,
             secret,
-            passphrase,
-            encryptionKey,
         };
     }
 
@@ -191,13 +171,9 @@ export class ApiKeyService implements IApiKeyService {
         );
         const secret: string = await this.createSecret();
         const hash: string = await this.createHashApiKey(apiKey.key, secret);
-        const passphrase: string = await this.createPassphrase();
-        const encryptionKey: string = await this.createEncryptionKey();
 
         const update = {
             hash,
-            passphrase,
-            encryptionKey,
         };
 
         await this.apiKeyRepository.updateOneById(_id, update, options);
@@ -205,8 +181,6 @@ export class ApiKeyService implements IApiKeyService {
         return {
             _id: apiKey._id,
             secret,
-            passphrase,
-            encryptionKey,
         };
     }
 
@@ -232,24 +206,10 @@ export class ApiKeyService implements IApiKeyService {
         });
     }
 
-    async createEncryptionKey(): Promise<string> {
-        return this.helperStringService.random(15, {
-            safe: false,
-            upperCase: true,
-            prefix: `${this.env}_`,
-        });
-    }
-
     async createSecret(): Promise<string> {
         return this.helperStringService.random(35, {
             safe: false,
             upperCase: true,
-        });
-    }
-
-    async createPassphrase(): Promise<string> {
-        return this.helperStringService.random(16, {
-            safe: true,
         });
     }
 
@@ -262,31 +222,5 @@ export class ApiKeyService implements IApiKeyService {
         hash: string
     ): Promise<boolean> {
         return this.helperHashService.sha256Compare(hashFromRequest, hash);
-    }
-
-    async decryptApiKey(
-        encryptedApiKey: string,
-        encryptionKey: string,
-        passphrase: string
-    ): Promise<IApiKeyRequestHashedData> {
-        const decrypted = this.helperEncryptionService.aes256Decrypt(
-            encryptedApiKey,
-            encryptionKey,
-            passphrase
-        );
-
-        return decrypted as IApiKeyRequestHashedData;
-    }
-
-    async encryptApiKey(
-        data: IApiKeyRequestHashedData,
-        encryptionKey: string,
-        passphrase: string
-    ): Promise<string> {
-        return this.helperEncryptionService.aes256Encrypt(
-            data,
-            encryptionKey,
-            passphrase
-        );
     }
 }

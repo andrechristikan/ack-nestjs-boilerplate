@@ -19,7 +19,6 @@ import {
 } from './http-debugger/http-debugger.middleware';
 import { HelmetMiddleware } from './helmet/helmet.middleware';
 import { RateLimitMiddleware } from './rate-limit/rate-limit.middleware';
-import { UserAgentMiddleware } from './user-agent/user-agent.middleware';
 import { RequestIdMiddleware } from './request-id/request-id.middleware';
 import { ResponseTimeMiddleware } from './response-time/response-time.middleware';
 import { CustomLanguageMiddleware } from './custom-language/custom-language.middleware';
@@ -43,7 +42,6 @@ export class MiddlewareModule implements NestModule {
                 HttpDebuggerWriteIntoFileMiddleware,
                 HelmetMiddleware,
                 RateLimitMiddleware,
-                UserAgentMiddleware,
                 CustomLanguageMiddleware,
                 ResponseTimeMiddleware,
                 VersionMiddleware

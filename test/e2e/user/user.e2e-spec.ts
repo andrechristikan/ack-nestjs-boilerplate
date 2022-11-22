@@ -29,8 +29,6 @@ describe('E2E User', () => {
     let userService: UserService;
     let authService: AuthService;
     let roleService: RoleService;
-    let helperDateService: HelperDateService;
-    let apiKeyService: ApiKeyService;
 
     let user: UserEntity;
 
@@ -38,8 +36,9 @@ describe('E2E User', () => {
     let accessTokenNotFound: string;
 
     const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    let xApiKey: string;
-    let timestamp: number;
+    const apiKeyHashed =
+        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
+    const xApiKey = `${apiKey}:${apiKeyHashed}`;
 
     beforeAll(async () => {
         process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
@@ -64,8 +63,6 @@ describe('E2E User', () => {
         userService = app.get(UserService);
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
-        helperDateService = app.get(HelperDateService);
-        apiKeyService = app.get(ApiKeyService);
 
         const role: RoleEntity = await roleService.findOne({
             name: 'user',
@@ -106,18 +103,6 @@ describe('E2E User', () => {
             payloadNotFound
         );
 
-        timestamp = helperDateService.timestamp();
-        const apiEncryption = await apiKeyService.encryptApiKey(
-            {
-                key: apiKey,
-                timestamp,
-                hash: 'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54',
-            },
-            'opbUwdiS1FBsrDUoPgZdx',
-            'cuwakimacojulawu'
-        );
-        xApiKey = `${apiKey}:${apiEncryption}`;
-
         await app.init();
     });
 
@@ -125,8 +110,6 @@ describe('E2E User', () => {
         const response = await request(app.getHttpServer())
             .get(E2E_USER_PROFILE_URL)
             .set('Authorization', `Bearer ${accessTokenNotFound}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
@@ -141,8 +124,6 @@ describe('E2E User', () => {
         const response = await request(app.getHttpServer())
             .get(E2E_USER_PROFILE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);
@@ -157,8 +138,6 @@ describe('E2E User', () => {
             .attach('file', './test/e2e/user/files/test.txt')
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
@@ -175,8 +154,6 @@ describe('E2E User', () => {
             .attach('file', './test/e2e/user/files/test.txt')
             .set('Authorization', `Bearer ${accessTokenNotFound}`)
             .set('Content-Type', 'multipart/form-data')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
@@ -194,8 +171,6 @@ describe('E2E User', () => {
             .attach('file', './test/e2e/user/files/medium.jpg')
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.PAYLOAD_TOO_LARGE);
@@ -213,8 +188,6 @@ describe('E2E User', () => {
             .attach('file', './test/e2e/user/files/small.jpg')
             .set('Authorization', `Bearer ${accessToken}`)
             .set('Content-Type', 'multipart/form-data')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
             .set('x-api-key', xApiKey);
 
         expect(response.status).toEqual(HttpStatus.OK);

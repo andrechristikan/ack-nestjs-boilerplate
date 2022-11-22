@@ -20,6 +20,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
 import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 
 @Module({
     controllers: [],
@@ -34,7 +35,7 @@ import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database
             validationSchema: Joi.object({
                 APP_NAME: Joi.string().required(),
                 APP_ENV: Joi.string()
-                    .valid('development', 'production')
+                    .valid(...Object.values(ENUM_APP_ENVIRONMENT))
                     .default('development')
                     .required(),
                 APP_LANGUAGE: Joi.string()
@@ -83,10 +84,6 @@ import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database
                 DATABASE_DEBUG: Joi.boolean().default(false).required(),
                 DATABASE_OPTIONS: Joi.string().allow(null, '').optional(),
 
-                AUTH_JWT_PAYLOAD_ENCRYPTION: Joi.boolean()
-                    .default(false)
-                    .required(),
-
                 AUTH_JWT_SUBJECT: Joi.string().required(),
                 AUTH_JWT_AUDIENCE: Joi.string().required(),
                 AUTH_JWT_ISSUER: Joi.string().required(),
@@ -99,16 +96,6 @@ import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database
                 AUTH_JWT_ACCESS_TOKEN_EXPIRED: Joi.string()
                     .default('30m')
                     .required(),
-
-                AUTH_JWT_ACCESS_TOKEN_ENCRYPT_KEY: Joi.string()
-                    .min(20)
-                    .max(50)
-                    .required(),
-                AUTH_JWT_ACCESS_TOKEN_ENCRYPT_IV: Joi.string()
-                    .min(16)
-                    .max(50)
-                    .required(),
-
                 AUTH_JWT_REFRESH_TOKEN_SECRET_KEY: Joi.string()
                     .alphanum()
                     .min(5)
@@ -123,14 +110,29 @@ import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database
                 AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION:
                     Joi.string().required(),
 
-                AUTH_JWT_REFRESH_TOKEN_ENCRYPT_KEY: Joi.string()
+                AUTH_JWT_PAYLOAD_ENCRYPT: Joi.boolean()
+                    .default(false)
+                    .required(),
+                AUTH_JWT_PAYLOAD_ACCESS_TOKEN_ENCRYPT_KEY: Joi.string()
+                    .allow(null, '')
                     .min(20)
                     .max(50)
-                    .required(),
-                AUTH_JWT_REFRESH_TOKEN_ENCRYPT_IV: Joi.string()
+                    .optional(),
+                AUTH_JWT_PAYLOAD_ACCESS_TOKEN_ENCRYPT_IV: Joi.string()
+                    .allow(null, '')
                     .min(16)
                     .max(50)
-                    .required(),
+                    .optional(),
+                AUTH_JWT_PAYLOAD_REFRESH_TOKEN_ENCRYPT_KEY: Joi.string()
+                    .allow(null, '')
+                    .min(20)
+                    .max(50)
+                    .optional(),
+                AUTH_JWT_PAYLOAD_REFRESH_TOKEN_ENCRYPT_IV: Joi.string()
+                    .allow(null, '')
+                    .min(16)
+                    .max(50)
+                    .optional(),
 
                 AWS_CREDENTIAL_KEY: Joi.string().allow(null, '').optional(),
                 AWS_CREDENTIAL_SECRET: Joi.string().allow(null, '').optional(),
