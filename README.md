@@ -21,6 +21,12 @@
 
 *You can [request feature][ack-issues] or [report bug][ack-issues] with following this link*
 
+### Other Repo
+
+* [Mongoose Mini Version][ack-mongoose] : Mini version
+* [Typeorm Integration][ack-typeorm] : Mini version with typeorm integration
+* [Kafka Integration][ack-kafka] : Integration with Apache Kafka
+
 ## Table of contents
 
 * [Important](#important)
@@ -69,11 +75,12 @@ Next development
 * [x] Optimize Unit Testing
 * [x] Make serverless separate repo
 * [x] Optimize Swagger
-* [ ] Export to excel and Import from excel add options to background process
+* [ ] Implement 0Auth 2 Grant Type
+* [ ] Reduce the payload of access token
+* [ ] Authorization mechanism
 * [ ] SSO Google
 * [ ] AuthApi Controller
 * [ ] Update Documentation, include an diagram for easier comprehension
-* [ ] OAuth2 Client Credentials
 * [ ] Maybe will adopt [CQRS][ref-nestjs-cqrs]
 
 ## Build with
@@ -662,6 +669,12 @@ If your code behind commit with the original, please update your code and resolv
 [ack-stars]: https://github.com/andrechristikan/ack-nestjs-boilerplate/stargazers
 [ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate/network/members
 [ack-contributors]: https://github.com/andrechristikan/ack-nestjs-boilerplate/graphs/contributors
+
+<!-- Other Repo Links -->
+[ack]: https://github.com/andrechristikan/ack-nestjs-boilerplate
+[ack-typeorm]: https://github.com/andrechristikan/nestjs-boilerplate-typeorm
+[ack-mongoose]: https://github.com/andrechristikan/ack-nestjs-boilerplate-kafka
+[ack-kafka]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose
 
 <!-- license -->
 [license]: LICENSE.md
