@@ -92,7 +92,7 @@ export interface IDatabaseRepository<T> {
         options?: IDatabaseCreateManyOptions<any>
     ): Promise<boolean>;
 
-    deleteManyById(
+    deleteManyByIds(
         _id: string[],
         options?: IDatabaseManyOptions<any>
     ): Promise<boolean>;
@@ -102,7 +102,7 @@ export interface IDatabaseRepository<T> {
         options?: IDatabaseManyOptions<any>
     ): Promise<boolean>;
 
-    softDeleteManyById(
+    softDeleteManyByIds(
         _id: string[],
         options?: IDatabaseSoftDeleteManyOptions<any>
     ): Promise<boolean>;
@@ -112,7 +112,7 @@ export interface IDatabaseRepository<T> {
         options?: IDatabaseSoftDeleteManyOptions<any>
     ): Promise<boolean>;
 
-    restoreManyById(
+    restoreManyByIds(
         _id: string[],
         options?: IDatabaseRestoreManyOptions<any>
     ): Promise<boolean>;

@@ -4,7 +4,9 @@ import {
     PipelineStage,
     PopulateOptions,
     SortOrder,
+    Types,
 } from 'mongoose';
+import { DatabaseBaseRepositoryAbstract } from 'src/common/database/abstracts/database.base-repository.abstract';
 import { DATABASE_DELETED_AT_FIELD_NAME } from 'src/common/database/constants/database.constant';
 import {
     IDatabaseCreateOptions,
@@ -25,7 +27,8 @@ import { IDatabaseRepository } from 'src/common/database/interfaces/database.rep
 import { ENUM_PAGINATION_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { IPaginationSort } from 'src/common/pagination/interfaces/pagination.interface';
 
-export abstract class DatabaseMongoRepositoryAbstract<T>
+export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
+    extends DatabaseBaseRepositoryAbstract<T>
     implements IDatabaseRepository<T>
 {
     protected _repository: Model<T>;
@@ -35,6 +38,8 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         repository: Model<T>,
         options?: PopulateOptions | PopulateOptions[]
     ) {
+        super();
+
         this._repository = repository;
         this._joinOnFind = options;
     }
@@ -197,7 +202,12 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         const exist = this._repository.exists({
             ...find,
             _id: {
-                $nin: options && options.excludeId ? options.excludeId : [],
+                $nin:
+                    options && options.excludeId
+                        ? options.excludeId.map(
+                              (val) => new Types.ObjectId(val)
+                          )
+                        : [],
             },
         });
 
@@ -237,7 +247,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
     ): Promise<T> {
         const dataCreate: Record<string, any> = data;
         if (options && options._id) {
-            dataCreate._id = options._id;
+            dataCreate._id = new Types.ObjectId(options._id);
         }
 
         const create = await this._repository.create([dataCreate], {
@@ -490,14 +500,14 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         }
     }
 
-    async deleteManyById(
+    async deleteManyByIds(
         _id: string[],
         options?: IDatabaseManyOptions<ClientSession>
     ): Promise<boolean> {
         const del = this._repository
             .deleteMany({
                 _id: {
-                    $in: _id,
+                    $in: _id.map((val) => new Types.ObjectId(val)),
                 },
             })
             .where(DATABASE_DELETED_AT_FIELD_NAME)
@@ -552,7 +562,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         }
     }
 
-    async softDeleteManyById(
+    async softDeleteManyByIds(
         _id: string[],
         options?: IDatabaseSoftDeleteManyOptions<ClientSession>
     ): Promise<boolean> {
@@ -560,7 +570,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             .updateMany(
                 {
                     _id: {
-                        $in: _id,
+                        $in: _id.map((val) => new Types.ObjectId(val)),
                     },
                 },
                 {
@@ -625,7 +635,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
         }
     }
 
-    async restoreManyById(
+    async restoreManyByIds(
         _id: string[],
         options?: IDatabaseRestoreManyOptions<ClientSession>
     ): Promise<boolean> {
@@ -633,7 +643,7 @@ export abstract class DatabaseMongoRepositoryAbstract<T>
             .updateMany(
                 {
                     _id: {
-                        $in: _id,
+                        $in: _id.map((val) => new Types.ObjectId(val)),
                     },
                 },
                 {

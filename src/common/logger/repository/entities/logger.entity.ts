@@ -1,7 +1,7 @@
 import { Prop, SchemaFactory } from '@nestjs/mongoose';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
-import { DatabaseMongoEntityAbstract } from 'src/common/database/abstracts/database.mongo-entity.abstract';
+import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/database.mongo-uuid-entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import {
     ENUM_LOGGER_ACTION,
@@ -12,7 +12,7 @@ import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.c
 export const LoggerDatabaseName = 'loggers';
 
 @DatabaseEntity({ collection: LoggerDatabaseName })
-export class LoggerEntity extends DatabaseMongoEntityAbstract {
+export class LoggerEntity extends DatabaseMongoUUIDEntityAbstract {
     @Prop({
         required: true,
         enum: ENUM_LOGGER_LEVEL,
