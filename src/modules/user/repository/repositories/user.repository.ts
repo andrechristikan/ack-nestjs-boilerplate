@@ -1,17 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { DatabaseMongoRepositoryAbstract } from 'src/common/database/abstracts/database.mongo-repository.abstract';
+import { DatabaseMongoUUIDRepositoryAbstract } from 'src/common/database/abstracts/mongo/repositories/database.mongo.uuid.repository.abstract';
 import { DatabaseModel } from 'src/common/database/decorators/database.decorator';
-import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
 @Injectable()
-export class UserRepository
-    extends DatabaseMongoRepositoryAbstract<UserEntity>
-    implements IDatabaseRepository<UserEntity>
-{
+export class UserRepository extends DatabaseMongoUUIDRepositoryAbstract<UserEntity> {
     constructor(
         @DatabaseModel(UserEntity.name)
         private readonly userModel: Model<UserEntity>

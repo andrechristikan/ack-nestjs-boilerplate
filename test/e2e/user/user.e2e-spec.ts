@@ -10,7 +10,6 @@ import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
@@ -18,7 +17,6 @@ import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.stat
 import { RoleService } from 'src/modules/role/services/role.service';
 import { RoleModule } from 'src/modules/role/role.module';
 import { PermissionModule } from 'src/modules/permission/permission.module';
-import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { IUserEntity } from 'src/modules/user/interfaces/user.interface';

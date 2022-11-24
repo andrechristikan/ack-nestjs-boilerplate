@@ -1,12 +1,12 @@
 import { Prop, SchemaFactory } from '@nestjs/mongoose';
-import { DatabaseMongoEntityAbstract } from 'src/common/database/abstracts/database.mongo-entity.abstract';
+import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
 
 export const SettingDatabaseName = 'settings';
 
 @DatabaseEntity({ collection: SettingDatabaseName })
-export class SettingEntity extends DatabaseMongoEntityAbstract {
+export class SettingEntity extends DatabaseMongoUUIDEntityAbstract {
     @Prop({
         required: true,
         index: true,

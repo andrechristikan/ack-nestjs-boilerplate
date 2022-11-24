@@ -1,13 +1,12 @@
 import { Prop, SchemaFactory } from '@nestjs/mongoose';
 import { CallbackWithoutResultAndOptionalError } from 'mongoose';
-
-import { DatabaseMongoEntityAbstract } from 'src/common/database/abstracts/database.mongo-entity.abstract';
+import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 
 export const ApiKeyDatabaseName = 'apikeys';
 
 @DatabaseEntity({ collection: ApiKeyDatabaseName })
-export class ApiKeyEntity extends DatabaseMongoEntityAbstract {
+export class ApiKeyEntity extends DatabaseMongoUUIDEntityAbstract {
     @Prop({
         required: true,
         index: true,

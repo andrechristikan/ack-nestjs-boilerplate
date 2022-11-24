@@ -1,7 +1,6 @@
 import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { faker } from '@faker-js/faker';
 import {
     E2E_ROLE_ADMIN_ACTIVE_URL,
     E2E_ROLE_ADMIN_CREATE_URL,
@@ -16,7 +15,6 @@ import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
@@ -26,7 +24,6 @@ import { RoleService } from 'src/modules/role/services/role.service';
 import { RoleBulkService } from 'src/modules/role/services/role.bulk.service';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';

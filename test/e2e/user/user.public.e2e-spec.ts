@@ -5,13 +5,11 @@ import { faker } from '@faker-js/faker';
 import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { UserService } from 'src/modules/user/services/user.service';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesPublicModule } from 'src/router/routes/routes.public.module';
 import { E2E_USER_PUBLIC_SIGN_UP_URL } from './user.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
-import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 
 describe('E2E User Public', () => {
     let app: INestApplication;

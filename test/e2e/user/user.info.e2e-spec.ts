@@ -2,13 +2,10 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { RouterModule } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { faker } from '@faker-js/faker';
 import { useContainer } from 'class-validator';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { CommonModule } from 'src/common/common.module';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { RoutesModule } from 'src/router/routes/routes.module';
-import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import {
     E2E_USER_INFO,
     E2E_USER_PAYLOAD_TEST,

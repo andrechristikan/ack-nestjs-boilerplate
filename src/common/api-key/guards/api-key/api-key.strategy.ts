@@ -89,7 +89,7 @@ export class ApiKeyKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
         }
 
         req.apiKey = {
-            _id: authApi._id,
+            _id: `${authApi._id}`,
             key: authApi.key,
             name: authApi.name,
         };

@@ -1,14 +1,14 @@
 import { Prop, SchemaFactory } from '@nestjs/mongoose';
 import { CallbackWithoutResultAndOptionalError } from 'mongoose';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
-import { DatabaseMongoEntityAbstract } from 'src/common/database/abstracts/database.mongo-entity.abstract';
+import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 
 export const UserDatabaseName = 'users';
 
 @DatabaseEntity({ collection: UserDatabaseName })
-export class UserEntity extends DatabaseMongoEntityAbstract {
+export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     @Prop({
         required: true,
         index: true,

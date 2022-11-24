@@ -15,7 +15,6 @@ import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
 import { plainToInstance } from 'class-transformer';
@@ -24,7 +23,6 @@ import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.sta
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { IUserEntity } from 'src/modules/user/interfaces/user.interface';

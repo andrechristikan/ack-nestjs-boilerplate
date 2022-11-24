@@ -17,7 +17,6 @@ import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { RoleModule } from 'src/modules/role/role.module';
 import { PermissionModule } from 'src/modules/permission/permission.module';
-import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';

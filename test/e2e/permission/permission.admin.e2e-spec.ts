@@ -1,7 +1,6 @@
 import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { faker } from '@faker-js/faker';
 import {
     E2E_PERMISSION_ADMIN_ACTIVE_URL,
     E2E_PERMISSION_ADMIN_GET_URL,
@@ -14,13 +13,11 @@ import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
 import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/constants/permission.status-code.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
-import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
