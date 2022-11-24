@@ -40,7 +40,7 @@ export interface IDatabaseRepository<T> {
         options?: IDatabaseExistOptions<any>
     ): Promise<boolean>;
 
-    raw<N, R>(rawOperation: R): Promise<N[]>;
+    raw<N, R = any>(rawOperation: R): Promise<N[]>;
 
     create<N>(data: N, options?: IDatabaseCreateOptions<any>): Promise<T>;
 
