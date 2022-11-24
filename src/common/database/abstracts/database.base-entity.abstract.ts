@@ -4,7 +4,7 @@ import {
     DATABASE_UPDATED_AT_FIELD_NAME,
 } from 'src/common/database/constants/database.constant';
 
-export abstract class DatabaseBaseEntityAbstract<T> {
+export abstract class DatabaseBaseEntityAbstract<T = any> {
     abstract _id: T;
     abstract [DATABASE_DELETED_AT_FIELD_NAME]?: Date;
     abstract [DATABASE_CREATED_AT_FIELD_NAME]?: Date;

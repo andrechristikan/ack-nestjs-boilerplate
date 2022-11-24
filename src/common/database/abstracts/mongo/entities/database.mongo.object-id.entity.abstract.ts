@@ -1,18 +1,23 @@
 import { Prop } from '@nestjs/mongoose';
+import { Types } from 'mongoose';
 import { DatabaseBaseEntityAbstract } from 'src/common/database/abstracts/database.base-entity.abstract';
 import {
     DATABASE_CREATED_AT_FIELD_NAME,
     DATABASE_DELETED_AT_FIELD_NAME,
     DATABASE_UPDATED_AT_FIELD_NAME,
 } from 'src/common/database/constants/database.constant';
-import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
+import { DatabaseDefaultObjectId } from 'src/common/database/constants/database.function.constant';
+import { IDatabaseBaseEntity } from 'src/common/database/interfaces/database.entity.interface';
 
-export abstract class DatabaseMongoUUIDEntityAbstract extends DatabaseBaseEntityAbstract<string> {
+export abstract class DatabaseMongoObjectIdEntityAbstract
+    extends DatabaseBaseEntityAbstract
+    implements IDatabaseBaseEntity<Types.ObjectId>
+{
     @Prop({
-        type: String,
-        default: DatabaseDefaultUUID,
+        type: Types.ObjectId,
+        default: DatabaseDefaultObjectId,
     })
-    _id: string;
+    _id: Types.ObjectId;
 
     @Prop({
         required: false,

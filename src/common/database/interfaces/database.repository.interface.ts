@@ -128,5 +128,5 @@ export interface IDatabaseRepository<T> {
         options?: IDatabaseManyOptions<any>
     ): Promise<boolean>;
 
-    model<N>(): Promise<N>;
+    model<N = T>(): Promise<N>;
 }

@@ -1,7 +1,7 @@
 import { Prop, SchemaFactory } from '@nestjs/mongoose';
 import { CallbackWithoutResultAndOptionalError } from 'mongoose';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
-import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/database.mongo-uuid-entity.abstract';
+import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 

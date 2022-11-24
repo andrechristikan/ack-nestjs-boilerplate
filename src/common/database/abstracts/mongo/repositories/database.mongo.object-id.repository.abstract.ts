@@ -246,9 +246,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
         options?: IDatabaseCreateOptions<ClientSession>
     ): Promise<T> {
         const dataCreate: Record<string, any> = data;
-        if (options && options._id) {
-            dataCreate._id = new Types.ObjectId(options._id);
-        }
+        dataCreate._id = new Types.ObjectId(options && options._id);
 
         const create = await this._repository.create([dataCreate], {
             session: options ? options.session : undefined,
@@ -488,7 +486,14 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
         data: N[],
         options?: IDatabaseCreateManyOptions<ClientSession>
     ): Promise<boolean> {
-        const create = this._repository.insertMany(data, {
+        const dataCreate: Record<string, any>[] = data.map(
+            (val: Record<string, any>) => ({
+                ...val,
+                _id: new Types.ObjectId(val._id),
+            })
+        );
+
+        const create = this._repository.insertMany(dataCreate, {
             session: options ? options.session : undefined,
         });
 
