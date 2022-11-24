@@ -1,4 +1,3 @@
-import { ClientSession, PipelineStage } from 'mongoose';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,
@@ -18,117 +17,117 @@ import {
 export abstract class DatabaseBaseRepositoryAbstract<T> {
     abstract findAll<Y = T>(
         find?: Record<string, any> | Record<string, any>[],
-        options?: IDatabaseFindAllOptions<ClientSession>
+        options?: IDatabaseFindAllOptions<any>
     ): Promise<Y[]>;
 
     abstract findOne<Y = T>(
         find: Record<string, any> | Record<string, any>[],
-        options?: IDatabaseFindOneOptions<ClientSession>
+        options?: IDatabaseFindOneOptions<any>
     ): Promise<Y>;
 
     abstract findOneById<Y = T>(
         _id: string,
-        options?: IDatabaseFindOneOptions<ClientSession>
+        options?: IDatabaseFindOneOptions<any>
     ): Promise<Y>;
 
     abstract getTotal(
         find?: Record<string, any> | Record<string, any>[],
-        options?: IDatabaseOptions<ClientSession>
+        options?: IDatabaseOptions<any>
     ): Promise<number>;
 
     abstract exists(
         find: Record<string, any> | Record<string, any>[],
-        options?: IDatabaseExistOptions<ClientSession>
+        options?: IDatabaseExistOptions<any>
     ): Promise<boolean>;
 
-    abstract raw<N, R = PipelineStage[]>(rawOperation: R): Promise<N[]>;
+    abstract raw<N, R = any>(rawOperation: R): Promise<N[]>;
 
     abstract create<N>(
         data: N,
-        options?: IDatabaseCreateOptions<ClientSession>
+        options?: IDatabaseCreateOptions<any>
     ): Promise<T>;
 
     abstract updateOneById<N>(
         _id: string,
         data: N,
-        options?: IDatabaseUpdateOptions<ClientSession>
+        options?: IDatabaseUpdateOptions<any>
     ): Promise<T>;
 
     abstract updateOne<N>(
         find: Record<string, any> | Record<string, any>[],
         data: N,
-        options?: IDatabaseUpdateOptions<ClientSession>
+        options?: IDatabaseUpdateOptions<any>
     ): Promise<T>;
 
     abstract deleteOne(
         find: Record<string, any> | Record<string, any>[],
-        options?: IDatabaseDeleteOptions<ClientSession>
+        options?: IDatabaseDeleteOptions<any>
     ): Promise<T>;
 
     abstract deleteOneById(
         _id: string,
-        options?: IDatabaseDeleteOptions<ClientSession>
+        options?: IDatabaseDeleteOptions<any>
     ): Promise<T>;
 
     abstract softDeleteOneById(
         _id: string,
-        options?: IDatabaseSoftDeleteOptions<ClientSession>
+        options?: IDatabaseSoftDeleteOptions<any>
     ): Promise<T>;
 
     abstract softDeleteOne(
         find: Record<string, any> | Record<string, any>[],
-        options?: IDatabaseSoftDeleteOptions<ClientSession>
+        options?: IDatabaseSoftDeleteOptions<any>
     ): Promise<T>;
 
     abstract restoreOneById(
         _id: string,
-        options?: IDatabaseRestoreOptions<ClientSession>
+        options?: IDatabaseRestoreOptions<any>
     ): Promise<T>;
 
     abstract restoreOne(
         find: Record<string, any> | Record<string, any>[],
-        options?: IDatabaseRestoreOptions<ClientSession>
+        options?: IDatabaseRestoreOptions<any>
     ): Promise<T>;
 
     abstract createMany<N>(
         data: N[],
-        options?: IDatabaseCreateManyOptions<ClientSession>
+        options?: IDatabaseCreateManyOptions<any>
     ): Promise<boolean>;
 
     abstract deleteManyByIds(
         _id: string[],
-        options?: IDatabaseManyOptions<ClientSession>
+        options?: IDatabaseManyOptions<any>
     ): Promise<boolean>;
 
     abstract deleteMany(
         find: Record<string, any> | Record<string, any>[],
-        options?: IDatabaseManyOptions<ClientSession>
+        options?: IDatabaseManyOptions<any>
     ): Promise<boolean>;
 
     abstract softDeleteManyByIds(
         _id: string[],
-        options?: IDatabaseSoftDeleteManyOptions<ClientSession>
+        options?: IDatabaseSoftDeleteManyOptions<any>
     ): Promise<boolean>;
 
     abstract softDeleteMany(
         find: Record<string, any> | Record<string, any>[],
-        options?: IDatabaseSoftDeleteManyOptions<ClientSession>
+        options?: IDatabaseSoftDeleteManyOptions<any>
     ): Promise<boolean>;
 
     abstract restoreManyByIds(
         _id: string[],
-        options?: IDatabaseRestoreManyOptions<ClientSession>
+        options?: IDatabaseRestoreManyOptions<any>
     ): Promise<boolean>;
 
     abstract restoreMany(
         find: Record<string, any> | Record<string, any>[],
-        options?: IDatabaseRestoreManyOptions<ClientSession>
+        options?: IDatabaseRestoreManyOptions<any>
     ): Promise<boolean>;
 
     abstract updateMany<N>(
         find: Record<string, any> | Record<string, any>[],
         data: N,
-        options?: IDatabaseManyOptions<ClientSession>
+        options?: IDatabaseManyOptions<any>
     ): Promise<boolean>;
 
     abstract model<N = T>(): Promise<N>;
