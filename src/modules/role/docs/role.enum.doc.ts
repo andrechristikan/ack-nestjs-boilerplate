@@ -6,7 +6,7 @@ export function RoleEnumAccessForDoc(): MethodDecorator {
     return applyDecorators(
         Doc<RoleAccessForSerialization>('role.enum.accessFor', {
             response: {
-                classSerialization: RoleAccessForSerialization,
+                serialization: RoleAccessForSerialization,
             },
         })
     );

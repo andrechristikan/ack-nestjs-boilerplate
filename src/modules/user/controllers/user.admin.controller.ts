@@ -7,10 +7,10 @@ import {
     Put,
     Query,
     InternalServerErrorException,
-    BadRequestException,
     Patch,
     NotFoundException,
     UploadedFile,
+    ConflictException,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
@@ -85,7 +85,7 @@ export class UserAdminController {
 
     @UserListDoc()
     @ResponsePaging('user.list', {
-        classSerialization: UserListSerialization,
+        serialization: UserListSerialization,
     })
     @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.USER_READ)
     @Get('/list')
@@ -131,7 +131,7 @@ export class UserAdminController {
 
     @UserGetDoc()
     @Response('user.get', {
-        classSerialization: UserGetSerialization,
+        serialization: UserGetSerialization,
     })
     @UserGetGuard()
     @RequestParamGuard(UserRequestDto)
@@ -143,7 +143,7 @@ export class UserAdminController {
 
     @UserCreateDoc()
     @Response('user.create', {
-        classSerialization: ResponseIdSerialization,
+        serialization: ResponseIdSerialization,
     })
     @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
@@ -166,7 +166,7 @@ export class UserAdminController {
             username
         );
         if (usernameExist) {
-            throw new BadRequestException({
+            throw new ConflictException({
                 statusCode:
                     ENUM_USER_STATUS_CODE_ERROR.USER_USERNAME_EXISTS_ERROR,
                 message: 'user.error.usernameExist',
@@ -175,7 +175,7 @@ export class UserAdminController {
 
         const emailExist: boolean = await this.userService.existEmail(email);
         if (emailExist) {
-            throw new BadRequestException({
+            throw new ConflictException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
                 message: 'user.error.emailExist',
             });
@@ -185,7 +185,7 @@ export class UserAdminController {
             const mobileNumberExist: boolean =
                 await this.userService.existMobileNumber(mobileNumber);
             if (mobileNumberExist) {
-                throw new BadRequestException({
+                throw new ConflictException({
                     statusCode:
                         ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
                     message: 'user.error.mobileNumberExist',
@@ -247,7 +247,7 @@ export class UserAdminController {
 
     @UserUpdateDoc()
     @Response('user.update', {
-        classSerialization: ResponseIdSerialization,
+        serialization: ResponseIdSerialization,
     })
     @UserUpdateGuard()
     @RequestParamGuard(UserRequestDto)
@@ -324,7 +324,7 @@ export class UserAdminController {
 
     @UserImportDoc()
     @Response('user.import', {
-        classSerialization: UserImportSerialization,
+        serialization: UserImportSerialization,
     })
     @UploadFileSingle('file')
     @AuthJwtAdminAccessProtected(
@@ -348,7 +348,7 @@ export class UserAdminController {
 
     @UserExportDoc()
     @ResponseExcel({
-        classSerialization: UserListSerialization,
+        serialization: UserListSerialization,
         type: ENUM_HELPER_FILE_TYPE.CSV,
     })
     @AuthJwtAdminAccessProtected(

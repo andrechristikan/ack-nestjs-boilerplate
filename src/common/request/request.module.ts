@@ -5,7 +5,10 @@ import {
     ValidationError,
     ValidationPipe,
 } from '@nestjs/common';
-import { APP_PIPE } from '@nestjs/core';
+import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { RequestTimeoutInterceptor } from 'src/common/request/interceptors/request.timeout.interceptor';
+import { RequestMiddlewareModule } from 'src/common/request/middleware/request.middleware.module';
+import { MinDateTodayConstraint } from 'src/common/request/validations/request.min-date-today.validation';
 import { MobileNumberAllowedConstraint } from 'src/common/request/validations/request.mobile-number-allowed.validation';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from './constants/request.status-code.constant';
 import { IsPasswordMediumConstraint } from './validations/request.is-password-medium.validation';
@@ -14,7 +17,6 @@ import { IsPasswordWeakConstraint } from './validations/request.is-password-weak
 import { IsStartWithConstraint } from './validations/request.is-start-with.validation';
 import { MaxGreaterThanEqualConstraint } from './validations/request.max-greater-than-equal.validation';
 import { MaxGreaterThanConstraint } from './validations/request.max-greater-than.validation';
-import { MinDateTodayEqualConstraint } from './validations/request.min-date-equal.validation';
 import { MinGreaterThanEqualConstraint } from './validations/request.min-greater-than-equal.validation';
 import { MinGreaterThanConstraint } from './validations/request.min-greater-than.validation';
 import { IsOnlyDigitsConstraint } from './validations/request.only-digits.validation';
@@ -24,6 +26,10 @@ import { SkipConstraint } from './validations/request.skip.validation';
 @Module({
     controllers: [],
     providers: [
+        {
+            provide: APP_INTERCEPTOR,
+            useClass: RequestTimeoutInterceptor,
+        },
         {
             provide: APP_PIPE,
             useFactory: () =>
@@ -53,9 +59,9 @@ import { SkipConstraint } from './validations/request.skip.validation';
         SkipConstraint,
         SafeStringConstraint,
         IsOnlyDigitsConstraint,
-        MinDateTodayEqualConstraint,
+        MinDateTodayConstraint,
         MobileNumberAllowedConstraint,
     ],
-    imports: [],
+    imports: [RequestMiddlewareModule],
 })
 export class RequestModule {}

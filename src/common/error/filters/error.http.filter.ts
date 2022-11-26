@@ -69,7 +69,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
             // Debugger
             try {
                 this.debuggerService.error(
-                    request && request.id ? request.id : ErrorHttpFilter.name,
+                    request?.id ? request.id : ErrorHttpFilter.name,
                     {
                         description: exception.message,
                         class: __class,
@@ -101,7 +101,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
             } = responseException;
 
             let { errors } = responseException;
-            if (errors && errors.length > 0) {
+            if (errors?.length > 0) {
                 errors =
                     errorType === ERROR_TYPE.IMPORT
                         ? await this.messageService.getImportErrorsMessage(

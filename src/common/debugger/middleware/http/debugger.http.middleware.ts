@@ -3,19 +3,19 @@ import morgan from 'morgan';
 import { Request, Response, NextFunction } from 'express';
 import { createStream } from 'rotating-file-stream';
 import { ConfigService } from '@nestjs/config';
-import {
-    ICustomResponse,
-    IHttpDebuggerConfig,
-    IHttpDebuggerConfigOptions,
-} from './http-debugger.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { IResponseCustom } from 'src/common/response/interfaces/response.interface';
+import {
+    IDebuggerHttpConfig,
+    IDebuggerHttpConfigOptions,
+} from 'src/common/debugger/interfaces/debugger.interface';
 import {
     DEBUGGER_HTTP_FORMAT,
     DEBUGGER_HTTP_NAME,
-} from './constants/http-debugger.constant';
+} from 'src/common/debugger/constants/debugger.constant';
 
 @Injectable()
-export class HttpDebuggerMiddleware implements NestMiddleware {
+export class DebuggerHttpMiddleware implements NestMiddleware {
     private readonly writeIntoFile: boolean;
     private readonly writeIntoConsole: boolean;
 
@@ -37,7 +37,7 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
 
         morgan.token(
             'res-body',
-            (req: Request, res: ICustomResponse) => res.body
+            (req: Request, res: IResponseCustom) => res.body
         );
 
         morgan.token('req-headers', (req: Request) =>
@@ -55,7 +55,7 @@ export class HttpDebuggerMiddleware implements NestMiddleware {
 }
 
 @Injectable()
-export class HttpDebuggerWriteIntoFileMiddleware implements NestMiddleware {
+export class DebuggerHttpWriteIntoFileMiddleware implements NestMiddleware {
     private readonly writeIntoFile: boolean;
     private readonly maxSize: string;
     private readonly maxFiles: number;
@@ -73,12 +73,12 @@ export class HttpDebuggerWriteIntoFileMiddleware implements NestMiddleware {
         );
     }
 
-    private async httpLogger(): Promise<IHttpDebuggerConfig> {
+    private async httpLogger(): Promise<IDebuggerHttpConfig> {
         const date: string = this.helperDateService.format(
             this.helperDateService.create()
         );
 
-        const HttpDebuggerOptions: IHttpDebuggerConfigOptions = {
+        const debuggerHttpOptions: IDebuggerHttpConfigOptions = {
             stream: createStream(`${date}.log`, {
                 path: `./logs/${DEBUGGER_HTTP_NAME}/`,
                 maxSize: this.maxSize,
@@ -90,15 +90,15 @@ export class HttpDebuggerWriteIntoFileMiddleware implements NestMiddleware {
 
         return {
             debuggerHttpFormat: DEBUGGER_HTTP_FORMAT,
-            HttpDebuggerOptions,
+            debuggerHttpOptions,
         };
     }
 
     async use(req: Request, res: Response, next: NextFunction): Promise<void> {
         if (this.writeIntoFile) {
-            const config: IHttpDebuggerConfig = await this.httpLogger();
+            const config: IDebuggerHttpConfig = await this.httpLogger();
 
-            morgan(config.debuggerHttpFormat, config.HttpDebuggerOptions)(
+            morgan(config.debuggerHttpFormat, config.debuggerHttpOptions)(
                 req,
                 res,
                 next
@@ -110,7 +110,7 @@ export class HttpDebuggerWriteIntoFileMiddleware implements NestMiddleware {
 }
 
 @Injectable()
-export class HttpDebuggerWriteIntoConsoleMiddleware implements NestMiddleware {
+export class DebuggerHttpWriteIntoConsoleMiddleware implements NestMiddleware {
     private readonly writeIntoConsole: boolean;
 
     constructor(private readonly configService: ConfigService) {
@@ -119,7 +119,7 @@ export class HttpDebuggerWriteIntoConsoleMiddleware implements NestMiddleware {
         );
     }
 
-    private async httpLogger(): Promise<IHttpDebuggerConfig> {
+    private async httpLogger(): Promise<IDebuggerHttpConfig> {
         return {
             debuggerHttpFormat: DEBUGGER_HTTP_FORMAT,
         };
@@ -127,7 +127,7 @@ export class HttpDebuggerWriteIntoConsoleMiddleware implements NestMiddleware {
 
     async use(req: Request, res: Response, next: NextFunction): Promise<void> {
         if (this.writeIntoConsole) {
-            const config: IHttpDebuggerConfig = await this.httpLogger();
+            const config: IDebuggerHttpConfig = await this.httpLogger();
 
             morgan(config.debuggerHttpFormat)(req, res, next);
         } else {
@@ -137,7 +137,7 @@ export class HttpDebuggerWriteIntoConsoleMiddleware implements NestMiddleware {
 }
 
 @Injectable()
-export class HttpDebuggerResponseMiddleware implements NestMiddleware {
+export class DebuggerHttpResponseMiddleware implements NestMiddleware {
     private readonly writeIntoFile: boolean;
     private readonly writeIntoConsole: boolean;
 

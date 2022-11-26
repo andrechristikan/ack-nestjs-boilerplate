@@ -12,11 +12,11 @@ export class HelperArrayService implements IHelperArrayService {
         return _.nth(array, -Math.abs(index));
     }
 
-    getLeftByLength(array: Array<any>, length: number): Array<any> {
+    getLeftByLength<T>(array: T[], length: number): T[] {
         return _.take(array, length);
     }
 
-    getRightByLength(array: Array<any>, length: number): Array<any> {
+    getRightByLength<T>(array: T[], length: number): T[] {
         return _.takeRight(array, length);
     }
 
@@ -42,15 +42,15 @@ export class HelperArrayService implements IHelperArrayService {
         });
     }
 
-    removeLeftByLength(array: Array<any>, length: number) {
+    removeLeftByLength<T>(array: T[], length: number): T[] {
         return _.drop(array, length);
     }
 
-    removeRightByLength(array: Array<any>, length: number) {
+    removeRightByLength<T>(array: Array<T>, length: number): T[] {
         return _.dropRight(array, length);
     }
 
-    joinToString(array: Array<any>, delimiter: string): string {
+    joinToString<T>(array: Array<T>, delimiter: string): string {
         return _.join(array, delimiter);
     }
 

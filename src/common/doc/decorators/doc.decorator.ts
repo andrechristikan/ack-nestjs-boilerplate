@@ -12,7 +12,7 @@ import {
     ApiResponse,
     getSchemaPath,
 } from '@nestjs/swagger';
-import { AppLanguage } from 'src/app/constants/app.constant';
+import { APP_LANGUAGE } from 'src/app/constants/app.constant';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
 import {
@@ -81,8 +81,8 @@ export function Doc<T>(
         docs.push(ApiProduces('text/plain'));
     } else {
         docs.push(ApiProduces('application/json'));
-        if (options?.response?.classSerialization) {
-            normDoc.serialization = options?.response?.classSerialization;
+        if (options?.response?.serialization) {
+            normDoc.serialization = options?.response?.serialization;
         }
     }
     docs.push(DocDefault(normDoc));
@@ -214,8 +214,8 @@ export function Doc<T>(
             description: 'Custom language header',
             required: false,
             schema: {
-                default: AppLanguage,
-                example: AppLanguage,
+                default: APP_LANGUAGE,
+                example: APP_LANGUAGE,
                 type: 'string',
             },
         }),
@@ -378,7 +378,7 @@ export function DocPaging<T>(
         // paging
         ApiConsumes('application/json'),
         ApiExtraModels(ResponsePagingSerialization<T>),
-        ApiExtraModels(options.response.classSerialization),
+        ApiExtraModels(options.response.serialization),
         ApiResponse({
             status: HttpStatus.OK,
             schema: {
@@ -396,9 +396,7 @@ export function DocPaging<T>(
                     data: {
                         type: 'array',
                         items: {
-                            $ref: getSchemaPath(
-                                options.response.classSerialization
-                            ),
+                            $ref: getSchemaPath(options.response.serialization),
                         },
                     },
                     availableSearch: {
@@ -449,8 +447,8 @@ export function DocPaging<T>(
             description: 'Custom language header',
             required: false,
             schema: {
-                default: AppLanguage,
-                example: AppLanguage,
+                default: APP_LANGUAGE,
+                example: APP_LANGUAGE,
                 type: 'string',
             },
         }),

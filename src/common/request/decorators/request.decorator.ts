@@ -7,7 +7,11 @@ import {
     UseInterceptors,
 } from '@nestjs/common';
 import { ClassConstructor } from 'class-transformer';
-import { REQUEST_PARAM_CLASS_DTOS_META_KEY } from 'src/common/request/constants/request.constant';
+import {
+    REQUEST_CUSTOM_TIMEOUT_META_KEY,
+    REQUEST_CUSTOM_TIMEOUT_VALUE_META_KEY,
+    REQUEST_PARAM_CLASS_DTOS_META_KEY,
+} from 'src/common/request/constants/request.constant';
 import { RequestParamRawGuard } from 'src/common/request/guards/request.param.guard';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { IResult } from 'ua-parser-js';
@@ -57,4 +61,11 @@ export function RequestValidateUserAgent(): MethodDecorator {
 
 export function RequestValidateTimestamp(): MethodDecorator {
     return applyDecorators(UseInterceptors(RequestTimestampInterceptor));
+}
+
+export function RequestTimeout(seconds: string): MethodDecorator {
+    return applyDecorators(
+        SetMetadata(REQUEST_CUSTOM_TIMEOUT_META_KEY, true),
+        SetMetadata(REQUEST_CUSTOM_TIMEOUT_VALUE_META_KEY, seconds)
+    );
 }

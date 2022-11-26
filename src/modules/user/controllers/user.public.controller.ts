@@ -1,6 +1,6 @@
 import {
-    BadRequestException,
     Body,
+    ConflictException,
     Controller,
     InternalServerErrorException,
     NotFoundException,
@@ -51,7 +51,7 @@ export class UserPublicController {
             username
         );
         if (usernameExist) {
-            throw new BadRequestException({
+            throw new ConflictException({
                 statusCode:
                     ENUM_USER_STATUS_CODE_ERROR.USER_USERNAME_EXISTS_ERROR,
                 message: 'user.error.usernameExist',
@@ -60,7 +60,7 @@ export class UserPublicController {
 
         const emailExist: boolean = await this.userService.existEmail(email);
         if (emailExist) {
-            throw new BadRequestException({
+            throw new ConflictException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
                 message: 'user.error.emailExist',
             });
@@ -70,7 +70,7 @@ export class UserPublicController {
             const mobileNumberExist: boolean =
                 await this.userService.existMobileNumber(mobileNumber);
             if (mobileNumberExist) {
-                throw new BadRequestException({
+                throw new ConflictException({
                     statusCode:
                         ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
                     message: 'user.error.mobileNumberExist',

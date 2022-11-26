@@ -40,7 +40,7 @@ export class SettingController {
 
     @SettingListDoc()
     @ResponsePaging('setting.list', {
-        classSerialization: SettingListSerialization,
+        serialization: SettingListSerialization,
     })
     @Get('/list')
     async list(
@@ -88,7 +88,7 @@ export class SettingController {
 
     @SettingGetDoc()
     @Response('setting.get', {
-        classSerialization: SettingGetSerialization,
+        serialization: SettingGetSerialization,
     })
     @SettingGetGuard()
     @RequestParamGuard(SettingRequestDto)
@@ -99,7 +99,7 @@ export class SettingController {
 
     @SettingGetByNameDoc()
     @Response('setting.getByName', {
-        classSerialization: SettingGetSerialization,
+        serialization: SettingGetSerialization,
     })
     @SettingGetByNameGuard()
     @Get('get/name/:settingName')

@@ -32,8 +32,7 @@ export class MessageService implements IMessageService {
     ): T {
         return this.i18n.translate<T>(key, {
             lang: lang || this.defaultLanguage,
-            args:
-                options && options.properties ? options.properties : undefined,
+            args: options?.properties,
         });
     }
 
@@ -56,7 +55,7 @@ export class MessageService implements IMessageService {
                     for (const child of children) {
                         property = `${property}.${child.property}`;
 
-                        if (child.children && child.children.length > 0) {
+                        if (child.children?.length > 0) {
                             children = child.children;
                             break;
                         } else if (child.constraints) {
@@ -112,12 +111,9 @@ export class MessageService implements IMessageService {
         key: string,
         options?: IMessageOptions
     ): Promise<string | IMessage> {
-        const properties =
-            options && options.properties ? options.properties : undefined;
+        const properties = options?.properties;
         const customLanguages =
-            options &&
-            options.customLanguages &&
-            options.customLanguages.length > 0
+            options?.customLanguages?.length > 0
                 ? options.customLanguages
                 : [this.defaultLanguage];
 

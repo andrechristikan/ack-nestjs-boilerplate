@@ -11,6 +11,8 @@ export const AuthJwtToken = createParamDecorator(
     (data: string, ctx: ExecutionContext): string => {
         const { headers } = ctx.switchToHttp().getRequest();
         const { authorization } = headers;
-        return authorization ? authorization.split(' ')[1] : undefined;
+        const authorizations: string[] = authorization.split(' ');
+
+        return authorizations.length >= 2 ? authorizations[1] : undefined;
     }
 );

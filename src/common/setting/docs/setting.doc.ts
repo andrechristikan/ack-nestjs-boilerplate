@@ -18,7 +18,7 @@ export function SettingListDoc(): MethodDecorator {
                 jwtAccessToken: false,
             },
             response: {
-                classSerialization: SettingListSerialization,
+                serialization: SettingListSerialization,
                 availableSort: SETTING_DEFAULT_AVAILABLE_SORT,
                 availableSearch: SETTING_DEFAULT_AVAILABLE_SEARCH,
             },
@@ -35,7 +35,7 @@ export function SettingGetByNameDoc(): MethodDecorator {
             request: {
                 params: SettingDocParamsGetByName,
             },
-            response: { classSerialization: SettingGetSerialization },
+            response: { serialization: SettingGetSerialization },
         })
     );
 }
@@ -49,7 +49,7 @@ export function SettingGetDoc(): MethodDecorator {
             request: {
                 params: SettingDocParamsGet,
             },
-            response: { classSerialization: SettingGetSerialization },
+            response: { serialization: SettingGetSerialization },
         })
     );
 }

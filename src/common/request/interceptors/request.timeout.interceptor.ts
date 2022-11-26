@@ -12,12 +12,12 @@ import { catchError, timeout } from 'rxjs/operators';
 import ms from 'ms';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import {
-    RESPONSE_CUSTOM_TIMEOUT_META_KEY,
-    RESPONSE_CUSTOM_TIMEOUT_VALUE_META_KEY,
-} from 'src/common/response/constants/response.constant';
+    REQUEST_CUSTOM_TIMEOUT_META_KEY,
+    REQUEST_CUSTOM_TIMEOUT_VALUE_META_KEY,
+} from 'src/common/request/constants/request.constant';
 
 @Injectable()
-export class ResponseTimeoutInterceptor
+export class RequestTimeoutInterceptor
     implements NestInterceptor<Promise<any>>
 {
     constructor(
@@ -31,13 +31,13 @@ export class ResponseTimeoutInterceptor
     ): Promise<Observable<Promise<any> | string>> {
         if (context.getType() === 'http') {
             const customTimeout = this.reflector.get<boolean>(
-                RESPONSE_CUSTOM_TIMEOUT_META_KEY,
+                REQUEST_CUSTOM_TIMEOUT_META_KEY,
                 context.getHandler()
             );
 
             if (customTimeout) {
                 const seconds: string = this.reflector.get<string>(
-                    RESPONSE_CUSTOM_TIMEOUT_VALUE_META_KEY,
+                    REQUEST_CUSTOM_TIMEOUT_VALUE_META_KEY,
                     context.getHandler()
                 );
 
@@ -55,9 +55,8 @@ export class ResponseTimeoutInterceptor
                     })
                 );
             } else {
-                const defaultTimeout: number = this.configService.get<number>(
-                    'middleware.timeout.in'
-                );
+                const defaultTimeout: number =
+                    this.configService.get<number>('request.timeout');
                 return next.handle().pipe(
                     timeout(defaultTimeout),
                     catchError((err) => {

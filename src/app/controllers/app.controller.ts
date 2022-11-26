@@ -24,7 +24,7 @@ export class AppController {
     ) {}
 
     @AppHelloDoc()
-    @Response('app.hello', { classSerialization: AppHelloSerialization })
+    @Response('app.hello', { serialization: AppHelloSerialization })
     @Logger(ENUM_LOGGER_ACTION.TEST, { tags: ['test'] })
     @Get('/hello')
     async hello(@RequestUserAgent() userAgent: IResult): Promise<IResponse> {
@@ -47,7 +47,7 @@ export class AppController {
     }
 
     @AppHelloApiKeyDoc()
-    @Response('app.hello', { classSerialization: AppHelloSerialization })
+    @Response('app.hello', { serialization: AppHelloSerialization })
     @Logger(ENUM_LOGGER_ACTION.TEST, { tags: ['test'] })
     @ApiKeyProtected()
     @Get('/hello/api-key')

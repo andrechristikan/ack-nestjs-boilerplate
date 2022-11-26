@@ -17,7 +17,7 @@ export function UserListDoc(): MethodDecorator {
                 jwtAccessToken: true,
             },
             response: {
-                classSerialization: UserListSerialization,
+                serialization: UserListSerialization,
                 availableSort: USER_DEFAULT_AVAILABLE_SORT,
                 availableSearch: USER_DEFAULT_AVAILABLE_SEARCH,
             },
@@ -34,7 +34,7 @@ export function UserGetDoc(): MethodDecorator {
             request: {
                 params: UserDocParamsGet,
             },
-            response: { classSerialization: UserGetSerialization },
+            response: { serialization: UserGetSerialization },
         })
     );
 }
@@ -47,7 +47,7 @@ export function UserCreateDoc(): MethodDecorator {
             },
             response: {
                 httpStatus: HttpStatus.CREATED,
-                classSerialization: ResponseIdSerialization,
+                serialization: ResponseIdSerialization,
             },
         })
     );
@@ -62,7 +62,7 @@ export function UserUpdateDoc(): MethodDecorator {
             request: {
                 params: UserDocParamsGet,
             },
-            response: { classSerialization: ResponseIdSerialization },
+            response: { serialization: ResponseIdSerialization },
         })
     );
 }
@@ -114,7 +114,7 @@ export function UserImportDoc(): MethodDecorator {
             },
             response: {
                 httpStatus: HttpStatus.CREATED,
-                classSerialization: UserImportSerialization,
+                serialization: UserImportSerialization,
             },
         })
     );

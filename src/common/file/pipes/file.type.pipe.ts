@@ -17,7 +17,6 @@ export class FileTypeImagePipe implements PipeTransform {
     async transform(value: IFile | IFile[]): Promise<IFile | IFile[]> {
         if (!value) {
             return;
-            return;
         }
 
         if (Array.isArray(value)) {

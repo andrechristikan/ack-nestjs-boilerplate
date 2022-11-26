@@ -1,11 +1,5 @@
 import { PartialType } from '@nestjs/swagger';
-import {
-    IsNotEmpty,
-    IsOptional,
-    IsString,
-    MaxLength,
-    ValidateIf,
-} from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class ApiKeyCreateDto {
     @IsNotEmpty()
@@ -14,7 +8,6 @@ export class ApiKeyCreateDto {
     name: string;
 
     @IsOptional()
-    @ValidateIf((e) => e.description !== '')
     @IsString()
     @MaxLength(100)
     description?: string;

@@ -18,7 +18,7 @@ import {
 } from 'src/modules/role/constants/role.list.constant';
 
 export class RoleListDto implements PaginationListAbstract {
-    @PaginationSearch(ROLE_DEFAULT_AVAILABLE_SEARCH)
+    @PaginationSearch()
     readonly search: Record<string, any>;
 
     @ApiHideProperty()
@@ -31,7 +31,7 @@ export class RoleListDto implements PaginationListAbstract {
     @PaginationPerPage(ROLE_DEFAULT_PER_PAGE)
     readonly perPage: number;
 
-    @PaginationSort(ROLE_DEFAULT_SORT, ROLE_DEFAULT_AVAILABLE_SORT)
+    @PaginationSort(ROLE_DEFAULT_SORT)
     readonly sort: IPaginationSort;
 
     @ApiHideProperty()

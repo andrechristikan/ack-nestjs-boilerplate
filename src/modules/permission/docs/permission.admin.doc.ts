@@ -22,7 +22,7 @@ export function PermissionListDoc(): MethodDecorator {
                 queries: PermissionDocQueryList,
             },
             response: {
-                classSerialization: PermissionListSerialization,
+                serialization: PermissionListSerialization,
                 availableSort: PERMISSION_DEFAULT_AVAILABLE_SORT,
                 availableSearch: PERMISSION_DEFAULT_AVAILABLE_SEARCH,
             },
@@ -39,7 +39,7 @@ export function PermissionGetDoc(): MethodDecorator {
             request: {
                 params: PermissionDocParamsGet,
             },
-            response: { classSerialization: PermissionGetSerialization },
+            response: { serialization: PermissionGetSerialization },
         })
     );
 }
@@ -53,7 +53,7 @@ export function PermissionUpdateDoc(): MethodDecorator {
             request: {
                 params: PermissionDocParamsGet,
             },
-            response: { classSerialization: ResponseIdSerialization },
+            response: { serialization: ResponseIdSerialization },
         })
     );
 }

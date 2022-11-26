@@ -3,9 +3,9 @@ export interface IHelperArrayService {
 
     getRightByIndex<T>(array: T[], index: number): T;
 
-    getLeftByLength(array: Array<any>, length: number): Array<any>;
+    getLeftByLength<T>(array: T[], length: number): T[];
 
-    getRightByLength(array: Array<any>, length: number): Array<any>;
+    getRightByLength<T>(array: T[], length: number): T[];
 
     getLast<T>(array: T[]): T;
 
@@ -17,11 +17,11 @@ export interface IHelperArrayService {
 
     removeByValue<T>(array: T[], value: T): T[];
 
-    removeLeftByLength(array: Array<any>, length: number);
+    removeLeftByLength<T>(array: T[], length: number): T[];
 
-    removeRightByLength(array: Array<any>, length: number);
+    removeRightByLength<T>(array: T[], length: number): T[];
 
-    joinToString(array: Array<any>, delimiter: string): string;
+    joinToString<T>(array: T[], delimiter: string): string;
 
     reverse<T>(array: T[]): T[];
 

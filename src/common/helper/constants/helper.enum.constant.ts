@@ -10,6 +10,12 @@ export enum ENUM_HELPER_DATE_FORMAT {
     ISO_DATE = 'YYYY-MM-DDTHH:MM:SSZ',
     DAY_LONG = 'ddd',
     DAY_SHORT = 'dddd',
+    HOUR_LONG = 'k',
+    HOUR_SHORT = 'kk',
+    MINUTE_LONG = 'm',
+    MINUTE_SHORT = 'mm',
+    SECOND_LONG = 's',
+    SECOND_SHORT = 'ss',
 }
 
 export enum ENUM_HELPER_DATE_DIFF {

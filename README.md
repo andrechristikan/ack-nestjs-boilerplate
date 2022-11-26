@@ -196,6 +196,7 @@ Full structure of module
     ├── indicators // custom health check indicator
     ├── interceptors // custom interceptors
     ├── interfaces
+    ├── middleware
     ├── pipes
     ├── repository
         ├── entities // database entities

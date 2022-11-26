@@ -20,7 +20,7 @@ import {
 } from 'src/modules/permission/constants/permission.list.constant';
 
 export class PermissionListDto implements PaginationListAbstract {
-    @PaginationSearch(PERMISSION_DEFAULT_AVAILABLE_SEARCH)
+    @PaginationSearch()
     readonly search: Record<string, any>;
 
     @ApiHideProperty()
@@ -33,7 +33,7 @@ export class PermissionListDto implements PaginationListAbstract {
     @PaginationPerPage(PERMISSION_DEFAULT_PER_PAGE)
     readonly perPage: number;
 
-    @PaginationSort(PERMISSION_DEFAULT_SORT, PERMISSION_DEFAULT_AVAILABLE_SORT)
+    @PaginationSort(PERMISSION_DEFAULT_SORT)
     readonly sort: IPaginationSort;
 
     @ApiHideProperty()

@@ -1,6 +1,6 @@
 import {
-    BadRequestException,
     Body,
+    ConflictException,
     Controller,
     Delete,
     Get,
@@ -71,7 +71,7 @@ export class RoleAdminController {
 
     @RoleListDoc()
     @ResponsePaging('role.list', {
-        classSerialization: RoleListSerialization,
+        serialization: RoleListSerialization,
     })
     @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.ROLE_READ)
     @Get('/list')
@@ -118,7 +118,7 @@ export class RoleAdminController {
 
     @RoleGetDoc()
     @Response('role.get', {
-        classSerialization: RoleGetSerialization,
+        serialization: RoleGetSerialization,
     })
     @RoleGetGuard()
     @RequestParamGuard(RoleRequestDto)
@@ -130,7 +130,7 @@ export class RoleAdminController {
 
     @RoleCreateDoc()
     @Response('role.create', {
-        classSerialization: ResponseIdSerialization,
+        serialization: ResponseIdSerialization,
     })
     @AuthJwtAdminAccessProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
@@ -145,7 +145,7 @@ export class RoleAdminController {
             join: true,
         });
         if (exist) {
-            throw new BadRequestException({
+            throw new ConflictException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR,
                 message: 'role.error.exist',
             });
@@ -185,7 +185,7 @@ export class RoleAdminController {
 
     @RoleUpdateDoc()
     @Response('role.update', {
-        classSerialization: ResponseIdSerialization,
+        serialization: ResponseIdSerialization,
     })
     @RoleUpdateGuard()
     @RequestParamGuard(RoleRequestDto)
@@ -203,7 +203,7 @@ export class RoleAdminController {
             excludeId: [role._id],
         });
         if (check) {
-            throw new BadRequestException({
+            throw new ConflictException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR,
                 message: 'role.error.exist',
             });

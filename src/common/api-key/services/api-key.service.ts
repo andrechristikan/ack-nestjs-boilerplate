@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
-import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,
@@ -29,8 +28,7 @@ export class ApiKeyService implements IApiKeyService {
         private readonly apiKeyRepository: ApiKeyRepository,
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService,
-        private readonly helperHashService: HelperHashService,
-        private readonly helperEncryptionService: HelperEncryptionService
+        private readonly helperHashService: HelperHashService
     ) {
         this.env = this.configService.get<string>('app.env');
     }

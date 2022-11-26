@@ -26,10 +26,10 @@ export class RequestUserAgentInterceptor
                 .getRequest<IRequestApp>();
 
             const os: string[] = this.configService.get<string[]>(
-                'middleware.userAgent.os'
+                'request.userAgent.os'
             );
             const browser: string[] = this.configService.get<string[]>(
-                'middleware.userAgent.browser'
+                'request.userAgent.browser'
             );
 
             const userAgent = request.userAgent;
@@ -38,7 +38,7 @@ export class RequestUserAgentInterceptor
                 throw new ForbiddenException({
                     statusCode:
                         ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_OS_INVALID_ERROR,
-                    message: 'middleware.error.userAgentOsInvalid',
+                    message: 'request.error.userAgentOsInvalid',
                 });
             }
 
@@ -50,7 +50,7 @@ export class RequestUserAgentInterceptor
                 throw new ForbiddenException({
                     statusCode:
                         ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_BROWSER_INVALID_ERROR,
-                    message: 'middleware.error.userAgentBrowserInvalid',
+                    message: 'request.error.userAgentBrowserInvalid',
                 });
             }
         }

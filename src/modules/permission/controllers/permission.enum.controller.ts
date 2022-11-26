@@ -18,7 +18,7 @@ export class PermissionEnumController {
 
     @PermissionEnumGroupDoc()
     @Response('permission.enum.group', {
-        classSerialization: PermissionGroupSerialization,
+        serialization: PermissionGroupSerialization,
     })
     @Get('/group')
     async group(): Promise<IResponse> {

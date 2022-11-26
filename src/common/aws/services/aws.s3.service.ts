@@ -163,9 +163,8 @@ export class AwsS3Service implements IAwsS3Service {
             | Blob,
         options?: IAwsS3PutItemOptions
     ): Promise<AwsS3Serialization> {
-        let path: string = options && options.path ? options.path : undefined;
-        const acl: string =
-            options && options.acl ? options.acl : 'public-read';
+        let path: string = options?.path;
+        const acl: string = options?.acl ? options.acl : 'public-read';
 
         if (path)
             path = path.startsWith('/') ? path.replace('/', '') : `${path}`;
@@ -267,9 +266,8 @@ export class AwsS3Service implements IAwsS3Service {
         filename: string,
         options?: IAwsS3PutItemOptions
     ): Promise<AwsS3MultipartSerialization> {
-        let path: string = options && options.path ? options.path : undefined;
-        const acl: string =
-            options && options.acl ? options.acl : 'public-read';
+        let path: string = options?.path;
+        const acl: string = options?.acl ? options.acl : 'public-read';
 
         if (path)
             path = path.startsWith('/') ? path.replace('/', '') : `${path}`;

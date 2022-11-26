@@ -32,7 +32,7 @@ export class SettingAdminController {
 
     @SettingUpdateDoc()
     @Response('setting.update', {
-        classSerialization: ResponseIdSerialization,
+        serialization: ResponseIdSerialization,
     })
     @SettingUpdateGuard()
     @RequestParamGuard(SettingRequestDto)

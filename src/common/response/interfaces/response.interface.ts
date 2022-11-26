@@ -2,6 +2,7 @@ import { ClassConstructor } from 'class-transformer';
 import { ENUM_HELPER_FILE_TYPE } from 'src/common/helper/constants/helper.enum.constant';
 import { IHelperFileRows } from 'src/common/helper/interfaces/helper.interface';
 import { IMessageOptionsProperties } from 'src/common/message/interfaces/message.interface';
+import { Response } from 'express';
 
 export interface IResponseMetadata {
     statusCode?: number;
@@ -11,7 +12,7 @@ export interface IResponseMetadata {
 }
 
 export interface IResponseOptions<T> {
-    classSerialization?: ClassConstructor<T>;
+    serialization?: ClassConstructor<T>;
     messageProperties?: IMessageOptionsProperties;
 }
 
@@ -37,4 +38,8 @@ export interface IResponsePaging<T = Record<string, any>> {
     availableSort?: string[];
     metadata?: IResponseMetadata;
     data: T[];
+}
+
+export interface IResponseCustom extends Response {
+    body: string;
 }

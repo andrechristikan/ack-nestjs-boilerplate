@@ -1,6 +1,5 @@
 import { applyDecorators } from '@nestjs/common';
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsOptional, ValidateIf } from 'class-validator';
 import {
     PAGINATION_AVAILABLE_SORT,
     PAGINATION_MAX_PAGE,
@@ -18,18 +17,16 @@ import {
     IPaginationFilterStringOptions,
 } from 'src/common/pagination/interfaces/pagination.interface';
 
-export function PaginationSearch(availableSearch: string[]): PropertyDecorator {
+export function PaginationSearch(): PropertyDecorator {
     return applyDecorators(
         Expose(),
-        IsOptional(),
-        ValidateIf((e) => e.search !== ''),
-        Transform(({ value }) => {
-            if (!value) {
+        Transform(({ value, obj }) => {
+            if (!value || !obj.availableSearch) {
                 return undefined;
             }
 
             return {
-                $or: availableSearch.map((val) => ({
+                $or: obj.availableSearch.map((val) => ({
                     [val]: {
                         $regex: new RegExp(value),
                         $options: 'i',
@@ -45,7 +42,7 @@ export function PaginationAvailableSearch(
 ): PropertyDecorator {
     return applyDecorators(
         Expose(),
-        Transform(() => availableSearch)
+        Transform(({}) => availableSearch)
     );
 }
 
@@ -79,17 +76,14 @@ export function PaginationPerPage(
     );
 }
 
-export function PaginationSort(
-    sort = PAGINATION_SORT,
-    availableSort = PAGINATION_AVAILABLE_SORT
-): PropertyDecorator {
+export function PaginationSort(sort = PAGINATION_SORT): PropertyDecorator {
     return applyDecorators(
         Expose(),
         Transform(({ value, obj }) => {
             const bSort = PAGINATION_SORT.split('@')[0];
 
             const rSort = value || sort;
-            const rAvailableSort = obj._availableSort || availableSort;
+            const rAvailableSort = obj._availableSort;
             const field: string = rSort.split('@')[0];
             const type: string = rSort.split('@')[1];
             const convertField: string = rAvailableSort.includes(field)
@@ -109,7 +103,7 @@ export function PaginationAvailableSort(
 ): PropertyDecorator {
     return applyDecorators(
         Expose(),
-        Transform(({ value }) => (!value ? availableSort : value))
+        Transform(() => availableSort)
     );
 }
 

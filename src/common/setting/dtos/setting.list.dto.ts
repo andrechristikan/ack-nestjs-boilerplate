@@ -18,7 +18,7 @@ import {
 } from 'src/common/setting/constants/setting.list.constant';
 
 export class SettingListDto implements PaginationListAbstract {
-    @PaginationSearch(SETTING_DEFAULT_AVAILABLE_SEARCH)
+    @PaginationSearch()
     readonly search: Record<string, any>;
 
     @ApiHideProperty()
@@ -31,7 +31,7 @@ export class SettingListDto implements PaginationListAbstract {
     @PaginationPerPage(SETTING_DEFAULT_PER_PAGE)
     readonly perPage: number;
 
-    @PaginationSort(SETTING_DEFAULT_SORT, SETTING_DEFAULT_AVAILABLE_SORT)
+    @PaginationSort(SETTING_DEFAULT_SORT)
     readonly sort: IPaginationSort;
 
     @ApiHideProperty()

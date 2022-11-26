@@ -12,7 +12,7 @@ export function UserProfileDoc(): MethodDecorator {
                 jwtAccessToken: true,
             },
             response: {
-                classSerialization: UserProfileSerialization,
+                serialization: UserProfileSerialization,
             },
         })
     );
@@ -51,7 +51,7 @@ export function UserLoginDoc(): MethodDecorator {
                 jwtAccessToken: true,
             },
             response: {
-                classSerialization: UserLoginSerialization,
+                serialization: UserLoginSerialization,
             },
         })
     );
@@ -64,7 +64,7 @@ export function UserRefreshDoc(): MethodDecorator {
                 jwtRefreshToken: true,
             },
             response: {
-                classSerialization: UserLoginSerialization,
+                serialization: UserLoginSerialization,
             },
         })
     );
@@ -77,7 +77,7 @@ export function UserInfoDoc(): MethodDecorator {
                 jwtAccessToken: true,
             },
             response: {
-                classSerialization: UserPayloadSerialization,
+                serialization: UserPayloadSerialization,
             },
         })
     );

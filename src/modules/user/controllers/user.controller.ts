@@ -34,7 +34,6 @@ import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.enum.cons
 import { Logger } from 'src/common/logger/decorators/logger.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
-import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingService } from 'src/common/setting/services/setting.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
@@ -73,7 +72,7 @@ export class UserController {
 
     @UserProfileDoc()
     @Response('user.profile', {
-        classSerialization: UserProfileSerialization,
+        serialization: UserProfileSerialization,
     })
     @UserProfileGuard()
     @AuthJwtAccessProtected()
@@ -183,7 +182,7 @@ export class UserController {
 
     @UserLoginDoc()
     @Response('user.login', {
-        classSerialization: UserLoginSerialization,
+        serialization: UserLoginSerialization,
     })
     @Logger(ENUM_LOGGER_ACTION.LOGIN, { tags: ['login', 'withEmail'] })
     @HttpCode(HttpStatus.OK)
@@ -202,20 +201,14 @@ export class UserController {
             });
         }
 
-        const passwordAttempt: SettingEntity =
-            await this.settingService.findOneByName('passwordAttempt');
+        const passwordAttempt: boolean =
+            await this.settingService.getPasswordAttempt();
 
-        const passwordAttemptValue: boolean =
-            await this.settingService.getValue<boolean>(passwordAttempt);
+        if (passwordAttempt) {
+            const maxPasswordAttempt: number =
+                await this.settingService.getMaxPasswordAttempt();
 
-        if (passwordAttemptValue) {
-            const maxPasswordAttempt: SettingEntity =
-                await this.settingService.findOneByName('maxPasswordAttempt');
-            const value: number = await this.settingService.getValue<number>(
-                maxPasswordAttempt
-            );
-
-            if (user.passwordAttempt >= value) {
+            if (user.passwordAttempt >= maxPasswordAttempt) {
                 throw new ForbiddenException({
                     statusCode:
                         ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_ATTEMPT_MAX_ERROR,
@@ -317,7 +310,7 @@ export class UserController {
     }
 
     @UserRefreshDoc()
-    @Response('user.refresh', { classSerialization: UserLoginSerialization })
+    @Response('user.refresh', { serialization: UserLoginSerialization })
     @AuthJwtRefreshProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
@@ -395,7 +388,7 @@ export class UserController {
     }
 
     @UserInfoDoc()
-    @Response('user.info', { classSerialization: UserInfoSerialization })
+    @Response('user.info', { serialization: UserInfoSerialization })
     @AuthJwtAccessProtected()
     @Get('/info')
     async info(

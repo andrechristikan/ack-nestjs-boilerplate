@@ -131,4 +131,30 @@ export class SettingService implements ISettingService {
 
         return check;
     }
+
+    async getMaintenance(): Promise<boolean> {
+        const setting: SettingEntity = await this.findOneByName('maintenance');
+        return this.getValue<boolean>(setting);
+    }
+
+    async getMobileNumberCountryCodeAllowed(): Promise<string[]> {
+        const setting: SettingEntity = await this.findOneByName(
+            'mobileNumberCountryCodeAllowed'
+        );
+        return this.getValue<string[]>(setting);
+    }
+
+    async getPasswordAttempt(): Promise<boolean> {
+        const setting: SettingEntity = await this.findOneByName(
+            'passwordAttempt'
+        );
+        return this.getValue<boolean>(setting);
+    }
+
+    async getMaxPasswordAttempt(): Promise<number> {
+        const setting: SettingEntity = await this.findOneByName(
+            'maxPasswordAttempt'
+        );
+        return this.getValue<number>(setting);
+    }
 }

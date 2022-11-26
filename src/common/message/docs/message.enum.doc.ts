@@ -5,7 +5,7 @@ import { MessageLanguageSerialization } from 'src/common/message/serializations/
 export function MessageEnumLanguageDoc(): MethodDecorator {
     return applyDecorators(
         Doc<MessageLanguageSerialization>('message.languages', {
-            response: { classSerialization: MessageLanguageSerialization },
+            response: { serialization: MessageLanguageSerialization },
         })
     );
 }

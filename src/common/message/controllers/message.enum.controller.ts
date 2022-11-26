@@ -16,7 +16,7 @@ export class MessageEnumController {
 
     @MessageEnumLanguageDoc()
     @Response('message.languages', {
-        classSerialization: MessageLanguageSerialization,
+        serialization: MessageLanguageSerialization,
     })
     @Get('/languages')
     async languages(): Promise<IResponse> {

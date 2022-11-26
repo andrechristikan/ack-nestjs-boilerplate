@@ -57,7 +57,7 @@ export class PermissionAdminController {
 
     @PermissionListDoc()
     @ResponsePaging('permission.list', {
-        classSerialization: PermissionListSerialization,
+        serialization: PermissionListSerialization,
     })
     @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
     @Get('/list')
@@ -107,7 +107,7 @@ export class PermissionAdminController {
 
     @PermissionGetDoc()
     @Response('permission.get', {
-        classSerialization: PermissionGetSerialization,
+        serialization: PermissionGetSerialization,
     })
     @PermissionGetGuard()
     @RequestParamGuard(PermissionRequestDto)
@@ -121,7 +121,7 @@ export class PermissionAdminController {
 
     @PermissionUpdateDoc()
     @Response('permission.update', {
-        classSerialization: ResponseIdSerialization,
+        serialization: ResponseIdSerialization,
     })
     @PermissionUpdateGuard()
     @RequestParamGuard(PermissionRequestDto)

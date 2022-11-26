@@ -16,7 +16,7 @@ export class RoleEnumController {
 
     @RoleEnumAccessForDoc()
     @Response('role.enum.accessFor', {
-        classSerialization: RoleAccessForSerialization,
+        serialization: RoleAccessForSerialization,
     })
     @Get('/access-for')
     async accessFor(): Promise<IResponse> {

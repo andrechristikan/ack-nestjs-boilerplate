@@ -57,6 +57,10 @@ export interface IHelperDateService {
         options?: IHelperDateOptionsBackward
     ): Date;
 
+    forwardInHours(hours: number, options?: IHelperDateOptionsForward): Date;
+
+    backwardInHours(hours: number, options?: IHelperDateOptionsBackward): Date;
+
     forwardInDays(days: number, options?: IHelperDateOptionsForward): Date;
 
     backwardInDays(days: number, options?: IHelperDateOptionsBackward): Date;

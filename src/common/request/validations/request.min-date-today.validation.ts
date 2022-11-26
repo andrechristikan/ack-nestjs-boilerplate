@@ -9,9 +9,7 @@ import { HelperDateService } from 'src/common/helper/services/helper.date.servic
 
 @ValidatorConstraint({ async: true })
 @Injectable()
-export class MinDateTodayEqualConstraint
-    implements ValidatorConstraintInterface
-{
+export class MinDateTodayConstraint implements ValidatorConstraintInterface {
     constructor(private readonly helperDateService: HelperDateService) {}
 
     validate(value: string): boolean {
@@ -21,7 +19,7 @@ export class MinDateTodayEqualConstraint
     }
 }
 
-export function MinDateTodayEqual(validationOptions?: ValidationOptions) {
+export function MinDateToday(validationOptions?: ValidationOptions) {
     return function (object: Record<string, any>, propertyName: string): void {
         registerDecorator({
             name: 'MinDateTodayEqual',
@@ -29,7 +27,7 @@ export function MinDateTodayEqual(validationOptions?: ValidationOptions) {
             propertyName: propertyName,
             options: validationOptions,
             constraints: [],
-            validator: MinDateTodayEqualConstraint,
+            validator: MinDateTodayConstraint,
         });
     };
 }

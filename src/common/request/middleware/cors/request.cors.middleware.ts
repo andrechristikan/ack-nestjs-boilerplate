@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 
 @Injectable()
-export class CorsMiddleware implements NestMiddleware {
+export class RequestCorsMiddleware implements NestMiddleware {
     constructor(private readonly configService: ConfigService) {}
 
     use(req: Request, res: Response, next: NextFunction): void {
@@ -14,14 +14,14 @@ export class CorsMiddleware implements NestMiddleware {
         const allowOrigin =
             env === ENUM_APP_ENVIRONMENT.PRODUCTION
                 ? this.configService.get<string | boolean | string[]>(
-                      'middleware.cors.allowOrigin'
+                      'request.cors.allowOrigin'
                   )
                 : '*';
         const allowMethod = this.configService.get<string[]>(
-            'middleware.cors.allowMethod'
+            'request.cors.allowMethod'
         );
         const allowHeader = this.configService.get<string[]>(
-            'middleware.cors.allowHeader'
+            'request.cors.allowHeader'
         );
 
         const corsOptions: CorsOptions = {

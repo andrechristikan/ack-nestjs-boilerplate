@@ -4,7 +4,7 @@ import { Response, NextFunction } from 'express';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
-export class VersionMiddleware implements NestMiddleware {
+export class RequestVersionMiddleware implements NestMiddleware {
     constructor(private readonly configService: ConfigService) {}
 
     async use(

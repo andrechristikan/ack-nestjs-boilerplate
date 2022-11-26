@@ -5,7 +5,6 @@ import { HelperModule } from 'src/common/helper/helper.module';
 import { ErrorModule } from 'src/common/error/error.module';
 import { ResponseModule } from 'src/common/response/response.module';
 import { RequestModule } from 'src/common/request/request.module';
-import { MiddlewareModule } from 'src/common/middleware/middleware.module';
 import { AuthModule } from 'src/common/auth/auth.module';
 import { MessageModule } from 'src/common/message/message.module';
 import { LoggerModule } from 'src/common/logger/logger.module';
@@ -13,7 +12,6 @@ import { PaginationModule } from 'src/common/pagination/pagination.module';
 import Joi from 'joi';
 import { ENUM_MESSAGE_LANGUAGE } from './message/constants/message.enum.constant';
 import configs from 'src/configs';
-import { AppLanguage } from 'src/app/constants/app.constant';
 import { SettingModule } from 'src/common/setting/setting.module';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -21,6 +19,7 @@ import { DatabaseOptionsService } from 'src/common/database/services/database.op
 import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
+import { APP_LANGUAGE } from 'src/app/constants/app.constant';
 
 @Module({
     controllers: [],
@@ -40,7 +39,7 @@ import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
                     .required(),
                 APP_LANGUAGE: Joi.string()
                     .valid(...Object.values(ENUM_MESSAGE_LANGUAGE))
-                    .default(AppLanguage)
+                    .default(APP_LANGUAGE)
                     .required(),
 
                 HTTP_ENABLE: Joi.boolean().default(true).required(),
@@ -64,11 +63,6 @@ import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
                 DEBUGGER_SYSTEM_WRITE_INTO_CONSOLE: Joi.boolean()
                     .default(false)
                     .required(),
-
-                MIDDLEWARE_TIMESTAMP_TOLERANCE: Joi.string()
-                    .default('5m')
-                    .required(),
-                MIDDLEWARE_TIMEOUT: Joi.string().default('30s').required(),
 
                 DOC_NAME: Joi.string().required(),
                 DOC_VERSION: Joi.number().required(),
@@ -158,7 +152,6 @@ import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
         DebuggerModule.forRoot(),
         ResponseModule,
         RequestModule,
-        MiddlewareModule,
         SettingModule,
         LoggerModule,
         ApiKeyModule,

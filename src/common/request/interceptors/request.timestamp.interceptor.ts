@@ -47,7 +47,7 @@ export class RequestTimestampInterceptor
                 throw new ForbiddenException({
                     statusCode:
                         ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
-                    message: 'middleware.error.timestampInvalid',
+                    message: 'request.error.timestampInvalid',
                 });
             }
 
@@ -56,7 +56,7 @@ export class RequestTimestampInterceptor
             });
 
             const toleranceTimeInMs = this.configService.get<number>(
-                'middleware.timestamp.toleranceTimeInMs'
+                'request.timestamp.toleranceTimeInMs'
             );
 
             const toleranceMin =
@@ -70,7 +70,7 @@ export class RequestTimestampInterceptor
                 throw new ForbiddenException({
                     statusCode:
                         ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
-                    message: 'middleware.error.timestampInvalid',
+                    message: 'request.error.timestampInvalid',
                 });
             }
         }

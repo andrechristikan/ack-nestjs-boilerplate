@@ -159,14 +159,12 @@ export class AuthService implements IAuthService {
             { data: payloadHashed },
             {
                 secretKey: this.refreshTokenSecretToken,
-                expiredIn:
-                    options && options.rememberMe
-                        ? this.refreshTokenExpirationTimeRememberMe
-                        : this.refreshTokenExpirationTime,
-                notBefore:
-                    options && options.notBeforeExpirationTime
-                        ? options.notBeforeExpirationTime
-                        : this.refreshTokenNotBeforeExpirationTime,
+                expiredIn: options?.rememberMe
+                    ? this.refreshTokenExpirationTimeRememberMe
+                    : this.refreshTokenExpirationTime,
+                notBefore: options?.notBeforeExpirationTime
+                    ? options.notBeforeExpirationTime
+                    : this.refreshTokenNotBeforeExpirationTime,
                 audience: this.audience,
                 issuer: this.issuer,
                 subject: this.subject,
@@ -205,10 +203,7 @@ export class AuthService implements IAuthService {
         return {
             ...data,
             rememberMe,
-            loginDate:
-                options && options.loginDate
-                    ? options.loginDate
-                    : this.helperDateService.create(),
+            loginDate: options?.loginDate ?? this.helperDateService.create(),
         };
     }
 
@@ -220,8 +215,7 @@ export class AuthService implements IAuthService {
         return {
             _id,
             rememberMe,
-            loginDate:
-                options && options.loginDate ? options.loginDate : undefined,
+            loginDate: options?.loginDate,
         };
     }
 

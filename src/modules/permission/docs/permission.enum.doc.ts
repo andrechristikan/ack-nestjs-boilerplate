@@ -6,7 +6,7 @@ export function PermissionEnumGroupDoc(): MethodDecorator {
     return applyDecorators(
         Doc<PermissionGroupSerialization>('permission.enum.group', {
             response: {
-                classSerialization: PermissionGroupSerialization,
+                serialization: PermissionGroupSerialization,
             },
         })
     );

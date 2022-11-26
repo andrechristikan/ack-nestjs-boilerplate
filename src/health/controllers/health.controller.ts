@@ -31,7 +31,7 @@ export class HealthController {
     ) {}
 
     @HealthCheckDoc()
-    @Response('health.check', { classSerialization: HealthSerialization })
+    @Response('health.check', { serialization: HealthSerialization })
     @HealthCheck()
     @Get('/aws')
     async checkAws(): Promise<IResponse> {
@@ -41,7 +41,7 @@ export class HealthController {
     }
 
     @HealthCheckDoc()
-    @Response('health.check', { classSerialization: HealthSerialization })
+    @Response('health.check', { serialization: HealthSerialization })
     @HealthCheck()
     @Get('/database')
     async checkDatabase(): Promise<IResponse> {
@@ -54,7 +54,7 @@ export class HealthController {
     }
 
     @HealthCheckDoc()
-    @Response('health.check', { classSerialization: HealthSerialization })
+    @Response('health.check', { serialization: HealthSerialization })
     @HealthCheck()
     @Get('/memory-heap')
     async checkMemoryHeap(): Promise<IResponse> {
@@ -68,7 +68,7 @@ export class HealthController {
     }
 
     @HealthCheckDoc()
-    @Response('health.check', { classSerialization: HealthSerialization })
+    @Response('health.check', { serialization: HealthSerialization })
     @HealthCheck()
     @Get('/memory-rss')
     async checkMemoryRss(): Promise<IResponse> {
@@ -82,7 +82,7 @@ export class HealthController {
     }
 
     @HealthCheckDoc()
-    @Response('health.check', { classSerialization: HealthSerialization })
+    @Response('health.check', { serialization: HealthSerialization })
     @HealthCheck()
     @Get('/storage')
     async checkStorage(): Promise<IResponse> {
