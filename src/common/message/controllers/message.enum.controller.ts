@@ -6,12 +6,12 @@ import { MessageEnumService } from 'src/common/message/services/message.enum.ser
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 
-@ApiTags('enum.message')
+@ApiTags('message')
 @Controller({
     version: VERSION_NEUTRAL,
     path: '/message',
 })
-export class MessageEnumController {
+export class MessageController {
     constructor(private readonly messageEnumService: MessageEnumService) {}
 
     @MessageEnumLanguageDoc()

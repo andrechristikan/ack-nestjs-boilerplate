@@ -21,7 +21,7 @@
 
 *You can [request feature][ack-issues] or [report bug][ack-issues] with following this link*
 
-### Other Repo
+## Other Repo
 
 * [Mongoose Mini Version][ack-mongoose] : Mini version
 * [Typeorm Integration][ack-typeorm] : Mini version with typeorm integration
@@ -75,11 +75,13 @@ Next development
 * [x] Optimize Unit Testing
 * [x] Make serverless separate repo
 * [x] Optimize Swagger
+* [x] Remove enum endpoint
 * [ ] Implement 0Auth 2 Grant Type
 * [ ] Reduce the payload of access token
-* [ ] Authorization mechanism
-* [ ] SSO Google
+* [ ] Update authorization mechanism
 * [ ] AuthApi Controller
+* [ ] Add Typeorm repository
+* [ ] SSO Google, SSO Facebook, SSO Twitter, SSO Apple, SSO Microsoft
 * [ ] Update Documentation, include an diagram for easier comprehension
 * [ ] Maybe will adopt [CQRS][ref-nestjs-cqrs]
 
