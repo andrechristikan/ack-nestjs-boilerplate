@@ -13,7 +13,10 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
-import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
+import {
+    AuthJwtAdminAccessProtected,
+    AuthJwtPermissionProtected,
+} from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
@@ -73,7 +76,8 @@ export class RoleAdminController {
     @ResponsePaging('role.list', {
         serialization: RoleListSerialization,
     })
-    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.ROLE_READ)
+    @AuthJwtPermissionProtected(ENUM_AUTH_PERMISSIONS.ROLE_READ)
+    @AuthJwtAdminAccessProtected()
     @Get('/list')
     async list(
         @Query()
@@ -122,7 +126,8 @@ export class RoleAdminController {
     })
     @RoleGetGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.ROLE_READ)
+    @AuthJwtPermissionProtected(ENUM_AUTH_PERMISSIONS.ROLE_READ)
+    @AuthJwtAdminAccessProtected()
     @Get('get/:role')
     async get(@GetRole() role: IRoleEntity): Promise<IResponse> {
         return role;
@@ -132,10 +137,11 @@ export class RoleAdminController {
     @Response('role.create', {
         serialization: ResponseIdSerialization,
     })
-    @AuthJwtAdminAccessProtected(
+    @AuthJwtPermissionProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_CREATE
     )
+    @AuthJwtAdminAccessProtected()
     @Post('/create')
     async create(
         @Body()
@@ -189,10 +195,11 @@ export class RoleAdminController {
     })
     @RoleUpdateGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthJwtAdminAccessProtected(
+    @AuthJwtPermissionProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
     )
+    @AuthJwtAdminAccessProtected()
     @Put('/update/:role')
     async update(
         @GetRole() role: IRoleEntity,
@@ -245,10 +252,11 @@ export class RoleAdminController {
     @Response('role.delete')
     @RoleDeleteGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthJwtAdminAccessProtected(
+    @AuthJwtPermissionProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_DELETE
     )
+    @AuthJwtAdminAccessProtected()
     @Delete('/delete/:role')
     async delete(@GetRole() role: IRoleEntity): Promise<void> {
         try {
@@ -267,10 +275,11 @@ export class RoleAdminController {
     @Response('role.inactive')
     @RoleUpdateInactiveGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthJwtAdminAccessProtected(
+    @AuthJwtPermissionProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
     )
+    @AuthJwtAdminAccessProtected()
     @Patch('/update/:role/inactive')
     async inactive(@GetRole() role: IRoleEntity): Promise<void> {
         try {
@@ -290,10 +299,11 @@ export class RoleAdminController {
     @Response('role.active')
     @RoleUpdateActiveGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthJwtAdminAccessProtected(
+    @AuthJwtPermissionProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
     )
+    @AuthJwtAdminAccessProtected()
     @Patch('/update/:role/active')
     async active(@GetRole() role: IRoleEntity): Promise<void> {
         try {

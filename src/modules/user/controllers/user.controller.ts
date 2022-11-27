@@ -16,7 +16,7 @@ import { ApiTags } from '@nestjs/swagger';
 import {
     AuthJwtPayload,
     AuthJwtToken,
-} from 'src/common/auth/decorators/auth.decorator';
+} from 'src/common/auth/decorators/auth.jwt.decorator';
 import {
     AuthJwtAccessProtected,
     AuthJwtRefreshProtected,

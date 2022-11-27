@@ -9,7 +9,10 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
-import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
+import {
+    AuthJwtAdminAccessProtected,
+    AuthJwtPermissionProtected,
+} from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
@@ -59,7 +62,8 @@ export class PermissionAdminController {
     @ResponsePaging('permission.list', {
         serialization: PermissionListSerialization,
     })
-    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
+    @AuthJwtPermissionProtected(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
+    @AuthJwtAdminAccessProtected()
     @Get('/list')
     async list(
         @Query()
@@ -111,7 +115,8 @@ export class PermissionAdminController {
     })
     @PermissionGetGuard()
     @RequestParamGuard(PermissionRequestDto)
-    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
+    @AuthJwtPermissionProtected(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
+    @AuthJwtAdminAccessProtected()
     @Get('/get/:permission')
     async get(
         @GetPermission() permission: PermissionEntity
@@ -125,10 +130,11 @@ export class PermissionAdminController {
     })
     @PermissionUpdateGuard()
     @RequestParamGuard(PermissionRequestDto)
-    @AuthJwtAdminAccessProtected(
+    @AuthJwtPermissionProtected(
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
+    @AuthJwtAdminAccessProtected()
     @Put('/update/:permission')
     async update(
         @GetPermission() permission: PermissionEntity,
@@ -153,10 +159,11 @@ export class PermissionAdminController {
     @Response('permission.inactive', {})
     @PermissionUpdateInactiveGuard()
     @RequestParamGuard(PermissionRequestDto)
-    @AuthJwtAdminAccessProtected(
+    @AuthJwtPermissionProtected(
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
+    @AuthJwtAdminAccessProtected()
     @Patch('/update/:permission/inactive')
     async inactive(
         @GetPermission() permission: PermissionEntity
@@ -178,10 +185,11 @@ export class PermissionAdminController {
     @Response('permission.active', {})
     @PermissionUpdateActiveGuard()
     @RequestParamGuard(PermissionRequestDto)
-    @AuthJwtAdminAccessProtected(
+    @AuthJwtPermissionProtected(
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
         ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
     )
+    @AuthJwtAdminAccessProtected()
     @Patch('/update/:permission/active')
     async active(@GetPermission() permission: PermissionEntity): Promise<void> {
         try {
