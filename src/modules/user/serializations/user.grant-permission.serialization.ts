@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class AuthLoginSerialization {
+export class UserGrantPermissionSerialization {
     @ApiProperty({
         example: 'Bearer',
         required: true,
@@ -20,13 +20,5 @@ export class AuthLoginSerialization {
         description: 'Will be valid JWT Encode string',
         required: true,
     })
-    readonly accessToken: string;
-
-    @ApiProperty({
-        example: faker.random.alphaNumeric(30),
-        description: 'Will be valid JWT Encode string',
-        required: true,
-    })
-    @ApiProperty()
-    readonly refreshToken: string;
+    readonly permissionToken: string;
 }

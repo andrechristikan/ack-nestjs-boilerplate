@@ -77,9 +77,10 @@ Next development
 * [x] Optimize Swagger
 * [x] Remove enum endpoint
 * [x] Permission group fixed
-* [ ] Implement 0Auth 2 Grant Type
-* [ ] Reduce the payload of access token
-* [ ] Update authorization mechanism
+* [x] Reduce the payload of access token
+* [x] Update authorization mechanism, permission token on `x-permission-token`
+* [ ] Update package, cors setting, check all interfaces, husky trigger switch to on and check test
+* [ ] AuthApiKey mechanism
 * [ ] AuthApi Controller
 * [ ] Add Typeorm repository
 * [ ] SSO Google, SSO Facebook, SSO Twitter, SSO Apple, SSO Microsoft

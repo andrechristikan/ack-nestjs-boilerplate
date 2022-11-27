@@ -10,13 +10,25 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { IUserCreate } from 'src/modules/user/interfaces/user.interface';
+import {
+    IUserCreate,
+    IUserEntity,
+} from 'src/modules/user/interfaces/user.interface';
 import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { UserPhotoDto } from 'src/modules/user/dtos/user.photo.dto';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { UserPasswordDto } from 'src/modules/user/dtos/user.password.dto';
+import { UserPasswordExpiredDto } from 'src/modules/user/dtos/user.password-expired.dto';
+import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
+import { plainToInstance } from 'class-transformer';
+import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
+import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
+import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
+import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload-permission.serialization';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -183,5 +195,120 @@ export class UserService implements IUserService {
             path: this.uploadPath,
             filename: filename,
         };
+    }
+
+    async updatePassword(
+        _id: string,
+        { salt, passwordHash, passwordExpired }: IAuthPassword,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const update: UserPasswordDto = {
+            password: passwordHash,
+            passwordExpired: passwordExpired,
+            salt: salt,
+        };
+
+        return this.userRepository.updateOneById<UserPasswordDto>(
+            _id,
+            update,
+            options
+        );
+    }
+
+    async updatePasswordExpired(
+        _id: string,
+        passwordExpired: Date,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const update: UserPasswordExpiredDto = {
+            passwordExpired: passwordExpired,
+        };
+
+        return this.userRepository.updateOneById<UserPasswordExpiredDto>(
+            _id,
+            update,
+            options
+        );
+    }
+
+    async inactive(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const update: UserActiveDto = {
+            isActive: false,
+        };
+
+        return this.userRepository.updateOneById<UserActiveDto>(
+            _id,
+            update,
+            options
+        );
+    }
+
+    async active(_id: string, options?: IDatabaseOptions): Promise<UserEntity> {
+        const update: UserActiveDto = {
+            isActive: true,
+        };
+
+        return this.userRepository.updateOneById<UserActiveDto>(
+            _id,
+            update,
+            options
+        );
+    }
+
+    async payloadSerialization(
+        data: IUserEntity
+    ): Promise<UserPayloadSerialization> {
+        return plainToInstance(UserPayloadSerialization, data);
+    }
+
+    async increasePasswordAttempt(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const user: UserEntity = await this.userRepository.findOneById(
+            _id,
+            options
+        );
+
+        const update = {
+            passwordAttempt: ++user.passwordAttempt,
+        };
+
+        return this.userRepository.updateOneById(_id, update, options);
+    }
+
+    async resetPasswordAttempt(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const update = {
+            passwordAttempt: 0,
+        };
+
+        return this.userRepository.updateOneById(_id, update, options);
+    }
+
+    async getPermissionByGroupFromUser(
+        _id: string,
+        scope: ENUM_PERMISSION_GROUP[]
+    ): Promise<PermissionEntity[]> {
+        const user: IUserEntity = await this.userRepository.findOneById(_id, {
+            join: true,
+        });
+
+        return user.role.permissions.filter((val) => scope.includes(val.group));
+    }
+
+    async payloadPermissionSerialization(
+        _id: string,
+        permissions: PermissionEntity[]
+    ): Promise<UserPayloadPermissionSerialization> {
+        return plainToInstance(UserPayloadPermissionSerialization, {
+            _id,
+            permissions,
+        });
     }
 }

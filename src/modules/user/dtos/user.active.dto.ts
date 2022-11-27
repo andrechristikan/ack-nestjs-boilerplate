@@ -1,6 +1,6 @@
 import { IsBoolean, IsNotEmpty } from 'class-validator';
 
-export class AuthActiveDto {
+export class UserActiveDto {
     @IsBoolean()
     @IsNotEmpty()
     readonly isActive: boolean;

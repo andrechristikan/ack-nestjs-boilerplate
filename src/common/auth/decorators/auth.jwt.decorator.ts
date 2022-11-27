@@ -1,14 +1,9 @@
 import { applyDecorators, SetMetadata, UseGuards } from '@nestjs/common';
-import {
-    AUTH_ACCESS_FOR_META_KEY,
-    AUTH_PERMISSION_META_KEY,
-} from 'src/common/auth/constants/auth.constant';
+import { AUTH_ACCESS_FOR_META_KEY } from 'src/common/auth/constants/auth.constant';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
-import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { AuthJwtAccessGuard } from 'src/common/auth/guards/jwt-access/auth.jwt-access.guard';
 import { AuthJwtRefreshGuard } from 'src/common/auth/guards/jwt-refresh/auth.jwt-refresh.guard';
 import { AuthPayloadAccessForGuard } from 'src/common/auth/guards/payload/auth.payload.access-for.guard';
-import { AuthPayloadPermissionGuard } from 'src/common/auth/guards/payload/auth.payload.permission.guard';
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
 export const AuthJwtPayload = createParamDecorator(
@@ -27,15 +22,6 @@ export const AuthJwtToken = createParamDecorator(
         return authorizations.length >= 2 ? authorizations[1] : undefined;
     }
 );
-
-export function AuthJwtPermissionProtected(
-    ...permissions: ENUM_AUTH_PERMISSIONS[]
-): MethodDecorator {
-    return applyDecorators(
-        UseGuards(AuthPayloadPermissionGuard),
-        SetMetadata(AUTH_PERMISSION_META_KEY, permissions)
-    );
-}
 
 export function AuthJwtAccessProtected(): MethodDecorator {
     return applyDecorators(UseGuards(AuthJwtAccessGuard));

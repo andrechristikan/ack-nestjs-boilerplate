@@ -17,16 +17,16 @@ import {
     IPaginationFilterStringOptions,
 } from 'src/common/pagination/interfaces/pagination.interface';
 
-export function PaginationSearch(): PropertyDecorator {
+export function PaginationSearch(availableSearch: string[]): PropertyDecorator {
     return applyDecorators(
         Expose(),
-        Transform(({ value, obj }) => {
-            if (!value || !obj.availableSearch) {
+        Transform(({ value }) => {
+            if (!value || !availableSearch) {
                 return undefined;
             }
 
             return {
-                $or: obj.availableSearch.map((val) => ({
+                $or: availableSearch.map((val) => ({
                     [val]: {
                         $regex: new RegExp(value),
                         $options: 'i',
@@ -76,17 +76,19 @@ export function PaginationPerPage(
     );
 }
 
-export function PaginationSort(sort = PAGINATION_SORT): PropertyDecorator {
+export function PaginationSort(
+    sort = PAGINATION_SORT,
+    availableSort = PAGINATION_AVAILABLE_SORT
+): PropertyDecorator {
     return applyDecorators(
         Expose(),
-        Transform(({ value, obj }) => {
+        Transform(({ value }) => {
             const bSort = PAGINATION_SORT.split('@')[0];
 
             const rSort = value || sort;
-            const rAvailableSort = obj._availableSort;
             const field: string = rSort.split('@')[0];
             const type: string = rSort.split('@')[1];
-            const convertField: string = rAvailableSort.includes(field)
+            const convertField: string = availableSort.includes(field)
                 ? field
                 : bSort;
 

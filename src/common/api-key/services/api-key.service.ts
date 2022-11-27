@@ -19,7 +19,6 @@ import { IApiKey } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyRepository } from 'src/common/api-key/repository/repositories/api-key.repository';
-import { AuthPayloadSerialization } from 'src/common/auth/serializations/auth.payload.serialization';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
@@ -101,7 +100,7 @@ export class ApiKeyService implements IApiKeyService {
 
     async create(
         { name, description }: ApiKeyCreateDto,
-        user: AuthPayloadSerialization,
+        user: Record<string, any>,
         options?: IDatabaseCreateOptions
     ): Promise<IApiKey> {
         const key = await this.createKey();

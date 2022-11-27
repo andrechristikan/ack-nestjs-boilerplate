@@ -5,7 +5,7 @@ import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.consta
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
 
-export class AuthPayloadSerialization extends OmitType(UserGetSerialization, [
+export class UserPayloadSerialization extends OmitType(UserGetSerialization, [
     'photo',
     'role',
     'isActive',

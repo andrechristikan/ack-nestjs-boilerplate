@@ -1,7 +1,7 @@
 import { Type } from 'class-transformer';
 import { IsDate, IsNotEmpty, IsString } from 'class-validator';
 
-export class AuthPasswordDto {
+export class UserPasswordDto {
     @IsString()
     @IsNotEmpty()
     password: string;

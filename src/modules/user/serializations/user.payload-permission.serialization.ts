@@ -1,10 +1,9 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty, OmitType, PickType } from '@nestjs/swagger';
-import { Exclude, Expose, Transform } from 'class-transformer';
-import { valid } from 'joi';
+import { ApiProperty, PickType } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
 
-export class AuthGrantPermissionSerialization extends PickType(
+export class UserPayloadPermissionSerialization extends PickType(
     UserGetSerialization,
     ['_id'] as const
 ) {
@@ -13,6 +12,6 @@ export class AuthGrantPermissionSerialization extends PickType(
         type: 'string',
         isArray: true,
     })
-    @Transform(({ value }) => value?.code ?? [])
+    @Transform(({ value }) => value?.map((val) => val.code) ?? [])
     readonly permissions: string[];
 }

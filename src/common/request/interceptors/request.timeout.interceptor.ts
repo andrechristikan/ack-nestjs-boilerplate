@@ -20,10 +20,14 @@ import {
 export class RequestTimeoutInterceptor
     implements NestInterceptor<Promise<any>>
 {
+    private readonly timeout: number;
+
     constructor(
         private readonly configService: ConfigService,
         private readonly reflector: Reflector
-    ) {}
+    ) {
+        this.timeout = this.configService.get<number>('request.timeout');
+    }
 
     async intercept(
         context: ExecutionContext,
@@ -55,10 +59,8 @@ export class RequestTimeoutInterceptor
                     })
                 );
             } else {
-                const defaultTimeout: number =
-                    this.configService.get<number>('request.timeout');
                 return next.handle().pipe(
-                    timeout(defaultTimeout),
+                    timeout(this.timeout),
                     catchError((err) => {
                         if (err instanceof TimeoutError) {
                             throw new RequestTimeoutException({

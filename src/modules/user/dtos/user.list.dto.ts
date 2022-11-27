@@ -18,7 +18,7 @@ import {
 } from 'src/modules/user/constants/user.list.constant';
 
 export class UserListDto implements PaginationListAbstract {
-    @PaginationSearch()
+    @PaginationSearch(USER_DEFAULT_AVAILABLE_SEARCH)
     readonly search: Record<string, any>;
 
     @ApiHideProperty()
@@ -31,7 +31,7 @@ export class UserListDto implements PaginationListAbstract {
     @PaginationPerPage(USER_DEFAULT_PER_PAGE)
     readonly perPage: number;
 
-    @PaginationSort(USER_DEFAULT_SORT)
+    @PaginationSort(USER_DEFAULT_SORT, USER_DEFAULT_AVAILABLE_SORT)
     readonly sort: IPaginationSort;
 
     @ApiHideProperty()

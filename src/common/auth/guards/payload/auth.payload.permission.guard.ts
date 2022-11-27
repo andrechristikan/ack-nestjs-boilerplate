@@ -28,13 +28,13 @@ export class AuthPayloadPermissionGuard implements CanActivate {
             return true;
         }
 
-        const { user } = context.switchToHttp().getRequest();
-        const { role } = user;
-        if (role.accessFor === ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN) {
+        const { permissions, user } = context.switchToHttp().getRequest();
+        const { accessFor } = user;
+
+        if (accessFor === ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN) {
             return true;
         }
 
-        const permissions: string[] = role.permissions;
         const hasPermission: boolean = this.helperArrayService.in(
             permissions,
             requiredPermission
