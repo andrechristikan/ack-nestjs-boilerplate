@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { Exclude, Transform, Type } from 'class-transformer';
+import { Exclude, Type } from 'class-transformer';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
-import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
+import { PermissionGetSerialization } from 'src/modules/permission/serializations/permission.get.serialization';
 
 export class RoleGetSerialization {
     @ApiProperty({
@@ -36,27 +36,12 @@ export class RoleGetSerialization {
 
     @ApiProperty({
         description: 'List of permission',
-        example: [
-            {
-                _id: faker.database.mongodbObjectId(),
-                code: faker.random.alpha(5),
-                name: faker.name.jobDescriptor(),
-                group: faker.name.jobDescriptor(),
-                isActive: true,
-            },
-        ],
+        type: () => PermissionGetSerialization,
+        isArray: true,
         required: true,
     })
-    @Transform(({ obj }) =>
-        obj.permissions.map((val: PermissionEntity) => ({
-            _id: `${val._id}`,
-            code: val.code,
-            name: val.name,
-            group: val.group,
-            isActive: val.isActive,
-        }))
-    )
-    readonly permissions: PermissionEntity[];
+    @Type(() => PermissionGetSerialization)
+    readonly permissions: PermissionGetSerialization[];
 
     @ApiProperty({
         description: 'Date created at',
@@ -65,6 +50,13 @@ export class RoleGetSerialization {
     })
     readonly createdAt: Date;
 
-    @Exclude()
+    @ApiProperty({
+        description: 'Date updated at',
+        example: faker.date.recent(),
+        required: false,
+    })
     readonly updatedAt: Date;
+
+    @Exclude()
+    readonly deletedAt: Date;
 }

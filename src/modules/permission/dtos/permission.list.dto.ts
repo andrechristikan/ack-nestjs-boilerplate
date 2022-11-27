@@ -4,16 +4,19 @@ import {
     PaginationAvailableSearch,
     PaginationAvailableSort,
     PaginationFilterBoolean,
+    PaginationFilterEnum,
     PaginationPage,
     PaginationPerPage,
     PaginationSearch,
     PaginationSort,
 } from 'src/common/pagination/decorators/pagination.decorator';
 import { IPaginationSort } from 'src/common/pagination/interfaces/pagination.interface';
+import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 import {
     PERMISSION_DEFAULT_ACTIVE,
     PERMISSION_DEFAULT_AVAILABLE_SEARCH,
     PERMISSION_DEFAULT_AVAILABLE_SORT,
+    PERMISSION_DEFAULT_GROUP,
     PERMISSION_DEFAULT_PAGE,
     PERMISSION_DEFAULT_PER_PAGE,
     PERMISSION_DEFAULT_SORT,
@@ -42,4 +45,7 @@ export class PermissionListDto implements PaginationListAbstract {
 
     @PaginationFilterBoolean(PERMISSION_DEFAULT_ACTIVE)
     readonly isActive: boolean[];
+
+    @PaginationFilterEnum(PERMISSION_DEFAULT_GROUP, ENUM_PERMISSION_GROUP)
+    readonly group: string[];
 }

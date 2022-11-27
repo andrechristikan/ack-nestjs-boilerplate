@@ -14,6 +14,7 @@ import {
     AuthJwtPermissionProtected,
 } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
+import { ENUM_PAGINATION_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
@@ -35,15 +36,19 @@ import { GetPermission } from 'src/modules/permission/decorators/permission.deco
 import {
     PermissionActiveDoc,
     PermissionGetDoc,
+    PermissionGroupDoc,
     PermissionInactiveDoc,
     PermissionListDoc,
     PermissionUpdateDoc,
 } from 'src/modules/permission/docs/permission.admin.doc';
+import { PermissionGroupDto } from 'src/modules/permission/dtos/permission.group.dto';
 import { PermissionListDto } from 'src/modules/permission/dtos/permission.list.dto';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
 import { PermissionRequestDto } from 'src/modules/permission/dtos/permissions.request.dto';
+import { IPermissionGroup } from 'src/modules/permission/interfaces/permission.interface';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { PermissionGetSerialization } from 'src/modules/permission/serializations/permission.get.serialization';
+import { PermissionGroupsSerialization } from 'src/modules/permission/serializations/permission.group.serialization';
 import { PermissionListSerialization } from 'src/modules/permission/serializations/permission.list.serialization';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
 
@@ -75,12 +80,14 @@ export class PermissionAdminController {
             availableSort,
             availableSearch,
             isActive,
+            group,
         }: PermissionListDto
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
         const find: Record<string, any> = {
             ...isActive,
             ...search,
+            ...group,
         };
 
         const permissions: PermissionEntity[] =
@@ -107,6 +114,33 @@ export class PermissionAdminController {
             availableSort,
             data: permissions,
         };
+    }
+
+    @PermissionGroupDoc()
+    @Response('permission.group', {
+        serialization: PermissionGroupsSerialization,
+    })
+    @AuthJwtPermissionProtected(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
+    @AuthJwtAdminAccessProtected()
+    @Get('/group')
+    async group(
+        @Query()
+        { group }: PermissionGroupDto
+    ): Promise<IResponse> {
+        const find: Record<string, any> = {
+            ...group,
+        };
+
+        const permissions: PermissionEntity[] =
+            await this.permissionService.findAll(find, {
+                sort: { group: ENUM_PAGINATION_SORT_TYPE.ASC },
+            });
+
+        const groups: IPermissionGroup[] = await this.permissionService.groups(
+            permissions
+        );
+
+        return { groups };
     }
 
     @PermissionGetDoc()

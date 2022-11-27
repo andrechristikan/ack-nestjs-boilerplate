@@ -1,11 +1,18 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
+import { ApiProperty, PickType } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { PermissionGetSerialization } from 'src/modules/permission/serializations/permission.get.serialization';
 
-export class PermissionGroupSerialization {
-    @ApiProperty({
-        enum: ENUM_PERMISSION_GROUP,
-        type: 'array',
-        isArray: true,
-    })
-    group: ENUM_PERMISSION_GROUP[];
+class PermissionGroupSerialization extends PickType(
+    PermissionGetSerialization,
+    ['group'] as const
+) {
+    @ApiProperty({ type: () => PermissionGetSerialization, isArray: true })
+    @Type(() => PermissionGetSerialization)
+    permissions: PermissionGetSerialization[];
+}
+
+export class PermissionGroupsSerialization {
+    @ApiProperty({ type: () => PermissionGroupSerialization, isArray: true })
+    @Type(() => PermissionGroupSerialization)
+    groups: PermissionGroupSerialization[];
 }

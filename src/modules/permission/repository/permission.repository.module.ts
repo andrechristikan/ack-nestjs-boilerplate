@@ -5,7 +5,7 @@ import {
     PermissionEntity,
     PermissionSchema,
 } from 'src/modules/permission/repository/entities/permission.entity';
-import { PermissionRepository } from 'src/modules/permission/repository/repositories/permission.mongo.repository';
+import { PermissionRepository } from 'src/modules/permission/repository/repositories/permission.repository';
 
 @Module({
     providers: [PermissionRepository],

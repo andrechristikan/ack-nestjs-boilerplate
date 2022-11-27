@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
-import { Exclude, Transform, Type } from 'class-transformer';
+import { Exclude, Type } from 'class-transformer';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
-import { IRoleEntity } from 'src/modules/role/interfaces/role.interface';
+import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
 
 export class UserGetSerialization {
     @ApiProperty({ example: faker.database.mongodbObjectId() })
@@ -10,29 +10,10 @@ export class UserGetSerialization {
     readonly _id: string;
 
     @ApiProperty({
-        example: {
-            name: faker.name.jobTitle(),
-            permissions: [
-                faker.database.mongodbObjectId(),
-                faker.database.mongodbObjectId(),
-            ],
-            accessFor: 'ADMIN',
-            isActive: true,
-        },
-        type: 'object',
+        type: () => RoleGetSerialization,
     })
-    @Transform(({ value }) => ({
-        name: value.name,
-        permissions: value.permissions.map((val: Record<string, any>) => ({
-            name: val.name,
-            isActive: val.isActive,
-            group: val.group,
-            code: val.code,
-        })),
-        accessFor: value.accessFor,
-        isActive: value.isActive,
-    }))
-    readonly role: IRoleEntity;
+    @Type(() => RoleGetSerialization)
+    readonly role: RoleGetSerialization;
 
     @ApiProperty({
         example: faker.internet.email(),

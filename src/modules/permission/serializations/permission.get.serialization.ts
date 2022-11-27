@@ -20,13 +20,6 @@ export class PermissionGetSerialization {
     readonly isActive: boolean;
 
     @ApiProperty({
-        description: 'Alias name of permission',
-        example: faker.name.jobDescriptor(),
-        required: true,
-    })
-    readonly name: string;
-
-    @ApiProperty({
         description: 'Unique code of permission',
         example: faker.random.alpha(5),
         required: true,
@@ -35,8 +28,7 @@ export class PermissionGetSerialization {
 
     @ApiProperty({
         enum: ENUM_PERMISSION_GROUP,
-        type: 'array',
-        isArray: true,
+        type: 'string',
     })
     readonly group: ENUM_PERMISSION_GROUP;
 
@@ -45,7 +37,7 @@ export class PermissionGetSerialization {
         example: 'blabla description',
         required: true,
     })
-    readonly description: string;
+    readonly description?: string;
 
     @ApiProperty({
         description: 'Date created at',

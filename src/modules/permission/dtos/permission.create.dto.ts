@@ -5,15 +5,6 @@ import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permissi
 
 export class PermissionCreateDto {
     @ApiProperty({
-        description: 'Alias name of permission',
-        example: faker.name.jobDescriptor(),
-        required: true,
-    })
-    @IsString()
-    @IsNotEmpty()
-    readonly name: string;
-
-    @ApiProperty({
         description: 'Permission group',
         example: 'PERMISSION',
         required: true,

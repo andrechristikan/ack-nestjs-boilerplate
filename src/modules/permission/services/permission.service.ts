@@ -6,13 +6,15 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 import { PermissionActiveDto } from 'src/modules/permission/dtos/permission.active.dto';
 import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
 import { PermissionUpdateGroupDto } from 'src/modules/permission/dtos/permission.update-group.dto';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
+import { IPermissionGroup } from 'src/modules/permission/interfaces/permission.interface';
 import { IPermissionService } from 'src/modules/permission/interfaces/permission.service.interface';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
-import { PermissionRepository } from 'src/modules/permission/repository/repositories/permission.mongo.repository';
+import { PermissionRepository } from 'src/modules/permission/repository/repositories/permission.repository';
 
 @Injectable()
 export class PermissionService implements IPermissionService {
@@ -67,7 +69,6 @@ export class PermissionService implements IPermissionService {
         options?: IDatabaseCreateOptions
     ): Promise<PermissionEntity> {
         const create: PermissionEntity = new PermissionEntity();
-        create.name = data.name;
         create.group = data.group;
         create.code = data.code;
         create.description = data.description;
@@ -130,5 +131,20 @@ export class PermissionService implements IPermissionService {
             update,
             options
         );
+    }
+
+    async groups(permissions: PermissionEntity[]): Promise<IPermissionGroup[]> {
+        return Object.values(ENUM_PERMISSION_GROUP)
+            .map((val) => {
+                const pms: PermissionEntity[] = permissions.filter(
+                    (l) => l.group === val
+                );
+
+                return {
+                    group: val,
+                    permissions: pms,
+                };
+            })
+            .filter((val) => val.permissions.length !== 0);
     }
 }

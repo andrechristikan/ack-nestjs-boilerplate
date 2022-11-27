@@ -76,6 +76,7 @@ Next development
 * [x] Make serverless separate repo
 * [x] Optimize Swagger
 * [x] Remove enum endpoint
+* [x] Permission group fixed
 * [ ] Implement 0Auth 2 Grant Type
 * [ ] Reduce the payload of access token
 * [ ] Update authorization mechanism

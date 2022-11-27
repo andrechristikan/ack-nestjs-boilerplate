@@ -6,7 +6,7 @@ import {
 import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
 import { IPermissionBulkService } from 'src/modules/permission/interfaces/permission.bulk-service.interface';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
-import { PermissionRepository } from 'src/modules/permission/repository/repositories/permission.mongo.repository';
+import { PermissionRepository } from 'src/modules/permission/repository/repositories/permission.repository';
 
 @Injectable()
 export class PermissionBulkService implements IPermissionBulkService {
@@ -17,10 +17,9 @@ export class PermissionBulkService implements IPermissionBulkService {
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean> {
         const map: PermissionEntity[] = data.map(
-            ({ code, description, name, group }) => {
+            ({ code, description, group }) => {
                 const create = new PermissionEntity();
                 create.code = code;
-                create.name = name;
                 create.description = description;
                 create.group = group;
                 create.isActive = true;
