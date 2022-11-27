@@ -54,8 +54,7 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
                 ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR
             ) {
                 throw new UnauthorizedException({
-                    statusCode:
-                        ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR,
+                    statusCode,
                     message: 'apiKey.error.notFound',
                 });
             } else if (
@@ -63,15 +62,21 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
                 ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INACTIVE_ERROR
             ) {
                 throw new UnauthorizedException({
-                    statusCode:
-                        ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INACTIVE_ERROR,
+                    statusCode,
                     message: 'apiKey.error.inactive',
+                });
+            } else if (
+                statusCode ===
+                ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_WRONG_ERROR
+            ) {
+                throw new UnauthorizedException({
+                    statusCode,
+                    message: 'apiKey.error.wrong',
                 });
             }
 
             throw new UnauthorizedException({
-                statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INVALID_ERROR,
+                statusCode,
                 message: 'apiKey.error.invalid',
             });
         }

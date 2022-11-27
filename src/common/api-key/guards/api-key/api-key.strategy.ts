@@ -74,6 +74,17 @@ export class ApiKeyKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
             return;
         }
 
+        const { user } = req;
+        if (authApi.user !== user._id) {
+            verified(
+                new Error(
+                    `${ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_WRONG_ERROR}`
+                ),
+                null,
+                null
+            );
+        }
+
         const validateApiKey: boolean =
             await this.apiKeyService.validateHashApiKey(hashed, authApi.hash);
         if (!validateApiKey) {

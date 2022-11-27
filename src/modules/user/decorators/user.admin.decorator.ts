@@ -15,17 +15,3 @@ export function UserDeleteGuard(): MethodDecorator {
 export function UserUpdateGuard(): MethodDecorator {
     return applyDecorators(UseGuards(UserPutToRequestGuard, UserNotFoundGuard));
 }
-
-export function UserUpdateInactiveGuard(): MethodDecorator {
-    return applyDecorators(
-        UseGuards(UserPutToRequestGuard, UserNotFoundGuard, UserActiveGuard),
-        SetMetadata(USER_ACTIVE_META_KEY, [true])
-    );
-}
-
-export function UserUpdateActiveGuard(): MethodDecorator {
-    return applyDecorators(
-        UseGuards(UserPutToRequestGuard, UserNotFoundGuard, UserActiveGuard),
-        SetMetadata(USER_ACTIVE_META_KEY, [false])
-    );
-}

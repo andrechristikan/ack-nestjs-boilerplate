@@ -1,7 +1,8 @@
 import { Prop, SchemaFactory } from '@nestjs/mongoose';
-import { CallbackWithoutResultAndOptionalError } from 'mongoose';
+import { CallbackWithoutResultAndOptionalError, Types } from 'mongoose';
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
 export const ApiKeyDatabaseName = 'apikeys';
 
@@ -25,6 +26,13 @@ export class ApiKeyEntity extends DatabaseMongoUUIDEntityAbstract {
         maxlength: 255,
     })
     description?: string;
+
+    @Prop({
+        required: true,
+        ref: UserEntity.name,
+        index: true,
+    })
+    user: string;
 
     @Prop({
         required: true,

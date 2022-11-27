@@ -1,4 +1,3 @@
-import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import {
     IDatabaseCreateOptions,
@@ -10,8 +9,7 @@ import {
 } from 'src/common/database/interfaces/database.interface';
 import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
-import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
-import { IUserCreate, IUserEntity } from './user.interface';
+import { IUserCreate } from './user.interface';
 
 export interface IUserService {
     findAll<T>(
@@ -79,27 +77,4 @@ export interface IUserService {
     ): Promise<UserEntity>;
 
     createRandomFilename(): Promise<Record<string, any>>;
-
-    updatePassword(
-        _id: string,
-        data: IAuthPassword,
-        options?: IDatabaseOptions
-    ): Promise<UserEntity>;
-
-    updatePasswordExpired(
-        _id: string,
-        passwordExpired: Date,
-        options?: IDatabaseOptions
-    ): Promise<UserEntity>;
-
-    inactive(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
-
-    active(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
-
-    payloadSerialization(data: IUserEntity): Promise<UserPayloadSerialization>;
-
-    increasePasswordAttempt(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<UserEntity>;
 }

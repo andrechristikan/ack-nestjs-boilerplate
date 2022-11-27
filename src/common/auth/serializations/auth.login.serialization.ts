@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class UserLoginSerialization {
+export class AuthLoginSerialization {
     @ApiProperty({
         example: 'Bearer',
         required: true,

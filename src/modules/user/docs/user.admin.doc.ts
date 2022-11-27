@@ -80,32 +80,6 @@ export function UserDeleteDoc(): MethodDecorator {
     );
 }
 
-export function UserActiveDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc<void>('user.active', {
-            auth: {
-                jwtAccessToken: true,
-            },
-            request: {
-                params: UserDocParamsGet,
-            },
-        })
-    );
-}
-
-export function UserInactiveDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc<void>('user.inactive', {
-            auth: {
-                jwtAccessToken: true,
-            },
-            request: {
-                params: UserDocParamsGet,
-            },
-        })
-    );
-}
-
 export function UserImportDoc(): MethodDecorator {
     return applyDecorators(
         Doc<UserImportSerialization>('user.import', {

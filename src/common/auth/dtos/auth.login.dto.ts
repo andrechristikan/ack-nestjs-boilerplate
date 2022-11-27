@@ -10,7 +10,7 @@ import {
     IsString,
 } from 'class-validator';
 
-export class UserLoginDto {
+export class AuthLoginDto {
     @ApiProperty({
         example: faker.internet.userName(),
         required: true,

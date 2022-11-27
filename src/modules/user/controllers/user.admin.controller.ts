@@ -42,19 +42,15 @@ import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.sta
 import {
     UserDeleteGuard,
     UserGetGuard,
-    UserUpdateActiveGuard,
     UserUpdateGuard,
-    UserUpdateInactiveGuard,
 } from 'src/modules/user/decorators/user.admin.decorator';
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
 import {
-    UserActiveDoc,
     UserCreateDoc,
     UserDeleteDoc,
     UserExportDoc,
     UserGetDoc,
     UserImportDoc,
-    UserInactiveDoc,
     UserListDoc,
     UserUpdateDoc,
 } from 'src/modules/user/docs/user.admin.doc';
@@ -282,54 +278,6 @@ export class UserAdminController {
         return {
             _id: user._id,
         };
-    }
-
-    @UserInactiveDoc()
-    @Response('user.inactive')
-    @UserUpdateInactiveGuard()
-    @RequestParamGuard(UserRequestDto)
-    @AuthJwtPermissionProtected(
-        ENUM_AUTH_PERMISSIONS.USER_READ,
-        ENUM_AUTH_PERMISSIONS.USER_UPDATE
-    )
-    @AuthJwtAdminAccessProtected()
-    @Patch('/update/:user/inactive')
-    async inactive(@GetUser() user: IUserEntity): Promise<void> {
-        try {
-            await this.userService.inactive(user._id);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                error: err.message,
-            });
-        }
-
-        return;
-    }
-
-    @UserActiveDoc()
-    @Response('user.active')
-    @UserUpdateActiveGuard()
-    @RequestParamGuard(UserRequestDto)
-    @AuthJwtPermissionProtected(
-        ENUM_AUTH_PERMISSIONS.USER_READ,
-        ENUM_AUTH_PERMISSIONS.USER_UPDATE
-    )
-    @AuthJwtAdminAccessProtected()
-    @Patch('/update/:user/active')
-    async active(@GetUser() user: IUserEntity): Promise<void> {
-        try {
-            await this.userService.active(user._id);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                error: err.message,
-            });
-        }
-
-        return;
     }
 
     @UserImportDoc()

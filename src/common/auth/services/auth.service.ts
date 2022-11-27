@@ -1,14 +1,26 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { plainToInstance } from 'class-transformer';
+import { AuthActiveDto } from 'src/common/auth/dtos/auth.active.dto';
+import { AuthPasswordExpiredDto } from 'src/common/auth/dtos/auth.password-expired.dto';
+import { AuthPasswordDto } from 'src/common/auth/dtos/auth.password.dto';
 import {
     IAuthPassword,
     IAuthPayloadOptions,
     IAuthRefreshTokenOptions,
 } from 'src/common/auth/interfaces/auth.interface';
 import { IAuthService } from 'src/common/auth/interfaces/auth.service.interface';
+import { AuthGrantPermissionSerialization } from 'src/common/auth/serializations/auth.grant-permission.serialization';
+import { AuthPayloadSerialization } from 'src/common/auth/serializations/auth.payload.serialization';
+import { IDatabaseOptions } from 'src/common/database/interfaces/database.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
+import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
+import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
+import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -35,7 +47,8 @@ export class AuthService implements IAuthService {
         private readonly helperHashService: HelperHashService,
         private readonly helperDateService: HelperDateService,
         private readonly helperEncryptionService: HelperEncryptionService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly userRepository: UserRepository
     ) {
         this.accessTokenSecretToken = this.configService.get<string>(
             'auth.jwt.accessToken.secretKey'
@@ -280,5 +293,110 @@ export class AuthService implements IAuthService {
 
     async getPayloadEncryption(): Promise<boolean> {
         return this.payloadEncryption;
+    }
+
+    // for user
+
+    async updatePassword(
+        _id: string,
+        { salt, passwordHash, passwordExpired }: IAuthPassword,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const update: AuthPasswordDto = {
+            password: passwordHash,
+            passwordExpired: passwordExpired,
+            salt: salt,
+        };
+
+        return this.userRepository.updateOneById<AuthPasswordDto>(
+            _id,
+            update,
+            options
+        );
+    }
+
+    async updatePasswordExpired(
+        _id: string,
+        passwordExpired: Date,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const update: AuthPasswordExpiredDto = {
+            passwordExpired: passwordExpired,
+        };
+
+        return this.userRepository.updateOneById(_id, update, options);
+    }
+
+    async inactive(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const update: AuthActiveDto = {
+            isActive: false,
+        };
+
+        return this.userRepository.updateOneById(_id, update, options);
+    }
+
+    async active(_id: string, options?: IDatabaseOptions): Promise<UserEntity> {
+        const update: AuthActiveDto = {
+            isActive: true,
+        };
+
+        return this.userRepository.updateOneById(_id, update, options);
+    }
+
+    async payloadSerialization(
+        data: IUserEntity
+    ): Promise<AuthPayloadSerialization> {
+        return plainToInstance(AuthPayloadSerialization, data);
+    }
+
+    async increasePasswordAttempt(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const user: UserEntity = await this.userRepository.findOneById(
+            _id,
+            options
+        );
+
+        const update = {
+            passwordAttempt: ++user.passwordAttempt,
+        };
+
+        return this.userRepository.updateOneById(_id, update, options);
+    }
+
+    async resetPasswordAttempt(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const update = {
+            passwordAttempt: 0,
+        };
+
+        return this.userRepository.updateOneById(_id, update, options);
+    }
+
+    async getPermissionByGroupFromUser(
+        _id: string,
+        scope: ENUM_PERMISSION_GROUP[]
+    ): Promise<PermissionEntity[]> {
+        const user: IUserEntity = await this.userRepository.findOneById(_id, {
+            join: true,
+        });
+
+        return user.role.permissions.filter((val) => scope.includes(val.group));
+    }
+
+    async payloadGrantPermission(
+        _id: string,
+        permissions: PermissionEntity[]
+    ): Promise<AuthGrantPermissionSerialization> {
+        return plainToInstance(AuthGrantPermissionSerialization, {
+            _id,
+            permissions,
+        });
     }
 }

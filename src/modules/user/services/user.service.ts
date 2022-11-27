@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
-import { plainToInstance } from 'class-transformer';
 import { IUserService } from 'src/modules/user/interfaces/user.service.interface';
 import {
     IDatabaseCreateOptions,
@@ -11,18 +10,10 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
-import {
-    IUserCreate,
-    IUserEntity,
-} from 'src/modules/user/interfaces/user.interface';
+import { IUserCreate } from 'src/modules/user/interfaces/user.interface';
 import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
-import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
-import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { UserPhotoDto } from 'src/modules/user/dtos/user.photo.dto';
-import { UserPasswordDto } from 'src/modules/user/dtos/user.password.dto';
-import { UserPasswordExpiredDto } from 'src/modules/user/dtos/user.password-expired.dto';
-import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
@@ -192,73 +183,5 @@ export class UserService implements IUserService {
             path: this.uploadPath,
             filename: filename,
         };
-    }
-
-    async updatePassword(
-        _id: string,
-        { salt, passwordHash, passwordExpired }: IAuthPassword,
-        options?: IDatabaseOptions
-    ): Promise<UserEntity> {
-        const update: UserPasswordDto = {
-            password: passwordHash,
-            passwordExpired: passwordExpired,
-            salt: salt,
-        };
-
-        return this.userRepository.updateOneById<UserPasswordDto>(
-            _id,
-            update,
-            options
-        );
-    }
-
-    async updatePasswordExpired(
-        _id: string,
-        passwordExpired: Date,
-        options?: IDatabaseOptions
-    ): Promise<UserEntity> {
-        const update: UserPasswordExpiredDto = {
-            passwordExpired: passwordExpired,
-        };
-
-        return this.userRepository.updateOneById(_id, update, options);
-    }
-
-    async inactive(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<UserEntity> {
-        const update: UserActiveDto = {
-            isActive: false,
-        };
-
-        return this.userRepository.updateOneById(_id, update, options);
-    }
-
-    async active(_id: string, options?: IDatabaseOptions): Promise<UserEntity> {
-        const update: UserActiveDto = {
-            isActive: true,
-        };
-
-        return this.userRepository.updateOneById(_id, update, options);
-    }
-
-    async payloadSerialization(
-        data: IUserEntity
-    ): Promise<UserPayloadSerialization> {
-        return plainToInstance(UserPayloadSerialization, data);
-    }
-
-    async increasePasswordAttempt(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<UserEntity> {
-        const user: UserEntity = await this.findOneById(_id, options);
-
-        const update = {
-            passwordAttempt: ++user.passwordAttempt,
-        };
-
-        return this.userRepository.updateOneById(_id, update, options);
     }
 }
