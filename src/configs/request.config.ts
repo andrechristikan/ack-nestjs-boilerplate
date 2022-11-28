@@ -83,6 +83,7 @@ export default registerAs(
                 'x-request-id',
                 'x-version',
                 'x-repo-version',
+                'x-permission-token',
                 'X-Response-Time',
                 'user-agent',
             ],

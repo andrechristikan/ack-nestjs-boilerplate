@@ -45,6 +45,7 @@ export interface IApiKeyService {
 
     create(
         data: ApiKeyCreateDto,
+        user: Record<string, any>,
         options?: IDatabaseCreateOptions
     ): Promise<IApiKey>;
 
@@ -76,6 +77,5 @@ export interface IApiKeyService {
     createSecret(): Promise<string>;
 
     createHashApiKey(key: string, secret: string): Promise<string>;
-
     validateHashApiKey(hashFromRequest: string, hash: string): Promise<boolean>;
 }

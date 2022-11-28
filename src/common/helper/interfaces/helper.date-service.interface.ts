@@ -13,7 +13,7 @@ export interface IHelperDateService {
 
     diff(
         dateOne: Date,
-        dateTwo: Date,
+        dateTwoMoreThanDateOne: Date,
         options?: IHelperDateOptionsDiff
     ): number;
 

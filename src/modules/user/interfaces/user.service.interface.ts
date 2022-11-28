@@ -1,3 +1,4 @@
+import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import {
     IDatabaseCreateOptions,
@@ -7,9 +8,13 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
-import { IUserCreate } from './user.interface';
+import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload-permission.serialization';
+import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
+import { IUserCreate, IUserEntity } from './user.interface';
 
 export interface IUserService {
     findAll<T>(
@@ -77,4 +82,42 @@ export interface IUserService {
     ): Promise<UserEntity>;
 
     createRandomFilename(): Promise<Record<string, any>>;
+
+    updatePassword(
+        _id: string,
+        data: IAuthPassword,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity>;
+
+    updatePasswordExpired(
+        _id: string,
+        passwordExpired: Date,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity>;
+
+    inactive(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
+
+    active(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
+
+    payloadSerialization(data: IUserEntity): Promise<UserPayloadSerialization>;
+
+    increasePasswordAttempt(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity>;
+
+    resetPasswordAttempt(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity>;
+
+    getPermissionByGroupFromUser(
+        _id: string,
+        scope: ENUM_PERMISSION_GROUP[]
+    ): Promise<PermissionEntity[]>;
+
+    payloadPermissionSerialization(
+        _id: string,
+        permissions: PermissionEntity[]
+    ): Promise<UserPayloadPermissionSerialization>;
 }

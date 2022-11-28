@@ -19,9 +19,9 @@ export interface IHelperArrayService {
 
     removeLeftByLength<T>(array: T[], length: number): T[];
 
-    removeRightByLength<T>(array: T[], length: number): T[];
+    removeRightByLength<T>(array: Array<T>, length: number): T[];
 
-    joinToString<T>(array: T[], delimiter: string): string;
+    joinToString<T>(array: Array<T>, delimiter: string): string;
 
     reverse<T>(array: T[]): T[];
 
