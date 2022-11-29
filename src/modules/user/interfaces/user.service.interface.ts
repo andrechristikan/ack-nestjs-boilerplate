@@ -111,7 +111,7 @@ export interface IUserService {
         options?: IDatabaseOptions
     ): Promise<UserEntity>;
 
-    getPermissionByGroupFromUser(
+    getPermissionByGroup(
         _id: string,
         scope: ENUM_PERMISSION_GROUP[]
     ): Promise<PermissionEntity[]>;

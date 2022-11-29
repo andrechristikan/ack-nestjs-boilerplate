@@ -48,8 +48,8 @@ export default registerAs(
             ), // recommendation for production is 30m
             notBeforeExpirationTime: seconds('0'), // keep it in zero value
 
-            encryptKey: process.env.AUTH_PERMISSION_TOKEN_PAYLOAD_ENCRYPT_KEY,
-            encryptIv: process.env.AUTH_PERMISSION_TOKEN_PAYLOAD_ENCRYPT_IV,
+            encryptKey: process.env.AUTH_PAYLOAD_PERMISSION_TOKEN_ENCRYPT_KEY,
+            encryptIv: process.env.AUTH_PAYLOAD_PERMISSION_TOKEN_ENCRYPT_IV,
         },
 
         password: {

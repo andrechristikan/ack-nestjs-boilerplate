@@ -13,10 +13,32 @@ import { IApiKey } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ENUM_PAGINATION_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 
 describe('ApiKeyService', () => {
     let apiKeyService: ApiKeyService;
     let apiKeyBulkService: ApiKeyBulkKeyService;
+
+    const user: Record<string, any> = {
+        _id: '623cb7fd37a861a10bac2c91',
+        isActive: true,
+        salt: '$2b$08$GZfqgaDMPpWQ3lJEGQ8Ueu',
+        passwordExpired: new Date('2023-03-24T18:27:09.500Z'),
+        password:
+            '$2b$08$GZfqgaDMPpWQ3lJEGQ8Ueu1vJ3C6G3stnkS/5e61bK/4f1.Fuw2Eq',
+        role: {
+            _id: '623cb7f7965a74bf7a0e9e53',
+            accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
+            isActive: true,
+            permissions: [],
+            name: 'admin',
+        },
+        email: 'admin@mail.com',
+        mobileNumber: '08111111111',
+        lastName: 'test',
+        firstName: 'admin@mail.com',
+    };
+
     const authApiName: string = faker.random.alphaNumeric(5);
 
     let authApi: IApiKey;
@@ -49,10 +71,13 @@ describe('ApiKeyService', () => {
         apiKeyBulkService =
             moduleRef.get<ApiKeyBulkKeyService>(ApiKeyBulkKeyService);
 
-        authApi = await apiKeyService.create({
-            name: authApiName,
-            description: faker.random.alphaNumeric(),
-        });
+        authApi = await apiKeyService.create(
+            {
+                name: authApiName,
+                description: faker.random.alphaNumeric(),
+            },
+            user
+        );
     });
 
     describe('create', () => {
@@ -62,12 +87,12 @@ describe('ApiKeyService', () => {
                 description: faker.random.alphaNumeric(),
             };
 
-            const result: IApiKey = await apiKeyService.create(data);
+            const result: IApiKey = await apiKeyService.create(data, user);
             jest.spyOn(apiKeyService, 'create').mockImplementation(
                 async () => result
             );
 
-            expect(await apiKeyService.create(data)).toBe(result);
+            expect(await apiKeyService.create(data, user)).toBe(result);
         });
     });
 
@@ -78,6 +103,7 @@ describe('ApiKeyService', () => {
                 description: faker.random.alphaNumeric(),
                 key: await apiKeyService.createKey(),
                 secret: await apiKeyService.createSecret(),
+                user: user._id,
             };
 
             const result: IApiKey = await apiKeyService.createRaw(data);

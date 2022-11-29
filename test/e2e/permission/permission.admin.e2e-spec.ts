@@ -7,7 +7,6 @@ import {
     E2E_PERMISSION_ADMIN_INACTIVE_URL,
     E2E_PERMISSION_ADMIN_LIST_URL,
     E2E_PERMISSION_ADMIN_UPDATE_URL,
-    E2E_PERMISSION_PAYLOAD_TEST,
 } from './permission.constant';
 import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
@@ -21,6 +20,12 @@ import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/req
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
+import { UserService } from 'src/modules/user/services/user.service';
+import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload-permission.serialization';
+import {
+    E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
+    E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
+} from 'test/e2e/user/user.constant';
 
 describe('E2E Permission Admin', () => {
     let app: INestApplication;
@@ -28,17 +33,12 @@ describe('E2E Permission Admin', () => {
     let permissionService: PermissionService;
 
     let accessToken: string;
+    let permissionToken: string;
     let permission: PermissionEntity;
 
     const updateData: PermissionUpdateDto = {
-        name: 'update role',
         description: 'UPDATE_ROLE',
     };
-
-    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    const apiKeyHashed =
-        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
-    const xApiKey = `${apiKey}:${apiKeyHashed}`;
 
     beforeAll(async () => {
         process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
@@ -63,15 +63,18 @@ describe('E2E Permission Admin', () => {
 
         const payload = await authService.createPayloadAccessToken(
             {
-                ...E2E_PERMISSION_PAYLOAD_TEST,
+                ...E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
                 loginDate: new Date(),
             },
             false
         );
         accessToken = await authService.createAccessToken(payload);
+        permissionToken = await authService.createPermissionToken({
+            ...E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
+            _id: payload._id,
+        });
 
         permission = await permissionService.create({
-            name: 'testPermission',
             code: 'TEST_PERMISSION_XXXX',
             description: 'test description',
             group: ENUM_PERMISSION_GROUP.PERMISSION,
@@ -84,7 +87,7 @@ describe('E2E Permission Admin', () => {
         const response = await request(app.getHttpServer())
             .get(E2E_PERMISSION_ADMIN_LIST_URL)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -101,7 +104,7 @@ describe('E2E Permission Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -115,7 +118,7 @@ describe('E2E Permission Admin', () => {
         const response = await request(app.getHttpServer())
             .get(E2E_PERMISSION_ADMIN_GET_URL.replace(':_id', permission._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -133,7 +136,7 @@ describe('E2E Permission Admin', () => {
             )
             .send(updateData)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -152,7 +155,7 @@ describe('E2E Permission Admin', () => {
                 name: [1231231],
             })
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
@@ -169,7 +172,7 @@ describe('E2E Permission Admin', () => {
             )
             .send(updateData)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -186,7 +189,7 @@ describe('E2E Permission Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -202,7 +205,7 @@ describe('E2E Permission Admin', () => {
                 E2E_PERMISSION_ADMIN_ACTIVE_URL.replace(':_id', permission._id)
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -221,7 +224,7 @@ describe('E2E Permission Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -240,7 +243,7 @@ describe('E2E Permission Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -257,7 +260,7 @@ describe('E2E Permission Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -273,7 +276,7 @@ describe('E2E Permission Admin', () => {
                 E2E_PERMISSION_ADMIN_ACTIVE_URL.replace(':_id', permission._id)
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

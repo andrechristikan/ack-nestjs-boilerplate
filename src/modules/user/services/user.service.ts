@@ -291,7 +291,7 @@ export class UserService implements IUserService {
         return this.userRepository.updateOneById(_id, update, options);
     }
 
-    async getPermissionByGroupFromUser(
+    async getPermissionByGroup(
         _id: string,
         scope: ENUM_PERMISSION_GROUP[]
     ): Promise<PermissionEntity[]> {

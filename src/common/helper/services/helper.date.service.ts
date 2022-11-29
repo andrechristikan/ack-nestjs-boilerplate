@@ -12,7 +12,6 @@ import {
     IHelperDateOptionsDiff,
     IHelperDateOptionsFormat,
     IHelperDateOptionsForward,
-    IHelperDateOptionsMonth,
 } from 'src/common/helper/interfaces/helper.interface';
 
 @Injectable()
@@ -134,30 +133,20 @@ export class HelperDateService implements IHelperDateService {
         return moment(options?.fromDate).subtract(months, 'M').toDate();
     }
 
-    endOfMonth(month: number, options?: IHelperDateOptionsMonth): Date {
-        const year = options?.year ?? moment().year();
-        return moment()
-            .year(year)
-            .month(month - 1)
-            .endOf('month')
-            .toDate();
+    endOfMonth(date?: Date): Date {
+        return moment(date).endOf('month').toDate();
     }
 
-    startOfMonth(month: number, options?: IHelperDateOptionsMonth): Date {
-        const year = options?.year ?? moment().year();
-        return moment()
-            .year(year)
-            .month(month - 1)
-            .startOf('month')
-            .toDate();
+    startOfMonth(date?: Date): Date {
+        return moment(date).startOf('month').toDate();
     }
 
-    endOfYear(year: number): Date {
-        return moment().year(year).endOf('year').toDate();
+    endOfYear(date?: Date): Date {
+        return moment(date).endOf('year').toDate();
     }
 
-    startOfYear(year: number): Date {
-        return moment().year(year).startOf('year').toDate();
+    startOfYear(date?: Date): Date {
+        return moment(date).startOf('year').toDate();
     }
 
     endOfDay(date?: Date): Date {

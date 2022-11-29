@@ -25,10 +25,9 @@ describe('Aws S3 Integration', () => {
     });
 
     it(`GET ${INTEGRATION_AWS_URL} Success`, async () => {
-        const response = await request(app.getHttpServer())
-            .get(INTEGRATION_AWS_URL)
-            .set('x-api-key', xApiKey);
-
+        const response = await request(app.getHttpServer()).get(
+            INTEGRATION_AWS_URL
+        );
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
 

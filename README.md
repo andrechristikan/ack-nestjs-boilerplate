@@ -79,7 +79,7 @@ Next development
 * [x] Permission group fixed
 * [x] Reduce the payload of access token
 * [x] Update authorization mechanism, permission token on `x-permission-token`
-* [ ] Update package, cors setting, check all interfaces, husky trigger switch to on and check test
+* [x] Update package, cors setting, check all interfaces, husky trigger switch to on and check test
 * [ ] AuthApiKey mechanism
 * [ ] AuthApi Controller
 * [ ] Add Typeorm repository

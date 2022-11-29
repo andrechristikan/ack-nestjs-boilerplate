@@ -25,10 +25,9 @@ describe('Database Integration', () => {
     });
 
     it(`GET ${INTEGRATION_DATABASE_URL} Success`, async () => {
-        const response = await request(app.getHttpServer())
-            .get(INTEGRATION_DATABASE_URL)
-            .set('x-api-key', xApiKey);
-
+        const response = await request(app.getHttpServer()).get(
+            INTEGRATION_DATABASE_URL
+        );
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
 

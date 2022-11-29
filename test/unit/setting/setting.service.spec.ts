@@ -522,4 +522,88 @@ describe('SettingService', () => {
             ).toBe(result);
         });
     });
+
+    describe('getMaintenance', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(settingService, 'getMaintenance');
+            await settingService.getMaintenance();
+
+            expect(test).toHaveBeenCalled();
+        });
+
+        it('should be success', async () => {
+            const value = await settingService.getMaintenance();
+
+            jest.spyOn(settingService, 'getMaintenance').mockImplementation(
+                async () => value
+            );
+
+            expect(await settingService.getMaintenance()).toBe(value);
+        });
+    });
+
+    describe('getMobileNumberCountryCodeAllowed', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(
+                settingService,
+                'getMobileNumberCountryCodeAllowed'
+            );
+            await settingService.getMobileNumberCountryCodeAllowed();
+
+            expect(test).toHaveBeenCalled();
+        });
+
+        it('should be success', async () => {
+            const value =
+                await settingService.getMobileNumberCountryCodeAllowed();
+
+            jest.spyOn(
+                settingService,
+                'getMobileNumberCountryCodeAllowed'
+            ).mockImplementation(async () => value);
+
+            expect(
+                await settingService.getMobileNumberCountryCodeAllowed()
+            ).toBe(value);
+        });
+    });
+
+    describe('getPasswordAttempt', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(settingService, 'getPasswordAttempt');
+            await settingService.getPasswordAttempt();
+
+            expect(test).toHaveBeenCalled();
+        });
+
+        it('should be success', async () => {
+            const value = await settingService.getPasswordAttempt();
+
+            jest.spyOn(settingService, 'getPasswordAttempt').mockImplementation(
+                async () => value
+            );
+
+            expect(await settingService.getPasswordAttempt()).toBe(value);
+        });
+    });
+
+    describe('getMaxPasswordAttempt', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(settingService, 'getMaxPasswordAttempt');
+            await settingService.getMaxPasswordAttempt();
+
+            expect(test).toHaveBeenCalled();
+        });
+
+        it('should be success', async () => {
+            const value = await settingService.getMaxPasswordAttempt();
+
+            jest.spyOn(
+                settingService,
+                'getMaxPasswordAttempt'
+            ).mockImplementation(async () => value);
+
+            expect(await settingService.getMaxPasswordAttempt()).toBe(value);
+        });
+    });
 });

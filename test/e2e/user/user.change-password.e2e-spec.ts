@@ -35,11 +35,6 @@ describe('E2E User Change Password', () => {
     let accessToken: string;
     let accessTokenNotFound: string;
 
-    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    const apiKeyHashed =
-        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
-    const xApiKey = `${apiKey}:${apiKeyHashed}`;
-
     beforeAll(async () => {
         process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
 
@@ -110,8 +105,7 @@ describe('E2E User Change Password', () => {
                 oldPassword: '123123',
                 newPassword: '123',
             })
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
@@ -128,9 +122,7 @@ describe('E2E User Change Password', () => {
                 oldPassword: password,
                 newPassword,
             })
-            .set('Authorization', `Bearer ${accessTokenNotFound}`)
-            .set('x-api-key', xApiKey);
-
+            .set('Authorization', `Bearer ${accessTokenNotFound}`);
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
@@ -146,8 +138,7 @@ describe('E2E User Change Password', () => {
                 oldPassword: 'as1231dAA@@!',
                 newPassword,
             })
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -164,8 +155,7 @@ describe('E2E User Change Password', () => {
                 oldPassword: password,
                 newPassword: password,
             })
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -182,8 +172,7 @@ describe('E2E User Change Password', () => {
                 oldPassword: password,
                 newPassword,
             })
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

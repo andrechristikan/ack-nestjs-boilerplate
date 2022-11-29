@@ -7,18 +7,13 @@ import { CommonModule } from 'src/common/common.module';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { RoutesModule } from 'src/router/routes/routes.module';
 import {
+    E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
     E2E_USER_INFO,
-    E2E_USER_PAYLOAD_TEST,
 } from 'test/e2e/user/user.constant';
 
 describe('E2E User', () => {
     let app: INestApplication;
     let authService: AuthService;
-
-    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    const apiKeyHashed =
-        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
-    const xApiKey = `${apiKey}:${apiKeyHashed}`;
 
     let accessToken: string;
 
@@ -43,7 +38,7 @@ describe('E2E User', () => {
         authService = app.get(AuthService);
 
         const payload = await authService.createPayloadAccessToken(
-            E2E_USER_PAYLOAD_TEST,
+            E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
             false
         );
         accessToken = await authService.createAccessToken(payload);
@@ -54,8 +49,7 @@ describe('E2E User', () => {
     it(`GET ${E2E_USER_INFO} Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_USER_INFO)
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

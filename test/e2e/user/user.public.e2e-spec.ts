@@ -18,11 +18,6 @@ describe('E2E User Public', () => {
     const password = `@!aaAA@123`;
     let userData: Record<string, any>;
 
-    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    const apiKeyHashed =
-        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
-    const xApiKey = `${apiKey}:${apiKeyHashed}`;
-
     beforeAll(async () => {
         process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
 
@@ -59,7 +54,6 @@ describe('E2E User Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
-            .set('x-api-key', xApiKey)
             .send({
                 username: faker.name.firstName().toLowerCase(),
                 email: faker.name.firstName().toLowerCase(),
@@ -79,7 +73,6 @@ describe('E2E User Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
-            .set('x-api-key', xApiKey)
             .send(userData);
 
         expect(response.status).toEqual(HttpStatus.CREATED);
@@ -90,14 +83,13 @@ describe('E2E User Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
-            .set('x-api-key', xApiKey)
             .send({
                 ...userData,
                 mobileNumber: faker.phone.number('62812#########'),
                 email: faker.internet.email(),
             });
 
-        expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
+        expect(response.status).toEqual(HttpStatus.CONFLICT);
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_USERNAME_EXISTS_ERROR
         );
@@ -109,14 +101,13 @@ describe('E2E User Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
-            .set('x-api-key', xApiKey)
             .send({
                 ...userData,
                 username: faker.internet.userName(),
                 mobileNumber: faker.phone.number('62812#########'),
             });
 
-        expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
+        expect(response.status).toEqual(HttpStatus.CONFLICT);
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR
         );
@@ -128,14 +119,13 @@ describe('E2E User Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
-            .set('x-api-key', xApiKey)
             .send({
                 ...userData,
                 username: faker.internet.userName(),
                 email: faker.internet.email(),
             });
 
-        expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
+        expect(response.status).toEqual(HttpStatus.CONFLICT);
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR
         );

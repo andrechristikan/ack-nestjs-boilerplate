@@ -9,7 +9,6 @@ import {
     E2E_ROLE_ADMIN_INACTIVE_URL,
     E2E_ROLE_ADMIN_LIST_URL,
     E2E_ROLE_ADMIN_UPDATE_URL,
-    E2E_ROLE_PAYLOAD_TEST,
 } from './role.constant';
 import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
@@ -27,6 +26,10 @@ import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.sta
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
+import {
+    E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
+    E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
+} from 'test/e2e/user/user.constant';
 
 describe('E2E Role Admin', () => {
     let app: INestApplication;
@@ -39,15 +42,11 @@ describe('E2E Role Admin', () => {
     let roleUpdate: RoleEntity;
 
     let accessToken: string;
+    let permissionToken: string;
 
     let successData: RoleCreateDto;
     let updateData: RoleCreateDto;
     let existData: RoleCreateDto;
-
-    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    const apiKeyHashed =
-        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
-    const xApiKey = `${apiKey}:${apiKeyHashed}`;
 
     beforeAll(async () => {
         process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
@@ -117,12 +116,18 @@ describe('E2E Role Admin', () => {
 
         const payload = await authService.createPayloadAccessToken(
             {
-                ...E2E_ROLE_PAYLOAD_TEST,
+                ...E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
                 loginDate: new Date(),
             },
             false
         );
         accessToken = await authService.createAccessToken(payload);
+        permissionToken = await authService.createPermissionToken(
+            {
+                ...E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
+                _id: payload._id,
+            }
+        );
 
         await app.init();
     });
@@ -131,7 +136,7 @@ describe('E2E Role Admin', () => {
         const response = await request(app.getHttpServer())
             .get(E2E_ROLE_ADMIN_LIST_URL)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -148,7 +153,7 @@ describe('E2E Role Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -162,7 +167,7 @@ describe('E2E Role Admin', () => {
         const response = await request(app.getHttpServer())
             .get(E2E_ROLE_ADMIN_GET_BY_ID_URL.replace(':_id', role._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -177,7 +182,7 @@ describe('E2E Role Admin', () => {
                 name: 123123,
             })
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
@@ -192,9 +197,9 @@ describe('E2E Role Admin', () => {
             .post(E2E_ROLE_ADMIN_CREATE_URL)
             .send(existData)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
-        expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
+        expect(response.status).toEqual(HttpStatus.CONFLICT);
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR
         );
@@ -207,7 +212,7 @@ describe('E2E Role Admin', () => {
             .post(E2E_ROLE_ADMIN_CREATE_URL)
             .send(successData)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.CREATED);
         expect(response.body.statusCode).toEqual(HttpStatus.CREATED);
@@ -222,7 +227,7 @@ describe('E2E Role Admin', () => {
                 name: [231231],
             })
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
@@ -242,7 +247,7 @@ describe('E2E Role Admin', () => {
             )
             .send(updateData)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -257,9 +262,9 @@ describe('E2E Role Admin', () => {
             .put(E2E_ROLE_ADMIN_UPDATE_URL.replace(':_id', roleUpdate._id))
             .send(existData)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
-        expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
+        expect(response.status).toEqual(HttpStatus.CONFLICT);
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR
         );
@@ -272,7 +277,7 @@ describe('E2E Role Admin', () => {
             .put(E2E_ROLE_ADMIN_UPDATE_URL.replace(':_id', roleUpdate._id))
             .send(updateData)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -289,7 +294,7 @@ describe('E2E Role Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -303,7 +308,7 @@ describe('E2E Role Admin', () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_ROLE_ADMIN_INACTIVE_URL.replace(':_id', roleUpdate._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -315,7 +320,7 @@ describe('E2E Role Admin', () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_ROLE_ADMIN_INACTIVE_URL.replace(':_id', roleUpdate._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -334,7 +339,7 @@ describe('E2E Role Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -348,7 +353,7 @@ describe('E2E Role Admin', () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_ROLE_ADMIN_ACTIVE_URL.replace(':_id', roleUpdate._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -360,7 +365,7 @@ describe('E2E Role Admin', () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_ROLE_ADMIN_ACTIVE_URL.replace(':_id', roleUpdate._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -379,7 +384,7 @@ describe('E2E Role Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -393,7 +398,7 @@ describe('E2E Role Admin', () => {
         const response = await request(app.getHttpServer())
             .delete(E2E_ROLE_ADMIN_DELETE_URL.replace(':_id', role._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

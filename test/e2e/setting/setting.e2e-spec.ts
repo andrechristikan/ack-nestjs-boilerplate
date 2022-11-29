@@ -21,11 +21,6 @@ describe('E2E Setting', () => {
     let app: INestApplication;
     let settingService: SettingService;
 
-    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    const apiKeyHashed =
-        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
-    const xApiKey = `${apiKey}:${apiKeyHashed}`;
-
     let setting: SettingEntity;
     const settingName: string = faker.random.alphaNumeric(10);
 
@@ -60,9 +55,9 @@ describe('E2E Setting', () => {
     });
 
     it(`GET ${E2E_SETTING_COMMON_LIST_URL} List Success`, async () => {
-        const response = await request(app.getHttpServer())
-            .get(E2E_SETTING_COMMON_LIST_URL)
-            .set('x-api-key', xApiKey);
+        const response = await request(app.getHttpServer()).get(
+            E2E_SETTING_COMMON_LIST_URL
+        );
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -71,14 +66,12 @@ describe('E2E Setting', () => {
     });
 
     it(`GET ${E2E_SETTING_COMMON_GET_URL} Get Not Found`, async () => {
-        const response = await request(app.getHttpServer())
-            .get(
-                E2E_SETTING_COMMON_GET_URL.replace(
-                    ':_id',
-                    `${DatabaseDefaultUUID()}`
-                )
+        const response = await request(app.getHttpServer()).get(
+            E2E_SETTING_COMMON_GET_URL.replace(
+                ':_id',
+                `${DatabaseDefaultUUID()}`
             )
-            .set('x-api-key', xApiKey);
+        );
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -89,9 +82,9 @@ describe('E2E Setting', () => {
     });
 
     it(`GET ${E2E_SETTING_COMMON_GET_URL} Get Success`, async () => {
-        const response = await request(app.getHttpServer())
-            .get(E2E_SETTING_COMMON_GET_URL.replace(':_id', `${setting._id}`))
-            .set('x-api-key', xApiKey);
+        const response = await request(app.getHttpServer()).get(
+            E2E_SETTING_COMMON_GET_URL.replace(':_id', `${setting._id}`)
+        );
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -100,14 +93,12 @@ describe('E2E Setting', () => {
     });
 
     it(`GET ${E2E_SETTING_COMMON_GET_BY_NAME_URL} Not Found`, async () => {
-        const response = await request(app.getHttpServer())
-            .get(
-                E2E_SETTING_COMMON_GET_BY_NAME_URL.replace(
-                    ':settingName',
-                    faker.name.firstName()
-                )
+        const response = await request(app.getHttpServer()).get(
+            E2E_SETTING_COMMON_GET_BY_NAME_URL.replace(
+                ':settingName',
+                faker.name.firstName()
             )
-            .set('x-api-key', xApiKey);
+        );
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -118,14 +109,12 @@ describe('E2E Setting', () => {
     });
 
     it(`GET ${E2E_SETTING_COMMON_GET_BY_NAME_URL} Success`, async () => {
-        const response = await request(app.getHttpServer())
-            .get(
-                E2E_SETTING_COMMON_GET_BY_NAME_URL.replace(
-                    ':settingName',
-                    setting.name
-                )
+        const response = await request(app.getHttpServer()).get(
+            E2E_SETTING_COMMON_GET_BY_NAME_URL.replace(
+                ':settingName',
+                setting.name
             )
-            .set('x-api-key', xApiKey);
+        );
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

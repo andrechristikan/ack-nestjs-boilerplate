@@ -24,6 +24,26 @@ describe('LoggerService', () => {
     let apiKeyService: ApiKeyService;
     let loggerService: LoggerService;
 
+    const user: Record<string, any> = {
+        _id: '623cb7fd37a861a10bac2c91',
+        isActive: true,
+        salt: '$2b$08$GZfqgaDMPpWQ3lJEGQ8Ueu',
+        passwordExpired: new Date('2023-03-24T18:27:09.500Z'),
+        password:
+            '$2b$08$GZfqgaDMPpWQ3lJEGQ8Ueu1vJ3C6G3stnkS/5e61bK/4f1.Fuw2Eq',
+        role: {
+            _id: '623cb7f7965a74bf7a0e9e53',
+            accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
+            isActive: true,
+            permissions: [],
+            name: 'admin',
+        },
+        email: 'admin@mail.com',
+        mobileNumber: '08111111111',
+        lastName: 'test',
+        firstName: 'admin@mail.com',
+    };
+
     const loggerLevel: ENUM_LOGGER_LEVEL = ENUM_LOGGER_LEVEL.INFO;
     const logger: LoggerCreateDto = {
         action: ENUM_LOGGER_ACTION.TEST,
@@ -82,9 +102,12 @@ describe('LoggerService', () => {
         loggerService = moduleRef.get<LoggerService>(LoggerService);
         apiKeyService = moduleRef.get<ApiKeyService>(ApiKeyService);
 
-        const createApiKey = await apiKeyService.create({
-            name: faker.internet.userName(),
-        });
+        const createApiKey = await apiKeyService.create(
+            {
+                name: faker.internet.userName(),
+            },
+            user
+        );
 
         loggerComplete.apiKey = createApiKey._id;
     });

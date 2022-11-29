@@ -40,11 +40,6 @@ describe('E2E User Refresh', () => {
     let refreshToken: string;
     let refreshTokenNotFound: string;
 
-    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    const apiKeyHashed =
-        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
-    const xApiKey = `${apiKey}:${apiKeyHashed}`;
-
     beforeAll(async () => {
         process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
 
@@ -126,9 +121,7 @@ describe('E2E User Refresh', () => {
     it(`POST ${E2E_USER_REFRESH_URL} Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_REFRESH_URL)
-            .set('Authorization', `Bearer ${refreshTokenNotFound}`)
-            .set('x-api-key', xApiKey);
-
+            .set('Authorization', `Bearer ${refreshTokenNotFound}`);
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
@@ -141,9 +134,7 @@ describe('E2E User Refresh', () => {
         await userService.inactive(user._id);
         const response = await request(app.getHttpServer())
             .post(E2E_USER_REFRESH_URL)
-            .set('Authorization', `Bearer ${refreshToken}`)
-            .set('x-api-key', xApiKey);
-
+            .set('Authorization', `Bearer ${refreshToken}`);
         await userService.active(user._id);
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
         expect(response.body.statusCode).toEqual(
@@ -157,9 +148,7 @@ describe('E2E User Refresh', () => {
         await roleService.inactive(`${user.role}`);
         const response = await request(app.getHttpServer())
             .post(E2E_USER_REFRESH_URL)
-            .set('Authorization', `Bearer ${refreshToken}`)
-            .set('x-api-key', xApiKey);
-
+            .set('Authorization', `Bearer ${refreshToken}`);
         await roleService.active(`${user.role}`);
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
         expect(response.body.statusCode).toEqual(
@@ -173,9 +162,7 @@ describe('E2E User Refresh', () => {
         await userService.updatePasswordExpired(user._id, passwordExpired);
         const response = await request(app.getHttpServer())
             .post(E2E_USER_REFRESH_URL)
-            .set('Authorization', `Bearer ${refreshToken}`)
-            .set('x-api-key', xApiKey);
-
+            .set('Authorization', `Bearer ${refreshToken}`);
         await userService.updatePasswordExpired(
             user._id,
             passwordExpiredForward
@@ -191,9 +178,7 @@ describe('E2E User Refresh', () => {
     it(`POST ${E2E_USER_REFRESH_URL} Success`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_REFRESH_URL)
-            .set('Authorization', `Bearer ${refreshToken}`)
-            .set('x-api-key', xApiKey);
-
+            .set('Authorization', `Bearer ${refreshToken}`);
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
 

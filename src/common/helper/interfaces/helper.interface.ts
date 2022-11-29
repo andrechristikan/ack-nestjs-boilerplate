@@ -62,10 +62,6 @@ export interface IHelperDateOptionsForward {
 
 export type IHelperDateOptionsBackward = IHelperDateOptionsForward;
 
-export interface IHelperDateOptionsMonth {
-    year?: number;
-}
-
 // Helper File
 
 export type IHelperFileRows = Record<string, string | number | Date>;

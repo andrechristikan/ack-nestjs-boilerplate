@@ -2,10 +2,7 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { RouterModule } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { useContainer } from 'class-validator';
-import {
-    E2E_SETTING_ADMIN_PAYLOAD_TEST,
-    E2E_SETTING_ADMIN_UPDATE_URL,
-} from './setting.constant';
+import { E2E_SETTING_ADMIN_UPDATE_URL } from './setting.constant';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
 import { AuthService } from 'src/common/auth/services/auth.service';
@@ -17,6 +14,10 @@ import { SettingService } from 'src/common/setting/services/setting.service';
 import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
+import {
+    E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
+    E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
+} from 'test/e2e/user/user.constant';
 
 describe('E2E Setting Admin', () => {
     let app: INestApplication;
@@ -27,11 +28,7 @@ describe('E2E Setting Admin', () => {
     const settingName: string = faker.random.alphaNumeric(10);
 
     let accessToken: string;
-
-    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    const apiKeyHashed =
-        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
-    const xApiKey = `${apiKey}:${apiKeyHashed}`;
+    let permissionToken: string;
 
     beforeAll(async () => {
         process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
@@ -56,12 +53,16 @@ describe('E2E Setting Admin', () => {
 
         const payload = await authService.createPayloadAccessToken(
             {
-                ...E2E_SETTING_ADMIN_PAYLOAD_TEST,
+                ...E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
                 loginDate: new Date(),
             },
             false
         );
         accessToken = await authService.createAccessToken(payload);
+        permissionToken = await authService.createPermissionToken({
+            ...E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
+            _id: payload._id,
+        });
 
         await settingService.create({
             name: settingName,
@@ -82,7 +83,7 @@ describe('E2E Setting Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey)
+            .set('x-permission-token', permissionToken)
             .send({ value: 'true', type: ENUM_SETTING_DATA_TYPE.BOOLEAN });
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
@@ -97,7 +98,7 @@ describe('E2E Setting Admin', () => {
         const response = await request(app.getHttpServer())
             .put(E2E_SETTING_ADMIN_UPDATE_URL.replace(':_id', `${setting._id}`))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey)
+            .set('x-permission-token', permissionToken)
             .send({
                 value: { test: 'aaa', type: ENUM_SETTING_DATA_TYPE.STRING },
             });
@@ -114,7 +115,7 @@ describe('E2E Setting Admin', () => {
         const response = await request(app.getHttpServer())
             .put(E2E_SETTING_ADMIN_UPDATE_URL.replace(':_id', `${setting._id}`))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey)
+            .set('x-permission-token', permissionToken)
             .send({ value: 'test', type: ENUM_SETTING_DATA_TYPE.STRING });
 
         expect(response.status).toEqual(HttpStatus.OK);
@@ -127,7 +128,7 @@ describe('E2E Setting Admin', () => {
         const response = await request(app.getHttpServer())
             .put(E2E_SETTING_ADMIN_UPDATE_URL.replace(':_id', `${setting._id}`))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey)
+            .set('x-permission-token', permissionToken)
             .send({ value: 123, type: ENUM_SETTING_DATA_TYPE.NUMBER });
 
         expect(response.status).toEqual(HttpStatus.OK);
@@ -140,7 +141,7 @@ describe('E2E Setting Admin', () => {
         const response = await request(app.getHttpServer())
             .put(E2E_SETTING_ADMIN_UPDATE_URL.replace(':_id', `${setting._id}`))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey)
+            .set('x-permission-token', permissionToken)
             .send({ value: 'false', type: ENUM_SETTING_DATA_TYPE.BOOLEAN });
 
         expect(response.status).toEqual(HttpStatus.OK);
@@ -153,7 +154,7 @@ describe('E2E Setting Admin', () => {
         const response = await request(app.getHttpServer())
             .put(E2E_SETTING_ADMIN_UPDATE_URL.replace(':_id', `${setting._id}`))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-api-key', xApiKey)
+            .set('x-permission-token', permissionToken)
             .send({ value: false, type: ENUM_SETTING_DATA_TYPE.BOOLEAN });
 
         expect(response.status).toEqual(HttpStatus.OK);

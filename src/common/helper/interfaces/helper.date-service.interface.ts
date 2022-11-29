@@ -5,7 +5,6 @@ import {
     IHelperDateOptionsDiff,
     IHelperDateOptionsFormat,
     IHelperDateOptionsForward,
-    IHelperDateOptionsMonth,
 } from 'src/common/helper/interfaces/helper.interface';
 
 export interface IHelperDateService {
@@ -72,13 +71,13 @@ export interface IHelperDateService {
         options?: IHelperDateOptionsBackward
     ): Date;
 
-    endOfMonth(month: number, options?: IHelperDateOptionsMonth): Date;
+    endOfMonth(date?: Date): Date;
 
-    startOfMonth(month: number, options?: IHelperDateOptionsMonth): Date;
+    startOfMonth(date?: Date): Date;
 
-    endOfYear(year: number): Date;
+    endOfYear(date?: Date): Date;
 
-    startOfYear(year: number): Date;
+    startOfYear(date?: Date): Date;
 
     endOfDay(date?: Date): Date;
 

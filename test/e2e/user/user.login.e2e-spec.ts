@@ -35,11 +35,6 @@ describe('E2E User Login', () => {
     const roleName = faker.random.alphaNumeric(5);
     let passwordExpired: Date;
 
-    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    const apiKeyHashed =
-        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
-    const xApiKey = `${apiKey}:${apiKeyHashed}`;
-
     beforeAll(async () => {
         process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
 
@@ -97,7 +92,6 @@ describe('E2E User Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('x-api-key', xApiKey)
             .send({
                 username: [1231],
                 password,
@@ -116,7 +110,6 @@ describe('E2E User Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('x-api-key', xApiKey)
             .send({
                 username: faker.internet.userName(),
                 password,
@@ -135,7 +128,6 @@ describe('E2E User Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('x-api-key', xApiKey)
             .send({
                 username: user.username,
                 password: 'Password@@1231',
@@ -156,7 +148,6 @@ describe('E2E User Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('x-api-key', xApiKey)
             .send({
                 username: user.username,
                 password,
@@ -178,7 +169,6 @@ describe('E2E User Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('x-api-key', xApiKey)
             .send({
                 username: user.username,
                 password,
@@ -198,7 +188,6 @@ describe('E2E User Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('x-api-key', xApiKey)
             .send({
                 username: user.username,
                 password,
@@ -216,7 +205,6 @@ describe('E2E User Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('x-api-key', xApiKey)
             .send({
                 username: user.username,
                 password,

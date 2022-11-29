@@ -403,11 +403,7 @@ export class UserController {
         }
 
         const permissions: PermissionEntity[] =
-            await this.userService.getPermissionByGroupFromUser(
-                user._id,
-                scope
-            );
-
+            await this.userService.getPermissionByGroup(user._id, scope);
 
         const payload: UserPayloadPermissionSerialization =
             await this.userService.payloadPermissionSerialization(

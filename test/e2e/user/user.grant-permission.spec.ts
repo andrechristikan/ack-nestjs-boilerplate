@@ -2,18 +2,17 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { faker } from '@faker-js/faker';
-import {
-    E2E_USER_PROFILE_UPLOAD_URL,
-    E2E_USER_PROFILE_URL,
-} from './user.constant';
 import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
+import { plainToInstance } from 'class-transformer';
+import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
+import { E2E_USER_GRANT_PERMISSION } from './user.constant';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
-import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { RoleModule } from 'src/modules/role/role.module';
 import { PermissionModule } from 'src/modules/permission/permission.module';
@@ -21,12 +20,15 @@ import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
+import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 
-describe('E2E User', () => {
+describe('E2E User Change Password', () => {
     let app: INestApplication;
     let userService: UserService;
     let authService: AuthService;
     let roleService: RoleService;
+
+    const password = `aaAA@!123`;
 
     let user: UserEntity;
 
@@ -61,9 +63,7 @@ describe('E2E User', () => {
             name: 'user',
         });
 
-        const passwordHash = await authService.createPassword(
-            faker.internet.password(20, true, /[A-Za-z0-9]/)
-        );
+        const passwordHash = await authService.createPassword(password);
 
         user = await userService.create({
             username: faker.internet.userName(),
@@ -84,7 +84,7 @@ describe('E2E User', () => {
             }
         );
 
-        const map = await userService.payloadSerialization(userPopulate);
+        const map = plainToInstance(UserPayloadSerialization, userPopulate);
         const payload = await authService.createPayloadAccessToken(map, false);
         const payloadNotFound = {
             ...payload,
@@ -99,9 +99,28 @@ describe('E2E User', () => {
         await app.init();
     });
 
-    it(`GET ${E2E_USER_PROFILE_URL} Profile Not Found`, async () => {
+    it(`POST ${E2E_USER_GRANT_PERMISSION} Error Request`, async () => {
         const response = await request(app.getHttpServer())
-            .get(E2E_USER_PROFILE_URL)
+            .post(E2E_USER_GRANT_PERMISSION)
+            .send({
+                scope: '123123',
+            })
+            .set('Authorization', `Bearer ${accessToken}`);
+
+        expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
+        expect(response.body.statusCode).toEqual(
+            ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
+        );
+
+        return;
+    });
+
+    it(`POST ${E2E_USER_GRANT_PERMISSION} Not Found`, async () => {
+        const response = await request(app.getHttpServer())
+            .post(E2E_USER_GRANT_PERMISSION)
+            .send({
+                scope: [ENUM_PERMISSION_GROUP.PERMISSION],
+            })
             .set('Authorization', `Bearer ${accessTokenNotFound}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
@@ -112,70 +131,13 @@ describe('E2E User', () => {
         return;
     });
 
-    it(`GET ${E2E_USER_PROFILE_URL} Profile`, async () => {
+    it(`POST ${E2E_USER_GRANT_PERMISSION} Success`, async () => {
         const response = await request(app.getHttpServer())
-            .get(E2E_USER_PROFILE_URL)
+            .post(E2E_USER_GRANT_PERMISSION)
+            .send({
+                scope: [ENUM_PERMISSION_GROUP.PERMISSION],
+            })
             .set('Authorization', `Bearer ${accessToken}`);
-
-        expect(response.status).toEqual(HttpStatus.OK);
-        expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
-    });
-
-    it(`POST ${E2E_USER_PROFILE_UPLOAD_URL} Profile Upload Error Request`, async () => {
-        const response = await request(app.getHttpServer())
-            .post(E2E_USER_PROFILE_UPLOAD_URL)
-            .attach('file', './test/e2e/user/files/test.txt')
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('Content-Type', 'multipart/form-data');
-
-        expect(response.status).toEqual(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
-        expect(response.body.statusCode).toEqual(
-            ENUM_FILE_STATUS_CODE_ERROR.FILE_EXTENSION_ERROR
-        );
-
-        return;
-    });
-
-    it(`POST ${E2E_USER_PROFILE_UPLOAD_URL} Profile Upload Not Found`, async () => {
-        const response = await request(app.getHttpServer())
-            .post(E2E_USER_PROFILE_UPLOAD_URL)
-            .attach('file', './test/e2e/user/files/test.txt')
-            .set('Authorization', `Bearer ${accessTokenNotFound}`)
-            .set('Content-Type', 'multipart/form-data');
-
-        expect(response.status).toEqual(HttpStatus.NOT_FOUND);
-        expect(response.body.statusCode).toEqual(
-            ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
-        );
-
-        return;
-    });
-
-    it(`POST ${E2E_USER_PROFILE_UPLOAD_URL} Profile Upload File Too Large`, async () => {
-        const response = await request(app.getHttpServer())
-            .post(E2E_USER_PROFILE_UPLOAD_URL)
-            .send()
-            .attach('file', './test/e2e/user/files/medium.jpg')
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('Content-Type', 'multipart/form-data');
-
-        expect(response.status).toEqual(HttpStatus.PAYLOAD_TOO_LARGE);
-        expect(response.body.statusCode).toEqual(
-            ENUM_FILE_STATUS_CODE_ERROR.FILE_MAX_SIZE_ERROR
-        );
-
-        return;
-    });
-
-    it(`POST ${E2E_USER_PROFILE_UPLOAD_URL} Profile Upload Success`, async () => {
-        const response = await request(app.getHttpServer())
-            .post(E2E_USER_PROFILE_UPLOAD_URL)
-            .send()
-            .attach('file', './test/e2e/user/files/small.jpg')
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('Content-Type', 'multipart/form-data');
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -186,6 +148,8 @@ describe('E2E User', () => {
     afterAll(async () => {
         try {
             await userService.deleteOneById(user._id);
-        } catch (e) {}
+        } catch (e) {
+            console.error(e);
+        }
     });
 });
