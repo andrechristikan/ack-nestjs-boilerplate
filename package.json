@@ -75,7 +75,7 @@
     "helmet": "^6.0.1",
     "joi": "^17.7.0",
     "moment": "^2.29.4",
-    "mongoose": "^6.7.4",
+    "mongoose": "^6.7.5",
     "morgan": "^1.10.0",
     "nest-winston": "^1.8.0",
     "nestjs-command": "^3.1.2",
