@@ -115,7 +115,7 @@
     "@types/passport-jwt": "^3.0.7",
     "@types/supertest": "^2.0.12",
     "@types/ua-parser-js": "^0.7.36",
-    "@types/uuid": "^8.3.4",
+    "@types/uuid": "^9.0.0",
     "@typescript-eslint/eslint-plugin": "^5.45.0",
     "@typescript-eslint/parser": "^5.45.0",
     "cspell": "^6.15.0",
