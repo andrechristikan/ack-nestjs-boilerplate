@@ -138,7 +138,7 @@ describe('E2E User Refresh', () => {
         await userService.active(user._id);
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
         expect(response.body.statusCode).toEqual(
-            ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR
+            ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_ERROR
         );
 
         return;
@@ -152,7 +152,7 @@ describe('E2E User Refresh', () => {
         await roleService.active(`${user.role}`);
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
         expect(response.body.statusCode).toEqual(
-            ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR
+            ENUM_ROLE_STATUS_CODE_ERROR.ROLE_INACTIVE_ERROR
         );
 
         return;

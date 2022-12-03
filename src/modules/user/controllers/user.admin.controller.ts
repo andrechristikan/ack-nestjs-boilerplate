@@ -100,11 +100,13 @@ export class UserAdminController {
             search,
             availableSort,
             availableSearch,
+            isActive,
         }: UserListDto
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
         const find: Record<string, any> = {
             ...search,
+            ...isActive,
         };
 
         const users: IUserEntity[] = await this.userService.findAll(find, {

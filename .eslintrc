@@ -2,6 +2,7 @@
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "project": "tsconfig.json",
+    "tsconfigRootDir": ".",
     "sourceType": "module"
   },
   "plugins": ["@typescript-eslint/eslint-plugin"],
@@ -15,6 +16,7 @@
     "node": true,
     "jest": true
   },
+  "ignorePatterns": [".eslintrc.js"],
   "rules": {
     "@typescript-eslint/no-explicit-any": "off"
   }

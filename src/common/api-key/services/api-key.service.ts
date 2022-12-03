@@ -15,7 +15,7 @@ import {
     ApiKeyCreateDto,
     ApiKeyCreateRawDto,
 } from 'src/common/api-key/dtos/api-key.create.dto';
-import { IApiKey } from 'src/common/api-key/interfaces/api-key.interface';
+import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyRepository } from 'src/common/api-key/repository/repositories/api-key.repository';
@@ -37,15 +37,7 @@ export class ApiKeyService implements IApiKeyService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<ApiKeyEntity[]> {
-        return this.apiKeyRepository.findAll<ApiKeyEntity>(find, {
-            ...options,
-            select: {
-                name: 1,
-                key: 1,
-                isActive: 1,
-                createdAt: 1,
-            },
-        });
+        return this.apiKeyRepository.findAll<ApiKeyEntity>(find, options);
     }
 
     async findOneById(
@@ -67,6 +59,16 @@ export class ApiKeyService implements IApiKeyService {
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyEntity> {
         return this.apiKeyRepository.findOne<ApiKeyEntity>({ key }, options);
+    }
+
+    async findOneByKeyAndActive(
+        key: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ApiKeyEntity> {
+        return this.apiKeyRepository.findOne<ApiKeyEntity>(
+            { key, isActive: true },
+            options
+        );
     }
 
     async getTotal(
@@ -100,9 +102,8 @@ export class ApiKeyService implements IApiKeyService {
 
     async create(
         { name, description }: ApiKeyCreateDto,
-        user: Record<string, any>,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKey> {
+    ): Promise<IApiKeyEntity> {
         const key = await this.createKey();
         const secret = await this.createSecret();
         const hash: string = await this.createHashApiKey(key, secret);
@@ -112,7 +113,6 @@ export class ApiKeyService implements IApiKeyService {
         create.description = description;
         create.key = key;
         create.hash = hash;
-        create.user = user._id;
         create.isActive = true;
 
         const created = await this.apiKeyRepository.create<ApiKeyEntity>(
@@ -121,15 +121,15 @@ export class ApiKeyService implements IApiKeyService {
         );
 
         return {
-            _id: created._id,
+            ...created,
             secret,
         };
     }
 
     async createRaw(
-        { name, description, key, secret, user }: ApiKeyCreateRawDto,
+        { name, description, key, secret }: ApiKeyCreateRawDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKey> {
+    ): Promise<IApiKeyEntity> {
         const hash: string = await this.createHashApiKey(key, secret);
 
         const create: ApiKeyEntity = new ApiKeyEntity();
@@ -137,7 +137,6 @@ export class ApiKeyService implements IApiKeyService {
         create.description = description;
         create.key = key;
         create.hash = hash;
-        create.user = user;
         create.isActive = true;
 
         const created = await this.apiKeyRepository.create<ApiKeyEntity>(
@@ -146,7 +145,7 @@ export class ApiKeyService implements IApiKeyService {
         );
 
         return {
-            _id: created._id,
+            ...created,
             secret,
         };
     }
@@ -163,10 +162,10 @@ export class ApiKeyService implements IApiKeyService {
         );
     }
 
-    async updateHashById(
+    async updateResetById(
         _id: string,
         options?: IDatabaseOptions
-    ): Promise<IApiKey> {
+    ): Promise<IApiKeyEntity> {
         const apiKey: ApiKeyEntity = await this.apiKeyRepository.findOneById(
             _id
         );
@@ -177,10 +176,14 @@ export class ApiKeyService implements IApiKeyService {
             hash,
         };
 
-        await this.apiKeyRepository.updateOneById(_id, update, options);
+        const updated = await this.apiKeyRepository.updateOneById(
+            _id,
+            update,
+            options
+        );
 
         return {
-            _id: apiKey._id,
+            ...updated,
             secret,
         };
     }

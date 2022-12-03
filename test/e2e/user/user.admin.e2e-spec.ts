@@ -376,7 +376,7 @@ describe('E2E User Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
-            ENUM_USER_STATUS_CODE_ERROR.USER_ACTIVE_ERROR
+            ENUM_USER_STATUS_CODE_ERROR.USER_IS_ACTIVE_ERROR
         );
 
         return;
@@ -427,7 +427,7 @@ describe('E2E User Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
-            ENUM_USER_STATUS_CODE_ERROR.USER_ACTIVE_ERROR
+            ENUM_USER_STATUS_CODE_ERROR.USER_IS_ACTIVE_ERROR
         );
 
         return;

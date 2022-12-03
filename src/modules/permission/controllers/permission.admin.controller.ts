@@ -188,12 +188,13 @@ export class PermissionAdminController {
     }
 
     @PermissionInactiveDoc()
-    @Response('permission.inactive', {})
+    @Response('permission.inactive')
     @PermissionUpdateInactiveGuard()
     @RequestParamGuard(PermissionRequestDto)
     @AuthPermissionProtected(
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
-        ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
+        ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE,
+        ENUM_AUTH_PERMISSIONS.PERMISSION_INACTIVE
     )
     @AuthJwtAdminAccessProtected()
     @Patch('/update/:permission/inactive')
@@ -219,7 +220,8 @@ export class PermissionAdminController {
     @RequestParamGuard(PermissionRequestDto)
     @AuthPermissionProtected(
         ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
-        ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
+        ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE,
+        ENUM_AUTH_PERMISSIONS.PERMISSION_ACTIVE
     )
     @AuthJwtAdminAccessProtected()
     @Patch('/update/:permission/active')

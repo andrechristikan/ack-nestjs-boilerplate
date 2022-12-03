@@ -4,8 +4,9 @@ import {
     ExecutionContext,
     UseGuards,
 } from '@nestjs/common';
-import { ApiKeyGuard } from 'src/common/api-key/guards/api-key/api-key.guard';
+import { ApiKeyXApiKeyGuard } from 'src/common/api-key/guards/x-api-key/api-key.x-api-key.guard';
 import { IApiKeyPayload } from 'src/common/api-key/interfaces/api-key.interface';
+import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 
 export const ApiKeyPayload: () => ParameterDecorator = createParamDecorator(
     (data: string, ctx: ExecutionContext): IApiKeyPayload => {
@@ -15,5 +16,12 @@ export const ApiKeyPayload: () => ParameterDecorator = createParamDecorator(
 );
 
 export function ApiKeyProtected(): MethodDecorator {
-    return applyDecorators(UseGuards(ApiKeyGuard));
+    return applyDecorators(UseGuards(ApiKeyXApiKeyGuard));
 }
+
+export const GetApiKey = createParamDecorator(
+    (data: string, ctx: ExecutionContext): ApiKeyEntity => {
+        const { __apiKey } = ctx.switchToHttp().getRequest();
+        return __apiKey;
+    }
+);

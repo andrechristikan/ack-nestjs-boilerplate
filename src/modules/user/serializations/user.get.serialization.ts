@@ -5,7 +5,7 @@ import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.seriali
 import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
 
 export class UserGetSerialization {
-    @ApiProperty({ example: faker.database.mongodbObjectId() })
+    @ApiProperty({ example: faker.datatype.uuid() })
     @Type(() => String)
     readonly _id: string;
 

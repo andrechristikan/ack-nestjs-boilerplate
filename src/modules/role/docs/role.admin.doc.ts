@@ -1,7 +1,11 @@
 import { applyDecorators, HttpStatus } from '@nestjs/common';
 import { Doc, DocPaging } from 'src/common/doc/decorators/doc.decorator';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
-import { RoleDocParamsGet } from 'src/modules/role/constants/role.doc.constant';
+import {
+    RoleDocParamsGet,
+    RoleDocQueryAccessFor,
+    RoleDocQueryIsActive,
+} from 'src/modules/role/constants/role.doc.constant';
 import {
     ROLE_DEFAULT_AVAILABLE_SEARCH,
     ROLE_DEFAULT_AVAILABLE_SORT,
@@ -14,6 +18,9 @@ export function RoleListDoc(): MethodDecorator {
         DocPaging<RoleListSerialization>('role.list', {
             auth: {
                 jwtAccessToken: true,
+            },
+            request: {
+                queries: [...RoleDocQueryIsActive, ...RoleDocQueryAccessFor],
             },
             response: {
                 serialization: RoleListSerialization,

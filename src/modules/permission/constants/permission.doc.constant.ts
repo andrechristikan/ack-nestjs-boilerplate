@@ -29,6 +29,6 @@ export const PermissionDocParamsGet = [
         allowEmptyValue: false,
         required: true,
         type: 'string',
-        example: faker.database.mongodbObjectId(),
+        example: faker.datatype.uuid(),
     },
 ];

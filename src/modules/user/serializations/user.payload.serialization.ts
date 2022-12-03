@@ -19,7 +19,7 @@ export class UserPayloadSerialization extends OmitType(UserGetSerialization, [
     readonly photo?: AwsS3Serialization;
 
     @ApiProperty({
-        example: faker.database.mongodbObjectId(),
+        example: faker.datatype.uuid(),
         type: 'string',
     })
     @Transform(({ obj }) => `${obj.role._id}`)

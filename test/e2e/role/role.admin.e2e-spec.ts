@@ -122,12 +122,10 @@ describe('E2E Role Admin', () => {
             false
         );
         accessToken = await authService.createAccessToken(payload);
-        permissionToken = await authService.createPermissionToken(
-            {
-                ...E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
-                _id: payload._id,
-            }
-        );
+        permissionToken = await authService.createPermissionToken({
+            ...E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
+            _id: payload._id,
+        });
 
         await app.init();
     });
@@ -324,7 +322,7 @@ describe('E2E Role Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
-            ENUM_ROLE_STATUS_CODE_ERROR.ROLE_ACTIVE_ERROR
+            ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_ACTIVE_ERROR
         );
 
         return;
@@ -369,7 +367,7 @@ describe('E2E Role Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
-            ENUM_ROLE_STATUS_CODE_ERROR.ROLE_ACTIVE_ERROR
+            ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_ACTIVE_ERROR
         );
 
         return;

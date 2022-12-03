@@ -9,39 +9,18 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
 import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
-import { IApiKey } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ENUM_PAGINATION_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 
 describe('ApiKeyService', () => {
     let apiKeyService: ApiKeyService;
     let apiKeyBulkService: ApiKeyBulkKeyService;
 
-    const user: Record<string, any> = {
-        _id: '623cb7fd37a861a10bac2c91',
-        isActive: true,
-        salt: '$2b$08$GZfqgaDMPpWQ3lJEGQ8Ueu',
-        passwordExpired: new Date('2023-03-24T18:27:09.500Z'),
-        password:
-            '$2b$08$GZfqgaDMPpWQ3lJEGQ8Ueu1vJ3C6G3stnkS/5e61bK/4f1.Fuw2Eq',
-        role: {
-            _id: '623cb7f7965a74bf7a0e9e53',
-            accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
-            isActive: true,
-            permissions: [],
-            name: 'admin',
-        },
-        email: 'admin@mail.com',
-        mobileNumber: '08111111111',
-        lastName: 'test',
-        firstName: 'admin@mail.com',
-    };
-
     const authApiName: string = faker.random.alphaNumeric(5);
 
-    let authApi: IApiKey;
+    let authApi: IApiKeyEntity;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
@@ -71,13 +50,10 @@ describe('ApiKeyService', () => {
         apiKeyBulkService =
             moduleRef.get<ApiKeyBulkKeyService>(ApiKeyBulkKeyService);
 
-        authApi = await apiKeyService.create(
-            {
-                name: authApiName,
-                description: faker.random.alphaNumeric(),
-            },
-            user
-        );
+        authApi = await apiKeyService.create({
+            name: authApiName,
+            description: faker.random.alphaNumeric(),
+        });
     });
 
     describe('create', () => {
@@ -87,12 +63,12 @@ describe('ApiKeyService', () => {
                 description: faker.random.alphaNumeric(),
             };
 
-            const result: IApiKey = await apiKeyService.create(data, user);
+            const result: IApiKeyEntity = await apiKeyService.create(data);
             jest.spyOn(apiKeyService, 'create').mockImplementation(
                 async () => result
             );
 
-            expect(await apiKeyService.create(data, user)).toBe(result);
+            expect(await apiKeyService.create(data)).toBe(result);
         });
     });
 
@@ -103,10 +79,9 @@ describe('ApiKeyService', () => {
                 description: faker.random.alphaNumeric(),
                 key: await apiKeyService.createKey(),
                 secret: await apiKeyService.createSecret(),
-                user: user._id,
             };
 
-            const result: IApiKey = await apiKeyService.createRaw(data);
+            const result: IApiKeyEntity = await apiKeyService.createRaw(data);
             jest.spyOn(apiKeyService, 'createRaw').mockImplementation(
                 async () => result
             );
@@ -170,6 +145,25 @@ describe('ApiKeyService', () => {
             );
 
             expect(await apiKeyService.findOneByKey(findOne.key)).toBe(result);
+        });
+    });
+
+    describe('findOneByKeyAndActive', () => {
+        it('should return an success', async () => {
+            const findOne: ApiKeyEntity = await apiKeyService.findOneById(
+                `${authApi._id}`
+            );
+
+            const result: ApiKeyEntity =
+                await apiKeyService.findOneByKeyAndActive(findOne.key);
+            jest.spyOn(
+                apiKeyService,
+                'findOneByKeyAndActive'
+            ).mockImplementation(async () => result);
+
+            expect(await apiKeyService.findOneByKeyAndActive(findOne.key)).toBe(
+                result
+            );
         });
     });
 
@@ -282,14 +276,14 @@ describe('ApiKeyService', () => {
 
     describe('updateHashById', () => {
         it('should return an success', async () => {
-            const result: IApiKey = await apiKeyService.updateHashById(
+            const result: IApiKeyEntity = await apiKeyService.updateResetById(
                 `${authApi._id}`
             );
-            jest.spyOn(apiKeyService, 'updateHashById').mockImplementation(
+            jest.spyOn(apiKeyService, 'updateResetById').mockImplementation(
                 async () => result
             );
 
-            expect(await apiKeyService.updateHashById(`${authApi._id}`)).toBe(
+            expect(await apiKeyService.updateResetById(`${authApi._id}`)).toBe(
                 result
             );
         });

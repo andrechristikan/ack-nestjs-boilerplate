@@ -4,9 +4,9 @@
     "node_modules",
     "dist", 
     "*coverage",
-    "test",
     "logs",
     "scripts",
+    "test"
   ],
   "include": [
     "src"

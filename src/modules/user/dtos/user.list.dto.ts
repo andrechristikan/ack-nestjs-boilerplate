@@ -3,6 +3,7 @@ import { PaginationListAbstract } from 'src/common/pagination/abstracts/paginati
 import {
     PaginationAvailableSearch,
     PaginationAvailableSort,
+    PaginationFilterBoolean,
     PaginationPage,
     PaginationPerPage,
     PaginationSearch,
@@ -12,6 +13,7 @@ import { IPaginationSort } from 'src/common/pagination/interfaces/pagination.int
 import {
     USER_DEFAULT_AVAILABLE_SEARCH,
     USER_DEFAULT_AVAILABLE_SORT,
+    USER_DEFAULT_IS_ACTIVE,
     USER_DEFAULT_PAGE,
     USER_DEFAULT_PER_PAGE,
     USER_DEFAULT_SORT,
@@ -37,4 +39,7 @@ export class UserListDto implements PaginationListAbstract {
     @ApiHideProperty()
     @PaginationAvailableSort(USER_DEFAULT_AVAILABLE_SORT)
     readonly availableSort: string[];
+
+    @PaginationFilterBoolean(USER_DEFAULT_IS_ACTIVE)
+    readonly isActive: boolean[];
 }

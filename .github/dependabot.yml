@@ -7,7 +7,7 @@ updates:
       interval: "monthly"
       day: tuesday
       time: "01:00"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     target-branch: "development"
     commit-message:
       prefix: "npm"

@@ -86,11 +86,15 @@ export class RoleAdminController {
             search,
             availableSort,
             availableSearch,
+            isActive,
+            accessFor,
         }: RoleListDto
     ): Promise<IResponsePaging> {
         const skip: number = await this.paginationService.skip(page, perPage);
         const find: Record<string, any> = {
             ...search,
+            ...isActive,
+            ...accessFor,
         };
 
         const roles: RoleEntity[] = await this.roleService.findAll(find, {
@@ -275,7 +279,8 @@ export class RoleAdminController {
     @RequestParamGuard(RoleRequestDto)
     @AuthPermissionProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
-        ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
+        ENUM_AUTH_PERMISSIONS.ROLE_UPDATE,
+        ENUM_AUTH_PERMISSIONS.ROLE_INACTIVE
     )
     @AuthJwtAdminAccessProtected()
     @Patch('/update/:role/inactive')
@@ -299,7 +304,8 @@ export class RoleAdminController {
     @RequestParamGuard(RoleRequestDto)
     @AuthPermissionProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
-        ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
+        ENUM_AUTH_PERMISSIONS.ROLE_UPDATE,
+        ENUM_AUTH_PERMISSIONS.ROLE_ACTIVE
     )
     @AuthJwtAdminAccessProtected()
     @Patch('/update/:role/active')

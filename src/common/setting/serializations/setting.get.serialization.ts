@@ -6,7 +6,7 @@ import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enu
 export class SettingGetSerialization {
     @ApiProperty({
         description: 'Id that representative with your target data',
-        example: faker.database.mongodbObjectId(),
+        example: faker.datatype.uuid(),
         required: true,
     })
     @Type(() => String)

@@ -1,7 +1,10 @@
 import { applyDecorators, HttpStatus } from '@nestjs/common';
 import { Doc, DocPaging } from 'src/common/doc/decorators/doc.decorator';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
-import { UserDocParamsGet } from 'src/modules/user/constants/user.doc.constant';
+import {
+    UserDocParamsGet,
+    UserDocQueryIsActive,
+} from 'src/modules/user/constants/user.doc.constant';
 import {
     USER_DEFAULT_AVAILABLE_SEARCH,
     USER_DEFAULT_AVAILABLE_SORT,
@@ -16,6 +19,7 @@ export function UserListDoc(): MethodDecorator {
             auth: {
                 jwtAccessToken: true,
             },
+            request: { queries: UserDocQueryIsActive },
             response: {
                 serialization: UserListSerialization,
                 availableSort: USER_DEFAULT_AVAILABLE_SORT,

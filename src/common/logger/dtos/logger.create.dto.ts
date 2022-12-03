@@ -14,10 +14,8 @@ export class LoggerCreateDto {
     requestId?: string;
     method: ENUM_REQUEST_METHOD;
     path: string;
-    role?: {
-        _id: string;
-        accessFor: ENUM_AUTH_ACCESS_FOR;
-    };
+    role?: string;
+    accessFor?: ENUM_AUTH_ACCESS_FOR;
     tags?: string[];
     params?: Record<string, any>;
     bodies?: Record<string, any>;

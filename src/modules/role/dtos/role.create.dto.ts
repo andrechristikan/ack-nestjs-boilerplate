@@ -27,10 +27,7 @@ export class RoleCreateDto {
 
     @ApiProperty({
         description: 'List of permission',
-        example: [
-            faker.database.mongodbObjectId(),
-            faker.database.mongodbObjectId(),
-        ],
+        example: [faker.datatype.uuid(), faker.datatype.uuid()],
         required: true,
     })
     @IsUUID('4', { each: true })

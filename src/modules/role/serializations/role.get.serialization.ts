@@ -7,7 +7,7 @@ import { PermissionGetSerialization } from 'src/modules/permission/serialization
 export class RoleGetSerialization {
     @ApiProperty({
         description: 'Id that representative with your target data',
-        example: faker.database.mongodbObjectId(),
+        example: faker.datatype.uuid(),
         required: true,
     })
     @Type(() => String)

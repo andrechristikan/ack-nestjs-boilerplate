@@ -8,11 +8,6 @@ import { RoutesModule } from 'src/router/routes/routes.module';
 describe('Database Integration', () => {
     let app: INestApplication;
 
-    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    const apiKeyHashed =
-        'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54';
-    const xApiKey = `${apiKey}:${apiKeyHashed}`;
-
     beforeAll(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [CommonModule, RoutesModule],

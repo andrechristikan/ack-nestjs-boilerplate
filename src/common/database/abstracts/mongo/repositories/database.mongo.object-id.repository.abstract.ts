@@ -249,7 +249,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
             session: options ? options.session : undefined,
         });
 
-        return create[0];
+        return create[0].toObject();
     }
 
     async updateOneById<N>(

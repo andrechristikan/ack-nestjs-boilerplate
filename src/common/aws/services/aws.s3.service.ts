@@ -1,3 +1,13 @@
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { IAwsS3PutItemOptions } from 'src/common/aws/interfaces/aws.interface';
+import { IAwsS3Service } from 'src/common/aws/interfaces/aws.s3-service.interface';
+import {
+    AwsS3MultipartPartsSerialization,
+    AwsS3MultipartSerialization,
+} from 'src/common/aws/serializations/aws.s3-multipart.serialization';
+import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
+import { Readable } from 'stream';
 import {
     S3Client,
     GetObjectCommand,
@@ -20,16 +30,6 @@ import {
     UploadPartRequest,
     HeadBucketCommand,
 } from '@aws-sdk/client-s3';
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { IAwsS3PutItemOptions } from 'src/common/aws/interfaces/aws.interface';
-import { IAwsS3Service } from 'src/common/aws/interfaces/aws.s3-service.interface';
-import {
-    AwsS3MultipartPartsSerialization,
-    AwsS3MultipartSerialization,
-} from 'src/common/aws/serializations/aws.s3-multipart.serialization';
-import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
-import { Readable } from 'stream';
 
 @Injectable()
 export class AwsS3Service implements IAwsS3Service {

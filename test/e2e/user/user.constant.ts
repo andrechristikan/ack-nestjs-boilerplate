@@ -14,7 +14,7 @@ export const E2E_USER_LOGIN_URL = '/user/login';
 export const E2E_USER_REFRESH_URL = '/user/refresh';
 export const E2E_USER_CHANGE_PASSWORD_URL = '/user/change-password';
 export const E2E_USER_INFO = '/user/info';
-export const E2E_USER_GRANT_PERMISSION = '/user/grant-permisssion';
+export const E2E_USER_GRANT_PERMISSION = '/user/grant-permission';
 
 export const E2E_USER_PUBLIC_SIGN_UP_URL = '/public/user/sign-up';
 

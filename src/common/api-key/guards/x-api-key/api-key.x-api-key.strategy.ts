@@ -7,7 +7,10 @@ import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
-export class ApiKeyKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
+export class ApiKeyXApiKeyStrategy extends PassportStrategy(
+    Strategy,
+    'api-key'
+) {
     constructor(private readonly apiKeyService: ApiKeyService) {
         super(
             { header: 'X-API-KEY', prefix: '' },
@@ -65,24 +68,13 @@ export class ApiKeyKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
         } else if (!authApi.isActive) {
             verified(
                 new Error(
-                    `${ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INACTIVE_ERROR}`
+                    `${ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_IS_ACTIVE_ERROR}`
                 ),
                 null,
                 null
             );
 
             return;
-        }
-
-        const { user } = req;
-        if (authApi.user !== user._id) {
-            verified(
-                new Error(
-                    `${ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_WRONG_ERROR}`
-                ),
-                null,
-                null
-            );
         }
 
         const validateApiKey: boolean =

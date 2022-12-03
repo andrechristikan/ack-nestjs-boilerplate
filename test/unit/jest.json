@@ -11,9 +11,9 @@
     "collectCoverage": true,
     "coverageDirectory": "coverage",
     "collectCoverageFrom": [
+        "./src/common/config/services/**",
         "./src/common/api-key/services/**",
         "./src/common/auth/services/**",
-        "./src/common/config/services/**",
         "./src/common/database/services/**",
         "./src/common/debugger/services/**",
         "./src/common/helper/services/**",

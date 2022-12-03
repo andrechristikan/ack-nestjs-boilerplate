@@ -88,7 +88,7 @@ import { APP_LANGUAGE } from 'src/app/constants/app.constant';
                     .max(50)
                     .required(),
                 AUTH_JWT_ACCESS_TOKEN_EXPIRED: Joi.string()
-                    .default('30m')
+                    .default('15m')
                     .required(),
 
                 AUTH_JWT_REFRESH_TOKEN_SECRET_KEY: Joi.string()
@@ -102,8 +102,9 @@ import { APP_LANGUAGE } from 'src/app/constants/app.constant';
                 AUTH_JWT_REFRESH_TOKEN_REMEMBER_ME_EXPIRED: Joi.string()
                     .default('30d')
                     .required(),
-                AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION:
-                    Joi.string().required(),
+                AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION: Joi.string()
+                    .default('15m')
+                    .required(),
 
                 AUTH_PERMISSION_TOKEN_SECRET_KEY: Joi.string()
                     .alphanum()
@@ -111,7 +112,7 @@ import { APP_LANGUAGE } from 'src/app/constants/app.constant';
                     .max(50)
                     .required(),
                 AUTH_PERMISSION_TOKEN_EXPIRED: Joi.string()
-                    .default('30m')
+                    .default('5m')
                     .required(),
 
                 AUTH_JWT_PAYLOAD_ENCRYPT: Joi.boolean()

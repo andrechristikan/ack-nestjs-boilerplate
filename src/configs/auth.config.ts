@@ -7,8 +7,8 @@ export default registerAs(
         accessToken: {
             secretKey: process.env.AUTH_JWT_ACCESS_TOKEN_SECRET_KEY || '123456',
             expirationTime: seconds(
-                process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED || '30m'
-            ), // recommendation for production is 30m
+                process.env.AUTH_JWT_ACCESS_TOKEN_EXPIRED || '15m'
+            ), // recommendation for production is 15m
             notBeforeExpirationTime: seconds('0'), // keep it in zero value
 
             encryptKey: process.env.AUTH_JWT_PAYLOAD_ACCESS_TOKEN_ENCRYPT_KEY,
@@ -26,8 +26,8 @@ export default registerAs(
             ), // recommendation for production is 30d
             notBeforeExpirationTime: seconds(
                 process.env.AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION ||
-                    '30m'
-            ), // recommendation for production is 30m
+                    '15m'
+            ), // recommendation for production is 15m
 
             encryptKey: process.env.AUTH_JWT_PAYLOAD_REFRESH_TOKEN_ENCRYPT_KEY,
             encryptIv: process.env.AUTH_JWT_PAYLOAD_REFRESH_TOKEN_ENCRYPT_IV,
@@ -45,7 +45,7 @@ export default registerAs(
             secretKey: process.env.AUTH_PERMISSION_TOKEN_SECRET_KEY || '123456',
             expirationTime: seconds(
                 process.env.AUTH_PERMISSION_TOKEN_EXPIRED || '5m'
-            ), // recommendation for production is 30m
+            ), // recommendation for production is 5m
             notBeforeExpirationTime: seconds('0'), // keep it in zero value
 
             encryptKey: process.env.AUTH_PAYLOAD_PERMISSION_TOKEN_ENCRYPT_KEY,

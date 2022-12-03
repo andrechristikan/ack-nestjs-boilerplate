@@ -80,9 +80,13 @@ Next development
 * [x] Reduce the payload of access token
 * [x] Update authorization mechanism, permission token on `x-permission-token`
 * [x] Update package, cors setting, check all interfaces, husky trigger switch to on and check test
-* [ ] AuthApiKey mechanism
+* [x] AuthApiKey mechanism
 * [ ] AuthApi Controller
-* [ ] Add Typeorm repository
+    * [x] AuthApi Get, Active, Inactive Endpoint
+    * [x] AuthApi Create (Random Key), and Reset Secret Endpoint
+    * [ ] AuthApi Controller Test E2E
+* [x] Add Typeorm repository
+* [ ] Implement Use Case from Hexagonal Architecture and for reduce database connection
 * [ ] SSO Google, SSO Facebook, SSO Twitter, SSO Apple, SSO Microsoft
 * [ ] Update Documentation, include an diagram for easier comprehension
 * [ ] Maybe will adopt [CQRS][ref-nestjs-cqrs]

@@ -20,8 +20,6 @@ import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/req
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
-import { UserService } from 'src/modules/user/services/user.service';
-import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload-permission.serialization';
 import {
     E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
     E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
@@ -209,7 +207,7 @@ describe('E2E Permission Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
-            ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_ACTIVE_ERROR
+            ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_IS_ACTIVE_ERROR
         );
 
         return;
@@ -264,7 +262,7 @@ describe('E2E Permission Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
-            ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_ACTIVE_ERROR
+            ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_IS_ACTIVE_ERROR
         );
 
         return;

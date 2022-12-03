@@ -8,7 +8,7 @@ import { HelperNumberService } from 'src/common/helper/services/helper.number.se
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
 
 @Injectable()
-export class ApiKeyGuard extends AuthGuard('api-key') {
+export class ApiKeyXApiKeyGuard extends AuthGuard('api-key') {
     constructor(private readonly helperNumberService: HelperNumberService) {
         super();
     }
@@ -59,7 +59,7 @@ export class ApiKeyGuard extends AuthGuard('api-key') {
                 });
             } else if (
                 statusCode ===
-                ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INACTIVE_ERROR
+                ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_IS_ACTIVE_ERROR
             ) {
                 throw new UnauthorizedException({
                     statusCode,

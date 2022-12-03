@@ -3,7 +3,7 @@ import {
     ApiKeyCreateRawDto,
 } from 'src/common/api-key/dtos/api-key.create.dto';
 import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
-import { IApiKey } from 'src/common/api-key/interfaces/api-key.interface';
+import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import {
     IDatabaseCreateOptions,
@@ -34,6 +34,11 @@ export interface IApiKeyService {
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyEntity>;
 
+    findOneByKeyAndActive(
+        key: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ApiKeyEntity>;
+
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseOptions
@@ -44,15 +49,14 @@ export interface IApiKeyService {
     active(_id: string, options?: IDatabaseOptions): Promise<ApiKeyEntity>;
 
     create(
-        data: ApiKeyCreateDto,
-        user: Record<string, any>,
+        { name, description }: ApiKeyCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKey>;
+    ): Promise<IApiKeyEntity>;
 
     createRaw(
-        data: ApiKeyCreateRawDto,
+        { name, description, key, secret }: ApiKeyCreateRawDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKey>;
+    ): Promise<IApiKeyEntity>;
 
     updateOneById(
         _id: string,
@@ -60,7 +64,10 @@ export interface IApiKeyService {
         options?: IDatabaseOptions
     ): Promise<ApiKeyEntity>;
 
-    updateHashById(_id: string, options?: IDatabaseOptions): Promise<IApiKey>;
+    updateResetById(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<IApiKeyEntity>;
 
     deleteOneById(
         _id: string,
@@ -77,5 +84,6 @@ export interface IApiKeyService {
     createSecret(): Promise<string>;
 
     createHashApiKey(key: string, secret: string): Promise<string>;
+
     validateHashApiKey(hashFromRequest: string, hash: string): Promise<boolean>;
 }

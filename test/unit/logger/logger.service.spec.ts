@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
+import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
@@ -24,25 +25,7 @@ describe('LoggerService', () => {
     let apiKeyService: ApiKeyService;
     let loggerService: LoggerService;
 
-    const user: Record<string, any> = {
-        _id: '623cb7fd37a861a10bac2c91',
-        isActive: true,
-        salt: '$2b$08$GZfqgaDMPpWQ3lJEGQ8Ueu',
-        passwordExpired: new Date('2023-03-24T18:27:09.500Z'),
-        password:
-            '$2b$08$GZfqgaDMPpWQ3lJEGQ8Ueu1vJ3C6G3stnkS/5e61bK/4f1.Fuw2Eq',
-        role: {
-            _id: '623cb7f7965a74bf7a0e9e53',
-            accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
-            isActive: true,
-            permissions: [],
-            name: 'admin',
-        },
-        email: 'admin@mail.com',
-        mobileNumber: '08111111111',
-        lastName: 'test',
-        firstName: 'admin@mail.com',
-    };
+    let apiKey: IApiKeyEntity;
 
     const loggerLevel: ENUM_LOGGER_LEVEL = ENUM_LOGGER_LEVEL.INFO;
     const logger: LoggerCreateDto = {
@@ -59,10 +42,8 @@ describe('LoggerService', () => {
         user: DatabaseDefaultUUID(),
         apiKey: DatabaseDefaultUUID(),
         requestId: DatabaseDefaultUUID(),
-        role: {
-            _id: DatabaseDefaultUUID(),
-            accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
-        },
+        role: DatabaseDefaultUUID(),
+        accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
         method: ENUM_REQUEST_METHOD.GET,
         statusCode: 10000,
         bodies: {
@@ -102,14 +83,11 @@ describe('LoggerService', () => {
         loggerService = moduleRef.get<LoggerService>(LoggerService);
         apiKeyService = moduleRef.get<ApiKeyService>(ApiKeyService);
 
-        const createApiKey = await apiKeyService.create(
-            {
-                name: faker.internet.userName(),
-            },
-            user
-        );
+        apiKey = await apiKeyService.create({
+            name: faker.internet.userName(),
+        });
 
-        loggerComplete.apiKey = createApiKey._id;
+        loggerComplete.apiKey = apiKey._id;
     });
 
     describe('info', () => {
@@ -254,5 +232,13 @@ describe('LoggerService', () => {
                 })
             ).toBe(result);
         });
+    });
+
+    afterEach(async () => {
+        try {
+            await apiKeyService.deleteOneById(apiKey._id);
+        } catch (err: any) {
+            console.error(err);
+        }
     });
 });

@@ -40,6 +40,7 @@ import { GetUser } from 'src/modules/user/decorators/user.decorator';
 import { UserProfileGuard } from 'src/modules/user/decorators/user.public.decorator';
 import {
     UserChangePasswordDoc,
+    UserGrantPermissionDoc,
     UserInfoDoc,
     UserLoginDoc,
     UserProfileDoc,
@@ -119,12 +120,12 @@ export class UserController {
             });
         } else if (!user.isActive) {
             throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_ERROR,
                 message: 'user.error.inactive',
             });
         } else if (!user.role.isActive) {
             throw new ForbiddenException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_INACTIVE_ERROR,
                 message: 'role.error.inactive',
             });
         }
@@ -231,12 +232,12 @@ export class UserController {
             });
         } else if (!user.isActive) {
             throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_ERROR,
                 message: 'user.error.inactive',
             });
         } else if (!user.role.isActive) {
             throw new ForbiddenException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_INACTIVE_ERROR,
                 message: 'role.error.inactive',
             });
         }
@@ -381,6 +382,7 @@ export class UserController {
         return user;
     }
 
+    @UserGrantPermissionDoc()
     @Response('user.grantPermission', {
         serialization: UserGrantPermissionSerialization,
     })

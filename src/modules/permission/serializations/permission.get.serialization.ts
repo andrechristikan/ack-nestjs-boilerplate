@@ -6,7 +6,7 @@ import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permissi
 export class PermissionGetSerialization {
     @ApiProperty({
         description: 'Id that representative with your target data',
-        example: faker.database.mongodbObjectId(),
+        example: faker.datatype.uuid(),
         required: true,
     })
     @Type(() => String)
@@ -35,7 +35,7 @@ export class PermissionGetSerialization {
     @ApiProperty({
         description: 'Description of permission',
         example: 'blabla description',
-        required: true,
+        required: false,
     })
     readonly description?: string;
 

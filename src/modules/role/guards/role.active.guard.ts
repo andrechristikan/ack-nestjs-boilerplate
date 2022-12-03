@@ -26,8 +26,8 @@ export class RoleActiveGuard implements CanActivate {
 
         if (!required.includes(__role.isActive)) {
             throw new BadRequestException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_ACTIVE_ERROR,
-                message: 'role.error.active',
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_ACTIVE_ERROR,
+                message: 'role.error.isActiveInvalid',
             });
         }
         return true;
