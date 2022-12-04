@@ -5,6 +5,7 @@ import {
     InternalServerErrorException,
     Patch,
     Post,
+    Put,
     Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -144,8 +145,6 @@ export class ApiKeyAdminController {
                 error: err.message,
             });
         }
-
-        return;
     }
 
     @ApiKeyInactiveDoc()
@@ -208,7 +207,7 @@ export class ApiKeyAdminController {
         ENUM_AUTH_PERMISSIONS.API_KEY_RESET
     )
     @AuthJwtAdminAccessProtected()
-    @Patch('/update/:apiKey/reset')
+    @Put('/update/:apiKey/reset')
     async reset(@GetApiKey() apiKey: ApiKeyEntity): Promise<IResponse> {
         try {
             const updated = await this.apiKeyService.updateResetById(

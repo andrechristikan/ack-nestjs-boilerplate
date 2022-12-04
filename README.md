@@ -81,10 +81,10 @@ Next development
 * [x] Update authorization mechanism, permission token on `x-permission-token`
 * [x] Update package, cors setting, check all interfaces, husky trigger switch to on and check test
 * [x] AuthApiKey mechanism
-* [ ] AuthApi Controller
+* [x] AuthApi Controller
     * [x] AuthApi Get, Active, Inactive Endpoint
     * [x] AuthApi Create (Random Key), and Reset Secret Endpoint
-    * [ ] AuthApi Controller Test E2E
+    * [x] AuthApi Controller Test E2E
 * [x] Add Typeorm repository
 * [ ] Implement Use Case from Hexagonal Architecture and for reduce database connection
 * [ ] SSO Google, SSO Facebook, SSO Twitter, SSO Apple, SSO Microsoft
