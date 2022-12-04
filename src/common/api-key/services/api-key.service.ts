@@ -1,6 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
 import {
     IDatabaseCreateOptions,
@@ -19,19 +17,17 @@ import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyRepository } from 'src/common/api-key/repository/repositories/api-key.repository';
+import { ApiKeyUseCase } from 'src/common/api-key/use-cases/api-key.use-case';
+import { ApiKeyActiveDto } from 'src/common/api-key/dtos/api-key.active.dto';
+import { ApiKeyResetDto } from 'src/common/api-key/dtos/api-key.reset.dto';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
-    private readonly env: string;
-
     constructor(
         private readonly apiKeyRepository: ApiKeyRepository,
-        private readonly helperStringService: HelperStringService,
-        private readonly configService: ConfigService,
-        private readonly helperHashService: HelperHashService
-    ) {
-        this.env = this.configService.get<string>('app.env');
-    }
+        private readonly helperHashService: HelperHashService,
+        private readonly apiKeyUseCase: ApiKeyUseCase
+    ) {}
 
     async findAll(
         find?: Record<string, any>,
@@ -82,71 +78,55 @@ export class ApiKeyService implements IApiKeyService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<ApiKeyEntity> {
-        const update = {
-            isActive: false,
-        };
-
-        return this.apiKeyRepository.updateOneById(_id, update, options);
+        const update: ApiKeyActiveDto = await this.apiKeyUseCase.inactive();
+        return this.apiKeyRepository.updateOneById<ApiKeyActiveDto>(
+            _id,
+            update,
+            options
+        );
     }
 
     async active(
         _id: string,
         options?: IDatabaseOptions
     ): Promise<ApiKeyEntity> {
-        const update = {
-            isActive: true,
-        };
-
-        return this.apiKeyRepository.updateOneById(_id, update, options);
+        const update: ApiKeyActiveDto = await this.apiKeyUseCase.active();
+        return this.apiKeyRepository.updateOneById<ApiKeyActiveDto>(
+            _id,
+            update,
+            options
+        );
     }
 
     async create(
-        { name, description }: ApiKeyCreateDto,
+        data: ApiKeyCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<IApiKeyEntity> {
-        const key = await this.createKey();
-        const secret = await this.createSecret();
-        const hash: string = await this.createHashApiKey(key, secret);
-
-        const create: ApiKeyEntity = new ApiKeyEntity();
-        create.name = name;
-        create.description = description;
-        create.key = key;
-        create.hash = hash;
-        create.isActive = true;
-
-        const created = await this.apiKeyRepository.create<ApiKeyEntity>(
+        const create: IApiKeyEntity = await this.apiKeyUseCase.create(data);
+        const created = await this.apiKeyRepository.create<IApiKeyEntity>(
             create,
             options
         );
 
         return {
             ...created,
-            secret,
+            secret: create.secret,
         };
     }
 
     async createRaw(
-        { name, description, key, secret }: ApiKeyCreateRawDto,
+        data: ApiKeyCreateRawDto,
         options?: IDatabaseCreateOptions
     ): Promise<IApiKeyEntity> {
-        const hash: string = await this.createHashApiKey(key, secret);
-
-        const create: ApiKeyEntity = new ApiKeyEntity();
-        create.name = name;
-        create.description = description;
-        create.key = key;
-        create.hash = hash;
-        create.isActive = true;
-
-        const created = await this.apiKeyRepository.create<ApiKeyEntity>(
+        const create: IApiKeyEntity = await this.apiKeyUseCase.createRaw(data);
+        const created = await this.apiKeyRepository.create<IApiKeyEntity>(
             create,
             options
         );
 
         return {
             ...created,
-            secret,
+            secret: create.secret,
         };
     }
 
@@ -169,13 +149,7 @@ export class ApiKeyService implements IApiKeyService {
         const apiKey: ApiKeyEntity = await this.apiKeyRepository.findOneById(
             _id
         );
-        const secret: string = await this.createSecret();
-        const hash: string = await this.createHashApiKey(apiKey.key, secret);
-
-        const update = {
-            hash,
-        };
-
+        const update: ApiKeyResetDto = await this.apiKeyUseCase.reset(apiKey);
         const updated = await this.apiKeyRepository.updateOneById(
             _id,
             update,
@@ -184,7 +158,7 @@ export class ApiKeyService implements IApiKeyService {
 
         return {
             ...updated,
-            secret,
+            secret: update.secret,
         };
     }
 
@@ -200,25 +174,6 @@ export class ApiKeyService implements IApiKeyService {
         options?: IDatabaseSoftDeleteOptions
     ): Promise<ApiKeyEntity> {
         return this.apiKeyRepository.deleteOne(find, options);
-    }
-
-    async createKey(): Promise<string> {
-        return this.helperStringService.random(25, {
-            safe: false,
-            upperCase: true,
-            prefix: `${this.env}_`,
-        });
-    }
-
-    async createSecret(): Promise<string> {
-        return this.helperStringService.random(35, {
-            safe: false,
-            upperCase: true,
-        });
-    }
-
-    async createHashApiKey(key: string, secret: string): Promise<string> {
-        return this.helperHashService.sha256(`${key}:${secret}`);
     }
 
     async validateHashApiKey(

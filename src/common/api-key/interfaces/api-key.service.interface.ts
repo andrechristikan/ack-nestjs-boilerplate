@@ -79,11 +79,5 @@ export interface IApiKeyService {
         options?: IDatabaseSoftDeleteOptions
     ): Promise<ApiKeyEntity>;
 
-    createKey(): Promise<string>;
-
-    createSecret(): Promise<string>;
-
-    createHashApiKey(key: string, secret: string): Promise<string>;
-
     validateHashApiKey(hashFromRequest: string, hash: string): Promise<boolean>;
 }

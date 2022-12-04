@@ -13,9 +13,11 @@ import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ENUM_PAGINATION_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
+import { ApiKeyUseCase } from 'src/common/api-key/use-cases/api-key.use-case';
 
 describe('ApiKeyService', () => {
     let apiKeyService: ApiKeyService;
+    let apiKeyUseCase: ApiKeyUseCase;
     let apiKeyBulkService: ApiKeyBulkKeyService;
 
     const authApiName: string = faker.random.alphaNumeric(5);
@@ -47,6 +49,7 @@ describe('ApiKeyService', () => {
         }).compile();
 
         apiKeyService = moduleRef.get<ApiKeyService>(ApiKeyService);
+        apiKeyUseCase = moduleRef.get<ApiKeyUseCase>(ApiKeyUseCase);
         apiKeyBulkService =
             moduleRef.get<ApiKeyBulkKeyService>(ApiKeyBulkKeyService);
 
@@ -77,8 +80,8 @@ describe('ApiKeyService', () => {
             const data = {
                 name: authApiName,
                 description: faker.random.alphaNumeric(),
-                key: await apiKeyService.createKey(),
-                secret: await apiKeyService.createSecret(),
+                key: apiKeyUseCase.createKey(),
+                secret: apiKeyUseCase.createSecret(),
             };
 
             const result: IApiKeyEntity = await apiKeyService.createRaw(data);
@@ -316,46 +319,6 @@ describe('ApiKeyService', () => {
             expect(
                 await apiKeyService.deleteOne({ _id: `${authApi._id}` })
             ).toBe(result);
-        });
-    });
-
-    describe('createKey', () => {
-        it('should return an success', async () => {
-            const result: string = await apiKeyService.createKey();
-            jest.spyOn(apiKeyService, 'createKey').mockImplementation(
-                async () => result
-            );
-
-            expect(await apiKeyService.createKey()).toBe(result);
-        });
-    });
-
-    describe('createSecret', () => {
-        it('should return an success', async () => {
-            const result: string = await apiKeyService.createSecret();
-            jest.spyOn(apiKeyService, 'createSecret').mockImplementation(
-                async () => result
-            );
-
-            expect(await apiKeyService.createSecret()).toBe(result);
-        });
-    });
-
-    describe('createHashApiKey', () => {
-        it('should return an success', async () => {
-            const key = faker.random.alpha(5);
-            const secret = faker.random.alpha(10);
-            const result: string = await apiKeyService.createHashApiKey(
-                key,
-                secret
-            );
-            jest.spyOn(apiKeyService, 'createHashApiKey').mockImplementation(
-                async () => result
-            );
-
-            expect(await apiKeyService.createHashApiKey(key, secret)).toBe(
-                result
-            );
         });
     });
 
