@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,

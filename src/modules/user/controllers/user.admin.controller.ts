@@ -204,17 +204,10 @@ export class UserAdminController {
                 body.password
             );
 
-            const create = await this.userService.create({
-                firstName: body.firstName,
-                lastName: body.lastName,
-                role,
-                password: password.passwordHash,
-                passwordExpired: password.passwordExpired,
-                salt: password.salt,
-                username,
-                email,
-                mobileNumber,
-            });
+            const create = await this.userService.create(
+                { username, email, mobileNumber, role, ...body },
+                password
+            );
 
             return {
                 _id: create._id,

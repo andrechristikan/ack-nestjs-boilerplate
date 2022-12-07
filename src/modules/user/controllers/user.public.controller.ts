@@ -83,17 +83,10 @@ export class UserPublicController {
                 body.password
             );
 
-            await this.userService.create({
-                username,
-                firstName: body.firstName,
-                lastName: body.lastName,
-                email,
-                mobileNumber,
-                role: role._id,
-                password: password.passwordHash,
-                passwordExpired: password.passwordExpired,
-                salt: password.salt,
-            });
+            await this.userService.create(
+                { email, mobileNumber, username, ...body, role: role._id },
+                password
+            );
 
             return;
         } catch (err: any) {

@@ -43,7 +43,7 @@ import { SkipConstraint } from './validations/request.skip.validation';
                         new UnprocessableEntityException({
                             statusCode:
                                 ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR,
-                            message: 'http.clientError.unprocessableEntity',
+                            message: 'request.validation',
                             errors,
                         }),
                 }),

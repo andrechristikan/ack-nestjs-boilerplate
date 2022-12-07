@@ -20,6 +20,7 @@ export class UserSeed {
         describe: 'seed users',
     })
     async seeds(): Promise<void> {
+        const password = 'aaAA@@123444';
         const superadminRole: RoleEntity =
             await this.roleService.findOne<RoleEntity>({
                 name: 'superadmin',
@@ -35,45 +36,48 @@ export class UserSeed {
         );
 
         try {
-            const password = await this.authService.createPassword(
+            const passwordHash = await this.authService.createPassword(
                 'aaAA@@123444'
             );
 
-            await this.userService.create({
-                username: 'superadmin',
-                firstName: 'superadmin',
-                lastName: 'test',
-                email: 'superadmin@mail.com',
-                password: password.passwordHash,
-                passwordExpired: password.passwordExpired,
-                mobileNumber: '08111111222',
-                role: superadminRole._id,
-                salt: password.salt,
-            });
+            await this.userService.create(
+                {
+                    username: 'superadmin',
+                    firstName: 'superadmin',
+                    lastName: 'test',
+                    email: 'superadmin@mail.com',
+                    password,
+                    mobileNumber: '08111111222',
+                    role: superadminRole._id,
+                },
+                passwordHash
+            );
 
-            await this.userService.create({
-                username: 'admin',
-                firstName: 'admin',
-                lastName: 'test',
-                email: 'admin@mail.com',
-                password: password.passwordHash,
-                passwordExpired: password.passwordExpired,
-                mobileNumber: '08111111111',
-                role: adminRole._id,
-                salt: password.salt,
-            });
+            await this.userService.create(
+                {
+                    username: 'admin',
+                    firstName: 'admin',
+                    lastName: 'test',
+                    email: 'admin@mail.com',
+                    password,
+                    mobileNumber: '08111111111',
+                    role: adminRole._id,
+                },
+                passwordHash
+            );
 
-            await this.userService.create({
-                username: 'user',
-                firstName: 'user',
-                lastName: 'test',
-                email: 'user@mail.com',
-                password: password.passwordHash,
-                passwordExpired: password.passwordExpired,
-                mobileNumber: '08111111333',
-                role: userRole._id,
-                salt: password.salt,
-            });
+            await this.userService.create(
+                {
+                    username: 'user',
+                    firstName: 'user',
+                    lastName: 'test',
+                    email: 'user@mail.com',
+                    password,
+                    mobileNumber: '08111111333',
+                    role: userRole._id,
+                },
+                passwordHash
+            );
         } catch (err: any) {
             throw new Error(err.message);
         }

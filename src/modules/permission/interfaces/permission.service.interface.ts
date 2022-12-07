@@ -8,7 +8,6 @@ import {
 import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
 import { PermissionUpdateGroupDto } from 'src/modules/permission/dtos/permission.update-group.dto';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
-import { IPermissionGroup } from 'src/modules/permission/interfaces/permission.interface';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 
 export interface IPermissionService {

@@ -1,4 +1,3 @@
-import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { IRoleEntity } from 'src/modules/role/interfaces/role.interface';
 import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
@@ -10,9 +9,4 @@ export interface IUserEntity extends Omit<UserEntity, 'role'> {
 export interface IUserCreate extends UserCreateDto {
     passwordExpired: Date;
     salt: string;
-}
-
-export interface IUserGrantPermission {
-    _id: string;
-    permissions: PermissionEntity[];
 }

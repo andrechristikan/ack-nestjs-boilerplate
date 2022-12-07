@@ -1,13 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
-import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
-import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
-import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
-import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 import { PermissionActiveDto } from 'src/modules/permission/dtos/permission.active.dto';
 import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
-import { PermissionGroupDto } from 'src/modules/permission/dtos/permission.group.dto';
 import { PermissionUpdateGroupDto } from 'src/modules/permission/dtos/permission.update-group.dto';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
 import { IPermissionGroup } from 'src/modules/permission/interfaces/permission.interface';

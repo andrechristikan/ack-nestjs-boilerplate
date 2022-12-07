@@ -8,13 +8,9 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
-import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
-import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload-permission.serialization';
-import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
-import { IUserCreate, IUserEntity } from './user.interface';
+import { IUserCreate } from './user.interface';
 
 export interface IUserService {
     findAll<T>(
@@ -41,6 +37,7 @@ export interface IUserService {
 
     create(
         data: IUserCreate,
+        password: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserEntity>;
 
@@ -81,8 +78,6 @@ export interface IUserService {
         options?: IDatabaseOptions
     ): Promise<UserEntity>;
 
-    createRandomFilename(): Promise<Record<string, any>>;
-
     updatePassword(
         _id: string,
         data: IAuthPassword,
@@ -99,8 +94,6 @@ export interface IUserService {
 
     active(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
 
-    payloadSerialization(data: IUserEntity): Promise<UserPayloadSerialization>;
-
     increasePasswordAttempt(
         _id: string,
         options?: IDatabaseOptions
@@ -110,14 +103,4 @@ export interface IUserService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<UserEntity>;
-
-    getPermissionByGroup(
-        _id: string,
-        scope: ENUM_PERMISSION_GROUP[]
-    ): Promise<PermissionEntity[]>;
-
-    payloadPermissionSerialization(
-        _id: string,
-        permissions: PermissionEntity[]
-    ): Promise<UserPayloadPermissionSerialization>;
 }

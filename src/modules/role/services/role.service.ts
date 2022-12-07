@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,

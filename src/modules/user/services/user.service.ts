@@ -1,6 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { IUserService } from 'src/modules/user/interfaces/user.service.interface';
 import {
     IDatabaseCreateOptions,
@@ -10,38 +8,25 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
-import {
-    IUserCreate,
-    IUserEntity,
-} from 'src/modules/user/interfaces/user.interface';
 import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { UserPhotoDto } from 'src/modules/user/dtos/user.photo.dto';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { UserPasswordDto } from 'src/modules/user/dtos/user.password.dto';
 import { UserPasswordExpiredDto } from 'src/modules/user/dtos/user.password-expired.dto';
 import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
-import { plainToInstance } from 'class-transformer';
-import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
-import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
-import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
-import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload-permission.serialization';
+import { UserUseCase } from 'src/modules/user/use-cases/user.use-case';
+import { UserPasswordAttemptDto } from 'src/modules/user/dtos/user.password-attempt.dto';
+import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 
 @Injectable()
 export class UserService implements IUserService {
-    private readonly uploadPath: string;
-
     constructor(
         private readonly userRepository: UserRepository,
-        private readonly helperStringService: HelperStringService,
-        private readonly helperDateService: HelperDateService,
-        private readonly configService: ConfigService
-    ) {
-        this.uploadPath = this.configService.get<string>('user.uploadPath');
-    }
+        private readonly userUseCase: UserUseCase
+    ) {}
 
     async findAll<T>(
         find?: Record<string, any>,
@@ -79,37 +64,16 @@ export class UserService implements IUserService {
     }
 
     async create(
-        {
-            username,
-            firstName,
-            lastName,
-            password,
-            passwordExpired,
-            salt,
-            email,
-            mobileNumber,
-            role,
-        }: IUserCreate,
+        data: UserCreateDto,
+        password: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserEntity> {
-        const user: UserEntity = new UserEntity();
-        user.username = username;
-        user.firstName = firstName;
-        user.email = email;
-        user.password = password;
-        user.role = role;
-        user.isActive = true;
-        user.lastName = lastName;
-        user.salt = salt;
-        user.passwordExpired = passwordExpired;
-        user.signUpDate = this.helperDateService.create();
-        user.passwordAttempt = 0;
+        const create: UserEntity = await this.userUseCase.create(
+            data,
+            password
+        );
 
-        if (mobileNumber) {
-            user.mobileNumber = mobileNumber;
-        }
-
-        return this.userRepository.create<UserEntity>(user, options);
+        return this.userRepository.create<UserEntity>(create, options);
     }
 
     async deleteOneById(
@@ -131,9 +95,11 @@ export class UserService implements IUserService {
         data: UserUpdateDto,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
+        const update: UserUpdateDto = await this.userUseCase.update(data);
+
         return this.userRepository.updateOneById<UserUpdateDto>(
             _id,
-            data,
+            update,
             options
         );
     }
@@ -174,12 +140,10 @@ export class UserService implements IUserService {
 
     async updatePhoto(
         _id: string,
-        aws: AwsS3Serialization,
+        photo: AwsS3Serialization,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserPhotoDto = {
-            photo: aws,
-        };
+        const update: UserPhotoDto = await this.userUseCase.updatePhoto(photo);
 
         return this.userRepository.updateOneById<UserPhotoDto>(
             _id,
@@ -188,25 +152,14 @@ export class UserService implements IUserService {
         );
     }
 
-    async createRandomFilename(): Promise<Record<string, any>> {
-        const filename: string = this.helperStringService.random(20);
-
-        return {
-            path: this.uploadPath,
-            filename: filename,
-        };
-    }
-
     async updatePassword(
         _id: string,
-        { salt, passwordHash, passwordExpired }: IAuthPassword,
+        data: IAuthPassword,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserPasswordDto = {
-            password: passwordHash,
-            passwordExpired: passwordExpired,
-            salt: salt,
-        };
+        const update: UserPasswordDto = await this.userUseCase.updatePassword(
+            data
+        );
 
         return this.userRepository.updateOneById<UserPasswordDto>(
             _id,
@@ -220,9 +173,8 @@ export class UserService implements IUserService {
         passwordExpired: Date,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserPasswordExpiredDto = {
-            passwordExpired: passwordExpired,
-        };
+        const update: UserPasswordExpiredDto =
+            await this.userUseCase.updatePasswordExpired(passwordExpired);
 
         return this.userRepository.updateOneById<UserPasswordExpiredDto>(
             _id,
@@ -235,9 +187,7 @@ export class UserService implements IUserService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserActiveDto = {
-            isActive: false,
-        };
+        const update: UserActiveDto = await this.userUseCase.inactive();
 
         return this.userRepository.updateOneById<UserActiveDto>(
             _id,
@@ -247,21 +197,13 @@ export class UserService implements IUserService {
     }
 
     async active(_id: string, options?: IDatabaseOptions): Promise<UserEntity> {
-        const update: UserActiveDto = {
-            isActive: true,
-        };
+        const update: UserActiveDto = await this.userUseCase.active();
 
         return this.userRepository.updateOneById<UserActiveDto>(
             _id,
             update,
             options
         );
-    }
-
-    async payloadSerialization(
-        data: IUserEntity
-    ): Promise<UserPayloadSerialization> {
-        return plainToInstance(UserPayloadSerialization, data);
     }
 
     async increasePasswordAttempt(
@@ -273,42 +215,23 @@ export class UserService implements IUserService {
             options
         );
 
-        const update = {
-            passwordAttempt: ++user.passwordAttempt,
-        };
+        const update: UserPasswordAttemptDto =
+            await this.userUseCase.increasePasswordAttempt(user);
 
-        return this.userRepository.updateOneById(_id, update, options);
+        return this.userRepository.updateOneById<UserPasswordAttemptDto>(
+            _id,
+            update,
+            options
+        );
     }
 
     async resetPasswordAttempt(
         _id: string,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update = {
-            passwordAttempt: 0,
-        };
+        const update: UserPasswordAttemptDto =
+            await this.userUseCase.resetPasswordAttempt();
 
         return this.userRepository.updateOneById(_id, update, options);
-    }
-
-    async getPermissionByGroup(
-        _id: string,
-        scope: ENUM_PERMISSION_GROUP[]
-    ): Promise<PermissionEntity[]> {
-        const user: IUserEntity = await this.userRepository.findOneById(_id, {
-            join: true,
-        });
-
-        return user.role.permissions.filter((val) => scope.includes(val.group));
-    }
-
-    async payloadPermissionSerialization(
-        _id: string,
-        permissions: PermissionEntity[]
-    ): Promise<UserPayloadPermissionSerialization> {
-        return plainToInstance(UserPayloadPermissionSerialization, {
-            _id,
-            permissions,
-        });
     }
 }

@@ -58,6 +58,7 @@ import { UserPayloadPermissionSerialization } from 'src/modules/user/serializati
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
+import { UserUseCase } from 'src/modules/user/use-cases/user.use-case';
 
 @ApiTags('modules.user')
 @Controller({
@@ -69,7 +70,8 @@ export class UserController {
         private readonly userService: UserService,
         private readonly awsService: AwsS3Service,
         private readonly authService: AuthService,
-        private readonly settingService: SettingService
+        private readonly settingService: SettingService,
+        private readonly userUseCase: UserUseCase
     ) {}
 
     @UserLoginDoc()
@@ -143,7 +145,7 @@ export class UserController {
         }
 
         const payload: UserPayloadSerialization =
-            await this.userService.payloadSerialization(user);
+            await this.userUseCase.payloadSerialization(user);
         const tokenType: string = await this.authService.getTokenType();
         const expiresIn: number =
             await this.authService.getAccessTokenExpirationTime();
@@ -254,7 +256,7 @@ export class UserController {
         }
 
         const payload: UserPayloadSerialization =
-            await this.userService.payloadSerialization(user);
+            await this.userUseCase.payloadSerialization(user);
         const tokenType: string = await this.authService.getTokenType();
         const expiresIn: number =
             await this.authService.getAccessTokenExpirationTime();
@@ -405,10 +407,10 @@ export class UserController {
         }
 
         const permissions: PermissionEntity[] =
-            await this.userService.getPermissionByGroup(user._id, scope);
+            await this.userUseCase.getPermissionByGroup(check, scope);
 
         const payload: UserPayloadPermissionSerialization =
-            await this.userService.payloadPermissionSerialization(
+            await this.userUseCase.payloadPermissionSerialization(
                 user._id,
                 permissions
             );
@@ -469,7 +471,7 @@ export class UserController {
             .substring(filename.lastIndexOf('.') + 1, filename.length)
             .toUpperCase();
 
-        const path = await this.userService.createRandomFilename();
+        const path = await this.userUseCase.createRandomFilename();
 
         try {
             const aws: AwsS3Serialization =

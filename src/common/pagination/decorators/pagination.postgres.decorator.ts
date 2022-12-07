@@ -1,22 +1,11 @@
 import { applyDecorators } from '@nestjs/common';
-import { Expose, Transform, Type } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import { IsOptional, ValidateIf } from 'class-validator';
 import {
     PAGINATION_AVAILABLE_SORT,
-    PAGINATION_MAX_PAGE,
-    PAGINATION_MAX_PER_PAGE,
-    PAGINATION_PAGE,
-    PAGINATION_PER_PAGE,
     PAGINATION_SORT,
 } from 'src/common/pagination/constants/pagination.constant';
-import {
-    ENUM_PAGINATION_SORT_TYPE,
-    ENUM_PAGINATION_FILTER_CASE_OPTIONS,
-} from 'src/common/pagination/constants/pagination.enum.constant';
-import {
-    IPaginationFilterDateOptions,
-    IPaginationFilterStringOptions,
-} from 'src/common/pagination/interfaces/pagination.interface';
+import { ENUM_PAGINATION_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { ILike, In } from 'typeorm';
 
 export function PaginationPostgresSearch(

@@ -3,7 +3,6 @@ import {
     IDatabaseCreateManyOptions,
     IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { PermissionUseCase } from 'src/modules/permission/use-cases/permission.use-case';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { IRoleBulkService } from 'src/modules/role/interfaces/role.bulk-service.interface';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
