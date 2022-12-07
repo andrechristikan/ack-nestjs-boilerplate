@@ -7,29 +7,26 @@ import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.crea
 import { IPermissionBulkService } from 'src/modules/permission/interfaces/permission.bulk-service.interface';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { PermissionRepository } from 'src/modules/permission/repository/repositories/permission.repository';
+import { PermissionUseCase } from 'src/modules/permission/use-cases/permission.use-case';
 
 @Injectable()
 export class PermissionBulkService implements IPermissionBulkService {
-    constructor(private readonly permissionRepository: PermissionRepository) {}
+    constructor(
+        private readonly permissionRepository: PermissionRepository,
+        private readonly permissionUseCase: PermissionUseCase
+    ) {}
 
     async createMany(
         data: PermissionCreateDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean> {
-        const map: PermissionEntity[] = data.map(
-            ({ code, description, group }) => {
-                const create = new PermissionEntity();
-                create.code = code;
-                create.description = description;
-                create.group = group;
-                create.isActive = true;
-
-                return create;
-            }
+        const maps: Promise<PermissionEntity>[] = data.map((value) =>
+            this.permissionUseCase.create(value)
         );
 
+        const create: PermissionEntity[] = await Promise.all(maps);
         return this.permissionRepository.createMany<PermissionEntity>(
-            map,
+            create,
             options
         );
     }

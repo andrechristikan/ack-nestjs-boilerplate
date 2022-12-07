@@ -11,16 +11,18 @@ import { PaginationListAbstract } from 'src/common/pagination/abstracts/paginati
 import {
     PaginationAvailableSearch,
     PaginationAvailableSort,
-    PaginationFilterBoolean,
     PaginationPage,
     PaginationPerPage,
-    PaginationSearch,
-    PaginationSort,
 } from 'src/common/pagination/decorators/pagination.decorator';
+import {
+    PaginationMongoFilterBoolean,
+    PaginationMongoSearch,
+    PaginationMongoSort,
+} from 'src/common/pagination/decorators/pagination.mongo.decorator';
 import { IPaginationSort } from 'src/common/pagination/interfaces/pagination.interface';
 
 export class ApiKeyListDto implements PaginationListAbstract {
-    @PaginationSearch(API_KEY_DEFAULT_AVAILABLE_SEARCH)
+    @PaginationMongoSearch(API_KEY_DEFAULT_AVAILABLE_SEARCH)
     readonly search: Record<string, any>;
 
     @ApiHideProperty()
@@ -33,13 +35,13 @@ export class ApiKeyListDto implements PaginationListAbstract {
     @PaginationPerPage(API_KEY_DEFAULT_PER_PAGE)
     readonly perPage: number;
 
-    @PaginationSort(API_KEY_DEFAULT_SORT, API_KEY_DEFAULT_AVAILABLE_SORT)
+    @PaginationMongoSort(API_KEY_DEFAULT_SORT, API_KEY_DEFAULT_AVAILABLE_SORT)
     readonly sort: IPaginationSort;
 
     @ApiHideProperty()
     @PaginationAvailableSort(API_KEY_DEFAULT_AVAILABLE_SORT)
     readonly availableSort: string[];
 
-    @PaginationFilterBoolean(API_KEY_DEFAULT_IS_ACTIVE)
+    @PaginationMongoFilterBoolean(API_KEY_DEFAULT_IS_ACTIVE)
     readonly isActive: boolean[];
 }

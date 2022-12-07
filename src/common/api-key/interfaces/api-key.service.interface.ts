@@ -78,6 +78,4 @@ export interface IApiKeyService {
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
     ): Promise<ApiKeyEntity>;
-
-    validateHashApiKey(hashFromRequest: string, hash: string): Promise<boolean>;
 }

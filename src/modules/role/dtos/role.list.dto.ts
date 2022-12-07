@@ -4,13 +4,15 @@ import { PaginationListAbstract } from 'src/common/pagination/abstracts/paginati
 import {
     PaginationAvailableSearch,
     PaginationAvailableSort,
-    PaginationFilterBoolean,
-    PaginationFilterEnum,
     PaginationPage,
     PaginationPerPage,
-    PaginationSearch,
-    PaginationSort,
 } from 'src/common/pagination/decorators/pagination.decorator';
+import {
+    PaginationMongoFilterBoolean,
+    PaginationMongoFilterEnum,
+    PaginationMongoSearch,
+    PaginationMongoSort,
+} from 'src/common/pagination/decorators/pagination.mongo.decorator';
 import { IPaginationSort } from 'src/common/pagination/interfaces/pagination.interface';
 import {
     ROLE_DEFAULT_ACCESS_FOR,
@@ -23,7 +25,7 @@ import {
 } from 'src/modules/role/constants/role.list.constant';
 
 export class RoleListDto implements PaginationListAbstract {
-    @PaginationSearch(ROLE_DEFAULT_AVAILABLE_SEARCH)
+    @PaginationMongoSearch(ROLE_DEFAULT_AVAILABLE_SEARCH)
     readonly search: Record<string, any>;
 
     @ApiHideProperty()
@@ -36,16 +38,16 @@ export class RoleListDto implements PaginationListAbstract {
     @PaginationPerPage(ROLE_DEFAULT_PER_PAGE)
     readonly perPage: number;
 
-    @PaginationSort(ROLE_DEFAULT_SORT, ROLE_DEFAULT_AVAILABLE_SORT)
+    @PaginationMongoSort(ROLE_DEFAULT_SORT, ROLE_DEFAULT_AVAILABLE_SORT)
     readonly sort: IPaginationSort;
 
     @ApiHideProperty()
     @PaginationAvailableSort(ROLE_DEFAULT_AVAILABLE_SORT)
     readonly availableSort: string[];
 
-    @PaginationFilterBoolean(ROLE_DEFAULT_IS_ACTIVE)
+    @PaginationMongoFilterBoolean(ROLE_DEFAULT_IS_ACTIVE)
     readonly isActive: boolean[];
 
-    @PaginationFilterEnum(ROLE_DEFAULT_ACCESS_FOR, ENUM_AUTH_ACCESS_FOR)
+    @PaginationMongoFilterEnum(ROLE_DEFAULT_ACCESS_FOR, ENUM_AUTH_ACCESS_FOR)
     readonly accessFor: ENUM_AUTH_ACCESS_FOR[];
 }

@@ -14,10 +14,14 @@ import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
 import { IRoleService } from 'src/modules/role/interfaces/role.service.interface';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { RoleRepository } from 'src/modules/role/repository/repositories/role.repository';
+import { RoleUseCase } from 'src/modules/role/use-cases/role.use-case';
 
 @Injectable()
 export class RoleService implements IRoleService {
-    constructor(private readonly roleRepository: RoleRepository) {}
+    constructor(
+        private readonly roleRepository: RoleRepository,
+        private readonly roleUseCase: RoleUseCase
+    ) {}
 
     async findAll<T>(
         find?: Record<string, any>,
@@ -60,14 +64,10 @@ export class RoleService implements IRoleService {
     }
 
     async create(
-        { name, permissions, accessFor }: RoleCreateDto,
+        data: RoleCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<RoleEntity> {
-        const create: RoleEntity = new RoleEntity();
-        create.accessFor = accessFor;
-        create.permissions = permissions.map((val) => `${val}`);
-        create.isActive = true;
-        create.name = name;
+        const create: RoleEntity = await this.roleUseCase.create(data);
 
         return this.roleRepository.create<RoleEntity>(create, options);
     }
@@ -75,11 +75,7 @@ export class RoleService implements IRoleService {
     async createSuperAdmin(
         options?: IDatabaseCreateOptions
     ): Promise<RoleEntity> {
-        const create: RoleEntity = new RoleEntity();
-        create.name = 'superadmin';
-        create.permissions = [];
-        create.isActive = true;
-        create.accessFor = ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN;
+        const create: RoleEntity = await this.roleUseCase.createSuperAdmin();
 
         return this.roleRepository.create<RoleEntity>(create, options);
     }
@@ -89,9 +85,10 @@ export class RoleService implements IRoleService {
         data: RoleUpdateDto,
         options?: IDatabaseOptions
     ): Promise<RoleEntity> {
+        const update: RoleUpdateDto = await this.roleUseCase.update(data);
         return this.roleRepository.updateOneById<RoleUpdateDto>(
             _id,
-            data,
+            update,
             options
         );
     }
@@ -100,19 +97,23 @@ export class RoleService implements IRoleService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<RoleEntity> {
-        const update: RoleActiveDto = {
-            isActive: false,
-        };
+        const update: RoleActiveDto = await this.roleUseCase.inactive();
 
-        return this.roleRepository.updateOneById(_id, update, options);
+        return this.roleRepository.updateOneById<RoleActiveDto>(
+            _id,
+            update,
+            options
+        );
     }
 
     async active(_id: string, options?: IDatabaseOptions): Promise<RoleEntity> {
-        const update: RoleActiveDto = {
-            isActive: true,
-        };
+        const update: RoleActiveDto = await this.roleUseCase.active();
 
-        return this.roleRepository.updateOneById(_id, update, options);
+        return this.roleRepository.updateOneById<RoleActiveDto>(
+            _id,
+            update,
+            options
+        );
     }
 
     async deleteOneById(

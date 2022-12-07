@@ -49,6 +49,7 @@ import { PermissionGetSerialization } from 'src/modules/permission/serialization
 import { PermissionGroupsSerialization } from 'src/modules/permission/serializations/permission.group.serialization';
 import { PermissionListSerialization } from 'src/modules/permission/serializations/permission.list.serialization';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
+import { PermissionUseCase } from 'src/modules/permission/use-cases/permission.use-case';
 
 @ApiTags('modules.admin.permission')
 @Controller({
@@ -58,7 +59,8 @@ import { PermissionService } from 'src/modules/permission/services/permission.se
 export class PermissionAdminController {
     constructor(
         private readonly paginationService: PaginationService,
-        private readonly permissionService: PermissionService
+        private readonly permissionService: PermissionService,
+        private readonly permissionUseCase: PermissionUseCase
     ) {}
 
     @PermissionListDoc()
@@ -123,22 +125,15 @@ export class PermissionAdminController {
     @Get('/group')
     async group(
         @Query()
-        { group }: PermissionGroupDto
+        { groups }: PermissionGroupDto
     ): Promise<IResponse> {
-        const find: Record<string, any> = {
-            ...group,
-        };
-
         const permissions: PermissionEntity[] =
-            await this.permissionService.findAll(find, {
-                sort: { group: ENUM_PAGINATION_SORT_TYPE.ASC },
-            });
+            await this.permissionService.findAllByGroup(groups);
 
-        const groups: IPermissionGroup[] = await this.permissionService.groups(
-            permissions
-        );
+        const permissionGroups: IPermissionGroup[] =
+            await this.permissionUseCase.groups(permissions);
 
-        return { groups };
+        return { groups: permissionGroups };
     }
 
     @PermissionGetDoc()

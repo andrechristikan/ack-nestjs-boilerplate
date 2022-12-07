@@ -87,6 +87,16 @@ Next development
     * [x] AuthApi Controller Test E2E
 * [x] Add Typeorm repository
 * [ ] Implement Use Case from Hexagonal Architecture and for reduce database connection
+    * [x] Init implementation
+    * [ ] Move use case into controllers, and remove from service layer
+    * [ ] FindAll, FindOne, Exists, etc. convert data using usecase.
+    * [ ] Pagination UseCase ?
+* [ ] Optional typeorm integration
+    * [x] Database Option
+    * [x] Pagination
+    * [x] Repository
+    * [ ] Database Module
+    * [ ] Dynamic setting from env
 * [ ] SSO Google, SSO Facebook, SSO Twitter, SSO Apple, SSO Microsoft
 * [ ] Update Documentation, include an diagram for easier comprehension
 * [ ] Maybe will adopt [CQRS][ref-nestjs-cqrs]

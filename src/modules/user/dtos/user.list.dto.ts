@@ -3,12 +3,14 @@ import { PaginationListAbstract } from 'src/common/pagination/abstracts/paginati
 import {
     PaginationAvailableSearch,
     PaginationAvailableSort,
-    PaginationFilterBoolean,
     PaginationPage,
     PaginationPerPage,
-    PaginationSearch,
-    PaginationSort,
 } from 'src/common/pagination/decorators/pagination.decorator';
+import {
+    PaginationMongoFilterBoolean,
+    PaginationMongoSearch,
+    PaginationMongoSort,
+} from 'src/common/pagination/decorators/pagination.mongo.decorator';
 import { IPaginationSort } from 'src/common/pagination/interfaces/pagination.interface';
 import {
     USER_DEFAULT_AVAILABLE_SEARCH,
@@ -20,7 +22,7 @@ import {
 } from 'src/modules/user/constants/user.list.constant';
 
 export class UserListDto implements PaginationListAbstract {
-    @PaginationSearch(USER_DEFAULT_AVAILABLE_SEARCH)
+    @PaginationMongoSearch(USER_DEFAULT_AVAILABLE_SEARCH)
     readonly search: Record<string, any>;
 
     @ApiHideProperty()
@@ -33,13 +35,13 @@ export class UserListDto implements PaginationListAbstract {
     @PaginationPerPage(USER_DEFAULT_PER_PAGE)
     readonly perPage: number;
 
-    @PaginationSort(USER_DEFAULT_SORT, USER_DEFAULT_AVAILABLE_SORT)
+    @PaginationMongoSort(USER_DEFAULT_SORT, USER_DEFAULT_AVAILABLE_SORT)
     readonly sort: IPaginationSort;
 
     @ApiHideProperty()
     @PaginationAvailableSort(USER_DEFAULT_AVAILABLE_SORT)
     readonly availableSort: string[];
 
-    @PaginationFilterBoolean(USER_DEFAULT_IS_ACTIVE)
+    @PaginationMongoFilterBoolean(USER_DEFAULT_IS_ACTIVE)
     readonly isActive: boolean[];
 }

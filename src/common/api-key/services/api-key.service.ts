@@ -25,7 +25,6 @@ import { ApiKeyResetDto } from 'src/common/api-key/dtos/api-key.reset.dto';
 export class ApiKeyService implements IApiKeyService {
     constructor(
         private readonly apiKeyRepository: ApiKeyRepository,
-        private readonly helperHashService: HelperHashService,
         private readonly apiKeyUseCase: ApiKeyUseCase
     ) {}
 
@@ -150,11 +149,12 @@ export class ApiKeyService implements IApiKeyService {
             _id
         );
         const update: ApiKeyResetDto = await this.apiKeyUseCase.reset(apiKey);
-        const updated = await this.apiKeyRepository.updateOneById(
-            _id,
-            update,
-            options
-        );
+        const updated =
+            await this.apiKeyRepository.updateOneById<ApiKeyResetDto>(
+                _id,
+                update,
+                options
+            );
 
         return {
             ...updated,
@@ -174,12 +174,5 @@ export class ApiKeyService implements IApiKeyService {
         options?: IDatabaseSoftDeleteOptions
     ): Promise<ApiKeyEntity> {
         return this.apiKeyRepository.deleteOne(find, options);
-    }
-
-    async validateHashApiKey(
-        hashFromRequest: string,
-        hash: string
-    ): Promise<boolean> {
-        return this.helperHashService.sha256Compare(hashFromRequest, hash);
     }
 }

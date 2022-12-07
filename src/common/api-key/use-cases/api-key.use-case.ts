@@ -41,9 +41,9 @@ export class ApiKeyUseCase {
         name,
         description,
     }: ApiKeyCreateDto): Promise<IApiKeyEntity> {
-        const key = this.createKey();
-        const secret = this.createSecret();
-        const hash: string = this.createHashApiKey(key, secret);
+        const key = await this.createKey();
+        const secret = await this.createSecret();
+        const hash: string = await this.createHashApiKey(key, secret);
 
         const dto: ApiKeyEntity = new ApiKeyEntity();
         dto.name = name;
@@ -61,7 +61,7 @@ export class ApiKeyUseCase {
         key,
         secret,
     }: ApiKeyCreateRawDto): Promise<IApiKeyEntity> {
-        const hash: string = this.createHashApiKey(key, secret);
+        const hash: string = await this.createHashApiKey(key, secret);
 
         const dto: ApiKeyEntity = new ApiKeyEntity();
         dto.name = name;
@@ -74,8 +74,8 @@ export class ApiKeyUseCase {
     }
 
     async reset(apiKey: ApiKeyEntity): Promise<ApiKeyResetDto> {
-        const secret: string = this.createSecret();
-        const hash: string = this.createHashApiKey(apiKey.key, secret);
+        const secret: string = await this.createSecret();
+        const hash: string = await this.createHashApiKey(apiKey.key, secret);
 
         const dto: ApiKeyResetDto = new ApiKeyResetDto();
         dto.hash = hash;
@@ -84,7 +84,14 @@ export class ApiKeyUseCase {
         return dto;
     }
 
-    createKey(): string {
+    async validateHashApiKey(
+        hashFromRequest: string,
+        hash: string
+    ): Promise<boolean> {
+        return this.helperHashService.sha256Compare(hashFromRequest, hash);
+    }
+
+    async createKey(): Promise<string> {
         return this.helperStringService.random(25, {
             safe: false,
             upperCase: true,
@@ -92,14 +99,14 @@ export class ApiKeyUseCase {
         });
     }
 
-    createSecret(): string {
+    async createSecret(): Promise<string> {
         return this.helperStringService.random(35, {
             safe: false,
             upperCase: true,
         });
     }
 
-    createHashApiKey(key: string, secret: string): string {
+    async createHashApiKey(key: string, secret: string): Promise<string> {
         return this.helperHashService.sha256(`${key}:${secret}`);
     }
 }

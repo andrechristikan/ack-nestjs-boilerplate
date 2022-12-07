@@ -164,7 +164,7 @@ import { APP_LANGUAGE } from 'src/app/constants/app.constant';
             imports: [DatabaseOptionsModule],
             inject: [DatabaseOptionsService],
             useFactory: (databaseOptionsService: DatabaseOptionsService) =>
-                databaseOptionsService.createOptions(),
+                databaseOptionsService.createMongoOptions(),
         }),
         MessageModule,
         HelperModule,

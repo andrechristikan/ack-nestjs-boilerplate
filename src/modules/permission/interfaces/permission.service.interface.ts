@@ -17,6 +17,11 @@ export interface IPermissionService {
         options?: IDatabaseFindAllOptions
     ): Promise<PermissionEntity[]>;
 
+    findAllByGroup(
+        groups?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<PermissionEntity[]>;
+
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
@@ -60,6 +65,4 @@ export interface IPermissionService {
     ): Promise<PermissionEntity>;
 
     active(_id: string, options?: IDatabaseOptions): Promise<PermissionEntity>;
-
-    groups(permissions: PermissionEntity[]): Promise<IPermissionGroup[]>;
 }

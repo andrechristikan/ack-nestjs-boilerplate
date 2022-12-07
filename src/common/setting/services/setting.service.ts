@@ -52,9 +52,9 @@ export class SettingService implements ISettingService {
         data: SettingCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<SettingEntity> {
-        const create: SettingCreateDto = await this.settingUseCase.create(data);
+        const create: SettingEntity = await this.settingUseCase.create(data);
 
-        return this.settingRepository.create<SettingCreateDto>(create, options);
+        return this.settingRepository.create<SettingEntity>(create, options);
     }
 
     async updateOneById(

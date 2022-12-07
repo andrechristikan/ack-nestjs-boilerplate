@@ -5,9 +5,11 @@ import {
     PaginationAvailableSort,
     PaginationPage,
     PaginationPerPage,
-    PaginationSearch,
-    PaginationSort,
 } from 'src/common/pagination/decorators/pagination.decorator';
+import {
+    PaginationMongoSearch,
+    PaginationMongoSort,
+} from 'src/common/pagination/decorators/pagination.mongo.decorator';
 import { IPaginationSort } from 'src/common/pagination/interfaces/pagination.interface';
 import {
     SETTING_DEFAULT_AVAILABLE_SEARCH,
@@ -18,7 +20,7 @@ import {
 } from 'src/common/setting/constants/setting.list.constant';
 
 export class SettingListDto implements PaginationListAbstract {
-    @PaginationSearch(SETTING_DEFAULT_AVAILABLE_SEARCH)
+    @PaginationMongoSearch(SETTING_DEFAULT_AVAILABLE_SEARCH)
     readonly search: Record<string, any>;
 
     @ApiHideProperty()
@@ -31,7 +33,7 @@ export class SettingListDto implements PaginationListAbstract {
     @PaginationPerPage(SETTING_DEFAULT_PER_PAGE)
     readonly perPage: number;
 
-    @PaginationSort(SETTING_DEFAULT_SORT, SETTING_DEFAULT_AVAILABLE_SORT)
+    @PaginationMongoSort(SETTING_DEFAULT_SORT, SETTING_DEFAULT_AVAILABLE_SORT)
     readonly sort: IPaginationSort;
 
     @ApiHideProperty()

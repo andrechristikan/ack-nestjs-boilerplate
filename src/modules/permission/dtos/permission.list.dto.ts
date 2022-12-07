@@ -3,13 +3,15 @@ import { PaginationListAbstract } from 'src/common/pagination/abstracts/paginati
 import {
     PaginationAvailableSearch,
     PaginationAvailableSort,
-    PaginationFilterBoolean,
-    PaginationFilterEnum,
     PaginationPage,
     PaginationPerPage,
-    PaginationSearch,
-    PaginationSort,
 } from 'src/common/pagination/decorators/pagination.decorator';
+import {
+    PaginationMongoFilterBoolean,
+    PaginationMongoFilterEnum,
+    PaginationMongoSearch,
+    PaginationMongoSort,
+} from 'src/common/pagination/decorators/pagination.mongo.decorator';
 import { IPaginationSort } from 'src/common/pagination/interfaces/pagination.interface';
 import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 import {
@@ -23,7 +25,7 @@ import {
 } from 'src/modules/permission/constants/permission.list.constant';
 
 export class PermissionListDto implements PaginationListAbstract {
-    @PaginationSearch(PERMISSION_DEFAULT_AVAILABLE_SEARCH)
+    @PaginationMongoSearch(PERMISSION_DEFAULT_AVAILABLE_SEARCH)
     readonly search: Record<string, any>;
 
     @ApiHideProperty()
@@ -36,16 +38,19 @@ export class PermissionListDto implements PaginationListAbstract {
     @PaginationPerPage(PERMISSION_DEFAULT_PER_PAGE)
     readonly perPage: number;
 
-    @PaginationSort(PERMISSION_DEFAULT_SORT, PERMISSION_DEFAULT_AVAILABLE_SORT)
+    @PaginationMongoSort(
+        PERMISSION_DEFAULT_SORT,
+        PERMISSION_DEFAULT_AVAILABLE_SORT
+    )
     readonly sort: IPaginationSort;
 
     @ApiHideProperty()
     @PaginationAvailableSort(PERMISSION_DEFAULT_AVAILABLE_SORT)
     readonly availableSort: string[];
 
-    @PaginationFilterBoolean(PERMISSION_DEFAULT_ACTIVE)
+    @PaginationMongoFilterBoolean(PERMISSION_DEFAULT_ACTIVE)
     readonly isActive: boolean[];
 
-    @PaginationFilterEnum(PERMISSION_DEFAULT_GROUP, ENUM_PERMISSION_GROUP)
+    @PaginationMongoFilterEnum(PERMISSION_DEFAULT_GROUP, ENUM_PERMISSION_GROUP)
     readonly group: string[];
 }

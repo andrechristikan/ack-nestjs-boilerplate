@@ -4,6 +4,7 @@ import Strategy from 'passport-headerapikey';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
+import { ApiKeyUseCase } from 'src/common/api-key/use-cases/api-key.use-case';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
@@ -11,7 +12,10 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
     Strategy,
     'api-key'
 ) {
-    constructor(private readonly apiKeyService: ApiKeyService) {
+    constructor(
+        private readonly apiKeyService: ApiKeyService,
+        private readonly apiKeyUseCase: ApiKeyUseCase
+    ) {
         super(
             { header: 'X-API-KEY', prefix: '' },
             true,
@@ -78,7 +82,7 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
         }
 
         const validateApiKey: boolean =
-            await this.apiKeyService.validateHashApiKey(hashed, authApi.hash);
+            await this.apiKeyUseCase.validateHashApiKey(hashed, authApi.hash);
         if (!validateApiKey) {
             verified(
                 new Error(

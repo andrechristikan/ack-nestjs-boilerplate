@@ -9,8 +9,19 @@ import { SettingEntity } from 'src/common/setting/repository/entities/setting.en
 export class SettingUseCase {
     constructor(private readonly helperNumberService: HelperNumberService) {}
 
-    async create(data: SettingCreateDto): Promise<SettingCreateDto> {
-        return data;
+    async create({
+        name,
+        description,
+        type,
+        value,
+    }: SettingCreateDto): Promise<SettingEntity> {
+        const create: SettingEntity = new SettingEntity();
+        create.name = name;
+        create.description = description ?? undefined;
+        create.value = value;
+        create.type = type;
+
+        return create;
     }
 
     async update(data: SettingUpdateDto): Promise<SettingUpdateDto> {
