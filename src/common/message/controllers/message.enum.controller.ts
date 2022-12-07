@@ -22,6 +22,7 @@ export class MessageController {
     async languages(): Promise<IResponse> {
         const languages: string[] =
             await this.messageEnumService.getLanguages();
+
         return {
             languages,
         };

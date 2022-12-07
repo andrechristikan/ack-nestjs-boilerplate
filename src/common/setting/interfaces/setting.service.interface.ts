@@ -5,7 +5,6 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
 import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
 import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
 import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
@@ -47,7 +46,11 @@ export interface ISettingService {
         options?: IDatabaseSoftDeleteOptions
     ): Promise<SettingEntity>;
 
-    getValue<T>(setting: SettingEntity): Promise<T>;
+    getMaintenance(): Promise<boolean>;
 
-    checkValue(value: string, type: ENUM_SETTING_DATA_TYPE): Promise<boolean>;
+    getMobileNumberCountryCodeAllowed(): Promise<string[]>;
+
+    getPasswordAttempt(): Promise<boolean>;
+
+    getMaxPasswordAttempt(): Promise<number>;
 }

@@ -22,6 +22,7 @@ import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
 import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
 import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingService } from 'src/common/setting/services/setting.service';
+import { SettingUseCase } from 'src/common/setting/use-cases/setting.use-case';
 
 @ApiTags('admin.setting')
 @Controller({
@@ -29,7 +30,10 @@ import { SettingService } from 'src/common/setting/services/setting.service';
     path: '/setting',
 })
 export class SettingAdminController {
-    constructor(private readonly settingService: SettingService) {}
+    constructor(
+        private readonly settingService: SettingService,
+        private readonly settingUseCase: SettingUseCase
+    ) {}
 
     @SettingUpdateDoc()
     @Response('setting.update', {
@@ -48,7 +52,7 @@ export class SettingAdminController {
         @Body()
         body: SettingUpdateDto
     ): Promise<IResponse> {
-        const check = await this.settingService.checkValue(
+        const check = await this.settingUseCase.checkValue(
             body.value,
             body.type
         );

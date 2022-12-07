@@ -41,9 +41,9 @@ export class ApiKeyUseCase {
         name,
         description,
     }: ApiKeyCreateDto): Promise<IApiKeyEntity> {
-        const key = await this.createKey();
-        const secret = await this.createSecret();
-        const hash: string = await this.createHashApiKey(key, secret);
+        const key = this.createKey();
+        const secret = this.createSecret();
+        const hash: string = this.createHashApiKey(key, secret);
 
         const dto: ApiKeyEntity = new ApiKeyEntity();
         dto.name = name;
@@ -61,7 +61,7 @@ export class ApiKeyUseCase {
         key,
         secret,
     }: ApiKeyCreateRawDto): Promise<IApiKeyEntity> {
-        const hash: string = await this.createHashApiKey(key, secret);
+        const hash: string = this.createHashApiKey(key, secret);
 
         const dto: ApiKeyEntity = new ApiKeyEntity();
         dto.name = name;
@@ -74,8 +74,8 @@ export class ApiKeyUseCase {
     }
 
     async reset(apiKey: ApiKeyEntity): Promise<ApiKeyResetDto> {
-        const secret: string = await this.createSecret();
-        const hash: string = await this.createHashApiKey(apiKey.key, secret);
+        const secret: string = this.createSecret();
+        const hash: string = this.createHashApiKey(apiKey.key, secret);
 
         const dto: ApiKeyResetDto = new ApiKeyResetDto();
         dto.hash = hash;

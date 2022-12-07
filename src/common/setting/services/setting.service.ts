@@ -6,19 +6,18 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
-import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
 import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
 import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
 import { ISettingService } from 'src/common/setting/interfaces/setting.service.interface';
 import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingRepository } from 'src/common/setting/repository/repositories/setting.repository';
+import { SettingUseCase } from 'src/common/setting/use-cases/setting.use-case';
 
 @Injectable()
 export class SettingService implements ISettingService {
     constructor(
         private readonly settingRepository: SettingRepository,
-        private readonly helperNumberService: HelperNumberService
+        private readonly settingUseCase: SettingUseCase
     ) {}
 
     async findAll(
@@ -50,28 +49,20 @@ export class SettingService implements ISettingService {
     }
 
     async create(
-        { name, description, value, type }: SettingCreateDto,
+        data: SettingCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<SettingEntity> {
-        const create: SettingEntity = new SettingEntity();
-        create.name = name;
-        create.description = description;
-        create.value = value;
-        create.type = type;
+        const create: SettingCreateDto = await this.settingUseCase.create(data);
 
-        return this.settingRepository.create<SettingEntity>(create, options);
+        return this.settingRepository.create<SettingCreateDto>(create, options);
     }
 
     async updateOneById(
         _id: string,
-        { description, value, type }: SettingUpdateDto,
+        data: SettingUpdateDto,
         options?: IDatabaseOptions
     ): Promise<SettingEntity> {
-        const update: SettingUpdateDto = {
-            description,
-            value,
-            type,
-        };
+        const update: SettingUpdateDto = await this.settingUseCase.update(data);
 
         return this.settingRepository.updateOneById<SettingUpdateDto>(
             _id,
@@ -87,74 +78,29 @@ export class SettingService implements ISettingService {
         return this.settingRepository.deleteOne(find, options);
     }
 
-    async getValue<T>(setting: SettingEntity): Promise<T> {
-        if (
-            setting.type === ENUM_SETTING_DATA_TYPE.BOOLEAN &&
-            (setting.value === 'true' || setting.value === 'false')
-        ) {
-            return (setting.value === 'true' ? true : false) as any;
-        } else if (
-            setting.type === ENUM_SETTING_DATA_TYPE.NUMBER &&
-            this.helperNumberService.check(setting.value)
-        ) {
-            return this.helperNumberService.create(setting.value) as any;
-        } else if (setting.type === ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING) {
-            return setting.value.split(',') as any;
-        }
-
-        return setting.value as any;
-    }
-
-    async checkValue(
-        value: string,
-        type: ENUM_SETTING_DATA_TYPE
-    ): Promise<boolean> {
-        let check = false;
-
-        if (
-            type === ENUM_SETTING_DATA_TYPE.BOOLEAN &&
-            (value === 'true' || value === 'false')
-        ) {
-            check = true;
-        } else if (
-            type === ENUM_SETTING_DATA_TYPE.NUMBER &&
-            this.helperNumberService.check(value)
-        ) {
-            check = true;
-        } else if (
-            (type === ENUM_SETTING_DATA_TYPE.STRING ||
-                type === ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING) &&
-            typeof value === 'string'
-        ) {
-            check = true;
-        }
-
-        return check;
-    }
-
     async getMaintenance(): Promise<boolean> {
         const setting: SettingEntity = await this.findOneByName('maintenance');
-        return this.getValue<boolean>(setting);
+        return this.settingUseCase.getValue<boolean>(setting);
     }
 
     async getMobileNumberCountryCodeAllowed(): Promise<string[]> {
         const setting: SettingEntity = await this.findOneByName(
             'mobileNumberCountryCodeAllowed'
         );
-        return this.getValue<string[]>(setting);
+        return this.settingUseCase.getValue<string[]>(setting);
     }
 
     async getPasswordAttempt(): Promise<boolean> {
         const setting: SettingEntity = await this.findOneByName(
             'passwordAttempt'
         );
-        return this.getValue<boolean>(setting);
+        return this.settingUseCase.getValue<boolean>(setting);
     }
 
     async getMaxPasswordAttempt(): Promise<number> {
         const setting: SettingEntity = await this.findOneByName(
             'maxPasswordAttempt'
         );
-        return this.getValue<number>(setting);
+        return this.settingUseCase.getValue<number>(setting);
     }
 }
