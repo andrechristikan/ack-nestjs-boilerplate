@@ -6,7 +6,7 @@
     ],
     "testEnvironment": "node",
     "testMatch": [
-        "<rootDir>/test/e2e/user/*.e2e-spec.ts"
+        "<rootDir>/test/e2e/**/*.e2e-spec.ts"
     ],
     "collectCoverage": true,
     "coverageDirectory": "e2e-coverage",

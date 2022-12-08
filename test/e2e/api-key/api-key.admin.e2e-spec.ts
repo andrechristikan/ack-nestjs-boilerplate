@@ -42,7 +42,7 @@ describe('E2E Api Key Admin', () => {
     };
 
     beforeAll(async () => {
-        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPT = 'false';
 
         const modRef = await Test.createTestingModule({
             imports: [
@@ -288,8 +288,8 @@ describe('E2E Api Key Admin', () => {
             await apiKeyService.deleteOne({
                 name: apiKeyCreate.name,
             });
-        } catch (e) {
-            console.error(e);
+        } catch (err: any) {
+            console.error(err);
         }
     });
 });

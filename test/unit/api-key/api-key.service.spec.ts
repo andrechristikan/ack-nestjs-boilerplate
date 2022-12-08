@@ -314,8 +314,8 @@ describe('ApiKeyService', () => {
             await apiKeyBulkService.deleteMany({
                 name: apiKeyName,
             });
-        } catch (e) {
-            console.error(e);
+        } catch (err: any) {
+            console.error(err);
         }
     });
 });

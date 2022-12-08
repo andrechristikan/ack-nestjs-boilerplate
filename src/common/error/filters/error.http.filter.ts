@@ -154,7 +154,6 @@ export class ErrorHttpFilter implements ExceptionFilter {
         } else {
             // In certain situations `httpAdapter` might not be available in the
             // constructor method, thus we should resolve it here.
-            const { httpAdapter } = this.httpAdapterHost;
             const message: string = (await this.messageService.get(
                 'http.serverError.internalServerError'
             )) as string;
@@ -179,15 +178,6 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 metadata,
             };
 
-            const responseExpress = ctx.getResponse();
-            responseExpress
-                .setHeader('x-custom-lang', customLang)
-                .setHeader('x-timestamp', __timestamp)
-                .setHeader('x-timezone', __timezone)
-                .setHeader('x-request-id', __requestId)
-                .setHeader('x-version', __version)
-                .setHeader('x-repo-version', __repoVersion);
-
             // Debugger
             try {
                 this.debuggerService.error(
@@ -202,11 +192,16 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 );
             } catch (err: unknown) {}
 
-            httpAdapter.reply(
-                responseExpress,
-                responseBody,
-                HttpStatus.INTERNAL_SERVER_ERROR
-            );
+            const responseExpress: Response = ctx.getResponse<Response>();
+            responseExpress
+                .setHeader('x-custom-lang', customLang)
+                .setHeader('x-timestamp', __timestamp)
+                .setHeader('x-timezone', __timezone)
+                .setHeader('x-request-id', __requestId)
+                .setHeader('x-version', __version)
+                .setHeader('x-repo-version', __repoVersion)
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .json(responseBody);
         }
 
         return;

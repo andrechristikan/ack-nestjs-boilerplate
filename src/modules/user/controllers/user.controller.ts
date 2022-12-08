@@ -406,7 +406,7 @@ export class UserController {
     @AuthJwtAccessProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/grant-permission')
-    async permissionToken(
+    async grantPermission(
         @AuthJwtPayload() user: UserPayloadSerialization,
         @Body() { scope }: UserGrantPermissionDto
     ): Promise<IResponse> {

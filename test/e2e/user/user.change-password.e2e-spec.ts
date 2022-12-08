@@ -36,7 +36,7 @@ describe('E2E User Change Password', () => {
     let accessTokenNotFound: string;
 
     beforeAll(async () => {
-        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPT = 'false';
 
         const modRef = await Test.createTestingModule({
             imports: [
@@ -149,6 +149,27 @@ describe('E2E User Change Password', () => {
         return;
     });
 
+    it(`PATCH ${E2E_USER_CHANGE_PASSWORD_URL} Old Password Password Attempt Max`, async () => {
+        await userService.increasePasswordAttempt(user._id);
+        await userService.increasePasswordAttempt(user._id);
+        await userService.increasePasswordAttempt(user._id);
+        const response = await request(app.getHttpServer())
+            .patch(E2E_USER_CHANGE_PASSWORD_URL)
+            .send({
+                oldPassword: 'as1231dAA@@!',
+                newPassword,
+            })
+            .set('Authorization', `Bearer ${accessToken}`);
+
+        expect(response.status).toEqual(HttpStatus.FORBIDDEN);
+        expect(response.body.statusCode).toEqual(
+            ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_ATTEMPT_MAX_ERROR
+        );
+
+        await userService.resetPasswordAttempt(user._id);
+        return;
+    });
+
     it(`PATCH ${E2E_USER_CHANGE_PASSWORD_URL} New Password must different with old password`, async () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_USER_CHANGE_PASSWORD_URL)
@@ -184,8 +205,8 @@ describe('E2E User Change Password', () => {
     afterAll(async () => {
         try {
             await userService.deleteOneById(user._id);
-        } catch (e) {
-            console.error(e);
+        } catch (err: any) {
+            console.error(err);
         }
     });
 });

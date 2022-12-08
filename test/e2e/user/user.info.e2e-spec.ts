@@ -18,7 +18,7 @@ describe('E2E User', () => {
     let accessToken: string;
 
     beforeAll(async () => {
-        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPT = 'false';
 
         const modRef = await Test.createTestingModule({
             imports: [

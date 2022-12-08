@@ -50,7 +50,7 @@ describe('E2E Role Admin', () => {
     let existData: RoleCreateDto;
 
     beforeAll(async () => {
-        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPT = 'false';
 
         const modRef = await Test.createTestingModule({
             imports: [
@@ -216,7 +216,7 @@ describe('E2E Role Admin', () => {
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-permission-token', permissionToken);
 
-        expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
+        expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
             ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR
         );
@@ -291,7 +291,7 @@ describe('E2E Role Admin', () => {
 
     it(`PUT ${E2E_ROLE_ADMIN_UPDATE_URL} Update Permission Not Found`, async () => {
         const response = await request(app.getHttpServer())
-            .put(E2E_ROLE_ADMIN_UPDATE_URL)
+            .put(E2E_ROLE_ADMIN_UPDATE_URL.replace(':_id', roleUpdate._id))
             .send({
                 ...updateData,
                 permissions: [DatabaseDefaultUUID()],
@@ -299,7 +299,7 @@ describe('E2E Role Admin', () => {
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-permission-token', permissionToken);
 
-        expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
+        expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
             ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR
         );

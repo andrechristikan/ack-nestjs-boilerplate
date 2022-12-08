@@ -41,7 +41,7 @@ describe('E2E User Refresh', () => {
     let refreshTokenNotFound: string;
 
     beforeAll(async () => {
-        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPT = 'false';
 
         const modRef = await Test.createTestingModule({
             imports: [
@@ -189,8 +189,112 @@ describe('E2E User Refresh', () => {
     afterAll(async () => {
         try {
             await userService.deleteOneById(user._id);
-        } catch (e) {
-            console.error(e);
+        } catch (err: any) {
+            console.error(err);
+        }
+    });
+});
+
+describe('E2E User Refresh Payload Encryption', () => {
+    let app: INestApplication;
+    let userService: UserService;
+    let authService: AuthService;
+    let roleService: RoleService;
+
+    const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
+        .firstName()
+        .toUpperCase()}${faker.datatype.number({ min: 1, max: 99 })}`;
+
+    let user: UserEntity;
+
+    let refreshToken: string;
+
+    beforeAll(async () => {
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPT = 'true';
+
+        const modRef = await Test.createTestingModule({
+            imports: [
+                CommonModule,
+                RoleModule,
+                PermissionModule,
+                RoutesModule,
+                RouterModule.register([
+                    {
+                        path: '/',
+                        module: RoutesModule,
+                    },
+                ]),
+            ],
+        }).compile();
+
+        app = modRef.createNestApplication();
+        useContainer(app.select(CommonModule), { fallbackOnErrors: true });
+        userService = app.get(UserService);
+        authService = app.get(AuthService);
+        roleService = app.get(RoleService);
+
+        const role: RoleEntity = await roleService.findOne({
+            name: 'user',
+        });
+
+        const passwordHash = await authService.createPassword(password);
+
+        user = await userService.create(
+            {
+                username: faker.internet.userName(),
+                firstName: faker.name.firstName(),
+                lastName: faker.name.lastName(),
+                password,
+                email: faker.internet.email(),
+                mobileNumber: faker.phone.number('62812#########'),
+                role: `${role._id}`,
+            },
+            passwordHash
+        );
+
+        const userPopulate = await userService.findOneById<IUserEntity>(
+            user._id,
+            {
+                join: true,
+            }
+        );
+
+        const map = plainToInstance(UserPayloadSerialization, userPopulate);
+        const payload = await authService.createPayloadRefreshToken(
+            map._id,
+            false
+        );
+
+        const payloadHashedRefreshToken: string =
+            await authService.encryptRefreshToken(payload);
+
+        refreshToken = await authService.createRefreshToken(
+            payloadHashedRefreshToken,
+            {
+                rememberMe: true,
+                notBeforeExpirationTime: '0',
+            }
+        );
+
+        await app.init();
+    });
+
+    it(`POST ${E2E_USER_REFRESH_URL} Success`, async () => {
+        const response = await request(app.getHttpServer())
+            .post(E2E_USER_REFRESH_URL)
+            .set('Authorization', `Bearer ${refreshToken}`);
+
+        expect(response.status).toEqual(HttpStatus.OK);
+        expect(response.body.statusCode).toEqual(HttpStatus.OK);
+
+        return;
+    });
+
+    afterAll(async () => {
+        try {
+            await userService.deleteOneById(user._id);
+        } catch (err: any) {
+            console.error(err);
         }
     });
 });

@@ -33,8 +33,11 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
     async validate({
         data,
     }: Record<string, any>): Promise<Record<string, any>> {
-        return this.configService.get<boolean>('auth.payloadEncryption')
-            ? this.authService.decryptRefreshToken(data)
+        const payloadEncryption: boolean =
+            await this.authService.getPayloadEncryption();
+
+        return payloadEncryption
+            ? this.authService.decryptRefreshToken({ data })
             : data;
     }
 }

@@ -89,7 +89,7 @@ Next development
 * [ ] Implement Use Case from Hexagonal Architecture and for reduce database connection
     * [x] Init implementation
     * [ ] Move use case into controllers, and remove from service layer
-    * [ ] FindAll, FindOne, Exists, etc. convert data using usecase.
+    * [ ] FindAll, FindOne, Exists, etc. convert data using usecase. ?
     * [ ] Pagination UseCase ?
 * [ ] Optional typeorm integration
     * [x] Database Option

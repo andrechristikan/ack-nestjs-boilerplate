@@ -22,7 +22,7 @@ import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 
-describe('E2E User Change Password', () => {
+describe('E2E User Grant Password', () => {
     let app: INestApplication;
     let userService: UserService;
     let authService: AuthService;
@@ -36,7 +36,7 @@ describe('E2E User Change Password', () => {
     let accessTokenNotFound: string;
 
     beforeAll(async () => {
-        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPT = 'false';
 
         const modRef = await Test.createTestingModule({
             imports: [
@@ -149,8 +149,106 @@ describe('E2E User Change Password', () => {
     afterAll(async () => {
         try {
             await userService.deleteOneById(user._id);
-        } catch (e) {
-            console.error(e);
+        } catch (err: any) {
+            console.error(err);
+        }
+    });
+});
+
+describe('E2E User Grant Password Payload Encryption', () => {
+    let app: INestApplication;
+    let userService: UserService;
+    let authService: AuthService;
+    let roleService: RoleService;
+
+    const password = `aaAA@!123`;
+
+    let user: UserEntity;
+
+    let accessToken: string;
+
+    beforeAll(async () => {
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPT = 'true';
+
+        const modRef = await Test.createTestingModule({
+            imports: [
+                CommonModule,
+                RoleModule,
+                PermissionModule,
+                RoutesModule,
+                RouterModule.register([
+                    {
+                        path: '/',
+                        module: RoutesModule,
+                    },
+                ]),
+            ],
+        }).compile();
+
+        app = modRef.createNestApplication();
+        useContainer(app.select(CommonModule), { fallbackOnErrors: true });
+        userService = app.get(UserService);
+        authService = app.get(AuthService);
+        roleService = app.get(RoleService);
+
+        const role: RoleEntity = await roleService.findOne({
+            name: 'user',
+        });
+
+        const passwordHash = await authService.createPassword(password);
+
+        user = await userService.create(
+            {
+                username: faker.internet.userName(),
+                firstName: faker.name.firstName(),
+                lastName: faker.name.lastName(),
+                password,
+                email: faker.internet.email(),
+                mobileNumber: faker.phone.number('62812#########'),
+                role: `${role._id}`,
+            },
+            passwordHash
+        );
+
+        const userPopulate = await userService.findOneById<IUserEntity>(
+            user._id,
+            {
+                join: true,
+            }
+        );
+
+        const map = plainToInstance(UserPayloadSerialization, userPopulate);
+        const payload = await authService.createPayloadAccessToken(map, false);
+        const payloadHashedAccessToken = await authService.encryptAccessToken(
+            payload
+        );
+
+        accessToken = await authService.createAccessToken(
+            payloadHashedAccessToken
+        );
+
+        await app.init();
+    });
+
+    it(`POST ${E2E_USER_GRANT_PERMISSION} Success`, async () => {
+        const response = await request(app.getHttpServer())
+            .post(E2E_USER_GRANT_PERMISSION)
+            .send({
+                scope: [ENUM_PERMISSION_GROUP.PERMISSION],
+            })
+            .set('Authorization', `Bearer ${accessToken}`);
+
+        expect(response.status).toEqual(HttpStatus.OK);
+        expect(response.body.statusCode).toEqual(HttpStatus.OK);
+
+        return;
+    });
+
+    afterAll(async () => {
+        try {
+            await userService.deleteOneById(user._id);
+        } catch (err: any) {
+            console.error(err);
         }
     });
 });

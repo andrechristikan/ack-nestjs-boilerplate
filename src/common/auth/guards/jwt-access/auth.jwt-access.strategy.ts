@@ -30,8 +30,11 @@ export class AuthJwtAccessStrategy extends PassportStrategy(Strategy, 'jwt') {
     async validate({
         data,
     }: Record<string, any>): Promise<Record<string, any>> {
-        return this.configService.get<boolean>('auth.payloadEncryption')
-            ? this.authService.decryptAccessToken(data)
+        const payloadEncryption: boolean =
+            await this.authService.getPayloadEncryption();
+
+        return payloadEncryption
+            ? this.authService.decryptAccessToken({ data })
             : data;
     }
 }

@@ -19,7 +19,7 @@ describe('E2E User Public', () => {
     let userData: Record<string, any>;
 
     beforeAll(async () => {
-        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPT = 'false';
 
         const modRef = await Test.createTestingModule({
             imports: [
@@ -139,8 +139,8 @@ describe('E2E User Public', () => {
                 email: userData.email,
                 mobileNumber: userData.mobileNumber,
             });
-        } catch (e) {
-            console.error(e);
+        } catch (err: any) {
+            console.error(err);
         }
     });
 });

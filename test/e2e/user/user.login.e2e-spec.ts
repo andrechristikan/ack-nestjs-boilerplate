@@ -36,7 +36,7 @@ describe('E2E User Login', () => {
     let passwordExpired: Date;
 
     beforeAll(async () => {
-        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPT = 'false';
 
         const modRef = await Test.createTestingModule({
             imports: [
@@ -143,6 +143,29 @@ describe('E2E User Login', () => {
         return;
     });
 
+    it(`POST ${E2E_USER_LOGIN_URL} Password Attempt Max`, async () => {
+        await userService.increasePasswordAttempt(user._id);
+        await userService.increasePasswordAttempt(user._id);
+        await userService.increasePasswordAttempt(user._id);
+
+        const response = await request(app.getHttpServer())
+            .post(E2E_USER_LOGIN_URL)
+            .set('Content-Type', 'application/json')
+            .send({
+                username: user.username,
+                password: 'Password@@1231',
+                rememberMe: false,
+            });
+
+        expect(response.status).toEqual(HttpStatus.FORBIDDEN);
+        expect(response.body.statusCode).toEqual(
+            ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_ATTEMPT_MAX_ERROR
+        );
+
+        await userService.resetPasswordAttempt(user._id);
+        return;
+    });
+
     it(`POST ${E2E_USER_LOGIN_URL} Inactive`, async () => {
         await userService.inactive(user._id);
 
@@ -224,8 +247,98 @@ describe('E2E User Login', () => {
         try {
             await userService.deleteOneById(user._id);
             await roleService.deleteOne({ name: roleName });
-        } catch (e) {
-            console.error(e);
+        } catch (err: any) {
+            console.error(err);
+        }
+    });
+});
+
+describe('E2E User Login Payload Encryption', () => {
+    let app: INestApplication;
+    let userService: UserService;
+    let authService: AuthService;
+    let roleService: RoleService;
+
+    const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
+        .firstName()
+        .toUpperCase()}${faker.datatype.number({ min: 1, max: 99 })}`;
+
+    let user: UserEntity;
+    const roleName = faker.random.alphaNumeric(5);
+
+    beforeAll(async () => {
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPT = 'true';
+
+        const modRef = await Test.createTestingModule({
+            imports: [
+                CommonModule,
+                RoleModule,
+                PermissionModule,
+                RoutesModule,
+                RouterModule.register([
+                    {
+                        path: '/',
+                        module: RoutesModule,
+                    },
+                ]),
+            ],
+        }).compile();
+
+        app = modRef.createNestApplication();
+        useContainer(app.select(CommonModule), { fallbackOnErrors: true });
+        userService = app.get(UserService);
+        authService = app.get(AuthService);
+        roleService = app.get(RoleService);
+
+        await roleService.create({
+            name: roleName,
+            accessFor: ENUM_AUTH_ACCESS_FOR_DEFAULT.USER,
+            permissions: [],
+        });
+        const role: RoleEntity = await roleService.findOne({
+            name: roleName,
+        });
+
+        const passwordHash = await authService.createPassword(password);
+
+        user = await userService.create(
+            {
+                username: faker.internet.userName(),
+                firstName: faker.name.firstName(),
+                lastName: faker.name.lastName(),
+                password,
+                email: faker.internet.email(),
+                mobileNumber: faker.phone.number('62812#########'),
+                role: `${role._id}`,
+            },
+            passwordHash
+        );
+
+        await app.init();
+    });
+
+    it(`POST ${E2E_USER_LOGIN_URL} Success`, async () => {
+        const response = await request(app.getHttpServer())
+            .post(E2E_USER_LOGIN_URL)
+            .set('Content-Type', 'application/json')
+            .send({
+                username: user.username,
+                password,
+                rememberMe: true,
+            });
+
+        expect(response.status).toEqual(HttpStatus.OK);
+        expect(response.body.statusCode).toEqual(HttpStatus.OK);
+
+        return;
+    });
+
+    afterAll(async () => {
+        try {
+            await userService.deleteOneById(user._id);
+            await roleService.deleteOne({ name: roleName });
+        } catch (err: any) {
+            console.error(err);
         }
     });
 });

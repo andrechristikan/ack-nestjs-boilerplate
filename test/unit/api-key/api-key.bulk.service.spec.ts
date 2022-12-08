@@ -89,8 +89,8 @@ describe('ApiKeyBulkService', () => {
             await apiKeyBulkService.deleteMany({
                 _id: apiKey._id,
             });
-        } catch (e) {
-            console.error(e);
+        } catch (err: any) {
+            console.error(err);
         }
     });
 });

@@ -195,9 +195,9 @@ export class AuthService implements IAuthService {
                 expiredIn: options?.rememberMe
                     ? this.refreshTokenExpirationTimeRememberMe
                     : this.refreshTokenExpirationTime,
-                notBefore: options?.notBeforeExpirationTime
-                    ? options.notBeforeExpirationTime
-                    : this.refreshTokenNotBeforeExpirationTime,
+                notBefore:
+                    options?.notBeforeExpirationTime ??
+                    this.refreshTokenNotBeforeExpirationTime,
                 audience: this.audience,
                 issuer: this.issuer,
                 subject: this.subject,

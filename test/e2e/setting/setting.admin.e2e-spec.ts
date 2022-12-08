@@ -33,7 +33,7 @@ describe('E2E Setting Admin', () => {
     let permissionToken: string;
 
     beforeAll(async () => {
-        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPT = 'false';
 
         const modRef = await Test.createTestingModule({
             imports: [
@@ -188,8 +188,8 @@ describe('E2E Setting Admin', () => {
     afterAll(async () => {
         try {
             await settingService.deleteOne({ name: settingName });
-        } catch (e) {
-            console.error(e);
+        } catch (err: any) {
+            console.error(err);
         }
     });
 });
