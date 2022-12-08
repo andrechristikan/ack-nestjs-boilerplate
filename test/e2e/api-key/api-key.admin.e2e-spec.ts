@@ -24,11 +24,14 @@ import {
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { faker } from '@faker-js/faker';
+import { ApiKeyUseCase } from 'src/common/api-key/use-cases/api-key.use-case';
+import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 
 describe('E2E Api Key Admin', () => {
     let app: INestApplication;
     let authService: AuthService;
     let apiKeyService: ApiKeyService;
+    let apiKeyUseCase: ApiKeyUseCase;
 
     let accessToken: string;
     let permissionToken: string;
@@ -58,6 +61,7 @@ describe('E2E Api Key Admin', () => {
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         authService = app.get(AuthService);
         apiKeyService = app.get(ApiKeyService);
+        apiKeyUseCase = app.get<ApiKeyUseCase>(ApiKeyUseCase);
 
         const payload = await authService.createPayloadAccessToken(
             {
@@ -72,9 +76,11 @@ describe('E2E Api Key Admin', () => {
             _id: payload._id,
         });
 
-        apiKey = await apiKeyService.create({
-            name: faker.name.firstName(),
+        const apiKeyCreate: IApiKeyEntity = await apiKeyUseCase.create({
+            name: faker.internet.userName(),
+            description: faker.random.alphaNumeric(),
         });
+        apiKey = await apiKeyService.create(apiKeyCreate);
 
         await app.init();
     });
@@ -257,6 +263,18 @@ describe('E2E Api Key Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_IS_ACTIVE_ERROR
         );
+
+        return;
+    });
+
+    it(`PATCH ${E2E_API_KEY_ADMIN_ACTIVE_URL} Success`, async () => {
+        const response = await request(app.getHttpServer())
+            .patch(E2E_API_KEY_ADMIN_ACTIVE_URL.replace(':_id', apiKey._id))
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-permission-token', permissionToken);
+
+        expect(response.status).toEqual(HttpStatus.OK);
+        expect(response.body.statusCode).toEqual(HttpStatus.OK);
 
         return;
     });

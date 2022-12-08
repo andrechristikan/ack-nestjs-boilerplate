@@ -11,6 +11,8 @@ import {
     UploadedFile,
     ConflictException,
     Patch,
+    HttpCode,
+    HttpStatus,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
@@ -362,6 +364,7 @@ export class UserAdminController {
         ENUM_AUTH_PERMISSIONS.USER_EXPORT
     )
     @AuthJwtAdminAccessProtected()
+    @HttpCode(HttpStatus.OK)
     @Post('/export')
     async export(): Promise<IResponse> {
         return this.userService.findAll({});

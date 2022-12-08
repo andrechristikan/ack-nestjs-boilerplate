@@ -4,7 +4,9 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
+import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
+import { ApiKeyUseCase } from 'src/common/api-key/use-cases/api-key.use-case';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
@@ -23,6 +25,7 @@ import configs from 'src/configs';
 
 describe('LoggerService', () => {
     let apiKeyService: ApiKeyService;
+    let apiKeyUseCase: ApiKeyUseCase;
     let loggerService: LoggerService;
 
     let apiKey: IApiKeyEntity;
@@ -65,7 +68,7 @@ describe('LoggerService', () => {
                     inject: [DatabaseOptionsService],
                     useFactory: (
                         databaseOptionsService: DatabaseOptionsService
-                    ) => databaseOptionsService.createOptions(),
+                    ) => databaseOptionsService.createMongoOptions(),
                 }),
                 ConfigModule.forRoot({
                     load: configs,
@@ -81,11 +84,20 @@ describe('LoggerService', () => {
         }).compile();
 
         loggerService = moduleRef.get<LoggerService>(LoggerService);
+        apiKeyUseCase = moduleRef.get<ApiKeyUseCase>(ApiKeyUseCase);
         apiKeyService = moduleRef.get<ApiKeyService>(ApiKeyService);
 
-        apiKey = await apiKeyService.create({
+        const apiKeyCreate: IApiKeyEntity = await apiKeyUseCase.create({
             name: faker.internet.userName(),
+            description: faker.random.alphaNumeric(),
         });
+        const apiKeyCreated: ApiKeyEntity = await apiKeyService.create(
+            apiKeyCreate
+        );
+        apiKey = {
+            ...apiKeyCreated,
+            secret: apiKeyCreate.secret,
+        };
 
         loggerComplete.apiKey = apiKey._id;
     });

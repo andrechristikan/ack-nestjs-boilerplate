@@ -7,6 +7,8 @@ export const E2E_USER_ADMIN_INACTIVE_URL = '/admin/user/update/:_id/inactive';
 export const E2E_USER_ADMIN_CREATE_URL = '/admin/user/create';
 export const E2E_USER_ADMIN_UPDATE_URL = '/admin/user/update/:_id';
 export const E2E_USER_ADMIN_DELETE_URL = '/admin/user/delete/:_id';
+export const E2E_USER_ADMIN_IMPORT_URL = '/admin/user/import';
+export const E2E_USER_ADMIN_EXPORT_URL = '/admin/user/export';
 
 export const E2E_USER_PROFILE_URL = '/user/profile';
 export const E2E_USER_PROFILE_UPLOAD_URL = '/user/profile/upload';

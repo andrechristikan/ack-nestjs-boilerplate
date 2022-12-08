@@ -6,19 +6,14 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
 import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
 import { ISettingService } from 'src/common/setting/interfaces/setting.service.interface';
 import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingRepository } from 'src/common/setting/repository/repositories/setting.repository';
-import { SettingUseCase } from 'src/common/setting/use-cases/setting.use-case';
 
 @Injectable()
 export class SettingService implements ISettingService {
-    constructor(
-        private readonly settingRepository: SettingRepository,
-        private readonly settingUseCase: SettingUseCase
-    ) {}
+    constructor(private readonly settingRepository: SettingRepository) {}
 
     async findAll(
         find?: Record<string, any>,
@@ -49,12 +44,10 @@ export class SettingService implements ISettingService {
     }
 
     async create(
-        data: SettingCreateDto,
+        data: SettingEntity,
         options?: IDatabaseCreateOptions
     ): Promise<SettingEntity> {
-        const create: SettingEntity = await this.settingUseCase.create(data);
-
-        return this.settingRepository.create<SettingEntity>(create, options);
+        return this.settingRepository.create<SettingEntity>(data, options);
     }
 
     async updateOneById(
@@ -62,11 +55,9 @@ export class SettingService implements ISettingService {
         data: SettingUpdateDto,
         options?: IDatabaseOptions
     ): Promise<SettingEntity> {
-        const update: SettingUpdateDto = await this.settingUseCase.update(data);
-
         return this.settingRepository.updateOneById<SettingUpdateDto>(
             _id,
-            update,
+            data,
             options
         );
     }
@@ -78,29 +69,19 @@ export class SettingService implements ISettingService {
         return this.settingRepository.deleteOne(find, options);
     }
 
-    async getMaintenance(): Promise<boolean> {
-        const setting: SettingEntity = await this.findOneByName('maintenance');
-        return this.settingUseCase.getValue<boolean>(setting);
+    async getMaintenance(): Promise<SettingEntity> {
+        return this.findOneByName('maintenance');
     }
 
-    async getMobileNumberCountryCodeAllowed(): Promise<string[]> {
-        const setting: SettingEntity = await this.findOneByName(
-            'mobileNumberCountryCodeAllowed'
-        );
-        return this.settingUseCase.getValue<string[]>(setting);
+    async getMobileNumberCountryCodeAllowed(): Promise<SettingEntity> {
+        return this.findOneByName('mobileNumberCountryCodeAllowed');
     }
 
-    async getPasswordAttempt(): Promise<boolean> {
-        const setting: SettingEntity = await this.findOneByName(
-            'passwordAttempt'
-        );
-        return this.settingUseCase.getValue<boolean>(setting);
+    async getPasswordAttempt(): Promise<SettingEntity> {
+        return this.findOneByName('passwordAttempt');
     }
 
-    async getMaxPasswordAttempt(): Promise<number> {
-        const setting: SettingEntity = await this.findOneByName(
-            'maxPasswordAttempt'
-        );
-        return this.settingUseCase.getValue<number>(setting);
+    async getMaxPasswordAttempt(): Promise<SettingEntity> {
+        return this.findOneByName('maxPasswordAttempt');
     }
 }

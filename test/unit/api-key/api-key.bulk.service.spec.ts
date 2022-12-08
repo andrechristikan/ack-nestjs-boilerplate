@@ -11,14 +11,17 @@ import { DatabaseOptionsModule } from 'src/common/database/database.options.modu
 import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
+import { ApiKeyUseCase } from 'src/common/api-key/use-cases/api-key.use-case';
+import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 
 describe('ApiKeyBulkService', () => {
     let apiKeyBulkService: ApiKeyBulkKeyService;
     let apiKeyService: ApiKeyService;
+    let apiKeyUseCase: ApiKeyUseCase;
 
     const authApiName: string = faker.random.alphaNumeric(5);
 
-    let authApi: IApiKeyEntity;
+    let apiKey: IApiKeyEntity;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
@@ -29,7 +32,7 @@ describe('ApiKeyBulkService', () => {
                     inject: [DatabaseOptionsService],
                     useFactory: (
                         databaseOptionsService: DatabaseOptionsService
-                    ) => databaseOptionsService.createOptions(),
+                    ) => databaseOptionsService.createMongoOptions(),
                 }),
                 ConfigModule.forRoot({
                     load: configs,
@@ -46,12 +49,20 @@ describe('ApiKeyBulkService', () => {
 
         apiKeyBulkService =
             moduleRef.get<ApiKeyBulkKeyService>(ApiKeyBulkKeyService);
+        apiKeyUseCase = moduleRef.get<ApiKeyUseCase>(ApiKeyUseCase);
         apiKeyService = moduleRef.get<ApiKeyService>(ApiKeyService);
 
-        authApi = await apiKeyService.create({
+        const apiKeyCreate: IApiKeyEntity = await apiKeyUseCase.create({
             name: authApiName,
             description: faker.random.alphaNumeric(),
         });
+        const apiKeyCreated: ApiKeyEntity = await apiKeyService.create(
+            apiKeyCreate
+        );
+        apiKey = {
+            ...apiKeyCreated,
+            secret: apiKeyCreate.secret,
+        };
     });
 
     it('should be defined', async () => {
@@ -67,7 +78,7 @@ describe('ApiKeyBulkService', () => {
 
             expect(
                 await apiKeyBulkService.deleteMany({
-                    _id: authApi._id,
+                    _id: apiKey._id,
                 })
             ).toBe(result);
         });
@@ -76,7 +87,7 @@ describe('ApiKeyBulkService', () => {
     afterEach(async () => {
         try {
             await apiKeyBulkService.deleteMany({
-                _id: authApi._id,
+                _id: apiKey._id,
             });
         } catch (e) {
             console.error(e);

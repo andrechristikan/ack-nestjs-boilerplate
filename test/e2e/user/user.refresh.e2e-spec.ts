@@ -74,17 +74,18 @@ describe('E2E User Refresh', () => {
 
         const passwordHash = await authService.createPassword(password);
 
-        user = await userService.create({
-            username: faker.internet.userName(),
-            firstName: faker.name.firstName(),
-            lastName: faker.name.lastName(),
-            password: passwordHash.passwordHash,
-            passwordExpired: passwordHash.passwordExpired,
-            salt: passwordHash.salt,
-            email: faker.internet.email(),
-            mobileNumber: faker.phone.number('62812#########'),
-            role: `${role._id}`,
-        });
+        user = await userService.create(
+            {
+                username: faker.internet.userName(),
+                firstName: faker.name.firstName(),
+                lastName: faker.name.lastName(),
+                password,
+                email: faker.internet.email(),
+                mobileNumber: faker.phone.number('62812#########'),
+                role: `${role._id}`,
+            },
+            passwordHash
+        );
 
         const userPopulate = await userService.findOneById<IUserEntity>(
             user._id,

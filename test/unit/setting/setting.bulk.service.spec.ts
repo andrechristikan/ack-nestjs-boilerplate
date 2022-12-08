@@ -21,7 +21,7 @@ describe('SettingBulkService', () => {
                     inject: [DatabaseOptionsService],
                     useFactory: (
                         databaseOptionsService: DatabaseOptionsService
-                    ) => databaseOptionsService.createOptions(),
+                    ) => databaseOptionsService.createMongoOptions(),
                 }),
                 ConfigModule.forRoot({
                     load: configs,

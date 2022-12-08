@@ -30,6 +30,7 @@ import {
     E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
     E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
 } from 'test/e2e/user/user.constant';
+import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/constants/permission.status-code.constant';
 
 describe('E2E Role Admin', () => {
     let app: INestApplication;
@@ -205,6 +206,24 @@ describe('E2E Role Admin', () => {
         return;
     });
 
+    it(`POST ${E2E_ROLE_ADMIN_CREATE_URL} Create Permission Not Found`, async () => {
+        const response = await request(app.getHttpServer())
+            .post(E2E_ROLE_ADMIN_CREATE_URL)
+            .send({
+                ...successData,
+                permissions: [DatabaseDefaultUUID()],
+            })
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-permission-token', permissionToken);
+
+        expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
+        expect(response.body.statusCode).toEqual(
+            ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR
+        );
+
+        return;
+    });
+
     it(`POST ${E2E_ROLE_ADMIN_CREATE_URL} Create Success`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_ROLE_ADMIN_CREATE_URL)
@@ -265,6 +284,24 @@ describe('E2E Role Admin', () => {
         expect(response.status).toEqual(HttpStatus.CONFLICT);
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR
+        );
+
+        return;
+    });
+
+    it(`PUT ${E2E_ROLE_ADMIN_UPDATE_URL} Update Permission Not Found`, async () => {
+        const response = await request(app.getHttpServer())
+            .put(E2E_ROLE_ADMIN_UPDATE_URL)
+            .send({
+                ...updateData,
+                permissions: [DatabaseDefaultUUID()],
+            })
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-permission-token', permissionToken);
+
+        expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
+        expect(response.body.statusCode).toEqual(
+            ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR
         );
 
         return;

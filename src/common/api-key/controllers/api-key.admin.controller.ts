@@ -24,9 +24,11 @@ import {
     ApiKeyListDoc,
     ApiKeyResetDoc,
 } from 'src/common/api-key/docs/api-key.admin.doc';
+import { ApiKeyActiveDto } from 'src/common/api-key/dtos/api-key.active.dto';
 import { ApiKeyCreateDto } from 'src/common/api-key/dtos/api-key.create.dto';
 import { ApiKeyListDto } from 'src/common/api-key/dtos/api-key.list.dto';
 import { ApiKeyRequestDto } from 'src/common/api-key/dtos/api-key.request.dto';
+import { ApiKeyResetDto } from 'src/common/api-key/dtos/api-key.reset.dto';
 import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyCreateSerialization } from 'src/common/api-key/serializations/api-key.create.serialization';
@@ -34,6 +36,7 @@ import { ApiKeyGetSerialization } from 'src/common/api-key/serializations/api-ke
 import { ApiKeyListSerialization } from 'src/common/api-key/serializations/api-key.list.serialization';
 import { ApiKeyResetSerialization } from 'src/common/api-key/serializations/api-key.reset.serialization';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
+import { ApiKeyUseCase } from 'src/common/api-key/use-cases/api-key.use-case';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthPermissionProtected } from 'src/common/auth/decorators/auth.permission.decorator';
@@ -57,6 +60,7 @@ import {
 export class ApiKeyAdminController {
     constructor(
         private readonly apiKeyService: ApiKeyService,
+        private readonly apiKeyUseCase: ApiKeyUseCase,
         private readonly paginationService: PaginationService
     ) {}
 
@@ -130,13 +134,12 @@ export class ApiKeyAdminController {
     @Post('/create')
     async create(@Body() body: ApiKeyCreateDto): Promise<IResponse> {
         try {
-            const created: IApiKeyEntity = await this.apiKeyService.create(
-                body
-            );
+            const data: IApiKeyEntity = await this.apiKeyUseCase.create(body);
+            const created: ApiKeyEntity = await this.apiKeyService.create(data);
 
             return {
                 _id: created._id,
-                secret: created.secret,
+                secret: data.secret,
             };
         } catch (err: any) {
             throw new InternalServerErrorException({
@@ -160,7 +163,8 @@ export class ApiKeyAdminController {
     @Patch('/update/:apiKey/inactive')
     async inactive(@GetApiKey() apiKey: ApiKeyEntity): Promise<void> {
         try {
-            await this.apiKeyService.inactive(apiKey._id);
+            const data: ApiKeyActiveDto = await this.apiKeyUseCase.inactive();
+            await this.apiKeyService.updateIsActive(apiKey._id, data);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -185,7 +189,8 @@ export class ApiKeyAdminController {
     @Patch('/update/:apiKey/active')
     async active(@GetApiKey() apiKey: ApiKeyEntity): Promise<void> {
         try {
-            await this.apiKeyService.active(apiKey._id);
+            const data: ApiKeyActiveDto = await this.apiKeyUseCase.active();
+            await this.apiKeyService.updateIsActive(apiKey._id, data);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -210,13 +215,15 @@ export class ApiKeyAdminController {
     @Put('/update/:apiKey/reset')
     async reset(@GetApiKey() apiKey: ApiKeyEntity): Promise<IResponse> {
         try {
+            const data: ApiKeyResetDto = await this.apiKeyUseCase.reset(apiKey);
             const updated = await this.apiKeyService.updateResetById(
-                apiKey._id
+                apiKey._id,
+                data
             );
 
             return {
                 _id: updated._id,
-                secret: updated.secret,
+                secret: data.secret,
             };
         } catch (err: any) {
             throw new InternalServerErrorException({

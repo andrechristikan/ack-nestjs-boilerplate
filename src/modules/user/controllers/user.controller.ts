@@ -32,7 +32,9 @@ import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.enum.cons
 import { Logger } from 'src/common/logger/decorators/logger.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
+import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingService } from 'src/common/setting/services/setting.service';
+import { SettingUseCase } from 'src/common/setting/use-cases/setting.use-case';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
@@ -71,6 +73,7 @@ export class UserController {
         private readonly awsService: AwsS3Service,
         private readonly authService: AuthService,
         private readonly settingService: SettingService,
+        private readonly settingUseCase: SettingUseCase,
         private readonly userUseCase: UserUseCase
     ) {}
 
@@ -95,10 +98,16 @@ export class UserController {
             });
         }
 
-        const passwordAttempt: boolean =
+        const passwordAttemptSetting: SettingEntity =
             await this.settingService.getPasswordAttempt();
-        const maxPasswordAttempt: number =
+        const passwordAttempt: boolean =
+            await this.settingUseCase.getValue<boolean>(passwordAttemptSetting);
+        const maxPasswordAttemptSetting: SettingEntity =
             await this.settingService.getMaxPasswordAttempt();
+        const maxPasswordAttempt: number =
+            await this.settingUseCase.getValue<number>(
+                maxPasswordAttemptSetting
+            );
         if (passwordAttempt && user.passwordAttempt >= maxPasswordAttempt) {
             throw new ForbiddenException({
                 statusCode:
@@ -306,10 +315,16 @@ export class UserController {
             });
         }
 
-        const passwordAttempt: boolean =
+        const passwordAttemptSetting: SettingEntity =
             await this.settingService.getPasswordAttempt();
-        const maxPasswordAttempt: number =
+        const passwordAttempt: boolean =
+            await this.settingUseCase.getValue<boolean>(passwordAttemptSetting);
+        const maxPasswordAttemptSetting: SettingEntity =
             await this.settingService.getMaxPasswordAttempt();
+        const maxPasswordAttempt: number =
+            await this.settingUseCase.getValue<number>(
+                maxPasswordAttemptSetting
+            );
         if (passwordAttempt && user.passwordAttempt >= maxPasswordAttempt) {
             throw new ForbiddenException({
                 statusCode:

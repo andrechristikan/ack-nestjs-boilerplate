@@ -6,7 +6,9 @@ import {
     E2E_USER_ADMIN_ACTIVE_URL,
     E2E_USER_ADMIN_CREATE_URL,
     E2E_USER_ADMIN_DELETE_URL,
+    E2E_USER_ADMIN_EXPORT_URL,
     E2E_USER_ADMIN_GET_URL,
+    E2E_USER_ADMIN_IMPORT_URL,
     E2E_USER_ADMIN_INACTIVE_URL,
     E2E_USER_ADMIN_LIST_URL,
     E2E_USER_ADMIN_UPDATE_URL,
@@ -81,21 +83,20 @@ describe('E2E User Admin', () => {
             role: `${role._id}`,
         };
 
-        const passwordHash = await authService.createPassword(
-            faker.internet.password(20, true, /[A-Za-z0-9]/)
-        );
+        const passwordHash = await authService.createPassword(password);
 
-        userExist = await userService.create({
-            username: faker.internet.userName(),
-            firstName: faker.name.firstName(),
-            lastName: faker.name.lastName(),
-            password: passwordHash.passwordHash,
-            passwordExpired: passwordHash.passwordExpired,
-            salt: passwordHash.salt,
-            email: faker.internet.email(),
-            mobileNumber: faker.phone.number('62812#########'),
-            role: `${role._id}`,
-        });
+        userExist = await userService.create(
+            {
+                username: faker.internet.userName(),
+                firstName: faker.name.firstName(),
+                lastName: faker.name.lastName(),
+                password,
+                email: faker.internet.email(),
+                mobileNumber: faker.phone.number('62812#########'),
+                role: `${role._id}`,
+            },
+            passwordHash
+        );
 
         const user = await userService.findOne<IUserEntity>(
             {
@@ -468,10 +469,35 @@ describe('E2E User Admin', () => {
         return;
     });
 
+    it(`POST ${E2E_USER_ADMIN_IMPORT_URL} Import Success`, async () => {
+        const response = await request(app.getHttpServer())
+            .post(E2E_USER_ADMIN_IMPORT_URL)
+            .attach('file', './test/e2e/user/files/import.csv')
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-permission-token', permissionToken);
+
+        expect(response.status).toEqual(HttpStatus.CREATED);
+        expect(response.body.statusCode).toEqual(HttpStatus.CREATED);
+
+        return;
+    });
+
+    it(`POST ${E2E_USER_ADMIN_EXPORT_URL} Export Success`, async () => {
+        const response = await request(app.getHttpServer())
+            .post(E2E_USER_ADMIN_EXPORT_URL)
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-permission-token', permissionToken);
+
+        expect(response.status).toEqual(HttpStatus.OK);
+
+        return;
+    });
+
     afterAll(async () => {
         try {
             await userService.deleteOneById(userData._id);
             await userService.deleteOneById(userExist._id);
+            await userService.deleteOne({ username: 'test111' });
         } catch (e) {
             console.error(e);
         }

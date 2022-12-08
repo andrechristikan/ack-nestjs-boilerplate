@@ -4,6 +4,7 @@ import request from 'supertest';
 import {
     E2E_PERMISSION_ADMIN_ACTIVE_URL,
     E2E_PERMISSION_ADMIN_GET_URL,
+    E2E_PERMISSION_ADMIN_GROUP_URL,
     E2E_PERMISSION_ADMIN_INACTIVE_URL,
     E2E_PERMISSION_ADMIN_LIST_URL,
     E2E_PERMISSION_ADMIN_UPDATE_URL,
@@ -84,6 +85,18 @@ describe('E2E Permission Admin', () => {
     it(`GET ${E2E_PERMISSION_ADMIN_LIST_URL} List Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_PERMISSION_ADMIN_LIST_URL)
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-permission-token', permissionToken);
+
+        expect(response.status).toEqual(HttpStatus.OK);
+        expect(response.body.statusCode).toEqual(HttpStatus.OK);
+
+        return;
+    });
+
+    it(`GET ${E2E_PERMISSION_ADMIN_GROUP_URL} Group Success`, async () => {
+        const response = await request(app.getHttpServer())
+            .get(E2E_PERMISSION_ADMIN_GROUP_URL)
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-permission-token', permissionToken);
 

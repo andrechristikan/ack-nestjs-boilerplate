@@ -50,26 +50,24 @@ export class SettingUseCase {
         value: string,
         type: ENUM_SETTING_DATA_TYPE
     ): Promise<boolean> {
-        let check = false;
-
         if (
             type === ENUM_SETTING_DATA_TYPE.BOOLEAN &&
             (value === 'true' || value === 'false')
         ) {
-            check = true;
+            return true;
         } else if (
             type === ENUM_SETTING_DATA_TYPE.NUMBER &&
             this.helperNumberService.check(value)
         ) {
-            check = true;
+            return true;
         } else if (
             (type === ENUM_SETTING_DATA_TYPE.STRING ||
                 type === ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING) &&
             typeof value === 'string'
         ) {
-            check = true;
+            return true;
         }
 
-        return check;
+        return false;
     }
 }

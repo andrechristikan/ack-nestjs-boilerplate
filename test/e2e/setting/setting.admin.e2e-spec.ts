@@ -18,9 +18,11 @@ import {
     E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
     E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
 } from 'test/e2e/user/user.constant';
+import { SettingUseCase } from 'src/common/setting/use-cases/setting.use-case';
 
 describe('E2E Setting Admin', () => {
     let app: INestApplication;
+    let settingUseCase: SettingUseCase;
     let settingService: SettingService;
     let authService: AuthService;
 
@@ -50,6 +52,7 @@ describe('E2E Setting Admin', () => {
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         authService = app.get(AuthService);
         settingService = app.get(SettingService);
+        settingUseCase = app.get(SettingUseCase);
 
         const payload = await authService.createPayloadAccessToken(
             {
@@ -64,11 +67,12 @@ describe('E2E Setting Admin', () => {
             _id: payload._id,
         });
 
-        await settingService.create({
+        const settingCreate: SettingEntity = await settingUseCase.create({
             name: settingName,
             value: 'true',
             type: ENUM_SETTING_DATA_TYPE.BOOLEAN,
         });
+        await settingService.create(settingCreate);
         setting = await settingService.findOneByName(settingName);
 
         await app.init();
@@ -106,6 +110,24 @@ describe('E2E Setting Admin', () => {
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
             ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
+        );
+
+        return;
+    });
+
+    it(`PUT ${E2E_SETTING_ADMIN_UPDATE_URL} Update Value Not Allowed`, async () => {
+        const response = await request(app.getHttpServer())
+            .put(E2E_SETTING_ADMIN_UPDATE_URL.replace(':_id', `${setting._id}`))
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-permission-token', permissionToken)
+            .send({
+                value: 'test',
+                type: ENUM_SETTING_DATA_TYPE.BOOLEAN,
+            });
+
+        expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
+        expect(response.body.statusCode).toEqual(
+            ENUM_SETTING_STATUS_CODE_ERROR.SETTING_VALUE_NOT_ALLOWED_ERROR
         );
 
         return;

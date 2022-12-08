@@ -6,21 +6,15 @@
     ],
     "testEnvironment": "node",
     "testMatch": [
-        "<rootDir>/test/e2e/**/*.e2e-spec.ts"
+        "<rootDir>/test/e2e/user/*.e2e-spec.ts"
     ],
     "collectCoverage": true,
     "coverageDirectory": "e2e-coverage",
     "collectCoverageFrom": [
-        "./test/e2e"
+        "./src/common/api-key/controllers/**",
+        "./src/common/setting/controllers/**",
+        "./src/modules/**/controllers/**"
     ],
-    "coverageThreshold": {
-      "global": {
-        "branches": 100,
-        "functions": 100,
-        "lines": 100,
-        "statements": 100
-      }
-    },
     "moduleFileExtensions": [
         "js", 
         "ts", 

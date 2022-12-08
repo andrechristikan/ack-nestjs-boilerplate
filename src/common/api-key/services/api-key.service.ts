@@ -7,25 +7,16 @@ import {
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IApiKeyService } from 'src/common/api-key/interfaces/api-key.service.interface';
-
-import {
-    ApiKeyCreateDto,
-    ApiKeyCreateRawDto,
-} from 'src/common/api-key/dtos/api-key.create.dto';
 import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyRepository } from 'src/common/api-key/repository/repositories/api-key.repository';
-import { ApiKeyUseCase } from 'src/common/api-key/use-cases/api-key.use-case';
 import { ApiKeyActiveDto } from 'src/common/api-key/dtos/api-key.active.dto';
 import { ApiKeyResetDto } from 'src/common/api-key/dtos/api-key.reset.dto';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
-    constructor(
-        private readonly apiKeyRepository: ApiKeyRepository,
-        private readonly apiKeyUseCase: ApiKeyUseCase
-    ) {}
+    constructor(private readonly apiKeyRepository: ApiKeyRepository) {}
 
     async findAll(
         find?: Record<string, any>,
@@ -72,60 +63,28 @@ export class ApiKeyService implements IApiKeyService {
         return this.apiKeyRepository.getTotal(find, options);
     }
 
-    async inactive(
+    async updateIsActive(
         _id: string,
+        data: ApiKeyActiveDto,
         options?: IDatabaseOptions
     ): Promise<ApiKeyEntity> {
-        const update: ApiKeyActiveDto = await this.apiKeyUseCase.inactive();
         return this.apiKeyRepository.updateOneById<ApiKeyActiveDto>(
             _id,
-            update,
-            options
-        );
-    }
-
-    async active(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<ApiKeyEntity> {
-        const update: ApiKeyActiveDto = await this.apiKeyUseCase.active();
-        return this.apiKeyRepository.updateOneById<ApiKeyActiveDto>(
-            _id,
-            update,
+            data,
             options
         );
     }
 
     async create(
-        data: ApiKeyCreateDto,
+        data: IApiKeyEntity,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyEntity> {
-        const create: IApiKeyEntity = await this.apiKeyUseCase.create(data);
+    ): Promise<ApiKeyEntity> {
         const created = await this.apiKeyRepository.create<IApiKeyEntity>(
-            create,
+            data,
             options
         );
 
-        return {
-            ...created,
-            secret: create.secret,
-        };
-    }
-
-    async createRaw(
-        data: ApiKeyCreateRawDto,
-        options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyEntity> {
-        const create: IApiKeyEntity = await this.apiKeyUseCase.createRaw(data);
-        const created = await this.apiKeyRepository.create<IApiKeyEntity>(
-            create,
-            options
-        );
-
-        return {
-            ...created,
-            secret: create.secret,
-        };
+        return created;
     }
 
     async updateOneById(
@@ -142,23 +101,14 @@ export class ApiKeyService implements IApiKeyService {
 
     async updateResetById(
         _id: string,
+        data: ApiKeyResetDto,
         options?: IDatabaseOptions
-    ): Promise<IApiKeyEntity> {
-        const apiKey: ApiKeyEntity = await this.apiKeyRepository.findOneById(
-            _id
+    ): Promise<ApiKeyEntity> {
+        return this.apiKeyRepository.updateOneById<ApiKeyResetDto>(
+            _id,
+            data,
+            options
         );
-        const update: ApiKeyResetDto = await this.apiKeyUseCase.reset(apiKey);
-        const updated =
-            await this.apiKeyRepository.updateOneById<ApiKeyResetDto>(
-                _id,
-                update,
-                options
-            );
-
-        return {
-            ...updated,
-            secret: update.secret,
-        };
     }
 
     async deleteOneById(

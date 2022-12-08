@@ -71,9 +71,13 @@ export class DatabaseOptionsService implements IDatabaseOptionsService {
             url: uri,
             retryDelay: 5000,
             logging:
-                this.env === 'production' ? false : this.debug ? true : false,
-            keepConnectionAlive: this.env === 'production' ? true : false,
-            synchronize: this.env === 'production' ? false : true,
+                this.env === ENUM_APP_ENVIRONMENT.PRODUCTION
+                    ? false
+                    : this.debug,
+            keepConnectionAlive:
+                this.env === ENUM_APP_ENVIRONMENT.PRODUCTION ? true : false,
+            synchronize:
+                this.env === ENUM_APP_ENVIRONMENT.PRODUCTION ? false : true,
             entities: [
                 __dirname +
                     '/../../../{common,modules}/**/**/repository/entities/*.entity{.ts,.js}',

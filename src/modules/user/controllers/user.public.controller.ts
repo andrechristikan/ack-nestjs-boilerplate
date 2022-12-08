@@ -3,14 +3,12 @@ import {
     ConflictException,
     Controller,
     InternalServerErrorException,
-    NotFoundException,
     Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { Response } from 'src/common/response/decorators/response.decorator';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
@@ -40,12 +38,6 @@ export class UserPublicController {
         const role: RoleEntity = await this.roleService.findOne<RoleEntity>({
             name: 'user',
         });
-        if (!role) {
-            throw new NotFoundException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
-                message: 'role.error.notFound',
-            });
-        }
 
         const usernameExist: boolean = await this.userService.existUsername(
             username

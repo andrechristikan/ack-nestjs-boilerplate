@@ -1,9 +1,7 @@
-import {
-    ApiKeyCreateDto,
-    ApiKeyCreateRawDto,
-} from 'src/common/api-key/dtos/api-key.create.dto';
+import { ApiKeyActiveDto } from 'src/common/api-key/dtos/api-key.active.dto';
+import { ApiKeyCreateDto } from 'src/common/api-key/dtos/api-key.create.dto';
+import { ApiKeyResetDto } from 'src/common/api-key/dtos/api-key.reset.dto';
 import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
-import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import {
     IDatabaseCreateOptions,
@@ -44,19 +42,16 @@ export interface IApiKeyService {
         options?: IDatabaseOptions
     ): Promise<number>;
 
-    inactive(_id: string, options?: IDatabaseOptions): Promise<ApiKeyEntity>;
-
-    active(_id: string, options?: IDatabaseOptions): Promise<ApiKeyEntity>;
+    updateIsActive(
+        _id: string,
+        data: ApiKeyActiveDto,
+        options?: IDatabaseOptions
+    ): Promise<ApiKeyEntity>;
 
     create(
         { name, description }: ApiKeyCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyEntity>;
-
-    createRaw(
-        { name, description, key, secret }: ApiKeyCreateRawDto,
-        options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyEntity>;
+    ): Promise<ApiKeyEntity>;
 
     updateOneById(
         _id: string,
@@ -66,8 +61,9 @@ export interface IApiKeyService {
 
     updateResetById(
         _id: string,
+        data: ApiKeyResetDto,
         options?: IDatabaseOptions
-    ): Promise<IApiKeyEntity>;
+    ): Promise<ApiKeyEntity>;
 
     deleteOneById(
         _id: string,

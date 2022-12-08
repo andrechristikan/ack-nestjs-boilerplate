@@ -5,7 +5,6 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
 import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
 import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 
@@ -31,7 +30,7 @@ export interface ISettingService {
     ): Promise<number>;
 
     create(
-        data: SettingCreateDto,
+        data: SettingEntity,
         options?: IDatabaseCreateOptions
     ): Promise<SettingEntity>;
 
@@ -46,11 +45,11 @@ export interface ISettingService {
         options?: IDatabaseSoftDeleteOptions
     ): Promise<SettingEntity>;
 
-    getMaintenance(): Promise<boolean>;
+    getMaintenance(): Promise<SettingEntity>;
 
-    getMobileNumberCountryCodeAllowed(): Promise<string[]>;
+    getMobileNumberCountryCodeAllowed(): Promise<SettingEntity>;
 
-    getPasswordAttempt(): Promise<boolean>;
+    getPasswordAttempt(): Promise<SettingEntity>;
 
-    getMaxPasswordAttempt(): Promise<number>;
+    getMaxPasswordAttempt(): Promise<SettingEntity>;
 }

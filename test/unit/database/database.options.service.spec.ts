@@ -39,32 +39,49 @@ describe('DatabaseOptionsService', () => {
         expect(databaseOptionsService).toBeDefined();
     });
 
-    describe('createOptions', () => {
+    describe('createMongoOptions', () => {
         it('should be called', async () => {
-            const test = jest.spyOn(databaseOptionsService, 'createOptions');
+            const test = jest.spyOn(
+                databaseOptionsService,
+                'createMongoOptions'
+            );
 
-            databaseOptionsService.createOptions();
+            databaseOptionsService.createMongoOptions();
             expect(test).toHaveBeenCalled();
         });
 
         it('should be success', async () => {
-            const options = databaseOptionsService.createOptions();
+            const options = databaseOptionsService.createMongoOptions();
             jest.spyOn(
                 databaseOptionsService,
-                'createOptions'
+                'createMongoOptions'
             ).mockImplementation(() => options);
 
-            expect(databaseOptionsService.createOptions()).toBe(options);
+            expect(databaseOptionsService.createMongoOptions()).toBe(options);
+        });
+    });
+
+    describe('createPostgresOptions', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(
+                databaseOptionsService,
+                'createPostgresOptions'
+            );
+
+            databaseOptionsService.createPostgresOptions();
+            expect(test).toHaveBeenCalled();
         });
 
         it('should be success', async () => {
-            const options = databaseOptionsService.createOptions();
+            const options = databaseOptionsService.createPostgresOptions();
             jest.spyOn(
                 databaseOptionsService,
-                'createOptions'
+                'createPostgresOptions'
             ).mockImplementation(() => options);
 
-            expect(databaseOptionsService.createOptions()).toBe(options);
+            expect(databaseOptionsService.createPostgresOptions()).toBe(
+                options
+            );
         });
     });
 });
@@ -99,32 +116,49 @@ describe('DatabaseOptionsService Production', () => {
         expect(databaseOptionsService).toBeDefined();
     });
 
-    describe('createOptions', () => {
+    describe('createMongoOptions', () => {
         it('should be called', async () => {
-            const test = jest.spyOn(databaseOptionsService, 'createOptions');
+            const test = jest.spyOn(
+                databaseOptionsService,
+                'createMongoOptions'
+            );
 
-            databaseOptionsService.createOptions();
+            databaseOptionsService.createMongoOptions();
             expect(test).toHaveBeenCalled();
         });
 
         it('should be success', async () => {
-            const options = databaseOptionsService.createOptions();
+            const options = databaseOptionsService.createMongoOptions();
             jest.spyOn(
                 databaseOptionsService,
-                'createOptions'
+                'createMongoOptions'
             ).mockImplementation(() => options);
 
-            expect(databaseOptionsService.createOptions()).toBe(options);
+            expect(databaseOptionsService.createMongoOptions()).toBe(options);
+        });
+    });
+
+    describe('createPostgresOptions', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(
+                databaseOptionsService,
+                'createPostgresOptions'
+            );
+
+            databaseOptionsService.createPostgresOptions();
+            expect(test).toHaveBeenCalled();
         });
 
         it('should be success', async () => {
-            const options = databaseOptionsService.createOptions();
+            const options = databaseOptionsService.createPostgresOptions();
             jest.spyOn(
                 databaseOptionsService,
-                'createOptions'
+                'createPostgresOptions'
             ).mockImplementation(() => options);
 
-            expect(databaseOptionsService.createOptions()).toBe(options);
+            expect(databaseOptionsService.createPostgresOptions()).toBe(
+                options
+            );
         });
     });
 });
