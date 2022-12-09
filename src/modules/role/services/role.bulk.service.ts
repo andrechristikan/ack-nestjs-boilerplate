@@ -3,18 +3,13 @@ import {
     IDatabaseCreateManyOptions,
     IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { IRoleBulkService } from 'src/modules/role/interfaces/role.bulk-service.interface';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { RoleRepository } from 'src/modules/role/repository/repositories/role.repository';
-import { RoleUseCase } from 'src/modules/role/use-cases/role.use-case';
 
 @Injectable()
 export class RoleBulkService implements IRoleBulkService {
-    constructor(
-        private readonly roleRepository: RoleRepository,
-        private readonly roleUseCase: RoleUseCase
-    ) {}
+    constructor(private readonly roleRepository: RoleRepository) {}
 
     async deleteMany(
         find: Record<string, any>,
@@ -24,14 +19,9 @@ export class RoleBulkService implements IRoleBulkService {
     }
 
     async createMany(
-        data: RoleCreateDto[],
+        data: RoleEntity[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean> {
-        const map: Promise<RoleEntity>[] = data.map((val) =>
-            this.roleUseCase.create(val)
-        );
-        const create: RoleEntity[] = await Promise.all(map);
-
-        return this.roleRepository.createMany<RoleEntity>(create, options);
+        return this.roleRepository.createMany<RoleEntity>(data, options);
     }
 }

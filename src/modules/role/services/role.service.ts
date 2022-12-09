@@ -8,19 +8,14 @@ import {
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { RoleActiveDto } from 'src/modules/role/dtos/role.active.dto';
-import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
 import { IRoleService } from 'src/modules/role/interfaces/role.service.interface';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { RoleRepository } from 'src/modules/role/repository/repositories/role.repository';
-import { RoleUseCase } from 'src/modules/role/use-cases/role.use-case';
 
 @Injectable()
 export class RoleService implements IRoleService {
-    constructor(
-        private readonly roleRepository: RoleRepository,
-        private readonly roleUseCase: RoleUseCase
-    ) {}
+    constructor(private readonly roleRepository: RoleRepository) {}
 
     async findAll<T>(
         find?: Record<string, any>,
@@ -63,20 +58,10 @@ export class RoleService implements IRoleService {
     }
 
     async create(
-        data: RoleCreateDto,
+        data: RoleEntity,
         options?: IDatabaseCreateOptions
     ): Promise<RoleEntity> {
-        const create: RoleEntity = await this.roleUseCase.create(data);
-
-        return this.roleRepository.create<RoleEntity>(create, options);
-    }
-
-    async createSuperAdmin(
-        options?: IDatabaseCreateOptions
-    ): Promise<RoleEntity> {
-        const create: RoleEntity = await this.roleUseCase.createSuperAdmin();
-
-        return this.roleRepository.create<RoleEntity>(create, options);
+        return this.roleRepository.create<RoleEntity>(data, options);
     }
 
     async update(
@@ -84,33 +69,21 @@ export class RoleService implements IRoleService {
         data: RoleUpdateDto,
         options?: IDatabaseOptions
     ): Promise<RoleEntity> {
-        const update: RoleUpdateDto = await this.roleUseCase.update(data);
         return this.roleRepository.updateOneById<RoleUpdateDto>(
             _id,
-            update,
+            data,
             options
         );
     }
 
-    async inactive(
+    async updateIsActive(
         _id: string,
+        data: RoleActiveDto,
         options?: IDatabaseOptions
     ): Promise<RoleEntity> {
-        const update: RoleActiveDto = await this.roleUseCase.inactive();
-
         return this.roleRepository.updateOneById<RoleActiveDto>(
             _id,
-            update,
-            options
-        );
-    }
-
-    async active(_id: string, options?: IDatabaseOptions): Promise<RoleEntity> {
-        const update: RoleActiveDto = await this.roleUseCase.active();
-
-        return this.roleRepository.updateOneById<RoleActiveDto>(
-            _id,
-            update,
+            data,
             options
         );
     }

@@ -67,7 +67,7 @@ describe('E2E User', () => {
         const password = faker.internet.password(20, true, /[A-Za-z0-9]/);
         const passwordHash = await authService.createPassword(password);
 
-        user = await userService.create(
+        const data: UserEntity = await userUseCase.create(
             {
                 username: faker.internet.userName(),
                 firstName: faker.name.firstName(),
@@ -79,6 +79,7 @@ describe('E2E User', () => {
             },
             passwordHash
         );
+        user = await userService.create(data);
 
         const userPopulate = await userService.findOneById<IUserEntity>(
             user._id,

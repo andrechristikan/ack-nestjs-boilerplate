@@ -72,6 +72,9 @@ import { UserListSerialization } from 'src/modules/user/serializations/user.list
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthPermissionProtected } from 'src/common/auth/decorators/auth.permission.decorator';
+import { UserUseCase } from 'src/modules/user/use-cases/user.use-case';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
+import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -83,6 +86,7 @@ export class UserAdminController {
         private readonly authService: AuthService,
         private readonly paginationService: PaginationService,
         private readonly userService: UserService,
+        private readonly userUseCase: UserUseCase,
         private readonly roleService: RoleService
     ) {}
 
@@ -206,10 +210,11 @@ export class UserAdminController {
                 body.password
             );
 
-            const create = await this.userService.create(
+            const data: UserEntity = await this.userUseCase.create(
                 { username, email, mobileNumber, role, ...body },
                 password
             );
+            const create = await this.userService.create(data);
 
             return {
                 _id: create._id,
@@ -292,7 +297,8 @@ export class UserAdminController {
     @Patch('/update/:user/inactive')
     async inactive(@GetUser() user: IUserEntity): Promise<void> {
         try {
-            await this.userService.inactive(user._id);
+            const data: UserActiveDto = await this.userUseCase.inactive();
+            await this.userService.updateIsActive(user._id, data);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -317,7 +323,8 @@ export class UserAdminController {
     @Patch('/update/:user/active')
     async active(@GetUser() user: IUserEntity): Promise<void> {
         try {
-            await this.userService.active(user._id);
+            const data: UserActiveDto = await this.userUseCase.active();
+            await this.userService.updateIsActive(user._id, data);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

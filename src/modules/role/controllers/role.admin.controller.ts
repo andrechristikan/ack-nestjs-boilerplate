@@ -48,6 +48,7 @@ import {
     RoleListDoc,
     RoleUpdateDoc,
 } from 'src/modules/role/docs/role.admin.doc';
+import { RoleActiveDto } from 'src/modules/role/dtos/role.active.dto';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleListDto } from 'src/modules/role/dtos/role.list.dto';
 import { RoleRequestDto } from 'src/modules/role/dtos/role.request.dto';
@@ -57,6 +58,7 @@ import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
 import { RoleListSerialization } from 'src/modules/role/serializations/role.list.serialization';
 import { RoleService } from 'src/modules/role/services/role.service';
+import { RoleUseCase } from 'src/modules/role/use-cases/role.use-case';
 
 @ApiTags('modules.admin.role')
 @Controller({
@@ -66,8 +68,9 @@ import { RoleService } from 'src/modules/role/services/role.service';
 export class RoleAdminController {
     constructor(
         private readonly paginationService: PaginationService,
+        private readonly permissionService: PermissionService,
         private readonly roleService: RoleService,
-        private readonly permissionService: PermissionService
+        private readonly roleUseCase: RoleUseCase
     ) {}
 
     @RoleListDoc()
@@ -173,11 +176,12 @@ export class RoleAdminController {
         }
 
         try {
-            const create = await this.roleService.create({
+            const data: RoleEntity = await this.roleUseCase.create({
                 name,
                 permissions,
                 accessFor,
             });
+            const create = await this.roleService.create(data);
 
             return {
                 _id: create._id,
@@ -232,11 +236,12 @@ export class RoleAdminController {
         }
 
         try {
-            await this.roleService.update(role._id, {
+            const data: RoleUpdateDto = await this.roleUseCase.update({
                 name,
                 permissions,
                 accessFor,
             });
+            await this.roleService.update(role._id, data);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -286,7 +291,8 @@ export class RoleAdminController {
     @Patch('/update/:role/inactive')
     async inactive(@GetRole() role: IRoleEntity): Promise<void> {
         try {
-            await this.roleService.inactive(role._id);
+            const update: RoleActiveDto = await this.roleUseCase.inactive();
+            await this.roleService.updateIsActive(role._id, update);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -311,7 +317,8 @@ export class RoleAdminController {
     @Patch('/update/:role/active')
     async active(@GetRole() role: IRoleEntity): Promise<void> {
         try {
-            await this.roleService.active(role._id);
+            const update: RoleActiveDto = await this.roleUseCase.active();
+            await this.roleService.updateIsActive(role._id, update);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

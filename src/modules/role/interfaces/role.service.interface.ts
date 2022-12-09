@@ -6,7 +6,7 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
+import { RoleActiveDto } from 'src/modules/role/dtos/role.active.dto';
 import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 
@@ -31,11 +31,9 @@ export interface IRoleService {
     exists(name: string, options?: IDatabaseExistOptions): Promise<boolean>;
 
     create(
-        data: RoleCreateDto,
+        data: RoleEntity,
         options?: IDatabaseCreateOptions
     ): Promise<RoleEntity>;
-
-    createSuperAdmin(options?: IDatabaseCreateOptions): Promise<RoleEntity>;
 
     update(
         _id: string,
@@ -43,9 +41,11 @@ export interface IRoleService {
         options?: IDatabaseOptions
     ): Promise<RoleEntity>;
 
-    inactive(_id: string, options?: IDatabaseOptions): Promise<RoleEntity>;
-
-    active(_id: string, options?: IDatabaseOptions): Promise<RoleEntity>;
+    updateIsActive(
+        _id: string,
+        data: RoleActiveDto,
+        options?: IDatabaseOptions
+    ): Promise<RoleEntity>;
 
     deleteOneById(
         _id: string,

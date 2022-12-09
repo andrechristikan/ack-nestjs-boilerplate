@@ -2,7 +2,7 @@ import {
     IDatabaseCreateManyOptions,
     IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 
 export interface IRoleBulkService {
     deleteMany(
@@ -11,7 +11,7 @@ export interface IRoleBulkService {
     ): Promise<boolean>;
 
     createMany(
-        data: RoleCreateDto[],
+        data: RoleEntity[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean>;
 }

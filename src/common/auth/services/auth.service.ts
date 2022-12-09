@@ -31,7 +31,7 @@ export class AuthService implements IAuthService {
     private readonly issuer: string;
     private readonly subject: string;
 
-    private readonly passwordExpiredInMs: number;
+    private readonly passwordExpiredIn: number;
     private readonly passwordSaltLength: number;
 
     private readonly permissionTokenSecretToken: string;
@@ -94,8 +94,8 @@ export class AuthService implements IAuthService {
         this.audience = this.configService.get<string>('auth.audience');
         this.issuer = this.configService.get<string>('auth.issuer');
 
-        this.passwordExpiredInMs = this.configService.get<number>(
-            'auth.password.expiredInMs'
+        this.passwordExpiredIn = this.configService.get<number>(
+            'auth.password.expiredIn'
         );
         this.passwordSaltLength = this.configService.get<number>(
             'auth.password.saltLength'
@@ -312,10 +312,9 @@ export class AuthService implements IAuthService {
             this.passwordSaltLength
         );
 
-        const passwordExpired: Date =
-            this.helperDateService.forwardInMilliseconds(
-                this.passwordExpiredInMs
-            );
+        const passwordExpired: Date = this.helperDateService.forwardInSeconds(
+            this.passwordExpiredIn
+        );
         const passwordHash = this.helperHashService.bcrypt(password, salt);
         return {
             passwordHash,

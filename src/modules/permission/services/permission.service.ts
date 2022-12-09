@@ -8,20 +8,15 @@ import {
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_PAGINATION_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { PermissionActiveDto } from 'src/modules/permission/dtos/permission.active.dto';
-import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
 import { PermissionUpdateGroupDto } from 'src/modules/permission/dtos/permission.update-group.dto';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
 import { IPermissionService } from 'src/modules/permission/interfaces/permission.service.interface';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { PermissionRepository } from 'src/modules/permission/repository/repositories/permission.repository';
-import { PermissionUseCase } from 'src/modules/permission/use-cases/permission.use-case';
 
 @Injectable()
 export class PermissionService implements IPermissionService {
-    constructor(
-        private readonly permissionRepository: PermissionRepository,
-        private readonly permissionUseCase: PermissionUseCase
-    ) {}
+    constructor(private readonly permissionRepository: PermissionRepository) {}
 
     async findAll(
         find?: Record<string, any>,
@@ -78,15 +73,11 @@ export class PermissionService implements IPermissionService {
     }
 
     async create(
-        data: PermissionCreateDto,
+        data: PermissionEntity,
         options?: IDatabaseCreateOptions
     ): Promise<PermissionEntity> {
-        const create: PermissionEntity = await this.permissionUseCase.create(
-            data
-        );
-
         return this.permissionRepository.create<PermissionEntity>(
-            create,
+            data,
             options
         );
     }
@@ -96,13 +87,9 @@ export class PermissionService implements IPermissionService {
         data: PermissionUpdateDto,
         options?: IDatabaseOptions
     ): Promise<PermissionEntity> {
-        const update: PermissionUpdateDto = await this.permissionUseCase.update(
-            data
-        );
-
         return this.permissionRepository.updateOneById<PermissionUpdateDto>(
             _id,
-            update,
+            data,
             options
         );
     }
@@ -112,40 +99,21 @@ export class PermissionService implements IPermissionService {
         data: PermissionUpdateGroupDto,
         options?: IDatabaseOptions
     ): Promise<PermissionEntity> {
-        const update: PermissionUpdateGroupDto =
-            await this.permissionUseCase.updateGroup(data);
-
         return this.permissionRepository.updateOneById<PermissionUpdateGroupDto>(
             _id,
-            update,
+            data,
             options
         );
     }
 
-    async inactive(
+    async updateIsActive(
         _id: string,
+        data: PermissionActiveDto,
         options?: IDatabaseOptions
     ): Promise<PermissionEntity> {
-        const update: PermissionActiveDto =
-            await this.permissionUseCase.inactive();
-
         return this.permissionRepository.updateOneById<PermissionActiveDto>(
             _id,
-            update,
-            options
-        );
-    }
-
-    async active(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<PermissionEntity> {
-        const update: PermissionActiveDto =
-            await this.permissionUseCase.active();
-
-        return this.permissionRepository.updateOneById<PermissionActiveDto>(
-            _id,
-            update,
+            data,
             options
         );
     }

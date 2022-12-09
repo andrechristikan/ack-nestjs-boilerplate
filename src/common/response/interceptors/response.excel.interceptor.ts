@@ -3,6 +3,7 @@ import {
     NestInterceptor,
     ExecutionContext,
     CallHandler,
+    StreamableFile,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -38,6 +39,12 @@ export class ResponseExcelInterceptor implements NestInterceptor<Promise<any>> {
         context: ExecutionContext,
         next: CallHandler
     ): Promise<Observable<Promise<Record<string, any>>>> {
+        const excelType: ENUM_HELPER_FILE_TYPE =
+            this.reflector.get<ENUM_HELPER_FILE_TYPE>(
+                RESPONSE_EXCEL_TYPE_META_KEY,
+                context.getHandler()
+            );
+
         if (context.getType() === 'http') {
             return next.handle().pipe(
                 map(async (responseData: Promise<IResponseExcel>) => {
@@ -52,11 +59,6 @@ export class ResponseExcelInterceptor implements NestInterceptor<Promise<any>> {
                     const classSerializationOptions: ClassTransformOptions =
                         this.reflector.get<ClassTransformOptions>(
                             RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
-                            context.getHandler()
-                        );
-                    const excelType: ENUM_HELPER_FILE_TYPE =
-                        this.reflector.get<ENUM_HELPER_FILE_TYPE>(
-                            RESPONSE_EXCEL_TYPE_META_KEY,
                             context.getHandler()
                         );
 
@@ -83,18 +85,18 @@ export class ResponseExcelInterceptor implements NestInterceptor<Promise<any>> {
 
                     // set headers
                     const timestamp = this.helperDateService.timestamp();
-                    responseExpress.setHeader(
-                        'Content-Type',
-                        ENUM_FILE_EXCEL_MIME[excelType.toUpperCase()]
-                    );
-                    responseExpress.setHeader(
-                        'Content-Disposition',
-                        `attachment; filename=export-${timestamp}.${excelType}`
-                    );
-                    responseExpress.setHeader('Content-Length', excel.length);
+                    responseExpress
+                        .setHeader(
+                            'Content-Type',
+                            ENUM_FILE_EXCEL_MIME[excelType.toUpperCase()]
+                        )
+                        .setHeader(
+                            'Content-Disposition',
+                            `attachment; filename=export-${timestamp}.${excelType}`
+                        )
+                        .setHeader('Content-Length', excel.length);
 
-                    // send excel
-                    return responseExpress.send(excel);
+                    return new StreamableFile(excel);
                 })
             );
         }

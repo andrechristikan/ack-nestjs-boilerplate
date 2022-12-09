@@ -52,6 +52,9 @@ import {
 import { UserChangePasswordDto } from 'src/modules/user/dtos/user.change-password.dto';
 import { UserGrantPermissionDto } from 'src/modules/user/dtos/user.grant-permission.dto';
 import { UserLoginDto } from 'src/modules/user/dtos/user.login.dto';
+import { UserPasswordAttemptDto } from 'src/modules/user/dtos/user.password-attempt.dto';
+import { UserPasswordDto } from 'src/modules/user/dtos/user.password.dto';
+import { UserPhotoDto } from 'src/modules/user/dtos/user.photo.dto';
 import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { UserGrantPermissionSerialization } from 'src/modules/user/serializations/user.grant-permission.serialization';
@@ -121,8 +124,11 @@ export class UserController {
             user.password
         );
         if (!validate) {
-            if (passwordAttempt)
-                await this.userService.increasePasswordAttempt(user._id);
+            if (passwordAttempt) {
+                const data: UserPasswordAttemptDto =
+                    await this.userUseCase.increasePasswordAttempt(user);
+                await this.userService.updatePasswordAttempt(user._id, data);
+            }
 
             throw new BadRequestException({
                 statusCode:
@@ -143,7 +149,9 @@ export class UserController {
 
         if (passwordAttempt) {
             try {
-                await this.userService.resetPasswordAttempt(user._id);
+                const data: UserPasswordAttemptDto =
+                    await this.userUseCase.resetPasswordAttempt();
+                await this.userService.updatePasswordAttempt(user._id, data);
             } catch (err: any) {
                 throw new InternalServerErrorException({
                     statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -338,8 +346,11 @@ export class UserController {
             user.password
         );
         if (!matchPassword) {
-            if (passwordAttempt)
-                await this.userService.increasePasswordAttempt(user._id);
+            if (passwordAttempt) {
+                const data: UserPasswordAttemptDto =
+                    await this.userUseCase.increasePasswordAttempt(user);
+                await this.userService.updatePasswordAttempt(user._id, data);
+            }
 
             throw new BadRequestException({
                 statusCode:
@@ -362,7 +373,9 @@ export class UserController {
 
         if (passwordAttempt) {
             try {
-                await this.userService.resetPasswordAttempt(user._id);
+                const data: UserPasswordAttemptDto =
+                    await this.userUseCase.resetPasswordAttempt();
+                await this.userService.updatePasswordAttempt(user._id, data);
             } catch (err: any) {
                 throw new InternalServerErrorException({
                     statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -377,7 +390,10 @@ export class UserController {
                 body.newPassword
             );
 
-            await this.userService.updatePassword(user._id, password);
+            const data: UserPasswordDto = await this.userUseCase.updatePassword(
+                password
+            );
+            await this.userService.updatePassword(user._id, data);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -498,7 +514,8 @@ export class UserController {
                     }
                 );
 
-            await this.userService.updatePhoto(user._id, aws);
+            const data: UserPhotoDto = await this.userUseCase.updatePhoto(aws);
+            await this.userService.updatePhoto(user._id, data);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

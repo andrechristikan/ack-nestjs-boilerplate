@@ -25,11 +25,13 @@ import {
     E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
     E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
 } from 'test/e2e/user/user.constant';
+import { PermissionUseCase } from 'src/modules/permission/use-cases/permission.use-case';
 
 describe('E2E Permission Admin', () => {
     let app: INestApplication;
     let authService: AuthService;
     let permissionService: PermissionService;
+    let permissionUseCase: PermissionUseCase;
 
     let accessToken: string;
     let permissionToken: string;
@@ -59,6 +61,7 @@ describe('E2E Permission Admin', () => {
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         authService = app.get(AuthService);
         permissionService = app.get(PermissionService);
+        permissionUseCase = app.get(PermissionUseCase);
 
         const payload = await authService.createPayloadAccessToken(
             {
@@ -73,11 +76,14 @@ describe('E2E Permission Admin', () => {
             _id: payload._id,
         });
 
-        permission = await permissionService.create({
-            code: 'TEST_PERMISSION_XXXX',
-            description: 'test description',
-            group: ENUM_PERMISSION_GROUP.PERMISSION,
-        });
+        const permissionData: PermissionEntity = await permissionUseCase.create(
+            {
+                code: 'TEST_PERMISSION_XXXX',
+                description: 'test description',
+                group: ENUM_PERMISSION_GROUP.PERMISSION,
+            }
+        );
+        permission = await permissionService.create(permissionData);
 
         await app.init();
     });

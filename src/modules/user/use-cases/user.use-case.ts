@@ -120,8 +120,15 @@ export class UserUseCase {
         return plainToInstance(UserPayloadSerialization, data);
     }
 
+    async maxPasswordAttempt(): Promise<UserPasswordAttemptDto> {
+        const update: UserPasswordAttemptDto = new UserPasswordAttemptDto();
+
+        update.passwordAttempt = 3;
+        return update;
+    }
+
     async increasePasswordAttempt(
-        user: UserEntity
+        user: UserEntity | IUserEntity
     ): Promise<UserPasswordAttemptDto> {
         const update: UserPasswordAttemptDto = new UserPasswordAttemptDto();
 

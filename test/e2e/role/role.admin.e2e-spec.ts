@@ -31,11 +31,13 @@ import {
     E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
 } from 'test/e2e/user/user.constant';
 import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/constants/permission.status-code.constant';
+import { RoleUseCase } from 'src/modules/role/use-cases/role.use-case';
 
 describe('E2E Role Admin', () => {
     let app: INestApplication;
     let authService: AuthService;
     let roleService: RoleService;
+    let roleUseCase: RoleUseCase;
     let permissionService: PermissionService;
     let roleBulkService: RoleBulkService;
 
@@ -69,6 +71,7 @@ describe('E2E Role Admin', () => {
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
+        roleUseCase = app.get(RoleUseCase);
         roleBulkService = app.get(RoleBulkService);
         permissionService = app.get(PermissionService);
 
@@ -95,11 +98,12 @@ describe('E2E Role Admin', () => {
             accessFor: ENUM_AUTH_ACCESS_FOR.ADMIN,
         };
 
-        roleUpdate = await roleService.create({
+        const dataUpdate = await roleUseCase.create({
             name: 'testRole2',
             permissions: permissions.map((val) => `${val._id}`),
             accessFor: ENUM_AUTH_ACCESS_FOR.ADMIN,
         });
+        roleUpdate = await roleService.create(dataUpdate);
 
         updateData = {
             name: 'testRole3',
@@ -113,7 +117,8 @@ describe('E2E Role Admin', () => {
             accessFor: ENUM_AUTH_ACCESS_FOR.ADMIN,
         };
 
-        role = await roleService.create(existData);
+        const dataExist = await roleUseCase.create(existData);
+        role = await roleService.create(dataExist);
 
         const payload = await authService.createPayloadAccessToken(
             {

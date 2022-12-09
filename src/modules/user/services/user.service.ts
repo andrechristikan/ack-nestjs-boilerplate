@@ -9,24 +9,17 @@ import {
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
-import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { UserPhotoDto } from 'src/modules/user/dtos/user.photo.dto';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
 import { UserPasswordDto } from 'src/modules/user/dtos/user.password.dto';
 import { UserPasswordExpiredDto } from 'src/modules/user/dtos/user.password-expired.dto';
 import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
-import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
-import { UserUseCase } from 'src/modules/user/use-cases/user.use-case';
 import { UserPasswordAttemptDto } from 'src/modules/user/dtos/user.password-attempt.dto';
-import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 
 @Injectable()
 export class UserService implements IUserService {
-    constructor(
-        private readonly userRepository: UserRepository,
-        private readonly userUseCase: UserUseCase
-    ) {}
+    constructor(private readonly userRepository: UserRepository) {}
 
     async findAll<T>(
         find?: Record<string, any>,
@@ -64,16 +57,10 @@ export class UserService implements IUserService {
     }
 
     async create(
-        data: UserCreateDto,
-        password: IAuthPassword,
+        data: UserEntity,
         options?: IDatabaseCreateOptions
     ): Promise<UserEntity> {
-        const create: UserEntity = await this.userUseCase.create(
-            data,
-            password
-        );
-
-        return this.userRepository.create<UserEntity>(create, options);
+        return this.userRepository.create<UserEntity>(data, options);
     }
 
     async deleteOneById(
@@ -95,11 +82,9 @@ export class UserService implements IUserService {
         data: UserUpdateDto,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserUpdateDto = await this.userUseCase.update(data);
-
         return this.userRepository.updateOneById<UserUpdateDto>(
             _id,
-            update,
+            data,
             options
         );
     }
@@ -140,98 +125,61 @@ export class UserService implements IUserService {
 
     async updatePhoto(
         _id: string,
-        photo: AwsS3Serialization,
+        data: UserPhotoDto,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserPhotoDto = await this.userUseCase.updatePhoto(photo);
-
         return this.userRepository.updateOneById<UserPhotoDto>(
             _id,
-            update,
+            data,
             options
         );
     }
 
     async updatePassword(
         _id: string,
-        data: IAuthPassword,
+        data: UserPasswordDto,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserPasswordDto = await this.userUseCase.updatePassword(
-            data
-        );
-
         return this.userRepository.updateOneById<UserPasswordDto>(
             _id,
-            update,
+            data,
             options
         );
     }
 
     async updatePasswordExpired(
         _id: string,
-        passwordExpired: Date,
+        data: UserPasswordExpiredDto,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserPasswordExpiredDto =
-            await this.userUseCase.updatePasswordExpired(passwordExpired);
-
         return this.userRepository.updateOneById<UserPasswordExpiredDto>(
             _id,
-            update,
+            data,
             options
         );
     }
 
-    async inactive(
+    async updateIsActive(
         _id: string,
+        data: UserActiveDto,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserActiveDto = await this.userUseCase.inactive();
-
         return this.userRepository.updateOneById<UserActiveDto>(
             _id,
-            update,
+            data,
             options
         );
     }
 
-    async active(_id: string, options?: IDatabaseOptions): Promise<UserEntity> {
-        const update: UserActiveDto = await this.userUseCase.active();
-
-        return this.userRepository.updateOneById<UserActiveDto>(
-            _id,
-            update,
-            options
-        );
-    }
-
-    async increasePasswordAttempt(
+    async updatePasswordAttempt(
         _id: string,
+        data: UserPasswordAttemptDto,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const user: UserEntity = await this.userRepository.findOneById(
-            _id,
-            options
-        );
-
-        const update: UserPasswordAttemptDto =
-            await this.userUseCase.increasePasswordAttempt(user);
-
         return this.userRepository.updateOneById<UserPasswordAttemptDto>(
             _id,
-            update,
+            data,
             options
         );
-    }
-
-    async resetPasswordAttempt(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<UserEntity> {
-        const update: UserPasswordAttemptDto =
-            await this.userUseCase.resetPasswordAttempt();
-
-        return this.userRepository.updateOneById(_id, update, options);
     }
 }

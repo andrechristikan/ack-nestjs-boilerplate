@@ -2,11 +2,11 @@ import {
     IDatabaseCreateManyOptions,
     IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 
 export interface IPermissionBulkService {
     createMany(
-        data: PermissionCreateDto[],
+        data: PermissionEntity[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean>;
 

@@ -54,7 +54,7 @@ export default registerAs(
 
         password: {
             saltLength: 8,
-            expiredInMs: seconds('182d'), // recommendation for production is 182 days
+            expiredIn: seconds('182d'), // recommendation for production is 182 days
         },
     })
 );

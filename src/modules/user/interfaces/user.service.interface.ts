@@ -1,5 +1,3 @@
-import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
-import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,
@@ -8,9 +6,13 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
+import { UserPasswordAttemptDto } from 'src/modules/user/dtos/user.password-attempt.dto';
+import { UserPasswordExpiredDto } from 'src/modules/user/dtos/user.password-expired.dto';
+import { UserPasswordDto } from 'src/modules/user/dtos/user.password.dto';
+import { UserPhotoDto } from 'src/modules/user/dtos/user.photo.dto';
 import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
-import { IUserCreate } from './user.interface';
 
 export interface IUserService {
     findAll<T>(
@@ -36,8 +38,7 @@ export interface IUserService {
     ): Promise<number>;
 
     create(
-        data: IUserCreate,
-        password: IAuthPassword,
+        data: UserEntity,
         options?: IDatabaseCreateOptions
     ): Promise<UserEntity>;
 
@@ -74,33 +75,31 @@ export interface IUserService {
 
     updatePhoto(
         _id: string,
-        aws: AwsS3Serialization,
+        data: UserPhotoDto,
         options?: IDatabaseOptions
     ): Promise<UserEntity>;
 
     updatePassword(
         _id: string,
-        data: IAuthPassword,
+        data: UserPasswordDto,
         options?: IDatabaseOptions
     ): Promise<UserEntity>;
 
     updatePasswordExpired(
         _id: string,
-        passwordExpired: Date,
+        data: UserPasswordExpiredDto,
         options?: IDatabaseOptions
     ): Promise<UserEntity>;
 
-    inactive(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
-
-    active(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
-
-    increasePasswordAttempt(
+    updateIsActive(
         _id: string,
+        data: UserActiveDto,
         options?: IDatabaseOptions
     ): Promise<UserEntity>;
 
-    resetPasswordAttempt(
+    updatePasswordAttempt(
         _id: string,
+        data: UserPasswordAttemptDto,
         options?: IDatabaseOptions
     ): Promise<UserEntity>;
 }

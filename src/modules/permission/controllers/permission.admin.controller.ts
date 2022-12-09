@@ -38,6 +38,7 @@ import {
     PermissionListDoc,
     PermissionUpdateDoc,
 } from 'src/modules/permission/docs/permission.admin.doc';
+import { PermissionActiveDto } from 'src/modules/permission/dtos/permission.active.dto';
 import { PermissionGroupDto } from 'src/modules/permission/dtos/permission.group.dto';
 import { PermissionListDto } from 'src/modules/permission/dtos/permission.list.dto';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
@@ -167,7 +168,9 @@ export class PermissionAdminController {
         @Body() body: PermissionUpdateDto
     ): Promise<IResponse> {
         try {
-            await this.permissionService.update(permission._id, body);
+            const data: PermissionUpdateDto =
+                await this.permissionUseCase.update(body);
+            await this.permissionService.update(permission._id, data);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -196,7 +199,9 @@ export class PermissionAdminController {
         @GetPermission() permission: PermissionEntity
     ): Promise<void> {
         try {
-            await this.permissionService.inactive(permission._id);
+            const data: PermissionActiveDto =
+                await this.permissionUseCase.inactive();
+            await this.permissionService.updateIsActive(permission._id, data);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -221,7 +226,9 @@ export class PermissionAdminController {
     @Patch('/update/:permission/active')
     async active(@GetPermission() permission: PermissionEntity): Promise<void> {
         try {
-            await this.permissionService.active(permission._id);
+            const data: PermissionActiveDto =
+                await this.permissionUseCase.active();
+            await this.permissionService.updateIsActive(permission._id, data);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

@@ -5,6 +5,7 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { PermissionActiveDto } from 'src/modules/permission/dtos/permission.active.dto';
 import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
 import { PermissionUpdateGroupDto } from 'src/modules/permission/dtos/permission.update-group.dto';
 import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
@@ -58,10 +59,9 @@ export interface IPermissionService {
         options?: IDatabaseOptions
     ): Promise<PermissionEntity>;
 
-    inactive(
+    updateIsActive(
         _id: string,
+        data: PermissionActiveDto,
         options?: IDatabaseOptions
     ): Promise<PermissionEntity>;
-
-    active(_id: string, options?: IDatabaseOptions): Promise<PermissionEntity>;
 }

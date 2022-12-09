@@ -5,12 +5,15 @@ import { UserService } from 'src/modules/user/services/user.service';
 import { UserBulkService } from 'src/modules/user/services/user.bulk.service';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
+import { UserUseCase } from 'src/modules/user/use-cases/user.use-case';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
 @Injectable()
 export class UserSeed {
     constructor(
         private readonly authService: AuthService,
         private readonly userService: UserService,
+        private readonly userUseCase: UserUseCase,
         private readonly userBulkService: UserBulkService,
         private readonly roleService: RoleService
     ) {}
@@ -40,7 +43,7 @@ export class UserSeed {
                 'aaAA@@123444'
             );
 
-            await this.userService.create(
+            const dataSuperAdmin: UserEntity = await this.userUseCase.create(
                 {
                     username: 'superadmin',
                     firstName: 'superadmin',
@@ -52,8 +55,9 @@ export class UserSeed {
                 },
                 passwordHash
             );
+            await this.userService.create(dataSuperAdmin);
 
-            await this.userService.create(
+            const dataAdmin: UserEntity = await this.userUseCase.create(
                 {
                     username: 'admin',
                     firstName: 'admin',
@@ -65,8 +69,9 @@ export class UserSeed {
                 },
                 passwordHash
             );
+            await this.userService.create(dataAdmin);
 
-            await this.userService.create(
+            const dataUser: UserEntity = await this.userUseCase.create(
                 {
                     username: 'user',
                     firstName: 'user',
@@ -78,6 +83,7 @@ export class UserSeed {
                 },
                 passwordHash
             );
+            await this.userService.create(dataUser);
         } catch (err: any) {
             throw new Error(err.message);
         }

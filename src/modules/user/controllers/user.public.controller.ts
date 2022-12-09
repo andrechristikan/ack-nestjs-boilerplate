@@ -14,7 +14,9 @@ import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { UserSignUpDoc } from 'src/modules/user/docs/user.public.doc';
 import { UserSignUpDto } from 'src/modules/user/dtos/user.sign-up.dto';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { UserService } from 'src/modules/user/services/user.service';
+import { UserUseCase } from 'src/modules/user/use-cases/user.use-case';
 
 @ApiTags('modules.public.user')
 @Controller({
@@ -24,6 +26,7 @@ import { UserService } from 'src/modules/user/services/user.service';
 export class UserPublicController {
     constructor(
         private readonly userService: UserService,
+        private readonly userUseCase: UserUseCase,
         private readonly authService: AuthService,
         private readonly roleService: RoleService
     ) {}
@@ -75,10 +78,11 @@ export class UserPublicController {
                 body.password
             );
 
-            await this.userService.create(
+            const data: UserEntity = await this.userUseCase.create(
                 { email, mobileNumber, username, ...body, role: role._id },
                 password
             );
+            await this.userService.create(data);
 
             return;
         } catch (err: any) {

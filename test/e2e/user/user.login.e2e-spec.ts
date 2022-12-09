@@ -19,12 +19,20 @@ import { RoleModule } from 'src/modules/role/role.module';
 import { PermissionModule } from 'src/modules/permission/permission.module';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
+import { UserUseCase } from 'src/modules/user/use-cases/user.use-case';
+import { RoleUseCase } from 'src/modules/role/use-cases/role.use-case';
+import { UserPasswordAttemptDto } from 'src/modules/user/dtos/user.password-attempt.dto';
+import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
+import { RoleActiveDto } from 'src/modules/role/dtos/role.active.dto';
+import { UserPasswordExpiredDto } from 'src/modules/user/dtos/user.password-expired.dto';
 
 describe('E2E User Login', () => {
     let app: INestApplication;
     let userService: UserService;
+    let userUseCase: UserUseCase;
     let authService: AuthService;
     let roleService: RoleService;
+    let roleUseCase: RoleUseCase;
     let helperDateService: HelperDateService;
 
     const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
@@ -56,15 +64,18 @@ describe('E2E User Login', () => {
         app = modRef.createNestApplication();
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
+        userUseCase = app.get(UserUseCase);
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
+        roleUseCase = app.get(RoleUseCase);
         helperDateService = app.get(HelperDateService);
 
-        await roleService.create({
+        const dataRole: RoleEntity = await roleUseCase.create({
             name: roleName,
             accessFor: ENUM_AUTH_ACCESS_FOR_DEFAULT.USER,
             permissions: [],
         });
+        await roleService.create(dataRole);
         const role: RoleEntity = await roleService.findOne({
             name: roleName,
         });
@@ -73,7 +84,7 @@ describe('E2E User Login', () => {
 
         const passwordHash = await authService.createPassword(password);
 
-        user = await userService.create(
+        const dataUser: UserEntity = await userUseCase.create(
             {
                 username: faker.internet.userName(),
                 firstName: faker.name.firstName(),
@@ -85,6 +96,7 @@ describe('E2E User Login', () => {
             },
             passwordHash
         );
+        user = await userService.create(dataUser);
 
         await app.init();
     });
@@ -144,9 +156,9 @@ describe('E2E User Login', () => {
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Password Attempt Max`, async () => {
-        await userService.increasePasswordAttempt(user._id);
-        await userService.increasePasswordAttempt(user._id);
-        await userService.increasePasswordAttempt(user._id);
+        const dataMax: UserPasswordAttemptDto =
+            await userUseCase.maxPasswordAttempt();
+        await userService.updatePasswordAttempt(user._id, dataMax);
 
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
@@ -162,12 +174,15 @@ describe('E2E User Login', () => {
             ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_ATTEMPT_MAX_ERROR
         );
 
-        await userService.resetPasswordAttempt(user._id);
+        const dataReset: UserPasswordAttemptDto =
+            await userUseCase.resetPasswordAttempt();
+        await userService.updatePasswordAttempt(user._id, dataReset);
         return;
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Inactive`, async () => {
-        await userService.inactive(user._id);
+        const dataInactive: UserActiveDto = await userUseCase.inactive();
+        await userService.updateIsActive(user._id, dataInactive);
 
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
@@ -178,7 +193,9 @@ describe('E2E User Login', () => {
                 rememberMe: false,
             });
 
-        await userService.active(user._id);
+        const dataActive: UserActiveDto = await userUseCase.active();
+        await userService.updateIsActive(user._id, dataActive);
+
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_ERROR
@@ -188,7 +205,8 @@ describe('E2E User Login', () => {
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Role Inactive`, async () => {
-        await roleService.inactive(`${user.role}`);
+        const dataInactive: RoleActiveDto = await roleUseCase.inactive();
+        await roleService.updateIsActive(user.role, dataInactive);
 
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
@@ -199,7 +217,9 @@ describe('E2E User Login', () => {
                 rememberMe: false,
             });
 
-        await roleService.active(`${user.role}`);
+        const dataActive: RoleActiveDto = await roleUseCase.active();
+        await roleService.updateIsActive(user.role, dataActive);
+
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_INACTIVE_ERROR
@@ -225,7 +245,9 @@ describe('E2E User Login', () => {
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Password Expired`, async () => {
-        await userService.updatePasswordExpired(user._id, passwordExpired);
+        const dataPasswordExpired: UserPasswordExpiredDto =
+            await userUseCase.updatePasswordExpired(passwordExpired);
+        await userService.updatePasswordExpired(user._id, dataPasswordExpired);
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
@@ -256,8 +278,10 @@ describe('E2E User Login', () => {
 describe('E2E User Login Payload Encryption', () => {
     let app: INestApplication;
     let userService: UserService;
+    let userUseCase: UserUseCase;
     let authService: AuthService;
     let roleService: RoleService;
+    let roleUseCase: RoleUseCase;
 
     const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
         .firstName()
@@ -287,21 +311,24 @@ describe('E2E User Login Payload Encryption', () => {
         app = modRef.createNestApplication();
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
+        userUseCase = app.get(UserUseCase);
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
+        roleUseCase = app.get(RoleUseCase);
 
-        await roleService.create({
+        const dataRole: RoleEntity = await roleUseCase.create({
             name: roleName,
             accessFor: ENUM_AUTH_ACCESS_FOR_DEFAULT.USER,
             permissions: [],
         });
+        await roleService.create(dataRole);
         const role: RoleEntity = await roleService.findOne({
             name: roleName,
         });
 
         const passwordHash = await authService.createPassword(password);
 
-        user = await userService.create(
+        const dataUser: UserEntity = await userUseCase.create(
             {
                 username: faker.internet.userName(),
                 firstName: faker.name.firstName(),
@@ -313,6 +340,7 @@ describe('E2E User Login Payload Encryption', () => {
             },
             passwordHash
         );
+        user = await userService.create(dataUser);
 
         await app.init();
     });

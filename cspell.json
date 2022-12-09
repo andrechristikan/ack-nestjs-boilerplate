@@ -29,7 +29,8 @@
         "typeorm",
         "apikeys",
         "apikey",
-        "maxlength"
+        "maxlength",
+        "Streamable"
     ],
     "ignoreWords": [
         "psheon",
