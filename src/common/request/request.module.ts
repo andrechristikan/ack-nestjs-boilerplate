@@ -8,6 +8,7 @@ import {
 import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { RequestTimeoutInterceptor } from 'src/common/request/interceptors/request.timeout.interceptor';
 import { RequestMiddlewareModule } from 'src/common/request/middleware/request.middleware.module';
+import { MaxDateTodayConstraint } from 'src/common/request/validations/request.max-date-today.validation';
 import { MinDateTodayConstraint } from 'src/common/request/validations/request.min-date-today.validation';
 import { MobileNumberAllowedConstraint } from 'src/common/request/validations/request.mobile-number-allowed.validation';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from './constants/request.status-code.constant';
@@ -61,6 +62,7 @@ import { SkipConstraint } from './validations/request.skip.validation';
         IsOnlyDigitsConstraint,
         MinDateTodayConstraint,
         MobileNumberAllowedConstraint,
+        MaxDateTodayConstraint,
     ],
     imports: [RequestMiddlewareModule],
 })

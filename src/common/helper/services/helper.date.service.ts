@@ -12,6 +12,7 @@ import {
     IHelperDateOptionsDiff,
     IHelperDateOptionsFormat,
     IHelperDateOptionsForward,
+    IHelperDateOptionsRoundDown,
 } from 'src/common/helper/interfaces/helper.interface';
 
 @Injectable()
@@ -175,5 +176,23 @@ export class HelperDateService implements IHelperDateService {
             month,
             year,
         };
+    }
+
+    roundDown(date: Date, options?: IHelperDateOptionsRoundDown): Date {
+        const mDate = moment(date).set({ millisecond: 0 });
+
+        if (!options || options?.hour) {
+            mDate.set({ hour: 0 });
+        }
+
+        if (options?.minute) {
+            mDate.set({ minute: 0 });
+        }
+
+        if (options?.second) {
+            mDate.set({ second: 0 });
+        }
+
+        return mDate.toDate();
     }
 }

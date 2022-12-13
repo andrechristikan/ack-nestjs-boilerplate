@@ -918,7 +918,7 @@ describe('HelperDateService', () => {
             const test = jest.spyOn(helperDateService, 'endOfYear');
 
             helperDateService.endOfYear();
-            expect(test).toHaveBeenCalledWith();
+            expect(test).toHaveBeenCalled();
         });
 
         it('should be success', async () => {
@@ -954,7 +954,7 @@ describe('HelperDateService', () => {
             const test = jest.spyOn(helperDateService, 'startOfYear');
 
             helperDateService.startOfYear();
-            expect(test).toHaveBeenCalledWith();
+            expect(test).toHaveBeenCalled();
         });
 
         it('should be success', async () => {
@@ -990,7 +990,7 @@ describe('HelperDateService', () => {
             const test = jest.spyOn(helperDateService, 'endOfMonth');
 
             helperDateService.endOfMonth();
-            expect(test).toHaveBeenCalledWith();
+            expect(test).toHaveBeenCalled();
         });
 
         it('should be success', async () => {
@@ -1026,7 +1026,7 @@ describe('HelperDateService', () => {
             const test = jest.spyOn(helperDateService, 'startOfMonth');
 
             helperDateService.startOfMonth();
-            expect(test).toHaveBeenCalledWith();
+            expect(test).toHaveBeenCalled();
         });
 
         it('should be success', async () => {
@@ -1062,7 +1062,7 @@ describe('HelperDateService', () => {
             const test = jest.spyOn(helperDateService, 'endOfDay');
 
             helperDateService.endOfDay();
-            expect(test).toHaveBeenCalledWith();
+            expect(test).toHaveBeenCalled();
         });
 
         it('should be success', async () => {
@@ -1098,7 +1098,7 @@ describe('HelperDateService', () => {
             const test = jest.spyOn(helperDateService, 'startOfDay');
 
             helperDateService.startOfDay();
-            expect(test).toHaveBeenCalledWith();
+            expect(test).toHaveBeenCalled();
         });
 
         it('should be success', async () => {
@@ -1144,6 +1144,81 @@ describe('HelperDateService', () => {
             );
 
             expect(helperDateService.extractDate(date1)).toBe(result);
+        });
+    });
+
+    describe('roundDown', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(helperDateService, 'roundDown');
+
+            helperDateService.roundDown(date1);
+            expect(test).toHaveBeenCalledWith(date1);
+        });
+
+        it('should be success', async () => {
+            const result = helperDateService.roundDown(date1);
+            jest.spyOn(helperDateService, 'roundDown').mockImplementation(
+                () => result
+            );
+
+            expect(helperDateService.roundDown(date1)).toBe(result);
+        });
+
+        it('should be success with options hour', async () => {
+            const result = helperDateService.roundDown(date1, {
+                hour: true,
+                minute: false,
+                second: false,
+            });
+            jest.spyOn(helperDateService, 'roundDown').mockImplementation(
+                () => result
+            );
+
+            expect(
+                helperDateService.roundDown(date1, {
+                    hour: true,
+                    minute: false,
+                    second: false,
+                })
+            ).toBe(result);
+        });
+
+        it('should be success with options minute', async () => {
+            const result = helperDateService.roundDown(date1, {
+                hour: false,
+                minute: true,
+                second: false,
+            });
+            jest.spyOn(helperDateService, 'roundDown').mockImplementation(
+                () => result
+            );
+
+            expect(
+                helperDateService.roundDown(date1, {
+                    hour: false,
+                    minute: true,
+                    second: false,
+                })
+            ).toBe(result);
+        });
+
+        it('should be success with options second', async () => {
+            const result = helperDateService.roundDown(date1, {
+                hour: false,
+                minute: false,
+                second: true,
+            });
+            jest.spyOn(helperDateService, 'roundDown').mockImplementation(
+                () => result
+            );
+
+            expect(
+                helperDateService.roundDown(date1, {
+                    hour: false,
+                    minute: false,
+                    second: true,
+                })
+            ).toBe(result);
         });
     });
 });

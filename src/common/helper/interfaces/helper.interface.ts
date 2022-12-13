@@ -62,6 +62,12 @@ export interface IHelperDateOptionsForward {
 
 export type IHelperDateOptionsBackward = IHelperDateOptionsForward;
 
+export interface IHelperDateOptionsRoundDown {
+    hour: boolean;
+    minute: boolean;
+    second: boolean;
+}
+
 // Helper File
 
 export type IHelperFileRows = Record<string, string | number | Date>;
