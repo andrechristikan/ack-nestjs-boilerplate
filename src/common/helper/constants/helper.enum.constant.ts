@@ -8,14 +8,14 @@ export enum ENUM_HELPER_DATE_FORMAT {
     ONLY_MONTH = 'MM',
     ONLY_DATE = 'DD',
     ISO_DATE = 'YYYY-MM-DDTHH:MM:SSZ',
-    DAY_LONG = 'ddd',
-    DAY_SHORT = 'dddd',
-    HOUR_LONG = 'k',
-    HOUR_SHORT = 'kk',
-    MINUTE_LONG = 'm',
-    MINUTE_SHORT = 'mm',
-    SECOND_LONG = 's',
-    SECOND_SHORT = 'ss',
+    DAY_LONG = 'dddd',
+    DAY_SHORT = 'ddd',
+    HOUR_LONG = 'HH',
+    HOUR_SHORT = 'H',
+    MINUTE_LONG = 'mm',
+    MINUTE_SHORT = 'm',
+    SECOND_LONG = 'ss',
+    SECOND_SHORT = 's',
 }
 
 export enum ENUM_HELPER_DATE_DIFF {
