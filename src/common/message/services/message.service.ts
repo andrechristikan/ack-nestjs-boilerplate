@@ -16,13 +16,14 @@ import { IMessageService } from 'src/common/message/interfaces/message.service.i
 
 @Injectable()
 export class MessageService implements IMessageService {
-    private readonly defaultLanguage: string;
+    private readonly appDefaultLanguage: string[];
 
     constructor(
         private readonly i18n: I18nService,
         private readonly configService: ConfigService
     ) {
-        this.defaultLanguage = this.configService.get<string>('app.language');
+        this.appDefaultLanguage =
+            this.configService.get<string[]>('app.language');
     }
 
     setMessage<T = string>(
@@ -30,10 +31,10 @@ export class MessageService implements IMessageService {
         key: string,
         options?: IMessageSetOptions
     ): T {
-        return this.i18n.translate<T>(key, {
-            lang: lang || this.defaultLanguage,
+        return this.i18n.translate(key, {
+            lang: lang || this.appDefaultLanguage.join(','),
             args: options?.properties,
-        });
+        }) as T;
     }
 
     async getRequestErrorsMessage(
@@ -115,7 +116,7 @@ export class MessageService implements IMessageService {
         const customLanguages =
             options?.customLanguages?.length > 0
                 ? options.customLanguages
-                : [this.defaultLanguage];
+                : this.appDefaultLanguage;
 
         const messages: IMessage = {};
         for (const customLanguage of customLanguages) {

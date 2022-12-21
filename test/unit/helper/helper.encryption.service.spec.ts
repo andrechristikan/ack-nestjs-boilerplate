@@ -13,7 +13,7 @@ describe('HelperEncryptionService', () => {
     const data = 'aaaa';
     const dataObject = { test: 'aaaa' };
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({

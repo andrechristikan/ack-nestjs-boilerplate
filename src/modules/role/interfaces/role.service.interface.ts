@@ -5,9 +5,12 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
+    IDatabaseManyOptions,
+    IDatabaseCreateManyOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { RoleActiveDto } from 'src/modules/role/dtos/role.active.dto';
-import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
+import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
+import { RoleUpdateNameDto } from 'src/modules/role/dtos/role.update-name.dto';
+import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 
 export interface IRoleService {
@@ -28,24 +31,33 @@ export interface IRoleService {
         options?: IDatabaseOptions
     ): Promise<number>;
 
-    exists(name: string, options?: IDatabaseExistOptions): Promise<boolean>;
+    existByName(
+        name: string,
+        options?: IDatabaseExistOptions
+    ): Promise<boolean>;
 
     create(
-        data: RoleEntity,
+        data: RoleCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<RoleEntity>;
 
-    update(
+    createSuperAdmin(options?: IDatabaseCreateOptions): Promise<RoleEntity>;
+
+    updateName(
         _id: string,
-        data: RoleUpdateDto,
+        data: RoleUpdateNameDto,
         options?: IDatabaseOptions
     ): Promise<RoleEntity>;
 
-    updateIsActive(
+    updatePermission(
         _id: string,
-        data: RoleActiveDto,
+        data: RoleUpdatePermissionDto,
         options?: IDatabaseOptions
     ): Promise<RoleEntity>;
+
+    active(_id: string, options?: IDatabaseOptions): Promise<RoleEntity>;
+
+    inactive(_id: string, options?: IDatabaseOptions): Promise<RoleEntity>;
 
     deleteOneById(
         _id: string,
@@ -56,4 +68,14 @@ export interface IRoleService {
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
     ): Promise<RoleEntity>;
+
+    deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseManyOptions
+    ): Promise<boolean>;
+
+    createMany(
+        data: RoleCreateDto[],
+        options?: IDatabaseCreateManyOptions
+    ): Promise<boolean>;
 }

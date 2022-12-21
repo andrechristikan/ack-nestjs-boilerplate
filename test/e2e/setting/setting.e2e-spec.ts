@@ -16,11 +16,9 @@ import { SettingService } from 'src/common/setting/services/setting.service';
 import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
-import { SettingUseCase } from 'src/common/setting/use-cases/setting.use-case';
 
 describe('E2E Setting', () => {
     let app: INestApplication;
-    let settingUseCase: SettingUseCase;
     let settingService: SettingService;
 
     let setting: SettingEntity;
@@ -45,14 +43,12 @@ describe('E2E Setting', () => {
         app = modRef.createNestApplication();
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         settingService = app.get(SettingService);
-        settingUseCase = app.get(SettingUseCase);
 
-        const settingCreate: SettingEntity = await settingUseCase.create({
+        await settingService.create({
             name: settingName,
             value: 'true',
             type: ENUM_SETTING_DATA_TYPE.BOOLEAN,
         });
-        await settingService.create(settingCreate);
         setting = await settingService.findOneByName(settingName);
 
         await app.init();

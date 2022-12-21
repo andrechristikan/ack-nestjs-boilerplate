@@ -19,10 +19,9 @@ import { SettingUpdateGuard } from 'src/common/setting/decorators/setting.admin.
 import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
 import { SettingUpdateDoc } from 'src/common/setting/docs/setting.admin.doc';
 import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
-import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
+import { SettingUpdateValueDto } from 'src/common/setting/dtos/setting.update-value.dto';
 import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingService } from 'src/common/setting/services/setting.service';
-import { SettingUseCase } from 'src/common/setting/use-cases/setting.use-case';
 
 @ApiTags('admin.setting')
 @Controller({
@@ -30,10 +29,7 @@ import { SettingUseCase } from 'src/common/setting/use-cases/setting.use-case';
     path: '/setting',
 })
 export class SettingAdminController {
-    constructor(
-        private readonly settingService: SettingService,
-        private readonly settingUseCase: SettingUseCase
-    ) {}
+    constructor(private readonly settingService: SettingService) {}
 
     @SettingUpdateDoc()
     @Response('setting.update', {
@@ -50,9 +46,9 @@ export class SettingAdminController {
     async update(
         @GetSetting() setting: SettingEntity,
         @Body()
-        body: SettingUpdateDto
+        body: SettingUpdateValueDto
     ): Promise<IResponse> {
-        const check = await this.settingUseCase.checkValue(
+        const check = await this.settingService.checkValue(
             body.value,
             body.type
         );
@@ -65,7 +61,7 @@ export class SettingAdminController {
         }
 
         try {
-            await this.settingService.updateOneById(setting._id, body);
+            await this.settingService.updateValue(setting._id, body);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

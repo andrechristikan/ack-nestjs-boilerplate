@@ -33,7 +33,7 @@ describe('AuthService', () => {
         firstName: 'admin@mail.com',
     };
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({

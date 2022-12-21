@@ -48,8 +48,7 @@ export interface IHelperDateOptionsDiff {
 
 export interface IHelperDateOptionsCreate {
     date?: string | number | Date;
-    hours?: number;
-    minutes?: number;
+    startOfDay?: boolean;
 }
 
 export interface IHelperDateOptionsFormat {

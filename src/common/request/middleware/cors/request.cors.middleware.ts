@@ -6,28 +6,34 @@ import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 
 @Injectable()
 export class RequestCorsMiddleware implements NestMiddleware {
-    constructor(private readonly configService: ConfigService) {}
+    private readonly appEnv: ENUM_APP_ENVIRONMENT;
+    private readonly allowOrigin: string | boolean | string[];
+    private readonly allowMethod: string[];
+    private readonly allowHeader: string[];
 
-    use(req: Request, res: Response, next: NextFunction): void {
-        const env: string = this.configService.get<string>('app.env');
-
-        const allowOrigin =
-            env === ENUM_APP_ENVIRONMENT.PRODUCTION
-                ? this.configService.get<string | boolean | string[]>(
-                      'request.cors.allowOrigin'
-                  )
-                : '*';
-        const allowMethod = this.configService.get<string[]>(
+    constructor(private readonly configService: ConfigService) {
+        this.appEnv = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
+        this.allowOrigin = this.configService.get<string | boolean | string[]>(
+            'request.cors.allowOrigin'
+        );
+        this.allowMethod = this.configService.get<string[]>(
             'request.cors.allowMethod'
         );
-        const allowHeader = this.configService.get<string[]>(
+        this.allowHeader = this.configService.get<string[]>(
             'request.cors.allowHeader'
         );
+    }
+
+    use(req: Request, res: Response, next: NextFunction): void {
+        const allowOrigin =
+            this.appEnv === ENUM_APP_ENVIRONMENT.PRODUCTION
+                ? this.allowOrigin
+                : '*';
 
         const corsOptions: CorsOptions = {
             origin: allowOrigin,
-            methods: allowMethod,
-            allowedHeaders: allowHeader,
+            methods: this.allowMethod,
+            allowedHeaders: this.allowHeader,
             preflightContinue: false,
             credentials: true,
             optionsSuccessStatus: HttpStatus.NO_CONTENT,

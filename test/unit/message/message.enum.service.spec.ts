@@ -8,7 +8,7 @@ import configs from 'src/configs';
 describe('MessageEnumService', () => {
     let messageEnumService: MessageEnumService;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({

@@ -5,18 +5,35 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
+    IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IApiKeyService } from 'src/common/api-key/interfaces/api-key.service.interface';
 import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
-import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyRepository } from 'src/common/api-key/repository/repositories/api-key.repository';
 import { ApiKeyActiveDto } from 'src/common/api-key/dtos/api-key.active.dto';
 import { ApiKeyResetDto } from 'src/common/api-key/dtos/api-key.reset.dto';
+import { HelperStringService } from 'src/common/helper/services/helper.string.service';
+import { ConfigService } from '@nestjs/config';
+import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
+import {
+    ApiKeyCreateDto,
+    ApiKeyCreateRawDto,
+} from 'src/common/api-key/dtos/api-key.create.dto';
+import { ApiKeyUpdateNameDto } from 'src/common/api-key/dtos/api-key.update-name.dto';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
-    constructor(private readonly apiKeyRepository: ApiKeyRepository) {}
+    private readonly env: string;
+
+    constructor(
+        private readonly helperStringService: HelperStringService,
+        private readonly configService: ConfigService,
+        private readonly helperHashService: HelperHashService,
+        private readonly apiKeyRepository: ApiKeyRepository
+    ) {
+        this.env = this.configService.get<string>('app.env');
+    }
 
     async findAll(
         find?: Record<string, any>,
@@ -46,7 +63,7 @@ export class ApiKeyService implements IApiKeyService {
         return this.apiKeyRepository.findOne<ApiKeyEntity>({ key }, options);
     }
 
-    async findOneByKeyAndActive(
+    async findOneByActiveKey(
         key: string,
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyEntity> {
@@ -63,52 +80,105 @@ export class ApiKeyService implements IApiKeyService {
         return this.apiKeyRepository.getTotal(find, options);
     }
 
-    async updateIsActive(
+    async active(
         _id: string,
-        data: ApiKeyActiveDto,
         options?: IDatabaseOptions
     ): Promise<ApiKeyEntity> {
+        const dto: ApiKeyActiveDto = new ApiKeyActiveDto();
+        dto.isActive = true;
+
         return this.apiKeyRepository.updateOneById<ApiKeyActiveDto>(
             _id,
-            data,
+            dto,
+            options
+        );
+    }
+
+    async inactive(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<ApiKeyEntity> {
+        const dto: ApiKeyActiveDto = new ApiKeyActiveDto();
+        dto.isActive = false;
+
+        return this.apiKeyRepository.updateOneById<ApiKeyActiveDto>(
+            _id,
+            dto,
             options
         );
     }
 
     async create(
-        data: IApiKeyEntity,
+        { name, description }: ApiKeyCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<ApiKeyEntity> {
-        const created = await this.apiKeyRepository.create<IApiKeyEntity>(
-            data,
-            options
-        );
+    ): Promise<IApiKeyEntity> {
+        const key = await this.createKey();
+        const secret = await this.createSecret();
+        const hash: string = await this.createHashApiKey(key, secret);
 
-        return created;
+        const dto: ApiKeyEntity = new ApiKeyEntity();
+        dto.name = name;
+        dto.description = description;
+        dto.key = key;
+        dto.hash = hash;
+        dto.isActive = true;
+
+        const created: ApiKeyEntity =
+            await this.apiKeyRepository.create<ApiKeyEntity>(dto, options);
+
+        return { ...created, secret };
     }
 
-    async updateOneById(
+    async createRaw(
+        { name, description, key, secret }: ApiKeyCreateRawDto,
+        options?: IDatabaseCreateOptions
+    ): Promise<IApiKeyEntity> {
+        const hash: string = await this.createHashApiKey(key, secret);
+
+        const dto: ApiKeyEntity = new ApiKeyEntity();
+        dto.name = name;
+        dto.description = description;
+        dto.key = key;
+        dto.hash = hash;
+        dto.isActive = true;
+
+        const created: ApiKeyEntity =
+            await this.apiKeyRepository.create<ApiKeyEntity>(dto, options);
+
+        return { ...created, secret };
+    }
+
+    async updateName(
         _id: string,
-        data: ApiKeyUpdateDto,
+        data: ApiKeyUpdateNameDto,
         options?: IDatabaseOptions
     ): Promise<ApiKeyEntity> {
-        return this.apiKeyRepository.updateOneById<ApiKeyUpdateDto>(
+        return this.apiKeyRepository.updateOneById<ApiKeyUpdateNameDto>(
             _id,
             data,
             options
         );
     }
 
-    async updateResetById(
+    async reset(
         _id: string,
-        data: ApiKeyResetDto,
+        key: string,
         options?: IDatabaseOptions
-    ): Promise<ApiKeyEntity> {
-        return this.apiKeyRepository.updateOneById<ApiKeyResetDto>(
-            _id,
-            data,
-            options
-        );
+    ): Promise<IApiKeyEntity> {
+        const secret: string = await this.createSecret();
+        const hash: string = await this.createHashApiKey(key, secret);
+
+        const dto: ApiKeyResetDto = new ApiKeyResetDto();
+        dto.hash = hash;
+
+        const apiKey: ApiKeyEntity =
+            await this.apiKeyRepository.updateOneById<ApiKeyResetDto>(
+                _id,
+                dto,
+                options
+            );
+
+        return { ...apiKey, secret };
     }
 
     async deleteOneById(
@@ -123,5 +193,38 @@ export class ApiKeyService implements IApiKeyService {
         options?: IDatabaseSoftDeleteOptions
     ): Promise<ApiKeyEntity> {
         return this.apiKeyRepository.deleteOne(find, options);
+    }
+
+    async validateHashApiKey(
+        hashFromRequest: string,
+        hash: string
+    ): Promise<boolean> {
+        return this.helperHashService.sha256Compare(hashFromRequest, hash);
+    }
+
+    async createKey(): Promise<string> {
+        return this.helperStringService.random(25, {
+            safe: false,
+            upperCase: true,
+            prefix: `${this.env}_`,
+        });
+    }
+
+    async createSecret(): Promise<string> {
+        return this.helperStringService.random(35, {
+            safe: false,
+            upperCase: true,
+        });
+    }
+
+    async createHashApiKey(key: string, secret: string): Promise<string> {
+        return this.helperHashService.sha256(`${key}:${secret}`);
+    }
+
+    async deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseManyOptions
+    ): Promise<boolean> {
+        return this.apiKeyRepository.deleteMany(find, options);
     }
 }

@@ -38,10 +38,9 @@ import {
     PermissionListDoc,
     PermissionUpdateDoc,
 } from 'src/modules/permission/docs/permission.admin.doc';
-import { PermissionActiveDto } from 'src/modules/permission/dtos/permission.active.dto';
 import { PermissionGroupDto } from 'src/modules/permission/dtos/permission.group.dto';
 import { PermissionListDto } from 'src/modules/permission/dtos/permission.list.dto';
-import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
+import { PermissionUpdateDescriptionDto } from 'src/modules/permission/dtos/permission.update-description.dto';
 import { PermissionRequestDto } from 'src/modules/permission/dtos/permissions.request.dto';
 import { IPermissionGroup } from 'src/modules/permission/interfaces/permission.interface';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
@@ -49,7 +48,6 @@ import { PermissionGetSerialization } from 'src/modules/permission/serialization
 import { PermissionGroupsSerialization } from 'src/modules/permission/serializations/permission.group.serialization';
 import { PermissionListSerialization } from 'src/modules/permission/serializations/permission.list.serialization';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
-import { PermissionUseCase } from 'src/modules/permission/use-cases/permission.use-case';
 
 @ApiTags('modules.admin.permission')
 @Controller({
@@ -59,8 +57,7 @@ import { PermissionUseCase } from 'src/modules/permission/use-cases/permission.u
 export class PermissionAdminController {
     constructor(
         private readonly paginationService: PaginationService,
-        private readonly permissionService: PermissionService,
-        private readonly permissionUseCase: PermissionUseCase
+        private readonly permissionService: PermissionService
     ) {}
 
     @PermissionListDoc()
@@ -131,7 +128,7 @@ export class PermissionAdminController {
             await this.permissionService.findAllByGroup(groups);
 
         const permissionGroups: IPermissionGroup[] =
-            await this.permissionUseCase.groups(permissions);
+            await this.permissionService.groupingByGroups(permissions);
 
         return { groups: permissionGroups };
     }
@@ -165,12 +162,13 @@ export class PermissionAdminController {
     @Put('/update/:permission')
     async update(
         @GetPermission() permission: PermissionEntity,
-        @Body() body: PermissionUpdateDto
+        @Body() body: PermissionUpdateDescriptionDto
     ): Promise<IResponse> {
         try {
-            const data: PermissionUpdateDto =
-                await this.permissionUseCase.update(body);
-            await this.permissionService.update(permission._id, data);
+            await this.permissionService.updateDescription(
+                permission._id,
+                body
+            );
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -199,9 +197,7 @@ export class PermissionAdminController {
         @GetPermission() permission: PermissionEntity
     ): Promise<void> {
         try {
-            const data: PermissionActiveDto =
-                await this.permissionUseCase.inactive();
-            await this.permissionService.updateIsActive(permission._id, data);
+            await this.permissionService.inactive(permission._id);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -226,9 +222,7 @@ export class PermissionAdminController {
     @Patch('/update/:permission/active')
     async active(@GetPermission() permission: PermissionEntity): Promise<void> {
         try {
-            const data: PermissionActiveDto =
-                await this.permissionUseCase.active();
-            await this.permissionService.updateIsActive(permission._id, data);
+            await this.permissionService.active(permission._id);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

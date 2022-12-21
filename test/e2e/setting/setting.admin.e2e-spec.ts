@@ -18,11 +18,9 @@ import {
     E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
     E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
 } from 'test/e2e/user/user.constant';
-import { SettingUseCase } from 'src/common/setting/use-cases/setting.use-case';
 
 describe('E2E Setting Admin', () => {
     let app: INestApplication;
-    let settingUseCase: SettingUseCase;
     let settingService: SettingService;
     let authService: AuthService;
 
@@ -52,7 +50,6 @@ describe('E2E Setting Admin', () => {
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         authService = app.get(AuthService);
         settingService = app.get(SettingService);
-        settingUseCase = app.get(SettingUseCase);
 
         const payload = await authService.createPayloadAccessToken(
             {
@@ -67,12 +64,11 @@ describe('E2E Setting Admin', () => {
             _id: payload._id,
         });
 
-        const settingCreate: SettingEntity = await settingUseCase.create({
+        await settingService.create({
             name: settingName,
             value: 'true',
             type: ENUM_SETTING_DATA_TYPE.BOOLEAN,
         });
-        await settingService.create(settingCreate);
         setting = await settingService.findOneByName(settingName);
 
         await app.init();

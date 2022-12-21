@@ -18,23 +18,26 @@ import { IResult } from 'ua-parser-js';
     path: '/',
 })
 export class AppController {
+    private readonly serviceName: string;
+
     constructor(
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
-    ) {}
+    ) {
+        this.serviceName = this.configService.get<string>('app.name');
+    }
 
     @AppHelloDoc()
     @Response('app.hello', { serialization: AppHelloSerialization })
     @Logger(ENUM_LOGGER_ACTION.TEST, { tags: ['test'] })
     @Get('/hello')
     async hello(@RequestUserAgent() userAgent: IResult): Promise<IResponse> {
-        const serviceName = this.configService.get<string>('app.name');
         const newDate = this.helperDateService.create();
 
         return {
             metadata: {
                 properties: {
-                    serviceName,
+                    serviceName: this.serviceName,
                 },
             },
             userAgent,
@@ -54,13 +57,12 @@ export class AppController {
     async helloApiKey(
         @RequestUserAgent() userAgent: IResult
     ): Promise<IResponse> {
-        const serviceName = this.configService.get<string>('app.name');
         const newDate = this.helperDateService.create();
 
         return {
             metadata: {
                 properties: {
-                    serviceName,
+                    serviceName: this.serviceName,
                 },
             },
             userAgent,

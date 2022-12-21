@@ -11,7 +11,7 @@ export class PermissionCreateDto {
     })
     @IsEnum(ENUM_PERMISSION_GROUP)
     @IsNotEmpty()
-    readonly group: ENUM_PERMISSION_GROUP;
+    group: ENUM_PERMISSION_GROUP;
 
     @ApiProperty({
         description: 'Unique code of permission',
@@ -20,7 +20,7 @@ export class PermissionCreateDto {
     })
     @IsString()
     @IsNotEmpty()
-    readonly code: string;
+    code: string;
 
     @ApiProperty({
         description: 'Description of permission',
@@ -29,5 +29,5 @@ export class PermissionCreateDto {
     })
     @IsString()
     @IsNotEmpty()
-    readonly description: string;
+    description: string;
 }

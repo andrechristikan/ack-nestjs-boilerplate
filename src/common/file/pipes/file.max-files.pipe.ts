@@ -15,11 +15,15 @@ import { ENUM_FILE_STATUS_CODE_ERROR } from '../constants/file.status-code.const
 
 @Injectable({ scope: Scope.REQUEST })
 export class FileMaxFilesImagePipe implements PipeTransform {
+    private readonly maxFile: number;
+
     constructor(
         @Inject(REQUEST)
         private readonly request: Request & { __customMaxFiles: number },
         private readonly configService: ConfigService
-    ) {}
+    ) {
+        this.maxFile = this.configService.get<number>('file.image.maxFiles');
+    }
 
     async transform(value: IFile[]): Promise<IFile[]> {
         if (!value) {
@@ -32,10 +36,7 @@ export class FileMaxFilesImagePipe implements PipeTransform {
     }
 
     async validate(value: IFile[]): Promise<void> {
-        const maxFiles =
-            this.request.__customMaxFiles ||
-            this.configService.get<number>('file.image.maxFiles');
-
+        const maxFiles = this.request.__customMaxFiles || this.maxFile;
         if (value.length > maxFiles) {
             throw new UnprocessableEntityException({
                 statusCode: ENUM_FILE_STATUS_CODE_ERROR.FILE_MAX_FILES_ERROR,
@@ -49,11 +50,15 @@ export class FileMaxFilesImagePipe implements PipeTransform {
 
 @Injectable({ scope: Scope.REQUEST })
 export class FileMaxFilesExcelPipe implements PipeTransform {
+    private readonly maxFile: number;
+
     constructor(
         @Inject(REQUEST)
         private readonly request: Request & { __customMaxFiles: number },
         private readonly configService: ConfigService
-    ) {}
+    ) {
+        this.maxFile = this.configService.get<number>('file.excel.maxFiles');
+    }
 
     async transform(value: IFile[]): Promise<IFile[]> {
         await this.validate(value);
@@ -62,9 +67,7 @@ export class FileMaxFilesExcelPipe implements PipeTransform {
     }
 
     async validate(value: IFile[]): Promise<void> {
-        const maxFiles =
-            this.request.__customMaxFiles ||
-            this.configService.get<number>('file.excel.maxFiles');
+        const maxFiles = this.request.__customMaxFiles || this.maxFile;
 
         if (value.length > maxFiles) {
             throw new UnprocessableEntityException({
@@ -79,11 +82,15 @@ export class FileMaxFilesExcelPipe implements PipeTransform {
 
 @Injectable({ scope: Scope.REQUEST })
 export class FileMaxFilesVideoPipe implements PipeTransform {
+    private readonly maxFile: number;
+
     constructor(
         @Inject(REQUEST)
         private readonly request: Request & { __customMaxFiles: number },
         private readonly configService: ConfigService
-    ) {}
+    ) {
+        this.maxFile = this.configService.get<number>('file.video.maxFiles');
+    }
 
     async transform(value: IFile[]): Promise<IFile[]> {
         await this.validate(value);
@@ -92,9 +99,7 @@ export class FileMaxFilesVideoPipe implements PipeTransform {
     }
 
     async validate(value: IFile[]): Promise<void> {
-        const maxFiles =
-            this.request.__customMaxFiles ||
-            this.configService.get<number>('file.video.maxFiles');
+        const maxFiles = this.request.__customMaxFiles || this.maxFile;
 
         if (value.length > maxFiles) {
             throw new UnprocessableEntityException({
@@ -109,11 +114,15 @@ export class FileMaxFilesVideoPipe implements PipeTransform {
 
 @Injectable({ scope: Scope.REQUEST })
 export class FileMaxFilesAudioPipe implements PipeTransform {
+    private readonly maxFile: number;
+
     constructor(
         @Inject(REQUEST)
         private readonly request: Request & { __customMaxFiles: number },
         private readonly configService: ConfigService
-    ) {}
+    ) {
+        this.maxFile = this.configService.get<number>('file.audio.maxFiles');
+    }
 
     async transform(value: IFile[]): Promise<IFile[]> {
         await this.validate(value);
@@ -122,9 +131,7 @@ export class FileMaxFilesAudioPipe implements PipeTransform {
     }
 
     async validate(value: IFile[]): Promise<void> {
-        const maxFiles =
-            this.request.__customMaxFiles ||
-            this.configService.get<number>('file.audio.maxFiles');
+        const maxFiles = this.request.__customMaxFiles || this.maxFile;
 
         if (value.length > maxFiles) {
             throw new UnprocessableEntityException({

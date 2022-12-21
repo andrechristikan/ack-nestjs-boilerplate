@@ -53,6 +53,8 @@ export default registerAs(
         },
 
         password: {
+            attempt: true,
+            maxAttempt: 3,
             saltLength: 8,
             expiredIn: seconds('182d'), // recommendation for production is 182 days
         },

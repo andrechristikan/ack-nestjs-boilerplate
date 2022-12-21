@@ -8,7 +8,7 @@ import configs from 'src/configs';
 describe('DatabaseOptionsService', () => {
     let databaseOptionsService: DatabaseOptionsService;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         process.env.APP_ENV = 'development';
         process.env.DATABASE_USER = 'AckUser';
         process.env.DATABASE_PASSWORD = 'AckUserTestPassword';
@@ -60,36 +60,12 @@ describe('DatabaseOptionsService', () => {
             expect(databaseOptionsService.createMongoOptions()).toBe(options);
         });
     });
-
-    describe('createPostgresOptions', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(
-                databaseOptionsService,
-                'createPostgresOptions'
-            );
-
-            databaseOptionsService.createPostgresOptions();
-            expect(test).toHaveBeenCalled();
-        });
-
-        it('should be success', async () => {
-            const options = databaseOptionsService.createPostgresOptions();
-            jest.spyOn(
-                databaseOptionsService,
-                'createPostgresOptions'
-            ).mockImplementation(() => options);
-
-            expect(databaseOptionsService.createPostgresOptions()).toBe(
-                options
-            );
-        });
-    });
 });
 
 describe('DatabaseOptionsService Production', () => {
     let databaseOptionsService: DatabaseOptionsService;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         process.env.APP_ENV = 'production';
         process.env.DATABASE_OPTIONS = '';
 
@@ -135,30 +111,6 @@ describe('DatabaseOptionsService Production', () => {
             ).mockImplementation(() => options);
 
             expect(databaseOptionsService.createMongoOptions()).toBe(options);
-        });
-    });
-
-    describe('createPostgresOptions', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(
-                databaseOptionsService,
-                'createPostgresOptions'
-            );
-
-            databaseOptionsService.createPostgresOptions();
-            expect(test).toHaveBeenCalled();
-        });
-
-        it('should be success', async () => {
-            const options = databaseOptionsService.createPostgresOptions();
-            jest.spyOn(
-                databaseOptionsService,
-                'createPostgresOptions'
-            ).mockImplementation(() => options);
-
-            expect(databaseOptionsService.createPostgresOptions()).toBe(
-                options
-            );
         });
     });
 });

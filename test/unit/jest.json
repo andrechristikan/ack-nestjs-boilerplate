@@ -6,7 +6,7 @@
     ],
     "testEnvironment": "node",
     "testMatch": [
-        "<rootDir>/test/unit/**/*.spec.ts"
+        "<rootDir>/test/unit/auth/*.spec.ts"
     ],
     "collectCoverage": true,
     "coverageDirectory": "coverage",

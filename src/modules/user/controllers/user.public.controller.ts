@@ -14,9 +14,7 @@ import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { UserSignUpDoc } from 'src/modules/user/docs/user.public.doc';
 import { UserSignUpDto } from 'src/modules/user/dtos/user.sign-up.dto';
-import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { UserService } from 'src/modules/user/services/user.service';
-import { UserUseCase } from 'src/modules/user/use-cases/user.use-case';
 
 @ApiTags('modules.public.user')
 @Controller({
@@ -26,7 +24,6 @@ import { UserUseCase } from 'src/modules/user/use-cases/user.use-case';
 export class UserPublicController {
     constructor(
         private readonly userService: UserService,
-        private readonly userUseCase: UserUseCase,
         private readonly authService: AuthService,
         private readonly roleService: RoleService
     ) {}
@@ -42,7 +39,7 @@ export class UserPublicController {
             name: 'user',
         });
 
-        const usernameExist: boolean = await this.userService.existUsername(
+        const usernameExist: boolean = await this.userService.existByUsername(
             username
         );
         if (usernameExist) {
@@ -53,7 +50,7 @@ export class UserPublicController {
             });
         }
 
-        const emailExist: boolean = await this.userService.existEmail(email);
+        const emailExist: boolean = await this.userService.existByEmail(email);
         if (emailExist) {
             throw new ConflictException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
@@ -63,7 +60,7 @@ export class UserPublicController {
 
         if (mobileNumber) {
             const mobileNumberExist: boolean =
-                await this.userService.existMobileNumber(mobileNumber);
+                await this.userService.existByMobileNumber(mobileNumber);
             if (mobileNumberExist) {
                 throw new ConflictException({
                     statusCode:
@@ -78,11 +75,10 @@ export class UserPublicController {
                 body.password
             );
 
-            const data: UserEntity = await this.userUseCase.create(
+            await this.userService.create(
                 { email, mobileNumber, username, ...body, role: role._id },
                 password
             );
-            await this.userService.create(data);
 
             return;
         } catch (err: any) {

@@ -1,18 +1,14 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { PermissionBulkService } from 'src/modules/permission/services/permission.bulk.service';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
 import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
-import { PermissionUseCase } from 'src/modules/permission/use-cases/permission.use-case';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
+import { PermissionService } from 'src/modules/permission/services/permission.service';
 
 @Injectable()
 export class PermissionSeed {
-    constructor(
-        private readonly permissionUseCase: PermissionUseCase,
-        private readonly permissionBulkService: PermissionBulkService
-    ) {}
+    constructor(private readonly permissionService: PermissionService) {}
 
     @Command({
         command: 'seed:permission',
@@ -24,23 +20,18 @@ export class PermissionSeed {
             const group: string[] = Object.values(ENUM_PERMISSION_GROUP);
 
             const data: PermissionCreateDto[] = permissions.map((val) => {
-                return {
-                    code: val,
-                    name: val.replace('_', ' '),
-                    description: `${val.replace('_', ' ')} description`,
-                    group: group.find((l: string) =>
-                        val.toUpperCase().startsWith(l.toUpperCase())
-                    ),
-                };
-            }) as PermissionCreateDto[];
+                const dto: PermissionCreateDto = new PermissionCreateDto();
 
-            const maps: Promise<PermissionEntity>[] = data.map((value) =>
-                this.permissionUseCase.create(value)
-            );
+                dto.code = val;
+                dto.description = `${val.replace('_', ' ')} description`;
+                dto.group = group.find((l: string) =>
+                    val.startsWith(l)
+                ) as ENUM_PERMISSION_GROUP;
 
-            const create: PermissionEntity[] = await Promise.all(maps);
+                return dto;
+            }) as PermissionEntity[];
 
-            await this.permissionBulkService.createMany(create);
+            await this.permissionService.createMany(data);
         } catch (err: any) {
             throw new Error(err.message);
         }
@@ -54,7 +45,7 @@ export class PermissionSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.permissionBulkService.deleteMany({});
+            await this.permissionService.deleteMany({});
         } catch (err: any) {
             throw new Error(err.message);
         }

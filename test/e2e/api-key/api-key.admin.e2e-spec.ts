@@ -24,14 +24,11 @@ import {
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { faker } from '@faker-js/faker';
-import { ApiKeyUseCase } from 'src/common/api-key/use-cases/api-key.use-case';
-import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 
 describe('E2E Api Key Admin', () => {
     let app: INestApplication;
     let authService: AuthService;
     let apiKeyService: ApiKeyService;
-    let apiKeyUseCase: ApiKeyUseCase;
 
     let accessToken: string;
     let permissionToken: string;
@@ -61,7 +58,6 @@ describe('E2E Api Key Admin', () => {
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         authService = app.get(AuthService);
         apiKeyService = app.get(ApiKeyService);
-        apiKeyUseCase = app.get<ApiKeyUseCase>(ApiKeyUseCase);
 
         const payload = await authService.createPayloadAccessToken(
             {
@@ -76,11 +72,10 @@ describe('E2E Api Key Admin', () => {
             _id: payload._id,
         });
 
-        const apiKeyCreate: IApiKeyEntity = await apiKeyUseCase.create({
+        apiKey = await apiKeyService.create({
             name: faker.internet.userName(),
             description: faker.random.alphaNumeric(),
         });
-        apiKey = await apiKeyService.create(apiKeyCreate);
 
         await app.init();
     });

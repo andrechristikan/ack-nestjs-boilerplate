@@ -5,7 +5,7 @@ import configs from 'src/configs';
 describe('ConfigService', () => {
     let configService: ConfigService;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({

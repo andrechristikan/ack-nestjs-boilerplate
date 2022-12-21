@@ -16,7 +16,7 @@ describe('MessageService', () => {
     let validationErrorConstrainEmpty: ValidationError[];
     let validationErrorImport: IValidationErrorImport[];
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({

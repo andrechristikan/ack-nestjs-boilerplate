@@ -32,9 +32,7 @@ import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.enum.cons
 import { Logger } from 'src/common/logger/decorators/logger.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
-import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingService } from 'src/common/setting/services/setting.service';
-import { SettingUseCase } from 'src/common/setting/use-cases/setting.use-case';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
@@ -52,9 +50,6 @@ import {
 import { UserChangePasswordDto } from 'src/modules/user/dtos/user.change-password.dto';
 import { UserGrantPermissionDto } from 'src/modules/user/dtos/user.grant-permission.dto';
 import { UserLoginDto } from 'src/modules/user/dtos/user.login.dto';
-import { UserPasswordAttemptDto } from 'src/modules/user/dtos/user.password-attempt.dto';
-import { UserPasswordDto } from 'src/modules/user/dtos/user.password.dto';
-import { UserPhotoDto } from 'src/modules/user/dtos/user.photo.dto';
 import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { UserGrantPermissionSerialization } from 'src/modules/user/serializations/user.grant-permission.serialization';
@@ -63,7 +58,6 @@ import { UserPayloadPermissionSerialization } from 'src/modules/user/serializati
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
-import { UserUseCase } from 'src/modules/user/use-cases/user.use-case';
 
 @ApiTags('modules.user')
 @Controller({
@@ -75,9 +69,7 @@ export class UserController {
         private readonly userService: UserService,
         private readonly awsService: AwsS3Service,
         private readonly authService: AuthService,
-        private readonly settingService: SettingService,
-        private readonly settingUseCase: SettingUseCase,
-        private readonly userUseCase: UserUseCase
+        private readonly settingService: SettingService
     ) {}
 
     @UserLoginDoc()
@@ -101,16 +93,10 @@ export class UserController {
             });
         }
 
-        const passwordAttemptSetting: SettingEntity =
-            await this.settingService.getPasswordAttempt();
         const passwordAttempt: boolean =
-            await this.settingUseCase.getValue<boolean>(passwordAttemptSetting);
-        const maxPasswordAttemptSetting: SettingEntity =
-            await this.settingService.getMaxPasswordAttempt();
+            await this.settingService.getPasswordAttempt();
         const maxPasswordAttempt: number =
-            await this.settingUseCase.getValue<number>(
-                maxPasswordAttemptSetting
-            );
+            await this.settingService.getMaxPasswordAttempt();
         if (passwordAttempt && user.passwordAttempt >= maxPasswordAttempt) {
             throw new ForbiddenException({
                 statusCode:
@@ -125,9 +111,7 @@ export class UserController {
         );
         if (!validate) {
             if (passwordAttempt) {
-                const data: UserPasswordAttemptDto =
-                    await this.userUseCase.increasePasswordAttempt(user);
-                await this.userService.updatePasswordAttempt(user._id, data);
+                await this.userService.increasePasswordAttempt(user);
             }
 
             throw new BadRequestException({
@@ -149,9 +133,7 @@ export class UserController {
 
         if (passwordAttempt) {
             try {
-                const data: UserPasswordAttemptDto =
-                    await this.userUseCase.resetPasswordAttempt();
-                await this.userService.updatePasswordAttempt(user._id, data);
+                await this.userService.resetPasswordAttempt(user._id);
             } catch (err: any) {
                 throw new InternalServerErrorException({
                     statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -162,7 +144,7 @@ export class UserController {
         }
 
         const payload: UserPayloadSerialization =
-            await this.userUseCase.payloadSerialization(user);
+            await this.userService.payloadSerialization(user);
         const tokenType: string = await this.authService.getTokenType();
         const expiresIn: number =
             await this.authService.getAccessTokenExpirationTime();
@@ -273,7 +255,7 @@ export class UserController {
         }
 
         const payload: UserPayloadSerialization =
-            await this.userUseCase.payloadSerialization(user);
+            await this.userService.payloadSerialization(user);
         const tokenType: string = await this.authService.getTokenType();
         const expiresIn: number =
             await this.authService.getAccessTokenExpirationTime();
@@ -323,16 +305,10 @@ export class UserController {
             });
         }
 
-        const passwordAttemptSetting: SettingEntity =
-            await this.settingService.getPasswordAttempt();
         const passwordAttempt: boolean =
-            await this.settingUseCase.getValue<boolean>(passwordAttemptSetting);
-        const maxPasswordAttemptSetting: SettingEntity =
-            await this.settingService.getMaxPasswordAttempt();
+            await this.settingService.getPasswordAttempt();
         const maxPasswordAttempt: number =
-            await this.settingUseCase.getValue<number>(
-                maxPasswordAttemptSetting
-            );
+            await this.settingService.getMaxPasswordAttempt();
         if (passwordAttempt && user.passwordAttempt >= maxPasswordAttempt) {
             throw new ForbiddenException({
                 statusCode:
@@ -347,9 +323,7 @@ export class UserController {
         );
         if (!matchPassword) {
             if (passwordAttempt) {
-                const data: UserPasswordAttemptDto =
-                    await this.userUseCase.increasePasswordAttempt(user);
-                await this.userService.updatePasswordAttempt(user._id, data);
+                await this.userService.increasePasswordAttempt(user);
             }
 
             throw new BadRequestException({
@@ -373,9 +347,7 @@ export class UserController {
 
         if (passwordAttempt) {
             try {
-                const data: UserPasswordAttemptDto =
-                    await this.userUseCase.resetPasswordAttempt();
-                await this.userService.updatePasswordAttempt(user._id, data);
+                await this.userService.increasePasswordAttempt(user);
             } catch (err: any) {
                 throw new InternalServerErrorException({
                     statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -390,10 +362,7 @@ export class UserController {
                 body.newPassword
             );
 
-            const data: UserPasswordDto = await this.userUseCase.updatePassword(
-                password
-            );
-            await this.userService.updatePassword(user._id, data);
+            await this.userService.updatePassword(user._id, password);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -438,10 +407,10 @@ export class UserController {
         }
 
         const permissions: PermissionEntity[] =
-            await this.userUseCase.getPermissionByGroup(check, scope);
+            await this.userService.permissionByGroup(check, scope);
 
         const payload: UserPayloadPermissionSerialization =
-            await this.userUseCase.payloadPermissionSerialization(
+            await this.userService.payloadPermissionSerialization(
                 user._id,
                 permissions
             );
@@ -502,7 +471,7 @@ export class UserController {
             .substring(filename.lastIndexOf('.') + 1, filename.length)
             .toUpperCase();
 
-        const path = await this.userUseCase.createRandomFilename();
+        const path = await this.userService.createPhotoFilename();
 
         try {
             const aws: AwsS3Serialization =
@@ -513,9 +482,7 @@ export class UserController {
                         path: `${path.path}/${user._id}`,
                     }
                 );
-
-            const data: UserPhotoDto = await this.userUseCase.updatePhoto(aws);
-            await this.userService.updatePhoto(user._id, data);
+            await this.userService.updatePhoto(user._id, aws);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

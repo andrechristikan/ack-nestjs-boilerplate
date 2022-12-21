@@ -64,7 +64,6 @@ import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 import { UserListDto } from 'src/modules/user/dtos/user.list.dto';
 import { UserRequestDto } from 'src/modules/user/dtos/user.request.dto';
-import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
 import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
 import { UserImportSerialization } from 'src/modules/user/serializations/user.import.serialization';
@@ -72,9 +71,7 @@ import { UserListSerialization } from 'src/modules/user/serializations/user.list
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthPermissionProtected } from 'src/common/auth/decorators/auth.permission.decorator';
-import { UserUseCase } from 'src/modules/user/use-cases/user.use-case';
-import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
-import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
+import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -86,7 +83,6 @@ export class UserAdminController {
         private readonly authService: AuthService,
         private readonly paginationService: PaginationService,
         private readonly userService: UserService,
-        private readonly userUseCase: UserUseCase,
         private readonly roleService: RoleService
     ) {}
 
@@ -174,7 +170,7 @@ export class UserAdminController {
             });
         }
 
-        const usernameExist: boolean = await this.userService.existUsername(
+        const usernameExist: boolean = await this.userService.existByUsername(
             username
         );
         if (usernameExist) {
@@ -185,7 +181,7 @@ export class UserAdminController {
             });
         }
 
-        const emailExist: boolean = await this.userService.existEmail(email);
+        const emailExist: boolean = await this.userService.existByEmail(email);
         if (emailExist) {
             throw new ConflictException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
@@ -195,7 +191,7 @@ export class UserAdminController {
 
         if (mobileNumber) {
             const mobileNumberExist: boolean =
-                await this.userService.existMobileNumber(mobileNumber);
+                await this.userService.existByMobileNumber(mobileNumber);
             if (mobileNumberExist) {
                 throw new ConflictException({
                     statusCode:
@@ -210,11 +206,10 @@ export class UserAdminController {
                 body.password
             );
 
-            const data: UserEntity = await this.userUseCase.create(
+            const create = await this.userService.create(
                 { username, email, mobileNumber, role, ...body },
                 password
             );
-            const create = await this.userService.create(data);
 
             return {
                 _id: create._id,
@@ -267,10 +262,10 @@ export class UserAdminController {
     async update(
         @GetUser() user: IUserEntity,
         @Body()
-        body: UserUpdateDto
+        body: UserUpdateNameDto
     ): Promise<IResponse> {
         try {
-            await this.userService.updateOneById(user._id, body);
+            await this.userService.updateName(user._id, body);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -297,8 +292,7 @@ export class UserAdminController {
     @Patch('/update/:user/inactive')
     async inactive(@GetUser() user: IUserEntity): Promise<void> {
         try {
-            const data: UserActiveDto = await this.userUseCase.inactive();
-            await this.userService.updateIsActive(user._id, data);
+            await this.userService.inactive(user._id);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -323,8 +317,7 @@ export class UserAdminController {
     @Patch('/update/:user/active')
     async active(@GetUser() user: IUserEntity): Promise<void> {
         try {
-            const data: UserActiveDto = await this.userUseCase.active();
-            await this.userService.updateIsActive(user._id, data);
+            await this.userService.active(user._id);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

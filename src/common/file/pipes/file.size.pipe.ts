@@ -13,12 +13,16 @@ import { ENUM_FILE_STATUS_CODE_ERROR } from '../constants/file.status-code.const
 
 @Injectable({ scope: Scope.REQUEST })
 export class FileSizeImagePipe implements PipeTransform {
+    private readonly maxSize: number;
+
     constructor(
         @Inject(REQUEST)
         private readonly request: Request & { __customFileSize: string },
         private readonly configService: ConfigService,
         private readonly helperFileService: HelperFileService
-    ) {}
+    ) {
+        this.maxSize = this.configService.get<number>('file.image.maxFileSize');
+    }
 
     async transform(value: IFile | IFile[]): Promise<IFile | IFile[]> {
         if (!value) {
@@ -44,7 +48,7 @@ export class FileSizeImagePipe implements PipeTransform {
             ? this.helperFileService.convertToBytes(
                   this.request.__customFileSize
               )
-            : this.configService.get<number>('file.image.maxFileSize');
+            : this.maxSize;
 
         if (size > maxSizeInBytes) {
             throw new PayloadTooLargeException({
@@ -59,12 +63,16 @@ export class FileSizeImagePipe implements PipeTransform {
 
 @Injectable({ scope: Scope.REQUEST })
 export class FileSizeExcelPipe implements PipeTransform {
+    private readonly maxSize: number;
+
     constructor(
         @Inject(REQUEST)
         private readonly request: Request & { __customFileSize: string },
         private readonly configService: ConfigService,
         private readonly helperFileService: HelperFileService
-    ) {}
+    ) {
+        this.maxSize = this.configService.get<number>('file.excel.maxFileSize');
+    }
 
     async transform(value: IFile | IFile[]): Promise<IFile | IFile[]> {
         if (Array.isArray(value)) {
@@ -86,7 +94,7 @@ export class FileSizeExcelPipe implements PipeTransform {
             ? this.helperFileService.convertToBytes(
                   this.request.__customFileSize
               )
-            : this.configService.get<number>('file.excel.maxFileSize');
+            : this.maxSize;
 
         if (size > maxSizeInBytes) {
             throw new PayloadTooLargeException({
@@ -101,12 +109,16 @@ export class FileSizeExcelPipe implements PipeTransform {
 
 @Injectable({ scope: Scope.REQUEST })
 export class FileSizeVideoPipe implements PipeTransform {
+    private readonly maxSize: number;
+
     constructor(
         @Inject(REQUEST)
         private readonly request: Request & { __customFileSize: string },
         private readonly configService: ConfigService,
         private readonly helperFileService: HelperFileService
-    ) {}
+    ) {
+        this.maxSize = this.configService.get<number>('file.video.maxFileSize');
+    }
 
     async transform(value: IFile | IFile[]): Promise<IFile | IFile[]> {
         if (Array.isArray(value)) {
@@ -128,7 +140,7 @@ export class FileSizeVideoPipe implements PipeTransform {
             ? this.helperFileService.convertToBytes(
                   this.request.__customFileSize
               )
-            : this.configService.get<number>('file.video.maxFileSize');
+            : this.maxSize;
 
         if (size > maxSizeInBytes) {
             throw new PayloadTooLargeException({
@@ -143,12 +155,16 @@ export class FileSizeVideoPipe implements PipeTransform {
 
 @Injectable({ scope: Scope.REQUEST })
 export class FileSizeAudioPipe implements PipeTransform {
+    private readonly maxSize: number;
+
     constructor(
         @Inject(REQUEST)
         private readonly request: Request & { __customFileSize: string },
         private readonly configService: ConfigService,
         private readonly helperFileService: HelperFileService
-    ) {}
+    ) {
+        this.maxSize = this.configService.get<number>('file.audio.maxFileSize');
+    }
 
     async transform(value: IFile | IFile[]): Promise<IFile | IFile[]> {
         if (Array.isArray(value)) {
@@ -170,7 +186,7 @@ export class FileSizeAudioPipe implements PipeTransform {
             ? this.helperFileService.convertToBytes(
                   this.request.__customFileSize
               )
-            : this.configService.get<number>('file.audio.maxFileSize');
+            : this.maxSize;
 
         if (size > maxSizeInBytes) {
             throw new PayloadTooLargeException({

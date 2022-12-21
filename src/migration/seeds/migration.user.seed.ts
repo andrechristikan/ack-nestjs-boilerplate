@@ -2,10 +2,8 @@ import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { UserService } from 'src/modules/user/services/user.service';
-import { UserBulkService } from 'src/modules/user/services/user.bulk.service';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
-import { UserUseCase } from 'src/modules/user/use-cases/user.use-case';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
 @Injectable()
@@ -13,8 +11,6 @@ export class UserSeed {
     constructor(
         private readonly authService: AuthService,
         private readonly userService: UserService,
-        private readonly userUseCase: UserUseCase,
-        private readonly userBulkService: UserBulkService,
         private readonly roleService: RoleService
     ) {}
 
@@ -37,53 +33,51 @@ export class UserSeed {
                 name: 'user',
             }
         );
+        const passwordHash = await this.authService.createPassword(
+            'aaAA@@123444'
+        );
+
+        const user1: Promise<UserEntity> = this.userService.create(
+            {
+                username: 'superadmin',
+                firstName: 'superadmin',
+                lastName: 'test',
+                email: 'superadmin@mail.com',
+                password,
+                mobileNumber: '08111111222',
+                role: superadminRole._id,
+            },
+            passwordHash
+        );
+
+        const user2: Promise<UserEntity> = this.userService.create(
+            {
+                username: 'admin',
+                firstName: 'admin',
+                lastName: 'test',
+                email: 'admin@mail.com',
+                password,
+                mobileNumber: '08111111111',
+                role: adminRole._id,
+            },
+            passwordHash
+        );
+
+        const user3: Promise<UserEntity> = this.userService.create(
+            {
+                username: 'user',
+                firstName: 'user',
+                lastName: 'test',
+                email: 'user@mail.com',
+                password,
+                mobileNumber: '08111111333',
+                role: userRole._id,
+            },
+            passwordHash
+        );
 
         try {
-            const passwordHash = await this.authService.createPassword(
-                'aaAA@@123444'
-            );
-
-            const dataSuperAdmin: UserEntity = await this.userUseCase.create(
-                {
-                    username: 'superadmin',
-                    firstName: 'superadmin',
-                    lastName: 'test',
-                    email: 'superadmin@mail.com',
-                    password,
-                    mobileNumber: '08111111222',
-                    role: superadminRole._id,
-                },
-                passwordHash
-            );
-            await this.userService.create(dataSuperAdmin);
-
-            const dataAdmin: UserEntity = await this.userUseCase.create(
-                {
-                    username: 'admin',
-                    firstName: 'admin',
-                    lastName: 'test',
-                    email: 'admin@mail.com',
-                    password,
-                    mobileNumber: '08111111111',
-                    role: adminRole._id,
-                },
-                passwordHash
-            );
-            await this.userService.create(dataAdmin);
-
-            const dataUser: UserEntity = await this.userUseCase.create(
-                {
-                    username: 'user',
-                    firstName: 'user',
-                    lastName: 'test',
-                    email: 'user@mail.com',
-                    password,
-                    mobileNumber: '08111111333',
-                    role: userRole._id,
-                },
-                passwordHash
-            );
-            await this.userService.create(dataUser);
+            await Promise.all([user1, user2, user3]);
         } catch (err: any) {
             throw new Error(err.message);
         }
@@ -97,7 +91,7 @@ export class UserSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.userBulkService.deleteMany({});
+            await this.userService.deleteMany({});
         } catch (err: any) {
             throw new Error(err.message);
         }

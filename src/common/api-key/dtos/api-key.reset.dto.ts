@@ -4,8 +4,4 @@ export class ApiKeyResetDto {
     @IsString()
     @IsNotEmpty()
     hash: string;
-
-    @IsString()
-    @IsNotEmpty()
-    secret: string;
 }

@@ -8,6 +8,7 @@ import {
     E2E_ROLE_ADMIN_GET_BY_ID_URL,
     E2E_ROLE_ADMIN_INACTIVE_URL,
     E2E_ROLE_ADMIN_LIST_URL,
+    E2E_ROLE_ADMIN_UPDATE_PERMISSION_URL,
     E2E_ROLE_ADMIN_UPDATE_URL,
 } from './role.constant';
 import { RouterModule } from '@nestjs/core';
@@ -20,7 +21,6 @@ import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/req
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { RoleBulkService } from 'src/modules/role/services/role.bulk.service';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
@@ -31,15 +31,14 @@ import {
     E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
 } from 'test/e2e/user/user.constant';
 import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/constants/permission.status-code.constant';
-import { RoleUseCase } from 'src/modules/role/use-cases/role.use-case';
+import { RoleUpdateNameDto } from 'src/modules/role/dtos/role.update-name.dto';
+import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
 
 describe('E2E Role Admin', () => {
     let app: INestApplication;
     let authService: AuthService;
     let roleService: RoleService;
-    let roleUseCase: RoleUseCase;
     let permissionService: PermissionService;
-    let roleBulkService: RoleBulkService;
 
     let role: RoleEntity;
     let roleUpdate: RoleEntity;
@@ -48,7 +47,8 @@ describe('E2E Role Admin', () => {
     let permissionToken: string;
 
     let successData: RoleCreateDto;
-    let updateData: RoleCreateDto;
+    let updateData: RoleUpdateNameDto;
+    let updateDataPermission: RoleUpdatePermissionDto;
     let existData: RoleCreateDto;
 
     beforeAll(async () => {
@@ -71,8 +71,6 @@ describe('E2E Role Admin', () => {
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
-        roleUseCase = app.get(RoleUseCase);
-        roleBulkService = app.get(RoleBulkService);
         permissionService = app.get(PermissionService);
 
         const permissions: PermissionEntity[] = await permissionService.findAll(
@@ -98,15 +96,17 @@ describe('E2E Role Admin', () => {
             accessFor: ENUM_AUTH_ACCESS_FOR.ADMIN,
         };
 
-        const dataUpdate = await roleUseCase.create({
+        roleUpdate = await roleService.create({
             name: 'testRole2',
             permissions: permissions.map((val) => `${val._id}`),
             accessFor: ENUM_AUTH_ACCESS_FOR.ADMIN,
         });
-        roleUpdate = await roleService.create(dataUpdate);
 
         updateData = {
             name: 'testRole3',
+        };
+
+        updateDataPermission = {
             permissions: permissions.map((val) => `${val._id}`),
             accessFor: ENUM_AUTH_ACCESS_FOR.ADMIN,
         };
@@ -117,8 +117,7 @@ describe('E2E Role Admin', () => {
             accessFor: ENUM_AUTH_ACCESS_FOR.ADMIN,
         };
 
-        const dataExist = await roleUseCase.create(existData);
-        role = await roleService.create(dataExist);
+        role = await roleService.create(existData);
 
         const payload = await authService.createPayloadAccessToken(
             {
@@ -325,6 +324,89 @@ describe('E2E Role Admin', () => {
         return;
     });
 
+    it(`PUT ${E2E_ROLE_ADMIN_UPDATE_PERMISSION_URL} Update Error Request`, async () => {
+        const response = await request(app.getHttpServer())
+            .put(
+                E2E_ROLE_ADMIN_UPDATE_PERMISSION_URL.replace(
+                    ':_id',
+                    roleUpdate._id
+                )
+            )
+            .send({
+                name: [231231],
+            })
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-permission-token', permissionToken);
+
+        expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
+        expect(response.body.statusCode).toEqual(
+            ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
+        );
+
+        return;
+    });
+
+    it(`PUT ${E2E_ROLE_ADMIN_UPDATE_PERMISSION_URL} Update Not found`, async () => {
+        const response = await request(app.getHttpServer())
+            .put(
+                E2E_ROLE_ADMIN_UPDATE_PERMISSION_URL.replace(
+                    ':_id',
+                    `${DatabaseDefaultUUID()}`
+                )
+            )
+            .send(updateDataPermission)
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-permission-token', permissionToken);
+
+        expect(response.status).toEqual(HttpStatus.NOT_FOUND);
+        expect(response.body.statusCode).toEqual(
+            ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR
+        );
+
+        return;
+    });
+
+    it(`PUT ${E2E_ROLE_ADMIN_UPDATE_PERMISSION_URL} Update Permission Not Found`, async () => {
+        const response = await request(app.getHttpServer())
+            .put(
+                E2E_ROLE_ADMIN_UPDATE_PERMISSION_URL.replace(
+                    ':_id',
+                    roleUpdate._id
+                )
+            )
+            .send({
+                ...updateDataPermission,
+                permissions: [DatabaseDefaultUUID()],
+            })
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-permission-token', permissionToken);
+
+        expect(response.status).toEqual(HttpStatus.NOT_FOUND);
+        expect(response.body.statusCode).toEqual(
+            ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR
+        );
+
+        return;
+    });
+
+    it(`PUT ${E2E_ROLE_ADMIN_UPDATE_PERMISSION_URL} Update Success`, async () => {
+        const response = await request(app.getHttpServer())
+            .put(
+                E2E_ROLE_ADMIN_UPDATE_PERMISSION_URL.replace(
+                    ':_id',
+                    roleUpdate._id
+                )
+            )
+            .send(updateDataPermission)
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-permission-token', permissionToken);
+
+        expect(response.status).toEqual(HttpStatus.OK);
+        expect(response.body.statusCode).toEqual(HttpStatus.OK);
+
+        return;
+    });
+
     it(`PATCH ${E2E_ROLE_ADMIN_INACTIVE_URL} Inactive, Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .patch(
@@ -448,16 +530,16 @@ describe('E2E Role Admin', () => {
 
     afterAll(async () => {
         try {
-            await roleBulkService.deleteMany({
+            await roleService.deleteMany({
                 name: 'testRole',
             });
-            await roleBulkService.deleteMany({
+            await roleService.deleteMany({
                 name: 'testRole1',
             });
-            await roleBulkService.deleteMany({
+            await roleService.deleteMany({
                 name: 'testRole2',
             });
-            await roleBulkService.deleteMany({
+            await roleService.deleteMany({
                 name: 'testRole3',
             });
         } catch (e) {}

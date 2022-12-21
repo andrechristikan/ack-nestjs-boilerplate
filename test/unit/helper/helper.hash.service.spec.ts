@@ -8,7 +8,7 @@ describe('HelperHashService', () => {
     let helperHashService: HelperHashService;
     const data = 'aaaa';
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({

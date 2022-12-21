@@ -8,7 +8,7 @@ import configs from 'src/configs';
 describe('DebuggerOptionService', () => {
     let debuggerOptionService: DebuggerOptionService;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         process.env.DEBUGGER_HTTP_WRITE_INTO_CONSOLE = 'true';
         process.env.DEBUGGER_SYSTEM_WRITE_INTO_CONSOLE = 'true';
         process.env.DEBUGGER_HTTP_WRITE_INTO_FILE = 'true';

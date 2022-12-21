@@ -7,7 +7,7 @@ import configs from 'src/configs';
 describe('HelperGeoService', () => {
     let helperGeoService: HelperGeoService;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({

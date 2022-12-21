@@ -7,7 +7,7 @@ import configs from 'src/configs';
 describe('HelperStringService', () => {
     let helperStringService: HelperStringService;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({

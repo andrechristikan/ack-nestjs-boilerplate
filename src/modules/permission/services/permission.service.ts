@@ -5,11 +5,16 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
+    IDatabaseCreateManyOptions,
+    IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_PAGINATION_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 import { PermissionActiveDto } from 'src/modules/permission/dtos/permission.active.dto';
+import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
+import { PermissionUpdateDescriptionDto } from 'src/modules/permission/dtos/permission.update-description.dto';
 import { PermissionUpdateGroupDto } from 'src/modules/permission/dtos/permission.update-group.dto';
-import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
+import { IPermissionGroup } from 'src/modules/permission/interfaces/permission.interface';
 import { IPermissionService } from 'src/modules/permission/interfaces/permission.service.interface';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { PermissionRepository } from 'src/modules/permission/repository/repositories/permission.repository';
@@ -73,21 +78,27 @@ export class PermissionService implements IPermissionService {
     }
 
     async create(
-        data: PermissionEntity,
+        { group, code, description }: PermissionCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<PermissionEntity> {
+        const create: PermissionEntity = new PermissionEntity();
+        create.group = group;
+        create.code = code;
+        create.description = description ?? undefined;
+        create.isActive = true;
+
         return this.permissionRepository.create<PermissionEntity>(
-            data,
+            create,
             options
         );
     }
 
-    async update(
+    async updateDescription(
         _id: string,
-        data: PermissionUpdateDto,
+        data: PermissionUpdateDescriptionDto,
         options?: IDatabaseOptions
     ): Promise<PermissionEntity> {
-        return this.permissionRepository.updateOneById<PermissionUpdateDto>(
+        return this.permissionRepository.updateOneById<PermissionUpdateDescriptionDto>(
             _id,
             data,
             options
@@ -106,15 +117,75 @@ export class PermissionService implements IPermissionService {
         );
     }
 
-    async updateIsActive(
+    async active(
         _id: string,
-        data: PermissionActiveDto,
         options?: IDatabaseOptions
     ): Promise<PermissionEntity> {
+        const dto: PermissionActiveDto = new PermissionActiveDto();
+        dto.isActive = true;
+
         return this.permissionRepository.updateOneById<PermissionActiveDto>(
             _id,
-            data,
+            dto,
             options
         );
+    }
+
+    async inactive(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<PermissionEntity> {
+        const dto: PermissionActiveDto = new PermissionActiveDto();
+        dto.isActive = false;
+
+        return this.permissionRepository.updateOneById<PermissionActiveDto>(
+            _id,
+            dto,
+            options
+        );
+    }
+
+    async groupingByGroups(
+        permissions: PermissionEntity[]
+    ): Promise<IPermissionGroup[]> {
+        return Object.values(ENUM_PERMISSION_GROUP)
+            .map((val) => {
+                const pms: PermissionEntity[] = permissions.filter(
+                    (l) => l.group === val
+                );
+
+                return {
+                    group: val,
+                    permissions: pms,
+                };
+            })
+            .filter((val) => val.permissions.length !== 0);
+    }
+
+    async createMany(
+        data: PermissionCreateDto[],
+        options?: IDatabaseCreateManyOptions
+    ): Promise<boolean> {
+        const create: PermissionEntity[] = data.map((val) => {
+            const entity: PermissionEntity = new PermissionEntity();
+            entity.code = val.code;
+            entity.description = val?.description;
+            entity.group = val.group;
+            entity.isActive = true;
+
+            return entity;
+        }) as PermissionEntity[];
+
+        return this.permissionRepository.createMany<PermissionEntity>(
+            create,
+            options
+        );
+    }
+
+    async deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseManyOptions
+    ): Promise<boolean> {
+        return this.permissionRepository.deleteMany(find, options);
     }
 }

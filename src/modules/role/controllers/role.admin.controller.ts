@@ -48,17 +48,16 @@ import {
     RoleListDoc,
     RoleUpdateDoc,
 } from 'src/modules/role/docs/role.admin.doc';
-import { RoleActiveDto } from 'src/modules/role/dtos/role.active.dto';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleListDto } from 'src/modules/role/dtos/role.list.dto';
 import { RoleRequestDto } from 'src/modules/role/dtos/role.request.dto';
-import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
+import { RoleUpdateNameDto } from 'src/modules/role/dtos/role.update-name.dto';
+import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
 import { IRoleEntity } from 'src/modules/role/interfaces/role.interface';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
 import { RoleListSerialization } from 'src/modules/role/serializations/role.list.serialization';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { RoleUseCase } from 'src/modules/role/use-cases/role.use-case';
 
 @ApiTags('modules.admin.role')
 @Controller({
@@ -69,8 +68,7 @@ export class RoleAdminController {
     constructor(
         private readonly paginationService: PaginationService,
         private readonly permissionService: PermissionService,
-        private readonly roleService: RoleService,
-        private readonly roleUseCase: RoleUseCase
+        private readonly roleService: RoleService
     ) {}
 
     @RoleListDoc()
@@ -152,7 +150,7 @@ export class RoleAdminController {
         @Body()
         { name, permissions, accessFor }: RoleCreateDto
     ): Promise<IResponse> {
-        const exist: boolean = await this.roleService.exists(name, {
+        const exist: boolean = await this.roleService.existByName(name, {
             join: true,
         });
         if (exist) {
@@ -176,12 +174,11 @@ export class RoleAdminController {
         }
 
         try {
-            const data: RoleEntity = await this.roleUseCase.create({
+            const create = await this.roleService.create({
                 name,
                 permissions,
                 accessFor,
             });
-            const create = await this.roleService.create(data);
 
             return {
                 _id: create._id,
@@ -210,9 +207,9 @@ export class RoleAdminController {
     async update(
         @GetRole() role: IRoleEntity,
         @Body()
-        { name, permissions, accessFor }: RoleUpdateDto
+        { name }: RoleUpdateNameDto
     ): Promise<IResponse> {
-        const check: boolean = await this.roleService.exists(name, {
+        const check: boolean = await this.roleService.existByName(name, {
             excludeId: [role._id],
         });
         if (check) {
@@ -222,26 +219,58 @@ export class RoleAdminController {
             });
         }
 
-        for (const permission of permissions) {
-            const checkPermission: PermissionEntity =
-                await this.permissionService.findOneById(permission);
+        try {
+            await this.roleService.updateName(role._id, { name });
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                error: err.message,
+            });
+        }
 
-            if (!checkPermission) {
-                throw new NotFoundException({
-                    statusCode:
-                        ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR,
-                    message: 'permission.error.notFound',
-                });
-            }
+        return {
+            _id: role._id,
+        };
+    }
+
+    @RoleUpdateDoc()
+    @Response('role.updatePermission', {
+        serialization: ResponseIdSerialization,
+    })
+    @RoleUpdateGuard()
+    @RequestParamGuard(RoleRequestDto)
+    @AuthPermissionProtected(
+        ENUM_AUTH_PERMISSIONS.ROLE_READ,
+        ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
+    )
+    @AuthJwtAdminAccessProtected()
+    @Put('/update/:role/permission')
+    async updatePermission(
+        @GetRole() role: IRoleEntity,
+        @Body()
+        { accessFor, permissions }: RoleUpdatePermissionDto
+    ): Promise<IResponse> {
+        const promPermissions: Promise<PermissionEntity>[] = permissions.map(
+            (value) => this.permissionService.findOneById(value)
+        );
+        const checkPermission: PermissionEntity[] = await Promise.all(
+            promPermissions
+        );
+
+        if (checkPermission.length !== permissions.length) {
+            throw new NotFoundException({
+                statusCode:
+                    ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR,
+                message: 'permission.error.notFound',
+            });
         }
 
         try {
-            const data: RoleUpdateDto = await this.roleUseCase.update({
-                name,
-                permissions,
+            await this.roleService.updatePermission(role._id, {
                 accessFor,
+                permissions,
             });
-            await this.roleService.update(role._id, data);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -275,6 +304,7 @@ export class RoleAdminController {
                 error: err.message,
             });
         }
+
         return;
     }
 
@@ -291,8 +321,7 @@ export class RoleAdminController {
     @Patch('/update/:role/inactive')
     async inactive(@GetRole() role: IRoleEntity): Promise<void> {
         try {
-            const update: RoleActiveDto = await this.roleUseCase.inactive();
-            await this.roleService.updateIsActive(role._id, update);
+            await this.roleService.inactive(role._id);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -317,8 +346,7 @@ export class RoleAdminController {
     @Patch('/update/:role/active')
     async active(@GetRole() role: IRoleEntity): Promise<void> {
         try {
-            const update: RoleActiveDto = await this.roleUseCase.active();
-            await this.roleService.updateIsActive(role._id, update);
+            await this.roleService.active(role._id);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

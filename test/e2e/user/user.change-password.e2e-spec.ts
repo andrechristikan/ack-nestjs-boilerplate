@@ -20,13 +20,10 @@ import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
-import { UserUseCase } from 'src/modules/user/use-cases/user.use-case';
-import { UserPasswordAttemptDto } from 'src/modules/user/dtos/user.password-attempt.dto';
 
 describe('E2E User Change Password', () => {
     let app: INestApplication;
     let userService: UserService;
-    let userUseCase: UserUseCase;
     let authService: AuthService;
     let roleService: RoleService;
 
@@ -59,7 +56,6 @@ describe('E2E User Change Password', () => {
         app = modRef.createNestApplication();
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
-        userUseCase = app.get(UserUseCase);
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
 
@@ -69,7 +65,7 @@ describe('E2E User Change Password', () => {
 
         const passwordHash = await authService.createPassword(password);
 
-        const data: UserEntity = await userUseCase.create(
+        user = await userService.create(
             {
                 username: faker.internet.userName(),
                 firstName: faker.name.firstName(),
@@ -81,7 +77,6 @@ describe('E2E User Change Password', () => {
             },
             passwordHash
         );
-        user = await userService.create(data);
 
         const userPopulate = await userService.findOneById<IUserEntity>(
             user._id,
@@ -155,9 +150,7 @@ describe('E2E User Change Password', () => {
     });
 
     it(`PATCH ${E2E_USER_CHANGE_PASSWORD_URL} Old Password Password Attempt Max`, async () => {
-        const dataMax: UserPasswordAttemptDto =
-            await userUseCase.maxPasswordAttempt();
-        await userService.updatePasswordAttempt(user._id, dataMax);
+        await userService.maxPasswordAttempt(user._id);
         const response = await request(app.getHttpServer())
             .patch(E2E_USER_CHANGE_PASSWORD_URL)
             .send({
@@ -171,9 +164,7 @@ describe('E2E User Change Password', () => {
             ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_ATTEMPT_MAX_ERROR
         );
 
-        const dataReset: UserPasswordAttemptDto =
-            await userUseCase.resetPasswordAttempt();
-        await userService.updatePasswordAttempt(user._id, dataReset);
+        await userService.resetPasswordAttempt(user._id);
         return;
     });
 

@@ -13,7 +13,7 @@ describe('DebuggerService', () => {
     const cFunction = 'test function';
     const data = { test: 'test' };
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         process.env.DEBUGGER_HTTP_WRITE_INTO_CONSOLE = 'true';
         process.env.DEBUGGER_SYSTEM_WRITE_INTO_CONSOLE = 'true';
         process.env.DEBUGGER_HTTP_WRITE_INTO_FILE = 'true';

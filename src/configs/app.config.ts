@@ -6,9 +6,9 @@ import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 export default registerAs(
     'app',
     (): Record<string, any> => ({
-        name: process.env.APP_NAME || 'ack',
-        env: process.env.APP_ENV || ENUM_APP_ENVIRONMENT.DEVELOPMENT,
-        language: process.env.APP_LANGUAGE || APP_LANGUAGE,
+        name: process.env.APP_NAME ?? 'ack',
+        env: process.env.APP_ENV ?? ENUM_APP_ENVIRONMENT.DEVELOPMENT,
+        language: process.env.APP_LANGUAGE?.split(',') ?? [APP_LANGUAGE],
 
         repoVersion: version,
         versioning: {

@@ -4,7 +4,6 @@ import mongoose from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { IDatabaseOptionsService } from 'src/common/database/interfaces/database.options-service.interface';
 import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
-import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
 @Injectable()
 export class DatabaseOptionsService implements IDatabaseOptionsService {
@@ -57,39 +56,5 @@ export class DatabaseOptionsService implements IDatabaseOptionsService {
         }
 
         return mongooseOptions;
-    }
-
-    createPostgresOptions(): TypeOrmModuleOptions {
-        let uri = `${this.host}`;
-
-        if (this.database) {
-            uri = `${uri}/${this.database}${this.options}`;
-        }
-
-        const typeormOptions: Record<string, any> = {
-            type: 'postgres',
-            url: uri,
-            retryDelay: 5000,
-            logging:
-                this.env === ENUM_APP_ENVIRONMENT.PRODUCTION
-                    ? false
-                    : this.debug,
-            keepConnectionAlive:
-                this.env === ENUM_APP_ENVIRONMENT.PRODUCTION ? true : false,
-            synchronize:
-                this.env === ENUM_APP_ENVIRONMENT.PRODUCTION ? false : true,
-            entities: [
-                __dirname +
-                    '/../../../{common,modules}/**/**/repository/entities/*.entity{.ts,.js}',
-            ],
-            autoLoadEntities: true,
-        };
-
-        if (this.user && this.password) {
-            typeormOptions.username = this.user;
-            typeormOptions.password = this.password;
-        }
-
-        return typeormOptions;
     }
 }

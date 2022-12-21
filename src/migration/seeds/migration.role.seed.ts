@@ -2,20 +2,15 @@ import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
-import { RoleBulkService } from 'src/modules/role/services/role.bulk.service';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
-import { RoleUseCase } from 'src/modules/role/use-cases/role.use-case';
-import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 
 @Injectable()
 export class RoleSeed {
     constructor(
         private readonly permissionService: PermissionService,
-        private readonly roleBulkService: RoleBulkService,
-        private readonly roleService: RoleService,
-        private readonly roleUseCase: RoleUseCase
+        private readonly roleService: RoleService
     ) {}
 
     @Command({
@@ -40,18 +35,9 @@ export class RoleSeed {
             },
         ];
 
-        const mapAdmin: Promise<RoleEntity>[] = dataAdmin.map((val) =>
-            this.roleUseCase.create(val)
-        );
-
-        const dataSuperAdmin: RoleEntity =
-            await this.roleUseCase.createSuperAdmin();
-
         try {
-            await this.roleService.create(dataSuperAdmin);
-
-            const createAdmin: RoleEntity[] = await Promise.all(mapAdmin);
-            await this.roleBulkService.createMany(createAdmin);
+            await this.roleService.createMany(dataAdmin);
+            await this.roleService.createSuperAdmin();
         } catch (err: any) {
             throw new Error(err.message);
         }
@@ -65,7 +51,7 @@ export class RoleSeed {
     })
     async remove(): Promise<void> {
         try {
-            await this.roleBulkService.deleteMany({});
+            await this.roleService.deleteMany({});
         } catch (err: any) {
             throw new Error(err.message);
         }

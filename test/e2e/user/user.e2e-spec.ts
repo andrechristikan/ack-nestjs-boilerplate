@@ -21,12 +21,10 @@ import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
-import { UserUseCase } from 'src/modules/user/use-cases/user.use-case';
 
 describe('E2E User', () => {
     let app: INestApplication;
     let userService: UserService;
-    let userUseCase: UserUseCase;
     let authService: AuthService;
     let roleService: RoleService;
 
@@ -56,7 +54,6 @@ describe('E2E User', () => {
         app = modRef.createNestApplication();
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
-        userUseCase = app.get(UserUseCase);
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
 
@@ -67,7 +64,7 @@ describe('E2E User', () => {
         const password = faker.internet.password(20, true, /[A-Za-z0-9]/);
         const passwordHash = await authService.createPassword(password);
 
-        const data: UserEntity = await userUseCase.create(
+        user = await userService.create(
             {
                 username: faker.internet.userName(),
                 firstName: faker.name.firstName(),
@@ -79,7 +76,6 @@ describe('E2E User', () => {
             },
             passwordHash
         );
-        user = await userService.create(data);
 
         const userPopulate = await userService.findOneById<IUserEntity>(
             user._id,
@@ -88,7 +84,7 @@ describe('E2E User', () => {
             }
         );
 
-        const map = await userUseCase.payloadSerialization(userPopulate);
+        const map = await userService.payloadSerialization(userPopulate);
         const payload = await authService.createPayloadAccessToken(map, false);
         const payloadNotFound = {
             ...payload,

@@ -10,7 +10,7 @@ describe('HelperFileService', () => {
     let workbook: WorkBook;
     let file: Buffer;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({

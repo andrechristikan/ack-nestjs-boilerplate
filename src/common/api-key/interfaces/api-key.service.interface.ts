@@ -1,12 +1,15 @@
-import { ApiKeyActiveDto } from 'src/common/api-key/dtos/api-key.active.dto';
-import { ApiKeyCreateDto } from 'src/common/api-key/dtos/api-key.create.dto';
-import { ApiKeyResetDto } from 'src/common/api-key/dtos/api-key.reset.dto';
-import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
+import {
+    ApiKeyCreateDto,
+    ApiKeyCreateRawDto,
+} from 'src/common/api-key/dtos/api-key.create.dto';
+import { ApiKeyUpdateNameDto } from 'src/common/api-key/dtos/api-key.update-name.dto';
+import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
+    IDatabaseManyOptions,
     IDatabaseOptions,
     IDatabaseSoftDeleteOptions,
 } from 'src/common/database/interfaces/database.interface';
@@ -32,7 +35,7 @@ export interface IApiKeyService {
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyEntity>;
 
-    findOneByKeyAndActive(
+    findOneByActiveKey(
         key: string,
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyEntity>;
@@ -42,26 +45,29 @@ export interface IApiKeyService {
         options?: IDatabaseOptions
     ): Promise<number>;
 
-    updateIsActive(
-        _id: string,
-        data: ApiKeyActiveDto,
-        options?: IDatabaseOptions
-    ): Promise<ApiKeyEntity>;
+    active(_id: string, options?: IDatabaseOptions): Promise<ApiKeyEntity>;
+
+    inactive(_id: string, options?: IDatabaseOptions): Promise<ApiKeyEntity>;
 
     create(
-        { name, description }: ApiKeyCreateDto,
+        data: ApiKeyCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<ApiKeyEntity>;
+    ): Promise<IApiKeyEntity>;
 
-    updateOneById(
+    createRaw(
+        data: ApiKeyCreateRawDto,
+        options?: IDatabaseCreateOptions
+    ): Promise<IApiKeyEntity>;
+
+    updateName(
         _id: string,
-        data: ApiKeyUpdateDto,
+        data: ApiKeyUpdateNameDto,
         options?: IDatabaseOptions
     ): Promise<ApiKeyEntity>;
 
-    updateResetById(
+    reset(
         _id: string,
-        data: ApiKeyResetDto,
+        key: string,
         options?: IDatabaseOptions
     ): Promise<ApiKeyEntity>;
 
@@ -74,4 +80,17 @@ export interface IApiKeyService {
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
     ): Promise<ApiKeyEntity>;
+
+    validateHashApiKey(hashFromRequest: string, hash: string): Promise<boolean>;
+
+    createKey(): Promise<string>;
+
+    createSecret(): Promise<string>;
+
+    createHashApiKey(key: string, secret: string): Promise<string>;
+
+    deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseManyOptions
+    ): Promise<boolean>;
 }

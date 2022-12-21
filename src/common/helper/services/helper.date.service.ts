@@ -52,11 +52,23 @@ export class HelperDateService implements IHelperDateService {
     }
 
     create(options?: IHelperDateOptionsCreate): Date {
-        return moment(options?.date).toDate();
+        const mDate = moment(options?.date);
+
+        if (options?.startOfDay) {
+            mDate.startOf('day');
+        }
+
+        return mDate.toDate();
     }
 
     timestamp(options?: IHelperDateOptionsCreate): number {
-        return moment(options?.date).valueOf();
+        const mDate = moment(options?.date);
+
+        if (options?.startOfDay) {
+            mDate.startOf('day');
+        }
+
+        return mDate.valueOf();
     }
 
     format(date: Date, options?: IHelperDateOptionsFormat): string {

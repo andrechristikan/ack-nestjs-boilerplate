@@ -8,7 +8,7 @@ import configs from 'src/configs';
 describe('PaginationService', () => {
     let paginationService: PaginationService;
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({

@@ -7,18 +7,23 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
 export class MessageCustomLanguageMiddleware implements NestMiddleware {
+    private readonly appDefaultLanguage: string[];
+
     constructor(
         private readonly helperArrayService: HelperArrayService,
         private readonly configService: ConfigService
-    ) {}
+    ) {
+        this.appDefaultLanguage =
+            this.configService.get<string[]>('app.language');
+    }
 
     async use(
         req: IRequestApp,
         res: Response,
         next: NextFunction
     ): Promise<void> {
-        let language: string = this.configService.get<string>('app.language');
-        let customLang: string[] = [language];
+        let language: string = this.appDefaultLanguage.join(',');
+        let customLang: string[] = this.appDefaultLanguage;
 
         const reqLanguages: string = req.headers['x-custom-lang'] as string;
         const enumLanguage: string[] = Object.values(ENUM_MESSAGE_LANGUAGE);

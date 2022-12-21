@@ -4,8 +4,11 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
+    IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
+import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
+import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
+import { SettingUpdateValueDto } from 'src/common/setting/dtos/setting.update-value.dto';
 import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 
 export interface ISettingService {
@@ -30,13 +33,13 @@ export interface ISettingService {
     ): Promise<number>;
 
     create(
-        data: SettingEntity,
+        data: SettingCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<SettingEntity>;
 
-    updateOneById(
+    updateValue(
         _id: string,
-        data: SettingUpdateDto,
+        data: SettingUpdateValueDto,
         options?: IDatabaseOptions
     ): Promise<SettingEntity>;
 
@@ -45,11 +48,20 @@ export interface ISettingService {
         options?: IDatabaseSoftDeleteOptions
     ): Promise<SettingEntity>;
 
-    getMaintenance(): Promise<SettingEntity>;
+    getValue<T>(setting: SettingEntity): Promise<T>;
 
-    getMobileNumberCountryCodeAllowed(): Promise<SettingEntity>;
+    checkValue(value: string, type: ENUM_SETTING_DATA_TYPE): Promise<boolean>;
 
-    getPasswordAttempt(): Promise<SettingEntity>;
+    getMaintenance(): Promise<boolean>;
 
-    getMaxPasswordAttempt(): Promise<SettingEntity>;
+    getMobileNumberCountryCodeAllowed(): Promise<string[]>;
+
+    getPasswordAttempt(): Promise<boolean>;
+
+    getMaxPasswordAttempt(): Promise<number>;
+
+    deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseManyOptions
+    ): Promise<boolean>;
 }

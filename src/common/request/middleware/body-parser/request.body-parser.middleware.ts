@@ -5,53 +5,69 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class RequestUrlencodedBodyParserMiddleware implements NestMiddleware {
-    constructor(private readonly configService: ConfigService) {}
+    private readonly maxFile: number;
+
+    constructor(private readonly configService: ConfigService) {
+        this.maxFile = this.configService.get<number>(
+            'request.body.urlencoded.maxFileSize'
+        );
+    }
 
     use(req: Request, res: Response, next: NextFunction): void {
         bodyParser.urlencoded({
             extended: false,
-            limit: this.configService.get<number>(
-                'request.body.urlencoded.maxFileSize'
-            ),
+            limit: this.maxFile,
         })(req, res, next);
     }
 }
 
 @Injectable()
 export class RequestJsonBodyParserMiddleware implements NestMiddleware {
-    constructor(private readonly configService: ConfigService) {}
+    private readonly maxFile: number;
+
+    constructor(private readonly configService: ConfigService) {
+        this.maxFile = this.configService.get<number>(
+            'request.body.json.maxFileSize'
+        );
+    }
 
     use(req: Request, res: Response, next: NextFunction): void {
         bodyParser.json({
-            limit: this.configService.get<number>(
-                'request.body.json.maxFileSize'
-            ),
+            limit: this.maxFile,
         })(req, res, next);
     }
 }
 
 @Injectable()
 export class RequestRawBodyParserMiddleware implements NestMiddleware {
-    constructor(private readonly configService: ConfigService) {}
+    private readonly maxFile: number;
+
+    constructor(private readonly configService: ConfigService) {
+        this.maxFile = this.configService.get<number>(
+            'request.body.raw.maxFileSize'
+        );
+    }
 
     use(req: Request, res: Response, next: NextFunction): void {
         bodyParser.raw({
-            limit: this.configService.get<number>(
-                'request.body.raw.maxFileSize'
-            ),
+            limit: this.maxFile,
         })(req, res, next);
     }
 }
 
 @Injectable()
 export class RequestTextBodyParserMiddleware implements NestMiddleware {
-    constructor(private readonly configService: ConfigService) {}
+    private readonly maxFile: number;
+
+    constructor(private readonly configService: ConfigService) {
+        this.maxFile = this.configService.get<number>(
+            'request.body.text.maxFileSize'
+        );
+    }
 
     use(req: Request, res: Response, next: NextFunction): void {
         bodyParser.text({
-            limit: this.configService.get<number>(
-                'request.body.text.maxFileSize'
-            ),
+            limit: this.maxFile,
         })(req, res, next);
     }
 }

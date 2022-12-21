@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
-import { HttpAdapterHost } from '@nestjs/core';
 import { ValidationError } from 'class-validator';
 import { Response } from 'express';
 import { DebuggerService } from 'src/common/debugger/services/debugger.service';
@@ -30,22 +29,25 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 // The exception filter only catch HttpException
 @Catch()
 export class ErrorHttpFilter implements ExceptionFilter {
+    private readonly appDefaultLanguage: string[];
+
     constructor(
         @Optional() private readonly debuggerService: DebuggerService,
         private readonly configService: ConfigService,
         private readonly messageService: MessageService,
-        private readonly httpAdapterHost: HttpAdapterHost,
         private readonly helperDateService: HelperDateService
-    ) {}
+    ) {
+        this.appDefaultLanguage =
+            this.configService.get<string[]>('app.language');
+    }
 
     async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
         const ctx: HttpArgumentsHost = host.switchToHttp();
         const request = ctx.getRequest<IRequestApp>();
 
         // get request headers
-        const customLang =
-            ctx.getRequest<IRequestApp>().customLang ||
-            this.configService.get<string>('app.language').split(',');
+        const customLang: string[] =
+            ctx.getRequest<IRequestApp>().customLang ?? this.appDefaultLanguage;
 
         // get metadata
         const __class = request.__class || ErrorHttpFilter.name;

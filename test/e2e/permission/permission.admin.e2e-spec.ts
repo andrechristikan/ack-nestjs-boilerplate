@@ -13,7 +13,6 @@ import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
-import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
 import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/constants/permission.status-code.constant';
@@ -25,19 +24,18 @@ import {
     E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
     E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
 } from 'test/e2e/user/user.constant';
-import { PermissionUseCase } from 'src/modules/permission/use-cases/permission.use-case';
+import { PermissionUpdateDescriptionDto } from 'src/modules/permission/dtos/permission.update-description.dto';
 
 describe('E2E Permission Admin', () => {
     let app: INestApplication;
     let authService: AuthService;
     let permissionService: PermissionService;
-    let permissionUseCase: PermissionUseCase;
 
     let accessToken: string;
     let permissionToken: string;
     let permission: PermissionEntity;
 
-    const updateData: PermissionUpdateDto = {
+    const updateData: PermissionUpdateDescriptionDto = {
         description: 'UPDATE_ROLE',
     };
 
@@ -61,7 +59,6 @@ describe('E2E Permission Admin', () => {
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         authService = app.get(AuthService);
         permissionService = app.get(PermissionService);
-        permissionUseCase = app.get(PermissionUseCase);
 
         const payload = await authService.createPayloadAccessToken(
             {
@@ -76,14 +73,11 @@ describe('E2E Permission Admin', () => {
             _id: payload._id,
         });
 
-        const permissionData: PermissionEntity = await permissionUseCase.create(
-            {
-                code: 'TEST_PERMISSION_XXXX',
-                description: 'test description',
-                group: ENUM_PERMISSION_GROUP.PERMISSION,
-            }
-        );
-        permission = await permissionService.create(permissionData);
+        permission = await permissionService.create({
+            code: 'TEST_PERMISSION_XXXX',
+            description: 'test description',
+            group: ENUM_PERMISSION_GROUP.PERMISSION,
+        });
 
         await app.init();
     });

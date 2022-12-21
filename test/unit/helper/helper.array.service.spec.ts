@@ -9,7 +9,7 @@ describe('HelperArrayService', () => {
     let helperArrayService: HelperArrayService;
     const arrays = [1, '2', '3', 3, 1, 6, 7, 8];
 
-    beforeEach(async () => {
+    beforeAll(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({

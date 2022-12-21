@@ -16,11 +16,17 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 export class RequestTimestampInterceptor
     implements NestInterceptor<Promise<any>>
 {
+    private readonly maxRequestTimestampInMs: number;
+
     constructor(
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
         private readonly helperNumberService: HelperNumberService
-    ) {}
+    ) {
+        this.maxRequestTimestampInMs = this.configService.get<number>(
+            'request.timestamp.toleranceTimeInMs'
+        );
+    }
 
     async intercept(
         context: ExecutionContext,
@@ -55,16 +61,12 @@ export class RequestTimestampInterceptor
                 date: timestamp,
             });
 
-            const toleranceTimeInMs = this.configService.get<number>(
-                'request.timestamp.toleranceTimeInMs'
+            const toleranceMin = this.helperDateService.backwardInMilliseconds(
+                this.maxRequestTimestampInMs
             );
-
-            const toleranceMin =
-                this.helperDateService.backwardInMilliseconds(
-                    toleranceTimeInMs
-                );
-            const toleranceMax =
-                this.helperDateService.forwardInMilliseconds(toleranceTimeInMs);
+            const toleranceMax = this.helperDateService.forwardInMilliseconds(
+                this.maxRequestTimestampInMs
+            );
 
             if (timestampDate < toleranceMin || timestampDate > toleranceMax) {
                 throw new ForbiddenException({

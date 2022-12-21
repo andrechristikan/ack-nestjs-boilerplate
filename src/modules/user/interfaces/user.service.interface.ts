@@ -1,3 +1,5 @@
+import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
+import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import {
     IDatabaseCreateOptions,
     IDatabaseSoftDeleteOptions,
@@ -5,14 +7,16 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
+    IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
-import { UserPasswordAttemptDto } from 'src/modules/user/dtos/user.password-attempt.dto';
-import { UserPasswordExpiredDto } from 'src/modules/user/dtos/user.password-expired.dto';
-import { UserPasswordDto } from 'src/modules/user/dtos/user.password.dto';
-import { UserPhotoDto } from 'src/modules/user/dtos/user.photo.dto';
-import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
+import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
+import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
+import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
+import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
+import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload-permission.serialization';
+import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 
 export interface IUserService {
     findAll<T>(
@@ -38,7 +42,8 @@ export interface IUserService {
     ): Promise<number>;
 
     create(
-        data: UserEntity,
+        data: UserCreateDto,
+        dataPassword: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserEntity>;
 
@@ -52,54 +57,80 @@ export interface IUserService {
         options?: IDatabaseSoftDeleteOptions
     ): Promise<UserEntity>;
 
-    updateOneById(
+    updateName(
         _id: string,
-        data: UserUpdateDto,
+        data: UserUpdateNameDto,
         options?: IDatabaseOptions
     ): Promise<UserEntity>;
 
-    existEmail(
+    updatePhoto(
+        _id: string,
+        photo: AwsS3Serialization,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity>;
+
+    existByEmail(
         email: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean>;
 
-    existMobileNumber(
+    existByMobileNumber(
         mobileNumber: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean>;
 
-    existUsername(
+    existByUsername(
         username: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean>;
 
-    updatePhoto(
-        _id: string,
-        data: UserPhotoDto,
-        options?: IDatabaseOptions
-    ): Promise<UserEntity>;
-
     updatePassword(
         _id: string,
-        data: UserPasswordDto,
+        { passwordHash, passwordExpired, salt }: IAuthPassword,
         options?: IDatabaseOptions
     ): Promise<UserEntity>;
 
     updatePasswordExpired(
         _id: string,
-        data: UserPasswordExpiredDto,
+        passwordExpired: Date,
         options?: IDatabaseOptions
     ): Promise<UserEntity>;
 
-    updateIsActive(
+    active(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
+
+    inactive(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
+
+    maxPasswordAttempt(
         _id: string,
-        data: UserActiveDto,
         options?: IDatabaseOptions
     ): Promise<UserEntity>;
 
-    updatePasswordAttempt(
-        _id: string,
-        data: UserPasswordAttemptDto,
+    increasePasswordAttempt(
+        user: UserEntity | IUserEntity,
         options?: IDatabaseOptions
     ): Promise<UserEntity>;
+
+    resetPasswordAttempt(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity>;
+
+    createPhotoFilename(): Promise<Record<string, any>>;
+
+    payloadSerialization(data: IUserEntity): Promise<UserPayloadSerialization>;
+
+    payloadPermissionSerialization(
+        _id: string,
+        permissions: PermissionEntity[]
+    ): Promise<UserPayloadPermissionSerialization>;
+
+    permissionByGroup(
+        user: IUserEntity,
+        scope: ENUM_PERMISSION_GROUP[]
+    ): Promise<PermissionEntity[]>;
+
+    deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseManyOptions
+    ): Promise<boolean>;
 }
