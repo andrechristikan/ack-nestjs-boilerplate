@@ -4,8 +4,9 @@ import configs from 'src/configs';
 
 describe('ConfigService', () => {
     let configService: ConfigService;
+    let appName: string;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({
@@ -19,6 +20,12 @@ describe('ConfigService', () => {
         }).compile();
 
         configService = moduleRef.get<ConfigService>(ConfigService);
+
+        appName = configService.get<string>('app.env');
+    });
+
+    afterEach(async () => {
+        jest.clearAllMocks();
     });
 
     it('should be defined', () => {
@@ -26,18 +33,14 @@ describe('ConfigService', () => {
     });
 
     describe('get', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(configService, 'get');
+        it('should be get config value of env', async () => {
+            const result: string = configService.get<string>('app.env');
 
-            configService.get('auth.env');
-            expect(test).toHaveBeenCalledWith('auth.env');
-        });
+            jest.spyOn(configService, 'get').mockReturnValueOnce(result);
 
-        it('should be success', async () => {
-            const env = configService.get('app.env');
-            jest.spyOn(configService, 'get').mockImplementation(() => env);
-
-            expect(configService.get('app.env')).toBe(env);
+            expect(result).toBeDefined();
+            expect(result).toBeTruthy();
+            expect(result).toBe(appName);
         });
     });
 });

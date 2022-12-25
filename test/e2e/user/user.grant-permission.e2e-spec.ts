@@ -100,6 +100,18 @@ describe('E2E User Grant Password', () => {
         await app.init();
     });
 
+    afterAll(async () => {
+        jest.clearAllMocks();
+
+        try {
+            await userService.deleteOneById(user._id);
+        } catch (err: any) {
+            console.error(err);
+        }
+
+        await app.close();
+    });
+
     it(`POST ${E2E_USER_GRANT_PERMISSION} Error Request`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_GRANT_PERMISSION)
@@ -112,8 +124,6 @@ describe('E2E User Grant Password', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_GRANT_PERMISSION} Not Found`, async () => {
@@ -128,8 +138,6 @@ describe('E2E User Grant Password', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_GRANT_PERMISSION} Success`, async () => {
@@ -142,16 +150,6 @@ describe('E2E User Grant Password', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
-    });
-
-    afterAll(async () => {
-        try {
-            await userService.deleteOneById(user._id);
-        } catch (err: any) {
-            console.error(err);
-        }
     });
 });
 
@@ -230,6 +228,18 @@ describe('E2E User Grant Password Payload Encryption', () => {
         await app.init();
     });
 
+    afterAll(async () => {
+        jest.clearAllMocks();
+
+        try {
+            await userService.deleteOneById(user._id);
+        } catch (err: any) {
+            console.error(err);
+        }
+
+        await app.close();
+    });
+
     it(`POST ${E2E_USER_GRANT_PERMISSION} Success`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_GRANT_PERMISSION)
@@ -240,15 +250,5 @@ describe('E2E User Grant Password Payload Encryption', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
-    });
-
-    afterAll(async () => {
-        try {
-            await userService.deleteOneById(user._id);
-        } catch (err: any) {
-            console.error(err);
-        }
     });
 });

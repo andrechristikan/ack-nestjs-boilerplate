@@ -8,7 +8,7 @@ import configs from 'src/configs';
 describe('PaginationService', () => {
     let paginationService: PaginationService;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({
@@ -26,175 +26,194 @@ describe('PaginationService', () => {
         paginationService = moduleRef.get<PaginationService>(PaginationService);
     });
 
+    afterEach(async () => {
+        jest.clearAllMocks();
+    });
+
     it('should be defined', () => {
         expect(paginationService).toBeDefined();
     });
 
     describe('skip', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(paginationService, 'skip');
+        it('should be skip for page 1', async () => {
+            const result: number = await paginationService.skip(1, 10);
 
-            await paginationService.skip(1, 10);
-            expect(test).toHaveBeenCalledWith(1, 10);
-        });
-
-        it('should be success', async () => {
-            const skip = paginationService.skip(1, 10);
-            jest.spyOn(paginationService, 'skip').mockImplementation(
-                () => skip
+            jest.spyOn(paginationService, 'skip').mockReturnValueOnce(
+                result as any
             );
 
-            expect(paginationService.skip(1, 10)).toBe(skip);
+            expect(result).toBeDefined();
+            expect(result).toBe(0);
         });
 
-        it('max page should be success', async () => {
-            const skip = paginationService.skip(1, 150);
-            jest.spyOn(paginationService, 'skip').mockImplementation(
-                () => skip
+        it('should be skip for page 2', async () => {
+            const result: number = await paginationService.skip(2, 10);
+
+            jest.spyOn(paginationService, 'skip').mockReturnValueOnce(
+                result as any
             );
 
-            expect(paginationService.skip(1, 150)).toBe(skip);
+            expect(result).toBeDefined();
+            expect(result).toBe(10);
         });
 
-        it('max per page should be success', async () => {
-            const skip = paginationService.skip(50, 10);
-            jest.spyOn(paginationService, 'skip').mockImplementation(
-                () => skip
+        it('should be skip for page 100', async () => {
+            const result: number = await paginationService.skip(10, 10);
+
+            jest.spyOn(paginationService, 'skip').mockReturnValueOnce(
+                result as any
             );
 
-            expect(paginationService.skip(50, 10)).toBe(skip);
+            expect(result).toBeDefined();
+            expect(result).toBe(90);
+        });
+
+        it('should be skip with max perPage', async () => {
+            const result: number = await paginationService.skip(2, 150);
+
+            jest.spyOn(paginationService, 'skip').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeDefined();
+            expect(result).toBe(100);
+        });
+
+        it('should be skip with max page', async () => {
+            const result: number = await paginationService.skip(50, 10);
+
+            jest.spyOn(paginationService, 'skip').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeDefined();
+            expect(result).toBe(190);
         });
     });
 
     describe('totalPage', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(paginationService, 'totalPage');
+        it('should be return a total page base on perPage and total data', async () => {
+            const result: number = await paginationService.totalPage(100, 10);
 
-            await paginationService.totalPage(100, 10);
-            expect(test).toHaveBeenCalledWith(100, 10);
-        });
-
-        it('should be success', async () => {
-            const totalPage = paginationService.totalPage(100, 10);
-            jest.spyOn(paginationService, 'totalPage').mockImplementation(
-                () => totalPage
+            jest.spyOn(paginationService, 'totalPage').mockReturnValueOnce(
+                result as any
             );
 
-            expect(paginationService.totalPage(100, 10)).toBe(totalPage);
+            expect(result).toBeDefined();
+            expect(result).toBe(10);
         });
 
-        it('should be success with no data', async () => {
-            const totalPage = paginationService.totalPage(0, 10);
-            jest.spyOn(paginationService, 'totalPage').mockImplementation(
-                () => totalPage
+        it('should be return a 1 because total data is zero', async () => {
+            const result: number = await paginationService.totalPage(0, 10);
+
+            jest.spyOn(paginationService, 'totalPage').mockReturnValueOnce(
+                result as any
             );
 
-            expect(paginationService.totalPage(0, 10)).toBe(totalPage);
+            expect(result).toBeDefined();
+            expect(result).toBe(1);
         });
 
-        it('should be success with max page', async () => {
-            const totalPage = paginationService.totalPage(10000, 10);
-            jest.spyOn(paginationService, 'totalPage').mockImplementation(
-                () => totalPage
+        it('should be return a max total page ', async () => {
+            const result: number = await paginationService.totalPage(10000, 10);
+
+            jest.spyOn(paginationService, 'totalPage').mockReturnValueOnce(
+                result as any
             );
 
-            expect(paginationService.totalPage(10000, 10)).toBe(totalPage);
+            expect(result).toBeDefined();
+            expect(result).toBe(20);
         });
     });
 
     describe('skipWithoutMax', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(paginationService, 'skipWithoutMax');
+        it('should be skip for page 1', async () => {
+            const result: number = await paginationService.skipWithoutMax(
+                1,
+                10
+            );
 
-            await paginationService.skipWithoutMax(1, 10);
-            expect(test).toHaveBeenCalledWith(1, 10);
+            jest.spyOn(paginationService, 'skipWithoutMax').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeDefined();
+            expect(result).toBe(0);
         });
 
-        it('should be success', async () => {
-            const skipWithoutMax = paginationService.skipWithoutMax(1, 10);
-            jest.spyOn(paginationService, 'skipWithoutMax').mockImplementation(
-                () => skipWithoutMax
+        it('should be return skip without depends on max page', async () => {
+            const result: number = await paginationService.skipWithoutMax(
+                50,
+                10
             );
 
-            expect(paginationService.skipWithoutMax(1, 10)).toBe(
-                skipWithoutMax
+            jest.spyOn(paginationService, 'skipWithoutMax').mockReturnValueOnce(
+                result as any
             );
+
+            expect(result).toBeDefined();
+            expect(result).toBe(490);
         });
 
-        it('max page should be success', async () => {
-            const skipWithoutMax = paginationService.skipWithoutMax(1, 150);
-            jest.spyOn(paginationService, 'skipWithoutMax').mockImplementation(
-                () => skipWithoutMax
+        it('should be return skip without depends on max per page', async () => {
+            const result: number = await paginationService.skipWithoutMax(
+                2,
+                200
             );
 
-            expect(paginationService.skipWithoutMax(1, 150)).toBe(
-                skipWithoutMax
-            );
-        });
-
-        it('max per page should be success', async () => {
-            const skipWithoutMax = paginationService.skipWithoutMax(50, 10);
-            jest.spyOn(paginationService, 'skipWithoutMax').mockImplementation(
-                () => skipWithoutMax
+            jest.spyOn(paginationService, 'skipWithoutMax').mockReturnValueOnce(
+                result as any
             );
 
-            expect(paginationService.skipWithoutMax(50, 10)).toBe(
-                skipWithoutMax
-            );
+            expect(result).toBeDefined();
+            expect(result).toBe(200);
         });
     });
 
     describe('totalPageWithoutMax', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(paginationService, 'totalPageWithoutMax');
-
-            await paginationService.totalPageWithoutMax(100, 10);
-            expect(test).toHaveBeenCalledWith(100, 10);
-        });
-
-        it('should be success', async () => {
-            const totalPageWithoutMax = paginationService.totalPageWithoutMax(
+        it('should be return a total page base on perPage and total data', async () => {
+            const result: number = await paginationService.totalPageWithoutMax(
                 100,
                 10
             );
+
             jest.spyOn(
                 paginationService,
                 'totalPageWithoutMax'
-            ).mockImplementation(() => totalPageWithoutMax);
+            ).mockReturnValueOnce(result as any);
 
-            expect(paginationService.totalPageWithoutMax(100, 10)).toBe(
-                totalPageWithoutMax
-            );
+            expect(result).toBeDefined();
+            expect(result).toBe(10);
         });
 
-        it('should be success with no data', async () => {
-            const totalPageWithoutMax = paginationService.totalPageWithoutMax(
+        it('should be return a 1 because total data is zero', async () => {
+            const result: number = await paginationService.totalPageWithoutMax(
                 0,
                 10
             );
+
             jest.spyOn(
                 paginationService,
                 'totalPageWithoutMax'
-            ).mockImplementation(() => totalPageWithoutMax);
+            ).mockReturnValueOnce(result as any);
 
-            expect(paginationService.totalPageWithoutMax(0, 10)).toBe(
-                totalPageWithoutMax
-            );
+            expect(result).toBeDefined();
+            expect(result).toBe(1);
         });
 
-        it('should be success with max page', async () => {
-            const totalPageWithoutMax = paginationService.totalPageWithoutMax(
+        it('should be return a total page without depends on max page ', async () => {
+            const result: number = await paginationService.totalPageWithoutMax(
                 10000,
                 10
             );
+
             jest.spyOn(
                 paginationService,
                 'totalPageWithoutMax'
-            ).mockImplementation(() => totalPageWithoutMax);
+            ).mockReturnValueOnce(result as any);
 
-            expect(paginationService.totalPageWithoutMax(10000, 10)).toBe(
-                totalPageWithoutMax
-            );
+            expect(result).toBeDefined();
+            expect(result).toBe(1000);
         });
     });
 });

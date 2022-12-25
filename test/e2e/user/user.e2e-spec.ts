@@ -99,6 +99,16 @@ describe('E2E User', () => {
         await app.init();
     });
 
+    afterAll(async () => {
+        jest.clearAllMocks();
+
+        try {
+            await userService.deleteOneById(user._id);
+        } catch (e) {}
+
+        await app.close();
+    });
+
     it(`GET ${E2E_USER_PROFILE_URL} Profile Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_USER_PROFILE_URL)
@@ -108,8 +118,6 @@ describe('E2E User', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`GET ${E2E_USER_PROFILE_URL} Profile`, async () => {
@@ -119,8 +127,6 @@ describe('E2E User', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`POST ${E2E_USER_PROFILE_UPLOAD_URL} Profile Upload Error Request`, async () => {
@@ -134,8 +140,6 @@ describe('E2E User', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_FILE_STATUS_CODE_ERROR.FILE_EXTENSION_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_PROFILE_UPLOAD_URL} Profile Upload Not Found`, async () => {
@@ -149,8 +153,6 @@ describe('E2E User', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_PROFILE_UPLOAD_URL} Profile Upload File Too Large`, async () => {
@@ -165,8 +167,6 @@ describe('E2E User', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_FILE_STATUS_CODE_ERROR.FILE_MAX_SIZE_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_PROFILE_UPLOAD_URL} Profile Upload Success`, async () => {
@@ -179,13 +179,5 @@ describe('E2E User', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
-    });
-
-    afterAll(async () => {
-        try {
-            await userService.deleteOneById(user._id);
-        } catch (e) {}
     });
 });

@@ -118,6 +118,20 @@ describe('E2E User Admin', () => {
         await app.init();
     });
 
+    afterAll(async () => {
+        jest.clearAllMocks();
+
+        try {
+            await userService.deleteOneById(userData._id);
+            await userService.deleteOneById(userExist._id);
+            await userService.deleteOne({ username: 'test111' });
+        } catch (err: any) {
+            console.error(err);
+        }
+
+        await app.close();
+    });
+
     it(`GET ${E2E_USER_ADMIN_LIST_URL} List Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_USER_ADMIN_LIST_URL)
@@ -126,8 +140,6 @@ describe('E2E User Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`POST ${E2E_USER_ADMIN_CREATE_URL} Create, Error Request`, async () => {
@@ -144,8 +156,6 @@ describe('E2E User Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_ADMIN_CREATE_URL} Create, Role Not Found`, async () => {
@@ -165,8 +175,6 @@ describe('E2E User Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_ADMIN_CREATE_URL} Create, Username Exist`, async () => {
@@ -184,8 +192,6 @@ describe('E2E User Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_USERNAME_EXISTS_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_ADMIN_CREATE_URL} Create, Email Exist`, async () => {
@@ -203,8 +209,6 @@ describe('E2E User Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_ADMIN_CREATE_URL} Create, Phone Number Exist`, async () => {
@@ -222,8 +226,6 @@ describe('E2E User Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_ADMIN_CREATE_URL} Create, Success`, async () => {
@@ -237,8 +239,6 @@ describe('E2E User Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.CREATED);
         expect(response.body.statusCode).toEqual(HttpStatus.CREATED);
-
-        return;
     });
 
     it(`GET ${E2E_USER_ADMIN_GET_URL} Get Not Found`, async () => {
@@ -256,8 +256,6 @@ describe('E2E User Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`GET ${E2E_USER_ADMIN_GET_URL} Get Success`, async () => {
@@ -268,8 +266,6 @@ describe('E2E User Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`PUT ${E2E_USER_ADMIN_UPDATE_URL} Update, Error Request`, async () => {
@@ -287,8 +283,6 @@ describe('E2E User Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
         );
-
-        return;
     });
 
     it(`PUT ${E2E_USER_ADMIN_UPDATE_URL} Update, not found`, async () => {
@@ -311,8 +305,6 @@ describe('E2E User Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`PUT ${E2E_USER_ADMIN_UPDATE_URL} Update, success`, async () => {
@@ -328,8 +320,6 @@ describe('E2E User Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`PATCH ${E2E_USER_ADMIN_INACTIVE_URL} Inactive, Not Found`, async () => {
@@ -349,8 +339,6 @@ describe('E2E User Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`PATCH ${E2E_USER_ADMIN_INACTIVE_URL} Inactive, success`, async () => {
@@ -363,8 +351,6 @@ describe('E2E User Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`PATCH ${E2E_USER_ADMIN_INACTIVE_URL} Inactive, already inactive`, async () => {
@@ -379,8 +365,6 @@ describe('E2E User Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_IS_ACTIVE_ERROR
         );
-
-        return;
     });
 
     it(`PATCH ${E2E_USER_ADMIN_ACTIVE_URL} Active, Not Found`, async () => {
@@ -400,8 +384,6 @@ describe('E2E User Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`PATCH ${E2E_USER_ADMIN_ACTIVE_URL} Active, success`, async () => {
@@ -414,8 +396,6 @@ describe('E2E User Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`PATCH ${E2E_USER_ADMIN_ACTIVE_URL} Active, already active`, async () => {
@@ -430,8 +410,6 @@ describe('E2E User Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_IS_ACTIVE_ERROR
         );
-
-        return;
     });
 
     it(`DELETE ${E2E_USER_ADMIN_DELETE_URL} Delete, Not Found`, async () => {
@@ -451,8 +429,6 @@ describe('E2E User Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`DELETE ${E2E_USER_ADMIN_DELETE_URL} Delete, success`, async () => {
@@ -465,8 +441,6 @@ describe('E2E User Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`POST ${E2E_USER_ADMIN_IMPORT_URL} Import Success`, async () => {
@@ -478,8 +452,6 @@ describe('E2E User Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.CREATED);
         expect(response.body.statusCode).toEqual(HttpStatus.CREATED);
-
-        return;
     });
 
     it(`POST ${E2E_USER_ADMIN_EXPORT_URL} Export Success`, async () => {
@@ -489,17 +461,5 @@ describe('E2E User Admin', () => {
             .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.OK);
-
-        return;
-    });
-
-    afterAll(async () => {
-        try {
-            await userService.deleteOneById(userData._id);
-            await userService.deleteOneById(userExist._id);
-            await userService.deleteOne({ username: 'test111' });
-        } catch (err: any) {
-            console.error(err);
-        }
     });
 });

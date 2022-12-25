@@ -74,6 +74,18 @@ describe('E2E Setting Admin', () => {
         await app.init();
     });
 
+    afterAll(async () => {
+        jest.clearAllMocks();
+
+        try {
+            await settingService.deleteOne({ name: settingName });
+        } catch (err: any) {
+            console.error(err);
+        }
+
+        await app.close();
+    });
+
     it(`PUT ${E2E_SETTING_ADMIN_UPDATE_URL} Update Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .put(
@@ -90,8 +102,6 @@ describe('E2E Setting Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_SETTING_STATUS_CODE_ERROR.SETTING_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`PUT ${E2E_SETTING_ADMIN_UPDATE_URL} Update Error Request`, async () => {
@@ -107,8 +117,6 @@ describe('E2E Setting Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
         );
-
-        return;
     });
 
     it(`PUT ${E2E_SETTING_ADMIN_UPDATE_URL} Update Value Not Allowed`, async () => {
@@ -125,8 +133,6 @@ describe('E2E Setting Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_SETTING_STATUS_CODE_ERROR.SETTING_VALUE_NOT_ALLOWED_ERROR
         );
-
-        return;
     });
 
     it(`PUT ${E2E_SETTING_ADMIN_UPDATE_URL} Update String Success`, async () => {
@@ -138,8 +144,6 @@ describe('E2E Setting Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`PUT ${E2E_SETTING_ADMIN_UPDATE_URL} Update Number Success`, async () => {
@@ -151,8 +155,6 @@ describe('E2E Setting Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`PUT ${E2E_SETTING_ADMIN_UPDATE_URL} Update String Convert If Possible Success`, async () => {
@@ -164,8 +166,6 @@ describe('E2E Setting Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`PUT ${E2E_SETTING_ADMIN_UPDATE_URL} Update Boolean Success`, async () => {
@@ -177,15 +177,5 @@ describe('E2E Setting Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
-    });
-
-    afterAll(async () => {
-        try {
-            await settingService.deleteOne({ name: settingName });
-        } catch (err: any) {
-            console.error(err);
-        }
     });
 });

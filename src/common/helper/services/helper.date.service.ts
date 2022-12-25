@@ -51,8 +51,11 @@ export class HelperDateService implements IHelperDateService {
         return moment(timestamp, true).isValid();
     }
 
-    create(options?: IHelperDateOptionsCreate): Date {
-        const mDate = moment(options?.date);
+    create(
+        date?: string | number | Date,
+        options?: IHelperDateOptionsCreate
+    ): Date {
+        const mDate = moment(date ?? undefined);
 
         if (options?.startOfDay) {
             mDate.startOf('day');
@@ -61,8 +64,11 @@ export class HelperDateService implements IHelperDateService {
         return mDate.toDate();
     }
 
-    timestamp(options?: IHelperDateOptionsCreate): number {
-        const mDate = moment(options?.date);
+    timestamp(
+        date?: string | number | Date,
+        options?: IHelperDateOptionsCreate
+    ): number {
+        const mDate = moment(date ?? undefined);
 
         if (options?.startOfDay) {
             mDate.startOf('day');
@@ -171,7 +177,7 @@ export class HelperDateService implements IHelperDateService {
     }
 
     extractDate(date: string | Date | number): IHelperDateExtractDate {
-        const newDate = this.create({ date });
+        const newDate = this.create(date);
         const day: string = this.format(newDate, {
             format: ENUM_HELPER_DATE_FORMAT.ONLY_DATE,
         });
@@ -193,7 +199,7 @@ export class HelperDateService implements IHelperDateService {
     roundDown(date: Date, options?: IHelperDateOptionsRoundDown): Date {
         const mDate = moment(date).set({ millisecond: 0 });
 
-        if (!options || options?.hour) {
+        if (options?.hour) {
             mDate.set({ hour: 0 });
         }
 

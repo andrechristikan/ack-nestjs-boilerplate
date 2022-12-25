@@ -82,6 +82,20 @@ describe('E2E Permission Admin', () => {
         await app.init();
     });
 
+    afterAll(async () => {
+        jest.clearAllMocks();
+
+        try {
+            await permissionService.deleteOne({
+                _id: permission._id,
+            });
+        } catch (err: any) {
+            console.error(err);
+        }
+
+        await app.close();
+    });
+
     it(`GET ${E2E_PERMISSION_ADMIN_LIST_URL} List Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_PERMISSION_ADMIN_LIST_URL)
@@ -90,8 +104,6 @@ describe('E2E Permission Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`GET ${E2E_PERMISSION_ADMIN_GROUP_URL} Group Success`, async () => {
@@ -102,8 +114,6 @@ describe('E2E Permission Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`GET ${E2E_PERMISSION_ADMIN_GET_URL} Get Not Found`, async () => {
@@ -121,8 +131,6 @@ describe('E2E Permission Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`GET ${E2E_PERMISSION_ADMIN_GET_URL} Get Success`, async () => {
@@ -133,8 +141,6 @@ describe('E2E Permission Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`PUT ${E2E_PERMISSION_ADMIN_UPDATE_URL} Update Not found`, async () => {
@@ -153,8 +159,6 @@ describe('E2E Permission Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`PUT ${E2E_PERMISSION_ADMIN_UPDATE_URL} Update Error Request`, async () => {
@@ -172,8 +176,6 @@ describe('E2E Permission Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
         );
-
-        return;
     });
 
     it(`PUT ${E2E_PERMISSION_ADMIN_UPDATE_URL} Update Success`, async () => {
@@ -187,8 +189,6 @@ describe('E2E Permission Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`PATCH ${E2E_PERMISSION_ADMIN_ACTIVE_URL} Active not found`, async () => {
@@ -206,8 +206,6 @@ describe('E2E Permission Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`PATCH ${E2E_PERMISSION_ADMIN_ACTIVE_URL} already Active`, async () => {
@@ -222,8 +220,6 @@ describe('E2E Permission Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_IS_ACTIVE_ERROR
         );
-
-        return;
     });
 
     it(`PATCH ${E2E_PERMISSION_ADMIN_INACTIVE_URL} Inactive not found`, async () => {
@@ -241,8 +237,6 @@ describe('E2E Permission Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`PATCH ${E2E_PERMISSION_ADMIN_INACTIVE_URL} Inactive Success`, async () => {
@@ -258,8 +252,6 @@ describe('E2E Permission Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`PATCH ${E2E_PERMISSION_ADMIN_INACTIVE_URL} Inactive already inactive`, async () => {
@@ -277,8 +269,6 @@ describe('E2E Permission Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_IS_ACTIVE_ERROR
         );
-
-        return;
     });
 
     it(`PATCH ${E2E_PERMISSION_ADMIN_ACTIVE_URL} Active Success`, async () => {
@@ -291,17 +281,5 @@ describe('E2E Permission Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
-    });
-
-    afterAll(async () => {
-        try {
-            await permissionService.deleteOne({
-                _id: permission._id,
-            });
-        } catch (err: any) {
-            console.error(err);
-        }
     });
 });

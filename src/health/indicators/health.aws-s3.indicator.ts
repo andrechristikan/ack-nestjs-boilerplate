@@ -7,7 +7,7 @@ import {
 import { AwsS3Service } from 'src/common/aws/services/aws.s3.service';
 
 @Injectable()
-export class HealthAwsIndicator extends HealthIndicator {
+export class HealthAwsS3Indicator extends HealthIndicator {
     constructor(private readonly awsS3Service: AwsS3Service) {
         super();
     }
@@ -18,7 +18,7 @@ export class HealthAwsIndicator extends HealthIndicator {
             return this.getStatus(key, true);
         } catch (err: unknown) {
             throw new HealthCheckError(
-                'AwsHealthIndicator failed',
+                'HealthAwsS3Indicator failed',
                 this.getStatus(key, false)
             );
         }

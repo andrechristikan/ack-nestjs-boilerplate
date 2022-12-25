@@ -6,7 +6,17 @@
     ],
     "testEnvironment": "node",
     "testMatch": [
-        "<rootDir>/test/unit/auth/*.spec.ts"
+        "<rootDir>/test/unit/api-key/*.spec.ts",
+        "<rootDir>/test/unit/auth/*.spec.ts",
+        "<rootDir>/test/unit/config/*.spec.ts",
+        "<rootDir>/test/unit/database/*.spec.ts",
+        "<rootDir>/test/unit/debugger/*.spec.ts",
+        "<rootDir>/test/unit/helper/*.spec.ts",
+        "<rootDir>/test/unit/logger/*.spec.ts",
+        "<rootDir>/test/unit/message/*.spec.ts",
+        "<rootDir>/test/unit/pagination/*.spec.ts",
+        "<rootDir>/test/unit/setting/*.spec.ts"
+
     ],
     "collectCoverage": true,
     "coverageDirectory": "coverage",

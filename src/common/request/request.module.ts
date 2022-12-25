@@ -39,6 +39,7 @@ import { SkipConstraint } from './validations/request.skip.validation';
                     skipNullProperties: false,
                     skipUndefinedProperties: false,
                     skipMissingProperties: false,
+                    forbidUnknownValues: false,
                     errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
                     exceptionFactory: async (errors: ValidationError[]) =>
                         new UnprocessableEntityException({

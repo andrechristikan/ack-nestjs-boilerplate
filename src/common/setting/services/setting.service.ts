@@ -91,6 +91,13 @@ export class SettingService implements ISettingService {
         );
     }
 
+    async deleteOneById(
+        _id: string,
+        options?: IDatabaseSoftDeleteOptions
+    ): Promise<SettingEntity> {
+        return this.settingRepository.deleteOneById(_id, options);
+    }
+
     async deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions

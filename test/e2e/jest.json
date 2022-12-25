@@ -6,10 +6,14 @@
     ],
     "testEnvironment": "node",
     "testMatch": [
-        "<rootDir>/test/e2e/**/*.e2e-spec.ts"
+        "<rootDir>/test/e2e/api-key/*.e2e-spec.ts",
+        "<rootDir>/test/e2e/permission/*.e2e-spec.ts",
+        "<rootDir>/test/e2e/role/*.e2e-spec.ts",
+        "<rootDir>/test/e2e/setting/*.e2e-spec.ts",
+        "<rootDir>/test/e2e/user/*.e2e-spec.ts"
     ],
     "collectCoverage": true,
-    "coverageDirectory": "e2e-coverage",
+    "coverageDirectory": "coverage-e2e",
     "collectCoverageFrom": [
         "./src/common/api-key/controllers/**",
         "./src/common/setting/controllers/**",

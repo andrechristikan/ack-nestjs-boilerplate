@@ -7,7 +7,7 @@ import configs from 'src/configs';
 describe('HelperNumberService', () => {
     let helperNumberService: HelperNumberService;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({
@@ -25,79 +25,62 @@ describe('HelperNumberService', () => {
             moduleRef.get<HelperNumberService>(HelperNumberService);
     });
 
+    afterEach(async () => {
+        jest.clearAllMocks();
+    });
+
     it('should be defined', () => {
         expect(helperNumberService).toBeDefined();
     });
 
     describe('check', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperNumberService, 'check');
-
-            helperNumberService.check('111');
-            expect(test).toHaveBeenCalledWith('111');
-        });
-
         it('should be success', async () => {
-            const result = helperNumberService.check('111');
-            jest.spyOn(helperNumberService, 'check').mockImplementation(
-                () => result
+            const result: boolean = helperNumberService.check('111');
+
+            jest.spyOn(helperNumberService, 'check').mockReturnValueOnce(
+                result
             );
 
-            expect(helperNumberService.check('111')).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result).toBe(true);
         });
     });
 
     describe('create', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperNumberService, 'create');
-
-            helperNumberService.create('111');
-            expect(test).toHaveBeenCalledWith('111');
-        });
-
         it('should be success', async () => {
-            const result = helperNumberService.create('111');
-            jest.spyOn(helperNumberService, 'create').mockImplementation(
-                () => result
+            const result: number = helperNumberService.create('111');
+
+            jest.spyOn(helperNumberService, 'create').mockReturnValueOnce(
+                result
             );
 
-            expect(helperNumberService.create('111')).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result).toBe(111);
         });
     });
 
     describe('random', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperNumberService, 'random');
-
-            helperNumberService.random(10);
-            expect(test).toHaveBeenCalledWith(10);
-        });
-
         it('should be success', async () => {
-            const result = helperNumberService.random(10);
-            jest.spyOn(helperNumberService, 'random').mockImplementation(
-                () => result
+            const result: number = helperNumberService.random(10);
+
+            jest.spyOn(helperNumberService, 'random').mockReturnValueOnce(
+                result
             );
 
-            expect(helperNumberService.random(10)).toBe(result);
+            expect(result).toBeTruthy();
         });
     });
 
     describe('randomInRange', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperNumberService, 'randomInRange');
-
-            helperNumberService.randomInRange(5, 8);
-            expect(test).toHaveBeenCalledWith(5, 8);
-        });
-
         it('should be success', async () => {
-            const result = helperNumberService.randomInRange(5, 8);
-            jest.spyOn(helperNumberService, 'randomInRange').mockImplementation(
-                () => result
-            );
+            const result: number = helperNumberService.randomInRange(5, 8);
 
-            expect(helperNumberService.randomInRange(5, 8)).toBe(result);
+            jest.spyOn(
+                helperNumberService,
+                'randomInRange'
+            ).mockReturnValueOnce(result);
+
+            expect(result).toBeTruthy();
         });
     });
 });

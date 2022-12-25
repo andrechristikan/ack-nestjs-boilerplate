@@ -119,6 +119,18 @@ describe('E2E User Refresh', () => {
         await app.init();
     });
 
+    afterAll(async () => {
+        jest.clearAllMocks();
+
+        try {
+            await userService.deleteOneById(user._id);
+        } catch (err: any) {
+            console.error(err);
+        }
+
+        await app.close();
+    });
+
     it(`POST ${E2E_USER_REFRESH_URL} Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_REFRESH_URL)
@@ -127,8 +139,6 @@ describe('E2E User Refresh', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_REFRESH_URL} Inactive`, async () => {
@@ -144,8 +154,6 @@ describe('E2E User Refresh', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_REFRESH_URL} Role Inactive`, async () => {
@@ -161,8 +169,6 @@ describe('E2E User Refresh', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_INACTIVE_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_REFRESH_URL} Password Expired`, async () => {
@@ -181,8 +187,6 @@ describe('E2E User Refresh', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_REFRESH_URL} Success`, async () => {
@@ -191,8 +195,6 @@ describe('E2E User Refresh', () => {
             .set('Authorization', `Bearer ${refreshToken}`);
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     afterAll(async () => {
@@ -295,15 +297,5 @@ describe('E2E User Refresh Payload Encryption', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
-    });
-
-    afterAll(async () => {
-        try {
-            await userService.deleteOneById(user._id);
-        } catch (err: any) {
-            console.error(err);
-        }
     });
 });

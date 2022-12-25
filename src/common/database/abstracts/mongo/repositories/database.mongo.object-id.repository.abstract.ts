@@ -245,11 +245,11 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
         const dataCreate: Record<string, any> = data;
         dataCreate._id = new Types.ObjectId(options?._id);
 
-        const create = await this._repository.create([dataCreate], {
+        const created = await this._repository.create([dataCreate], {
             session: options ? options.session : undefined,
         });
 
-        return create[0].toObject();
+        return created[0].toObject();
     }
 
     async updateOneById<N>(
@@ -280,7 +280,8 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
             update.session(options.session);
         }
 
-        return update;
+        const updated = await update;
+        return updated.toObject();
     }
 
     async updateOne<N>(
@@ -311,7 +312,8 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
             update.session(options.session);
         }
 
-        return update;
+        const updated = await update;
+        return updated.toObject();
     }
 
     async deleteOne(

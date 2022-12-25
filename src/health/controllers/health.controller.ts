@@ -12,7 +12,7 @@ import { DatabaseConnection } from 'src/common/database/decorators/database.deco
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { HealthCheckDoc } from 'src/health/docs/health.doc';
-import { HealthAwsIndicator } from 'src/health/indicators/health.aws.indicator';
+import { HealthAwsS3Indicator } from 'src/health/indicators/health.aws-s3.indicator';
 import { HealthSerialization } from 'src/health/serializations/health.serialization';
 
 @ApiTags('health')
@@ -27,7 +27,7 @@ export class HealthController {
         private readonly memoryHealthIndicator: MemoryHealthIndicator,
         private readonly diskHealthIndicator: DiskHealthIndicator,
         private readonly mongooseIndicator: MongooseHealthIndicator,
-        private readonly awsIndicator: HealthAwsIndicator
+        private readonly awsS3Indicator: HealthAwsS3Indicator
     ) {}
 
     @HealthCheckDoc()
@@ -36,7 +36,7 @@ export class HealthController {
     @Get('/aws')
     async checkAws(): Promise<IResponse> {
         return this.health.check([
-            () => this.awsIndicator.isHealthy('awsBucket'),
+            () => this.awsS3Indicator.isHealthy('awsS3Bucket'),
         ]);
     }
 

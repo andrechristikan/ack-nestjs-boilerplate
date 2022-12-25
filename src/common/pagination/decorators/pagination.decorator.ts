@@ -61,15 +61,6 @@ export function PaginationAvailableSort(
     );
 }
 
-export function PaginationFilterId(): PropertyDecorator {
-    return applyDecorators(
-        Expose(),
-        Transform(({ value, key }) => {
-            return value ? { [key]: value } : undefined;
-        })
-    );
-}
-
 export function PaginationFilterDate(
     options?: IPaginationFilterDateOptions
 ): PropertyDecorator {

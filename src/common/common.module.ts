@@ -20,6 +20,7 @@ import { DatabaseOptionsModule } from 'src/common/database/database.options.modu
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 import { APP_LANGUAGE } from 'src/app/constants/app.constant';
+import { DatabaseModule } from 'src/common/database/database.module';
 
 @Module({
     controllers: [],
@@ -177,6 +178,7 @@ import { APP_LANGUAGE } from 'src/app/constants/app.constant';
         LoggerModule,
         ApiKeyModule,
         AuthModule,
+        DatabaseModule,
     ],
 })
 export class CommonModule {}

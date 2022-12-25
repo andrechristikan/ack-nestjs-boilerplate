@@ -279,7 +279,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             update.session(options.session);
         }
 
-        return update;
+        const updated = await update;
+        return updated.toObject();
     }
 
     async updateOne<N>(
@@ -310,7 +311,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             update.session(options.session);
         }
 
-        return update;
+        const updated = await update;
+        return updated.toObject();
     }
 
     async deleteOne(

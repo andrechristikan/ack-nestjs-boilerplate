@@ -54,6 +54,18 @@ describe('E2E Setting', () => {
         await app.init();
     });
 
+    afterAll(async () => {
+        jest.clearAllMocks();
+
+        try {
+            await settingService.deleteOne({ name: settingName });
+        } catch (err: any) {
+            console.error(err);
+        }
+
+        await app.close();
+    });
+
     it(`GET ${E2E_SETTING_COMMON_LIST_URL} List Success`, async () => {
         const response = await request(app.getHttpServer()).get(
             E2E_SETTING_COMMON_LIST_URL
@@ -61,8 +73,6 @@ describe('E2E Setting', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`GET ${E2E_SETTING_COMMON_GET_URL} Get Not Found`, async () => {
@@ -77,8 +87,6 @@ describe('E2E Setting', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_SETTING_STATUS_CODE_ERROR.SETTING_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`GET ${E2E_SETTING_COMMON_GET_URL} Get Success`, async () => {
@@ -88,8 +96,6 @@ describe('E2E Setting', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`GET ${E2E_SETTING_COMMON_GET_BY_NAME_URL} Not Found`, async () => {
@@ -104,8 +110,6 @@ describe('E2E Setting', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_SETTING_STATUS_CODE_ERROR.SETTING_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`GET ${E2E_SETTING_COMMON_GET_BY_NAME_URL} Success`, async () => {
@@ -118,15 +122,5 @@ describe('E2E Setting', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
-    });
-
-    afterAll(async () => {
-        try {
-            await settingService.deleteOne({ name: settingName });
-        } catch (err: any) {
-            console.error(err);
-        }
     });
 });

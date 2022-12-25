@@ -9,7 +9,7 @@ export interface ILoggerService {
 
     debug(data: LoggerCreateDto): Promise<LoggerEntity>;
 
-    warning(data: LoggerCreateDto): Promise<LoggerEntity>;
+    warn(data: LoggerCreateDto): Promise<LoggerEntity>;
 
     fatal(data: LoggerCreateDto): Promise<LoggerEntity>;
 

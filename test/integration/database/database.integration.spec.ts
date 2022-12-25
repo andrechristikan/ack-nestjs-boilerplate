@@ -19,13 +19,18 @@ describe('Database Integration', () => {
         await app.init();
     });
 
+    afterAll(async () => {
+        jest.clearAllMocks();
+
+        await app.close();
+    });
+
     it(`GET ${INTEGRATION_DATABASE_URL} Success`, async () => {
         const response = await request(app.getHttpServer()).get(
             INTEGRATION_DATABASE_URL
         );
+
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 });

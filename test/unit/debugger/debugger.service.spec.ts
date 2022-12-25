@@ -13,7 +13,7 @@ describe('DebuggerService', () => {
     const cFunction = 'test function';
     const data = { test: 'test' };
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         process.env.DEBUGGER_HTTP_WRITE_INTO_CONSOLE = 'true';
         process.env.DEBUGGER_SYSTEM_WRITE_INTO_CONSOLE = 'true';
         process.env.DEBUGGER_HTTP_WRITE_INTO_FILE = 'true';
@@ -36,70 +36,62 @@ describe('DebuggerService', () => {
         debuggerService = moduleRef.get<DebuggerService>(DebuggerService);
     });
 
+    afterEach(async () => {
+        jest.clearAllMocks();
+    });
+
     it('should be defined', () => {
         expect(debuggerService).toBeDefined();
     });
 
     describe('info', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(debuggerService, 'info');
+        it('should write into log', async () => {
+            const result: void = debuggerService.info('DebuggerService', {
+                description: sDescription,
+                class: sClass,
+                function: cFunction,
+            });
 
-            debuggerService.info('DebuggerService', {
-                description: sDescription,
-                class: sClass,
-                function: cFunction,
-            });
-            expect(test).toHaveBeenCalledWith('DebuggerService', {
-                description: sDescription,
-                class: sClass,
-                function: cFunction,
-            });
+            jest.spyOn(debuggerService, 'info').mockReturnValueOnce(result);
+
+            expect(result).toBeFalsy();
+            expect(result).toBeUndefined();
         });
 
-        it('should be called with data', async () => {
-            const test = jest.spyOn(debuggerService, 'info');
+        it('should write into log with data', async () => {
+            const result: void = debuggerService.info(
+                'DebuggerService',
+                {
+                    description: sDescription,
+                    class: sClass,
+                    function: cFunction,
+                },
+                data
+            );
 
-            debuggerService.info(
-                'DebuggerService',
-                {
-                    description: sDescription,
-                    class: sClass,
-                    function: cFunction,
-                },
-                data
-            );
-            expect(test).toHaveBeenCalledWith(
-                'DebuggerService',
-                {
-                    description: sDescription,
-                    class: sClass,
-                    function: cFunction,
-                },
-                data
-            );
+            jest.spyOn(debuggerService, 'info').mockReturnValueOnce(result);
+
+            expect(result).toBeFalsy();
+            expect(result).toBeUndefined();
         });
     });
 
     describe('debug', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(debuggerService, 'debug');
+        it('should write into log', async () => {
+            const result: void = debuggerService.debug('DebuggerService', {
+                description: sDescription,
+                class: sClass,
+                function: cFunction,
+            });
 
-            debuggerService.debug('DebuggerService', {
-                description: sDescription,
-                class: sClass,
-                function: cFunction,
-            });
-            expect(test).toHaveBeenCalledWith('DebuggerService', {
-                description: sDescription,
-                class: sClass,
-                function: cFunction,
-            });
+            jest.spyOn(debuggerService, 'debug').mockReturnValueOnce(result);
+
+            expect(result).toBeFalsy();
+            expect(result).toBeUndefined();
         });
 
-        it('should be called with data', async () => {
-            const test = jest.spyOn(debuggerService, 'debug');
-
-            debuggerService.debug(
+        it('should write into log with data', async () => {
+            const result: void = debuggerService.debug(
                 'DebuggerService',
                 {
                     description: sDescription,
@@ -108,78 +100,62 @@ describe('DebuggerService', () => {
                 },
                 data
             );
-            expect(test).toHaveBeenCalledWith(
-                'DebuggerService',
-                {
-                    description: sDescription,
-                    class: sClass,
-                    function: cFunction,
-                },
-                data
-            );
-        });
-    });
 
-    describe('error', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(debuggerService, 'error');
+            jest.spyOn(debuggerService, 'debug').mockReturnValueOnce(result);
 
-            debuggerService.error('DebuggerService', {
-                description: sDescription,
-                class: sClass,
-                function: cFunction,
-            });
-            expect(test).toHaveBeenCalledWith('DebuggerService', {
-                description: sDescription,
-                class: sClass,
-                function: cFunction,
-            });
-        });
-
-        it('should be called with data', async () => {
-            const test = jest.spyOn(debuggerService, 'error');
-
-            debuggerService.error(
-                'DebuggerService',
-                {
-                    description: sDescription,
-                    class: sClass,
-                    function: cFunction,
-                },
-                data
-            );
-            expect(test).toHaveBeenCalledWith(
-                'DebuggerService',
-                {
-                    description: sDescription,
-                    class: sClass,
-                    function: cFunction,
-                },
-                data
-            );
+            expect(result).toBeFalsy();
+            expect(result).toBeUndefined();
         });
     });
 
     describe('warn', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(debuggerService, 'warn');
+        it('should write into log', async () => {
+            const result: void = debuggerService.warn('DebuggerService', {
+                description: sDescription,
+                class: sClass,
+                function: cFunction,
+            });
 
-            debuggerService.warn('DebuggerService', {
-                description: sDescription,
-                class: sClass,
-                function: cFunction,
-            });
-            expect(test).toHaveBeenCalledWith('DebuggerService', {
-                description: sDescription,
-                class: sClass,
-                function: cFunction,
-            });
+            jest.spyOn(debuggerService, 'warn').mockReturnValueOnce(result);
+
+            expect(result).toBeFalsy();
+            expect(result).toBeUndefined();
         });
 
-        it('should be called with data', async () => {
-            const test = jest.spyOn(debuggerService, 'warn');
+        it('should write into log with data', async () => {
+            const result: void = debuggerService.warn(
+                'DebuggerService',
+                {
+                    description: sDescription,
+                    class: sClass,
+                    function: cFunction,
+                },
+                data
+            );
 
-            debuggerService.warn(
+            jest.spyOn(debuggerService, 'warn').mockReturnValueOnce(result);
+
+            expect(result).toBeFalsy();
+            expect(result).toBeUndefined();
+        });
+    });
+
+    describe('error', () => {
+        it('should write into log', async () => {
+            const result: void = debuggerService.error('DebuggerService', {
+                description: sDescription,
+                class: sClass,
+                function: cFunction,
+            });
+
+            jest.spyOn(debuggerService, 'error').mockReturnValueOnce(result);
+
+            expect(result).toBeFalsy();
+            expect(result).toBeUndefined();
+        });
+
+        it('should write into log with data', async () => {
+            const result: void = debuggerService.error(
                 'DebuggerService',
                 {
                     description: sDescription,
@@ -188,15 +164,11 @@ describe('DebuggerService', () => {
                 },
                 data
             );
-            expect(test).toHaveBeenCalledWith(
-                'DebuggerService',
-                {
-                    description: sDescription,
-                    class: sClass,
-                    function: cFunction,
-                },
-                data
-            );
+
+            jest.spyOn(debuggerService, 'error').mockReturnValueOnce(result);
+
+            expect(result).toBeFalsy();
+            expect(result).toBeUndefined();
         });
     });
 });

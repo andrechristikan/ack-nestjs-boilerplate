@@ -8,7 +8,7 @@ describe('HelperHashService', () => {
     let helperHashService: HelperHashService;
     const data = 'aaaa';
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({
@@ -25,109 +25,105 @@ describe('HelperHashService', () => {
         helperHashService = moduleRef.get<HelperHashService>(HelperHashService);
     });
 
+    afterEach(async () => {
+        jest.clearAllMocks();
+    });
+
     it('should be defined', () => {
         expect(helperHashService).toBeDefined();
     });
 
     describe('randomSalt', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperHashService, 'randomSalt');
-
-            helperHashService.randomSalt(10);
-            expect(test).toHaveBeenCalled();
-        });
-
         it('should be success', async () => {
-            const result = helperHashService.randomSalt(10);
-            jest.spyOn(helperHashService, 'randomSalt').mockImplementation(
-                () => result
+            const result: string = helperHashService.randomSalt(10);
+
+            jest.spyOn(helperHashService, 'randomSalt').mockReturnValueOnce(
+                result
             );
 
-            expect(helperHashService.randomSalt(10)).toBe(result);
+            expect(result).toBeTruthy();
         });
     });
 
     describe('bcrypt', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperHashService, 'bcrypt');
-
-            const salt = helperHashService.randomSalt(10);
-            helperHashService.bcrypt(data, salt);
-            expect(test).toHaveBeenCalledWith(data, salt);
-        });
-
         it('should be success', async () => {
             const salt = helperHashService.randomSalt(10);
-            const result = helperHashService.bcrypt(data, salt);
-            jest.spyOn(helperHashService, 'bcrypt').mockImplementation(
-                () => result
-            );
+            const result: string = helperHashService.bcrypt(data, salt);
 
-            expect(helperHashService.bcrypt(data, salt)).toBe(result);
+            jest.spyOn(helperHashService, 'bcrypt').mockReturnValueOnce(result);
+
+            expect(result).toBeTruthy();
+            expect(result.startsWith(salt)).toBe(true);
         });
     });
 
     describe('bcryptCompare', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperHashService, 'bcryptCompare');
-
-            const salt = helperHashService.randomSalt(10);
-            const hash = helperHashService.bcrypt(data, salt);
-            helperHashService.bcryptCompare('bbbb', hash);
-            expect(test).toHaveBeenCalledWith('bbbb', hash);
-        });
-
         it('should be success', async () => {
             const salt = helperHashService.randomSalt(10);
             const hash = helperHashService.bcrypt(data, salt);
-            const validate = helperHashService.bcryptCompare('bbbb', hash);
-            jest.spyOn(helperHashService, 'bcryptCompare').mockImplementation(
-                () => validate
+            const result: boolean = helperHashService.bcryptCompare(data, hash);
+
+            jest.spyOn(helperHashService, 'bcryptCompare').mockReturnValueOnce(
+                result
             );
 
-            expect(helperHashService.bcryptCompare('bbbb', hash)).toBe(
-                validate
+            expect(result).toBeTruthy();
+            expect(result).toBe(true);
+        });
+
+        it('should be failed', async () => {
+            const salt = helperHashService.randomSalt(10);
+            const hash = helperHashService.bcrypt(data, salt);
+            const result: boolean = helperHashService.bcryptCompare(
+                'bbbb',
+                hash
             );
+
+            jest.spyOn(helperHashService, 'bcryptCompare').mockReturnValueOnce(
+                result
+            );
+
+            expect(result).toBeFalsy();
+            expect(result).toBe(false);
         });
     });
 
     describe('sha256', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperHashService, 'sha256');
-
-            helperHashService.sha256(data);
-            expect(test).toHaveBeenCalledWith(data);
-        });
-
         it('should be success', async () => {
-            const hash = helperHashService.sha256(data);
-            jest.spyOn(helperHashService, 'sha256').mockImplementation(
-                () => hash
-            );
+            const result: string = helperHashService.sha256(data);
 
-            expect(helperHashService.sha256(data)).toBe(hash);
+            jest.spyOn(helperHashService, 'sha256').mockReturnValueOnce(result);
+
+            expect(result).toBeTruthy();
         });
     });
 
     describe('sha256Compare', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperHashService, 'sha256Compare');
-
-            const hash = helperHashService.sha256(data);
-            helperHashService.sha256Compare('bbbb', hash);
-            expect(test).toHaveBeenCalledWith('bbbb', hash);
-        });
-
         it('should be success', async () => {
             const hash = helperHashService.sha256(data);
-            const validate = helperHashService.sha256Compare('bbbb', hash);
-            jest.spyOn(helperHashService, 'bcryptCompare').mockImplementation(
-                () => validate
+            const result: boolean = helperHashService.sha256Compare(hash, hash);
+
+            jest.spyOn(helperHashService, 'bcryptCompare').mockReturnValueOnce(
+                result
             );
 
-            expect(helperHashService.sha256Compare('bbbb', hash)).toBe(
-                validate
+            expect(result).toBeTruthy();
+            expect(result).toBe(true);
+        });
+
+        it('should be failed', async () => {
+            const hash = helperHashService.sha256(data);
+            const result: boolean = helperHashService.sha256Compare(
+                'bbbb',
+                hash
             );
+
+            jest.spyOn(helperHashService, 'bcryptCompare').mockReturnValueOnce(
+                result
+            );
+
+            expect(result).toBeFalsy();
+            expect(result).toBe(false);
         });
     });
 });

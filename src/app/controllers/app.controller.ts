@@ -43,9 +43,7 @@ export class AppController {
             userAgent,
             date: newDate,
             format: this.helperDateService.format(newDate),
-            timestamp: this.helperDateService.timestamp({
-                date: newDate,
-            }),
+            timestamp: this.helperDateService.timestamp(newDate),
         };
     }
 
@@ -68,9 +66,7 @@ export class AppController {
             userAgent,
             date: newDate,
             format: this.helperDateService.format(newDate),
-            timestamp: this.helperDateService.timestamp({
-                date: newDate,
-            }),
+            timestamp: this.helperDateService.timestamp(newDate),
         };
     }
 }

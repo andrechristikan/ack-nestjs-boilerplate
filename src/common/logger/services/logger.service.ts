@@ -82,7 +82,7 @@ export class LoggerService implements ILoggerService {
         return this.loggerRepository.create<LoggerEntity>(create);
     }
 
-    async warning({
+    async warn({
         action,
         description,
         apiKey,

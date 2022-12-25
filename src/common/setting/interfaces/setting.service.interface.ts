@@ -43,6 +43,11 @@ export interface ISettingService {
         options?: IDatabaseOptions
     ): Promise<SettingEntity>;
 
+    deleteOneById(
+        _id: string,
+        options?: IDatabaseSoftDeleteOptions
+    ): Promise<SettingEntity>;
+
     deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions

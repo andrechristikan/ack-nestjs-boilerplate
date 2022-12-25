@@ -80,6 +80,24 @@ describe('E2E Api Key Admin', () => {
         await app.init();
     });
 
+    afterAll(async () => {
+        jest.clearAllMocks();
+
+        try {
+            await apiKeyService.deleteOne({
+                _id: apiKey._id,
+            });
+
+            await apiKeyService.deleteOne({
+                name: apiKeyCreate.name,
+            });
+        } catch (err: any) {
+            console.error(err);
+        }
+
+        await app.close();
+    });
+
     it(`GET ${E2E_API_KEY_ADMIN_LIST_URL} List Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_API_KEY_ADMIN_LIST_URL)
@@ -88,8 +106,6 @@ describe('E2E Api Key Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`GET ${E2E_API_KEY_ADMIN_GET_URL} Get Not Found`, async () => {
@@ -107,8 +123,6 @@ describe('E2E Api Key Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`GET ${E2E_API_KEY_ADMIN_GET_URL} Get Success`, async () => {
@@ -119,8 +133,6 @@ describe('E2E Api Key Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`POST ${E2E_API_KEY_ADMIN_CREATE_URL} Create Error Request`, async () => {
@@ -136,8 +148,6 @@ describe('E2E Api Key Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_API_KEY_ADMIN_CREATE_URL} Create Success`, async () => {
@@ -149,8 +159,6 @@ describe('E2E Api Key Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.CREATED);
         expect(response.body.statusCode).toEqual(HttpStatus.CREATED);
-
-        return;
     });
 
     it(`PUT ${E2E_API_KEY_ADMIN_UPDATE_RESET_URL} Reset Not Found`, async () => {
@@ -168,8 +176,6 @@ describe('E2E Api Key Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`PUT ${E2E_API_KEY_ADMIN_UPDATE_RESET_URL} Reset Success`, async () => {
@@ -180,8 +186,6 @@ describe('E2E Api Key Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`PATCH ${E2E_API_KEY_ADMIN_ACTIVE_URL} Active not found`, async () => {
@@ -199,8 +203,6 @@ describe('E2E Api Key Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`PATCH ${E2E_API_KEY_ADMIN_ACTIVE_URL} already Active`, async () => {
@@ -213,8 +215,6 @@ describe('E2E Api Key Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_IS_ACTIVE_ERROR
         );
-
-        return;
     });
 
     it(`PATCH ${E2E_API_KEY_ADMIN_INACTIVE_URL} Inactive not found`, async () => {
@@ -232,8 +232,6 @@ describe('E2E Api Key Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`PATCH ${E2E_API_KEY_ADMIN_INACTIVE_URL} Inactive Success`, async () => {
@@ -244,8 +242,6 @@ describe('E2E Api Key Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`PATCH ${E2E_API_KEY_ADMIN_INACTIVE_URL} Inactive already inactive`, async () => {
@@ -258,8 +254,6 @@ describe('E2E Api Key Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_IS_ACTIVE_ERROR
         );
-
-        return;
     });
 
     it(`PATCH ${E2E_API_KEY_ADMIN_ACTIVE_URL} Success`, async () => {
@@ -270,21 +264,5 @@ describe('E2E Api Key Admin', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
-    });
-
-    afterAll(async () => {
-        try {
-            await apiKeyService.deleteOne({
-                _id: apiKey._id,
-            });
-
-            await apiKeyService.deleteOne({
-                name: apiKeyCreate.name,
-            });
-        } catch (err: any) {
-            console.error(err);
-        }
     });
 });

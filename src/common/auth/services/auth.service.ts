@@ -325,15 +325,10 @@ export class AuthService implements IAuthService {
 
     async checkPasswordExpired(passwordExpired: Date): Promise<boolean> {
         const today: Date = this.helperDateService.create();
-        const passwordExpiredConvert: Date = this.helperDateService.create({
-            date: passwordExpired,
-        });
+        const passwordExpiredConvert: Date =
+            this.helperDateService.create(passwordExpired);
 
-        if (today > passwordExpiredConvert) {
-            return true;
-        }
-
-        return false;
+        return today > passwordExpiredConvert;
     }
 
     async getTokenType(): Promise<string> {
@@ -346,8 +341,8 @@ export class AuthService implements IAuthService {
 
     async getRefreshTokenExpirationTime(rememberMe?: boolean): Promise<number> {
         return rememberMe
-            ? this.refreshTokenExpirationTime
-            : this.refreshTokenExpirationTimeRememberMe;
+            ? this.refreshTokenExpirationTimeRememberMe
+            : this.refreshTokenExpirationTime;
     }
 
     async getIssuer(): Promise<string> {

@@ -6,6 +6,15 @@ import {
 } from 'src/common/pagination/constants/pagination.constant';
 import { ENUM_PAGINATION_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 
+export function PaginationMongoFilterId(): PropertyDecorator {
+    return applyDecorators(
+        Expose(),
+        Transform(({ value, key }) => {
+            return value ? { [key]: value } : undefined;
+        })
+    );
+}
+
 export function PaginationMongoSearch(
     availableSearch: string[]
 ): PropertyDecorator {

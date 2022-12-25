@@ -7,7 +7,7 @@ import configs from 'src/configs';
 describe('HelperStringService', () => {
     let helperStringService: HelperStringService;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({
@@ -25,222 +25,205 @@ describe('HelperStringService', () => {
             moduleRef.get<HelperStringService>(HelperStringService);
     });
 
+    afterEach(async () => {
+        jest.clearAllMocks();
+    });
+
     it('should be defined', () => {
         expect(helperStringService).toBeDefined();
     });
 
     describe('checkEmail', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperStringService, 'checkEmail');
-
-            helperStringService.checkEmail('111');
-            expect(test).toHaveBeenCalledWith('111');
-        });
-
         it('should be success', async () => {
-            const result = helperStringService.checkEmail('111');
-            jest.spyOn(helperStringService, 'checkEmail').mockImplementation(
-                () => result
+            const result: boolean =
+                helperStringService.checkEmail('111@mail.com');
+
+            jest.spyOn(helperStringService, 'checkEmail').mockReturnValueOnce(
+                result
             );
 
-            expect(helperStringService.checkEmail('111')).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result).toBe(true);
+        });
+
+        it('should be failed', async () => {
+            const result: boolean = helperStringService.checkEmail('111');
+
+            jest.spyOn(helperStringService, 'checkEmail').mockReturnValueOnce(
+                result
+            );
+
+            expect(result).toBeFalsy();
+            expect(result).toBe(false);
         });
     });
 
     describe('randomReference', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperStringService, 'randomReference');
-
-            helperStringService.randomReference(10);
-            expect(test).toHaveBeenCalledWith(10);
-        });
-
         it('should be success', async () => {
-            const result = helperStringService.randomReference(10, 'test');
+            const result: string = helperStringService.randomReference(10);
+
             jest.spyOn(
                 helperStringService,
                 'randomReference'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(helperStringService.randomReference(10, 'test')).toBe(
-                result
+            expect(result).toBeTruthy();
+        });
+
+        it('should be success with prefix', async () => {
+            const result: string = helperStringService.randomReference(
+                10,
+                'test'
             );
+
+            jest.spyOn(
+                helperStringService,
+                'randomReference'
+            ).mockReturnValueOnce(result);
+
+            expect(result).toBeTruthy();
+            expect(result.startsWith('test')).toBe(true);
         });
     });
 
     describe('random', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperStringService, 'random');
-
-            helperStringService.random(5);
-            expect(test).toHaveBeenCalledWith(5);
-        });
-
         it('should be success', async () => {
             const result = helperStringService.random(5);
-            jest.spyOn(helperStringService, 'random').mockImplementation(
-                () => result
+
+            jest.spyOn(helperStringService, 'random').mockReturnValueOnce(
+                result
             );
 
-            expect(helperStringService.random(5)).toBe(result);
+            expect(result).toBeTruthy();
         });
 
         it('should be success with options prefix', async () => {
             const result = helperStringService.random(5, { prefix: 'aaa' });
-            jest.spyOn(helperStringService, 'random').mockImplementation(
-                () => result
-            );
 
-            expect(helperStringService.random(5, { prefix: 'aaa' })).toBe(
+            jest.spyOn(helperStringService, 'random').mockReturnValueOnce(
                 result
             );
+
+            expect(result).toBeTruthy();
+            expect(result.startsWith('aaa')).toBe(true);
         });
 
-        it('should be success with options prefix and safe', async () => {
+        it('should be success with options prefix, safe, and uppercase', async () => {
             const result = helperStringService.random(5, {
                 prefix: 'aaa',
                 safe: true,
+                upperCase: true,
             });
-            jest.spyOn(helperStringService, 'random').mockImplementation(
-                () => result
+
+            jest.spyOn(helperStringService, 'random').mockReturnValueOnce(
+                result
             );
 
-            expect(
-                helperStringService.random(5, { prefix: 'aaa', safe: true })
-            ).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result.startsWith('AAA')).toBe(true);
         });
     });
 
     describe('censor', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperStringService, 'censor');
-
-            helperStringService.censor('12312312');
-            expect(test).toHaveBeenCalledWith('12312312');
-        });
-
         it('string length 1 should be success', async () => {
-            const result = helperStringService.censor('1');
-            jest.spyOn(helperStringService, 'censor').mockImplementation(
-                () => result
+            const result: string = helperStringService.censor('1');
+
+            jest.spyOn(helperStringService, 'censor').mockReturnValueOnce(
+                result
             );
 
-            expect(helperStringService.censor('1')).toBe(result);
+            expect(result).toBeTruthy();
         });
 
         it('string length 1 - 4 should be success', async () => {
-            const result = helperStringService.censor('125');
-            jest.spyOn(helperStringService, 'censor').mockImplementation(
-                () => result
+            const result: string = helperStringService.censor('125');
+
+            jest.spyOn(helperStringService, 'censor').mockReturnValueOnce(
+                result
             );
 
-            expect(helperStringService.censor('125')).toBe(result);
+            expect(result).toBeTruthy();
         });
 
         it('string length 4 - 10 should be success', async () => {
-            const result = helperStringService.censor('123245');
-            jest.spyOn(helperStringService, 'censor').mockImplementation(
-                () => result
+            const result: string = helperStringService.censor('123245');
+
+            jest.spyOn(helperStringService, 'censor').mockReturnValueOnce(
+                result
             );
 
-            expect(helperStringService.censor('123245')).toBe(result);
+            expect(result).toBeTruthy();
         });
 
         it('string length > 10 should be success', async () => {
-            const result = helperStringService.censor(
+            const result: string = helperStringService.censor(
                 '12312312312312312312312'
             );
-            jest.spyOn(helperStringService, 'censor').mockImplementation(
-                () => result
-            );
 
-            expect(helperStringService.censor('12312312312312312312312')).toBe(
+            jest.spyOn(helperStringService, 'censor').mockReturnValueOnce(
                 result
             );
+
+            expect(result).toBeTruthy();
         });
     });
 
     describe('checkPasswordWeak', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperStringService, 'checkPasswordWeak');
-
-            helperStringService.checkPasswordWeak('aaAAbbBBccCC');
-            expect(test).toHaveBeenCalledWith('aaAAbbBBccCC');
-        });
-
         it('should be success', async () => {
-            const result =
+            const result: boolean =
                 helperStringService.checkPasswordWeak('aaAAbbBBccCC');
+
             jest.spyOn(
                 helperStringService,
                 'checkPasswordWeak'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(helperStringService.checkPasswordWeak('aaAAbbBBccCC')).toBe(
-                result
-            );
+            expect(result).toBeTruthy();
+            expect(result).toBe(true);
         });
     });
 
     describe('checkPasswordMedium', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperStringService, 'checkPasswordMedium');
-
-            helperStringService.checkPasswordMedium('aaAA12345');
-            expect(test).toHaveBeenCalledWith('aaAA12345');
-        });
-
         it('should be success', async () => {
-            const result = helperStringService.checkPasswordMedium('aaAA12345');
+            const result: boolean =
+                helperStringService.checkPasswordMedium('aaAA12345');
+
             jest.spyOn(
                 helperStringService,
                 'checkPasswordMedium'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(helperStringService.checkPasswordMedium('aaAA12345')).toBe(
-                result
-            );
+            expect(result).toBeTruthy();
+            expect(result).toBe(true);
         });
     });
 
     describe('checkPasswordStrong', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperStringService, 'checkPasswordStrong');
-
-            helperStringService.checkPasswordStrong('aaAA12345@!');
-            expect(test).toHaveBeenCalledWith('aaAA12345@!');
-        });
-
         it('should be success', async () => {
-            const result =
+            const result: boolean =
                 helperStringService.checkPasswordStrong('aaAA12345@!');
+
             jest.spyOn(
                 helperStringService,
                 'checkPasswordStrong'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(helperStringService.checkPasswordStrong('aaAA12345@!')).toBe(
-                result
-            );
+            expect(result).toBeTruthy();
+            expect(result).toBe(true);
         });
     });
 
     describe('checkSafeString', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperStringService, 'checkSafeString');
-
-            helperStringService.checkSafeString('123');
-            expect(test).toHaveBeenCalledWith('123');
-        });
-
         it('should be success', async () => {
-            const result = helperStringService.checkSafeString('123');
+            const result: boolean = helperStringService.checkSafeString('123');
+
             jest.spyOn(
                 helperStringService,
                 'checkSafeString'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(helperStringService.checkSafeString('123')).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result).toBe(true);
         });
     });
 });

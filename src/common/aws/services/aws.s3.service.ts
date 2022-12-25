@@ -29,6 +29,12 @@ import {
     AbortMultipartUploadCommandInput,
     UploadPartRequest,
     HeadBucketCommand,
+    HeadBucketCommandOutput,
+    ListBucketsOutput,
+    Bucket,
+    ListObjectsV2Output,
+    _Object,
+    GetObjectOutput,
 } from '@aws-sdk/client-s3';
 
 @Injectable()
@@ -53,13 +59,13 @@ export class AwsS3Service implements IAwsS3Service {
         this.baseUrl = this.configService.get<string>('aws.s3.baseUrl');
     }
 
-    async checkConnection(): Promise<Record<string, any>> {
+    async checkConnection(): Promise<HeadBucketCommandOutput> {
         const command: HeadBucketCommand = new HeadBucketCommand({
             Bucket: this.bucket,
         });
 
         try {
-            const check: Record<string, any> = await this.s3Client.send(
+            const check: HeadBucketCommandOutput = await this.s3Client.send(
                 command
             );
 
@@ -73,12 +79,10 @@ export class AwsS3Service implements IAwsS3Service {
         const command: ListBucketsCommand = new ListBucketsCommand({});
 
         try {
-            const listBucket: Record<string, any> = await this.s3Client.send(
+            const listBucket: ListBucketsOutput = await this.s3Client.send(
                 command
             );
-            const mapList = listBucket.Buckets.map(
-                (val: Record<string, any>) => val.Name
-            );
+            const mapList = listBucket.Buckets.map((val: Bucket) => val.Name);
 
             return mapList;
         } catch (err: any) {
@@ -93,35 +97,30 @@ export class AwsS3Service implements IAwsS3Service {
         });
 
         try {
-            const listItems: Record<string, any> = await this.s3Client.send(
+            const listItems: ListObjectsV2Output = await this.s3Client.send(
                 command
             );
 
-            const mapList = listItems.Contents.map(
-                (val: Record<string, any>) => {
-                    const lastIndex: number = val.Key.lastIndexOf('/');
-                    const path: string = val.Key.substring(0, lastIndex);
-                    const filename: string = val.Key.substring(
-                        lastIndex,
-                        val.Key.length
-                    );
-                    const mime: string = filename
-                        .substring(
-                            filename.lastIndexOf('.') + 1,
-                            filename.length
-                        )
-                        .toLocaleUpperCase();
+            const mapList = listItems.Contents.map((val: _Object) => {
+                const lastIndex: number = val.Key.lastIndexOf('/');
+                const path: string = val.Key.substring(0, lastIndex);
+                const filename: string = val.Key.substring(
+                    lastIndex,
+                    val.Key.length
+                );
+                const mime: string = filename
+                    .substring(filename.lastIndexOf('.') + 1, filename.length)
+                    .toLocaleUpperCase();
 
-                    return {
-                        path,
-                        pathWithFilename: val.Key,
-                        filename: filename,
-                        completedUrl: `${this.baseUrl}/${val.Key}`,
-                        baseUrl: this.baseUrl,
-                        mime,
-                    };
-                }
-            );
+                return {
+                    path,
+                    pathWithFilename: val.Key,
+                    filename: filename,
+                    completedUrl: `${this.baseUrl}/${val.Key}`,
+                    baseUrl: this.baseUrl,
+                    mime,
+                };
+            });
 
             return mapList;
         } catch (err: any) {
@@ -132,7 +131,7 @@ export class AwsS3Service implements IAwsS3Service {
     async getItemInBucket(
         filename: string,
         path?: string
-    ): Promise<Record<string, any>> {
+    ): Promise<Readable | ReadableStream<any> | Blob> {
         if (path)
             path = path.startsWith('/') ? path.replace('/', '') : `${path}`;
 
@@ -144,7 +143,7 @@ export class AwsS3Service implements IAwsS3Service {
         const command: GetObjectCommand = new GetObjectCommand(input);
 
         try {
-            const item: Record<string, any> = await this.s3Client.send(command);
+            const item: GetObjectOutput = await this.s3Client.send(command);
 
             return item.Body;
         } catch (err: any) {

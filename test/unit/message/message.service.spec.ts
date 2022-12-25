@@ -1,8 +1,13 @@
 import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { ValidationError } from 'class-validator';
-import { IValidationErrorImport } from 'src/common/error/interfaces/error.interface';
+import {
+    IErrors,
+    IErrorsImport,
+    IValidationErrorImport,
+} from 'src/common/error/interfaces/error.interface';
 import { HelperModule } from 'src/common/helper/helper.module';
+import { IMessage } from 'src/common/message/interfaces/message.interface';
 import { MessageModule } from 'src/common/message/message.module';
 import { MessageService } from 'src/common/message/services/message.service';
 import configs from 'src/configs';
@@ -16,7 +21,7 @@ describe('MessageService', () => {
     let validationErrorConstrainEmpty: ValidationError[];
     let validationErrorImport: IValidationErrorImport[];
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({
@@ -294,200 +299,167 @@ describe('MessageService', () => {
         ];
     });
 
+    afterEach(async () => {
+        jest.clearAllMocks();
+    });
+
     it('should be defined', () => {
         expect(messageService).toBeDefined();
     });
 
     describe('get', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(messageService, 'get');
-
-            await messageService.get('test.hello');
-            expect(test).toHaveBeenCalledWith('test.hello');
-        });
-
         it('should be success', async () => {
-            const message = messageService.get('test.hello');
-            jest.spyOn(messageService, 'get').mockImplementation(() => message);
+            const result: string | IMessage = await messageService.get(
+                'test.hello'
+            );
 
-            expect(messageService.get('test.hello')).toBe(message);
+            jest.spyOn(messageService, 'get').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeTruthy();
         });
     });
 
     describe('getRequestErrorsMessage', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(messageService, 'getRequestErrorsMessage');
-
-            await messageService.getRequestErrorsMessage(validationError);
-            expect(test).toHaveBeenCalledWith(validationError);
-        });
-
         it('single message should be success', async () => {
-            const message = await messageService.getRequestErrorsMessage(
-                validationError,
-                ['en']
-            );
+            const result: IErrors[] =
+                await messageService.getRequestErrorsMessage(validationError, [
+                    'en',
+                ]);
+
             jest.spyOn(
                 messageService,
                 'getRequestErrorsMessage'
-            ).mockImplementation(async () => message);
+            ).mockReturnValueOnce(result as any);
 
-            expect(
-                await messageService.getRequestErrorsMessage(validationError, [
-                    'en',
-                ])
-            ).toBe(message);
+            expect(result).toBeTruthy();
         });
 
         it('multi message should be success', async () => {
-            const message = await messageService.getRequestErrorsMessage(
-                validationError,
-                ['en', 'id']
-            );
-            jest.spyOn(
-                messageService,
-                'getRequestErrorsMessage'
-            ).mockImplementation(async () => message);
-
-            expect(
+            const result: IErrors[] =
                 await messageService.getRequestErrorsMessage(validationError, [
                     'en',
                     'id',
-                ])
-            ).toBe(message);
+                ]);
+
+            jest.spyOn(
+                messageService,
+                'getRequestErrorsMessage'
+            ).mockReturnValueOnce(result as any);
+
+            expect(result).toBeTruthy();
         });
 
         it('multi message if there has some undefined value should be success', async () => {
-            const message = await messageService.getRequestErrorsMessage(
-                validationError,
-                [undefined, 'id']
-            );
-            jest.spyOn(
-                messageService,
-                'getRequestErrorsMessage'
-            ).mockImplementation(async () => message);
-
-            expect(
+            const result: IErrors[] =
                 await messageService.getRequestErrorsMessage(validationError, [
                     undefined,
                     'id',
-                ])
-            ).toBe(message);
-        });
+                ]);
 
-        it('should be success', async () => {
-            const message = await messageService.getRequestErrorsMessage(
-                validationError
-            );
             jest.spyOn(
                 messageService,
                 'getRequestErrorsMessage'
-            ).mockImplementation(async () => message);
+            ).mockReturnValueOnce(result as any);
 
-            expect(
-                await messageService.getRequestErrorsMessage(validationError)
-            ).toBe(message);
+            expect(result).toBeTruthy();
         });
 
         it('should be success', async () => {
-            const message = await messageService.getRequestErrorsMessage(
-                validationError
-            );
+            const result: IErrors[] =
+                await messageService.getRequestErrorsMessage(validationError);
+
             jest.spyOn(
                 messageService,
                 'getRequestErrorsMessage'
-            ).mockImplementation(async () => message);
+            ).mockReturnValueOnce(result as any);
 
-            expect(
-                await messageService.getRequestErrorsMessage(validationError)
-            ).toBe(message);
+            expect(result).toBeTruthy();
+        });
+
+        it('should be success', async () => {
+            const result: IErrors[] =
+                await messageService.getRequestErrorsMessage(validationError);
+
+            jest.spyOn(
+                messageService,
+                'getRequestErrorsMessage'
+            ).mockReturnValueOnce(result as any);
+
+            expect(result).toBeTruthy();
         });
 
         it('two children should be success', async () => {
-            const message = await messageService.getRequestErrorsMessage(
-                validationErrorTwo
-            );
+            const result: IErrors[] =
+                await messageService.getRequestErrorsMessage(
+                    validationErrorTwo
+                );
+
             jest.spyOn(
                 messageService,
                 'getRequestErrorsMessage'
-            ).mockImplementation(async () => message);
+            ).mockReturnValueOnce(result as any);
 
-            expect(
-                await messageService.getRequestErrorsMessage(validationErrorTwo)
-            ).toBe(message);
+            expect(result).toBeTruthy();
         });
 
         it('three children should be success', async () => {
-            const message = await messageService.getRequestErrorsMessage(
-                validationErrorThree
-            );
+            const result: IErrors[] =
+                await messageService.getRequestErrorsMessage(
+                    validationErrorThree
+                );
+
             jest.spyOn(
                 messageService,
                 'getRequestErrorsMessage'
-            ).mockImplementation(async () => message);
+            ).mockReturnValueOnce(result as any);
 
-            expect(
-                await messageService.getRequestErrorsMessage(
-                    validationErrorThree
-                )
-            ).toBe(message);
+            expect(result).toBeTruthy();
         });
 
         it('empty constrain should be success', async () => {
-            const message = await messageService.getRequestErrorsMessage(
-                validationErrorConstrainEmpty
-            );
+            const result: IErrors[] =
+                await messageService.getRequestErrorsMessage(
+                    validationErrorConstrainEmpty
+                );
             jest.spyOn(
                 messageService,
                 'getRequestErrorsMessage'
-            ).mockImplementation(async () => message);
+            ).mockReturnValueOnce(result as any);
 
-            expect(
-                await messageService.getRequestErrorsMessage(
-                    validationErrorConstrainEmpty
-                )
-            ).toBe(message);
+            expect(result).toBeTruthy();
         });
     });
 
     describe('getImportErrorsMessage', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(messageService, 'getImportErrorsMessage');
-
-            await messageService.getImportErrorsMessage(validationErrorImport);
-            expect(test).toHaveBeenCalled();
-        });
-
         it('should be success', async () => {
-            const languages = messageService.getImportErrorsMessage(
-                validationErrorImport
-            );
+            const result: IErrorsImport[] =
+                await messageService.getImportErrorsMessage(
+                    validationErrorImport
+                );
+
             jest.spyOn(
                 messageService,
                 'getImportErrorsMessage'
-            ).mockImplementation(() => languages);
+            ).mockReturnValueOnce(result as any);
 
-            expect(
-                messageService.getImportErrorsMessage(validationErrorImport)
-            ).toBe(languages);
+            expect(result).toBeTruthy();
         });
 
         it('should be success with options', async () => {
-            const languages = messageService.getImportErrorsMessage(
-                validationErrorImport,
-                ['en', 'id']
-            );
+            const result: IErrorsImport[] =
+                await messageService.getImportErrorsMessage(
+                    validationErrorImport,
+                    ['en', 'id']
+                );
+
             jest.spyOn(
                 messageService,
                 'getImportErrorsMessage'
-            ).mockImplementation(() => languages);
+            ).mockReturnValueOnce(result as any);
 
-            expect(
-                messageService.getImportErrorsMessage(validationErrorImport, [
-                    'en',
-                    'id',
-                ])
-            ).toBe(languages);
+            expect(result).toBeTruthy();
         });
     });
 });

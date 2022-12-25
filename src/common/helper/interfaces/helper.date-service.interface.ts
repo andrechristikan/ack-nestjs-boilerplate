@@ -20,9 +20,15 @@ export interface IHelperDateService {
 
     checkTimestamp(timestamp: number): boolean;
 
-    create(options?: IHelperDateOptionsCreate): Date;
+    create(
+        date?: string | Date | number,
+        options?: IHelperDateOptionsCreate
+    ): Date;
 
-    timestamp(options?: IHelperDateOptionsCreate): number;
+    timestamp(
+        date?: string | Date | number,
+        options?: IHelperDateOptionsCreate
+    ): number;
 
     format(date: Date, options?: IHelperDateOptionsFormat): string;
 

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import _ from 'lodash';
 import { IHelperArrayService } from 'src/common/helper/interfaces/helper.array-service.interface';
+import { IHelperArrayRemove } from 'src/common/helper/interfaces/helper.interface';
 
 @Injectable()
 export class HelperArrayService implements IHelperArrayService {
@@ -36,10 +37,12 @@ export class HelperArrayService implements IHelperArrayService {
         return _.lastIndexOf(array, value);
     }
 
-    removeByValue<T>(array: T[], value: T): T[] {
-        return _.remove(array, function (n) {
+    removeByValue<T>(array: T[], value: T): IHelperArrayRemove<T> {
+        const removed = _.remove(array, function (n) {
             return n === value;
         });
+
+        return { removed, arrays: array };
     }
 
     removeLeftByLength<T>(array: T[], length: number): T[] {
@@ -74,15 +77,19 @@ export class HelperArrayService implements IHelperArrayService {
         return _.union(a, b);
     }
 
+    filterIncludeByValue<T>(array: T[], value: T): T[] {
+        return _.filter(array, (arr) => arr === value);
+    }
+
     filterNotIncludeByValue<T>(array: T[], value: T): T[] {
         return _.without(array, value);
     }
 
-    filterNotIncludeByArray<T>(a: T[], b: T[]): T[] {
+    filterNotIncludeUniqueByArray<T>(a: T[], b: T[]): T[] {
         return _.xor(a, b);
     }
 
-    filterIncludeByArray<T>(a: T[], b: T[]): T[] {
+    filterIncludeUniqueByArray<T>(a: T[], b: T[]): T[] {
         return _.intersection(a, b);
     }
 
@@ -98,19 +105,15 @@ export class HelperArrayService implements IHelperArrayService {
         return _.intersection(a, b).length > 0;
     }
 
+    notIn<T>(a: T[], b: T[]): boolean {
+        return _.intersection(a, b).length == 0;
+    }
+
     includes<T>(a: T[], b: T): boolean {
         return _.includes(a, b);
     }
 
-    split<T>(a: T[], size: number): T[][] {
+    chunk<T>(a: T[], size: number): T[][] {
         return _.chunk<T>(a, size);
-    }
-
-    getKeys(a: Record<string, any>): string[] {
-        return Object.keys(a);
-    }
-
-    getValues<T>(a: Record<string, any>): T[] {
-        return Object.values(a);
     }
 }

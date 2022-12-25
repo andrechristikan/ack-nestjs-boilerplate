@@ -50,6 +50,21 @@ describe('E2E User Public', () => {
         await app.init();
     });
 
+    afterAll(async () => {
+        jest.clearAllMocks();
+
+        try {
+            await userService.deleteOne({
+                email: userData.email,
+                mobileNumber: userData.mobileNumber,
+            });
+        } catch (err: any) {
+            console.error(err);
+        }
+
+        await app.close();
+    });
+
     it(`POST ${E2E_USER_PUBLIC_SIGN_UP_URL} Sign Up Error Request`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_SIGN_UP_URL)
@@ -65,8 +80,6 @@ describe('E2E User Public', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_PUBLIC_SIGN_UP_URL} Sign Up Success`, async () => {
@@ -93,8 +106,6 @@ describe('E2E User Public', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_USERNAME_EXISTS_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_PUBLIC_SIGN_UP_URL} Sign Up Email Exist`, async () => {
@@ -111,8 +122,6 @@ describe('E2E User Public', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_PUBLIC_SIGN_UP_URL} Sign Up Mobile Number Exist`, async () => {
@@ -129,18 +138,5 @@ describe('E2E User Public', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR
         );
-
-        return;
-    });
-
-    afterAll(async () => {
-        try {
-            await userService.deleteOne({
-                email: userData.email,
-                mobileNumber: userData.mobileNumber,
-            });
-        } catch (err: any) {
-            console.error(err);
-        }
     });
 });

@@ -8,7 +8,7 @@ import configs from 'src/configs';
 describe('MessageEnumService', () => {
     let messageEnumService: MessageEnumService;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 ConfigModule.forRoot({
@@ -27,21 +27,24 @@ describe('MessageEnumService', () => {
             moduleRef.get<MessageEnumService>(MessageEnumService);
     });
 
+    afterEach(async () => {
+        jest.clearAllMocks();
+    });
+
+    it('should be defined', () => {
+        expect(messageEnumService).toBeDefined();
+    });
+
     describe('getLanguages', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(messageEnumService, 'getLanguages');
-
-            await messageEnumService.getLanguages();
-            expect(test).toHaveBeenCalled();
-        });
-
         it('should be success', async () => {
-            const languages = messageEnumService.getLanguages();
-            jest.spyOn(messageEnumService, 'getLanguages').mockImplementation(
-                () => languages
-            );
+            const result: string[] = await messageEnumService.getLanguages();
 
-            expect(messageEnumService.getLanguages()).toBe(languages);
+            jest.spyOn(
+                messageEnumService,
+                'getLanguages'
+            ).mockRejectedValueOnce(result as any);
+
+            expect(result).toBeTruthy();
         });
     });
 });

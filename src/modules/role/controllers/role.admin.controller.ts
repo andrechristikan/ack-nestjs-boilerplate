@@ -254,9 +254,10 @@ export class RoleAdminController {
         const promPermissions: Promise<PermissionEntity>[] = permissions.map(
             (value) => this.permissionService.findOneById(value)
         );
-        const checkPermission: PermissionEntity[] = await Promise.all(
+        let checkPermission: PermissionEntity[] = await Promise.all(
             promPermissions
         );
+        checkPermission = checkPermission.filter((val) => val);
 
         if (checkPermission.length !== permissions.length) {
             throw new NotFoundException({

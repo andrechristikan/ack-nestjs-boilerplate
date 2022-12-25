@@ -1,3 +1,5 @@
+import { IHelperArrayRemove } from 'src/common/helper/interfaces/helper.interface';
+
 export interface IHelperArrayService {
     getLeftByIndex<T>(array: T[], index: number): T;
 
@@ -15,7 +17,7 @@ export interface IHelperArrayService {
 
     getLastIndexByValue<T>(array: T[], value: T): number;
 
-    removeByValue<T>(array: T[], value: T): T[];
+    removeByValue<T>(array: T[], value: T): IHelperArrayRemove<T>;
 
     removeLeftByLength<T>(array: T[], length: number): T[];
 
@@ -33,11 +35,13 @@ export interface IHelperArrayService {
 
     mergeUnique<T>(a: T[], b: T[]): T[];
 
+    filterIncludeByValue<T>(array: T[], value: T): T[];
+
     filterNotIncludeByValue<T>(array: T[], value: T): T[];
 
-    filterNotIncludeByArray<T>(a: T[], b: T[]): T[];
+    filterNotIncludeUniqueByArray<T>(a: T[], b: T[]): T[];
 
-    filterIncludeByArray<T>(a: T[], b: T[]): T[];
+    filterIncludeUniqueByArray<T>(a: T[], b: T[]): T[];
 
     equals<T>(a: T[], b: T[]): boolean;
 
@@ -45,11 +49,9 @@ export interface IHelperArrayService {
 
     in<T>(a: T[], b: T[]): boolean;
 
+    notIn<T>(a: T[], b: T[]): boolean;
+
     includes<T>(a: T[], b: T): boolean;
 
-    split<T>(a: T[], size: number): T[][];
-
-    getKeys(a: Record<string, any>): string[];
-
-    getValues<T>(a: Record<string, any>): T[];
+    chunk<T>(a: T[], size: number): T[][];
 }

@@ -19,13 +19,18 @@ describe('Aws S3 Integration', () => {
         await app.init();
     });
 
+    afterAll(async () => {
+        jest.clearAllMocks();
+
+        await app.close();
+    });
+
     it(`GET ${INTEGRATION_AWS_URL} Success`, async () => {
         const response = await request(app.getHttpServer()).get(
             INTEGRATION_AWS_URL
         );
+
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 });

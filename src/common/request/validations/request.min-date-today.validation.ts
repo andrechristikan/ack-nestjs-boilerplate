@@ -14,7 +14,7 @@ export class MinDateTodayConstraint implements ValidatorConstraintInterface {
 
     validate(value: string): boolean {
         const todayDate = this.helperDateService.startOfDay();
-        const valueDate = this.helperDateService.create({ date: value });
+        const valueDate = this.helperDateService.create(value);
         return valueDate >= todayDate;
     }
 }

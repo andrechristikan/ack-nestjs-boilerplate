@@ -3,8 +3,8 @@
 # Build dependencies
 node_modules/
 coverage/
-e2e-coverage/
-integration-coverage/
+coverage-e2e/
+coverage-integration/
 dist/
 .husky/
 .github/

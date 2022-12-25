@@ -99,6 +99,18 @@ describe('E2E User Change Password', () => {
         await app.init();
     });
 
+    afterAll(async () => {
+        jest.clearAllMocks();
+
+        try {
+            await userService.deleteOneById(user._id);
+        } catch (err: any) {
+            console.error(err);
+        }
+
+        await app.close();
+    });
+
     it(`PATCH ${E2E_USER_CHANGE_PASSWORD_URL} Error Request`, async () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_USER_CHANGE_PASSWORD_URL)
@@ -112,8 +124,6 @@ describe('E2E User Change Password', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
         );
-
-        return;
     });
 
     it(`PATCH ${E2E_USER_CHANGE_PASSWORD_URL} Not Found`, async () => {
@@ -128,8 +138,6 @@ describe('E2E User Change Password', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`PATCH ${E2E_USER_CHANGE_PASSWORD_URL} Old Password Not Match`, async () => {
@@ -145,8 +153,6 @@ describe('E2E User Change Password', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_NOT_MATCH_ERROR
         );
-
-        return;
     });
 
     it(`PATCH ${E2E_USER_CHANGE_PASSWORD_URL} Old Password Password Attempt Max`, async () => {
@@ -165,7 +171,6 @@ describe('E2E User Change Password', () => {
         );
 
         await userService.resetPasswordAttempt(user._id);
-        return;
     });
 
     it(`PATCH ${E2E_USER_CHANGE_PASSWORD_URL} New Password must different with old password`, async () => {
@@ -181,8 +186,6 @@ describe('E2E User Change Password', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_NEW_MUST_DIFFERENCE_ERROR
         );
-
-        return;
     });
 
     it(`PATCH ${E2E_USER_CHANGE_PASSWORD_URL} Success`, async () => {
@@ -196,15 +199,5 @@ describe('E2E User Change Password', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
-    });
-
-    afterAll(async () => {
-        try {
-            await userService.deleteOneById(user._id);
-        } catch (err: any) {
-            console.error(err);
-        }
     });
 });

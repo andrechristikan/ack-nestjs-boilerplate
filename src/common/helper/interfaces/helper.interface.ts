@@ -4,6 +4,12 @@ import {
     ENUM_HELPER_FILE_TYPE,
 } from 'src/common/helper/constants/helper.enum.constant';
 
+// Helper Array
+export interface IHelperArrayRemove<T> {
+    removed: T[];
+    arrays: T[];
+}
+
 // Helper Encryption
 export interface IHelperJwtVerifyOptions {
     audience: string;
@@ -47,7 +53,6 @@ export interface IHelperDateOptionsDiff {
 }
 
 export interface IHelperDateOptionsCreate {
-    date?: string | number | Date;
     startOfDay?: boolean;
 }
 

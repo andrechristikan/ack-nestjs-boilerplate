@@ -46,6 +46,12 @@ describe('E2E User', () => {
         await app.init();
     });
 
+    afterAll(async () => {
+        jest.clearAllMocks();
+
+        await app.close();
+    });
+
     it(`GET ${E2E_USER_INFO} Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_USER_INFO)

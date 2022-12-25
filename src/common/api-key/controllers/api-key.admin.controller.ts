@@ -210,7 +210,7 @@ export class ApiKeyAdminController {
     @Put('/update/:apiKey/reset')
     async reset(@GetApiKey() apiKey: ApiKeyEntity): Promise<IResponse> {
         try {
-            const updated: IApiKeyEntity = await this.apiKeyService.resetById(
+            const updated: IApiKeyEntity = await this.apiKeyService.reset(
                 apiKey._id,
                 apiKey.key
             );

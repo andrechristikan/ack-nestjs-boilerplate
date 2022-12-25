@@ -85,8 +85,13 @@ Next development
     * [x] AuthApi Get, Active, Inactive Endpoint
     * [x] AuthApi Create (Random Key), and Reset Secret Endpoint
     * [x] AuthApi Controller Test E2E
-* [ ] Fix automation testing
-* [ ] SSO Google, SSO Facebook, SSO Twitter, SSO Apple, SSO Microsoft
+* [x] Fix automation testing
+* [ ] SSO
+    * [ ] Google
+    * [ ] Apple
+    * [ ] Microsoft
+    * [ ] Facebook
+    * [ ] Twitter
 * [ ] Update Documentation, include an diagram for easier comprehension
 * [ ] Maybe will adopt [CQRS][ref-nestjs-cqrs]
 

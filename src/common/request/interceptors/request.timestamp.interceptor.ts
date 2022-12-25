@@ -57,9 +57,7 @@ export class RequestTimestampInterceptor
                 });
             }
 
-            const timestampDate = this.helperDateService.create({
-                date: timestamp,
-            });
+            const timestampDate = this.helperDateService.create(timestamp);
 
             const toleranceMin = this.helperDateService.backwardInMilliseconds(
                 this.maxRequestTimestampInMs

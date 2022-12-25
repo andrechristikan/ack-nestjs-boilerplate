@@ -17,6 +17,7 @@ import {
 } from 'src/common/logger/constants/logger.enum.constant';
 import { LoggerCreateDto } from 'src/common/logger/dtos/logger.create.dto';
 import { LoggerModule } from 'src/common/logger/logger.module';
+import { LoggerEntity } from 'src/common/logger/repository/entities/logger.entity';
 import { LoggerService } from 'src/common/logger/services/logger.service';
 import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
 import configs from 'src/configs';
@@ -56,7 +57,7 @@ describe('LoggerService', () => {
         tags: [],
     };
 
-    beforeAll(async () => {
+    beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
             imports: [
                 MongooseModule.forRootAsync({
@@ -92,155 +93,157 @@ describe('LoggerService', () => {
         loggerComplete.apiKey = apiKey._id;
     });
 
-    describe('info', () => {
-        it('should be success', async () => {
-            const result = await loggerService.info(logger);
-            jest.spyOn(loggerService, 'info').mockImplementation(
-                async () => result
-            );
+    afterEach(async () => {
+        jest.clearAllMocks();
 
-            expect(await loggerService.info(logger)).toBe(result);
-        });
-
-        it('should be success completed', async () => {
-            const result = await loggerService.info(loggerComplete);
-            jest.spyOn(loggerService, 'info').mockImplementation(
-                async () => result
-            );
-
-            expect(await loggerService.info(loggerComplete)).toBe(result);
-        });
-    });
-
-    describe('debug', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(loggerService, 'debug');
-
-            loggerService.debug(logger);
-            expect(test).toHaveBeenCalledWith(logger);
-        });
-
-        it('should be success', async () => {
-            const result = await loggerService.debug(logger);
-            jest.spyOn(loggerService, 'debug').mockImplementation(
-                async () => result
-            );
-
-            expect(await loggerService.debug(logger)).toBe(result);
-        });
-
-        it('should be success complete', async () => {
-            const result = await loggerService.debug(loggerComplete);
-            jest.spyOn(loggerService, 'debug').mockImplementation(
-                async () => result
-            );
-
-            expect(await loggerService.debug(loggerComplete)).toBe(result);
-        });
-    });
-
-    describe('warning', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(loggerService, 'warning');
-
-            loggerService.warning(logger);
-            expect(test).toHaveBeenCalledWith(logger);
-        });
-
-        it('should be success', async () => {
-            const result = await loggerService.warning(logger);
-            jest.spyOn(loggerService, 'warning').mockImplementation(
-                async () => result
-            );
-
-            expect(await loggerService.warning(logger)).toBe(result);
-        });
-
-        it('should be success complete', async () => {
-            const result = await loggerService.warning(loggerComplete);
-            jest.spyOn(loggerService, 'warning').mockImplementation(
-                async () => result
-            );
-
-            expect(await loggerService.warning(loggerComplete)).toBe(result);
-        });
-    });
-
-    describe('fatal', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(loggerService, 'fatal');
-
-            loggerService.fatal(logger);
-            expect(test).toHaveBeenCalledWith(logger);
-        });
-
-        it('should be success', async () => {
-            const result = await loggerService.fatal(logger);
-            jest.spyOn(loggerService, 'fatal').mockImplementation(
-                async () => result
-            );
-
-            expect(await loggerService.fatal(logger)).toBe(result);
-        });
-
-        it('should be success complete', async () => {
-            const result = await loggerService.fatal(loggerComplete);
-            jest.spyOn(loggerService, 'fatal').mockImplementation(
-                async () => result
-            );
-
-            expect(await loggerService.fatal(loggerComplete)).toBe(result);
-        });
-    });
-
-    describe('raw', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(loggerService, 'raw');
-
-            loggerService.raw({ level: loggerLevel, ...logger });
-            expect(test).toHaveBeenCalledWith({
-                level: loggerLevel,
-                ...logger,
-            });
-        });
-
-        it('should be success', async () => {
-            const result = await loggerService.raw({
-                level: loggerLevel,
-                ...logger,
-            });
-            jest.spyOn(loggerService, 'raw').mockImplementation(
-                async () => result
-            );
-
-            expect(
-                await loggerService.raw({ level: loggerLevel, ...logger })
-            ).toBe(result);
-        });
-
-        it('should be success complete', async () => {
-            const result = await loggerService.raw({
-                level: loggerLevel,
-                ...loggerComplete,
-            });
-            jest.spyOn(loggerService, 'raw').mockImplementation(
-                async () => result
-            );
-
-            expect(
-                await loggerService.raw({
-                    level: loggerLevel,
-                    ...loggerComplete,
-                })
-            ).toBe(result);
-        });
-    });
-
-    afterAll(async () => {
         try {
             await apiKeyService.deleteOneById(apiKey._id);
         } catch (err: any) {
             console.error(err);
         }
+    });
+
+    it('should be defined', () => {
+        expect(loggerService).toBeDefined();
+    });
+
+    describe('info', () => {
+        it('should be success', async () => {
+            const result: LoggerEntity = await loggerService.info(logger);
+
+            jest.spyOn(loggerService, 'info').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeTruthy();
+            expect(result._id).toBeDefined();
+            expect(result.level).toBe(ENUM_LOGGER_LEVEL.INFO);
+        });
+
+        it('with complete data', async () => {
+            const result: LoggerEntity = await loggerService.info(
+                loggerComplete
+            );
+
+            jest.spyOn(loggerService, 'info').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeTruthy();
+            expect(result._id).toBeDefined();
+            expect(result.level).toBe(ENUM_LOGGER_LEVEL.INFO);
+        });
+    });
+
+    describe('debug', () => {
+        it('should be success', async () => {
+            const result: LoggerEntity = await loggerService.debug(logger);
+
+            jest.spyOn(loggerService, 'debug').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeTruthy();
+            expect(result._id).toBeDefined();
+            expect(result.level).toBe(ENUM_LOGGER_LEVEL.DEBUG);
+        });
+
+        it('with complete data', async () => {
+            const result: LoggerEntity = await loggerService.debug(
+                loggerComplete
+            );
+
+            jest.spyOn(loggerService, 'debug').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeTruthy();
+            expect(result._id).toBeDefined();
+            expect(result.level).toBe(ENUM_LOGGER_LEVEL.DEBUG);
+        });
+    });
+
+    describe('warning', () => {
+        it('should be success', async () => {
+            const result: LoggerEntity = await loggerService.warn(logger);
+
+            jest.spyOn(loggerService, 'warn').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeTruthy();
+            expect(result._id).toBeDefined();
+            expect(result.level).toBe(ENUM_LOGGER_LEVEL.WARM);
+        });
+
+        it('with complete data', async () => {
+            const result: LoggerEntity = await loggerService.warn(
+                loggerComplete
+            );
+
+            jest.spyOn(loggerService, 'warn').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeTruthy();
+            expect(result._id).toBeDefined();
+            expect(result.level).toBe(ENUM_LOGGER_LEVEL.WARM);
+        });
+    });
+
+    describe('fatal', () => {
+        it('should be success', async () => {
+            const result: LoggerEntity = await loggerService.fatal(logger);
+
+            jest.spyOn(loggerService, 'fatal').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeTruthy();
+            expect(result._id).toBeDefined();
+            expect(result.level).toBe(ENUM_LOGGER_LEVEL.FATAL);
+        });
+
+        it('with complete data', async () => {
+            const result: LoggerEntity = await loggerService.fatal(
+                loggerComplete
+            );
+
+            jest.spyOn(loggerService, 'fatal').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeTruthy();
+            expect(result._id).toBeDefined();
+            expect(result.level).toBe(ENUM_LOGGER_LEVEL.FATAL);
+        });
+    });
+
+    describe('raw', () => {
+        it('should be success', async () => {
+            const result: LoggerEntity = await loggerService.raw({
+                level: loggerLevel,
+                ...logger,
+            });
+
+            jest.spyOn(loggerService, 'raw').mockReturnValueOnce(result as any);
+
+            expect(result).toBeTruthy();
+            expect(result._id).toBeDefined();
+            expect(result.level).toBe(loggerLevel);
+        });
+
+        it('should be success complete', async () => {
+            const result: LoggerEntity = await loggerService.raw({
+                level: loggerLevel,
+                ...loggerComplete,
+            });
+
+            jest.spyOn(loggerService, 'raw').mockReturnValueOnce(result as any);
+
+            expect(result).toBeTruthy();
+            expect(result._id).toBeDefined();
+            expect(result.level).toBe(loggerLevel);
+        });
     });
 });

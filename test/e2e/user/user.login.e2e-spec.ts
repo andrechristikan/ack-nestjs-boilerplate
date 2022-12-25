@@ -89,6 +89,19 @@ describe('E2E User Login', () => {
         await app.init();
     });
 
+    afterAll(async () => {
+        jest.clearAllMocks();
+
+        try {
+            await userService.deleteOneById(user._id);
+            await roleService.deleteOne({ name: roleName });
+        } catch (err: any) {
+            console.error(err);
+        }
+
+        await app.close();
+    });
+
     it(`POST ${E2E_USER_LOGIN_URL} Error Request`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
@@ -103,8 +116,6 @@ describe('E2E User Login', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Not Found`, async () => {
@@ -121,8 +132,6 @@ describe('E2E User Login', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Password Not Match`, async () => {
@@ -139,8 +148,6 @@ describe('E2E User Login', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_NOT_MATCH_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Password Attempt Max`, async () => {
@@ -161,7 +168,6 @@ describe('E2E User Login', () => {
         );
 
         await userService.resetPasswordAttempt(user._id);
-        return;
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Inactive`, async () => {
@@ -182,8 +188,6 @@ describe('E2E User Login', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Role Inactive`, async () => {
@@ -204,8 +208,6 @@ describe('E2E User Login', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_INACTIVE_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Success`, async () => {
@@ -220,8 +222,6 @@ describe('E2E User Login', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Password Expired`, async () => {
@@ -240,8 +240,6 @@ describe('E2E User Login', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR
         );
-
-        return;
     });
 
     afterAll(async () => {
@@ -330,16 +328,5 @@ describe('E2E User Login Payload Encryption', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
-    });
-
-    afterAll(async () => {
-        try {
-            await userService.deleteOneById(user._id);
-            await roleService.deleteOne({ name: roleName });
-        } catch (err: any) {
-            console.error(err);
-        }
     });
 });
