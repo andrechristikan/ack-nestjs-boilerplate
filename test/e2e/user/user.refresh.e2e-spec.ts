@@ -196,14 +196,6 @@ describe('E2E User Refresh', () => {
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
     });
-
-    afterAll(async () => {
-        try {
-            await userService.deleteOneById(user._id);
-        } catch (err: any) {
-            console.error(err);
-        }
-    });
 });
 
 describe('E2E User Refresh Payload Encryption', () => {

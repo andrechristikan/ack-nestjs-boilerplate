@@ -1,5 +1,5 @@
 import { ConfigModule } from '@nestjs/config';
-import { MongooseModule, MongooseModuleOptions } from '@nestjs/mongoose';
+import { MongooseModule } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import mongoose from 'mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';

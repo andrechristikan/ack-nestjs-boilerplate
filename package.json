@@ -51,7 +51,7 @@
     "rollback": "yarn rollback:setting && yarn rollback:apikey && yarn rollback:user && yarn rollback:role && yarn rollback:permission"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.235.0",
+    "@aws-sdk/client-s3": "^3.238.0",
     "@faker-js/faker": "^7.6.0",
     "@joi/date": "^2.1.0",
     "@nestjs/axios": "^1.0.1",
@@ -79,10 +79,10 @@
     "morgan": "^1.10.0",
     "nest-winston": "^1.8.0",
     "nestjs-command": "^3.1.2",
-    "nestjs-i18n": "^10.2.0",
+    "nestjs-i18n": "^10.2.1",
     "passport": "^0.6.0",
     "passport-headerapikey": "^1.2.2",
-    "passport-jwt": "^4.0.0",
+    "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.1.13",
     "response-time": "^2.3.2",
     "rimraf": "^3.0.2",

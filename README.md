@@ -86,6 +86,8 @@ Next development
     * [x] AuthApi Create (Random Key), and Reset Secret Endpoint
     * [x] AuthApi Controller Test E2E
 * [x] Fix automation testing
+* [ ] Pagination move form decorator to service pagination
+* [ ] Class validation check decorator
 * [ ] SSO
     * [ ] Google
     * [ ] Apple

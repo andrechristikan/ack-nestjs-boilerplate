@@ -241,15 +241,6 @@ describe('E2E User Login', () => {
             ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR
         );
     });
-
-    afterAll(async () => {
-        try {
-            await userService.deleteOneById(user._id);
-            await roleService.deleteOne({ name: roleName });
-        } catch (err: any) {
-            console.error(err);
-        }
-    });
 });
 
 describe('E2E User Login Payload Encryption', () => {
