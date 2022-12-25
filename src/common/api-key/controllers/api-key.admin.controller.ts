@@ -10,6 +10,10 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
+    API_KEY_DEFAULT_AVAILABLE_SEARCH,
+    API_KEY_DEFAULT_AVAILABLE_SORT,
+} from 'src/common/api-key/constants/api-key.list.constant';
+import {
     ApiKeyGetGuard,
     ApiKeyUpdateActiveGuard,
     ApiKeyUpdateInactiveGuard,
@@ -61,9 +65,14 @@ export class ApiKeyAdminController {
     ) {}
 
     @ApiKeyListDoc()
-    @ResponsePaging('apiKey.list', {
-        serialization: ApiKeyListSerialization,
-    })
+    @ResponsePaging(
+        'apiKey.list',
+        API_KEY_DEFAULT_AVAILABLE_SEARCH,
+        API_KEY_DEFAULT_AVAILABLE_SORT,
+        {
+            serialization: ApiKeyListSerialization,
+        }
+    )
     @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.API_KEY_READ)
     @AuthJwtAdminAccessProtected()
     @Get('/list')
@@ -78,7 +87,7 @@ export class ApiKeyAdminController {
             availableSearch,
         }: ApiKeyListDto
     ): Promise<IResponsePaging> {
-        const skip: number = await this.paginationService.skip(page, perPage);
+        const offset: number = this.paginationService.offset(page, perPage);
         const find: Record<string, any> = {
             ...search,
         };
@@ -86,12 +95,12 @@ export class ApiKeyAdminController {
         const apiKeys: ApiKeyEntity[] = await this.apiKeyService.findAll(find, {
             paging: {
                 limit: perPage,
-                skip: skip,
+                offset,
             },
             sort,
         });
         const totalData: number = await this.apiKeyService.getTotal(find);
-        const totalPage: number = await this.paginationService.totalPage(
+        const totalPage: number = this.paginationService.totalPage(
             totalData,
             perPage
         );

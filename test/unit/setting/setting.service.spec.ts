@@ -93,12 +93,12 @@ describe('SettingService', () => {
             expect(result[0]._id).toBe(setting._id);
         });
 
-        it('get all setting with limit and skip', async () => {
+        it('get all setting with limit and offset', async () => {
             const result = await settingService.findAll(
                 {
                     name: setting.name,
                 },
-                { paging: { limit: 1, skip: 0 } }
+                { paging: { limit: 1, offset: 0 } }
             );
 
             jest.spyOn(settingService, 'findAll').mockReturnValueOnce(
@@ -111,13 +111,13 @@ describe('SettingService', () => {
             expect(result[0]._id).toBe(setting._id);
         });
 
-        it('get all setting with limit, skip, and sort', async () => {
+        it('get all setting with limit, offset, and sort', async () => {
             const result = await settingService.findAll(
                 {
                     name: setting.name,
                 },
                 {
-                    paging: { limit: 1, skip: 0 },
+                    paging: { limit: 1, offset: 0 },
                     sort: { name: ENUM_PAGINATION_SORT_TYPE.ASC },
                 }
             );

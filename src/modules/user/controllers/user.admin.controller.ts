@@ -72,6 +72,10 @@ import { UserService } from 'src/modules/user/services/user.service';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthPermissionProtected } from 'src/common/auth/decorators/auth.permission.decorator';
 import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
+import {
+    USER_DEFAULT_AVAILABLE_SEARCH,
+    USER_DEFAULT_AVAILABLE_SORT,
+} from 'src/modules/user/constants/user.list.constant';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -87,9 +91,14 @@ export class UserAdminController {
     ) {}
 
     @UserListDoc()
-    @ResponsePaging('user.list', {
-        serialization: UserListSerialization,
-    })
+    @ResponsePaging(
+        'user.list',
+        USER_DEFAULT_AVAILABLE_SEARCH,
+        USER_DEFAULT_AVAILABLE_SORT,
+        {
+            serialization: UserListSerialization,
+        }
+    )
     @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.USER_READ)
     @AuthJwtAdminAccessProtected()
     @Get('/list')
@@ -105,7 +114,7 @@ export class UserAdminController {
             isActive,
         }: UserListDto
     ): Promise<IResponsePaging> {
-        const skip: number = await this.paginationService.skip(page, perPage);
+        const offset: number = this.paginationService.offset(page, perPage);
         const find: Record<string, any> = {
             ...search,
             ...isActive,
@@ -114,12 +123,12 @@ export class UserAdminController {
         const users: IUserEntity[] = await this.userService.findAll(find, {
             paging: {
                 limit: perPage,
-                skip: skip,
+                offset,
             },
             sort,
         });
         const totalData: number = await this.userService.getTotal(find);
-        const totalPage: number = await this.paginationService.totalPage(
+        const totalPage: number = this.paginationService.totalPage(
             totalData,
             perPage
         );

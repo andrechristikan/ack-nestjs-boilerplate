@@ -78,7 +78,7 @@ describe('ApiKeyService', () => {
             const result: ApiKeyEntity[] = await apiKeyService.findAll(
                 { name: apiKeyName1 },
                 {
-                    paging: { limit: 1, skip: 0 },
+                    paging: { limit: 1, offset: 0 },
                     sort: { name: ENUM_PAGINATION_SORT_TYPE.ASC },
                 }
             );

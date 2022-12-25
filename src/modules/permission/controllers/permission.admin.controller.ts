@@ -24,6 +24,10 @@ import {
 } from 'src/common/response/interfaces/response.interface';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import {
+    PERMISSION_DEFAULT_AVAILABLE_SEARCH,
+    PERMISSION_DEFAULT_AVAILABLE_SORT,
+} from 'src/modules/permission/constants/permission.list.constant';
+import {
     PermissionGetGuard,
     PermissionUpdateActiveGuard,
     PermissionUpdateGuard,
@@ -61,9 +65,14 @@ export class PermissionAdminController {
     ) {}
 
     @PermissionListDoc()
-    @ResponsePaging('permission.list', {
-        serialization: PermissionListSerialization,
-    })
+    @ResponsePaging(
+        'permission.list',
+        PERMISSION_DEFAULT_AVAILABLE_SEARCH,
+        PERMISSION_DEFAULT_AVAILABLE_SORT,
+        {
+            serialization: PermissionListSerialization,
+        }
+    )
     @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
     @AuthJwtAdminAccessProtected()
     @Get('/list')
@@ -80,7 +89,7 @@ export class PermissionAdminController {
             group,
         }: PermissionListDto
     ): Promise<IResponsePaging> {
-        const skip: number = await this.paginationService.skip(page, perPage);
+        const offset: number = this.paginationService.offset(page, perPage);
         const find: Record<string, any> = {
             ...isActive,
             ...search,
@@ -91,13 +100,13 @@ export class PermissionAdminController {
             await this.permissionService.findAll(find, {
                 paging: {
                     limit: perPage,
-                    skip: skip,
+                    offset,
                 },
                 sort,
             });
 
         const totalData: number = await this.permissionService.getTotal(find);
-        const totalPage: number = await this.paginationService.totalPage(
+        const totalPage: number = this.paginationService.totalPage(
             totalData,
             perPage
         );

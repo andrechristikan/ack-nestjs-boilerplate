@@ -69,7 +69,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
         }
 
         if (options?.paging) {
-            findAll.limit(options.paging.limit).skip(options.paging.skip);
+            findAll.limit(options.paging.limit).skip(options.paging.offset);
         }
 
         if (options?.sort) {

@@ -30,6 +30,10 @@ import { ResponseIdSerialization } from 'src/common/response/serializations/resp
 import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/constants/permission.status-code.constant';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
+import {
+    ROLE_DEFAULT_AVAILABLE_SEARCH,
+    ROLE_DEFAULT_AVAILABLE_SORT,
+} from 'src/modules/role/constants/role.list.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import {
     RoleDeleteGuard,
@@ -72,9 +76,14 @@ export class RoleAdminController {
     ) {}
 
     @RoleListDoc()
-    @ResponsePaging('role.list', {
-        serialization: RoleListSerialization,
-    })
+    @ResponsePaging(
+        'role.list',
+        ROLE_DEFAULT_AVAILABLE_SEARCH,
+        ROLE_DEFAULT_AVAILABLE_SORT,
+        {
+            serialization: RoleListSerialization,
+        }
+    )
     @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.ROLE_READ)
     @AuthJwtAdminAccessProtected()
     @Get('/list')
@@ -91,7 +100,7 @@ export class RoleAdminController {
             accessFor,
         }: RoleListDto
     ): Promise<IResponsePaging> {
-        const skip: number = await this.paginationService.skip(page, perPage);
+        const offset: number = this.paginationService.offset(page, perPage);
         const find: Record<string, any> = {
             ...search,
             ...isActive,
@@ -101,13 +110,13 @@ export class RoleAdminController {
         const roles: RoleEntity[] = await this.roleService.findAll(find, {
             paging: {
                 limit: perPage,
-                skip: skip,
+                offset,
             },
             sort,
         });
 
         const totalData: number = await this.roleService.getTotal({});
-        const totalPage: number = await this.paginationService.totalPage(
+        const totalPage: number = this.paginationService.totalPage(
             totalData,
             perPage
         );

@@ -3,9 +3,13 @@ import {
     SerializeOptions,
     SetMetadata,
     UseInterceptors,
+    UsePipes,
 } from '@nestjs/common';
 import { ENUM_HELPER_FILE_TYPE } from 'src/common/helper/constants/helper.enum.constant';
 import { ENUM_PAGINATION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { PaginationPagingPipe } from 'src/common/pagination/pipes/pagination.paging.pipe';
+import { PaginationSearchPipe } from 'src/common/pagination/pipes/pagination.search.pipe';
+import { PaginationSortPipe } from 'src/common/pagination/pipes/pagination.sort.pipe';
 import {
     RESPONSE_EXCEL_TYPE_META_KEY,
     RESPONSE_MESSAGE_PATH_META_KEY,
@@ -68,10 +72,17 @@ export function ResponseExcel(
 
 export function ResponsePaging<T>(
     messagePath: string,
+    availableSearch: string[],
+    availableSort: string[],
     options?: IResponsePagingOptions<T>
 ): MethodDecorator {
     return applyDecorators(
         UseInterceptors(ResponsePagingInterceptor<T>),
+        UsePipes(
+            PaginationSearchPipe(availableSearch),
+            PaginationSortPipe(availableSort),
+            PaginationPagingPipe
+        ),
         SetMetadata(RESPONSE_MESSAGE_PATH_META_KEY, messagePath),
         SetMetadata(
             RESPONSE_SERIALIZATION_META_KEY,
