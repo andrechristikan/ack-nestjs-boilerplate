@@ -31,7 +31,7 @@ describe('ApiKeyService', () => {
                     inject: [DatabaseOptionsService],
                     useFactory: (
                         databaseOptionsService: DatabaseOptionsService
-                    ) => databaseOptionsService.createMongoOptions(),
+                    ) => databaseOptionsService.createOptions(),
                 }),
                 ConfigModule.forRoot({
                     load: configs,

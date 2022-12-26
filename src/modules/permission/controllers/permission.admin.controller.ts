@@ -5,7 +5,6 @@ import {
     InternalServerErrorException,
     Patch,
     Put,
-    Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
@@ -53,7 +52,6 @@ import {
     PermissionListDoc,
     PermissionUpdateDoc,
 } from 'src/modules/permission/docs/permission.admin.doc';
-import { PermissionGroupDto } from 'src/modules/permission/dtos/permission.group.dto';
 import { PermissionUpdateDescriptionDto } from 'src/modules/permission/dtos/permission.update-description.dto';
 import { PermissionRequestDto } from 'src/modules/permission/dtos/permissions.request.dto';
 import { IPermissionGroup } from 'src/modules/permission/interfaces/permission.interface';
@@ -149,8 +147,12 @@ export class PermissionAdminController {
     @AuthJwtAdminAccessProtected()
     @Get('/group')
     async group(
-        @Query()
-        { groups }: PermissionGroupDto
+        @PaginationQueryFilterInEnum(
+            'groups',
+            PERMISSION_DEFAULT_GROUP,
+            ENUM_PERMISSION_GROUP
+        )
+        groups: Record<string, any>
     ): Promise<IResponse> {
         const permissions: PermissionEntity[] =
             await this.permissionService.findAllByGroup(groups);

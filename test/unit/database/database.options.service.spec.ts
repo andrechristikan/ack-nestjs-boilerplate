@@ -44,7 +44,7 @@ describe('DatabaseOptionsService', () => {
         expect(databaseOptionsService).toBeDefined();
     });
 
-    describe('createMongoOptions development', () => {
+    describe('createOptions development', () => {
         beforeEach(async () => {
             process.env.APP_ENV = 'development';
             process.env.DATABASE_USER = 'AckUser';
@@ -70,11 +70,11 @@ describe('DatabaseOptionsService', () => {
 
         it('should be return mongoose options', async () => {
             const result: MongooseModuleOptions =
-                databaseOptionsService.createMongoOptions();
+                databaseOptionsService.createOptions();
 
             jest.spyOn(
                 databaseOptionsService,
-                'createMongoOptions'
+                'createOptions'
             ).mockReturnValueOnce(result as any);
 
             expect(result).toBeDefined();
@@ -82,7 +82,7 @@ describe('DatabaseOptionsService', () => {
         });
     });
 
-    describe('createMongoOptions production', () => {
+    describe('createOptions production', () => {
         beforeEach(async () => {
             process.env.APP_ENV = 'production';
             process.env.DATABASE_OPTIONS = '';
@@ -107,11 +107,11 @@ describe('DatabaseOptionsService', () => {
             process.env.DATABASE_OPTIONS = '';
 
             const result: MongooseModuleOptions =
-                databaseOptionsService.createMongoOptions();
+                databaseOptionsService.createOptions();
 
             jest.spyOn(
                 databaseOptionsService,
-                'createMongoOptions'
+                'createOptions'
             ).mockReturnValueOnce(result as any);
 
             expect(result).toBeDefined();
