@@ -201,7 +201,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
         const exist = this._repository.exists({
             ...find,
             _id: {
-                $nin: options?.excludeId ? options.excludeId : [],
+                $nin: options?.excludeId ?? [],
             },
         });
 

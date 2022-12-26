@@ -28,7 +28,7 @@ export class DatabaseOptionsService implements IDatabaseOptionsService {
             : '';
     }
 
-    createMongoOptions(): MongooseModuleOptions {
+    createOptions(): MongooseModuleOptions {
         let uri = `${this.host}`;
 
         if (this.database) {
