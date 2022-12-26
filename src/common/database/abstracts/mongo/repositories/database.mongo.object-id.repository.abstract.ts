@@ -202,9 +202,9 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
         const exist = this._repository.exists({
             ...find,
             _id: {
-                $nin: options?.excludeId
-                    ? options.excludeId.map((val) => new Types.ObjectId(val))
-                    : [],
+                $nin:
+                    options?.excludeId.map((val) => new Types.ObjectId(val)) ??
+                    [],
             },
         });
 
