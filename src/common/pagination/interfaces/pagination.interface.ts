@@ -18,8 +18,12 @@ export interface IPaginationFilterDateOptions {
     time?: ENUM_PAGINATION_FILTER_DATE_TIME_OPTIONS;
 }
 
-export interface IPaginationFilterStringOptions {
+export interface IPaginationFilterStringContainOptions {
     case?: ENUM_PAGINATION_FILTER_CASE_OPTIONS;
     trim?: boolean;
+}
+
+export interface IPaginationFilterStringEqualOptions
+    extends IPaginationFilterStringContainOptions {
     isNumber?: boolean;
 }

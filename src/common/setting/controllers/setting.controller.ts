@@ -1,5 +1,7 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { PaginationQuery } from 'src/common/pagination/decorators/pagination.decorator';
+import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
@@ -10,6 +12,8 @@ import { IResponse } from 'src/common/response/interfaces/response.interface';
 import {
     SETTING_DEFAULT_AVAILABLE_SEARCH,
     SETTING_DEFAULT_AVAILABLE_SORT,
+    SETTING_DEFAULT_PER_PAGE,
+    SETTING_DEFAULT_SORT,
 } from 'src/common/setting/constants/setting.list.constant';
 import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
 import {
@@ -21,7 +25,6 @@ import {
     SettingGetDoc,
     SettingListDoc,
 } from 'src/common/setting/docs/setting.doc';
-import { SettingListDto } from 'src/common/setting/dtos/setting.list.dto';
 import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
 import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingGetSerialization } from 'src/common/setting/serializations/setting.get.serialization';
@@ -40,17 +43,17 @@ export class SettingController {
     ) {}
 
     @SettingListDoc()
-    @ResponsePaging(
-        'setting.list',
-        SETTING_DEFAULT_AVAILABLE_SEARCH,
-        SETTING_DEFAULT_AVAILABLE_SORT,
-        {
-            serialization: SettingListSerialization,
-        }
-    )
+    @ResponsePaging('setting.list', {
+        serialization: SettingListSerialization,
+    })
     @Get('/list')
     async list(
-        @Query()
+        @PaginationQuery(
+            SETTING_DEFAULT_PER_PAGE,
+            SETTING_DEFAULT_AVAILABLE_SEARCH,
+            SETTING_DEFAULT_SORT,
+            SETTING_DEFAULT_AVAILABLE_SORT
+        )
         {
             page,
             perPage,
@@ -59,7 +62,7 @@ export class SettingController {
             sort,
             availableSort,
             availableSearch,
-        }: SettingListDto
+        }: PaginationListDto
     ): Promise<IResponse> {
         const find: Record<string, any> = {
             ...search,

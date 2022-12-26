@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import {
-    PAGINATION_AVAILABLE_SORT,
     PAGINATION_MAX_PAGE,
     PAGINATION_MAX_PER_PAGE,
     PAGINATION_PAGE,
@@ -119,7 +118,7 @@ export class PaginationService implements IPaginationService {
 
     filterIn<T = string>(
         field: string,
-        filterValue?: T[]
+        filterValue?: T
     ): Record<string, any> | undefined {
         return filterValue
             ? {

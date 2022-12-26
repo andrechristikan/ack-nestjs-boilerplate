@@ -14,7 +14,7 @@ export function PaginationSearchPipe(
         ): Promise<Record<string, any>> {
             const search: Record<string, any> = this.paginationService.search(
                 availableSearch,
-                value.search
+                value?.search
             );
 
             return {

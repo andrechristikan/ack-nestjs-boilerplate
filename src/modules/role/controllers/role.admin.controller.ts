@@ -9,13 +9,19 @@ import {
     Patch,
     Post,
     Put,
-    Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthPermissionProtected } from 'src/common/auth/decorators/auth.permission.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
+import {
+    PaginationQuery,
+    PaginationQueryFilterInBoolean,
+    PaginationQueryFilterInEnum,
+} from 'src/common/pagination/decorators/pagination.decorator';
+import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
@@ -31,8 +37,12 @@ import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/consta
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
 import {
+    ROLE_DEFAULT_ACCESS_FOR,
     ROLE_DEFAULT_AVAILABLE_SEARCH,
     ROLE_DEFAULT_AVAILABLE_SORT,
+    ROLE_DEFAULT_IS_ACTIVE,
+    ROLE_DEFAULT_PER_PAGE,
+    ROLE_DEFAULT_SORT,
 } from 'src/modules/role/constants/role.list.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import {
@@ -53,7 +63,6 @@ import {
     RoleUpdateDoc,
 } from 'src/modules/role/docs/role.admin.doc';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
-import { RoleListDto } from 'src/modules/role/dtos/role.list.dto';
 import { RoleRequestDto } from 'src/modules/role/dtos/role.request.dto';
 import { RoleUpdateNameDto } from 'src/modules/role/dtos/role.update-name.dto';
 import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
@@ -76,19 +85,19 @@ export class RoleAdminController {
     ) {}
 
     @RoleListDoc()
-    @ResponsePaging(
-        'role.list',
-        ROLE_DEFAULT_AVAILABLE_SEARCH,
-        ROLE_DEFAULT_AVAILABLE_SORT,
-        {
-            serialization: RoleListSerialization,
-        }
-    )
+    @ResponsePaging('role.list', {
+        serialization: RoleListSerialization,
+    })
     @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.ROLE_READ)
     @AuthJwtAdminAccessProtected()
     @Get('/list')
     async list(
-        @Query()
+        @PaginationQuery(
+            ROLE_DEFAULT_PER_PAGE,
+            ROLE_DEFAULT_AVAILABLE_SEARCH,
+            ROLE_DEFAULT_SORT,
+            ROLE_DEFAULT_AVAILABLE_SORT
+        )
         {
             page,
             perPage,
@@ -96,9 +105,15 @@ export class RoleAdminController {
             search,
             availableSort,
             availableSearch,
-            isActive,
-            accessFor,
-        }: RoleListDto
+        }: PaginationListDto,
+        @PaginationQueryFilterInBoolean('isActive', ROLE_DEFAULT_IS_ACTIVE)
+        isActive: Record<string, any>,
+        @PaginationQueryFilterInEnum(
+            'accessFor',
+            ROLE_DEFAULT_ACCESS_FOR,
+            ENUM_AUTH_ACCESS_FOR
+        )
+        accessFor: Record<string, any>
     ): Promise<IResponsePaging> {
         const offset: number = this.paginationService.offset(page, perPage);
         const find: Record<string, any> = {

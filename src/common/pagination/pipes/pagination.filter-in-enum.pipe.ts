@@ -1,9 +1,8 @@
 import { Injectable, mixin, Type } from '@nestjs/common';
-import { PipeTransform } from '@nestjs/common/interfaces';
+import { ArgumentMetadata, PipeTransform } from '@nestjs/common/interfaces';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 
 export function PaginationFilterInEnumPipe<T>(
-    field: string,
     defaultValue: T,
     defaultEnum: Record<string, any>
 ): Type<PipeTransform> {
@@ -12,27 +11,25 @@ export function PaginationFilterInEnumPipe<T>(
         constructor(private readonly paginationService: PaginationService) {}
 
         async transform(
-            value: Record<string, any>
+            value: string,
+            { data: field }: ArgumentMetadata
         ): Promise<Record<string, any>> {
-            if (!value[field]) {
+            if (!value) {
                 return undefined;
             }
 
             const filter: Record<string, any> =
                 this.paginationService.filterIn<T>(
                     field,
-                    value[field]
-                        ? value[field]
+                    value
+                        ? (value
                               .split(',')
                               .map((val: string) => defaultEnum[val])
-                              .filter((val: string) => val)
+                              .filter((val: string) => val) as T)
                         : defaultValue
                 );
 
-            return {
-                ...value,
-                [field]: filter,
-            };
+            return filter;
         }
     }
 

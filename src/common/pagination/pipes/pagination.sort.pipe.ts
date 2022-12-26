@@ -3,6 +3,7 @@ import { PipeTransform } from '@nestjs/common/interfaces';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 
 export function PaginationSortPipe(
+    defaultSort: string,
     availableSort: string[]
 ): Type<PipeTransform> {
     @Injectable()
@@ -14,7 +15,7 @@ export function PaginationSortPipe(
         ): Promise<Record<string, any>> {
             const sort: Record<string, any> = this.paginationService.sort(
                 availableSort,
-                value.sort
+                value?.sort ?? defaultSort
             );
 
             return {

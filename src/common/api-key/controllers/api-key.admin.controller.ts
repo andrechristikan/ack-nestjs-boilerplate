@@ -6,12 +6,14 @@ import {
     Patch,
     Post,
     Put,
-    Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
     API_KEY_DEFAULT_AVAILABLE_SEARCH,
     API_KEY_DEFAULT_AVAILABLE_SORT,
+    API_KEY_DEFAULT_IS_ACTIVE,
+    API_KEY_DEFAULT_PER_PAGE,
+    API_KEY_DEFAULT_SORT,
 } from 'src/common/api-key/constants/api-key.list.constant';
 import {
     ApiKeyGetGuard,
@@ -29,7 +31,6 @@ import {
     ApiKeyResetDoc,
 } from 'src/common/api-key/docs/api-key.admin.doc';
 import { ApiKeyCreateDto } from 'src/common/api-key/dtos/api-key.create.dto';
-import { ApiKeyListDto } from 'src/common/api-key/dtos/api-key.list.dto';
 import { ApiKeyRequestDto } from 'src/common/api-key/dtos/api-key.request.dto';
 import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
@@ -42,6 +43,11 @@ import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permi
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthPermissionProtected } from 'src/common/auth/decorators/auth.permission.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
+import {
+    PaginationQuery,
+    PaginationQueryFilterInBoolean,
+} from 'src/common/pagination/decorators/pagination.decorator';
+import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
@@ -65,19 +71,19 @@ export class ApiKeyAdminController {
     ) {}
 
     @ApiKeyListDoc()
-    @ResponsePaging(
-        'apiKey.list',
-        API_KEY_DEFAULT_AVAILABLE_SEARCH,
-        API_KEY_DEFAULT_AVAILABLE_SORT,
-        {
-            serialization: ApiKeyListSerialization,
-        }
-    )
+    @ResponsePaging('apiKey.list', {
+        serialization: ApiKeyListSerialization,
+    })
     @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.API_KEY_READ)
     @AuthJwtAdminAccessProtected()
     @Get('/list')
     async list(
-        @Query()
+        @PaginationQuery(
+            API_KEY_DEFAULT_PER_PAGE,
+            API_KEY_DEFAULT_AVAILABLE_SEARCH,
+            API_KEY_DEFAULT_SORT,
+            API_KEY_DEFAULT_AVAILABLE_SORT
+        )
         {
             page,
             perPage,
@@ -85,11 +91,14 @@ export class ApiKeyAdminController {
             search,
             availableSort,
             availableSearch,
-        }: ApiKeyListDto
+        }: PaginationListDto,
+        @PaginationQueryFilterInBoolean('isActive', API_KEY_DEFAULT_IS_ACTIVE)
+        isActive: Record<string, any>
     ): Promise<IResponsePaging> {
         const offset: number = this.paginationService.offset(page, perPage);
         const find: Record<string, any> = {
             ...search,
+            ...isActive,
         };
 
         const apiKeys: ApiKeyEntity[] = await this.apiKeyService.findAll(find, {

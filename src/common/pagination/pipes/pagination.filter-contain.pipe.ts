@@ -1,13 +1,12 @@
 import { Injectable, mixin, Type } from '@nestjs/common';
-import { PipeTransform } from '@nestjs/common/interfaces';
+import { ArgumentMetadata, PipeTransform } from '@nestjs/common/interfaces';
 import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
 import { ENUM_PAGINATION_FILTER_CASE_OPTIONS } from 'src/common/pagination/constants/pagination.enum.constant';
-import { IPaginationFilterStringOptions } from 'src/common/pagination/interfaces/pagination.interface';
+import { IPaginationFilterStringContainOptions } from 'src/common/pagination/interfaces/pagination.interface';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 
 export function PaginationFilterContainPipe(
-    field: string,
-    options?: IPaginationFilterStringOptions
+    options?: IPaginationFilterStringContainOptions
 ): Type<PipeTransform> {
     @Injectable()
     class MixinPaginationFilterContainPipe implements PipeTransform {
@@ -17,39 +16,31 @@ export function PaginationFilterContainPipe(
         ) {}
 
         async transform(
-            value: Record<string, any>
+            value: string,
+            { data: field }: ArgumentMetadata
         ): Promise<Record<string, any>> {
-            if (!value[field]) {
+            if (!value) {
                 return undefined;
             }
 
             if (
                 options?.case === ENUM_PAGINATION_FILTER_CASE_OPTIONS.UPPERCASE
             ) {
-                value[field] = value[field].toUpperCase();
+                value = value.toUpperCase();
             } else if (
                 options?.case === ENUM_PAGINATION_FILTER_CASE_OPTIONS.LOWERCASE
             ) {
-                value[field] = value[field].toUpperCase();
+                value = value.toUpperCase();
             }
 
             if (options?.trim) {
-                value[field] = value[field].trim();
-            }
-
-            if (options?.isNumber) {
-                value[field] = this.helperNumberService.check(value[field])
-                    ? this.helperNumberService.create(value[field])
-                    : value[field];
+                value = value.trim();
             }
 
             const filter: Record<string, any> =
-                this.paginationService.filterContain(field, value[field]);
+                this.paginationService.filterContain(field, value);
 
-            return {
-                ...value,
-                [field]: filter,
-            };
+            return filter;
         }
     }
 

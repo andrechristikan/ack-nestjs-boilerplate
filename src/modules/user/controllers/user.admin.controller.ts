@@ -5,7 +5,6 @@ import {
     Body,
     Delete,
     Put,
-    Query,
     InternalServerErrorException,
     NotFoundException,
     UploadedFile,
@@ -62,7 +61,6 @@ import {
 } from 'src/modules/user/docs/user.admin.doc';
 import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
-import { UserListDto } from 'src/modules/user/dtos/user.list.dto';
 import { UserRequestDto } from 'src/modules/user/dtos/user.request.dto';
 import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
@@ -75,7 +73,15 @@ import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
 import {
     USER_DEFAULT_AVAILABLE_SEARCH,
     USER_DEFAULT_AVAILABLE_SORT,
+    USER_DEFAULT_IS_ACTIVE,
+    USER_DEFAULT_PER_PAGE,
+    USER_DEFAULT_SORT,
 } from 'src/modules/user/constants/user.list.constant';
+import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
+import {
+    PaginationQuery,
+    PaginationQueryFilterInBoolean,
+} from 'src/common/pagination/decorators/pagination.decorator';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -91,30 +97,31 @@ export class UserAdminController {
     ) {}
 
     @UserListDoc()
-    @ResponsePaging(
-        'user.list',
-        USER_DEFAULT_AVAILABLE_SEARCH,
-        USER_DEFAULT_AVAILABLE_SORT,
-        {
-            serialization: UserListSerialization,
-        }
-    )
+    @ResponsePaging('user.list', {
+        serialization: UserListSerialization,
+    })
     @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.USER_READ)
     @AuthJwtAdminAccessProtected()
     @Get('/list')
     async list(
-        @Query()
+        @PaginationQuery(
+            USER_DEFAULT_PER_PAGE,
+            USER_DEFAULT_AVAILABLE_SEARCH,
+            USER_DEFAULT_SORT,
+            USER_DEFAULT_AVAILABLE_SORT
+        )
         {
             page,
             perPage,
             sort,
             search,
+            offset,
             availableSort,
             availableSearch,
-            isActive,
-        }: UserListDto
+        }: PaginationListDto,
+        @PaginationQueryFilterInBoolean('isActive', USER_DEFAULT_IS_ACTIVE)
+        isActive: Record<string, any>
     ): Promise<IResponsePaging> {
-        const offset: number = this.paginationService.offset(page, perPage);
         const find: Record<string, any> = {
             ...search,
             ...isActive,

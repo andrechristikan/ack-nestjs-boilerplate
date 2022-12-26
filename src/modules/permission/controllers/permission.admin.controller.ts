@@ -12,6 +12,12 @@ import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permi
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthPermissionProtected } from 'src/common/auth/decorators/auth.permission.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
+import {
+    PaginationQuery,
+    PaginationQueryFilterInBoolean,
+    PaginationQueryFilterInEnum,
+} from 'src/common/pagination/decorators/pagination.decorator';
+import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
@@ -23,9 +29,14 @@ import {
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
+import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 import {
     PERMISSION_DEFAULT_AVAILABLE_SEARCH,
     PERMISSION_DEFAULT_AVAILABLE_SORT,
+    PERMISSION_DEFAULT_GROUP,
+    PERMISSION_DEFAULT_IS_ACTIVE,
+    PERMISSION_DEFAULT_PER_PAGE,
+    PERMISSION_DEFAULT_SORT,
 } from 'src/modules/permission/constants/permission.list.constant';
 import {
     PermissionGetGuard,
@@ -43,7 +54,6 @@ import {
     PermissionUpdateDoc,
 } from 'src/modules/permission/docs/permission.admin.doc';
 import { PermissionGroupDto } from 'src/modules/permission/dtos/permission.group.dto';
-import { PermissionListDto } from 'src/modules/permission/dtos/permission.list.dto';
 import { PermissionUpdateDescriptionDto } from 'src/modules/permission/dtos/permission.update-description.dto';
 import { PermissionRequestDto } from 'src/modules/permission/dtos/permissions.request.dto';
 import { IPermissionGroup } from 'src/modules/permission/interfaces/permission.interface';
@@ -65,19 +75,19 @@ export class PermissionAdminController {
     ) {}
 
     @PermissionListDoc()
-    @ResponsePaging(
-        'permission.list',
-        PERMISSION_DEFAULT_AVAILABLE_SEARCH,
-        PERMISSION_DEFAULT_AVAILABLE_SORT,
-        {
-            serialization: PermissionListSerialization,
-        }
-    )
+    @ResponsePaging('permission.list', {
+        serialization: PermissionListSerialization,
+    })
     @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
     @AuthJwtAdminAccessProtected()
     @Get('/list')
     async list(
-        @Query()
+        @PaginationQuery(
+            PERMISSION_DEFAULT_PER_PAGE,
+            PERMISSION_DEFAULT_AVAILABLE_SEARCH,
+            PERMISSION_DEFAULT_SORT,
+            PERMISSION_DEFAULT_AVAILABLE_SORT
+        )
         {
             page,
             perPage,
@@ -85,9 +95,18 @@ export class PermissionAdminController {
             search,
             availableSort,
             availableSearch,
-            isActive,
-            group,
-        }: PermissionListDto
+        }: PaginationListDto,
+        @PaginationQueryFilterInBoolean(
+            'isActive',
+            PERMISSION_DEFAULT_IS_ACTIVE
+        )
+        isActive: Record<string, any>,
+        @PaginationQueryFilterInEnum(
+            'group',
+            PERMISSION_DEFAULT_GROUP,
+            ENUM_PERMISSION_GROUP
+        )
+        group: Record<string, any>
     ): Promise<IResponsePaging> {
         const offset: number = this.paginationService.offset(page, perPage);
         const find: Record<string, any> = {

@@ -12,10 +12,10 @@ export class PaginationPagingPipe implements PipeTransform {
 
     async transform(value: Record<string, any>): Promise<Record<string, any>> {
         const page: number = this.paginationService.page(
-            this.helperNumberService.create(value.page)
+            this.helperNumberService.create(value?.page)
         );
         const perPage: number = this.paginationService.perPage(
-            this.helperNumberService.create(value.perPage)
+            this.helperNumberService.create(value?.perPage)
         );
         const offset: number = this.paginationService.offset(page, perPage);
 

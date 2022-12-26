@@ -1,13 +1,12 @@
 import { Injectable, mixin, Type } from '@nestjs/common';
-import { PipeTransform } from '@nestjs/common/interfaces';
+import { ArgumentMetadata, PipeTransform } from '@nestjs/common/interfaces';
 import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
 import { ENUM_PAGINATION_FILTER_CASE_OPTIONS } from 'src/common/pagination/constants/pagination.enum.constant';
-import { IPaginationFilterStringOptions } from 'src/common/pagination/interfaces/pagination.interface';
+import { IPaginationFilterStringEqualOptions } from 'src/common/pagination/interfaces/pagination.interface';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 
 export function PaginationFilterEqualPipe(
-    field: string,
-    options?: IPaginationFilterStringOptions
+    options?: IPaginationFilterStringEqualOptions
 ): Type<PipeTransform> {
     @Injectable()
     class MixinPaginationFilterEqualPipe implements PipeTransform {
@@ -17,39 +16,41 @@ export function PaginationFilterEqualPipe(
         ) {}
 
         async transform(
-            value: Record<string, any>
+            value: string,
+            { data: field }: ArgumentMetadata
         ): Promise<Record<string, any>> {
-            if (!value[field]) {
+            if (!value) {
                 return undefined;
             }
 
             if (
                 options?.case === ENUM_PAGINATION_FILTER_CASE_OPTIONS.UPPERCASE
             ) {
-                value[field] = value[field].toUpperCase();
+                value = value.toUpperCase();
             } else if (
                 options?.case === ENUM_PAGINATION_FILTER_CASE_OPTIONS.LOWERCASE
             ) {
-                value[field] = value[field].toUpperCase();
+                value = value.toUpperCase();
             }
 
             if (options?.trim) {
-                value[field] = value[field].trim();
+                value = value.trim();
             }
 
+            let finalValue: string | number = value;
             if (options?.isNumber) {
-                value[field] = this.helperNumberService.check(value[field])
-                    ? this.helperNumberService.create(value[field])
-                    : value[field];
+                finalValue = this.helperNumberService.check(value)
+                    ? this.helperNumberService.create(value)
+                    : value;
             }
 
             const filter: Record<string, any> =
-                this.paginationService.filterEqual(field, value[field]);
+                this.paginationService.filterEqual<string | number>(
+                    field,
+                    finalValue
+                );
 
-            return {
-                ...value,
-                [field]: filter,
-            };
+            return filter;
         }
     }
 
