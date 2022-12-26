@@ -5,16 +5,16 @@ import {
     Body,
     Delete,
     Put,
-    Query,
     InternalServerErrorException,
-    BadRequestException,
-    Patch,
     NotFoundException,
     UploadedFile,
+    ConflictException,
+    Patch,
+    HttpCode,
+    HttpStatus,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
-import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { UploadFileSingle } from 'src/common/file/decorators/file.decorator';
@@ -61,14 +61,27 @@ import {
 } from 'src/modules/user/docs/user.admin.doc';
 import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
-import { UserListDto } from 'src/modules/user/dtos/user.list.dto';
 import { UserRequestDto } from 'src/modules/user/dtos/user.request.dto';
-import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
 import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
 import { UserImportSerialization } from 'src/modules/user/serializations/user.import.serialization';
 import { UserListSerialization } from 'src/modules/user/serializations/user.list.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
+import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
+import { AuthPermissionProtected } from 'src/common/auth/decorators/auth.permission.decorator';
+import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
+import {
+    USER_DEFAULT_AVAILABLE_SEARCH,
+    USER_DEFAULT_AVAILABLE_SORT,
+    USER_DEFAULT_IS_ACTIVE,
+    USER_DEFAULT_PER_PAGE,
+    USER_DEFAULT_SORT,
+} from 'src/modules/user/constants/user.list.constant';
+import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
+import {
+    PaginationQuery,
+    PaginationQueryFilterInBoolean,
+} from 'src/common/pagination/decorators/pagination.decorator';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -85,35 +98,44 @@ export class UserAdminController {
 
     @UserListDoc()
     @ResponsePaging('user.list', {
-        classSerialization: UserListSerialization,
+        serialization: UserListSerialization,
     })
-    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.USER_READ)
+    @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.USER_READ)
+    @AuthJwtAdminAccessProtected()
     @Get('/list')
     async list(
-        @Query()
+        @PaginationQuery(
+            USER_DEFAULT_PER_PAGE,
+            USER_DEFAULT_AVAILABLE_SEARCH,
+            USER_DEFAULT_SORT,
+            USER_DEFAULT_AVAILABLE_SORT
+        )
         {
             page,
             perPage,
             sort,
             search,
+            offset,
             availableSort,
             availableSearch,
-        }: UserListDto
+        }: PaginationListDto,
+        @PaginationQueryFilterInBoolean('isActive', USER_DEFAULT_IS_ACTIVE)
+        isActive: Record<string, any>
     ): Promise<IResponsePaging> {
-        const skip: number = await this.paginationService.skip(page, perPage);
         const find: Record<string, any> = {
             ...search,
+            ...isActive,
         };
 
         const users: IUserEntity[] = await this.userService.findAll(find, {
             paging: {
                 limit: perPage,
-                skip: skip,
+                offset,
             },
             sort,
         });
         const totalData: number = await this.userService.getTotal(find);
-        const totalPage: number = await this.paginationService.totalPage(
+        const totalPage: number = this.paginationService.totalPage(
             totalData,
             perPage
         );
@@ -131,11 +153,12 @@ export class UserAdminController {
 
     @UserGetDoc()
     @Response('user.get', {
-        classSerialization: UserGetSerialization,
+        serialization: UserGetSerialization,
     })
     @UserGetGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.USER_READ)
+    @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.USER_READ)
+    @AuthJwtAdminAccessProtected()
     @Get('get/:user')
     async get(@GetUser() user: IUserEntity): Promise<IResponse> {
         return user;
@@ -143,12 +166,13 @@ export class UserAdminController {
 
     @UserCreateDoc()
     @Response('user.create', {
-        classSerialization: ResponseIdSerialization,
+        serialization: ResponseIdSerialization,
     })
-    @AuthJwtAdminAccessProtected(
+    @AuthPermissionProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_CREATE
     )
+    @AuthJwtAdminAccessProtected()
     @Post('/create')
     async create(
         @Body()
@@ -162,20 +186,20 @@ export class UserAdminController {
             });
         }
 
-        const usernameExist: boolean = await this.userService.existUsername(
+        const usernameExist: boolean = await this.userService.existByUsername(
             username
         );
         if (usernameExist) {
-            throw new BadRequestException({
+            throw new ConflictException({
                 statusCode:
                     ENUM_USER_STATUS_CODE_ERROR.USER_USERNAME_EXISTS_ERROR,
                 message: 'user.error.usernameExist',
             });
         }
 
-        const emailExist: boolean = await this.userService.existEmail(email);
+        const emailExist: boolean = await this.userService.existByEmail(email);
         if (emailExist) {
-            throw new BadRequestException({
+            throw new ConflictException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
                 message: 'user.error.emailExist',
             });
@@ -183,9 +207,9 @@ export class UserAdminController {
 
         if (mobileNumber) {
             const mobileNumberExist: boolean =
-                await this.userService.existMobileNumber(mobileNumber);
+                await this.userService.existByMobileNumber(mobileNumber);
             if (mobileNumberExist) {
-                throw new BadRequestException({
+                throw new ConflictException({
                     statusCode:
                         ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
                     message: 'user.error.mobileNumberExist',
@@ -198,17 +222,10 @@ export class UserAdminController {
                 body.password
             );
 
-            const create = await this.userService.create({
-                firstName: body.firstName,
-                lastName: body.lastName,
-                role,
-                password: password.passwordHash,
-                passwordExpired: password.passwordExpired,
-                salt: password.salt,
-                username,
-                email,
-                mobileNumber,
-            });
+            const create = await this.userService.create(
+                { username, email, mobileNumber, role, ...body },
+                password
+            );
 
             return {
                 _id: create._id,
@@ -226,10 +243,11 @@ export class UserAdminController {
     @Response('user.delete')
     @UserDeleteGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthJwtAdminAccessProtected(
+    @AuthPermissionProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_DELETE
     )
+    @AuthJwtAdminAccessProtected()
     @Delete('/delete/:user')
     async delete(@GetUser() user: IUserEntity): Promise<void> {
         try {
@@ -247,22 +265,23 @@ export class UserAdminController {
 
     @UserUpdateDoc()
     @Response('user.update', {
-        classSerialization: ResponseIdSerialization,
+        serialization: ResponseIdSerialization,
     })
     @UserUpdateGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthJwtAdminAccessProtected(
+    @AuthPermissionProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_UPDATE
     )
+    @AuthJwtAdminAccessProtected()
     @Put('/update/:user')
     async update(
         @GetUser() user: IUserEntity,
         @Body()
-        body: UserUpdateDto
+        body: UserUpdateNameDto
     ): Promise<IResponse> {
         try {
-            await this.userService.updateOneById(user._id, body);
+            await this.userService.updateName(user._id, body);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -280,10 +299,12 @@ export class UserAdminController {
     @Response('user.inactive')
     @UserUpdateInactiveGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthJwtAdminAccessProtected(
+    @AuthPermissionProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
-        ENUM_AUTH_PERMISSIONS.USER_UPDATE
+        ENUM_AUTH_PERMISSIONS.USER_UPDATE,
+        ENUM_AUTH_PERMISSIONS.USER_INACTIVE
     )
+    @AuthJwtAdminAccessProtected()
     @Patch('/update/:user/inactive')
     async inactive(@GetUser() user: IUserEntity): Promise<void> {
         try {
@@ -303,10 +324,12 @@ export class UserAdminController {
     @Response('user.active')
     @UserUpdateActiveGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthJwtAdminAccessProtected(
+    @AuthPermissionProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
-        ENUM_AUTH_PERMISSIONS.USER_UPDATE
+        ENUM_AUTH_PERMISSIONS.USER_UPDATE,
+        ENUM_AUTH_PERMISSIONS.USER_ACTIVE
     )
+    @AuthJwtAdminAccessProtected()
     @Patch('/update/:user/active')
     async active(@GetUser() user: IUserEntity): Promise<void> {
         try {
@@ -324,14 +347,15 @@ export class UserAdminController {
 
     @UserImportDoc()
     @Response('user.import', {
-        classSerialization: UserImportSerialization,
+        serialization: UserImportSerialization,
     })
     @UploadFileSingle('file')
-    @AuthJwtAdminAccessProtected(
+    @AuthPermissionProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_CREATE,
         ENUM_AUTH_PERMISSIONS.USER_IMPORT
     )
+    @AuthJwtAdminAccessProtected()
     @Post('/import')
     async import(
         @UploadedFile(
@@ -348,13 +372,15 @@ export class UserAdminController {
 
     @UserExportDoc()
     @ResponseExcel({
-        classSerialization: UserListSerialization,
+        serialization: UserListSerialization,
         type: ENUM_HELPER_FILE_TYPE.CSV,
     })
-    @AuthJwtAdminAccessProtected(
+    @AuthPermissionProtected(
         ENUM_AUTH_PERMISSIONS.USER_READ,
         ENUM_AUTH_PERMISSIONS.USER_EXPORT
     )
+    @AuthJwtAdminAccessProtected()
+    @HttpCode(HttpStatus.OK)
     @Post('/export')
     async export(): Promise<IResponse> {
         return this.userService.findAll({});

@@ -6,7 +6,7 @@ import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permissi
 export class PermissionGetSerialization {
     @ApiProperty({
         description: 'Id that representative with your target data',
-        example: faker.database.mongodbObjectId(),
+        example: faker.datatype.uuid(),
         required: true,
     })
     @Type(() => String)
@@ -20,13 +20,6 @@ export class PermissionGetSerialization {
     readonly isActive: boolean;
 
     @ApiProperty({
-        description: 'Alias name of permission',
-        example: faker.name.jobDescriptor(),
-        required: true,
-    })
-    readonly name: string;
-
-    @ApiProperty({
         description: 'Unique code of permission',
         example: faker.random.alpha(5),
         required: true,
@@ -35,17 +28,16 @@ export class PermissionGetSerialization {
 
     @ApiProperty({
         enum: ENUM_PERMISSION_GROUP,
-        type: 'array',
-        isArray: true,
+        type: 'string',
     })
     readonly group: ENUM_PERMISSION_GROUP;
 
     @ApiProperty({
         description: 'Description of permission',
         example: 'blabla description',
-        required: true,
+        required: false,
     })
-    readonly description: string;
+    readonly description?: string;
 
     @ApiProperty({
         description: 'Date created at',

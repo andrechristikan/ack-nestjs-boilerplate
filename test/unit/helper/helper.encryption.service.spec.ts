@@ -12,6 +12,10 @@ describe('HelperEncryptionService', () => {
     const subject = 'ack';
     const data = 'aaaa';
     const dataObject = { test: 'aaaa' };
+    let enBase64: string;
+    let enAes256: string;
+    let enAes256Object: string;
+    let enJwt: string;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
@@ -30,6 +34,26 @@ describe('HelperEncryptionService', () => {
         helperEncryptionService = moduleRef.get<HelperEncryptionService>(
             HelperEncryptionService
         );
+
+        enBase64 = helperEncryptionService.base64Encrypt(data);
+        enAes256 = helperEncryptionService.aes256Encrypt(
+            data,
+            '1234567',
+            '1231231231231231'
+        );
+        enAes256Object = helperEncryptionService.aes256Encrypt(
+            dataObject,
+            '1234567',
+            '1231231231231231'
+        );
+        enJwt = helperEncryptionService.jwtEncrypt(
+            { data },
+            { expiredIn: '1h', secretKey: data, audience, issuer, subject }
+        );
+    });
+
+    afterEach(async () => {
+        jest.clearAllMocks();
     });
 
     it('should be defined', () => {
@@ -37,320 +61,190 @@ describe('HelperEncryptionService', () => {
     });
 
     describe('base64Encrypt', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperEncryptionService, 'base64Encrypt');
+        it('string must encode to base64 string', async () => {
+            const result: string = helperEncryptionService.base64Encrypt(data);
 
-            helperEncryptionService.base64Encrypt(data);
-            expect(test).toHaveBeenCalledWith(data);
-        });
-
-        it('should be success', async () => {
-            const result = helperEncryptionService.base64Encrypt(data);
             jest.spyOn(
                 helperEncryptionService,
                 'base64Encrypt'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(helperEncryptionService.base64Encrypt(data)).toBe(result);
+            expect(result).toBeTruthy();
         });
     });
 
     describe('base64Decrypt', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperEncryptionService, 'base64Decrypt');
+        it('base64 string must decode string', async () => {
+            const result: string =
+                helperEncryptionService.base64Decrypt(enBase64);
 
-            const result = helperEncryptionService.base64Encrypt(data);
-            helperEncryptionService.base64Decrypt(result);
-            expect(test).toHaveBeenCalledWith(result);
-        });
-
-        it('should be success', async () => {
-            const result = helperEncryptionService.base64Encrypt(data);
             jest.spyOn(
                 helperEncryptionService,
                 'base64Decrypt'
-            ).mockImplementation(() => data);
+            ).mockReturnValueOnce(result);
 
-            expect(helperEncryptionService.base64Decrypt(result)).toBe(data);
+            expect(result).toBeTruthy();
         });
     });
 
     describe('base64Compare', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperEncryptionService, 'base64Compare');
-
-            helperEncryptionService.base64Compare(data, data);
-            expect(test).toHaveBeenCalledWith(data, data);
-        });
-
         it('should be success', async () => {
-            const result = helperEncryptionService.base64Compare(data, data);
+            const result: boolean = helperEncryptionService.base64Compare(
+                enBase64,
+                enBase64
+            );
+
             jest.spyOn(
                 helperEncryptionService,
                 'base64Compare'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(helperEncryptionService.base64Compare(data, data)).toBe(
-                result
+            expect(result).toBeTruthy();
+            expect(result).toBe(true);
+        });
+
+        it('should be failed', async () => {
+            const result: boolean = helperEncryptionService.base64Compare(
+                data,
+                enBase64
             );
+
+            jest.spyOn(
+                helperEncryptionService,
+                'base64Compare'
+            ).mockReturnValueOnce(result);
+
+            expect(result).toBeFalsy();
+            expect(result).toBe(false);
         });
     });
 
     describe('aes256Encrypt', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperEncryptionService, 'aes256Encrypt');
+        it('string must be encode to aes256 string', async () => {
+            const result: string = helperEncryptionService.aes256Encrypt(
+                data,
+                '1234567',
+                '1231231231231231'
+            );
 
-            helperEncryptionService.aes256Encrypt(
-                data,
-                '1234567',
-                '1231231231231231'
-            );
-            expect(test).toHaveBeenCalledWith(
-                data,
-                '1234567',
-                '1231231231231231'
-            );
-        });
-
-        it('string should be success', async () => {
-            const result = helperEncryptionService.aes256Encrypt(
-                data,
-                '1234567',
-                '1231231231231231'
-            );
             jest.spyOn(
                 helperEncryptionService,
                 'aes256Encrypt'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(
-                helperEncryptionService.aes256Encrypt(
-                    data,
-                    '1234567',
-                    '1231231231231231'
-                )
-            ).toBe(result);
+            expect(result).toBeTruthy();
         });
 
-        it('object should be success', async () => {
-            const result = helperEncryptionService.aes256Encrypt(
+        it('object must be encode to aes256 string', async () => {
+            const result: string = helperEncryptionService.aes256Encrypt(
                 dataObject,
                 '1234567',
                 '1231231231231231'
             );
+
             jest.spyOn(
                 helperEncryptionService,
                 'aes256Encrypt'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(
-                helperEncryptionService.aes256Encrypt(
-                    dataObject,
-                    '1234567',
-                    '1231231231231231'
-                )
-            ).toBe(result);
+            expect(result).toBeTruthy();
         });
     });
 
     describe('aes256Decrypt', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperEncryptionService, 'aes256Decrypt');
+        it('aes256 string decode to string', async () => {
+            const result: string = helperEncryptionService.aes256Decrypt(
+                enAes256,
+                '1234567',
+                '1231231231231231'
+            ) as string;
 
-            const result = helperEncryptionService.aes256Encrypt(
-                data,
-                '1234567',
-                '1231231231231231'
-            );
-            helperEncryptionService.aes256Decrypt(
-                result,
-                '1234567',
-                '1231231231231231'
-            );
-            expect(test).toHaveBeenCalledWith(
-                result,
-                '1234567',
-                '1231231231231231'
-            );
-        });
-
-        it('should be success string', async () => {
-            const result = helperEncryptionService.aes256Encrypt(
-                data,
-                '1234567',
-                '1231231231231231'
-            );
             jest.spyOn(
                 helperEncryptionService,
                 'aes256Decrypt'
-            ).mockImplementation(() => data);
+            ).mockReturnValueOnce(result);
 
-            expect(
-                helperEncryptionService.aes256Decrypt(
-                    result,
-                    '1234567',
-                    '1231231231231231'
-                )
-            ).toBe(data);
+            expect(result).toBeTruthy();
         });
 
         it('should be success object', async () => {
-            const result = helperEncryptionService.aes256Encrypt(
-                dataObject,
-                '1234567',
-                '1231231231231231'
-            );
+            const result: Record<string, any> =
+                helperEncryptionService.aes256Decrypt(
+                    enAes256Object,
+                    '1234567',
+                    '1231231231231231'
+                ) as Record<string, any>;
+
             jest.spyOn(
                 helperEncryptionService,
                 'aes256Decrypt'
-            ).mockImplementation(() => dataObject);
+            ).mockReturnValueOnce(result);
 
-            expect(
-                helperEncryptionService.aes256Decrypt(
-                    result,
-                    '1234567',
-                    '1231231231231231'
-                )
-            ).toBe(dataObject);
+            expect(result).toBeTruthy();
         });
     });
 
     describe('jwtEncrypt', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperEncryptionService, 'jwtEncrypt');
+        it('should be success to jwt encode string', async () => {
+            const result: string = helperEncryptionService.jwtEncrypt(
+                { data },
+                { expiredIn: '1h', secretKey: data, audience, issuer, subject }
+            );
 
-            helperEncryptionService.jwtEncrypt(
-                { data },
-                { expiredIn: '1h', secretKey: data, audience, issuer, subject }
-            );
-            expect(test).toHaveBeenCalledWith(
-                { data },
-                { expiredIn: '1h', secretKey: data, audience, issuer, subject }
-            );
-        });
-
-        it('should be success', async () => {
-            const result = helperEncryptionService.jwtEncrypt(
-                { data },
-                { expiredIn: '1h', secretKey: data, audience, issuer, subject }
-            );
             jest.spyOn(
                 helperEncryptionService,
                 'jwtEncrypt'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(
-                helperEncryptionService.jwtEncrypt(
-                    { data },
-                    {
-                        expiredIn: '1h',
-                        secretKey: data,
-                        audience,
-                        issuer,
-                        subject,
-                    }
-                )
-            ).toBe(result);
+            expect(result).toBeTruthy();
         });
     });
 
     describe('jwtDecrypt', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperEncryptionService, 'jwtDecrypt');
+        it('jwt encode string decode and give a payload', async () => {
+            const result: Record<string, any> =
+                helperEncryptionService.jwtDecrypt(enJwt);
 
-            const result = helperEncryptionService.jwtEncrypt(
-                { data },
-                { expiredIn: '1h', secretKey: data, audience, issuer, subject }
-            );
-            helperEncryptionService.jwtDecrypt(result);
-            expect(test).toHaveBeenCalledWith(result);
-        });
-
-        it('should be success', async () => {
-            const result = helperEncryptionService.jwtEncrypt(
-                { data },
-                { expiredIn: '1h', secretKey: data, audience, issuer, subject }
-            );
-            const decrypt = helperEncryptionService.jwtDecrypt(result);
             jest.spyOn(
                 helperEncryptionService,
                 'jwtDecrypt'
-            ).mockImplementation(() => decrypt);
+            ).mockReturnValueOnce(result);
 
-            expect(helperEncryptionService.jwtDecrypt(result)).toBe(decrypt);
+            expect(result).toBeTruthy();
         });
     });
 
     describe('jwtVerify', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperEncryptionService, 'jwtVerify');
-
-            const result = helperEncryptionService.jwtEncrypt(
-                { data },
-                { expiredIn: '1h', secretKey: data, audience, issuer, subject }
-            );
-            helperEncryptionService.jwtVerify(result, {
-                secretKey: data,
-                audience,
-                issuer,
-                subject,
-            });
-            expect(test).toHaveBeenCalledWith(result, {
-                secretKey: data,
-                audience,
-                issuer,
-                subject,
-            });
-        });
-
         it('should be success', async () => {
-            const result = helperEncryptionService.jwtEncrypt(
-                { data },
-                { expiredIn: '1h', secretKey: data, audience, issuer, subject }
-            );
-            const verify = helperEncryptionService.jwtVerify(result, {
+            const result: boolean = helperEncryptionService.jwtVerify(enJwt, {
                 secretKey: data,
                 audience,
                 issuer,
                 subject,
             });
-            jest.spyOn(helperEncryptionService, 'jwtVerify').mockImplementation(
-                () => verify
-            );
 
-            expect(
-                helperEncryptionService.jwtVerify(result, {
-                    secretKey: data,
-                    audience,
-                    issuer,
-                    subject,
-                })
-            ).toBe(verify);
+            jest.spyOn(
+                helperEncryptionService,
+                'jwtVerify'
+            ).mockReturnValueOnce(result);
+
+            expect(result).toBeTruthy();
         });
 
         it('should be failed', async () => {
-            const result = helperEncryptionService.jwtEncrypt(
-                { data },
-                { expiredIn: '1h', secretKey: data, audience, issuer, subject }
-            );
-            const verify = helperEncryptionService.jwtVerify(result, {
+            const result: boolean = helperEncryptionService.jwtVerify(enJwt, {
                 secretKey: faker.random.alpha(5),
                 audience,
                 issuer,
                 subject,
             });
-            jest.spyOn(helperEncryptionService, 'jwtVerify').mockImplementation(
-                () => verify
-            );
 
-            expect(
-                helperEncryptionService.jwtVerify(result, {
-                    secretKey: faker.random.alpha(5),
-                    audience,
-                    issuer,
-                    subject,
-                })
-            ).toBe(verify);
+            jest.spyOn(
+                helperEncryptionService,
+                'jwtVerify'
+            ).mockReturnValueOnce(result);
+
+            expect(result).toBeFalsy();
         });
     });
 });

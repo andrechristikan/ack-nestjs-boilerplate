@@ -5,7 +5,6 @@ import {
     ValidatorConstraint,
     ValidatorConstraintInterface,
 } from 'class-validator';
-import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingService } from 'src/common/setting/services/setting.service';
 
 @ValidatorConstraint({ async: true })
@@ -16,18 +15,12 @@ export class MobileNumberAllowedConstraint
     constructor(private readonly settingService: SettingService) {}
 
     async validate(value: string): Promise<boolean> {
-        const settingMobileNumber: SettingEntity =
-            await this.settingService.findOneByName(
-                'mobileNumberCountryCodeAllowed'
-            );
+        const mobileNumbersSetting: string[] =
+            await this.settingService.getMobileNumberCountryCodeAllowed();
+        mobileNumbersSetting;
+        const check = mobileNumbersSetting.find((val) => value.startsWith(val));
 
-        const valueMobileNumber: string[] = await this.settingService.getValue<
-            string[]
-        >(settingMobileNumber);
-
-        const check = valueMobileNumber.find((val) => value.startsWith(val));
-
-        return check ? true : false;
+        return !!check;
     }
 }
 

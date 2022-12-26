@@ -29,7 +29,8 @@
         "typeorm",
         "apikeys",
         "apikey",
-        "maxlength"
+        "maxlength",
+        "Streamable"
     ],
     "ignoreWords": [
         "psheon",
@@ -40,7 +41,9 @@
         "cuwakimacojulawu",
         "baibay",
         "acks",
-        "andrechristikan"
+        "andrechristikan",
+        "trueaaa",
+        "aasdasd"
     ],
     "ignorePaths": [
         "node_modules/**", 

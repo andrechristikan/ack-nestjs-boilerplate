@@ -30,16 +30,6 @@ export class PermissionEntity extends DatabaseMongoUUIDEntityAbstract {
 
     @Prop({
         required: true,
-        index: true,
-        lowercase: true,
-        trim: true,
-        maxlength: 100,
-        type: String,
-    })
-    name: string;
-
-    @Prop({
-        required: true,
         type: String,
         maxlength: 255,
     })
@@ -60,7 +50,6 @@ PermissionSchema.pre(
     'save',
     function (next: CallbackWithoutResultAndOptionalError) {
         this.code = this.code.toUpperCase();
-        this.name = this.name.toLowerCase();
 
         next();
     }

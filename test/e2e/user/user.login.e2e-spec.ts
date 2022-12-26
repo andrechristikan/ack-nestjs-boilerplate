@@ -17,7 +17,6 @@ import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { RoleModule } from 'src/modules/role/role.module';
 import { PermissionModule } from 'src/modules/permission/permission.module';
-import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 
@@ -27,24 +26,17 @@ describe('E2E User Login', () => {
     let authService: AuthService;
     let roleService: RoleService;
     let helperDateService: HelperDateService;
-    let apiKeyService: ApiKeyService;
 
     const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
         .firstName()
         .toUpperCase()}${faker.datatype.number({ min: 1, max: 99 })}`;
 
-    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    let xApiKey: string;
-    let timestamp: number;
-
     let user: UserEntity;
-
     const roleName = faker.random.alphaNumeric(5);
-
     let passwordExpired: Date;
 
     beforeAll(async () => {
-        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPT = 'false';
 
         const modRef = await Test.createTestingModule({
             imports: [
@@ -67,7 +59,6 @@ describe('E2E User Login', () => {
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
         helperDateService = app.get(HelperDateService);
-        apiKeyService = app.get(ApiKeyService);
 
         await roleService.create({
             name: roleName,
@@ -82,40 +73,39 @@ describe('E2E User Login', () => {
 
         const passwordHash = await authService.createPassword(password);
 
-        user = await userService.create({
-            username: faker.internet.userName(),
-            firstName: faker.name.firstName(),
-            lastName: faker.name.lastName(),
-            password: passwordHash.passwordHash,
-            passwordExpired: passwordHash.passwordExpired,
-            salt: passwordHash.salt,
-            email: faker.internet.email(),
-            mobileNumber: faker.phone.number('62812#########'),
-            role: `${role._id}`,
-        });
-
-        timestamp = helperDateService.timestamp();
-        const apiEncryption = await apiKeyService.encryptApiKey(
+        user = await userService.create(
             {
-                key: apiKey,
-                timestamp,
-                hash: 'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54',
+                username: faker.internet.userName(),
+                firstName: faker.name.firstName(),
+                lastName: faker.name.lastName(),
+                password,
+                email: faker.internet.email(),
+                mobileNumber: faker.phone.number('62812#########'),
+                role: `${role._id}`,
             },
-            'opbUwdiS1FBsrDUoPgZdx',
-            'cuwakimacojulawu'
+            passwordHash
         );
-        xApiKey = `${apiKey}:${apiEncryption}`;
 
         await app.init();
+    });
+
+    afterAll(async () => {
+        jest.clearAllMocks();
+
+        try {
+            await userService.deleteOneById(user._id);
+            await roleService.deleteOne({ name: roleName });
+        } catch (err: any) {
+            console.error(err);
+        }
+
+        await app.close();
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Error Request`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
-            .set('x-api-key', xApiKey)
             .send({
                 username: [1231],
                 password,
@@ -126,17 +116,12 @@ describe('E2E User Login', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Not Found`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
-            .set('x-api-key', xApiKey)
             .send({
                 username: faker.internet.userName(),
                 password,
@@ -147,17 +132,12 @@ describe('E2E User Login', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Password Not Match`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
-            .set('x-api-key', xApiKey)
             .send({
                 username: user.username,
                 password: 'Password@@1231',
@@ -168,8 +148,26 @@ describe('E2E User Login', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_NOT_MATCH_ERROR
         );
+    });
 
-        return;
+    it(`POST ${E2E_USER_LOGIN_URL} Password Attempt Max`, async () => {
+        await userService.maxPasswordAttempt(user._id);
+
+        const response = await request(app.getHttpServer())
+            .post(E2E_USER_LOGIN_URL)
+            .set('Content-Type', 'application/json')
+            .send({
+                username: user.username,
+                password: 'Password@@1231',
+                rememberMe: false,
+            });
+
+        expect(response.status).toEqual(HttpStatus.FORBIDDEN);
+        expect(response.body.statusCode).toEqual(
+            ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_ATTEMPT_MAX_ERROR
+        );
+
+        await userService.resetPasswordAttempt(user._id);
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Inactive`, async () => {
@@ -178,9 +176,6 @@ describe('E2E User Login', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
-            .set('x-api-key', xApiKey)
             .send({
                 username: user.username,
                 password,
@@ -188,45 +183,37 @@ describe('E2E User Login', () => {
             });
 
         await userService.active(user._id);
+
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
         expect(response.body.statusCode).toEqual(
-            ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR
+            ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Role Inactive`, async () => {
-        await roleService.inactive(`${user.role}`);
+        await roleService.inactive(user.role);
 
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
-            .set('x-api-key', xApiKey)
             .send({
                 username: user.username,
                 password,
                 rememberMe: false,
             });
 
-        await roleService.active(`${user.role}`);
+        await roleService.active(user.role);
+
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
         expect(response.body.statusCode).toEqual(
-            ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR
+            ENUM_ROLE_STATUS_CODE_ERROR.ROLE_INACTIVE_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Success`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
-            .set('x-api-key', xApiKey)
             .send({
                 username: user.username,
                 password,
@@ -235,18 +222,14 @@ describe('E2E User Login', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-
-        return;
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Password Expired`, async () => {
         await userService.updatePasswordExpired(user._id, passwordExpired);
+
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
-            .set('x-api-key', xApiKey)
             .send({
                 username: user.username,
                 password,
@@ -257,16 +240,84 @@ describe('E2E User Login', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR
         );
+    });
+});
 
-        return;
+describe('E2E User Login Payload Encryption', () => {
+    let app: INestApplication;
+    let userService: UserService;
+    let authService: AuthService;
+    let roleService: RoleService;
+
+    const password = `@!${faker.name.firstName().toLowerCase()}${faker.name
+        .firstName()
+        .toUpperCase()}${faker.datatype.number({ min: 1, max: 99 })}`;
+
+    let user: UserEntity;
+    const roleName = faker.random.alphaNumeric(5);
+
+    beforeAll(async () => {
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPT = 'true';
+
+        const modRef = await Test.createTestingModule({
+            imports: [
+                CommonModule,
+                RoleModule,
+                PermissionModule,
+                RoutesModule,
+                RouterModule.register([
+                    {
+                        path: '/',
+                        module: RoutesModule,
+                    },
+                ]),
+            ],
+        }).compile();
+
+        app = modRef.createNestApplication();
+        useContainer(app.select(CommonModule), { fallbackOnErrors: true });
+        userService = app.get(UserService);
+        authService = app.get(AuthService);
+        roleService = app.get(RoleService);
+
+        await roleService.create({
+            name: roleName,
+            accessFor: ENUM_AUTH_ACCESS_FOR_DEFAULT.USER,
+            permissions: [],
+        });
+        const role: RoleEntity = await roleService.findOne({
+            name: roleName,
+        });
+
+        const passwordHash = await authService.createPassword(password);
+
+        user = await userService.create(
+            {
+                username: faker.internet.userName(),
+                firstName: faker.name.firstName(),
+                lastName: faker.name.lastName(),
+                password,
+                email: faker.internet.email(),
+                mobileNumber: faker.phone.number('62812#########'),
+                role: `${role._id}`,
+            },
+            passwordHash
+        );
+
+        await app.init();
     });
 
-    afterAll(async () => {
-        try {
-            await userService.deleteOneById(user._id);
-            await roleService.deleteOne({ name: roleName });
-        } catch (e) {
-            console.error(e);
-        }
+    it(`POST ${E2E_USER_LOGIN_URL} Success`, async () => {
+        const response = await request(app.getHttpServer())
+            .post(E2E_USER_LOGIN_URL)
+            .set('Content-Type', 'application/json')
+            .send({
+                username: user.username,
+                password,
+                rememberMe: true,
+            });
+
+        expect(response.status).toEqual(HttpStatus.OK);
+        expect(response.body.statusCode).toEqual(HttpStatus.OK);
     });
 });

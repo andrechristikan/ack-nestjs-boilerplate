@@ -12,13 +12,13 @@ import { HelperHashService } from 'src/common/helper/services/helper.hash.servic
 
 @Injectable()
 export class AuthService implements IAuthService {
-    private readonly accessTokenSecretToken: string;
+    private readonly accessTokenSecretKey: string;
     private readonly accessTokenExpirationTime: number;
     private readonly accessTokenNotBeforeExpirationTime: number;
     private readonly accessTokenEncryptKey: string;
     private readonly accessTokenEncryptIv: string;
 
-    private readonly refreshTokenSecretToken: string;
+    private readonly refreshTokenSecretKey: string;
     private readonly refreshTokenExpirationTime: number;
     private readonly refreshTokenExpirationTimeRememberMe: number;
     private readonly refreshTokenNotBeforeExpirationTime: number;
@@ -31,59 +31,92 @@ export class AuthService implements IAuthService {
     private readonly issuer: string;
     private readonly subject: string;
 
+    private readonly passwordExpiredIn: number;
+    private readonly passwordSaltLength: number;
+
+    private readonly permissionTokenSecretToken: string;
+    private readonly permissionTokenExpirationTime: number;
+    private readonly permissionTokenNotBeforeExpirationTime: number;
+    private readonly permissionTokenEncryptKey: string;
+    private readonly permissionTokenEncryptIv: string;
+
     constructor(
         private readonly helperHashService: HelperHashService,
         private readonly helperDateService: HelperDateService,
         private readonly helperEncryptionService: HelperEncryptionService,
         private readonly configService: ConfigService
     ) {
-        this.accessTokenSecretToken = this.configService.get<string>(
-            'auth.jwt.accessToken.secretKey'
+        this.accessTokenSecretKey = this.configService.get<string>(
+            'auth.accessToken.secretKey'
         );
         this.accessTokenExpirationTime = this.configService.get<number>(
-            'auth.jwt.accessToken.expirationTime'
+            'auth.accessToken.expirationTime'
         );
         this.accessTokenNotBeforeExpirationTime =
             this.configService.get<number>(
-                'auth.jwt.accessToken.notBeforeExpirationTime'
+                'auth.accessToken.notBeforeExpirationTime'
             );
         this.accessTokenEncryptKey = this.configService.get<string>(
-            'auth.jwt.accessToken.encryptKey'
+            'auth.accessToken.encryptKey'
         );
         this.accessTokenEncryptIv = this.configService.get<string>(
-            'auth.jwt.accessToken.encryptIv'
+            'auth.accessToken.encryptIv'
         );
 
-        this.refreshTokenSecretToken = this.configService.get<string>(
-            'auth.jwt.refreshToken.secretKey'
+        this.refreshTokenSecretKey = this.configService.get<string>(
+            'auth.refreshToken.secretKey'
         );
         this.refreshTokenExpirationTime = this.configService.get<number>(
-            'auth.jwt.refreshToken.expirationTime'
+            'auth.refreshToken.expirationTime'
         );
         this.refreshTokenExpirationTimeRememberMe =
             this.configService.get<number>(
-                'auth.jwt.refreshToken.expirationTimeRememberMe'
+                'auth.refreshToken.expirationTimeRememberMe'
             );
         this.refreshTokenNotBeforeExpirationTime =
             this.configService.get<number>(
-                'auth.jwt.refreshToken.notBeforeExpirationTime'
+                'auth.refreshToken.notBeforeExpirationTime'
             );
         this.refreshTokenEncryptKey = this.configService.get<string>(
-            'auth.jwt.refreshToken.encryptKey'
+            'auth.refreshToken.encryptKey'
         );
         this.refreshTokenEncryptIv = this.configService.get<string>(
-            'auth.jwt.refreshToken.encryptIv'
+            'auth.refreshToken.encryptIv'
         );
 
         this.payloadEncryption = this.configService.get<boolean>(
-            'auth.jwt.payloadEncryption'
+            'auth.payloadEncryption'
         );
         this.prefixAuthorization = this.configService.get<string>(
-            'auth.jwt.prefixAuthorization'
+            'auth.prefixAuthorization'
         );
-        this.subject = this.configService.get<string>('auth.jwt.subject');
-        this.audience = this.configService.get<string>('auth.jwt.audience');
-        this.issuer = this.configService.get<string>('auth.jwt.issuer');
+        this.subject = this.configService.get<string>('auth.subject');
+        this.audience = this.configService.get<string>('auth.audience');
+        this.issuer = this.configService.get<string>('auth.issuer');
+
+        this.passwordExpiredIn = this.configService.get<number>(
+            'auth.password.expiredIn'
+        );
+        this.passwordSaltLength = this.configService.get<number>(
+            'auth.password.saltLength'
+        );
+
+        this.permissionTokenSecretToken = this.configService.get<string>(
+            'auth.permissionToken.secretKey'
+        );
+        this.permissionTokenExpirationTime = this.configService.get<number>(
+            'auth.permissionToken.expirationTime'
+        );
+        this.permissionTokenNotBeforeExpirationTime =
+            this.configService.get<number>(
+                'auth.permissionToken.notBeforeExpirationTime'
+            );
+        this.permissionTokenEncryptKey = this.configService.get<string>(
+            'auth.permissionToken.encryptKey'
+        );
+        this.permissionTokenEncryptIv = this.configService.get<string>(
+            'auth.permissionToken.encryptIv'
+        );
     }
 
     async encryptAccessToken(payload: Record<string, any>): Promise<string> {
@@ -110,7 +143,7 @@ export class AuthService implements IAuthService {
         return this.helperEncryptionService.jwtEncrypt(
             { data: payloadHashed },
             {
-                secretKey: this.accessTokenSecretToken,
+                secretKey: this.accessTokenSecretKey,
                 expiredIn: this.accessTokenExpirationTime,
                 notBefore: this.accessTokenNotBeforeExpirationTime,
                 audience: this.audience,
@@ -122,7 +155,7 @@ export class AuthService implements IAuthService {
 
     async validateAccessToken(token: string): Promise<boolean> {
         return this.helperEncryptionService.jwtVerify(token, {
-            secretKey: this.accessTokenSecretToken,
+            secretKey: this.accessTokenSecretKey,
             audience: this.audience,
             issuer: this.issuer,
             subject: this.subject,
@@ -158,15 +191,13 @@ export class AuthService implements IAuthService {
         return this.helperEncryptionService.jwtEncrypt(
             { data: payloadHashed },
             {
-                secretKey: this.refreshTokenSecretToken,
-                expiredIn:
-                    options && options.rememberMe
-                        ? this.refreshTokenExpirationTimeRememberMe
-                        : this.refreshTokenExpirationTime,
+                secretKey: this.refreshTokenSecretKey,
+                expiredIn: options?.rememberMe
+                    ? this.refreshTokenExpirationTimeRememberMe
+                    : this.refreshTokenExpirationTime,
                 notBefore:
-                    options && options.notBeforeExpirationTime
-                        ? options.notBeforeExpirationTime
-                        : this.refreshTokenNotBeforeExpirationTime,
+                    options?.notBeforeExpirationTime ??
+                    this.refreshTokenNotBeforeExpirationTime,
                 audience: this.audience,
                 issuer: this.issuer,
                 subject: this.subject,
@@ -176,7 +207,7 @@ export class AuthService implements IAuthService {
 
     async validateRefreshToken(token: string): Promise<boolean> {
         return this.helperEncryptionService.jwtVerify(token, {
-            secretKey: this.refreshTokenSecretToken,
+            secretKey: this.refreshTokenSecretKey,
             audience: this.audience,
             issuer: this.issuer,
             subject: this.subject,
@@ -184,6 +215,55 @@ export class AuthService implements IAuthService {
     }
 
     async payloadRefreshToken(token: string): Promise<Record<string, any>> {
+        return this.helperEncryptionService.jwtDecrypt(token);
+    }
+
+    async encryptPermissionToken(
+        payload: Record<string, any>
+    ): Promise<string> {
+        return this.helperEncryptionService.aes256Encrypt(
+            payload,
+            this.permissionTokenEncryptKey,
+            this.permissionTokenEncryptIv
+        );
+    }
+
+    async decryptPermissionToken({
+        data,
+    }: Record<string, any>): Promise<Record<string, any>> {
+        return this.helperEncryptionService.aes256Decrypt(
+            data,
+            this.permissionTokenEncryptKey,
+            this.permissionTokenEncryptIv
+        ) as Record<string, any>;
+    }
+
+    async createPermissionToken(
+        payloadHashed: string | Record<string, any>
+    ): Promise<string> {
+        return this.helperEncryptionService.jwtEncrypt(
+            { data: payloadHashed },
+            {
+                secretKey: this.permissionTokenSecretToken,
+                expiredIn: this.permissionTokenExpirationTime,
+                notBefore: this.permissionTokenNotBeforeExpirationTime,
+                audience: this.audience,
+                issuer: this.issuer,
+                subject: this.subject,
+            }
+        );
+    }
+
+    async validatePermissionToken(token: string): Promise<boolean> {
+        return this.helperEncryptionService.jwtVerify(token, {
+            secretKey: this.permissionTokenSecretToken,
+            audience: this.audience,
+            issuer: this.issuer,
+            subject: this.subject,
+        });
+    }
+
+    async payloadPermissionToken(token: string): Promise<Record<string, any>> {
         return this.helperEncryptionService.jwtDecrypt(token);
     }
 
@@ -205,10 +285,7 @@ export class AuthService implements IAuthService {
         return {
             ...data,
             rememberMe,
-            loginDate:
-                options && options.loginDate
-                    ? options.loginDate
-                    : this.helperDateService.create(),
+            loginDate: options?.loginDate ?? this.helperDateService.create(),
         };
     }
 
@@ -220,23 +297,24 @@ export class AuthService implements IAuthService {
         return {
             _id,
             rememberMe,
-            loginDate:
-                options && options.loginDate ? options.loginDate : undefined,
+            loginDate: options?.loginDate,
         };
     }
 
+    async createPayloadPermissionToken(
+        data: Record<string, any>
+    ): Promise<Record<string, any>> {
+        return data;
+    }
+
     async createPassword(password: string): Promise<IAuthPassword> {
-        const saltLength: number = this.configService.get<number>(
-            'auth.password.saltLength'
+        const salt: string = this.helperHashService.randomSalt(
+            this.passwordSaltLength
         );
 
-        const salt: string = this.helperHashService.randomSalt(saltLength);
-
-        const passwordExpiredInMs: number = this.configService.get<number>(
-            'auth.password.expiredInMs'
+        const passwordExpired: Date = this.helperDateService.forwardInSeconds(
+            this.passwordExpiredIn
         );
-        const passwordExpired: Date =
-            this.helperDateService.forwardInMilliseconds(passwordExpiredInMs);
         const passwordHash = this.helperHashService.bcrypt(password, salt);
         return {
             passwordHash,
@@ -247,15 +325,10 @@ export class AuthService implements IAuthService {
 
     async checkPasswordExpired(passwordExpired: Date): Promise<boolean> {
         const today: Date = this.helperDateService.create();
-        const passwordExpiredConvert: Date = this.helperDateService.create({
-            date: passwordExpired,
-        });
+        const passwordExpiredConvert: Date =
+            this.helperDateService.create(passwordExpired);
 
-        if (today > passwordExpiredConvert) {
-            return true;
-        }
-
-        return false;
+        return today > passwordExpiredConvert;
     }
 
     async getTokenType(): Promise<string> {
@@ -268,8 +341,8 @@ export class AuthService implements IAuthService {
 
     async getRefreshTokenExpirationTime(rememberMe?: boolean): Promise<number> {
         return rememberMe
-            ? this.refreshTokenExpirationTime
-            : this.refreshTokenExpirationTimeRememberMe;
+            ? this.refreshTokenExpirationTimeRememberMe
+            : this.refreshTokenExpirationTime;
     }
 
     async getIssuer(): Promise<string> {
@@ -286,5 +359,9 @@ export class AuthService implements IAuthService {
 
     async getPayloadEncryption(): Promise<boolean> {
         return this.payloadEncryption;
+    }
+
+    async getPermissionTokenExpirationTime(): Promise<number> {
+        return this.permissionTokenExpirationTime;
     }
 }

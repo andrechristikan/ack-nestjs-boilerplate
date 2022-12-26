@@ -27,8 +27,8 @@ export class PermissionActiveGuard implements CanActivate {
         if (!required.includes(__permission.isActive)) {
             throw new BadRequestException({
                 statusCode:
-                    ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_ACTIVE_ERROR,
-                message: 'permission.error.active',
+                    ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_IS_ACTIVE_ERROR,
+                message: 'permission.error.isActiveInvalid',
             });
         }
         return true;

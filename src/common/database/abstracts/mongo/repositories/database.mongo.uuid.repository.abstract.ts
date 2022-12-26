@@ -58,27 +58,27 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
     ): Promise<Y[]> {
         const findAll = this._repository.find(find);
 
-        if (options && options.withDeleted) {
+        if (options?.withDeleted) {
             findAll.where(DATABASE_DELETED_AT_FIELD_NAME).exists(true);
         } else {
             findAll.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
 
-        if (options && options.select) {
+        if (options?.select) {
             findAll.select(options.select);
         }
 
-        if (options && options.paging) {
-            findAll.limit(options.paging.limit).skip(options.paging.skip);
+        if (options?.paging) {
+            findAll.limit(options.paging.limit).skip(options.paging.offset);
         }
 
-        if (options && options.sort) {
+        if (options?.sort) {
             findAll.sort(
                 this._convertSort(options.sort) as { [key: string]: SortOrder }
             );
         }
 
-        if (options && options.join) {
+        if (options?.join) {
             findAll.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -86,7 +86,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             );
         }
 
-        if (options && options.session) {
+        if (options?.session) {
             findAll.session(options.session);
         }
 
@@ -99,17 +99,17 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
     ): Promise<Y> {
         const findOne = this._repository.findOne(find);
 
-        if (options && options.withDeleted) {
+        if (options?.withDeleted) {
             findOne.where(DATABASE_DELETED_AT_FIELD_NAME).exists(true);
         } else {
             findOne.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
 
-        if (options && options.select) {
+        if (options?.select) {
             findOne.select(options.select);
         }
 
-        if (options && options.join) {
+        if (options?.join) {
             findOne.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -117,11 +117,11 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             );
         }
 
-        if (options && options.session) {
+        if (options?.session) {
             findOne.session(options.session);
         }
 
-        if (options && options.sort) {
+        if (options?.sort) {
             findOne.sort(
                 this._convertSort(options.sort) as { [key: string]: SortOrder }
             );
@@ -136,17 +136,17 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
     ): Promise<Y> {
         const findOne = this._repository.findById(_id);
 
-        if (options && options.withDeleted) {
+        if (options?.withDeleted) {
             findOne.where(DATABASE_DELETED_AT_FIELD_NAME).exists(true);
         } else {
             findOne.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
 
-        if (options && options.select) {
+        if (options?.select) {
             findOne.select(options.select);
         }
 
-        if (options && options.join) {
+        if (options?.join) {
             findOne.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -154,11 +154,11 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             );
         }
 
-        if (options && options.session) {
+        if (options?.session) {
             findOne.session(options.session);
         }
 
-        if (options && options.sort) {
+        if (options?.sort) {
             findOne.sort(
                 this._convertSort(options.sort) as { [key: string]: SortOrder }
             );
@@ -173,17 +173,17 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
     ): Promise<number> {
         const count = this._repository.countDocuments(find);
 
-        if (options && options.withDeleted) {
+        if (options?.withDeleted) {
             count.where(DATABASE_DELETED_AT_FIELD_NAME).exists(true);
         } else {
             count.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
 
-        if (options && options.session) {
+        if (options?.session) {
             count.session(options.session);
         }
 
-        if (options && options.join) {
+        if (options?.join) {
             count.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -201,21 +201,21 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
         const exist = this._repository.exists({
             ...find,
             _id: {
-                $nin: options && options.excludeId ? options.excludeId : [],
+                $nin: options?.excludeId ? options.excludeId : [],
             },
         });
 
-        if (options && options.withDeleted) {
+        if (options?.withDeleted) {
             exist.where(DATABASE_DELETED_AT_FIELD_NAME).exists(true);
         } else {
             exist.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
 
-        if (options && options.session) {
+        if (options?.session) {
             exist.session(options.session);
         }
 
-        if (options && options.join) {
+        if (options?.join) {
             exist.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -240,7 +240,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
         options?: IDatabaseCreateOptions<ClientSession>
     ): Promise<T> {
         const dataCreate: Record<string, any> = data;
-        if (options && options._id) {
+        if (options?._id) {
             dataCreate._id = options._id;
         }
 
@@ -248,7 +248,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             session: options ? options.session : undefined,
         });
 
-        return create[0];
+        return create[0].toObject();
     }
 
     async updateOneById<N>(
@@ -267,7 +267,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             .where(DATABASE_DELETED_AT_FIELD_NAME)
             .exists(false);
 
-        if (options && options.join) {
+        if (options?.join) {
             update.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -275,11 +275,12 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             );
         }
 
-        if (options && options.session) {
+        if (options?.session) {
             update.session(options.session);
         }
 
-        return update;
+        const updated = await update;
+        return updated.toObject();
     }
 
     async updateOne<N>(
@@ -298,7 +299,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             .where(DATABASE_DELETED_AT_FIELD_NAME)
             .exists(false);
 
-        if (options && options.join) {
+        if (options?.join) {
             update.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -306,11 +307,12 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             );
         }
 
-        if (options && options.session) {
+        if (options?.session) {
             update.session(options.session);
         }
 
-        return update;
+        const updated = await update;
+        return updated.toObject();
     }
 
     async deleteOne(
@@ -319,7 +321,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
     ): Promise<T> {
         const del = this._repository.findOneAndDelete(find, { new: true });
 
-        if (options && options.join) {
+        if (options?.join) {
             del.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -327,7 +329,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             );
         }
 
-        if (options && options.session) {
+        if (options?.session) {
             del.session(options.session);
         }
 
@@ -342,7 +344,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             new: true,
         });
 
-        if (options && options.join) {
+        if (options?.join) {
             del.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -350,7 +352,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             );
         }
 
-        if (options && options.session) {
+        if (options?.session) {
             del.session(options.session);
         }
 
@@ -372,7 +374,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             .where(DATABASE_DELETED_AT_FIELD_NAME)
             .exists(false);
 
-        if (options && options.join) {
+        if (options?.join) {
             del.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -380,7 +382,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             );
         }
 
-        if (options && options.session) {
+        if (options?.session) {
             del.session(options.session);
         }
 
@@ -402,7 +404,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             .where(DATABASE_DELETED_AT_FIELD_NAME)
             .exists(false);
 
-        if (options && options.join) {
+        if (options?.join) {
             del.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -410,7 +412,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             );
         }
 
-        if (options && options.session) {
+        if (options?.session) {
             del.session(options.session);
         }
 
@@ -432,7 +434,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             .where(DATABASE_DELETED_AT_FIELD_NAME)
             .exists(true);
 
-        if (options && options.join) {
+        if (options?.join) {
             rest.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -440,7 +442,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             );
         }
 
-        if (options && options.session) {
+        if (options?.session) {
             rest.session(options.session);
         }
 
@@ -462,7 +464,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             .where(DATABASE_DELETED_AT_FIELD_NAME)
             .exists(true);
 
-        if (options && options.join) {
+        if (options?.join) {
             rest.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -470,7 +472,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             );
         }
 
-        if (options && options.session) {
+        if (options?.session) {
             rest.session(options.session);
         }
 
@@ -507,11 +509,11 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             .where(DATABASE_DELETED_AT_FIELD_NAME)
             .exists(false);
 
-        if (options && options.session) {
+        if (options?.session) {
             del.session(options.session);
         }
 
-        if (options && options.join) {
+        if (options?.join) {
             del.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -536,11 +538,11 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             .where(DATABASE_DELETED_AT_FIELD_NAME)
             .exists(false);
 
-        if (options && options.session) {
+        if (options?.session) {
             del.session(options.session);
         }
 
-        if (options && options.join) {
+        if (options?.join) {
             del.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -576,11 +578,11 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             .where(DATABASE_DELETED_AT_FIELD_NAME)
             .exists(false);
 
-        if (options && options.session) {
+        if (options?.session) {
             softDel.session(options.session);
         }
 
-        if (options && options.join) {
+        if (options?.join) {
             softDel.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -609,11 +611,11 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             .where(DATABASE_DELETED_AT_FIELD_NAME)
             .exists(false);
 
-        if (options && options.session) {
+        if (options?.session) {
             softDel.session(options.session);
         }
 
-        if (options && options.join) {
+        if (options?.join) {
             softDel.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -649,11 +651,11 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             .where(DATABASE_DELETED_AT_FIELD_NAME)
             .exists(true);
 
-        if (options && options.session) {
+        if (options?.session) {
             rest.session(options.session);
         }
 
-        if (options && options.join) {
+        if (options?.join) {
             rest.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -682,11 +684,11 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             .where(DATABASE_DELETED_AT_FIELD_NAME)
             .exists(true);
 
-        if (options && options.session) {
+        if (options?.session) {
             rest.session(options.session);
         }
 
-        if (options && options.join) {
+        if (options?.join) {
             rest.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind
@@ -714,11 +716,11 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             .where(DATABASE_DELETED_AT_FIELD_NAME)
             .exists(false);
 
-        if (options && options.session) {
+        if (options?.session) {
             update.session(options.session as ClientSession);
         }
 
-        if (options && options.join) {
+        if (options?.join) {
             update.populate(
                 typeof options.join === 'boolean'
                     ? this._joinOnFind

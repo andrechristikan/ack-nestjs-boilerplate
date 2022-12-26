@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { MessageService } from './services/message.service';
 import { MessageEnumService } from './services/message.enum.service';
 import { ENUM_MESSAGE_LANGUAGE } from './constants/message.enum.constant';
+import { MessageMiddlewareModule } from 'src/common/message/middleware/message.middleware.module';
 
 @Global()
 @Module({
@@ -13,7 +14,9 @@ import { ENUM_MESSAGE_LANGUAGE } from './constants/message.enum.constant';
     imports: [
         I18nModule.forRootAsync({
             useFactory: (configService: ConfigService) => ({
-                fallbackLanguage: configService.get<string>('app.language'),
+                fallbackLanguage: configService
+                    .get<string[]>('app.language')
+                    .join(','),
                 fallbacks: Object.values(ENUM_MESSAGE_LANGUAGE).reduce(
                     (a, v) => ({ ...a, [`${v}-*`]: v }),
                     {}
@@ -27,6 +30,7 @@ import { ENUM_MESSAGE_LANGUAGE } from './constants/message.enum.constant';
             inject: [ConfigService],
             resolvers: [new HeaderResolver(['x-custom-lang'])],
         }),
+        MessageMiddlewareModule,
     ],
     controllers: [],
 })

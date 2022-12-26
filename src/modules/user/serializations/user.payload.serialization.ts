@@ -1,11 +1,9 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, OmitType } from '@nestjs/swagger';
-import { Exclude, Transform } from 'class-transformer';
+import { Exclude, Expose, Transform } from 'class-transformer';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
-import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
-import { IUserRolePayload } from 'src/modules/user/interfaces/user.interface';
-import { UserGetSerialization } from './user.get.serialization';
+import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
 
 export class UserPayloadSerialization extends OmitType(UserGetSerialization, [
     'photo',
@@ -21,21 +19,20 @@ export class UserPayloadSerialization extends OmitType(UserGetSerialization, [
     readonly photo?: AwsS3Serialization;
 
     @ApiProperty({
-        example: {
-            name: faker.name.jobTitle(),
-            permissions: Object.values(ENUM_AUTH_PERMISSIONS),
-            accessFor: ENUM_AUTH_ACCESS_FOR.ADMIN,
-        },
-        type: 'object',
+        example: faker.datatype.uuid(),
+        type: 'string',
     })
-    @Transform(({ value }) => ({
-        name: value.name,
-        permissions: value.permissions.map(
-            (val: Record<string, any>) => val.code
-        ),
-        accessFor: value.accessFor,
-    }))
-    readonly role: IUserRolePayload;
+    @Transform(({ obj }) => `${obj.role._id}`)
+    readonly role: string;
+
+    @ApiProperty({
+        example: ENUM_AUTH_ACCESS_FOR.ADMIN,
+        type: 'string',
+        enum: ENUM_AUTH_ACCESS_FOR,
+    })
+    @Expose()
+    @Transform(({ obj }) => obj.role.accessFor)
+    readonly accessFor: ENUM_AUTH_ACCESS_FOR;
 
     @Exclude()
     readonly isActive: boolean;

@@ -39,8 +39,7 @@ export function FileCustomSize(customSize: string): MethodDecorator {
 export const FilePartNumber: () => ParameterDecorator = createParamDecorator(
     (data: string, ctx: ExecutionContext): number => {
         const request = ctx.switchToHttp().getRequest() as IRequestApp;
-        return request.headers['x-part-number']
-            ? parseInt(request.headers['x-part-number'] as string)
-            : 0;
+        const { headers } = request;
+        return headers['x-part-number'] ? Number(headers['x-part-number']) : 0;
     }
 );

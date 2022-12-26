@@ -14,12 +14,10 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
-    AuthJwtPayload,
-    AuthJwtToken,
-} from 'src/common/auth/decorators/auth.decorator';
-import {
     AuthJwtAccessProtected,
+    AuthJwtPayload,
     AuthJwtRefreshProtected,
+    AuthJwtToken,
 } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
@@ -34,14 +32,15 @@ import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.enum.cons
 import { Logger } from 'src/common/logger/decorators/logger.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
-import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingService } from 'src/common/setting/services/setting.service';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
 import { UserProfileGuard } from 'src/modules/user/decorators/user.public.decorator';
 import {
     UserChangePasswordDoc,
+    UserGrantPermissionDoc,
     UserInfoDoc,
     UserLoginDoc,
     UserProfileDoc,
@@ -49,11 +48,13 @@ import {
     UserUploadProfileDoc,
 } from 'src/modules/user/docs/user.doc';
 import { UserChangePasswordDto } from 'src/modules/user/dtos/user.change-password.dto';
+import { UserGrantPermissionDto } from 'src/modules/user/dtos/user.grant-permission.dto';
 import { UserLoginDto } from 'src/modules/user/dtos/user.login.dto';
 import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
-import { UserInfoSerialization } from 'src/modules/user/serializations/user.info.serialization';
+import { UserGrantPermissionSerialization } from 'src/modules/user/serializations/user.grant-permission.serialization';
 import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
+import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload-permission.serialization';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
@@ -65,131 +66,21 @@ import { UserService } from 'src/modules/user/services/user.service';
 })
 export class UserController {
     constructor(
-        private readonly authService: AuthService,
         private readonly userService: UserService,
         private readonly awsService: AwsS3Service,
+        private readonly authService: AuthService,
         private readonly settingService: SettingService
     ) {}
 
-    @UserProfileDoc()
-    @Response('user.profile', {
-        classSerialization: UserProfileSerialization,
-    })
-    @UserProfileGuard()
-    @AuthJwtAccessProtected()
-    @Get('/profile')
-    async profile(@GetUser() user: IUserEntity): Promise<IResponse> {
-        return user;
-    }
-
-    @UserUploadProfileDoc()
-    @Response('user.upload')
-    @UserProfileGuard()
-    @AuthJwtAccessProtected()
-    @UploadFileSingle('file')
-    @HttpCode(HttpStatus.OK)
-    @Post('/profile/upload')
-    async upload(
-        @GetUser() user: IUserEntity,
-        @UploadedFile(FileRequiredPipe, FileSizeImagePipe, FileTypeImagePipe)
-        file: IFile
-    ): Promise<void> {
-        const filename: string = file.originalname;
-        const content: Buffer = file.buffer;
-        const mime: string = filename
-            .substring(filename.lastIndexOf('.') + 1, filename.length)
-            .toUpperCase();
-
-        const path = await this.userService.createRandomFilename();
-
-        try {
-            const aws: AwsS3Serialization =
-                await this.awsService.putItemInBucket(
-                    `${path.filename}.${mime}`,
-                    content,
-                    {
-                        path: `${path.path}/${user._id}`,
-                    }
-                );
-
-            await this.userService.updatePhoto(user._id, aws);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                error: err.message,
-            });
-        }
-
-        return;
-    }
-
-    @UserChangePasswordDoc()
-    @Response('user.changePassword')
-    @AuthJwtAccessProtected()
-    @Patch('/change-password')
-    async changePassword(
-        @Body() body: UserChangePasswordDto,
-        @AuthJwtPayload('_id') _id: string
-    ): Promise<void> {
-        const user: UserEntity = await this.userService.findOneById(_id);
-        if (!user) {
-            throw new NotFoundException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
-                message: 'user.error.notFound',
-            });
-        }
-
-        const matchPassword: boolean = await this.authService.validateUser(
-            body.oldPassword,
-            user.password
-        );
-        if (!matchPassword) {
-            throw new BadRequestException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_NOT_MATCH_ERROR,
-                message: 'user.error.passwordNotMatch',
-            });
-        }
-
-        const newMatchPassword: boolean = await this.authService.validateUser(
-            body.newPassword,
-            user.password
-        );
-        if (newMatchPassword) {
-            throw new BadRequestException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_NEW_MUST_DIFFERENCE_ERROR,
-                message: 'user.error.newPasswordMustDifference',
-            });
-        }
-
-        try {
-            const password = await this.authService.createPassword(
-                body.newPassword
-            );
-
-            await this.userService.updatePassword(user._id, password);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                error: err.message,
-            });
-        }
-
-        return;
-    }
-
     @UserLoginDoc()
     @Response('user.login', {
-        classSerialization: UserLoginSerialization,
+        serialization: UserLoginSerialization,
     })
     @Logger(ENUM_LOGGER_ACTION.LOGIN, { tags: ['login', 'withEmail'] })
     @HttpCode(HttpStatus.OK)
     @Post('/login')
     async login(
-        @Body() { password, username, rememberMe }: UserLoginDto
+        @Body() { username, password, rememberMe }: UserLoginDto
     ): Promise<IResponse> {
         const user: IUserEntity =
             await this.userService.findOneByUsername<IUserEntity>(username, {
@@ -202,26 +93,16 @@ export class UserController {
             });
         }
 
-        const passwordAttempt: SettingEntity =
-            await this.settingService.findOneByName('passwordAttempt');
-
-        const passwordAttemptValue: boolean =
-            await this.settingService.getValue<boolean>(passwordAttempt);
-
-        if (passwordAttemptValue) {
-            const maxPasswordAttempt: SettingEntity =
-                await this.settingService.findOneByName('maxPasswordAttempt');
-            const value: number = await this.settingService.getValue<number>(
-                maxPasswordAttempt
-            );
-
-            if (user.passwordAttempt >= value) {
-                throw new ForbiddenException({
-                    statusCode:
-                        ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_ATTEMPT_MAX_ERROR,
-                    message: 'user.error.passwordAttemptMax',
-                });
-            }
+        const passwordAttempt: boolean =
+            await this.settingService.getPasswordAttempt();
+        const maxPasswordAttempt: number =
+            await this.settingService.getMaxPasswordAttempt();
+        if (passwordAttempt && user.passwordAttempt >= maxPasswordAttempt) {
+            throw new ForbiddenException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_ATTEMPT_MAX_ERROR,
+                message: 'user.error.passwordAttemptMax',
+            });
         }
 
         const validate: boolean = await this.authService.validateUser(
@@ -229,7 +110,9 @@ export class UserController {
             user.password
         );
         if (!validate) {
-            await this.userService.increasePasswordAttempt(user._id);
+            if (passwordAttempt) {
+                await this.userService.increasePasswordAttempt(user);
+            }
 
             throw new BadRequestException({
                 statusCode:
@@ -238,14 +121,26 @@ export class UserController {
             });
         } else if (!user.isActive) {
             throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_ERROR,
                 message: 'user.error.inactive',
             });
         } else if (!user.role.isActive) {
             throw new ForbiddenException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_INACTIVE_ERROR,
                 message: 'role.error.inactive',
             });
+        }
+
+        if (passwordAttempt) {
+            try {
+                await this.userService.resetPasswordAttempt(user._id);
+            } catch (err: any) {
+                throw new InternalServerErrorException({
+                    statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                    message: 'http.serverError.internalServerError',
+                    error: err.message,
+                });
+            }
         }
 
         const payload: UserPayloadSerialization =
@@ -317,7 +212,7 @@ export class UserController {
     }
 
     @UserRefreshDoc()
-    @Response('user.refresh', { classSerialization: UserLoginSerialization })
+    @Response('user.refresh', { serialization: UserLoginSerialization })
     @AuthJwtRefreshProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
@@ -338,12 +233,12 @@ export class UserController {
             });
         } else if (!user.isActive) {
             throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_INACTIVE_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_ERROR,
                 message: 'user.error.inactive',
             });
         } else if (!user.role.isActive) {
             throw new ForbiddenException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_INACTIVE_ERROR,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_INACTIVE_ERROR,
                 message: 'role.error.inactive',
             });
         }
@@ -394,13 +289,208 @@ export class UserController {
         };
     }
 
+    @UserChangePasswordDoc()
+    @Response('user.changePassword')
+    @AuthJwtAccessProtected()
+    @Patch('/change-password')
+    async changePassword(
+        @Body() body: UserChangePasswordDto,
+        @AuthJwtPayload('_id') _id: string
+    ): Promise<void> {
+        const user: UserEntity = await this.userService.findOneById(_id);
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
+                message: 'user.error.notFound',
+            });
+        }
+
+        const passwordAttempt: boolean =
+            await this.settingService.getPasswordAttempt();
+        const maxPasswordAttempt: number =
+            await this.settingService.getMaxPasswordAttempt();
+        if (passwordAttempt && user.passwordAttempt >= maxPasswordAttempt) {
+            throw new ForbiddenException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_ATTEMPT_MAX_ERROR,
+                message: 'user.error.passwordAttemptMax',
+            });
+        }
+
+        const matchPassword: boolean = await this.authService.validateUser(
+            body.oldPassword,
+            user.password
+        );
+        if (!matchPassword) {
+            if (passwordAttempt) {
+                await this.userService.increasePasswordAttempt(user);
+            }
+
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_NOT_MATCH_ERROR,
+                message: 'user.error.passwordNotMatch',
+            });
+        }
+
+        const newMatchPassword: boolean = await this.authService.validateUser(
+            body.newPassword,
+            user.password
+        );
+        if (newMatchPassword) {
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_NEW_MUST_DIFFERENCE_ERROR,
+                message: 'user.error.newPasswordMustDifference',
+            });
+        }
+
+        if (passwordAttempt) {
+            try {
+                await this.userService.increasePasswordAttempt(user);
+            } catch (err: any) {
+                throw new InternalServerErrorException({
+                    statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                    message: 'http.serverError.internalServerError',
+                    error: err.message,
+                });
+            }
+        }
+
+        try {
+            const password = await this.authService.createPassword(
+                body.newPassword
+            );
+
+            await this.userService.updatePassword(user._id, password);
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                error: err.message,
+            });
+        }
+
+        return;
+    }
+
     @UserInfoDoc()
-    @Response('user.info', { classSerialization: UserInfoSerialization })
+    @Response('user.info', { serialization: UserPayloadSerialization })
     @AuthJwtAccessProtected()
     @Get('/info')
     async info(
-        @AuthJwtPayload() user: Record<string, any>
+        @AuthJwtPayload() user: UserPayloadSerialization
     ): Promise<IResponse> {
         return user;
+    }
+
+    @UserGrantPermissionDoc()
+    @Response('user.grantPermission', {
+        serialization: UserGrantPermissionSerialization,
+    })
+    @AuthJwtAccessProtected()
+    @HttpCode(HttpStatus.OK)
+    @Post('/grant-permission')
+    async grantPermission(
+        @AuthJwtPayload() user: UserPayloadSerialization,
+        @Body() { scope }: UserGrantPermissionDto
+    ): Promise<IResponse> {
+        const check: IUserEntity = await this.userService.findOneById(
+            user._id,
+            { join: true }
+        );
+        if (!check) {
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
+                message: 'user.error.notFound',
+            });
+        }
+
+        const permissions: PermissionEntity[] =
+            await this.userService.permissionByGroup(check, scope);
+
+        const payload: UserPayloadPermissionSerialization =
+            await this.userService.payloadPermissionSerialization(
+                user._id,
+                permissions
+            );
+
+        const expiresIn: number =
+            await this.authService.getPermissionTokenExpirationTime();
+        const payloadPermissionToken: Record<string, any> =
+            await this.authService.createPayloadPermissionToken(payload);
+
+        const payloadEncryption = await this.authService.getPayloadEncryption();
+        let payloadHashedPermissionToken: Record<string, any> | string =
+            payloadPermissionToken;
+
+        if (payloadEncryption) {
+            payloadHashedPermissionToken =
+                await this.authService.encryptPermissionToken(
+                    payloadPermissionToken
+                );
+        }
+
+        const permissionToken: string =
+            await this.authService.createPermissionToken(
+                payloadHashedPermissionToken
+            );
+
+        return {
+            permissionToken,
+            expiresIn,
+        };
+    }
+
+    @UserProfileDoc()
+    @Response('user.profile', {
+        serialization: UserProfileSerialization,
+    })
+    @UserProfileGuard()
+    @AuthJwtAccessProtected()
+    @Get('/profile')
+    async profile(@GetUser() user: IUserEntity): Promise<IResponse> {
+        return user;
+    }
+
+    @UserUploadProfileDoc()
+    @Response('user.upload')
+    @UserProfileGuard()
+    @AuthJwtAccessProtected()
+    @UploadFileSingle('file')
+    @HttpCode(HttpStatus.OK)
+    @Post('/profile/upload')
+    async upload(
+        @GetUser() user: IUserEntity,
+        @UploadedFile(FileRequiredPipe, FileSizeImagePipe, FileTypeImagePipe)
+        file: IFile
+    ): Promise<void> {
+        const filename: string = file.originalname;
+        const content: Buffer = file.buffer;
+        const mime: string = filename
+            .substring(filename.lastIndexOf('.') + 1, filename.length)
+            .toUpperCase();
+
+        const path = await this.userService.createPhotoFilename();
+
+        try {
+            const aws: AwsS3Serialization =
+                await this.awsService.putItemInBucket(
+                    `${path.filename}.${mime}`,
+                    content,
+                    {
+                        path: `${path.path}/${user._id}`,
+                    }
+                );
+            await this.userService.updatePhoto(user._id, aws);
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                error: err.message,
+            });
+        }
+
+        return;
     }
 }

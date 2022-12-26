@@ -3,6 +3,7 @@ import { MongooseModuleOptions } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { IDatabaseOptionsService } from 'src/common/database/interfaces/database.options-service.interface';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 
 @Injectable()
 export class DatabaseOptionsService implements IDatabaseOptionsService {
@@ -27,14 +28,14 @@ export class DatabaseOptionsService implements IDatabaseOptionsService {
             : '';
     }
 
-    createOptions(): MongooseModuleOptions {
+    createMongoOptions(): MongooseModuleOptions {
         let uri = `${this.host}`;
 
         if (this.database) {
             uri = `${uri}/${this.database}${this.options}`;
         }
 
-        if (this.env !== 'production') {
+        if (this.env !== ENUM_APP_ENVIRONMENT.PRODUCTION) {
             mongoose.set('debug', this.debug);
         }
 

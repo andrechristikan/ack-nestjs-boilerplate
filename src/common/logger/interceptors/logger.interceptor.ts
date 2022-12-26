@@ -45,14 +45,13 @@ export class LoggerInterceptor implements NestInterceptor<any> {
                 path,
             } = ctx.getRequest<IRequestApp>();
             const responseExpress = ctx.getResponse<Response>();
+
             return next.handle().pipe(
                 tap(async (response: Promise<Record<string, any>>) => {
                     const responseData: Record<string, any> = await response;
                     const responseStatus: number = responseExpress.statusCode;
                     const statusCode =
-                        responseData && responseData.statusCode
-                            ? responseData.statusCode
-                            : responseStatus;
+                        responseData?.statusCode ?? responseStatus;
 
                     const loggerAction: ENUM_LOGGER_ACTION =
                         this.reflector.get<ENUM_LOGGER_ACTION>(
@@ -66,21 +65,22 @@ export class LoggerInterceptor implements NestInterceptor<any> {
                         );
 
                     await this.loggerService.raw({
-                        level: loggerOptions.level || ENUM_LOGGER_LEVEL.INFO,
+                        level: loggerOptions?.level ?? ENUM_LOGGER_LEVEL.INFO,
                         action: loggerAction,
-                        description: loggerOptions.description
-                            ? loggerOptions.description
-                            : `Request ${method} called, url ${originalUrl}, and action ${loggerAction}`,
-                        apiKey: apiKey ? apiKey._id : undefined,
-                        user: user ? user._id : undefined,
+                        description:
+                            loggerOptions?.description ??
+                            `Request ${method} called, url ${originalUrl}, and action ${loggerAction}`,
+                        apiKey: apiKey?._id,
+                        user: user?._id,
                         requestId: id,
                         method: method as ENUM_REQUEST_METHOD,
-                        role: user ? user.role : undefined,
+                        role: user?.role,
+                        accessFor: user?.accessFor,
                         params,
                         bodies: body,
-                        path: path ? path : undefined,
+                        path,
                         statusCode,
-                        tags: loggerOptions.tags ? loggerOptions.tags : [],
+                        tags: loggerOptions?.tags ?? [],
                     });
                 })
             );

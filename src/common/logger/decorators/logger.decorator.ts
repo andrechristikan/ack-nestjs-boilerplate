@@ -14,6 +14,6 @@ export function Logger(
     return applyDecorators(
         UseInterceptors(LoggerInterceptor),
         SetMetadata(LOGGER_ACTION_META_KEY, action),
-        SetMetadata(LOGGER_OPTIONS_META_KEY, options ? options : {})
+        SetMetadata(LOGGER_OPTIONS_META_KEY, options ?? {})
     );
 }

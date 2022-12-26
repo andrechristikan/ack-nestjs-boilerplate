@@ -1,6 +1,7 @@
 import { applyDecorators } from '@nestjs/common';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import { Doc } from 'src/common/doc/decorators/doc.decorator';
+import { UserGrantPermissionSerialization } from 'src/modules/user/serializations/user.grant-permission.serialization';
 import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
@@ -12,17 +13,7 @@ export function UserProfileDoc(): MethodDecorator {
                 jwtAccessToken: true,
             },
             response: {
-                classSerialization: UserProfileSerialization,
-            },
-        })
-    );
-}
-
-export function UserChangePasswordDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc<void>('user.changePassword', {
-            auth: {
-                jwtAccessToken: true,
+                serialization: UserProfileSerialization,
             },
         })
     );
@@ -51,7 +42,7 @@ export function UserLoginDoc(): MethodDecorator {
                 jwtAccessToken: true,
             },
             response: {
-                classSerialization: UserLoginSerialization,
+                serialization: UserLoginSerialization,
             },
         })
     );
@@ -64,7 +55,7 @@ export function UserRefreshDoc(): MethodDecorator {
                 jwtRefreshToken: true,
             },
             response: {
-                classSerialization: UserLoginSerialization,
+                serialization: UserLoginSerialization,
             },
         })
     );
@@ -77,7 +68,30 @@ export function UserInfoDoc(): MethodDecorator {
                 jwtAccessToken: true,
             },
             response: {
-                classSerialization: UserPayloadSerialization,
+                serialization: UserPayloadSerialization,
+            },
+        })
+    );
+}
+
+export function UserChangePasswordDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc<void>('user.changePassword', {
+            auth: {
+                jwtAccessToken: true,
+            },
+        })
+    );
+}
+
+export function UserGrantPermissionDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc<UserGrantPermissionSerialization>('user.grantPermission', {
+            response: {
+                serialization: UserGrantPermissionSerialization,
+            },
+            auth: {
+                jwtAccessToken: true,
             },
         })
     );

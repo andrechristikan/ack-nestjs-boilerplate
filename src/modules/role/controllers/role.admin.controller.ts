@@ -1,6 +1,6 @@
 import {
-    BadRequestException,
     Body,
+    ConflictException,
     Controller,
     Delete,
     Get,
@@ -9,12 +9,19 @@ import {
     Patch,
     Post,
     Put,
-    Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
+import { AuthPermissionProtected } from 'src/common/auth/decorators/auth.permission.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
+import {
+    PaginationQuery,
+    PaginationQueryFilterInBoolean,
+    PaginationQueryFilterInEnum,
+} from 'src/common/pagination/decorators/pagination.decorator';
+import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
@@ -29,6 +36,14 @@ import { ResponseIdSerialization } from 'src/common/response/serializations/resp
 import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/constants/permission.status-code.constant';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
+import {
+    ROLE_DEFAULT_ACCESS_FOR,
+    ROLE_DEFAULT_AVAILABLE_SEARCH,
+    ROLE_DEFAULT_AVAILABLE_SORT,
+    ROLE_DEFAULT_IS_ACTIVE,
+    ROLE_DEFAULT_PER_PAGE,
+    ROLE_DEFAULT_SORT,
+} from 'src/modules/role/constants/role.list.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import {
     RoleDeleteGuard,
@@ -48,9 +63,9 @@ import {
     RoleUpdateDoc,
 } from 'src/modules/role/docs/role.admin.doc';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
-import { RoleListDto } from 'src/modules/role/dtos/role.list.dto';
 import { RoleRequestDto } from 'src/modules/role/dtos/role.request.dto';
-import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
+import { RoleUpdateNameDto } from 'src/modules/role/dtos/role.update-name.dto';
+import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
 import { IRoleEntity } from 'src/modules/role/interfaces/role.interface';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
@@ -65,42 +80,58 @@ import { RoleService } from 'src/modules/role/services/role.service';
 export class RoleAdminController {
     constructor(
         private readonly paginationService: PaginationService,
-        private readonly roleService: RoleService,
-        private readonly permissionService: PermissionService
+        private readonly permissionService: PermissionService,
+        private readonly roleService: RoleService
     ) {}
 
     @RoleListDoc()
     @ResponsePaging('role.list', {
-        classSerialization: RoleListSerialization,
+        serialization: RoleListSerialization,
     })
-    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.ROLE_READ)
+    @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.ROLE_READ)
+    @AuthJwtAdminAccessProtected()
     @Get('/list')
     async list(
-        @Query()
+        @PaginationQuery(
+            ROLE_DEFAULT_PER_PAGE,
+            ROLE_DEFAULT_AVAILABLE_SEARCH,
+            ROLE_DEFAULT_SORT,
+            ROLE_DEFAULT_AVAILABLE_SORT
+        )
         {
             page,
             perPage,
             sort,
+            offset,
             search,
             availableSort,
             availableSearch,
-        }: RoleListDto
+        }: PaginationListDto,
+        @PaginationQueryFilterInBoolean('isActive', ROLE_DEFAULT_IS_ACTIVE)
+        isActive: Record<string, any>,
+        @PaginationQueryFilterInEnum(
+            'accessFor',
+            ROLE_DEFAULT_ACCESS_FOR,
+            ENUM_AUTH_ACCESS_FOR
+        )
+        accessFor: Record<string, any>
     ): Promise<IResponsePaging> {
-        const skip: number = await this.paginationService.skip(page, perPage);
         const find: Record<string, any> = {
             ...search,
+            ...isActive,
+            ...accessFor,
         };
 
         const roles: RoleEntity[] = await this.roleService.findAll(find, {
             paging: {
                 limit: perPage,
-                skip: skip,
+                offset,
             },
             sort,
         });
 
         const totalData: number = await this.roleService.getTotal({});
-        const totalPage: number = await this.paginationService.totalPage(
+        const totalPage: number = this.paginationService.totalPage(
             totalData,
             perPage
         );
@@ -118,11 +149,12 @@ export class RoleAdminController {
 
     @RoleGetDoc()
     @Response('role.get', {
-        classSerialization: RoleGetSerialization,
+        serialization: RoleGetSerialization,
     })
     @RoleGetGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthJwtAdminAccessProtected(ENUM_AUTH_PERMISSIONS.ROLE_READ)
+    @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.ROLE_READ)
+    @AuthJwtAdminAccessProtected()
     @Get('get/:role')
     async get(@GetRole() role: IRoleEntity): Promise<IResponse> {
         return role;
@@ -130,22 +162,23 @@ export class RoleAdminController {
 
     @RoleCreateDoc()
     @Response('role.create', {
-        classSerialization: ResponseIdSerialization,
+        serialization: ResponseIdSerialization,
     })
-    @AuthJwtAdminAccessProtected(
+    @AuthPermissionProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_CREATE
     )
+    @AuthJwtAdminAccessProtected()
     @Post('/create')
     async create(
         @Body()
         { name, permissions, accessFor }: RoleCreateDto
     ): Promise<IResponse> {
-        const exist: boolean = await this.roleService.exists(name, {
+        const exist: boolean = await this.roleService.existByName(name, {
             join: true,
         });
         if (exist) {
-            throw new BadRequestException({
+            throw new ConflictException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR,
                 message: 'role.error.exist',
             });
@@ -185,48 +218,83 @@ export class RoleAdminController {
 
     @RoleUpdateDoc()
     @Response('role.update', {
-        classSerialization: ResponseIdSerialization,
+        serialization: ResponseIdSerialization,
     })
     @RoleUpdateGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthJwtAdminAccessProtected(
+    @AuthPermissionProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
     )
+    @AuthJwtAdminAccessProtected()
     @Put('/update/:role')
     async update(
         @GetRole() role: IRoleEntity,
         @Body()
-        { name, permissions, accessFor }: RoleUpdateDto
+        { name }: RoleUpdateNameDto
     ): Promise<IResponse> {
-        const check: boolean = await this.roleService.exists(name, {
+        const check: boolean = await this.roleService.existByName(name, {
             excludeId: [role._id],
         });
         if (check) {
-            throw new BadRequestException({
+            throw new ConflictException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR,
                 message: 'role.error.exist',
             });
         }
 
-        for (const permission of permissions) {
-            const checkPermission: PermissionEntity =
-                await this.permissionService.findOneById(permission);
+        try {
+            await this.roleService.updateName(role._id, { name });
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                error: err.message,
+            });
+        }
 
-            if (!checkPermission) {
-                throw new NotFoundException({
-                    statusCode:
-                        ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR,
-                    message: 'permission.error.notFound',
-                });
-            }
+        return {
+            _id: role._id,
+        };
+    }
+
+    @RoleUpdateDoc()
+    @Response('role.updatePermission', {
+        serialization: ResponseIdSerialization,
+    })
+    @RoleUpdateGuard()
+    @RequestParamGuard(RoleRequestDto)
+    @AuthPermissionProtected(
+        ENUM_AUTH_PERMISSIONS.ROLE_READ,
+        ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
+    )
+    @AuthJwtAdminAccessProtected()
+    @Put('/update/:role/permission')
+    async updatePermission(
+        @GetRole() role: IRoleEntity,
+        @Body()
+        { accessFor, permissions }: RoleUpdatePermissionDto
+    ): Promise<IResponse> {
+        const promPermissions: Promise<PermissionEntity>[] = permissions.map(
+            (value) => this.permissionService.findOneById(value)
+        );
+        let checkPermission: PermissionEntity[] = await Promise.all(
+            promPermissions
+        );
+        checkPermission = checkPermission.filter((val) => val);
+
+        if (checkPermission.length !== permissions.length) {
+            throw new NotFoundException({
+                statusCode:
+                    ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR,
+                message: 'permission.error.notFound',
+            });
         }
 
         try {
-            await this.roleService.update(role._id, {
-                name,
-                permissions,
+            await this.roleService.updatePermission(role._id, {
                 accessFor,
+                permissions,
             });
         } catch (err: any) {
             throw new InternalServerErrorException({
@@ -245,10 +313,11 @@ export class RoleAdminController {
     @Response('role.delete')
     @RoleDeleteGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthJwtAdminAccessProtected(
+    @AuthPermissionProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
         ENUM_AUTH_PERMISSIONS.ROLE_DELETE
     )
+    @AuthJwtAdminAccessProtected()
     @Delete('/delete/:role')
     async delete(@GetRole() role: IRoleEntity): Promise<void> {
         try {
@@ -260,6 +329,7 @@ export class RoleAdminController {
                 error: err.message,
             });
         }
+
         return;
     }
 
@@ -267,10 +337,12 @@ export class RoleAdminController {
     @Response('role.inactive')
     @RoleUpdateInactiveGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthJwtAdminAccessProtected(
+    @AuthPermissionProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
-        ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
+        ENUM_AUTH_PERMISSIONS.ROLE_UPDATE,
+        ENUM_AUTH_PERMISSIONS.ROLE_INACTIVE
     )
+    @AuthJwtAdminAccessProtected()
     @Patch('/update/:role/inactive')
     async inactive(@GetRole() role: IRoleEntity): Promise<void> {
         try {
@@ -290,10 +362,12 @@ export class RoleAdminController {
     @Response('role.active')
     @RoleUpdateActiveGuard()
     @RequestParamGuard(RoleRequestDto)
-    @AuthJwtAdminAccessProtected(
+    @AuthPermissionProtected(
         ENUM_AUTH_PERMISSIONS.ROLE_READ,
-        ENUM_AUTH_PERMISSIONS.ROLE_UPDATE
+        ENUM_AUTH_PERMISSIONS.ROLE_UPDATE,
+        ENUM_AUTH_PERMISSIONS.ROLE_ACTIVE
     )
+    @AuthJwtAdminAccessProtected()
     @Patch('/update/:role/active')
     async active(@GetRole() role: IRoleEntity): Promise<void> {
         try {

@@ -9,10 +9,14 @@ import { AUTH_PERMISSION_META_KEY } from 'src/common/auth/constants/auth.constan
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
+import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
 
 @Injectable()
 export class AuthPayloadPermissionGuard implements CanActivate {
-    constructor(private reflector: Reflector) {}
+    constructor(
+        private readonly reflector: Reflector,
+        private readonly helperArrayService: HelperArrayService
+    ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredPermission: ENUM_AUTH_PERMISSIONS[] =
@@ -24,15 +28,16 @@ export class AuthPayloadPermissionGuard implements CanActivate {
             return true;
         }
 
-        const { user } = context.switchToHttp().getRequest();
-        const { role } = user;
-        if (role.accessFor === ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN) {
+        const { permissions, user } = context.switchToHttp().getRequest();
+        const { accessFor } = user;
+
+        if (accessFor === ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN) {
             return true;
         }
 
-        const permissions: string[] = role.permissions;
-        const hasPermission: boolean = requiredPermission.every((permission) =>
-            permissions.includes(permission)
+        const hasPermission: boolean = this.helperArrayService.in(
+            permissions,
+            requiredPermission
         );
 
         if (!hasPermission) {

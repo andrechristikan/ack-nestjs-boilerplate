@@ -1,7 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { HelperService } from './services/helper.service';
 import { HelperArrayService } from './services/helper.array.service';
 import { HelperDateService } from './services/helper.date.service';
 import { HelperEncryptionService } from './services/helper.encryption.service';
@@ -14,7 +13,6 @@ import { HelperGeoService } from './services/helper.geo.service';
 @Global()
 @Module({
     providers: [
-        HelperService,
         HelperArrayService,
         HelperDateService,
         HelperEncryptionService,
@@ -25,7 +23,6 @@ import { HelperGeoService } from './services/helper.geo.service';
         HelperGeoService,
     ],
     exports: [
-        HelperService,
         HelperArrayService,
         HelperDateService,
         HelperEncryptionService,

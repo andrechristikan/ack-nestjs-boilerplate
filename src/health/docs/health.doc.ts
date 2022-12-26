@@ -8,7 +8,7 @@ export function HealthCheckDoc(): MethodDecorator {
             auth: {
                 jwtAccessToken: false,
             },
-            response: { classSerialization: HealthSerialization },
+            response: { serialization: HealthSerialization },
         })
     );
 }

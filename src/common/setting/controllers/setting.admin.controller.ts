@@ -8,6 +8,7 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
+import { AuthPermissionProtected } from 'src/common/auth/decorators/auth.permission.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
@@ -18,7 +19,7 @@ import { SettingUpdateGuard } from 'src/common/setting/decorators/setting.admin.
 import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
 import { SettingUpdateDoc } from 'src/common/setting/docs/setting.admin.doc';
 import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
-import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
+import { SettingUpdateValueDto } from 'src/common/setting/dtos/setting.update-value.dto';
 import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingService } from 'src/common/setting/services/setting.service';
 
@@ -32,19 +33,20 @@ export class SettingAdminController {
 
     @SettingUpdateDoc()
     @Response('setting.update', {
-        classSerialization: ResponseIdSerialization,
+        serialization: ResponseIdSerialization,
     })
     @SettingUpdateGuard()
     @RequestParamGuard(SettingRequestDto)
-    @AuthJwtAdminAccessProtected(
+    @AuthPermissionProtected(
         ENUM_AUTH_PERMISSIONS.SETTING_READ,
         ENUM_AUTH_PERMISSIONS.SETTING_UPDATE
     )
+    @AuthJwtAdminAccessProtected()
     @Put('/update/:setting')
     async update(
         @GetSetting() setting: SettingEntity,
         @Body()
-        body: SettingUpdateDto
+        body: SettingUpdateValueDto
     ): Promise<IResponse> {
         const check = await this.settingService.checkValue(
             body.value,
@@ -59,7 +61,7 @@ export class SettingAdminController {
         }
 
         try {
-            await this.settingService.updateOneById(setting._id, body);
+            await this.settingService.updateValue(setting._id, body);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

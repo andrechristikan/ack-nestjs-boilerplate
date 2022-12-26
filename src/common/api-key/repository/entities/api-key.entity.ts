@@ -44,21 +44,6 @@ export class ApiKeyEntity extends DatabaseMongoUUIDEntityAbstract {
 
     @Prop({
         required: true,
-        type: String,
-        index: true,
-        trim: true,
-    })
-    encryptionKey: string;
-
-    @Prop({
-        required: true,
-        type: String,
-        trim: true,
-    })
-    passphrase: string;
-
-    @Prop({
-        required: true,
         index: true,
         type: Boolean,
     })

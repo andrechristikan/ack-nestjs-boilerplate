@@ -20,6 +20,7 @@ export class LoggerService implements ILoggerService {
         method,
         requestId,
         role,
+        accessFor,
         params,
         bodies,
         path,
@@ -30,13 +31,13 @@ export class LoggerService implements ILoggerService {
         create.level = ENUM_LOGGER_LEVEL.INFO;
         create.user = user;
         create.apiKey = apiKey;
-        create.anonymous = user ? false : true;
+        create.anonymous = !user;
         create.action = action;
         create.description = description;
         create.method = method;
         create.requestId = requestId;
-        create.role = role ? role._id : undefined;
-        create.accessFor = role && role.accessFor ? role.accessFor : undefined;
+        create.role = role;
+        create.accessFor = accessFor;
         create.params = params;
         create.bodies = bodies;
         create.path = path;
@@ -54,6 +55,7 @@ export class LoggerService implements ILoggerService {
         method,
         requestId,
         role,
+        accessFor,
         params,
         bodies,
         path,
@@ -64,13 +66,13 @@ export class LoggerService implements ILoggerService {
         create.level = ENUM_LOGGER_LEVEL.DEBUG;
         create.user = user;
         create.apiKey = apiKey;
-        create.anonymous = user ? false : true;
+        create.anonymous = !user;
         create.action = action;
         create.description = description;
         create.method = method;
         create.requestId = requestId;
-        create.role = role ? role._id : undefined;
-        create.accessFor = role && role.accessFor ? role.accessFor : undefined;
+        create.role = role;
+        create.accessFor = accessFor;
         create.params = params;
         create.bodies = bodies;
         create.path = path;
@@ -80,7 +82,7 @@ export class LoggerService implements ILoggerService {
         return this.loggerRepository.create<LoggerEntity>(create);
     }
 
-    async warning({
+    async warn({
         action,
         description,
         apiKey,
@@ -88,6 +90,7 @@ export class LoggerService implements ILoggerService {
         method,
         requestId,
         role,
+        accessFor,
         params,
         bodies,
         path,
@@ -98,13 +101,13 @@ export class LoggerService implements ILoggerService {
         create.level = ENUM_LOGGER_LEVEL.WARM;
         create.user = user;
         create.apiKey = apiKey;
-        create.anonymous = user ? false : true;
+        create.anonymous = !user;
         create.action = action;
         create.description = description;
         create.method = method;
         create.requestId = requestId;
-        create.role = role ? role._id : undefined;
-        create.accessFor = role && role.accessFor ? role.accessFor : undefined;
+        create.role = role;
+        create.accessFor = accessFor;
         create.params = params;
         create.bodies = bodies;
         create.path = path;
@@ -122,6 +125,7 @@ export class LoggerService implements ILoggerService {
         method,
         requestId,
         role,
+        accessFor,
         params,
         bodies,
         path,
@@ -132,13 +136,13 @@ export class LoggerService implements ILoggerService {
         create.level = ENUM_LOGGER_LEVEL.FATAL;
         create.user = user;
         create.apiKey = apiKey;
-        create.anonymous = user ? false : true;
+        create.anonymous = !user;
         create.action = action;
         create.description = description;
         create.method = method;
         create.requestId = requestId;
-        create.role = role ? role._id : undefined;
-        create.accessFor = role && role.accessFor ? role.accessFor : undefined;
+        create.role = role;
+        create.accessFor = accessFor;
         create.params = params;
         create.bodies = bodies;
         create.path = path;
@@ -157,6 +161,7 @@ export class LoggerService implements ILoggerService {
         method,
         requestId,
         role,
+        accessFor,
         params,
         bodies,
         path,
@@ -167,13 +172,13 @@ export class LoggerService implements ILoggerService {
         create.level = level;
         create.user = user;
         create.apiKey = apiKey;
-        create.anonymous = user ? false : true;
+        create.anonymous = !user;
         create.action = action;
         create.description = description;
         create.method = method;
         create.requestId = requestId;
-        create.role = role ? role._id : undefined;
-        create.accessFor = role && role.accessFor ? role.accessFor : undefined;
+        create.role = role;
+        create.accessFor = accessFor;
         create.params = params;
         create.bodies = bodies;
         create.path = path;

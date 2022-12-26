@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestApplication } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 import {
     AwsS3MultipartPartsSerialization,
     AwsS3MultipartSerialization,
@@ -20,7 +21,7 @@ export default async function (app: NestApplication) {
     const docVersion: string = configService.get<string>('doc.version');
     const docPrefix: string = configService.get<string>('doc.prefix');
 
-    if (env !== 'production') {
+    if (env !== ENUM_APP_ENVIRONMENT.PRODUCTION) {
         const documentBuild = new DocumentBuilder()
             .setTitle(docName)
             .setDescription(docDesc)

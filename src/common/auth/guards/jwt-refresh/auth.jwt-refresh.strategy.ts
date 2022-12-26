@@ -15,17 +15,17 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
     ) {
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderWithScheme(
-                configService.get<string>('auth.jwt.prefixAuthorization')
+                configService.get<string>('auth.prefixAuthorization')
             ),
             ignoreExpiration: false,
             jsonWebTokenOptions: {
                 ignoreNotBefore: false,
-                audience: configService.get<string>('auth.jwt.audience'),
-                issuer: configService.get<string>('auth.jwt.issuer'),
-                subject: configService.get<string>('auth.jwt.subject'),
+                audience: configService.get<string>('auth.audience'),
+                issuer: configService.get<string>('auth.issuer'),
+                subject: configService.get<string>('auth.subject'),
             },
             secretOrKey: configService.get<string>(
-                'auth.jwt.refreshToken.secretKey'
+                'auth.refreshToken.secretKey'
             ),
         });
     }
@@ -33,8 +33,11 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
     async validate({
         data,
     }: Record<string, any>): Promise<Record<string, any>> {
-        return this.configService.get<boolean>('auth.jwt.payloadEncryption')
-            ? this.authService.decryptRefreshToken(data)
+        const payloadEncryption: boolean =
+            await this.authService.getPayloadEncryption();
+
+        return payloadEncryption
+            ? this.authService.decryptRefreshToken({ data })
             : data;
     }
 }

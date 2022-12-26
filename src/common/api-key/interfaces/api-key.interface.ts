@@ -6,10 +6,6 @@ export interface IApiKeyPayload {
     name: string;
 }
 
-export type IApiKey = Partial<ApiKeyEntity> & { secret: string };
-
-export interface IApiKeyRequestHashedData {
-    key: string;
-    timestamp: number;
-    hash: string;
+export interface IApiKeyEntity extends ApiKeyEntity {
+    secret: string;
 }

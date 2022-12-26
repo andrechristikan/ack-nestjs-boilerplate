@@ -1,7 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { HelperStringService } from 'src/common/helper/services/helper.string.service';
-import { plainToInstance } from 'class-transformer';
 import { IUserService } from 'src/modules/user/interfaces/user.service.interface';
 import {
     IDatabaseCreateOptions,
@@ -10,22 +7,28 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
+    IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
-import {
-    IUserCreate,
-    IUserEntity,
-} from 'src/modules/user/interfaces/user.interface';
-import { UserUpdateDto } from 'src/modules/user/dtos/user.update.dto';
-import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
-import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
-import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { UserPhotoDto } from 'src/modules/user/dtos/user.photo.dto';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
+import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
 import { UserPasswordDto } from 'src/modules/user/dtos/user.password.dto';
 import { UserPasswordExpiredDto } from 'src/modules/user/dtos/user.password-expired.dto';
 import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
-import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
-import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
+import { UserPasswordAttemptDto } from 'src/modules/user/dtos/user.password-attempt.dto';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { ConfigService } from '@nestjs/config';
+import { HelperStringService } from 'src/common/helper/services/helper.string.service';
+import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
+import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
+import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
+import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
+import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
+import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
+import { plainToInstance } from 'class-transformer';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
+import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload-permission.serialization';
+import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -33,8 +36,8 @@ export class UserService implements IUserService {
 
     constructor(
         private readonly userRepository: UserRepository,
-        private readonly helperStringService: HelperStringService,
         private readonly helperDateService: HelperDateService,
+        private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
         this.uploadPath = this.configService.get<string>('user.uploadPath');
@@ -80,33 +83,28 @@ export class UserService implements IUserService {
             username,
             firstName,
             lastName,
-            password,
-            passwordExpired,
-            salt,
             email,
             mobileNumber,
             role,
-        }: IUserCreate,
+        }: UserCreateDto,
+        { passwordExpired, passwordHash, salt }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserEntity> {
-        const user: UserEntity = new UserEntity();
-        user.username = username;
-        user.firstName = firstName;
-        user.email = email;
-        user.password = password;
-        user.role = role;
-        user.isActive = true;
-        user.lastName = lastName;
-        user.salt = salt;
-        user.passwordExpired = passwordExpired;
-        user.signUpDate = this.helperDateService.create();
-        user.passwordAttempt = 0;
+        const create: UserEntity = new UserEntity();
+        create.username = username;
+        create.firstName = firstName;
+        create.email = email;
+        create.password = passwordHash;
+        create.role = role;
+        create.isActive = true;
+        create.lastName = lastName;
+        create.salt = salt;
+        create.passwordExpired = passwordExpired;
+        create.signUpDate = this.helperDateService.create();
+        create.passwordAttempt = 0;
+        create.mobileNumber = mobileNumber ?? undefined;
 
-        if (mobileNumber) {
-            user.mobileNumber = mobileNumber;
-        }
-
-        return this.userRepository.create<UserEntity>(user, options);
+        return this.userRepository.create<UserEntity>(create, options);
     }
 
     async deleteOneById(
@@ -123,19 +121,34 @@ export class UserService implements IUserService {
         return this.userRepository.deleteOne(find, options);
     }
 
-    async updateOneById(
+    async updateName(
         _id: string,
-        data: UserUpdateDto,
+        data: UserUpdateNameDto,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        return this.userRepository.updateOneById<UserUpdateDto>(
+        return this.userRepository.updateOneById<UserUpdateNameDto>(
             _id,
             data,
             options
         );
     }
 
-    async existEmail(
+    async updatePhoto(
+        _id: string,
+        photo: AwsS3Serialization,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const update: UserPhotoDto = new UserPhotoDto();
+        update.photo = photo;
+
+        return this.userRepository.updateOneById<UserPhotoDto>(
+            _id,
+            update,
+            options
+        );
+    }
+
+    async existByEmail(
         email: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean> {
@@ -150,7 +163,7 @@ export class UserService implements IUserService {
         );
     }
 
-    async existMobileNumber(
+    async existByMobileNumber(
         mobileNumber: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean> {
@@ -162,48 +175,22 @@ export class UserService implements IUserService {
         );
     }
 
-    async existUsername(
+    async existByUsername(
         username: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean> {
         return this.userRepository.exists({ username }, options);
     }
 
-    async updatePhoto(
-        _id: string,
-        aws: AwsS3Serialization,
-        options?: IDatabaseOptions
-    ): Promise<UserEntity> {
-        const update: UserPhotoDto = {
-            photo: aws,
-        };
-
-        return this.userRepository.updateOneById<UserPhotoDto>(
-            _id,
-            update,
-            options
-        );
-    }
-
-    async createRandomFilename(): Promise<Record<string, any>> {
-        const filename: string = this.helperStringService.random(20);
-
-        return {
-            path: this.uploadPath,
-            filename: filename,
-        };
-    }
-
     async updatePassword(
         _id: string,
-        { salt, passwordHash, passwordExpired }: IAuthPassword,
+        { passwordHash, passwordExpired, salt }: IAuthPassword,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserPasswordDto = {
-            password: passwordHash,
-            passwordExpired: passwordExpired,
-            salt: salt,
-        };
+        const update: UserPasswordDto = new UserPasswordDto();
+        update.password = passwordHash;
+        update.passwordExpired = passwordExpired;
+        update.salt = salt;
 
         return this.userRepository.updateOneById<UserPasswordDto>(
             _id,
@@ -217,30 +204,90 @@ export class UserService implements IUserService {
         passwordExpired: Date,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserPasswordExpiredDto = {
-            passwordExpired: passwordExpired,
-        };
+        const update: UserPasswordDto = new UserPasswordDto();
+        update.passwordExpired = passwordExpired;
 
-        return this.userRepository.updateOneById(_id, update, options);
+        return this.userRepository.updateOneById<UserPasswordExpiredDto>(
+            _id,
+            update,
+            options
+        );
+    }
+
+    async active(_id: string, options?: IDatabaseOptions): Promise<UserEntity> {
+        const dto: UserActiveDto = new UserActiveDto();
+        dto.isActive = true;
+
+        return this.userRepository.updateOneById<UserActiveDto>(
+            _id,
+            dto,
+            options
+        );
     }
 
     async inactive(
         _id: string,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserActiveDto = {
-            isActive: false,
-        };
+        const dto: UserActiveDto = new UserActiveDto();
+        dto.isActive = false;
 
-        return this.userRepository.updateOneById(_id, update, options);
+        return this.userRepository.updateOneById<UserActiveDto>(
+            _id,
+            dto,
+            options
+        );
     }
 
-    async active(_id: string, options?: IDatabaseOptions): Promise<UserEntity> {
-        const update: UserActiveDto = {
-            isActive: true,
-        };
+    async maxPasswordAttempt(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const update: UserPasswordAttemptDto = new UserPasswordAttemptDto();
+        update.passwordAttempt = 3;
 
-        return this.userRepository.updateOneById(_id, update, options);
+        return this.userRepository.updateOneById<UserPasswordAttemptDto>(
+            _id,
+            update,
+            options
+        );
+    }
+
+    async increasePasswordAttempt(
+        user: UserEntity | IUserEntity,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const update: UserPasswordAttemptDto = new UserPasswordAttemptDto();
+        update.passwordAttempt = ++user.passwordAttempt;
+
+        return this.userRepository.updateOneById<UserPasswordAttemptDto>(
+            user._id,
+            update,
+            options
+        );
+    }
+
+    async resetPasswordAttempt(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const update: UserPasswordAttemptDto = new UserPasswordAttemptDto();
+        update.passwordAttempt = 0;
+
+        return this.userRepository.updateOneById<UserPasswordAttemptDto>(
+            _id,
+            update,
+            options
+        );
+    }
+
+    async createPhotoFilename(): Promise<Record<string, any>> {
+        const filename: string = this.helperStringService.random(20);
+
+        return {
+            path: this.uploadPath,
+            filename: filename,
+        };
     }
 
     async payloadSerialization(
@@ -249,16 +296,27 @@ export class UserService implements IUserService {
         return plainToInstance(UserPayloadSerialization, data);
     }
 
-    async increasePasswordAttempt(
+    async payloadPermissionSerialization(
         _id: string,
-        options?: IDatabaseOptions
-    ): Promise<UserEntity> {
-        const user: UserEntity = await this.findOneById(_id, options);
+        permissions: PermissionEntity[]
+    ): Promise<UserPayloadPermissionSerialization> {
+        return plainToInstance(UserPayloadPermissionSerialization, {
+            _id,
+            permissions,
+        });
+    }
 
-        const update = {
-            passwordAttempt: ++user.passwordAttempt,
-        };
+    async permissionByGroup(
+        user: IUserEntity,
+        scope: ENUM_PERMISSION_GROUP[]
+    ): Promise<PermissionEntity[]> {
+        return user.role.permissions.filter((val) => scope.includes(val.group));
+    }
 
-        return this.userRepository.updateOneById(_id, update, options);
+    async deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseManyOptions
+    ): Promise<boolean> {
+        return this.userRepository.deleteMany(find, options);
     }
 }

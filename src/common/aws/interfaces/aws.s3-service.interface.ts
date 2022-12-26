@@ -1,4 +1,8 @@
-import { CompletedPart, UploadPartRequest } from '@aws-sdk/client-s3';
+import {
+    CompletedPart,
+    HeadBucketCommandOutput,
+    UploadPartRequest,
+} from '@aws-sdk/client-s3';
 import { IAwsS3PutItemOptions } from 'src/common/aws/interfaces/aws.interface';
 import {
     AwsS3MultipartPartsSerialization,
@@ -8,7 +12,7 @@ import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.seriali
 import { Readable } from 'stream';
 
 export interface IAwsS3Service {
-    checkConnection(): Promise<Record<string, any>>;
+    checkConnection(): Promise<HeadBucketCommandOutput>;
 
     listBucket(): Promise<string[]>;
 
@@ -17,7 +21,7 @@ export interface IAwsS3Service {
     getItemInBucket(
         filename: string,
         path?: string
-    ): Promise<Record<string, any>>;
+    ): Promise<Readable | ReadableStream<any> | Blob>;
 
     putItemInBucket(
         filename: string,

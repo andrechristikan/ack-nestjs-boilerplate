@@ -5,7 +5,6 @@ import {
     IHelperDateOptionsDiff,
     IHelperDateOptionsFormat,
     IHelperDateOptionsForward,
-    IHelperDateOptionsMonth,
 } from 'src/common/helper/interfaces/helper.interface';
 
 export interface IHelperDateService {
@@ -13,7 +12,7 @@ export interface IHelperDateService {
 
     diff(
         dateOne: Date,
-        dateTwo: Date,
+        dateTwoMoreThanDateOne: Date,
         options?: IHelperDateOptionsDiff
     ): number;
 
@@ -21,9 +20,15 @@ export interface IHelperDateService {
 
     checkTimestamp(timestamp: number): boolean;
 
-    create(options?: IHelperDateOptionsCreate): Date;
+    create(
+        date?: string | Date | number,
+        options?: IHelperDateOptionsCreate
+    ): Date;
 
-    timestamp(options?: IHelperDateOptionsCreate): number;
+    timestamp(
+        date?: string | Date | number,
+        options?: IHelperDateOptionsCreate
+    ): number;
 
     format(date: Date, options?: IHelperDateOptionsFormat): string;
 
@@ -57,6 +62,10 @@ export interface IHelperDateService {
         options?: IHelperDateOptionsBackward
     ): Date;
 
+    forwardInHours(hours: number, options?: IHelperDateOptionsForward): Date;
+
+    backwardInHours(hours: number, options?: IHelperDateOptionsBackward): Date;
+
     forwardInDays(days: number, options?: IHelperDateOptionsForward): Date;
 
     backwardInDays(days: number, options?: IHelperDateOptionsBackward): Date;
@@ -68,13 +77,13 @@ export interface IHelperDateService {
         options?: IHelperDateOptionsBackward
     ): Date;
 
-    endOfMonth(month: number, options?: IHelperDateOptionsMonth): Date;
+    endOfMonth(date?: Date): Date;
 
-    startOfMonth(month: number, options?: IHelperDateOptionsMonth): Date;
+    startOfMonth(date?: Date): Date;
 
-    endOfYear(year: number): Date;
+    endOfYear(date?: Date): Date;
 
-    startOfYear(year: number): Date;
+    startOfYear(date?: Date): Date;
 
     endOfDay(date?: Date): Date;
 

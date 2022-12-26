@@ -36,12 +36,12 @@ export interface IDocResponseOptions<T> {
     statusCode?: number;
     httpStatus?: HttpStatus;
     bodyType?: ENUM_DOC_RESPONSE_BODY_TYPE;
-    classSerialization?: ClassConstructor<T>;
+    serialization?: ClassConstructor<T>;
 }
 
 export interface IDocPagingResponseOptions<T>
     extends Pick<IDocResponseOptions<T>, 'statusCode'> {
-    classSerialization: ClassConstructor<T>;
+    serialization: ClassConstructor<T>;
     availableSearch: string[];
     availableSort: string[];
 }

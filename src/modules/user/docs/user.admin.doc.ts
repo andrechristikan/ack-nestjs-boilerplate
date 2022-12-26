@@ -1,7 +1,10 @@
 import { applyDecorators, HttpStatus } from '@nestjs/common';
 import { Doc, DocPaging } from 'src/common/doc/decorators/doc.decorator';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
-import { UserDocParamsGet } from 'src/modules/user/constants/user.doc.constant';
+import {
+    UserDocParamsGet,
+    UserDocQueryIsActive,
+} from 'src/modules/user/constants/user.doc.constant';
 import {
     USER_DEFAULT_AVAILABLE_SEARCH,
     USER_DEFAULT_AVAILABLE_SORT,
@@ -16,8 +19,9 @@ export function UserListDoc(): MethodDecorator {
             auth: {
                 jwtAccessToken: true,
             },
+            request: { queries: UserDocQueryIsActive },
             response: {
-                classSerialization: UserListSerialization,
+                serialization: UserListSerialization,
                 availableSort: USER_DEFAULT_AVAILABLE_SORT,
                 availableSearch: USER_DEFAULT_AVAILABLE_SEARCH,
             },
@@ -34,7 +38,7 @@ export function UserGetDoc(): MethodDecorator {
             request: {
                 params: UserDocParamsGet,
             },
-            response: { classSerialization: UserGetSerialization },
+            response: { serialization: UserGetSerialization },
         })
     );
 }
@@ -47,7 +51,7 @@ export function UserCreateDoc(): MethodDecorator {
             },
             response: {
                 httpStatus: HttpStatus.CREATED,
-                classSerialization: ResponseIdSerialization,
+                serialization: ResponseIdSerialization,
             },
         })
     );
@@ -62,7 +66,7 @@ export function UserUpdateDoc(): MethodDecorator {
             request: {
                 params: UserDocParamsGet,
             },
-            response: { classSerialization: ResponseIdSerialization },
+            response: { serialization: ResponseIdSerialization },
         })
     );
 }
@@ -75,6 +79,33 @@ export function UserDeleteDoc(): MethodDecorator {
             },
             request: {
                 params: UserDocParamsGet,
+            },
+        })
+    );
+}
+
+export function UserImportDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc<UserImportSerialization>('user.import', {
+            auth: {
+                jwtAccessToken: true,
+            },
+            response: {
+                httpStatus: HttpStatus.CREATED,
+                serialization: UserImportSerialization,
+            },
+        })
+    );
+}
+
+export function UserExportDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc('user.export', {
+            auth: {
+                jwtAccessToken: true,
+            },
+            response: {
+                httpStatus: HttpStatus.OK,
             },
         })
     );
@@ -101,33 +132,6 @@ export function UserInactiveDoc(): MethodDecorator {
             },
             request: {
                 params: UserDocParamsGet,
-            },
-        })
-    );
-}
-
-export function UserImportDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc<UserImportSerialization>('user.import', {
-            auth: {
-                jwtAccessToken: true,
-            },
-            response: {
-                httpStatus: HttpStatus.CREATED,
-                classSerialization: UserImportSerialization,
-            },
-        })
-    );
-}
-
-export function UserExportDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc('user.export', {
-            auth: {
-                jwtAccessToken: true,
-            },
-            response: {
-                httpStatus: HttpStatus.OK,
             },
         })
     );

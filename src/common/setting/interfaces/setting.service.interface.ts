@@ -4,10 +4,11 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
+    IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
 import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
-import { SettingUpdateDto } from 'src/common/setting/dtos/setting.update.dto';
+import { SettingUpdateValueDto } from 'src/common/setting/dtos/setting.update-value.dto';
 import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 
 export interface ISettingService {
@@ -36,10 +37,15 @@ export interface ISettingService {
         options?: IDatabaseCreateOptions
     ): Promise<SettingEntity>;
 
-    updateOneById(
+    updateValue(
         _id: string,
-        data: SettingUpdateDto,
+        data: SettingUpdateValueDto,
         options?: IDatabaseOptions
+    ): Promise<SettingEntity>;
+
+    deleteOneById(
+        _id: string,
+        options?: IDatabaseSoftDeleteOptions
     ): Promise<SettingEntity>;
 
     deleteOne(
@@ -50,4 +56,17 @@ export interface ISettingService {
     getValue<T>(setting: SettingEntity): Promise<T>;
 
     checkValue(value: string, type: ENUM_SETTING_DATA_TYPE): Promise<boolean>;
+
+    getMaintenance(): Promise<boolean>;
+
+    getMobileNumberCountryCodeAllowed(): Promise<string[]>;
+
+    getPasswordAttempt(): Promise<boolean>;
+
+    getMaxPasswordAttempt(): Promise<number>;
+
+    deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseManyOptions
+    ): Promise<boolean>;
 }

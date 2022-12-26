@@ -1,6 +1,7 @@
 import {
     ENUM_PAGINATION_SORT_TYPE,
     ENUM_PAGINATION_FILTER_CASE_OPTIONS,
+    ENUM_PAGINATION_FILTER_DATE_TIME_OPTIONS,
 } from 'src/common/pagination/constants/pagination.enum.constant';
 
 export type IPaginationSort = Record<string, ENUM_PAGINATION_SORT_TYPE>;
@@ -8,22 +9,21 @@ export type IPaginationSort = Record<string, ENUM_PAGINATION_SORT_TYPE>;
 export interface IPaginationOptions {
     paging?: {
         limit: number;
-        skip: number;
+        offset: number;
     };
     sort?: IPaginationSort;
 }
 
 export interface IPaginationFilterDateOptions {
-    endOfDate?: boolean;
-    operation?: {
-        moreThanEqualToday?: boolean;
-        lessThanEqualToday?: boolean;
-        moreThanToday?: boolean;
-        lessThanToday?: boolean;
-    };
+    time?: ENUM_PAGINATION_FILTER_DATE_TIME_OPTIONS;
 }
 
-export interface IPaginationFilterStringOptions {
+export interface IPaginationFilterStringContainOptions {
     case?: ENUM_PAGINATION_FILTER_CASE_OPTIONS;
     trim?: boolean;
+}
+
+export interface IPaginationFilterStringEqualOptions
+    extends IPaginationFilterStringContainOptions {
+    isNumber?: boolean;
 }

@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
-import { HttpAdapterHost } from '@nestjs/core';
 import { ValidationError } from 'class-validator';
 import { Response } from 'express';
 import { DebuggerService } from 'src/common/debugger/services/debugger.service';
@@ -30,22 +29,25 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 // The exception filter only catch HttpException
 @Catch()
 export class ErrorHttpFilter implements ExceptionFilter {
+    private readonly appDefaultLanguage: string[];
+
     constructor(
         @Optional() private readonly debuggerService: DebuggerService,
         private readonly configService: ConfigService,
         private readonly messageService: MessageService,
-        private readonly httpAdapterHost: HttpAdapterHost,
         private readonly helperDateService: HelperDateService
-    ) {}
+    ) {
+        this.appDefaultLanguage =
+            this.configService.get<string[]>('app.language');
+    }
 
     async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
         const ctx: HttpArgumentsHost = host.switchToHttp();
         const request = ctx.getRequest<IRequestApp>();
 
         // get request headers
-        const customLang =
-            ctx.getRequest<IRequestApp>().customLang ||
-            this.configService.get<string>('app.language').split(',');
+        const customLang: string[] =
+            ctx.getRequest<IRequestApp>().customLang ?? this.appDefaultLanguage;
 
         // get metadata
         const __class = request.__class || ErrorHttpFilter.name;
@@ -69,7 +71,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
             // Debugger
             try {
                 this.debuggerService.error(
-                    request && request.id ? request.id : ErrorHttpFilter.name,
+                    request?.id ? request.id : ErrorHttpFilter.name,
                     {
                         description: exception.message,
                         class: __class,
@@ -101,7 +103,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
             } = responseException;
 
             let { errors } = responseException;
-            if (errors && errors.length > 0) {
+            if (errors?.length > 0) {
                 errors =
                     errorType === ERROR_TYPE.IMPORT
                         ? await this.messageService.getImportErrorsMessage(
@@ -152,9 +154,9 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 .status(statusHttp)
                 .json(resResponse);
         } else {
+            console.error('exception', exception);
             // In certain situations `httpAdapter` might not be available in the
             // constructor method, thus we should resolve it here.
-            const { httpAdapter } = this.httpAdapterHost;
             const message: string = (await this.messageService.get(
                 'http.serverError.internalServerError'
             )) as string;
@@ -179,15 +181,6 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 metadata,
             };
 
-            const responseExpress = ctx.getResponse();
-            responseExpress
-                .setHeader('x-custom-lang', customLang)
-                .setHeader('x-timestamp', __timestamp)
-                .setHeader('x-timezone', __timezone)
-                .setHeader('x-request-id', __requestId)
-                .setHeader('x-version', __version)
-                .setHeader('x-repo-version', __repoVersion);
-
             // Debugger
             try {
                 this.debuggerService.error(
@@ -202,11 +195,16 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 );
             } catch (err: unknown) {}
 
-            httpAdapter.reply(
-                responseExpress,
-                responseBody,
-                HttpStatus.INTERNAL_SERVER_ERROR
-            );
+            const responseExpress: Response = ctx.getResponse<Response>();
+            responseExpress
+                .setHeader('x-custom-lang', customLang)
+                .setHeader('x-timestamp', __timestamp)
+                .setHeader('x-timezone', __timezone)
+                .setHeader('x-request-id', __requestId)
+                .setHeader('x-version', __version)
+                .setHeader('x-repo-version', __repoVersion)
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .json(responseBody);
         }
 
         return;

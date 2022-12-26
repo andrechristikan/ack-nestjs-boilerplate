@@ -1,16 +1,14 @@
 import {
-    BadRequestException,
     Body,
+    ConflictException,
     Controller,
     InternalServerErrorException,
-    NotFoundException,
     Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { Response } from 'src/common/response/decorators/response.decorator';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
@@ -40,27 +38,21 @@ export class UserPublicController {
         const role: RoleEntity = await this.roleService.findOne<RoleEntity>({
             name: 'user',
         });
-        if (!role) {
-            throw new NotFoundException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
-                message: 'role.error.notFound',
-            });
-        }
 
-        const usernameExist: boolean = await this.userService.existUsername(
+        const usernameExist: boolean = await this.userService.existByUsername(
             username
         );
         if (usernameExist) {
-            throw new BadRequestException({
+            throw new ConflictException({
                 statusCode:
                     ENUM_USER_STATUS_CODE_ERROR.USER_USERNAME_EXISTS_ERROR,
                 message: 'user.error.usernameExist',
             });
         }
 
-        const emailExist: boolean = await this.userService.existEmail(email);
+        const emailExist: boolean = await this.userService.existByEmail(email);
         if (emailExist) {
-            throw new BadRequestException({
+            throw new ConflictException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
                 message: 'user.error.emailExist',
             });
@@ -68,9 +60,9 @@ export class UserPublicController {
 
         if (mobileNumber) {
             const mobileNumberExist: boolean =
-                await this.userService.existMobileNumber(mobileNumber);
+                await this.userService.existByMobileNumber(mobileNumber);
             if (mobileNumberExist) {
-                throw new BadRequestException({
+                throw new ConflictException({
                     statusCode:
                         ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
                     message: 'user.error.mobileNumberExist',
@@ -83,17 +75,10 @@ export class UserPublicController {
                 body.password
             );
 
-            await this.userService.create({
-                username,
-                firstName: body.firstName,
-                lastName: body.lastName,
-                email,
-                mobileNumber,
-                role: role._id,
-                password: password.passwordHash,
-                passwordExpired: password.passwordExpired,
-                salt: password.salt,
-            });
+            await this.userService.create(
+                { email, mobileNumber, username, ...body, role: role._id },
+                password
+            );
 
             return;
         } catch (err: any) {

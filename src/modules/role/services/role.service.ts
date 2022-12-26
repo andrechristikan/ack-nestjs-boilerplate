@@ -7,10 +7,13 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
+    IDatabaseManyOptions,
+    IDatabaseCreateManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { RoleActiveDto } from 'src/modules/role/dtos/role.active.dto';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
-import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
+import { RoleUpdateNameDto } from 'src/modules/role/dtos/role.update-name.dto';
+import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
 import { IRoleService } from 'src/modules/role/interfaces/role.service.interface';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { RoleRepository } from 'src/modules/role/repository/repositories/role.repository';
@@ -47,7 +50,7 @@ export class RoleService implements IRoleService {
         return this.roleRepository.getTotal(find, options);
     }
 
-    async exists(
+    async existByName(
         name: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean> {
@@ -60,12 +63,12 @@ export class RoleService implements IRoleService {
     }
 
     async create(
-        { name, permissions, accessFor }: RoleCreateDto,
+        { accessFor, permissions, name }: RoleCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<RoleEntity> {
         const create: RoleEntity = new RoleEntity();
         create.accessFor = accessFor;
-        create.permissions = permissions.map((val) => `${val}`);
+        create.permissions = permissions;
         create.isActive = true;
         create.name = name;
 
@@ -84,14 +87,37 @@ export class RoleService implements IRoleService {
         return this.roleRepository.create<RoleEntity>(create, options);
     }
 
-    async update(
+    async updateName(
         _id: string,
-        data: RoleUpdateDto,
+        data: RoleUpdateNameDto,
         options?: IDatabaseOptions
     ): Promise<RoleEntity> {
-        return this.roleRepository.updateOneById<RoleUpdateDto>(
+        return this.roleRepository.updateOneById<RoleUpdateNameDto>(
             _id,
             data,
+            options
+        );
+    }
+
+    async updatePermission(
+        _id: string,
+        data: RoleUpdatePermissionDto,
+        options?: IDatabaseOptions
+    ): Promise<RoleEntity> {
+        return this.roleRepository.updateOneById<RoleUpdatePermissionDto>(
+            _id,
+            data,
+            options
+        );
+    }
+
+    async active(_id: string, options?: IDatabaseOptions): Promise<RoleEntity> {
+        const dto: RoleActiveDto = new RoleActiveDto();
+        dto.isActive = true;
+
+        return this.roleRepository.updateOneById<RoleActiveDto>(
+            _id,
+            dto,
             options
         );
     }
@@ -100,19 +126,14 @@ export class RoleService implements IRoleService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<RoleEntity> {
-        const update: RoleActiveDto = {
-            isActive: false,
-        };
+        const dto: RoleActiveDto = new RoleActiveDto();
+        dto.isActive = false;
 
-        return this.roleRepository.updateOneById(_id, update, options);
-    }
-
-    async active(_id: string, options?: IDatabaseOptions): Promise<RoleEntity> {
-        const update: RoleActiveDto = {
-            isActive: true,
-        };
-
-        return this.roleRepository.updateOneById(_id, update, options);
+        return this.roleRepository.updateOneById<RoleActiveDto>(
+            _id,
+            dto,
+            options
+        );
     }
 
     async deleteOneById(
@@ -127,5 +148,30 @@ export class RoleService implements IRoleService {
         options?: IDatabaseSoftDeleteOptions
     ): Promise<RoleEntity> {
         return this.roleRepository.deleteOne(find, options);
+    }
+
+    async deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseManyOptions
+    ): Promise<boolean> {
+        return this.roleRepository.deleteMany(find, options);
+    }
+
+    async createMany(
+        data: RoleCreateDto[],
+        options?: IDatabaseCreateManyOptions
+    ): Promise<boolean> {
+        const create: RoleEntity[] = data.map(
+            ({ accessFor, permissions, name }) => {
+                const entity: RoleEntity = new RoleEntity();
+                entity.accessFor = accessFor;
+                entity.permissions = permissions;
+                entity.isActive = true;
+                entity.name = name;
+
+                return entity;
+            }
+        );
+        return this.roleRepository.createMany<RoleEntity>(create, options);
     }
 }

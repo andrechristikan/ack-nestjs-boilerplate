@@ -26,8 +26,8 @@ export class UserActiveGuard implements CanActivate {
 
         if (!required.includes(__user.isActive)) {
             throw new BadRequestException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_ACTIVE_ERROR,
-                message: 'user.error.active',
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_IS_ACTIVE_ERROR,
+                message: 'user.error.isActiveInvalid',
             });
         }
         return true;

@@ -3,13 +3,15 @@ import { Doc, DocPaging } from 'src/common/doc/decorators/doc.decorator';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import {
     PermissionDocParamsGet,
-    PermissionDocQueryList,
+    PermissionDocQueryGroup,
+    PermissionDocQueryIsActive,
 } from 'src/modules/permission/constants/permission.doc.constant';
 import {
     PERMISSION_DEFAULT_AVAILABLE_SEARCH,
     PERMISSION_DEFAULT_AVAILABLE_SORT,
 } from 'src/modules/permission/constants/permission.list.constant';
 import { PermissionGetSerialization } from 'src/modules/permission/serializations/permission.get.serialization';
+import { PermissionGroupsSerialization } from 'src/modules/permission/serializations/permission.group.serialization';
 import { PermissionListSerialization } from 'src/modules/permission/serializations/permission.list.serialization';
 
 export function PermissionListDoc(): MethodDecorator {
@@ -19,10 +21,13 @@ export function PermissionListDoc(): MethodDecorator {
                 jwtAccessToken: true,
             },
             request: {
-                queries: PermissionDocQueryList,
+                queries: [
+                    ...PermissionDocQueryIsActive,
+                    ...PermissionDocQueryGroup,
+                ],
             },
             response: {
-                classSerialization: PermissionListSerialization,
+                serialization: PermissionListSerialization,
                 availableSort: PERMISSION_DEFAULT_AVAILABLE_SORT,
                 availableSearch: PERMISSION_DEFAULT_AVAILABLE_SEARCH,
             },
@@ -39,7 +44,7 @@ export function PermissionGetDoc(): MethodDecorator {
             request: {
                 params: PermissionDocParamsGet,
             },
-            response: { classSerialization: PermissionGetSerialization },
+            response: { serialization: PermissionGetSerialization },
         })
     );
 }
@@ -53,7 +58,7 @@ export function PermissionUpdateDoc(): MethodDecorator {
             request: {
                 params: PermissionDocParamsGet,
             },
-            response: { classSerialization: ResponseIdSerialization },
+            response: { serialization: ResponseIdSerialization },
         })
     );
 }
@@ -79,6 +84,22 @@ export function PermissionInactiveDoc(): MethodDecorator {
             },
             request: {
                 params: PermissionDocParamsGet,
+            },
+        })
+    );
+}
+
+export function PermissionGroupDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc<PermissionGroupsSerialization>('permission.group', {
+            auth: {
+                jwtAccessToken: true,
+            },
+            request: {
+                queries: PermissionDocQueryGroup,
+            },
+            response: {
+                serialization: PermissionGroupsSerialization,
             },
         })
     );

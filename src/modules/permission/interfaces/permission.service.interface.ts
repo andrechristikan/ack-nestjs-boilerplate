@@ -4,15 +4,23 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
+    IDatabaseCreateManyOptions,
+    IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
 import { PermissionUpdateGroupDto } from 'src/modules/permission/dtos/permission.update-group.dto';
-import { PermissionUpdateDto } from 'src/modules/permission/dtos/permission.update.dto';
+import { PermissionUpdateDescriptionDto } from 'src/modules/permission/dtos/permission.update-description.dto';
+import { IPermissionGroup } from 'src/modules/permission/interfaces/permission.interface';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 
 export interface IPermissionService {
     findAll(
         find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<PermissionEntity[]>;
+
+    findAllByGroup(
+        groups?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<PermissionEntity[]>;
 
@@ -41,9 +49,9 @@ export interface IPermissionService {
         options?: IDatabaseCreateOptions
     ): Promise<PermissionEntity>;
 
-    update(
+    updateDescription(
         _id: string,
-        data: PermissionUpdateDto,
+        data: PermissionUpdateDescriptionDto,
         options?: IDatabaseOptions
     ): Promise<PermissionEntity>;
 
@@ -53,10 +61,24 @@ export interface IPermissionService {
         options?: IDatabaseOptions
     ): Promise<PermissionEntity>;
 
+    active(_id: string, options?: IDatabaseOptions): Promise<PermissionEntity>;
+
     inactive(
         _id: string,
         options?: IDatabaseOptions
     ): Promise<PermissionEntity>;
 
-    active(_id: string, options?: IDatabaseOptions): Promise<PermissionEntity>;
+    groupingByGroups(
+        permissions: PermissionEntity[]
+    ): Promise<IPermissionGroup[]>;
+
+    createMany(
+        data: PermissionCreateDto[],
+        options?: IDatabaseCreateManyOptions
+    ): Promise<boolean>;
+
+    deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseManyOptions
+    ): Promise<boolean>;
 }

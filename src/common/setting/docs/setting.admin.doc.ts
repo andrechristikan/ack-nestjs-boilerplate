@@ -12,7 +12,7 @@ export function SettingUpdateDoc(): MethodDecorator {
             request: {
                 params: SettingDocParamsGet,
             },
-            response: { classSerialization: ResponseIdSerialization },
+            response: { serialization: ResponseIdSerialization },
         })
     );
 }

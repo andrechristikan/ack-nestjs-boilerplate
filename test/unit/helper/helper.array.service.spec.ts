@@ -1,13 +1,14 @@
 import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { ENUM_HELPER_DATE_DIFF } from 'src/common/helper/constants/helper.enum.constant';
 import { HelperModule } from 'src/common/helper/helper.module';
+import { IHelperArrayRemove } from 'src/common/helper/interfaces/helper.interface';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
 import configs from 'src/configs';
 
 describe('HelperArrayService', () => {
     let helperArrayService: HelperArrayService;
-    const arrays = [1, '2', '3', 3, 1, 6, 7, 8];
+    let arrays: (string | number)[];
+    let arraysString: string;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
@@ -25,6 +26,13 @@ describe('HelperArrayService', () => {
 
         helperArrayService =
             moduleRef.get<HelperArrayService>(HelperArrayService);
+
+        arrays = [1, '2', '3', 3, 1, 6, 7, 8];
+        arraysString = '1,2,3,3,1,6,7,8';
+    });
+
+    afterEach(async () => {
+        jest.clearAllMocks();
     });
 
     it('should be defined', () => {
@@ -32,531 +40,464 @@ describe('HelperArrayService', () => {
     });
 
     describe('getLeftByIndex', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'getLeftByIndex');
+        it('should be return a value by index from left', async () => {
+            const result: number | string = helperArrayService.getLeftByIndex<
+                number | string
+            >(arrays, 1);
 
-            helperArrayService.getLeftByIndex(arrays, 1);
-            expect(test).toHaveBeenCalledWith(arrays, 1);
-        });
+            jest.spyOn(
+                helperArrayService,
+                'getLeftByIndex'
+            ).mockReturnValueOnce(result);
 
-        it('should be success', async () => {
-            const result = helperArrayService.getLeftByIndex(arrays, 1);
-            jest.spyOn(helperArrayService, 'getLeftByIndex').mockImplementation(
-                () => result
-            );
-
-            expect(helperArrayService.getLeftByIndex(arrays, 1)).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result).toBe(arrays[1]);
         });
     });
 
     describe('getRightByIndex', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'getRightByIndex');
+        it('should be return a value by index from right', async () => {
+            const result: number | string = helperArrayService.getRightByIndex<
+                number | string
+            >(arrays, 1);
 
-            helperArrayService.getRightByIndex(arrays, 1);
-            expect(test).toHaveBeenCalledWith(arrays, 1);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.getRightByIndex(arrays, 1);
             jest.spyOn(
                 helperArrayService,
                 'getRightByIndex'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(helperArrayService.getRightByIndex(arrays, 1)).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result).toBe(arrays[arrays.length - 1]);
         });
     });
 
     describe('getLeftByLength', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'getLeftByLength');
+        it('should be return a array by 1 length from left', async () => {
+            const result: (number | string)[] =
+                helperArrayService.getLeftByLength<number | string>(arrays, 1);
 
-            helperArrayService.getLeftByLength(arrays, 1);
-            expect(test).toHaveBeenCalledWith(arrays, 1);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.getLeftByLength(arrays, 1);
             jest.spyOn(
                 helperArrayService,
                 'getLeftByLength'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(helperArrayService.getLeftByLength(arrays, 1)).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result).toEqual([arrays[0]]);
+            expect(result[0]).toBe(arrays[0]);
+        });
+
+        it('should be return a array by 3 length from left', async () => {
+            const result: (number | string)[] =
+                helperArrayService.getLeftByLength<number | string>(arrays, 3);
+
+            jest.spyOn(
+                helperArrayService,
+                'getLeftByLength'
+            ).mockReturnValueOnce(result);
+
+            expect(result).toBeTruthy();
+            expect(result).toEqual([arrays[0], arrays[1], arrays[2]]);
+            expect(result[0]).toBe(arrays[0]);
+            expect(result[2]).toBe(arrays[2]);
         });
     });
 
     describe('getRightByLength', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'getRightByLength');
+        it('should be return a array by 1 length from right', async () => {
+            const result: (number | string)[] =
+                helperArrayService.getRightByLength<number | string>(arrays, 1);
 
-            helperArrayService.getRightByLength(arrays, 1);
-            expect(test).toHaveBeenCalledWith(arrays, 1);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.getRightByLength(arrays, 1);
             jest.spyOn(
                 helperArrayService,
                 'getRightByLength'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(helperArrayService.getRightByLength(arrays, 1)).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result).toEqual([arrays[arrays.length - 1]]);
+            expect(result[0]).toBe(arrays[arrays.length - 1]);
+        });
+
+        it('should be return a array by 3 length from right', async () => {
+            const result: (number | string)[] =
+                helperArrayService.getRightByLength<number | string>(arrays, 3);
+
+            jest.spyOn(
+                helperArrayService,
+                'getRightByLength'
+            ).mockReturnValueOnce(result);
+
+            expect(result).toBeTruthy();
+            expect(result).toEqual([
+                arrays[arrays.length - 3],
+                arrays[arrays.length - 2],
+                arrays[arrays.length - 1],
+            ]);
+            expect(result[0]).toBe(arrays[arrays.length - 3]);
+            expect(result[2]).toBe(arrays[arrays.length - 1]);
         });
     });
 
     describe('getLast', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'getLast');
+        it('should be return a last data of array', async () => {
+            const result: number | string = helperArrayService.getLast<
+                number | string
+            >(arrays);
 
-            helperArrayService.getLast(arrays);
-            expect(test).toHaveBeenCalledWith(arrays);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.getLast(arrays);
-            jest.spyOn(helperArrayService, 'getLast').mockImplementation(
-                () => result
+            jest.spyOn(helperArrayService, 'getLast').mockReturnValueOnce(
+                result
             );
 
-            expect(helperArrayService.getLast(arrays)).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result).toEqual(arrays[arrays.length - 1]);
         });
     });
 
     describe('getFirst', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'getFirst');
+        it('should be return a first data of array', async () => {
+            const result: number | string = helperArrayService.getFirst<
+                number | string
+            >(arrays);
 
-            helperArrayService.getFirst(arrays);
-            expect(test).toHaveBeenCalledWith(arrays);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.getFirst(arrays);
-            jest.spyOn(helperArrayService, 'getFirst').mockImplementation(
-                () => result
+            jest.spyOn(helperArrayService, 'getFirst').mockReturnValueOnce(
+                result
             );
 
-            expect(helperArrayService.getFirst(arrays)).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result).toEqual(arrays[0]);
         });
     });
 
     describe('getFirstIndexByValue', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'getFirstIndexByValue');
+        it('should be return a first index with search by value', async () => {
+            const result: number = helperArrayService.getFirstIndexByValue<
+                number | string
+            >(arrays, '2');
 
-            helperArrayService.getFirstIndexByValue(arrays, 1);
-            expect(test).toHaveBeenCalledWith(arrays, 1);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.getFirstIndexByValue(arrays, 1);
             jest.spyOn(
                 helperArrayService,
                 'getFirstIndexByValue'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(helperArrayService.getFirstIndexByValue(arrays, 1)).toBe(
-                result
-            );
+            expect(result).toBeTruthy();
+            expect(result).toEqual(1);
         });
     });
 
     describe('getLastIndexByValue', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'getLastIndexByValue');
+        it('should be return a last index with search by value', async () => {
+            const result: number = helperArrayService.getLastIndexByValue<
+                number | string
+            >(arrays, 1);
 
-            helperArrayService.getLastIndexByValue(arrays, 1);
-            expect(test).toHaveBeenCalledWith(arrays, 1);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.getLastIndexByValue(arrays, 1);
             jest.spyOn(
                 helperArrayService,
                 'getLastIndexByValue'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(helperArrayService.getLastIndexByValue(arrays, 1)).toBe(
-                result
-            );
+            expect(result).toBeTruthy();
+            expect(result).toEqual(4);
         });
     });
 
     describe('removeByValue', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'removeByValue');
+        it('should remove array by searching a value', async () => {
+            const result: IHelperArrayRemove<number | string> =
+                helperArrayService.removeByValue<number | string>(arrays, 8);
 
-            helperArrayService.removeByValue(arrays, 1);
-            expect(test).toHaveBeenCalledWith(arrays, 1);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.removeByValue(arrays, 1);
-            jest.spyOn(helperArrayService, 'removeByValue').mockImplementation(
-                () => result
+            jest.spyOn(helperArrayService, 'removeByValue').mockReturnValueOnce(
+                result
             );
 
-            expect(helperArrayService.removeByValue(arrays, 1)).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result.removed).toBeDefined();
+            expect(result.arrays).toBeDefined();
+            expect(result.removed.length).toEqual(1);
+            expect(result.removed.length).toEqual(1);
+            expect(result.removed[0]).toEqual(8);
+            expect(result.arrays.length).toEqual(7);
+            expect(result.arrays[result.arrays.length - 1]).toBe(7);
         });
     });
 
     describe('removeLeftByLength', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'removeLeftByLength');
+        it('should remove array by length from left', async () => {
+            const result: (number | string)[] =
+                helperArrayService.removeLeftByLength<number | string>(
+                    arrays,
+                    1
+                );
 
-            helperArrayService.removeLeftByLength(arrays, 1);
-            expect(test).toHaveBeenCalledWith(arrays, 1);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.removeLeftByLength(arrays, 1);
             jest.spyOn(
                 helperArrayService,
                 'removeLeftByLength'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(helperArrayService.removeLeftByLength(arrays, 1)).toBe(
-                result
-            );
+            expect(result).toBeTruthy();
+            expect(result.length).toEqual(arrays.length - 1);
+            expect(result[0]).toBe('2');
         });
     });
 
     describe('removeRightByLength', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'removeRightByLength');
+        it('should remove array by length from right', async () => {
+            const result: (number | string)[] =
+                helperArrayService.removeRightByLength<number | string>(
+                    arrays,
+                    1
+                );
 
-            helperArrayService.removeRightByLength(arrays, 1);
-            expect(test).toHaveBeenCalledWith(arrays, 1);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.removeRightByLength(arrays, 1);
             jest.spyOn(
                 helperArrayService,
                 'removeRightByLength'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(helperArrayService.removeRightByLength(arrays, 1)).toBe(
-                result
-            );
+            expect(result).toBeTruthy();
+            expect(result.length).toEqual(arrays.length - 1);
+            expect(result[result.length - 1]).toBe(7);
         });
     });
 
     describe('joinToString', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'joinToString');
+        it('should join array to string', async () => {
+            const result: string = helperArrayService.joinToString<
+                number | string
+            >(arrays, ',');
 
-            helperArrayService.joinToString(arrays, ',');
-            expect(test).toHaveBeenCalledWith(arrays, ',');
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.joinToString(arrays, ',');
-            jest.spyOn(helperArrayService, 'joinToString').mockImplementation(
-                () => result
+            jest.spyOn(helperArrayService, 'joinToString').mockReturnValueOnce(
+                result
             );
 
-            expect(helperArrayService.joinToString(arrays, ',')).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result).toBe(arraysString);
         });
     });
 
     describe('reverse', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'reverse');
+        it('array should be reversed', async () => {
+            const result: (number | string)[] = helperArrayService.reverse<
+                number | string
+            >(arrays);
 
-            helperArrayService.reverse(arrays);
-            expect(test).toHaveBeenCalledWith(arrays);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.reverse(arrays);
-            jest.spyOn(helperArrayService, 'reverse').mockImplementation(
-                () => result
+            jest.spyOn(helperArrayService, 'reverse').mockReturnValueOnce(
+                result
             );
 
-            expect(helperArrayService.reverse(arrays)).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result[0]).toBe(8);
+            expect(result[result.length - 1]).toBe(1);
         });
     });
 
     describe('unique', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'unique');
+        it('array should be unique', async () => {
+            const result: (number | string)[] = helperArrayService.unique<
+                number | string
+            >(arrays);
 
-            helperArrayService.unique(arrays);
-            expect(test).toHaveBeenCalledWith(arrays);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.unique(arrays);
-            jest.spyOn(helperArrayService, 'unique').mockImplementation(
-                () => result
+            jest.spyOn(helperArrayService, 'unique').mockReturnValueOnce(
+                result
             );
 
-            expect(helperArrayService.unique(arrays)).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result.length).toBe(7);
         });
     });
 
     describe('shuffle', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'shuffle');
+        it('array should be shuffle', async () => {
+            const result: (number | string)[] = helperArrayService.shuffle<
+                number | string
+            >(arrays);
 
-            helperArrayService.shuffle(arrays);
-            expect(test).toHaveBeenCalledWith(arrays);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.shuffle(arrays);
-            jest.spyOn(helperArrayService, 'shuffle').mockImplementation(
-                () => result
+            jest.spyOn(helperArrayService, 'shuffle').mockReturnValueOnce(
+                result
             );
 
-            expect(helperArrayService.shuffle(arrays)).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result.length).toBe(arrays.length);
+            expect(result.every((val) => arrays.includes(val))).toBe(true);
+            expect(result.every((val, idx) => arrays[idx] === val)).toBe(false);
         });
     });
 
     describe('merge', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'merge');
+        it('array should be merger', async () => {
+            const result: (number | string)[] = helperArrayService.merge<
+                number | string
+            >(arrays, arrays);
 
-            helperArrayService.merge(arrays, arrays);
-            expect(test).toHaveBeenCalledWith(arrays, arrays);
-        });
+            jest.spyOn(helperArrayService, 'merge').mockReturnValueOnce(result);
 
-        it('should be success', async () => {
-            const result = helperArrayService.merge(arrays, arrays);
-            jest.spyOn(helperArrayService, 'merge').mockImplementation(
-                () => result
-            );
-
-            expect(helperArrayService.merge(arrays, arrays)).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result.length).toBe(arrays.length * 2);
         });
     });
 
     describe('mergeUnique', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'mergeUnique');
+        it('array should be merger and unique array', async () => {
+            const result: (number | string)[] = helperArrayService.mergeUnique<
+                number | string
+            >(arrays, arrays);
 
-            helperArrayService.mergeUnique(arrays, arrays);
-            expect(test).toHaveBeenCalledWith(arrays, arrays);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.mergeUnique(arrays, arrays);
-            jest.spyOn(helperArrayService, 'mergeUnique').mockImplementation(
-                () => result
+            jest.spyOn(helperArrayService, 'mergeUnique').mockReturnValueOnce(
+                result
             );
 
-            expect(helperArrayService.mergeUnique(arrays, arrays)).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result.length).toBe(7);
+        });
+    });
+
+    describe('filterIncludeByValue', () => {
+        it('should be return filtered value', async () => {
+            const result: (number | string)[] =
+                helperArrayService.filterIncludeByValue<number | string>(
+                    arrays,
+                    1
+                );
+
+            jest.spyOn(
+                helperArrayService,
+                'filterIncludeByValue'
+            ).mockReturnValueOnce(result);
+
+            expect(result).toBeTruthy();
+            expect(result.length).toBe(2);
+            expect(result.every((val) => val === 1)).toBe(true);
         });
     });
 
     describe('filterNotIncludeByValue', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(
-                helperArrayService,
-                'filterNotIncludeByValue'
-            );
+        it('should be return filtered value', async () => {
+            const result: (number | string)[] =
+                helperArrayService.filterNotIncludeByValue<number | string>(
+                    arrays,
+                    1
+                );
 
-            helperArrayService.filterNotIncludeByValue(arrays, 1);
-            expect(test).toHaveBeenCalledWith(arrays, 1);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.filterNotIncludeByValue(
-                arrays,
-                1
-            );
             jest.spyOn(
                 helperArrayService,
                 'filterNotIncludeByValue'
-            ).mockImplementation(() => result);
+            ).mockReturnValueOnce(result);
 
-            expect(helperArrayService.filterNotIncludeByValue(arrays, 1)).toBe(
-                result
-            );
+            expect(result).toBeTruthy();
+            expect(result.length).toBe(6);
+            expect(result.every((val) => val !== 1)).toBe(true);
         });
     });
 
-    describe('filterNotIncludeByArray', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(
-                helperArrayService,
-                'filterNotIncludeByArray'
-            );
+    describe('filterNotIncludeUniqueByArray', () => {
+        it('should be return filtered value', async () => {
+            const result: (number | string)[] =
+                helperArrayService.filterNotIncludeUniqueByArray<
+                    number | string
+                >(arrays, [1]);
 
-            helperArrayService.filterNotIncludeByArray(arrays, arrays);
-            expect(test).toHaveBeenCalledWith(arrays, arrays);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.filterNotIncludeByArray(
-                arrays,
-                arrays
-            );
             jest.spyOn(
                 helperArrayService,
-                'filterNotIncludeByArray'
-            ).mockImplementation(() => result);
+                'filterNotIncludeUniqueByArray'
+            ).mockReturnValueOnce(result);
 
-            expect(
-                helperArrayService.filterNotIncludeByArray(arrays, arrays)
-            ).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result.length).toBe(6);
+            expect(result.every((val) => val !== 1)).toBe(true);
         });
     });
 
-    describe('filterIncludeByArray', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'filterIncludeByArray');
+    describe('filterIncludeUniqueByArray', () => {
+        it('should be return filtered value', async () => {
+            const result: (number | string)[] =
+                helperArrayService.filterIncludeUniqueByArray<number | string>(
+                    arrays,
+                    [1]
+                );
 
-            helperArrayService.filterIncludeByArray(arrays, arrays);
-            expect(test).toHaveBeenCalledWith(arrays, arrays);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.filterIncludeByArray(
-                arrays,
-                arrays
-            );
             jest.spyOn(
                 helperArrayService,
-                'filterIncludeByArray'
-            ).mockImplementation(() => result);
+                'filterIncludeUniqueByArray'
+            ).mockReturnValueOnce(result);
 
-            expect(
-                helperArrayService.filterIncludeByArray(arrays, arrays)
-            ).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result.length).toBe(1);
+            expect(result.every((val) => val === 1)).toBe(true);
         });
     });
 
     describe('equals', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'equals');
+        it('should be equals', async () => {
+            const result: boolean = helperArrayService.equals(arrays, arrays);
 
-            helperArrayService.equals(arrays, arrays);
-            expect(test).toHaveBeenCalledWith(arrays, arrays);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.equals(arrays, arrays);
-            jest.spyOn(helperArrayService, 'equals').mockImplementation(
-                () => result
+            jest.spyOn(helperArrayService, 'equals').mockReturnValueOnce(
+                result
             );
 
-            expect(helperArrayService.equals(arrays, arrays)).toBe(result);
+            expect(result).toBeTruthy();
+            expect(result).toBe(true);
         });
     });
 
     describe('notEquals', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'notEquals');
-
-            helperArrayService.notEquals(arrays, arrays);
-            expect(test).toHaveBeenCalledWith(arrays, arrays);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.notEquals(arrays, arrays);
-            jest.spyOn(helperArrayService, 'notEquals').mockImplementation(
-                () => result
+        it('should be equals', async () => {
+            const result: boolean = helperArrayService.notEquals(
+                arrays,
+                [1, 2, 3]
             );
 
-            expect(helperArrayService.notEquals(arrays, arrays)).toBe(result);
+            jest.spyOn(helperArrayService, 'notEquals').mockReturnValueOnce(
+                result
+            );
+
+            expect(result).toBeTruthy();
+            expect(result).toBe(true);
         });
     });
 
     describe('in', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'in');
+        it('value must in arrays', async () => {
+            const result: boolean = helperArrayService.in(arrays, [1]);
 
-            helperArrayService.in(arrays, arrays);
-            expect(test).toHaveBeenCalledWith(arrays, arrays);
+            jest.spyOn(helperArrayService, 'in').mockReturnValueOnce(result);
+
+            expect(result).toBeTruthy();
+            expect(result).toBe(true);
         });
+    });
 
-        it('should be success', async () => {
-            const result = helperArrayService.in(arrays, arrays);
-            jest.spyOn(helperArrayService, 'in').mockImplementation(
-                () => result
-            );
+    describe('notIn', () => {
+        it('value must not in arrays', async () => {
+            const result: boolean = helperArrayService.notIn(arrays, ['z']);
 
-            expect(helperArrayService.in(arrays, arrays)).toBe(result);
+            jest.spyOn(helperArrayService, 'notIn').mockReturnValueOnce(result);
+
+            expect(result).toBeTruthy();
+            expect(result).toBe(true);
         });
     });
 
     describe('includes', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'includes');
+        it('value must includes arrays', async () => {
+            const result: boolean = helperArrayService.includes(arrays, 1);
 
-            helperArrayService.includes(arrays, 1);
-            expect(test).toHaveBeenCalledWith(arrays, 1);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.includes(arrays, 1);
-            jest.spyOn(helperArrayService, 'includes').mockImplementation(
-                () => result
-            );
-
-            expect(helperArrayService.includes(arrays, 1)).toBe(result);
-        });
-    });
-
-    describe('split', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'split');
-
-            helperArrayService.split(arrays, 1);
-            expect(test).toHaveBeenCalledWith(arrays, 1);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.split(arrays, 1);
-            jest.spyOn(helperArrayService, 'split').mockImplementation(
-                () => result
-            );
-
-            expect(helperArrayService.split(arrays, 1)).toBe(result);
-        });
-    });
-
-    describe('getKeys', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'getKeys');
-
-            helperArrayService.getKeys(ENUM_HELPER_DATE_DIFF);
-            expect(test).toHaveBeenCalledWith(ENUM_HELPER_DATE_DIFF);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.getKeys(ENUM_HELPER_DATE_DIFF);
-            jest.spyOn(helperArrayService, 'getKeys').mockImplementation(
-                () => result
-            );
-
-            expect(helperArrayService.getKeys(ENUM_HELPER_DATE_DIFF)).toBe(
+            jest.spyOn(helperArrayService, 'includes').mockReturnValueOnce(
                 result
             );
+
+            expect(result).toBeTruthy();
+            expect(result).toBe(true);
         });
     });
 
-    describe('getValues', () => {
-        it('should be called', async () => {
-            const test = jest.spyOn(helperArrayService, 'getValues');
-
-            helperArrayService.getValues(ENUM_HELPER_DATE_DIFF);
-            expect(test).toHaveBeenCalledWith(ENUM_HELPER_DATE_DIFF);
-        });
-
-        it('should be success', async () => {
-            const result = helperArrayService.getValues(ENUM_HELPER_DATE_DIFF);
-            jest.spyOn(helperArrayService, 'getValues').mockImplementation(
-                () => result
+    describe('chunk', () => {
+        it('array chunk to be x value', async () => {
+            const result: (number | string)[][] = helperArrayService.chunk(
+                arrays,
+                2
             );
 
-            expect(helperArrayService.getValues(ENUM_HELPER_DATE_DIFF)).toBe(
-                result
-            );
+            jest.spyOn(helperArrayService, 'chunk').mockReturnValueOnce(result);
+
+            expect(result).toBeTruthy();
+            expect(result.length).toBe(4);
         });
     });
 });

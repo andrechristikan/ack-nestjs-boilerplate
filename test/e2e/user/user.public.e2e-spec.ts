@@ -5,30 +5,21 @@ import { faker } from '@faker-js/faker';
 import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { UserService } from 'src/modules/user/services/user.service';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesPublicModule } from 'src/router/routes/routes.public.module';
 import { E2E_USER_PUBLIC_SIGN_UP_URL } from './user.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
-import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 
 describe('E2E User Public', () => {
     let app: INestApplication;
     let userService: UserService;
-    let helperDateService: HelperDateService;
-    let apiKeyService: ApiKeyService;
 
     const password = `@!aaAA@123`;
-
-    const apiKey = 'qwertyuiop12345zxcvbnmkjh';
-    let xApiKey: string;
-    let timestamp: number;
-
     let userData: Record<string, any>;
 
     beforeAll(async () => {
-        process.env.AUTH_JWT_PAYLOAD_ENCRYPTION = 'false';
+        process.env.AUTH_JWT_PAYLOAD_ENCRYPT = 'false';
 
         const modRef = await Test.createTestingModule({
             imports: [
@@ -46,8 +37,6 @@ describe('E2E User Public', () => {
         app = modRef.createNestApplication();
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
-        helperDateService = app.get(HelperDateService);
-        apiKeyService = app.get(ApiKeyService);
 
         userData = {
             firstName: faker.name.firstName(),
@@ -58,28 +47,28 @@ describe('E2E User Public', () => {
             username: faker.internet.userName(),
         };
 
-        timestamp = helperDateService.timestamp();
-        const apiEncryption = await apiKeyService.encryptApiKey(
-            {
-                key: apiKey,
-                timestamp,
-                hash: 'e11a023bc0ccf713cb50de9baa5140e59d3d4c52ec8952d9ca60326e040eda54',
-            },
-            'opbUwdiS1FBsrDUoPgZdx',
-            'cuwakimacojulawu'
-        );
-        xApiKey = `${apiKey}:${apiEncryption}`;
-
         await app.init();
+    });
+
+    afterAll(async () => {
+        jest.clearAllMocks();
+
+        try {
+            await userService.deleteOne({
+                email: userData.email,
+                mobileNumber: userData.mobileNumber,
+            });
+        } catch (err: any) {
+            console.error(err);
+        }
+
+        await app.close();
     });
 
     it(`POST ${E2E_USER_PUBLIC_SIGN_UP_URL} Sign Up Error Request`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
-            .set('x-api-key', xApiKey)
             .send({
                 username: faker.name.firstName().toLowerCase(),
                 email: faker.name.firstName().toLowerCase(),
@@ -91,17 +80,12 @@ describe('E2E User Public', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_PUBLIC_SIGN_UP_URL} Sign Up Success`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
-            .set('x-api-key', xApiKey)
             .send(userData);
 
         expect(response.status).toEqual(HttpStatus.CREATED);
@@ -112,73 +96,47 @@ describe('E2E User Public', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
-            .set('x-api-key', xApiKey)
             .send({
                 ...userData,
                 mobileNumber: faker.phone.number('62812#########'),
                 email: faker.internet.email(),
             });
 
-        expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
+        expect(response.status).toEqual(HttpStatus.CONFLICT);
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_USERNAME_EXISTS_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_PUBLIC_SIGN_UP_URL} Sign Up Email Exist`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
-            .set('x-api-key', xApiKey)
             .send({
                 ...userData,
                 username: faker.internet.userName(),
                 mobileNumber: faker.phone.number('62812#########'),
             });
 
-        expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
+        expect(response.status).toEqual(HttpStatus.CONFLICT);
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR
         );
-
-        return;
     });
 
     it(`POST ${E2E_USER_PUBLIC_SIGN_UP_URL} Sign Up Mobile Number Exist`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PUBLIC_SIGN_UP_URL)
             .set('Content-Type', 'application/json')
-            .set('user-agent', faker.internet.userAgent())
-            .set('x-timestamp', timestamp.toString())
-            .set('x-api-key', xApiKey)
             .send({
                 ...userData,
                 username: faker.internet.userName(),
                 email: faker.internet.email(),
             });
 
-        expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
+        expect(response.status).toEqual(HttpStatus.CONFLICT);
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR
         );
-
-        return;
-    });
-
-    afterAll(async () => {
-        try {
-            await userService.deleteOne({
-                email: userData.email,
-                mobileNumber: userData.mobileNumber,
-            });
-        } catch (e) {
-            console.error(e);
-        }
     });
 });

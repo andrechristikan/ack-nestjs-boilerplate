@@ -2,18 +2,16 @@ import {
     ApiKeyCreateDto,
     ApiKeyCreateRawDto,
 } from 'src/common/api-key/dtos/api-key.create.dto';
-import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
-import {
-    IApiKey,
-    IApiKeyRequestHashedData,
-} from 'src/common/api-key/interfaces/api-key.interface';
+import { ApiKeyUpdateNameDto } from 'src/common/api-key/dtos/api-key.update-name.dto';
+import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import {
     IDatabaseCreateOptions,
-    IDatabaseSoftDeleteOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
+    IDatabaseManyOptions,
     IDatabaseOptions,
+    IDatabaseSoftDeleteOptions,
 } from 'src/common/database/interfaces/database.interface';
 
 export interface IApiKeyService {
@@ -37,32 +35,41 @@ export interface IApiKeyService {
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyEntity>;
 
+    findOneByActiveKey(
+        key: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ApiKeyEntity>;
+
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseOptions
     ): Promise<number>;
 
-    inactive(_id: string, options?: IDatabaseOptions): Promise<ApiKeyEntity>;
-
     active(_id: string, options?: IDatabaseOptions): Promise<ApiKeyEntity>;
+
+    inactive(_id: string, options?: IDatabaseOptions): Promise<ApiKeyEntity>;
 
     create(
         data: ApiKeyCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKey>;
+    ): Promise<IApiKeyEntity>;
 
     createRaw(
         data: ApiKeyCreateRawDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKey>;
+    ): Promise<IApiKeyEntity>;
 
-    updateOneById(
+    updateName(
         _id: string,
-        data: ApiKeyUpdateDto,
+        data: ApiKeyUpdateNameDto,
         options?: IDatabaseOptions
     ): Promise<ApiKeyEntity>;
 
-    updateHashById(_id: string, options?: IDatabaseOptions): Promise<IApiKey>;
+    reset(
+        _id: string,
+        key: string,
+        options?: IDatabaseOptions
+    ): Promise<ApiKeyEntity>;
 
     deleteOneById(
         _id: string,
@@ -74,27 +81,16 @@ export interface IApiKeyService {
         options?: IDatabaseSoftDeleteOptions
     ): Promise<ApiKeyEntity>;
 
-    createKey(): Promise<string>;
+    validateHashApiKey(hashFromRequest: string, hash: string): Promise<boolean>;
 
-    createEncryptionKey(): Promise<string>;
+    createKey(): Promise<string>;
 
     createSecret(): Promise<string>;
 
-    createPassphrase(): Promise<string>;
-
     createHashApiKey(key: string, secret: string): Promise<string>;
 
-    validateHashApiKey(hashFromRequest: string, hash: string): Promise<boolean>;
-
-    decryptApiKey(
-        encryptedApiKey: string,
-        encryptionKey: string,
-        passphrase: string
-    ): Promise<IApiKeyRequestHashedData>;
-
-    encryptApiKey(
-        data: IApiKeyRequestHashedData,
-        encryptionKey: string,
-        passphrase: string
-    ): Promise<string>;
+    deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseManyOptions
+    ): Promise<boolean>;
 }

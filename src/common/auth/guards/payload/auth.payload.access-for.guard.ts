@@ -13,7 +13,7 @@ import { HelperArrayService } from 'src/common/helper/services/helper.array.serv
 @Injectable()
 export class AuthPayloadAccessForGuard implements CanActivate {
     constructor(
-        private reflector: Reflector,
+        private readonly reflector: Reflector,
         private readonly helperArrayService: HelperArrayService
     ) {}
 
@@ -29,10 +29,10 @@ export class AuthPayloadAccessForGuard implements CanActivate {
         }
 
         const { user } = context.switchToHttp().getRequest();
-        const { role } = user;
+        const { accessFor } = user;
         const hasFor: boolean = this.helperArrayService.includes(
             requiredFor,
-            role.accessFor
+            accessFor
         );
 
         if (!hasFor) {

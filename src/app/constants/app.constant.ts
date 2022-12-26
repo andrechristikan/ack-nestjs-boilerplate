@@ -1,1 +1,1 @@
-export const AppLanguage = 'en';
+export const APP_LANGUAGE = 'en';

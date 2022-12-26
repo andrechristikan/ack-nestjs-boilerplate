@@ -7,6 +7,11 @@ import {
 import { WorkBook } from 'xlsx';
 
 export interface IHelperFileService {
+    createExcelWorkbook(
+        rows: IHelperFileRows[],
+        options?: IHelperFileCreateExcelWorkbookOptions
+    ): WorkBook;
+
     writeExcelToBuffer(
         workbook: WorkBook,
         options?: IHelperFileWriteExcelOptions
@@ -16,11 +21,6 @@ export interface IHelperFileService {
         file: Buffer,
         options?: IHelperFileReadExcelOptions
     ): IHelperFileRows[];
-
-    createExcelWorkbook(
-        rows: IHelperFileRows[],
-        options?: IHelperFileCreateExcelWorkbookOptions
-    ): WorkBook;
 
     convertToBytes(megabytes: string): number;
 }

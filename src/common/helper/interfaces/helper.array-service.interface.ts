@@ -1,11 +1,13 @@
+import { IHelperArrayRemove } from 'src/common/helper/interfaces/helper.interface';
+
 export interface IHelperArrayService {
     getLeftByIndex<T>(array: T[], index: number): T;
 
     getRightByIndex<T>(array: T[], index: number): T;
 
-    getLeftByLength(array: Array<any>, length: number): Array<any>;
+    getLeftByLength<T>(array: T[], length: number): T[];
 
-    getRightByLength(array: Array<any>, length: number): Array<any>;
+    getRightByLength<T>(array: T[], length: number): T[];
 
     getLast<T>(array: T[]): T;
 
@@ -15,13 +17,13 @@ export interface IHelperArrayService {
 
     getLastIndexByValue<T>(array: T[], value: T): number;
 
-    removeByValue<T>(array: T[], value: T): T[];
+    removeByValue<T>(array: T[], value: T): IHelperArrayRemove<T>;
 
-    removeLeftByLength(array: Array<any>, length: number);
+    removeLeftByLength<T>(array: T[], length: number): T[];
 
-    removeRightByLength(array: Array<any>, length: number);
+    removeRightByLength<T>(array: Array<T>, length: number): T[];
 
-    joinToString(array: Array<any>, delimiter: string): string;
+    joinToString<T>(array: Array<T>, delimiter: string): string;
 
     reverse<T>(array: T[]): T[];
 
@@ -33,11 +35,13 @@ export interface IHelperArrayService {
 
     mergeUnique<T>(a: T[], b: T[]): T[];
 
+    filterIncludeByValue<T>(array: T[], value: T): T[];
+
     filterNotIncludeByValue<T>(array: T[], value: T): T[];
 
-    filterNotIncludeByArray<T>(a: T[], b: T[]): T[];
+    filterNotIncludeUniqueByArray<T>(a: T[], b: T[]): T[];
 
-    filterIncludeByArray<T>(a: T[], b: T[]): T[];
+    filterIncludeUniqueByArray<T>(a: T[], b: T[]): T[];
 
     equals<T>(a: T[], b: T[]): boolean;
 
@@ -45,11 +49,9 @@ export interface IHelperArrayService {
 
     in<T>(a: T[], b: T[]): boolean;
 
+    notIn<T>(a: T[], b: T[]): boolean;
+
     includes<T>(a: T[], b: T): boolean;
 
-    split<T>(a: T[], size: number): T[][];
-
-    getKeys(a: Record<string, any>): string[];
-
-    getValues<T>(a: Record<string, any>): T[];
+    chunk<T>(a: T[], size: number): T[][];
 }

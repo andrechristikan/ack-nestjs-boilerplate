@@ -1,7 +1,11 @@
 import { applyDecorators, HttpStatus } from '@nestjs/common';
 import { Doc, DocPaging } from 'src/common/doc/decorators/doc.decorator';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
-import { RoleDocParamsGet } from 'src/modules/role/constants/role.doc.constant';
+import {
+    RoleDocParamsGet,
+    RoleDocQueryAccessFor,
+    RoleDocQueryIsActive,
+} from 'src/modules/role/constants/role.doc.constant';
 import {
     ROLE_DEFAULT_AVAILABLE_SEARCH,
     ROLE_DEFAULT_AVAILABLE_SORT,
@@ -15,8 +19,11 @@ export function RoleListDoc(): MethodDecorator {
             auth: {
                 jwtAccessToken: true,
             },
+            request: {
+                queries: [...RoleDocQueryIsActive, ...RoleDocQueryAccessFor],
+            },
             response: {
-                classSerialization: RoleListSerialization,
+                serialization: RoleListSerialization,
                 availableSort: ROLE_DEFAULT_AVAILABLE_SORT,
                 availableSearch: ROLE_DEFAULT_AVAILABLE_SEARCH,
             },
@@ -33,7 +40,7 @@ export function RoleGetDoc(): MethodDecorator {
             request: {
                 params: RoleDocParamsGet,
             },
-            response: { classSerialization: RoleGetSerialization },
+            response: { serialization: RoleGetSerialization },
         })
     );
 }
@@ -46,7 +53,7 @@ export function RoleCreateDoc(): MethodDecorator {
             },
             response: {
                 httpStatus: HttpStatus.CREATED,
-                classSerialization: ResponseIdSerialization,
+                serialization: ResponseIdSerialization,
             },
         })
     );
@@ -61,7 +68,7 @@ export function RoleUpdateDoc(): MethodDecorator {
             request: {
                 params: RoleDocParamsGet,
             },
-            response: { classSerialization: ResponseIdSerialization },
+            response: { serialization: ResponseIdSerialization },
         })
     );
 }

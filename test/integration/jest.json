@@ -9,7 +9,7 @@
         "<rootDir>/test/integration/**/*.spec.ts"
     ],
     "collectCoverage": true,
-    "coverageDirectory": "integration-coverage",
+    "coverageDirectory": "coverage-integration",
     "collectCoverageFrom": [
         "./integration"
     ],

@@ -71,7 +71,7 @@ export class UserCreateDto {
     readonly mobileNumber?: string;
 
     @ApiProperty({
-        example: faker.database.mongodbObjectId(),
+        example: faker.datatype.uuid(),
         required: true,
     })
     @IsNotEmpty()

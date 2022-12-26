@@ -16,13 +16,14 @@ import { IMessageService } from 'src/common/message/interfaces/message.service.i
 
 @Injectable()
 export class MessageService implements IMessageService {
-    private readonly defaultLanguage: string;
+    private readonly appDefaultLanguage: string[];
 
     constructor(
         private readonly i18n: I18nService,
         private readonly configService: ConfigService
     ) {
-        this.defaultLanguage = this.configService.get<string>('app.language');
+        this.appDefaultLanguage =
+            this.configService.get<string[]>('app.language');
     }
 
     setMessage<T = string>(
@@ -30,11 +31,10 @@ export class MessageService implements IMessageService {
         key: string,
         options?: IMessageSetOptions
     ): T {
-        return this.i18n.translate<T>(key, {
-            lang: lang || this.defaultLanguage,
-            args:
-                options && options.properties ? options.properties : undefined,
-        });
+        return this.i18n.translate(key, {
+            lang: lang || this.appDefaultLanguage.join(','),
+            args: options?.properties,
+        }) as T;
     }
 
     async getRequestErrorsMessage(
@@ -56,7 +56,7 @@ export class MessageService implements IMessageService {
                     for (const child of children) {
                         property = `${property}.${child.property}`;
 
-                        if (child.children && child.children.length > 0) {
+                        if (child.children?.length > 0) {
                             children = child.children;
                             break;
                         } else if (child.constraints) {
@@ -112,14 +112,11 @@ export class MessageService implements IMessageService {
         key: string,
         options?: IMessageOptions
     ): Promise<string | IMessage> {
-        const properties =
-            options && options.properties ? options.properties : undefined;
+        const properties = options?.properties;
         const customLanguages =
-            options &&
-            options.customLanguages &&
-            options.customLanguages.length > 0
+            options?.customLanguages?.length > 0
                 ? options.customLanguages
-                : [this.defaultLanguage];
+                : this.appDefaultLanguage;
 
         const messages: IMessage = {};
         for (const customLanguage of customLanguages) {

@@ -6,7 +6,7 @@ export function AppHelloDoc(): MethodDecorator {
     return applyDecorators(
         Doc<AppHelloSerialization>('app.hello', {
             response: {
-                classSerialization: AppHelloSerialization,
+                serialization: AppHelloSerialization,
             },
         })
     );
@@ -23,7 +23,7 @@ export function AppHelloApiKeyDoc(): MethodDecorator {
                 userAgent: true,
             },
             response: {
-                classSerialization: AppHelloSerialization,
+                serialization: AppHelloSerialization,
             },
         })
     );

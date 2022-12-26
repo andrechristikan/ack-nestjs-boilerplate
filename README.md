@@ -17,9 +17,15 @@
 
 > Amazon web service will be the cloud provider. This is why this project is focused on AWS features.
 
-[Http NestJs v9.x][ref-nestjs] boilerplate. Best uses for backend service.
+[ACK NestJs][ack] is a [Http NestJs v9.x][ref-nestjs] boilerplate. Best uses for backend service.
 
 *You can [request feature][ack-issues] or [report bug][ack-issues] with following this link*
+
+## Other Repo
+
+* [Mongoose Mini Version][ack-mongoose] : Mini version
+* [Typeorm Integration][ack-typeorm] : Mini version with typeorm integration
+* [Kafka Integration][ack-kafka] : Integration with Apache Kafka
 
 ## Table of contents
 
@@ -69,12 +75,26 @@ Next development
 * [x] Optimize Unit Testing
 * [x] Make serverless separate repo
 * [x] Optimize Swagger
-* [x] Export to excel and Import from excel add options to background process
-* [ ] SSO Google
-* [ ] AuthApi Controller
+* [x] Remove enum endpoint
+* [x] Permission group fixed
+* [x] Reduce the payload of access token
+* [x] Update authorization mechanism, permission token on `x-permission-token`
+* [x] Update package, cors setting, check all interfaces, husky trigger switch to on and check test
+* [x] AuthApiKey mechanism
+* [x] AuthApi Controller
+    * [x] AuthApi Get, Active, Inactive Endpoint
+    * [x] AuthApi Create (Random Key), and Reset Secret Endpoint
+    * [x] AuthApi Controller Test E2E
+* [x] Fix automation testing
+* [x] Pagination move from decorator to service pagination -> make pipe transformer -> wrap into group decorator ResponsePaging
+* [x] Check Swagger for pagination
+* [ ] SSO
+    * [ ] Google
+    * [ ] Apple
+    * [ ] Microsoft
+    * [ ] Facebook
+    * [ ] Twitter
 * [ ] Update Documentation, include an diagram for easier comprehension
-* [ ] OAuth2 Client Credentials
-* [ ] Maybe will adopt [CQRS][ref-nestjs-cqrs]
 
 ## Build with
 
@@ -189,6 +209,7 @@ Full structure of module
     ├── indicators // custom health check indicator
     ├── interceptors // custom interceptors
     ├── interfaces
+    ├── middleware
     ├── pipes
     ├── repository
         ├── entities // database entities
@@ -305,7 +326,7 @@ Make your own environment file with a copy of `env.example` and adjust values to
 cp .env.example .env
 ```
 
-[Jump to details](#environment)
+To know the details, you can read the documentation. [Jump to document section](#documentation)
 
 ### Database Migration
 
@@ -373,195 +394,11 @@ docker-compose up -d
 
 ## API Reference
 
-We have already provided the API reference. To visit, [click here][api-reference-docs].
+You can check The Api Spec in [here][api-reference-docs]
 
-## Environment
+## Documentation
 
-Detail information about the environment
-
-### APP Environment
-
-| Key | Type | Description |
-| ---- | ---- | ---- |
-| APP\_NAME | `string` | Application name |
-| APP\_ENV | `string` | <ul><li>production</li><li>development</li></ul> |
-| APP\_LANGUAGE | `string` | Enum languages, separator `,` |
-
-### HTTP Environment
-
-| Key | Type | Description |
-| ---- | ---- | ---- |
-| HTTP\_HTTP\_ENABLE | `boolean` | Application Http on/off |
-| HTTP\_HOST | `string` | Application host serve |
-| HTTP\_PORT | `number` | Application port serve |
-| HTTP\_VERSIONING\_ENABLE | `boolean` | Application url versioning on/off |
-| HTTP\_VERSION | `number`  | Application url version number. When HTTP_VERSIONING_ENABLE is enabled, the application version number is used. |
-
-### Debugger Environment
-
-| Key | Type | Description |
-| ---- | ---- | ---- |
-| DEBUGGER\_HTTP\_WRITE\_INTO\_FILE | `boolean` | Http debugger write into file |
-| DEBUGGER\_HTTP\_WRITE\_INTO\_CONSOL | `boolean` | Http debugger write into console |
-| DEBUGGER\_SYSTEM\_WRITE\_INTO\_FILE | `boolean` | System debugger write into file |
-| DEBUGGER\_SYSTEM\_WRITE\_INTO\_CONSOLE | `boolean` | System debugger write into console |
-
-### Middleware Environment
-
-| Key | Type | Description |
-| ---- | ---- | ---- |
-| MIDDLEWARE\_TIMESTAMP\_TOLERANCE | `string` | Tolerance timestamp and used for validate the `ApiKey`. `ms` package value |
-| MIDDLEWARE\_TIMEOUT | `string` | Request timeout. `ms` package value  |
-
-### Documentation Environment
-
-| Key | Type | Description |
-| ---- | ---- | ---- |
-| DOC\_NAME | `string` | Documentation tittle |
-| DOC\_VERSION | `number` | Documentation version |
-
-### Job Environment
-
-| Key | Type | Description |
-| ---- | ---- | ---- |
-| JOB\_ENABLE | `boolean` | Application Job or Schedule turn on/off |
-
-### Database Environment
-
-| Key | Type | Description |
-| ---- | ---- | ---- |
-| DATABASE\_TYPE | `string` | Enum of database Type `MONGODB` or `POSTGRES` |
-| DATABASE\_HOST | `string` | Mongodb URL. Support `standard url`, `replication`, or `srv` |
-| DATABASE\_NAME | `string` | Database name |
-| DATABASE\_USER | `string` | Database user |
-| DATABASE\_PASSWORD | `string` | Database user password |
-| DATABASE\_DEBUG | `boolean` | Trigger database `DEBUG` |
-| DATABASE\_OPTIONS | `string` | Mongodb connect options |
-
-### Auth JWT Environment
-
-| Key | Type | Description |
-| ---- | ---- | ---- |
-| AUTH_JWT_PAYLOAD_ENCRYPTION | `boolean` | Jwt payload encrypt |
-| AUTH\_JWT\_SUBJECT | `string` | Jwt subject |
-| AUTH\_JWT\_SUBJECT | `string` | Jwt subject |
-| AUTH\_JWT\_AUDIENCE | `string` | Jwt audience |
-| AUTH\_JWT\_ISSUER| `string` | JWT issuer |
-
-### Auth JWT Access Token Environment
-
-| Key | Type | Description |
-| ---- | ---- | ---- |
-| AUTH\_JWT\_ACCESS\_TOKEN\_SECRET\_KEY | `string` | Secret access token, free text. |
-| AUTH\_JWT\_ACCESS\_TOKEN\_EXPIRED | `string` | Expiration time for access token. `ms` package value |
-| AUTH\_JWT\_ACCESS\_TOKEN\_ENCRYPT\_KEY | `string` | Encrypt key for access token payload |
-| AUTH\_JWT\_ACCESS\_TOKEN\_ENCRYPT\_IV | `string` | Encrypt IV for access token payload |
-
-### Auth JWT Refresh Token Environment
-
-| Key | Type | Description |
-| ---- | ---- | ---- |
-| AUTH\_JWT\_REFRESH\_TOKEN\_SECRET\_KEY | `string` | Secret refresh token, free text. |
-| AUTH\_JWT\_REFRESH\_TOKEN\_EXPIRED | `string` | Expiration time for refresh token. `ms` package value |
-| AUTH\_JWT\_REFRESH\_TOKEN\_REMEMBER\_ME\_EXPIRED | `string` | Expiration time for refresh token when remember me is checked. `ms` package value |
-| AUTH\_JWT\_REFRESH\_TOKEN\_NOT\_BEFORE\_EXPIRATION | `string` | Token active for refresh token before `x` time. `ms` package value |
-| AUTH\_JWT\_REFRESH\_TOKEN\_ENCRYPT\_KEY | `string` | Encrypt key for refresh token payload |
-| AUTH\_JWT\_REFRESH\_TOKEN\_ENCRYPT\_IV | `string` | Encrypt IV for refresh token payload |
-
-### AWS Environment
-
-| Key | Type | Description |
-| ---- | ---- | ---- |
-| AWS\_CREDENTIAL\_KEY | `string` | AWS account credential key |
-| AWS\_CREDENTIAL\_SECRET | `string` |  AWS account credential secret |
-| AWS\_S3\_REGION | `string` | AWS S3 Region |
-| AWS\_S3\_BUCKET | `string` | AWS S3 Name of Bucket |
-
-## Api Key Encryption
-
-> Please keep the `secret and passphrase` private.
-
-ApiKeyHashed uses `sha256` encryption, `dataObject` encryption is `AES256`.
-
-Here ApiKey data from seeding
-
-```json
-{
-    "name": "Api Key Migration",
-    "description": "From migration",
-    "key": "qwertyuiop12345zxcvbnmkjh",
-    "secret": "5124512412412asdasdasdasdasdASDASDASD",
-    "passphrase": "cuwakimacojulawu",
-    "encryptionKey": "opbUwdiS1FBsrDUoPgZdx"
-}
-```
-
-To do the encryption.
-
-> The encryption process must be on client-side.
-
-1. Make sure to have value of
-    * `key`: You can find the key for apiKey in the database.
-    * `secret`: This value is `only generated when the apiKey is created`. After that, if you lose the secret, you need to recreate the apiKey.
-    * `encryptionKey`: You can find the key for encryption in the database.
-    * `passphrase`: This is IV for encrypt AES 256. This is need to be private too. Same with `secret`.
-
-2. Concat the `key` and `secret`.
-
-    ```typescript
-    const concatApiKey = `${key}:${secret}`;
-    ```
-
-3. Encryption `concatApiKey` with `sha256`
-
-    ```typescript
-    const apiKeyHashed = this.helperHashService.sha256(concatApiKey);
-    ```
-
-4. Then create `dataObject` and put the `apiKeyHashed` into it
-
-    ```typescript
-    const timestamp: number = this.helperDateService.timestamp();
-    const dataObject: IAuthApiRequestHashedData = {
-        key, // from 1.key
-        timestamp, // ms timestamp
-        hash: apiKeyHashed, // from 3
-    }
-    ```
-
-5. Encryption the `dataObject` with `AES 256`
-
-    > These data `encryptionKey`, and `passphrase` can be find in database.
-
-    ```typescript
-    const passphrase = 'cuwakimacojulawu'; // <--- IV for encrypt AES 256
-    const encryptionKey = 'opbUwdiS1FBsrDUoPgZdx';
-    const apiKeyEncryption = await authApiService.encryptApiKey(
-        data,
-        encryptionKey,
-        passphrase
-    );
-    ```
-
-6. Last, combine the `key` and `apiKeyEncryption`
-
-    ```typescript
-    const xApiKey = `${key}:${apiEncryption}`;
-    ```
-
-7. Send into request. Put the `xApiKey`, `timestamp`, and `passphrase` in the request headers
-
-    ```json
-    {
-        "headers": {
-            "x-api-key": "${xApiKey}", // from 6.xApiKey
-            "x-timestamp": "${timestamp}" // from 4.timestamp
-            ...
-            ...
-            ...
-        }
-    }
-    ```
+Read documentation [here][docs].
 
 ## Adjust Mongoose Setting
 
@@ -662,6 +499,12 @@ If your code behind commit with the original, please update your code and resolv
 [ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate/network/members
 [ack-contributors]: https://github.com/andrechristikan/ack-nestjs-boilerplate/graphs/contributors
 
+<!-- Other Repo Links -->
+[ack]: https://github.com/andrechristikan/ack-nestjs-boilerplate
+[ack-typeorm]: https://github.com/andrechristikan/nestjs-boilerplate-typeorm
+[ack-mongoose]: https://github.com/andrechristikan/ack-nestjs-boilerplate-kafka
+[ack-kafka]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose
+
 <!-- license -->
 [license]: LICENSE.md
 
@@ -682,4 +525,5 @@ If your code behind commit with the original, please update your code and resolv
 [ref-git]: https://git-scm.com
 
 <!-- API Reference -->
-[api-reference-docs]: http://108.137.127.177:3000/docs
+[api-reference-docs]: http://localhost:3000/docs
+[docs]: https://successful-stove-847.notion.site/Ack-docs-572d9a8db1c040bea8a0eb4c35054fd9
