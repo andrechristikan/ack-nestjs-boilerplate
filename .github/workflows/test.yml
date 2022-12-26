@@ -53,12 +53,6 @@ jobs:
           echo DEBUGGER_SYSTEM_WRITE_INTO_FILE="false" >> .env
           echo DEBUGGER_SYSTEM_WRITE_INTO_CONSOLE="false" >> .env
 
-          echo MIDDLEWARE_TIMESTAMP_TOLERANCE="5m" >> .env
-          echo MIDDLEWARE_TIMEOUT="30s" >> .env
-
-          echo DOC_NAME="ACK APIs Spec" >> .env
-          echo DOC_VERSION="1" >> .env
-
           echo JOB_ENABLE="true" >> .env
 
           echo DATABASE_HOST="mongodb://localhost:27017" >> .env
