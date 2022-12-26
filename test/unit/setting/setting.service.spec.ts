@@ -440,7 +440,7 @@ describe('SettingService', () => {
             expect(typeof result).toBe('string');
         });
 
-        it('should be return a boolean value', async () => {
+        it('should be return a boolean value true', async () => {
             const setting3: SettingEntity = await settingService.create({
                 name: settingName3,
                 value: 'true',
@@ -455,6 +455,24 @@ describe('SettingService', () => {
             );
 
             expect(result).toBeTruthy();
+            expect(typeof result).toBe('boolean');
+        });
+
+        it('should be return a boolean value false', async () => {
+            const setting3: SettingEntity = await settingService.create({
+                name: settingName3,
+                value: 'false',
+                type: ENUM_SETTING_DATA_TYPE.BOOLEAN,
+            });
+            const result: boolean = await settingService.getValue<boolean>(
+                setting3
+            );
+
+            jest.spyOn(settingService, 'getValue').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeFalsy();
             expect(typeof result).toBe('boolean');
         });
 
