@@ -87,7 +87,7 @@ Next development
     * [x] AuthApi Controller Test E2E
 * [x] Fix automation testing
 * [x] Pagination move from decorator to service pagination -> make pipe transformer -> wrap into group decorator ResponsePaging
-* [ ] Check Swagger for pagination
+* [x] Check Swagger for pagination
 * [ ] SSO
     * [ ] Google
     * [ ] Apple
