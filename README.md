@@ -399,7 +399,102 @@ We have already provided the API reference. To visit, [click here][api-reference
 
 ## Documentation
 
+<<<<<<< HEAD
 Read documentation [here][docs].
+=======
+| Key | Type | Description |
+| ---- | ---- | ---- |
+| AWS\_CREDENTIAL\_KEY | `string` | AWS account credential key |
+| AWS\_CREDENTIAL\_SECRET | `string` |  AWS account credential secret |
+| AWS\_S3\_REGION | `string` | AWS S3 Region |
+| AWS\_S3\_BUCKET | `string` | AWS S3 Name of Bucket |
+
+## Api Key Encryption
+
+> Please keep the `secret and passphrase` private.
+
+ApiKeyHashed uses `sha256` encryption, `dataObject` encryption is `AES256`.
+
+Here ApiKey data from seeding
+
+```json
+{
+    "name": "Api Key Migration",
+    "description": "From migration",
+    "key": "qwertyuiop12345zxcvbnmkjh",
+    "secret": "5124512412412asdasdasdasdasdASDASDASD",
+    "passphrase": "cuwakimacojulawu",
+    "encryptionKey": "opbUwdiS1FBsrDUoPgZdx"
+}
+```
+
+To do the encryption.
+
+> The encryption process must be on client-side.
+
+1. Make sure to have value of
+    * `key`: You can find the key for apiKey in the database.
+    * `secret`: This value is `only generated when the apiKey is created`. After that, if you lose the secret, you need to recreate the apiKey.
+    * `encryptionKey`: You can find the key for encryption in the database.
+    * `passphrase`: This is IV for encrypt AES 256. This is need to be private too. Same with `secret`.
+
+2. Concat the `key` and `secret`.
+
+    ```typescript
+    const concatApiKey = `${key}:${secret}`;
+    ```
+
+3. Encryption `concatApiKey` with `sha256`
+
+    ```typescript
+    const apiKeyHashed = this.helperHashService.sha256(concatApiKey);
+    ```
+
+4. Then create `dataObject` and put the `apiKeyHashed` into it
+
+    ```typescript
+    const timestamp: number = this.helperDateService.timestamp();
+    const dataObject: IAuthApiRequestHashedData = {
+        key, // from 1.key
+        timestamp, // ms timestamp
+        hash: apiKeyHashed, // from 3
+    }
+    ```
+
+5. Encryption the `dataObject` with `AES 256`
+
+    > These data `encryptionKey`, and `passphrase` can be find in database.
+
+    ```typescript
+    const passphrase = 'cuwakimacojulawu'; // <--- IV for encrypt AES 256
+    const encryptionKey = 'opbUwdiS1FBsrDUoPgZdx';
+    const apiKeyEncryption = await authApiService.encryptApiKey(
+        data,
+        encryptionKey,
+        passphrase
+    );
+    ```
+
+6. Last, combine the `key` and `apiKeyEncryption`
+
+    ```typescript
+    const xApiKey = `${key}:${apiEncryption}`;
+    ```
+
+7. Send into request. Put the `xApiKey`, `timestamp`, and `passphrase` in the request headers
+
+    ```json
+    {
+        "headers": {
+            "x-api-key": "${xApiKey}", // from 6.xApiKey
+            "x-timestamp": "${timestamp}" // from 4.timestamp
+            ...
+            ...
+            ...
+        }
+    }
+    ```
+>>>>>>> 794a609dd0e04336229456aa8ac6356105fcf47e
 
 ## Adjust Mongoose Setting
 
