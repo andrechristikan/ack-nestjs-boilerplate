@@ -102,6 +102,7 @@ export class RoleAdminController {
             page,
             perPage,
             sort,
+            offset,
             search,
             availableSort,
             availableSearch,
@@ -115,7 +116,6 @@ export class RoleAdminController {
         )
         accessFor: Record<string, any>
     ): Promise<IResponsePaging> {
-        const offset: number = this.paginationService.offset(page, perPage);
         const find: Record<string, any> = {
             ...search,
             ...isActive,

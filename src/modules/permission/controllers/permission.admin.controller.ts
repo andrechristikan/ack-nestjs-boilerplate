@@ -92,6 +92,7 @@ export class PermissionAdminController {
             page,
             perPage,
             sort,
+            offset,
             search,
             availableSort,
             availableSearch,
@@ -108,7 +109,6 @@ export class PermissionAdminController {
         )
         group: Record<string, any>
     ): Promise<IResponsePaging> {
-        const offset: number = this.paginationService.offset(page, perPage);
         const find: Record<string, any> = {
             ...isActive,
             ...search,

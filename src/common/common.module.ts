@@ -65,9 +65,6 @@ import { DatabaseModule } from 'src/common/database/database.module';
                     .default(false)
                     .required(),
 
-                DOC_NAME: Joi.string().required(),
-                DOC_VERSION: Joi.number().required(),
-
                 JOB_ENABLE: Joi.boolean().default(false).required(),
 
                 DATABASE_HOST: Joi.string()

@@ -88,6 +88,7 @@ export class ApiKeyAdminController {
             page,
             perPage,
             sort,
+            offset,
             search,
             availableSort,
             availableSearch,
@@ -95,7 +96,6 @@ export class ApiKeyAdminController {
         @PaginationQueryFilterInBoolean('isActive', API_KEY_DEFAULT_IS_ACTIVE)
         isActive: Record<string, any>
     ): Promise<IResponsePaging> {
-        const offset: number = this.paginationService.offset(page, perPage);
         const find: Record<string, any> = {
             ...search,
             ...isActive,

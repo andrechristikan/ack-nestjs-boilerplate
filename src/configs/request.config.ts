@@ -11,7 +11,7 @@ export default registerAs(
                 maxFileSize: bytes('100kb'), // 100kb
             },
             raw: {
-                maxFileSize: bytes('5mb'), // 5mb
+                maxFileSize: bytes('5.5mb'), // 5.5mb
             },
             text: {
                 maxFileSize: bytes('100kb'), // 100kb
@@ -21,9 +21,7 @@ export default registerAs(
             },
         },
         timestamp: {
-            toleranceTimeInMs: ms(
-                process.env.MIDDLEWARE_TIMESTAMP_TOLERANCE || '5m'
-            ), // 5 mins
+            toleranceTimeInMs: ms('5m'), // 5 mins
         },
         timeout: ms('30s'), // 30s based on ms module
         userAgent: {
@@ -90,7 +88,7 @@ export default registerAs(
         },
         rateLimit: {
             resetTime: ms(500), // 0.5 secs
-            maxRequestPerIp: 1, // max request per reset time
+            maxRequestPerIp: 5, // max request per reset time
         },
     })
 );

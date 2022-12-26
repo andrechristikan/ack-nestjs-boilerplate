@@ -155,20 +155,6 @@ describe('E2E User', () => {
         );
     });
 
-    it(`POST ${E2E_USER_PROFILE_UPLOAD_URL} Profile Upload File Too Large`, async () => {
-        const response = await request(app.getHttpServer())
-            .post(E2E_USER_PROFILE_UPLOAD_URL)
-            .send()
-            .attach('file', './test/e2e/user/files/medium.jpg')
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('Content-Type', 'multipart/form-data');
-
-        expect(response.status).toEqual(HttpStatus.PAYLOAD_TOO_LARGE);
-        expect(response.body.statusCode).toEqual(
-            ENUM_FILE_STATUS_CODE_ERROR.FILE_MAX_SIZE_ERROR
-        );
-    });
-
     it(`POST ${E2E_USER_PROFILE_UPLOAD_URL} Profile Upload Success`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_PROFILE_UPLOAD_URL)
