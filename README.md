@@ -69,7 +69,7 @@ Next development
 * [x] Optimize Unit Testing
 * [x] Make serverless separate repo
 * [x] Optimize Swagger
-* [ ] Export to excel and Import from excel add options to background process
+* [x] Export to excel and Import from excel add options to background process
 * [ ] SSO Google
 * [ ] AuthApi Controller
 * [ ] Update Documentation, include an diagram for easier comprehension
