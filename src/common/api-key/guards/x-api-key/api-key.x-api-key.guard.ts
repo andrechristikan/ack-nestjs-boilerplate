@@ -1,6 +1,7 @@
 import { AuthGuard } from '@nestjs/passport';
 import {
     ExecutionContext,
+    ForbiddenException,
     Injectable,
     UnauthorizedException,
 } from '@nestjs/common';
@@ -38,7 +39,7 @@ export class ApiKeyXApiKeyGuard extends AuthGuard('api-key') {
                 info.name === 'BadRequestError' &&
                 info.message.startsWith('Invalid API Key prefix')
             ) {
-                throw new UnauthorizedException({
+                throw new ForbiddenException({
                     statusCode:
                         ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_PREFIX_INVALID_ERROR,
                     message: 'apiKey.error.prefixInvalid',
@@ -53,7 +54,7 @@ export class ApiKeyXApiKeyGuard extends AuthGuard('api-key') {
                 statusCode ===
                 ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR
             ) {
-                throw new UnauthorizedException({
+                throw new ForbiddenException({
                     statusCode,
                     message: 'apiKey.error.notFound',
                 });
@@ -61,15 +62,23 @@ export class ApiKeyXApiKeyGuard extends AuthGuard('api-key') {
                 statusCode ===
                 ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_IS_ACTIVE_ERROR
             ) {
-                throw new UnauthorizedException({
+                throw new ForbiddenException({
                     statusCode,
                     message: 'apiKey.error.inactive',
                 });
             } else if (
                 statusCode ===
+                ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_EXPIRED_ERROR
+            ) {
+                throw new ForbiddenException({
+                    statusCode,
+                    message: 'apiKey.error.expired',
+                });
+            } else if (
+                statusCode ===
                 ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_WRONG_ERROR
             ) {
-                throw new UnauthorizedException({
+                throw new ForbiddenException({
                     statusCode,
                     message: 'apiKey.error.wrong',
                 });

@@ -88,6 +88,8 @@ Next development
 * [x] Fix automation testing
 * [x] Pagination move from decorator to service pagination -> make pipe transformer -> wrap into group decorator ResponsePaging
 * [x] Check Swagger for pagination
+* [x] ApiKey add startDate and endDate
+* [x] Make docker port expose be difference with port app
 * [ ] SSO
     * [ ] Google
     * [ ] Apple
@@ -465,7 +467,6 @@ If your code behind commit with the original, please update your code and resolv
 
 [![Github][github-shield]][author-github]
 [![LinkedIn][linkedin-shield]][author-linkedin]
-[![Instagram][instagram-shield]][author-instagram]
 
 <!-- BADGE LINKS -->
 [ack-contributors-shield]: https://img.shields.io/github/contributors/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
@@ -485,11 +486,9 @@ If your code behind commit with the original, please update your code and resolv
 
 [github-shield]: https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white
 [linkedin-shield]: https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white
-[instagram-shield]: https://img.shields.io/badge/Instagram-E4405F?style=for-the-badge&logo=instagram&logoColor=white
 
 <!-- CONTACTS -->
 [author-linkedin]: https://linkedin.com/in/andrechristikan
-[author-instagram]: https://www.instagram.com/___ac.k
 [author-email]: mailto:ack@baibay.id
 [author-github]: https://github.com/andrechristikan
 
@@ -510,7 +509,6 @@ If your code behind commit with the original, please update your code and resolv
 
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com
-[ref-nestjs-cqrs]: https://docs.nestjs.com/recipes/cqrs
 [ref-mongoose]: https://mongoosejs.com
 [ref-mongodb]: https://docs.mongodb.com/
 [ref-nodejs]: https://nodejs.org/

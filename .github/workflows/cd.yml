@@ -15,6 +15,7 @@ jobs:
     env: 
       APP_NAME: ${{ github.event.repository.name }}
       APP_PORT: 3000
+      APP_PORT_EXPOSE: 3000
       APP_NETWORK: app-network
 
     steps:
@@ -58,7 +59,7 @@ jobs:
             docker network create ${{ env.APP_NETWORK }} --driver=bridge
             docker run -itd \
               --hostname ${{ env.APP_NAME}} \
-              --publish ${{ env.APP_PORT }}:${{ env.APP_PORT }} \
+              --publish ${{ env.APP_PORT_EXPOSE }}:${{ env.APP_PORT }} \
               --network ${{ env.APP_NETWORK }} \
               --volume /app/${{ env.APP_NAME}}/logs/:/app/logs/ \
               --volume /app/${{ env.APP_NAME}}/.env:/app/.env \

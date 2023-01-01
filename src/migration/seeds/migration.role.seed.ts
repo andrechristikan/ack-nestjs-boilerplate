@@ -7,7 +7,7 @@ import { PermissionEntity } from 'src/modules/permission/repository/entities/per
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 
 @Injectable()
-export class RoleSeed {
+export class MigrationRoleSeed {
     constructor(
         private readonly permissionService: PermissionService,
         private readonly roleService: RoleService

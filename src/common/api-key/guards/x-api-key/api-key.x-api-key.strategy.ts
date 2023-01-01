@@ -4,6 +4,7 @@ import Strategy from 'passport-headerapikey';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
@@ -11,7 +12,10 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
     Strategy,
     'api-key'
 ) {
-    constructor(private readonly apiKeyService: ApiKeyService) {
+    constructor(
+        private readonly apiKeyService: ApiKeyService,
+        private readonly helperDateService: HelperDateService
+    ) {
         super(
             { header: 'X-API-KEY', prefix: '' },
             true,
@@ -51,9 +55,9 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
 
         const key = xApiKey[0];
         const hashed = xApiKey[1];
-        const authApi: ApiKeyEntity = await this.apiKeyService.findOneByKey(
-            key
-        );
+        const today = this.helperDateService.create();
+        const authApi: ApiKeyEntity =
+            await this.apiKeyService.findOneByActiveKey(key);
 
         if (!authApi) {
             verified(
@@ -75,6 +79,18 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
             );
 
             return;
+        } else if (
+            authApi.startDate &&
+            authApi.endDate &&
+            (authApi.startDate < today || authApi.endDate > today)
+        ) {
+            verified(
+                new Error(
+                    `${ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_EXPIRED_ERROR}`
+                ),
+                null,
+                null
+            );
         }
 
         const validateApiKey: boolean =
