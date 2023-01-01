@@ -9,6 +9,7 @@ pipeline {
         APP_NAME = 'ack' // this will be container name
         APP_NETWORK = 'app-network' // this network name
         APP_PORT = 3000 // this project will serve in port 0.0.0.0:3000
+        APP_EXPOSE_PORT = 3000 // this project will expose at port 0.0.0.0:3000
         
         NODE_JS = 'lts' // depends with our jenkins setting 
 
@@ -184,7 +185,7 @@ pipeline {
 
                         sshCommand remote: remote, command: "docker run -itd  \
                             --hostname ${APP_NAME} \
-                            --publish ${APP_PORT}:${APP_PORT} \
+                            --publish ${APP_EXPOSE_PORT}:${APP_PORT} \
                             --network ${APP_NETWORK} \
                             --volume /app/${APP_NAME}/logs/:/app/logs/ \
                             --volume /app/${APP_NAME}/.env:/app/.env \

@@ -7,7 +7,7 @@ import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
 @Injectable()
-export class UserSeed {
+export class MigrationUserSeed {
     constructor(
         private readonly authService: AuthService,
         private readonly userService: UserService,

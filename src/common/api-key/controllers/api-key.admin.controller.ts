@@ -18,6 +18,7 @@ import {
 import {
     ApiKeyGetGuard,
     ApiKeyUpdateActiveGuard,
+    ApiKeyUpdateGuard,
     ApiKeyUpdateInactiveGuard,
     ApiKeyUpdateResetGuard,
 } from 'src/common/api-key/decorators/api-key.admin.decorator';
@@ -29,9 +30,12 @@ import {
     ApiKeyInactiveDoc,
     ApiKeyListDoc,
     ApiKeyResetDoc,
+    ApiKeyUpdateDoc,
 } from 'src/common/api-key/docs/api-key.admin.doc';
 import { ApiKeyCreateDto } from 'src/common/api-key/dtos/api-key.create.dto';
 import { ApiKeyRequestDto } from 'src/common/api-key/dtos/api-key.request.dto';
+import { ApiKeyUpdateDateDto } from 'src/common/api-key/dtos/api-key.update-date.dto';
+import { ApiKeyUpdateNameDto } from 'src/common/api-key/dtos/api-key.update-name.dto';
 import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyCreateSerialization } from 'src/common/api-key/serializations/api-key.create.serialization';
@@ -58,6 +62,7 @@ import {
     IResponse,
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
+import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 
 @ApiTags('admin.apiKey')
 @Controller({
@@ -225,7 +230,7 @@ export class ApiKeyAdminController {
         ENUM_AUTH_PERMISSIONS.API_KEY_RESET
     )
     @AuthJwtAdminAccessProtected()
-    @Put('/update/:apiKey/reset')
+    @Patch('/update/:apiKey/reset')
     async reset(@GetApiKey() apiKey: ApiKeyEntity): Promise<IResponse> {
         try {
             const updated: IApiKeyEntity = await this.apiKeyService.reset(
@@ -244,5 +249,60 @@ export class ApiKeyAdminController {
                 error: err.message,
             });
         }
+    }
+
+    @ApiKeyUpdateDoc()
+    @Response('apiKey.update', { serialization: ResponseIdSerialization })
+    @ApiKeyUpdateGuard()
+    @RequestParamGuard(ApiKeyRequestDto)
+    @AuthPermissionProtected(
+        ENUM_AUTH_PERMISSIONS.API_KEY_READ,
+        ENUM_AUTH_PERMISSIONS.API_KEY_UPDATE
+    )
+    @AuthJwtAdminAccessProtected()
+    @Put('/update/:apiKey')
+    async updateName(
+        @Body() body: ApiKeyUpdateNameDto,
+        @GetApiKey() apiKey: ApiKeyEntity
+    ): Promise<IResponse> {
+        try {
+            await this.apiKeyService.updateName(apiKey._id, body);
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                error: err.message,
+            });
+        }
+
+        return { _id: apiKey._id };
+    }
+
+    @ApiKeyUpdateDoc()
+    @Response('apiKey.updateDate', { serialization: ResponseIdSerialization })
+    @ApiKeyUpdateGuard()
+    @RequestParamGuard(ApiKeyRequestDto)
+    @AuthPermissionProtected(
+        ENUM_AUTH_PERMISSIONS.API_KEY_READ,
+        ENUM_AUTH_PERMISSIONS.API_KEY_UPDATE,
+        ENUM_AUTH_PERMISSIONS.API_KEY_UPDATE_DATE
+    )
+    @AuthJwtAdminAccessProtected()
+    @Put('/update/:apiKey/date')
+    async updateDate(
+        @Body() body: ApiKeyUpdateDateDto,
+        @GetApiKey() apiKey: ApiKeyEntity
+    ): Promise<IResponse> {
+        try {
+            await this.apiKeyService.updateDate(apiKey._id, body);
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                error: err.message,
+            });
+        }
+
+        return { _id: apiKey._id };
     }
 }
