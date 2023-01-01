@@ -116,7 +116,7 @@
     "@types/supertest": "^2.0.12",
     "@types/ua-parser-js": "^0.7.36",
     "@types/uuid": "^9.0.0",
-    "@typescript-eslint/eslint-plugin": "^5.47.0",
+    "@typescript-eslint/eslint-plugin": "^5.47.1",
     "@typescript-eslint/parser": "^5.47.0",
     "cspell": "^6.18.0",
     "eslint": "^8.30.0",
