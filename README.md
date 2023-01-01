@@ -24,8 +24,8 @@
 ## Other Repo
 
 * [Mongoose Mini Version][ack-mongoose] : Mini version
-* [Typeorm Integration][ack-typeorm] : Mini version with typeorm integration
-* [Kafka Integration][ack-kafka] : Integration with Apache Kafka
+* [Typeorm Integration][ack-typeorm] : Typeorm integration
+* [Kafka Integration][ack-kafka] : Apache Kafka integration
 
 ## Table of contents
 
@@ -502,8 +502,8 @@ If your code behind commit with the original, please update your code and resolv
 <!-- Other Repo Links -->
 [ack]: https://github.com/andrechristikan/ack-nestjs-boilerplate
 [ack-typeorm]: https://github.com/andrechristikan/nestjs-boilerplate-typeorm
-[ack-mongoose]: https://github.com/andrechristikan/ack-nestjs-boilerplate-kafka
-[ack-kafka]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose
+[ack-mongoose]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose
+[ack-kafka]: https://github.com/andrechristikan/ack-nestjs-boilerplate-kafka
 
 <!-- license -->
 [license]: LICENSE.md
