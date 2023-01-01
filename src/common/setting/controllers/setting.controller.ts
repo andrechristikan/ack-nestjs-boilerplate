@@ -15,11 +15,11 @@ import {
     SETTING_DEFAULT_PER_PAGE,
     SETTING_DEFAULT_SORT,
 } from 'src/common/setting/constants/setting.list.constant';
-import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
 import {
+    GetSetting,
     SettingGetByNameGuard,
     SettingGetGuard,
-} from 'src/common/setting/decorators/setting.public.decorator';
+} from 'src/common/setting/decorators/setting.decorator';
 import {
     SettingGetByNameDoc,
     SettingGetDoc,
