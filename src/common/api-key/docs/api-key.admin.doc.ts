@@ -18,6 +18,7 @@ export function ApiKeyListDoc(): MethodDecorator {
         DocPaging<ApiKeyListSerialization>('apiKey.list', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: {
                 queries: ApiKeyDocQueryIsActive,
@@ -36,6 +37,7 @@ export function ApiKeyGetDoc(): MethodDecorator {
         Doc<ApiKeyGetSerialization>('apiKey.get', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: {
                 params: ApiKeyDocParamsGet,
@@ -50,6 +52,7 @@ export function ApiKeyCreateDoc(): MethodDecorator {
         Doc<ApiKeyCreateSerialization>('apiKey.create', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             response: {
                 httpStatus: HttpStatus.CREATED,
@@ -64,6 +67,7 @@ export function ApiKeyActiveDoc(): MethodDecorator {
         Doc<void>('apiKey.active', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: {
                 params: ApiKeyDocParamsGet,
@@ -77,6 +81,7 @@ export function ApiKeyInactiveDoc(): MethodDecorator {
         Doc<void>('apiKey.inactive', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: {
                 params: ApiKeyDocParamsGet,
@@ -90,6 +95,7 @@ export function ApiKeyResetDoc(): MethodDecorator {
         Doc<void>('apiKey.reset', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: {
                 params: ApiKeyDocParamsGet,
@@ -106,6 +112,7 @@ export function ApiKeyUpdateDoc(): MethodDecorator {
         Doc<ResponseIdSerialization>('apiKey.update', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: {
                 params: ApiKeyDocParamsGet,
