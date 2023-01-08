@@ -11,6 +11,7 @@ import { ApiKeyCreateSerialization } from 'src/common/api-key/serializations/api
 import { ApiKeyGetSerialization } from 'src/common/api-key/serializations/api-key.get.serialization';
 import { ApiKeyListSerialization } from 'src/common/api-key/serializations/api-key.list.serialization';
 import { Doc, DocPaging } from 'src/common/doc/decorators/doc.decorator';
+import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 
 export function ApiKeyListDoc(): MethodDecorator {
     return applyDecorators(
@@ -95,6 +96,22 @@ export function ApiKeyResetDoc(): MethodDecorator {
             },
             response: {
                 serialization: ApiKeyCreateSerialization,
+            },
+        })
+    );
+}
+
+export function ApiKeyUpdateDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc<ResponseIdSerialization>('apiKey.update', {
+            auth: {
+                jwtAccessToken: true,
+            },
+            request: {
+                params: ApiKeyDocParamsGet,
+            },
+            response: {
+                serialization: ResponseIdSerialization,
             },
         })
     );

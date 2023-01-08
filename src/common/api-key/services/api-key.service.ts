@@ -21,6 +21,8 @@ import {
     ApiKeyCreateRawDto,
 } from 'src/common/api-key/dtos/api-key.create.dto';
 import { ApiKeyUpdateNameDto } from 'src/common/api-key/dtos/api-key.update-name.dto';
+import { ApiKeyUpdateDateDto } from 'src/common/api-key/dtos/api-key.update-date.dto';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
@@ -30,6 +32,7 @@ export class ApiKeyService implements IApiKeyService {
         private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService,
         private readonly helperHashService: HelperHashService,
+        private readonly helperDateService: HelperDateService,
         private readonly apiKeyRepository: ApiKeyRepository
     ) {
         this.env = this.configService.get<string>('app.env');
@@ -68,7 +71,10 @@ export class ApiKeyService implements IApiKeyService {
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyEntity> {
         return this.apiKeyRepository.findOne<ApiKeyEntity>(
-            { key, isActive: true },
+            {
+                key,
+                isActive: true,
+            },
             options
         );
     }
@@ -109,7 +115,7 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     async create(
-        { name, description }: ApiKeyCreateDto,
+        { name, description, startDate, endDate }: ApiKeyCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<IApiKeyEntity> {
         const key = await this.createKey();
@@ -123,6 +129,11 @@ export class ApiKeyService implements IApiKeyService {
         dto.hash = hash;
         dto.isActive = true;
 
+        if (startDate && endDate) {
+            dto.startDate = startDate;
+            dto.endDate = endDate;
+        }
+
         const created: ApiKeyEntity =
             await this.apiKeyRepository.create<ApiKeyEntity>(dto, options);
 
@@ -130,7 +141,14 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     async createRaw(
-        { name, description, key, secret }: ApiKeyCreateRawDto,
+        {
+            name,
+            description,
+            key,
+            secret,
+            startDate,
+            endDate,
+        }: ApiKeyCreateRawDto,
         options?: IDatabaseCreateOptions
     ): Promise<IApiKeyEntity> {
         const hash: string = await this.createHashApiKey(key, secret);
@@ -141,6 +159,11 @@ export class ApiKeyService implements IApiKeyService {
         dto.key = key;
         dto.hash = hash;
         dto.isActive = true;
+
+        if (startDate && endDate) {
+            dto.startDate = startDate;
+            dto.endDate = endDate;
+        }
 
         const created: ApiKeyEntity =
             await this.apiKeyRepository.create<ApiKeyEntity>(dto, options);
@@ -154,6 +177,18 @@ export class ApiKeyService implements IApiKeyService {
         options?: IDatabaseOptions
     ): Promise<ApiKeyEntity> {
         return this.apiKeyRepository.updateOneById<ApiKeyUpdateNameDto>(
+            _id,
+            data,
+            options
+        );
+    }
+
+    async updateDate(
+        _id: string,
+        data: ApiKeyUpdateDateDto,
+        options?: IDatabaseOptions
+    ): Promise<ApiKeyEntity> {
+        return this.apiKeyRepository.updateOneById<ApiKeyUpdateDateDto>(
             _id,
             data,
             options
@@ -226,5 +261,22 @@ export class ApiKeyService implements IApiKeyService {
         options?: IDatabaseManyOptions
     ): Promise<boolean> {
         return this.apiKeyRepository.deleteMany(find, options);
+    }
+
+    async inactiveManyByEndDate(
+        options?: IDatabaseManyOptions
+    ): Promise<boolean> {
+        return this.apiKeyRepository.updateMany(
+            {
+                end_date: {
+                    $lte: this.helperDateService.create(),
+                },
+                is_active: true,
+            },
+            {
+                is_active: false,
+            },
+            options
+        );
     }
 }

@@ -2,6 +2,7 @@ import {
     ApiKeyCreateDto,
     ApiKeyCreateRawDto,
 } from 'src/common/api-key/dtos/api-key.create.dto';
+import { ApiKeyUpdateDateDto } from 'src/common/api-key/dtos/api-key.update-date.dto';
 import { ApiKeyUpdateNameDto } from 'src/common/api-key/dtos/api-key.update-name.dto';
 import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
@@ -65,11 +66,17 @@ export interface IApiKeyService {
         options?: IDatabaseOptions
     ): Promise<ApiKeyEntity>;
 
+    updateDate(
+        _id: string,
+        data: ApiKeyUpdateDateDto,
+        options?: IDatabaseOptions
+    ): Promise<ApiKeyEntity>;
+
     reset(
         _id: string,
         key: string,
         options?: IDatabaseOptions
-    ): Promise<ApiKeyEntity>;
+    ): Promise<IApiKeyEntity>;
 
     deleteOneById(
         _id: string,
@@ -93,4 +100,6 @@ export interface IApiKeyService {
         find: Record<string, any>,
         options?: IDatabaseManyOptions
     ): Promise<boolean>;
+
+    inactiveManyByEndDate(options?: IDatabaseManyOptions): Promise<boolean>;
 }

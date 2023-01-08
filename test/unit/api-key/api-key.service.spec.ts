@@ -13,14 +13,18 @@ import { ENUM_PAGINATION_SORT_TYPE } from 'src/common/pagination/constants/pagin
 import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 
 describe('ApiKeyService', () => {
     const apiKeyName1: string = faker.random.alphaNumeric(15);
     const apiKeyName2: string = faker.random.alphaNumeric(15);
     const apiKeyName3: string = faker.random.alphaNumeric(15);
     let apiKeyService: ApiKeyService;
+    let helperDateService: HelperDateService;
     let helperHashService: HelperHashService;
     let apiKey: IApiKeyEntity;
+    let startDate: Date;
+    let endDate: Date;
 
     beforeEach(async () => {
         const moduleRef = await Test.createTestingModule({
@@ -46,12 +50,16 @@ describe('ApiKeyService', () => {
         }).compile();
 
         apiKeyService = moduleRef.get<ApiKeyService>(ApiKeyService);
+        helperDateService = moduleRef.get<HelperDateService>(HelperDateService);
         helperHashService = moduleRef.get<HelperHashService>(HelperHashService);
 
         apiKey = await apiKeyService.create({
             name: apiKeyName1,
             description: faker.random.alphaNumeric(20),
         });
+
+        startDate = helperDateService.backwardInDays(1);
+        endDate = helperDateService.forwardInDays(20);
     });
 
     afterEach(async () => {
@@ -270,6 +278,21 @@ describe('ApiKeyService', () => {
             expect(result).toBeTruthy();
             expect(result.name).toBe(apiKeyName2);
         });
+
+        it('should return a new apikeys with expiration', async () => {
+            const result: IApiKeyEntity = await apiKeyService.create({
+                name: apiKeyName3,
+                startDate,
+                endDate,
+            });
+
+            jest.spyOn(apiKeyService, 'create').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeTruthy();
+            expect(result.name).toBe(apiKeyName3);
+        });
     });
 
     describe('createRaw', () => {
@@ -287,6 +310,24 @@ describe('ApiKeyService', () => {
 
             expect(result).toBeTruthy();
             expect(result.name).toBe(apiKeyName3);
+        });
+
+        it('should return a new apikeys with expiration', async () => {
+            const result: IApiKeyEntity = await apiKeyService.createRaw({
+                name: apiKeyName2,
+                description: faker.random.alphaNumeric(),
+                key: await apiKeyService.createKey(),
+                secret: await apiKeyService.createSecret(),
+                startDate,
+                endDate,
+            });
+
+            jest.spyOn(apiKeyService, 'createRaw').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeTruthy();
+            expect(result.name).toBe(apiKeyName2);
         });
     });
 
@@ -307,6 +348,24 @@ describe('ApiKeyService', () => {
             expect(result).toBeTruthy();
             expect(result._id).toBe(apiKey._id);
             expect(result.name).toBe(nameUpdate);
+        });
+    });
+
+    describe('updateDate', () => {
+        it('should return a updated apikey', async () => {
+            const result: ApiKeyEntity = await apiKeyService.updateDate(
+                apiKey._id,
+                {
+                    startDate,
+                    endDate,
+                }
+            );
+            jest.spyOn(apiKeyService, 'updateName').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeTruthy();
+            expect(result._id).toBe(apiKey._id);
         });
     });
 
@@ -469,6 +528,20 @@ describe('ApiKeyService', () => {
             jest.spyOn(apiKeyService, 'deleteMany').mockReturnValueOnce(
                 result as any
             );
+
+            expect(result).toBeTruthy();
+            expect(result).toBe(true);
+        });
+    });
+
+    describe('inactiveManyByEndDate', () => {
+        it('should be succeed', async () => {
+            const result: boolean = await apiKeyService.inactiveManyByEndDate();
+
+            jest.spyOn(
+                apiKeyService,
+                'inactiveManyByEndDate'
+            ).mockReturnValueOnce(result as any);
 
             expect(result).toBeTruthy();
             expect(result).toBe(true);

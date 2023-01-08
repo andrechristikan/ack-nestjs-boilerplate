@@ -48,6 +48,18 @@ export class ApiKeyEntity extends DatabaseMongoUUIDEntityAbstract {
         type: Boolean,
     })
     isActive: boolean;
+
+    @Prop({
+        required: false,
+        type: Date,
+    })
+    startDate?: Date;
+
+    @Prop({
+        required: false,
+        type: Date,
+    })
+    endDate?: Date;
 }
 
 export const ApiKeySchema = SchemaFactory.createForClass(ApiKeyEntity);

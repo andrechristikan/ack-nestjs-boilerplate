@@ -7,7 +7,7 @@ import { PermissionEntity } from 'src/modules/permission/repository/entities/per
 import { PermissionService } from 'src/modules/permission/services/permission.service';
 
 @Injectable()
-export class PermissionSeed {
+export class MigrationPermissionSeed {
     constructor(private readonly permissionService: PermissionService) {}
 
     @Command({

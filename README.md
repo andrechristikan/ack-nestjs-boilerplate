@@ -24,8 +24,8 @@
 ## Other Repo
 
 * [Mongoose Mini Version][ack-mongoose] : Mini version
-* [Typeorm Integration][ack-typeorm] : Mini version with typeorm integration
-* [Kafka Integration][ack-kafka] : Integration with Apache Kafka
+* [Typeorm Integration][ack-typeorm] : Typeorm integration
+* [Kafka Integration][ack-kafka] : Apache Kafka integration
 
 ## Table of contents
 
@@ -88,6 +88,8 @@ Next development
 * [x] Fix automation testing
 * [x] Pagination move from decorator to service pagination -> make pipe transformer -> wrap into group decorator ResponsePaging
 * [x] Check Swagger for pagination
+* [x] ApiKey add startDate and endDate
+* [x] Make docker port expose be difference with port app
 * [ ] SSO
     * [ ] Google
     * [ ] Apple
@@ -102,13 +104,13 @@ Describes which version.
 
 | Name       | Version  |
 | ---------- | -------- |
-| NestJs     | v9.1.x     |
-| NodeJs     | v18.4.x    |
-| Typescript | v4.8.x     |
-| Mongoose   | v6.6.x     |
+| NestJs     | v9.2.x     |
+| NodeJs     | v18.12.x    |
+| Typescript | v4.9.x     |
+| Mongoose   | v6.8.x     |
 | MongoDB    | v6.0.x     |
 | Yarn       | v1.22.x     |
-| NPM        | v8.12.x     |
+| NPM        | v8.19.x     |
 | Docker     | v20.10.x    |
 | Docker Compose | v2.6.x |
 | Swagger | v6.1.x |
@@ -465,7 +467,6 @@ If your code behind commit with the original, please update your code and resolv
 
 [![Github][github-shield]][author-github]
 [![LinkedIn][linkedin-shield]][author-linkedin]
-[![Instagram][instagram-shield]][author-instagram]
 
 <!-- BADGE LINKS -->
 [ack-contributors-shield]: https://img.shields.io/github/contributors/andrechristikan/ack-nestjs-boilerplate?style=for-the-badge
@@ -485,11 +486,9 @@ If your code behind commit with the original, please update your code and resolv
 
 [github-shield]: https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white
 [linkedin-shield]: https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white
-[instagram-shield]: https://img.shields.io/badge/Instagram-E4405F?style=for-the-badge&logo=instagram&logoColor=white
 
 <!-- CONTACTS -->
 [author-linkedin]: https://linkedin.com/in/andrechristikan
-[author-instagram]: https://www.instagram.com/___ac.k
 [author-email]: mailto:ack@baibay.id
 [author-github]: https://github.com/andrechristikan
 
@@ -502,15 +501,14 @@ If your code behind commit with the original, please update your code and resolv
 <!-- Other Repo Links -->
 [ack]: https://github.com/andrechristikan/ack-nestjs-boilerplate
 [ack-typeorm]: https://github.com/andrechristikan/nestjs-boilerplate-typeorm
-[ack-mongoose]: https://github.com/andrechristikan/ack-nestjs-boilerplate-kafka
-[ack-kafka]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose
+[ack-mongoose]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose
+[ack-kafka]: https://github.com/andrechristikan/ack-nestjs-boilerplate-kafka
 
 <!-- license -->
 [license]: LICENSE.md
 
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com
-[ref-nestjs-cqrs]: https://docs.nestjs.com/recipes/cqrs
 [ref-mongoose]: https://mongoosejs.com
 [ref-mongodb]: https://docs.mongodb.com/
 [ref-nodejs]: https://nodejs.org/
