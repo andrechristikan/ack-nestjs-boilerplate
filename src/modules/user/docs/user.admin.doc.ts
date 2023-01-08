@@ -18,6 +18,7 @@ export function UserListDoc(): MethodDecorator {
         DocPaging<UserListSerialization>('user.list', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: { queries: UserDocQueryIsActive },
             response: {
@@ -34,6 +35,7 @@ export function UserGetDoc(): MethodDecorator {
         Doc<UserGetSerialization>('user.get', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: {
                 params: UserDocParamsGet,
@@ -48,6 +50,7 @@ export function UserCreateDoc(): MethodDecorator {
         Doc<ResponseIdSerialization>('user.create', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             response: {
                 httpStatus: HttpStatus.CREATED,
@@ -62,6 +65,7 @@ export function UserUpdateDoc(): MethodDecorator {
         Doc<ResponseIdSerialization>('user.update', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: {
                 params: UserDocParamsGet,
@@ -76,6 +80,7 @@ export function UserDeleteDoc(): MethodDecorator {
         Doc<void>('user.delete', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: {
                 params: UserDocParamsGet,
@@ -89,6 +94,7 @@ export function UserImportDoc(): MethodDecorator {
         Doc<UserImportSerialization>('user.import', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             response: {
                 httpStatus: HttpStatus.CREATED,
@@ -103,6 +109,7 @@ export function UserExportDoc(): MethodDecorator {
         Doc('user.export', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             response: {
                 httpStatus: HttpStatus.OK,
@@ -116,6 +123,7 @@ export function UserActiveDoc(): MethodDecorator {
         Doc<void>('user.active', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: {
                 params: UserDocParamsGet,
@@ -129,6 +137,7 @@ export function UserInactiveDoc(): MethodDecorator {
         Doc<void>('user.inactive', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: {
                 params: UserDocParamsGet,

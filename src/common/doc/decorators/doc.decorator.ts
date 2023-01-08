@@ -10,6 +10,7 @@ import {
     ApiProduces,
     ApiQuery,
     ApiResponse,
+    ApiSecurity,
     getSchemaPath,
 } from '@nestjs/swagger';
 import { APP_LANGUAGE } from 'src/app/constants/app.constant';
@@ -130,7 +131,7 @@ export function Doc<T>(
     }
 
     if (options?.auth?.apiKey) {
-        auths.push(ApiBearerAuth('apiKey'));
+        auths.push(ApiSecurity('apiKey'));
         oneOfUnauthorized.push(
             {
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NEEDED_ERROR,
@@ -150,6 +151,27 @@ export function Doc<T>(
                 statusCode:
                     ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INVALID_ERROR,
                 messagePath: 'apiKey.error.invalid',
+            }
+        );
+    }
+
+    if (options?.auth?.permissionToken) {
+        auths.push(ApiSecurity('permissionToken'));
+        oneOfUnauthorized.push(
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_ERROR,
+                messagePath: 'auth.error.permissionTokenUnauthorized',
+            },
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_INVALID_ERROR,
+                messagePath: 'auth.error.permissionTokenInvalid',
+            },
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_NOT_YOUR_ERROR,
+                messagePath: 'auth.error.permissionTokenNotYour',
             }
         );
     }
@@ -291,7 +313,7 @@ export function DocPaging<T>(
     }
 
     if (options?.auth?.apiKey) {
-        auths.push(ApiBearerAuth('apiKey'));
+        auths.push(ApiSecurity('apiKey'));
         oneOfUnauthorized.push(
             {
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NEEDED_ERROR,
@@ -311,6 +333,27 @@ export function DocPaging<T>(
                 statusCode:
                     ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INVALID_ERROR,
                 messagePath: 'apiKey.error.invalid',
+            }
+        );
+    }
+
+    if (options?.auth?.permissionToken) {
+        auths.push(ApiSecurity('permissionToken'));
+        oneOfUnauthorized.push(
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_ERROR,
+                messagePath: 'auth.error.permissionTokenUnauthorized',
+            },
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_INVALID_ERROR,
+                messagePath: 'auth.error.permissionTokenInvalid',
+            },
+            {
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_NOT_YOUR_ERROR,
+                messagePath: 'auth.error.permissionTokenNotYour',
             }
         );
     }

@@ -42,6 +42,15 @@ export default async function (app: NestApplication) {
                 { type: 'apiKey', in: 'header', name: 'x-api-key' },
                 'apiKey'
             )
+            .addApiKey(
+                {
+                    type: 'apiKey',
+                    in: 'header',
+                    name: 'x-permission-token',
+                    description: 'grant permission for /admin prefix endpoints',
+                },
+                'permissionToken'
+            )
             .build();
 
         const document = SwaggerModule.createDocument(app, documentBuild, {

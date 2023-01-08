@@ -19,6 +19,7 @@ export function PermissionListDoc(): MethodDecorator {
         DocPaging<PermissionListSerialization>('permission.list', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: {
                 queries: [
@@ -40,6 +41,7 @@ export function PermissionGetDoc(): MethodDecorator {
         Doc<PermissionGetSerialization>('permission.get', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: {
                 params: PermissionDocParamsGet,
@@ -54,6 +56,7 @@ export function PermissionUpdateDoc(): MethodDecorator {
         Doc<ResponseIdSerialization>('permission.update', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: {
                 params: PermissionDocParamsGet,
@@ -68,6 +71,7 @@ export function PermissionActiveDoc(): MethodDecorator {
         Doc<void>('permission.active', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: {
                 params: PermissionDocParamsGet,
@@ -81,6 +85,7 @@ export function PermissionInactiveDoc(): MethodDecorator {
         Doc<void>('permission.inactive', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: {
                 params: PermissionDocParamsGet,
@@ -94,6 +99,7 @@ export function PermissionGroupDoc(): MethodDecorator {
         Doc<PermissionGroupsSerialization>('permission.group', {
             auth: {
                 jwtAccessToken: true,
+                permissionToken: true,
             },
             request: {
                 queries: PermissionDocQueryGroup,
