@@ -154,7 +154,6 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 .status(statusHttp)
                 .json(resResponse);
         } else {
-            console.error('exception', exception);
             // In certain situations `httpAdapter` might not be available in the
             // constructor method, thus we should resolve it here.
             const message: string = (await this.messageService.get(
