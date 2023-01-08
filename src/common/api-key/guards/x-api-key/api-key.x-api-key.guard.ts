@@ -24,59 +24,51 @@ export class ApiKeyXApiKeyGuard extends AuthGuard('api-key') {
     ): IApiKeyPayload {
         if (err || !apiKey) {
             if (
-                info instanceof Error &&
-                info.name === 'BadRequestError' &&
-                info.message === 'Missing API Key'
+                (info instanceof Error &&
+                    info.name === 'BadRequestError' &&
+                    info.message === 'Missing API Key') ||
+                !apiKey
             ) {
                 throw new UnauthorizedException({
                     statusCode:
                         ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NEEDED_ERROR,
                     message: 'apiKey.error.keyNeeded',
                 });
-            } else if (
-                info instanceof Error &&
-                info.name === 'BadRequestError' &&
-                info.message.startsWith('Invalid API Key prefix')
-            ) {
-                throw new UnauthorizedException({
-                    statusCode:
-                        ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_PREFIX_INVALID_ERROR,
-                    message: 'apiKey.error.prefixInvalid',
-                });
-            }
+            } else if (err) {
+                const statusCode: number = this.helperNumberService.create(
+                    err.message as string
+                );
 
-            const statusCode: number = this.helperNumberService.create(
-                err.message as string
-            );
-
-            if (
-                statusCode ===
-                ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR
-            ) {
-                throw new UnauthorizedException({
-                    statusCode,
-                    message: 'apiKey.error.notFound',
-                });
-            } else if (
-                statusCode ===
-                ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_IS_ACTIVE_ERROR
-            ) {
-                throw new UnauthorizedException({
-                    statusCode,
-                    message: 'apiKey.error.inactive',
-                });
-            } else if (
-                statusCode ===
-                ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_WRONG_ERROR
-            ) {
-                throw new UnauthorizedException({
-                    statusCode,
-                    message: 'apiKey.error.wrong',
-                });
+                if (
+                    statusCode ===
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR
+                ) {
+                    throw new UnauthorizedException({
+                        statusCode,
+                        message: 'apiKey.error.notFound',
+                    });
+                } else if (
+                    statusCode ===
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_IS_ACTIVE_ERROR
+                ) {
+                    throw new UnauthorizedException({
+                        statusCode,
+                        message: 'apiKey.error.inactive',
+                    });
+                } else if (
+                    statusCode ===
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_WRONG_ERROR
+                ) {
+                    throw new UnauthorizedException({
+                        statusCode,
+                        message: 'apiKey.error.wrong',
+                    });
+                }
             }
 
             throw new UnauthorizedException({
-                statusCode,
+                statusCode:
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INVALID_ERROR,
                 message: 'apiKey.error.invalid',
             });
         }

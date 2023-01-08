@@ -138,11 +138,6 @@ export function Doc<T>(
             },
             {
                 statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_PREFIX_INVALID_ERROR,
-                messagePath: 'apiKey.error.prefixInvalid',
-            },
-            {
-                statusCode:
                     ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR,
                 messagePath: 'apiKey.error.notFound',
             },
@@ -301,11 +296,6 @@ export function DocPaging<T>(
             {
                 statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NEEDED_ERROR,
                 messagePath: 'apiKey.error.keyNeeded',
-            },
-            {
-                statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_PREFIX_INVALID_ERROR,
-                messagePath: 'apiKey.error.prefixInvalid',
             },
             {
                 statusCode:
