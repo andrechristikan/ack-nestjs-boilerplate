@@ -54,6 +54,7 @@ import {
 } from 'src/modules/role/decorators/role.admin.decorator';
 import { GetRole } from 'src/modules/role/decorators/role.decorator';
 import {
+    RoleAccessForDoc,
     RoleActiveDoc,
     RoleCreateDoc,
     RoleDeleteDoc,
@@ -68,8 +69,10 @@ import { RoleUpdateNameDto } from 'src/modules/role/dtos/role.update-name.dto';
 import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
 import { IRoleEntity } from 'src/modules/role/interfaces/role.interface';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
+import { RoleAccessForSerialization } from 'src/modules/role/serializations/role.access-for.serialization';
 import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
 import { RoleListSerialization } from 'src/modules/role/serializations/role.list.serialization';
+import { RoleEnumService } from 'src/modules/role/services/role.enum.service';
 import { RoleService } from 'src/modules/role/services/role.service';
 
 @ApiTags('modules.admin.role')
@@ -81,7 +84,8 @@ export class RoleAdminController {
     constructor(
         private readonly paginationService: PaginationService,
         private readonly permissionService: PermissionService,
-        private readonly roleService: RoleService
+        private readonly roleService: RoleService,
+        private readonly roleEnumService: RoleEnumService
     ) {}
 
     @RoleListDoc()
@@ -381,5 +385,17 @@ export class RoleAdminController {
         }
 
         return;
+    }
+
+    @RoleAccessForDoc()
+    @Response('role.accessFor', { serialization: RoleAccessForSerialization })
+    @RequestParamGuard(RoleRequestDto)
+    @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.ROLE_READ)
+    @AuthJwtAdminAccessProtected()
+    @Get('/access-for')
+    async accessFor(): Promise<IResponse> {
+        const accessFor: string[] = await this.roleEnumService.getAccessFor();
+
+        return { accessFor };
     }
 }
