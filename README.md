@@ -15,7 +15,7 @@
 
 # ACK NestJs Boilerplate  🔥 🚀
 
-> Amazon web service will be the cloud provider. This is why this project is focused on AWS features.
+> This repo will representative of authentication service and authorization service
 
 [ACK NestJs][ack] is a [Http NestJs v9.x][ref-nestjs] boilerplate. Best uses for backend service.
 
@@ -23,9 +23,9 @@
 
 ## Other Repo
 
-* [Mongoose Mini Version][ack-mongoose] : Mini version
-* [Typeorm Integration][ack-typeorm] : Typeorm integration
-* [Kafka Integration][ack-kafka] : Apache Kafka integration
+* [Mini Version][ack-mongoose] : Mini version
+* [Typeorm Integration][ack-typeorm] : Typeorm integration `(Outdated)`
+* [Kafka Integration][ack-kafka] : Hybrid Between HTTP and Microservice (Apache Kafka Integration)
 
 ## Table of contents
 
@@ -56,40 +56,17 @@
 
 ## Important
 
-> If you want to implement `database transactions`, you must run MongoDB as a `replication set`.
-
-If you change the environment value of `APP_ENV` to `production`, that will trigger.
-
-1. CorsMiddleware will implement `src/configs/middleware.config.ts`.Otherwise is `*`.
-2. Documentation will `disable`.
+* The features will replated with AWS Features
+* If you want to implement `database transactions`, you must run MongoDB as a `replication set`.
+* If you change the environment value of `APP_ENV` to `production`, that will trigger.
+    1. CorsMiddleware will implement `src/configs/middleware.config.ts`.
+    2. Documentation will `disable`.
 
 ## Next Todo
 
 Next development
 
-* [x] Implement Repository Design Pattern / Data Access Object Design Pattern
-* [x] Swagger for API Documentation
-* [x] Mongo Repository soft delete
-* [x] Make it simple
-* [x] Encrypt jwt payload
-* [x] Optimize Unit Testing
-* [x] Make serverless separate repo
-* [x] Optimize Swagger
-* [x] Remove enum endpoint
-* [x] Permission group fixed
-* [x] Reduce the payload of access token
-* [x] Update authorization mechanism, permission token on `x-permission-token`
-* [x] Update package, cors setting, check all interfaces, husky trigger switch to on and check test
-* [x] AuthApiKey mechanism
-* [x] AuthApi Controller
-    * [x] AuthApi Get, Active, Inactive Endpoint
-    * [x] AuthApi Create (Random Key), and Reset Secret Endpoint
-    * [x] AuthApi Controller Test E2E
-* [x] Fix automation testing
-* [x] Pagination move from decorator to service pagination -> make pipe transformer -> wrap into group decorator ResponsePaging
-* [x] Check Swagger for pagination
-* [x] ApiKey add startDate and endDate
-* [x] Make docker port expose be difference with port app
+* Validation guard change to pipe
 * [ ] SSO
     * [ ] Google
     * [ ] Apple
@@ -122,20 +99,21 @@ Describes which version.
 * Component based folder structure
 * Repository Design Pattern or Data Access Layer Design Pattern
 * Support Microservice Architecture, Serverless Architecture, Clean Architecture, and/or Hexagonal Architecture
+* Follow Community Guide Line
 * Follow The Twelve-Factor App
 * Adopt SOLID and KISS principle
 
 ## Features
+
+### Main Features
 
 * NestJs v9.x 🥳
 * Typescript 🚀
 * Production ready 🔥
 * Repository Design Pattern
 * Swagger included
-* Authentication and authorization (`JWT`, `API Key`) 💪
-* Role management system
-* Storage integration with `AwsS3`
-* Upload file `single` and `multipart` to AwsS3
+* Authentication (`Access Token`, `Refresh Token`, `API Key`)
+* Authorization, Role and Permission Management (`PermissionToken`)
 * Support multi-language `i18n` 🗣
 * Request validation with `class-validation`
 * Serialization with `class-transformer`
@@ -143,7 +121,7 @@ Describes which version.
 * Server Side Pagination, there have 3 of types
 * Import and export data with excel by using `decorator`
 
-## Database
+### Database
 
 * MongoDB integrate by using [mongoose][ref-mongoose] 🎉
 * Multi Database
@@ -170,6 +148,11 @@ Describes which version.
 * Centralize exception filter
 * Setting from database 🗿
 * Maintenance mode on / off from database 🐤
+
+### Third Party Integration
+
+* Storage integration with `AwsS3`
+* Upload file `single` and `multipart` to AwsS3
 
 ### Others
 
@@ -215,7 +198,8 @@ Full structure of module
     ├── pipes
     ├── repository
         ├── entities // database entities
-        └── repositories // database repositories
+        ├── repositories // database repositories
+        └── module1.repository.module.ts
     ├── serializations // response serialization
     ├── services
     ├── tasks // task for cron job
@@ -252,9 +236,11 @@ export interface IResponseMetadata {
 Default response for the response
 
 ```ts
-export interface IResponse {
+export class ResponseDefaultSerialization {
+    statusCode: number;
+    message: string;
     metadata?: IResponseMetadata;
-    [key: string]: any;
+    data?: Record<string, any>;
 }
 ```
 
@@ -263,7 +249,9 @@ export interface IResponse {
 Default response for pagination.
 
 ```ts
-export interface IResponsePaging {
+export class ResponsePagingSerialization {
+    statusCode: number;
+    message: string;
     totalData: number;
     totalPage?: number;
     currentPage?: number;
@@ -301,8 +289,6 @@ The recommended version is the LTS version for every tool and package.
 2. [MongoDB][ref-mongodb]
 3. [Yarn][ref-yarn]
 4. [Git][ref-git]
-5. [Docker][ref-docker]
-6. [Docker-Compose][ref-dockercompose]
 
 ### Clone Repo
 
@@ -389,6 +375,13 @@ yarn start:dev
 ```
 
 ### Run Project with Docker
+
+For docker installation, we need more tools to be installed in our instance.
+
+1. [Docker][ref-docker]
+2. [Docker-Compose][ref-dockercompose]
+
+Then run
 
 ```bash
 docker-compose up -d

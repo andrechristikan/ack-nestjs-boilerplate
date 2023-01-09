@@ -3,7 +3,7 @@ import {
     ApiKeyCreateRawDto,
 } from 'src/common/api-key/dtos/api-key.create.dto';
 import { ApiKeyUpdateDateDto } from 'src/common/api-key/dtos/api-key.update-date.dto';
-import { ApiKeyUpdateNameDto } from 'src/common/api-key/dtos/api-key.update-name.dto';
+import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
 import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import {
@@ -60,9 +60,9 @@ export interface IApiKeyService {
         options?: IDatabaseCreateOptions
     ): Promise<IApiKeyEntity>;
 
-    updateName(
+    update(
         _id: string,
-        data: ApiKeyUpdateNameDto,
+        data: ApiKeyUpdateDto,
         options?: IDatabaseOptions
     ): Promise<ApiKeyEntity>;
 

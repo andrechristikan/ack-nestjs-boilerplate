@@ -331,17 +331,17 @@ describe('ApiKeyService', () => {
         });
     });
 
-    describe('updateName', () => {
+    describe('update', () => {
         it('should return a updated apikey', async () => {
             const nameUpdate = faker.random.alphaNumeric(10);
-            const result: ApiKeyEntity = await apiKeyService.updateName(
+            const result: ApiKeyEntity = await apiKeyService.update(
                 apiKey._id,
                 {
                     name: nameUpdate,
                     description: faker.random.alphaNumeric(20),
                 }
             );
-            jest.spyOn(apiKeyService, 'updateName').mockReturnValueOnce(
+            jest.spyOn(apiKeyService, 'update').mockReturnValueOnce(
                 result as any
             );
 
@@ -360,7 +360,7 @@ describe('ApiKeyService', () => {
                     endDate,
                 }
             );
-            jest.spyOn(apiKeyService, 'updateName').mockReturnValueOnce(
+            jest.spyOn(apiKeyService, 'updateDate').mockReturnValueOnce(
                 result as any
             );
 

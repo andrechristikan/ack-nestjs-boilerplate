@@ -35,7 +35,7 @@ import {
 import { ApiKeyCreateDto } from 'src/common/api-key/dtos/api-key.create.dto';
 import { ApiKeyRequestDto } from 'src/common/api-key/dtos/api-key.request.dto';
 import { ApiKeyUpdateDateDto } from 'src/common/api-key/dtos/api-key.update-date.dto';
-import { ApiKeyUpdateNameDto } from 'src/common/api-key/dtos/api-key.update-name.dto';
+import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
 import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyCreateSerialization } from 'src/common/api-key/serializations/api-key.create.serialization';
@@ -262,11 +262,11 @@ export class ApiKeyAdminController {
     @AuthJwtAdminAccessProtected()
     @Put('/update/:apiKey')
     async updateName(
-        @Body() body: ApiKeyUpdateNameDto,
+        @Body() body: ApiKeyUpdateDto,
         @GetApiKey() apiKey: ApiKeyEntity
     ): Promise<IResponse> {
         try {
-            await this.apiKeyService.updateName(apiKey._id, body);
+            await this.apiKeyService.update(apiKey._id, body);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
