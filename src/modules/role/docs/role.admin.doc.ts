@@ -10,6 +10,7 @@ import {
     ROLE_DEFAULT_AVAILABLE_SEARCH,
     ROLE_DEFAULT_AVAILABLE_SORT,
 } from 'src/modules/role/constants/role.list.constant';
+import { RoleAccessForSerialization } from 'src/modules/role/serializations/role.access-for.serialization';
 import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
 import { RoleListSerialization } from 'src/modules/role/serializations/role.list.serialization';
 
@@ -115,6 +116,18 @@ export function RoleInactiveDoc(): MethodDecorator {
             request: {
                 params: RoleDocParamsGet,
             },
+        })
+    );
+}
+
+export function RoleAccessForDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc<RoleAccessForSerialization>('role.accessFor', {
+            auth: {
+                jwtAccessToken: true,
+                permissionToken: true,
+            },
+            response: { serialization: RoleAccessForSerialization },
         })
     );
 }

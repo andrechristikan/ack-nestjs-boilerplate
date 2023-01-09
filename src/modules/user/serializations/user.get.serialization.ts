@@ -21,6 +21,11 @@ export class UserGetSerialization {
     readonly email: string;
 
     @ApiProperty({
+        example: faker.internet.userName(),
+    })
+    readonly username: string;
+
+    @ApiProperty({
         example: faker.internet.email(),
     })
     readonly mobileNumber: string;
