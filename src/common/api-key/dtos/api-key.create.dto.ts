@@ -7,7 +7,10 @@ import {
     IsOptional,
     IsString,
     MaxLength,
+    MinLength,
 } from 'class-validator';
+import { MinGreaterThanEqual } from 'src/common/request/validations/request.min-greater-than-equal.validation';
+import { MinDateToday } from 'src/common/request/validations/request.min-date-today.validation';
 
 export class ApiKeyCreateDto {
     @ApiProperty({
@@ -29,6 +32,7 @@ export class ApiKeyCreateDto {
     @IsOptional()
     @Type(() => Date)
     @IsDate()
+    @MinDateToday()
     startDate?: Date;
 
     @ApiProperty({
@@ -40,6 +44,7 @@ export class ApiKeyCreateDto {
     @IsOptional()
     @Type(() => Date)
     @IsDate()
+    @MinGreaterThanEqual('startDate')
     endDate?: Date;
 
     @ApiProperty({
@@ -49,6 +54,7 @@ export class ApiKeyCreateDto {
     })
     @IsOptional()
     @IsString()
+    @MinLength(1)
     @MaxLength(100)
     description?: string;
 }

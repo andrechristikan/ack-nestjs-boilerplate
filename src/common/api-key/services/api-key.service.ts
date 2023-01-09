@@ -20,7 +20,7 @@ import {
     ApiKeyCreateDto,
     ApiKeyCreateRawDto,
 } from 'src/common/api-key/dtos/api-key.create.dto';
-import { ApiKeyUpdateNameDto } from 'src/common/api-key/dtos/api-key.update-name.dto';
+import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
 import { ApiKeyUpdateDateDto } from 'src/common/api-key/dtos/api-key.update-date.dto';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 
@@ -161,8 +161,8 @@ export class ApiKeyService implements IApiKeyService {
         dto.isActive = true;
 
         if (startDate && endDate) {
-            dto.startDate = startDate;
-            dto.endDate = endDate;
+            dto.startDate = this.helperDateService.startOfDay(startDate);
+            dto.endDate = this.helperDateService.endOfDay(endDate);
         }
 
         const created: ApiKeyEntity =
@@ -171,12 +171,12 @@ export class ApiKeyService implements IApiKeyService {
         return { ...created, secret };
     }
 
-    async updateName(
+    async update(
         _id: string,
-        data: ApiKeyUpdateNameDto,
+        data: ApiKeyUpdateDto,
         options?: IDatabaseOptions
     ): Promise<ApiKeyEntity> {
-        return this.apiKeyRepository.updateOneById<ApiKeyUpdateNameDto>(
+        return this.apiKeyRepository.updateOneById<ApiKeyUpdateDto>(
             _id,
             data,
             options
@@ -185,12 +185,15 @@ export class ApiKeyService implements IApiKeyService {
 
     async updateDate(
         _id: string,
-        data: ApiKeyUpdateDateDto,
+        { startDate, endDate }: ApiKeyUpdateDateDto,
         options?: IDatabaseOptions
     ): Promise<ApiKeyEntity> {
         return this.apiKeyRepository.updateOneById<ApiKeyUpdateDateDto>(
             _id,
-            data,
+            {
+                startDate: this.helperDateService.startOfDay(startDate),
+                endDate: this.helperDateService.endOfDay(endDate),
+            },
             options
         );
     }
