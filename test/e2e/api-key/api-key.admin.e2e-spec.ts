@@ -96,11 +96,11 @@ describe('E2E Api Key Admin', () => {
         jest.clearAllMocks();
 
         try {
-            await apiKeyService.deleteOne({
+            await apiKeyService.deleteMany({
                 _id: apiKey._id,
             });
 
-            await apiKeyService.deleteOne({
+            await apiKeyService.deleteMany({
                 name: apiKeyCreate.name,
             });
         } catch (err: any) {

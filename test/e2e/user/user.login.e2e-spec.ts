@@ -93,8 +93,8 @@ describe('E2E User Login', () => {
         jest.clearAllMocks();
 
         try {
-            await userService.deleteOneById(user._id);
-            await roleService.deleteOne({ name: roleName });
+            await userService.deleteMany({ _id: user._id });
+            await roleService.deleteMany({ name: roleName });
         } catch (err: any) {
             console.error(err);
         }

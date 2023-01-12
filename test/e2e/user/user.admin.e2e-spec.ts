@@ -122,9 +122,10 @@ describe('E2E User Admin', () => {
         jest.clearAllMocks();
 
         try {
-            await userService.deleteOneById(userData._id);
-            await userService.deleteOneById(userExist._id);
-            await userService.deleteOne({ username: 'test111' });
+            await userService.deleteMany({
+                _id: { $in: [userData._id, userExist._id] },
+            });
+            await userService.deleteMany({ username: 'test111' });
         } catch (err: any) {
             console.error(err);
         }
@@ -415,6 +416,8 @@ describe('E2E User Admin', () => {
     });
 
     it(`DELETE ${E2E_USER_ADMIN_DELETE_URL} Delete, success`, async () => {
+        await userService.blocked(userData._id);
+
         const response = await request(app.getHttpServer())
             .delete(E2E_USER_ADMIN_DELETE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
