@@ -96,14 +96,13 @@ export class ErrorHttpFilter implements ExceptionFilter {
             const {
                 statusCode,
                 message,
-                _error,
                 _errorType,
                 data,
                 properties,
                 _metadata,
             } = responseException;
 
-            let { errors } = responseException;
+            let { errors, _error } = responseException;
             if (errors?.length > 0) {
                 errors =
                     _errorType === ERROR_TYPE.IMPORT
@@ -115,6 +114,12 @@ export class ErrorHttpFilter implements ExceptionFilter {
                               errors as ValidationError[],
                               customLang
                           );
+            }
+
+            if (!_error) {
+                _error = 'message' in exception ? exception.message : undefined;
+            } else if (typeof _error !== 'string') {
+                _error = JSON.stringify(_error);
             }
 
             const mapMessage: string | IMessage = await this.messageService.get(
@@ -136,11 +141,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
             const resResponse: IErrorHttpFilter = {
                 statusCode: statusCode ?? statusHttp,
                 message: mapMessage,
-                _error: _error
-                    ? JSON.stringify(_error)
-                    : exception.message !== mapMessage
-                    ? exception.message
-                    : undefined,
+                _error,
                 errors: errors as IErrors[] | IErrorsImport[],
                 _metadata: resMetadata,
                 data,

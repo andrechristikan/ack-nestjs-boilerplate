@@ -54,7 +54,7 @@ describe('E2E User Public', () => {
         jest.clearAllMocks();
 
         try {
-            await userService.deleteOne({
+            await userService.deleteMany({
                 email: userData.email,
                 mobileNumber: userData.mobileNumber,
             });

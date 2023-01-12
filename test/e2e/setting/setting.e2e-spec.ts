@@ -58,7 +58,7 @@ describe('E2E Setting', () => {
         jest.clearAllMocks();
 
         try {
-            await settingService.deleteOne({ name: settingName });
+            await settingService.deleteMany({ name: settingName });
         } catch (err: any) {
             console.error(err);
         }

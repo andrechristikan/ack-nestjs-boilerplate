@@ -24,12 +24,13 @@ export class AuthPayloadAccessForGuard implements CanActivate {
                 [context.getHandler(), context.getClass()]
             );
 
-        if (!requiredFor) {
+        const { user } = context.switchToHttp().getRequest();
+        const { accessFor } = user;
+
+        if (!requiredFor || accessFor === ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN) {
             return true;
         }
 
-        const { user } = context.switchToHttp().getRequest();
-        const { accessFor } = user;
         const hasFor: boolean = this.helperArrayService.includes(
             requiredFor,
             accessFor

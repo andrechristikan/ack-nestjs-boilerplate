@@ -160,7 +160,7 @@ export class UserService implements IUserService {
                     $options: 'i',
                 },
             },
-            options
+            { ...options, withDeleted: true }
         );
     }
 
@@ -172,7 +172,7 @@ export class UserService implements IUserService {
             {
                 mobileNumber,
             },
-            options
+            { ...options, withDeleted: true }
         );
     }
 
@@ -180,7 +180,10 @@ export class UserService implements IUserService {
         username: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean> {
-        return this.userRepository.exists({ username }, options);
+        return this.userRepository.exists(
+            { username },
+            { ...options, withDeleted: true }
+        );
     }
 
     async updatePassword(
@@ -246,6 +249,7 @@ export class UserService implements IUserService {
     ): Promise<UserEntity> {
         const dto: UserBlockedDto = new UserBlockedDto();
         dto.blocked = true;
+        dto.isActive = false;
 
         return this.userRepository.updateOneById<UserBlockedDto>(
             _id,

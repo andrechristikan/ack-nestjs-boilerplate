@@ -13,3 +13,13 @@ export function UserSignUpDoc(): MethodDecorator {
         })
     );
 }
+
+export function UserDeleteSelfDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc<void>('user.deleteSelf', {
+            auth: {
+                jwtAccessToken: true,
+            },
+        })
+    );
+}

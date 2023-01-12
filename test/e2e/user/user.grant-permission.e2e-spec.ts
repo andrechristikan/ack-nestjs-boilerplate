@@ -104,7 +104,7 @@ describe('E2E User Grant Password', () => {
         jest.clearAllMocks();
 
         try {
-            await userService.deleteOneById(user._id);
+            await userService.deleteMany({ _id: user._id });
         } catch (err: any) {
             console.error(err);
         }

@@ -76,8 +76,8 @@ export class PermissionAdminController {
     @ResponsePaging('permission.list', {
         serialization: PermissionListSerialization,
     })
-    // @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
-    // @AuthJwtAdminAccessProtected()
+    @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
+    @AuthJwtAdminAccessProtected()
     @Get('/list')
     async list(
         @PaginationQuery(
@@ -184,11 +184,11 @@ export class PermissionAdminController {
     })
     @PermissionUpdateGuard()
     @RequestParamGuard(PermissionRequestDto)
-    // @AuthPermissionProtected(
-    //     ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
-    //     ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
-    // )
-    // @AuthJwtAdminAccessProtected()
+    @AuthPermissionProtected(
+        ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
+        ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
+    )
+    @AuthJwtAdminAccessProtected()
     @Put('/update/:permission')
     async update(
         @GetPermission() permission: PermissionEntity,

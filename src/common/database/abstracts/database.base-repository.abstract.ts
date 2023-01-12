@@ -20,6 +20,12 @@ export abstract class DatabaseBaseRepositoryAbstract<T> {
         options?: IDatabaseFindAllOptions<any>
     ): Promise<Y[]>;
 
+    abstract findAllDistinct<Y = T>(
+        fieldDistinct: string,
+        find?: Record<string, any> | Record<string, any>[],
+        options?: IDatabaseFindAllOptions<any>
+    ): Promise<Y[]>;
+
     abstract findOne<Y = T>(
         find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseFindOneOptions<any>

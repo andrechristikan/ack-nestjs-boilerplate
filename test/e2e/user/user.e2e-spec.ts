@@ -103,7 +103,7 @@ describe('E2E User', () => {
         jest.clearAllMocks();
 
         try {
-            await userService.deleteOneById(user._id);
+            await userService.deleteMany({ _id: user._id });
         } catch (e) {}
 
         await app.close();

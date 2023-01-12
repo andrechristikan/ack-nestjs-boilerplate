@@ -15,6 +15,8 @@ export class UserPayloadSerialization extends OmitType(UserGetSerialization, [
     'passwordExpired',
     'passwordAttempt',
     'signUpDate',
+    'createdAt',
+    'updatedAt',
 ] as const) {
     @Exclude()
     readonly photo?: AwsS3Serialization;
@@ -55,4 +57,13 @@ export class UserPayloadSerialization extends OmitType(UserGetSerialization, [
 
     @Exclude()
     readonly mobileNumber: number;
+
+    readonly rememberMe: boolean;
+    readonly loginDate: Date;
+
+    @Exclude()
+    readonly createdAt: number;
+
+    @Exclude()
+    readonly updatedAt: number;
 }

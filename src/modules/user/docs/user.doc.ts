@@ -96,13 +96,3 @@ export function UserGrantPermissionDoc(): MethodDecorator {
         })
     );
 }
-
-export function UserDeleteDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc<void>('user.delete', {
-            auth: {
-                jwtAccessToken: true,
-            },
-        })
-    );
-}

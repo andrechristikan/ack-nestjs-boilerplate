@@ -178,9 +178,7 @@ export class RoleAdminController {
         @Body()
         { name, permissions, accessFor }: RoleCreateDto
     ): Promise<IResponse> {
-        const exist: boolean = await this.roleService.existByName(name, {
-            join: true,
-        });
+        const exist: boolean = await this.roleService.existByName(name);
         if (exist) {
             throw new ConflictException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR,
