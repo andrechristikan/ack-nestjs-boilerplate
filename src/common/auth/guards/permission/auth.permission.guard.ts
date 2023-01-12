@@ -6,6 +6,7 @@ import {
     ForbiddenException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
 import { AuthService } from 'src/common/auth/services/auth.service';
 
@@ -25,6 +26,17 @@ export class AuthPermissionGuard implements CanActivate {
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context.switchToHttp().getRequest();
         const { user } = request;
+
+        if (!user) {
+            throw new UnauthorizedException({
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_JWT_ACCESS_TOKEN_ERROR,
+                message: 'auth.error.accessTokenUnauthorized',
+            });
+        } else if (user.accessFor === ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN) {
+            return true;
+        }
+
         const { [this.headerName]: token } = request.headers;
 
         if (!token) {

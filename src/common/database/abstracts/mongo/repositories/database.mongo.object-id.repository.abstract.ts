@@ -60,7 +60,63 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
         const findAll = this._repository.find(find);
 
         if (options?.withDeleted) {
-            findAll.where(DATABASE_DELETED_AT_FIELD_NAME).exists(true);
+            findAll.or([
+                {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
+                },
+                {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
+                },
+            ]);
+        } else {
+            findAll.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
+        }
+
+        if (options?.select) {
+            findAll.select(options.select);
+        }
+
+        if (options?.paging) {
+            findAll.limit(options.paging.limit).skip(options.paging.offset);
+        }
+
+        if (options?.sort) {
+            findAll.sort(
+                this._convertSort(options.sort) as { [key: string]: SortOrder }
+            );
+        }
+
+        if (options?.join) {
+            findAll.populate(
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as PopulateOptions | PopulateOptions[])
+            );
+        }
+
+        if (options?.session) {
+            findAll.session(options.session);
+        }
+
+        return findAll.lean();
+    }
+
+    async findAllDistinct<Y = T>(
+        fieldDistinct: string,
+        find?: Record<string, any> | Record<string, any>[],
+        options?: IDatabaseFindAllOptions<ClientSession>
+    ): Promise<Y[]> {
+        const findAll = this._repository.distinct(fieldDistinct, find);
+
+        if (options?.withDeleted) {
+            findAll.or([
+                {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
+                },
+                {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
+                },
+            ]);
         } else {
             findAll.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
@@ -101,7 +157,14 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
         const findOne = this._repository.findOne(find);
 
         if (options?.withDeleted) {
-            findOne.where(DATABASE_DELETED_AT_FIELD_NAME).exists(true);
+            findOne.or([
+                {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
+                },
+                {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
+                },
+            ]);
         } else {
             findOne.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
@@ -138,7 +201,14 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
         const findOne = this._repository.findById(_id);
 
         if (options?.withDeleted) {
-            findOne.where(DATABASE_DELETED_AT_FIELD_NAME).exists(true);
+            findOne.or([
+                {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
+                },
+                {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
+                },
+            ]);
         } else {
             findOne.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
@@ -175,7 +245,14 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
         const count = this._repository.countDocuments(find);
 
         if (options?.withDeleted) {
-            count.where(DATABASE_DELETED_AT_FIELD_NAME).exists(true);
+            count.or([
+                {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
+                },
+                {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
+                },
+            ]);
         } else {
             count.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
@@ -209,7 +286,14 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
         });
 
         if (options?.withDeleted) {
-            exist.where(DATABASE_DELETED_AT_FIELD_NAME).exists(true);
+            exist.or([
+                {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
+                },
+                {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
+                },
+            ]);
         } else {
             exist.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
@@ -508,14 +592,11 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
         _id: string[],
         options?: IDatabaseManyOptions<ClientSession>
     ): Promise<boolean> {
-        const del = this._repository
-            .deleteMany({
-                _id: {
-                    $in: _id.map((val) => new Types.ObjectId(val)),
-                },
-            })
-            .where(DATABASE_DELETED_AT_FIELD_NAME)
-            .exists(false);
+        const del = this._repository.deleteMany({
+            _id: {
+                $in: _id.map((val) => new Types.ObjectId(val)),
+            },
+        });
 
         if (options?.session) {
             del.session(options.session);
@@ -541,10 +622,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
         find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseManyOptions<ClientSession>
     ): Promise<boolean> {
-        const del = this._repository
-            .deleteMany(find)
-            .where(DATABASE_DELETED_AT_FIELD_NAME)
-            .exists(false);
+        const del = this._repository.deleteMany(find);
 
         if (options?.session) {
             del.session(options.session);

@@ -17,3 +17,4 @@ export const USER_DEFAULT_AVAILABLE_SEARCH = [
 ];
 
 export const USER_DEFAULT_IS_ACTIVE = [true, false];
+export const USER_DEFAULT_BLOCKED = [true, false];

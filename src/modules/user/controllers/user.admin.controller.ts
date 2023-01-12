@@ -75,6 +75,7 @@ import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
 import {
     USER_DEFAULT_AVAILABLE_SEARCH,
     USER_DEFAULT_AVAILABLE_SORT,
+    USER_DEFAULT_BLOCKED,
     USER_DEFAULT_IS_ACTIVE,
     USER_DEFAULT_PER_PAGE,
     USER_DEFAULT_SORT,
@@ -122,11 +123,14 @@ export class UserAdminController {
             _availableSearch,
         }: PaginationListDto,
         @PaginationQueryFilterInBoolean('isActive', USER_DEFAULT_IS_ACTIVE)
-        isActive: Record<string, any>
+        isActive: Record<string, any>,
+        @PaginationQueryFilterInBoolean('blocked', USER_DEFAULT_BLOCKED)
+        blocked: Record<string, any>
     ): Promise<IResponsePaging> {
         const find: Record<string, any> = {
             ..._search,
             ...isActive,
+            ...blocked,
         };
 
         const users: IUserEntity[] = await this.userService.findAll(find, {

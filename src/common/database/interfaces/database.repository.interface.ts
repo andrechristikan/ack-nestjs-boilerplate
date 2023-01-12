@@ -20,6 +20,12 @@ export interface IDatabaseRepository<T> {
         options?: IDatabaseFindAllOptions<any>
     ): Promise<Y[]>;
 
+    findAllDistinct<Y = T>(
+        fieldDistinct: string,
+        find?: Record<string, any> | Record<string, any>[],
+        options?: IDatabaseFindAllOptions<any>
+    ): Promise<Y[]>;
+
     findOne<Y = T>(
         find: Record<string, any> | Record<string, any>[],
         options?: IDatabaseFindOneOptions<any>
