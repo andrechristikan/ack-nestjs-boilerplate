@@ -44,12 +44,14 @@ import {
     UserDeleteGuard,
     UserGetGuard,
     UserUpdateActiveGuard,
+    UserUpdateBlockedGuard,
     UserUpdateGuard,
     UserUpdateInactiveGuard,
 } from 'src/modules/user/decorators/user.admin.decorator';
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
 import {
     UserActiveDoc,
+    UserBlockedDoc,
     UserCreateDoc,
     UserDeleteDoc,
     UserExportDoc,
@@ -384,5 +386,30 @@ export class UserAdminController {
     @Post('/export')
     async export(): Promise<IResponse> {
         return this.userService.findAll({});
+    }
+
+    @UserBlockedDoc()
+    @Response('user.blocked')
+    @UserUpdateBlockedGuard()
+    @RequestParamGuard(UserRequestDto)
+    @AuthPermissionProtected(
+        ENUM_AUTH_PERMISSIONS.USER_READ,
+        ENUM_AUTH_PERMISSIONS.USER_UPDATE,
+        ENUM_AUTH_PERMISSIONS.USER_BLOCKED
+    )
+    @AuthJwtAdminAccessProtected()
+    @Patch('/update/:user/blocked')
+    async blocked(@GetUser() user: IUserEntity): Promise<void> {
+        try {
+            await this.userService.blocked(user._id);
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                error: err.message,
+            });
+        }
+
+        return;
     }
 }

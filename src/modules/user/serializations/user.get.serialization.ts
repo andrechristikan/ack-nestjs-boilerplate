@@ -16,14 +16,14 @@ export class UserGetSerialization {
     readonly role: RoleGetSerialization;
 
     @ApiProperty({
-        example: faker.internet.email(),
-    })
-    readonly email: string;
-
-    @ApiProperty({
         example: faker.internet.userName(),
     })
     readonly username: string;
+
+    @ApiProperty({
+        example: faker.internet.email(),
+    })
+    readonly email: string;
 
     @ApiProperty({
         example: faker.internet.email(),
@@ -34,6 +34,11 @@ export class UserGetSerialization {
         example: true,
     })
     readonly isActive: boolean;
+
+    @ApiProperty({
+        example: false,
+    })
+    readonly blocked: boolean;
 
     @ApiProperty({
         example: faker.name.firstName(),

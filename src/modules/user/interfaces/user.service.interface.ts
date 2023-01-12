@@ -100,6 +100,8 @@ export interface IUserService {
 
     inactive(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
 
+    blocked(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
+
     maxPasswordAttempt(
         _id: string,
         options?: IDatabaseOptions

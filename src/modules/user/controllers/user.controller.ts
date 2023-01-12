@@ -2,6 +2,7 @@ import {
     BadRequestException,
     Body,
     Controller,
+    Delete,
     ForbiddenException,
     Get,
     HttpCode,
@@ -38,6 +39,7 @@ import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.sta
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
 import { UserProfileGuard } from 'src/modules/user/decorators/user.public.decorator';
+import { UserDeleteDoc } from 'src/modules/user/docs/user.admin.doc';
 import {
     UserChangePasswordDoc,
     UserGrantPermissionDoc,
@@ -483,6 +485,24 @@ export class UserController {
                     }
                 );
             await this.userService.updatePhoto(user._id, aws);
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                error: err.message,
+            });
+        }
+
+        return;
+    }
+
+    @UserDeleteDoc()
+    @Response('user.delete')
+    @AuthJwtAccessProtected()
+    @Delete('/delete')
+    async delete(@AuthJwtPayload('_id') _id: string): Promise<void> {
+        try {
+            await this.userService.inactive(_id);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

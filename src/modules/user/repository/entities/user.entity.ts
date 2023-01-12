@@ -107,6 +107,14 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     isActive: boolean;
 
     @Prop({
+        required: true,
+        default: false,
+        index: true,
+        type: Boolean,
+    })
+    blocked: boolean;
+
+    @Prop({
         required: false,
         _id: false,
         type: {

@@ -145,3 +145,17 @@ export function UserInactiveDoc(): MethodDecorator {
         })
     );
 }
+
+export function UserBlockedDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc<void>('user.blocked', {
+            auth: {
+                jwtAccessToken: true,
+                permissionToken: true,
+            },
+            request: {
+                params: UserDocParamsGet,
+            },
+        })
+    );
+}
