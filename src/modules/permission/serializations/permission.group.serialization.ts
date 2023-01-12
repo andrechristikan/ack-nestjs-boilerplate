@@ -1,14 +1,31 @@
-import { ApiProperty, PickType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { ApiProperty, OmitType, PickType } from '@nestjs/swagger';
+import { Exclude, Type } from 'class-transformer';
 import { PermissionGetSerialization } from 'src/modules/permission/serializations/permission.get.serialization';
+
+class PermissionGroupPermissionSerialization extends OmitType(
+    PermissionGetSerialization,
+    ['group', 'createdAt', 'updatedAt'] as const
+) {
+    @Exclude()
+    group: Date;
+
+    @Exclude()
+    createdAt: Date;
+
+    @Exclude()
+    updatedAt: Date;
+}
 
 class PermissionGroupSerialization extends PickType(
     PermissionGetSerialization,
     ['group'] as const
 ) {
-    @ApiProperty({ type: () => PermissionGetSerialization, isArray: true })
-    @Type(() => PermissionGetSerialization)
-    permissions: PermissionGetSerialization[];
+    @ApiProperty({
+        type: () => PermissionGroupPermissionSerialization,
+        isArray: true,
+    })
+    @Type(() => PermissionGroupPermissionSerialization)
+    permissions: PermissionGroupPermissionSerialization[];
 }
 
 export class PermissionGroupsSerialization {

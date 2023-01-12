@@ -115,26 +115,26 @@ export class UserAdminController {
         {
             page,
             perPage,
-            sort,
-            search,
-            offset,
-            availableSort,
-            availableSearch,
+            _sort,
+            _search,
+            _offset,
+            _availableSort,
+            _availableSearch,
         }: PaginationListDto,
         @PaginationQueryFilterInBoolean('isActive', USER_DEFAULT_IS_ACTIVE)
         isActive: Record<string, any>
     ): Promise<IResponsePaging> {
         const find: Record<string, any> = {
-            ...search,
+            ..._search,
             ...isActive,
         };
 
         const users: IUserEntity[] = await this.userService.findAll(find, {
             paging: {
                 limit: perPage,
-                offset,
+                offset: _offset,
             },
-            sort,
+            sort: _sort,
         });
         const totalData: number = await this.userService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
@@ -147,8 +147,8 @@ export class UserAdminController {
             totalPage,
             currentPage: page,
             perPage,
-            availableSearch,
-            availableSort,
+            _availableSearch,
+            _availableSort,
             data: users,
         };
     }
@@ -236,7 +236,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
     }
@@ -258,7 +258,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -288,7 +288,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -315,7 +315,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -340,7 +340,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -406,7 +406,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 

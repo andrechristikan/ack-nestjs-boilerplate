@@ -239,7 +239,7 @@ Default response for the response
 export class ResponseDefaultSerialization {
     statusCode: number;
     message: string;
-    metadata?: IResponseMetadata;
+    _metadata?: IResponseMetadata;
     data?: Record<string, any>;
 }
 ```
@@ -256,9 +256,9 @@ export class ResponsePagingSerialization {
     totalPage?: number;
     currentPage?: number;
     perPage?: number;
-    availableSearch?: string[];
-    availableSort?: string[];
-    metadata?: IResponseMetadata;
+    _availableSearch?: string[];
+    _availableSort?: string[];
+    _metadata?: IResponseMetadata;
     data: Record<string, any>[];
 }
 

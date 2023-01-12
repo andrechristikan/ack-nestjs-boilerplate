@@ -10,7 +10,7 @@ export class AuthJwtRefreshGuard extends AuthGuard('jwtRefresh') {
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_JWT_REFRESH_TOKEN_ERROR,
                 message: 'auth.error.refreshTokenUnauthorized',
-                error: err ? err.message : info.message,
+                _error: err ? err.message : info.message,
             });
         }
 

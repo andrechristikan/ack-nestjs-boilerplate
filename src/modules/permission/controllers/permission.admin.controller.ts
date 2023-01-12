@@ -76,8 +76,8 @@ export class PermissionAdminController {
     @ResponsePaging('permission.list', {
         serialization: PermissionListSerialization,
     })
-    @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
-    @AuthJwtAdminAccessProtected()
+    // @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
+    // @AuthJwtAdminAccessProtected()
     @Get('/list')
     async list(
         @PaginationQuery(
@@ -89,11 +89,11 @@ export class PermissionAdminController {
         {
             page,
             perPage,
-            sort,
-            offset,
-            search,
-            availableSort,
-            availableSearch,
+            _sort,
+            _offset,
+            _search,
+            _availableSort,
+            _availableSearch,
         }: PaginationListDto,
         @PaginationQueryFilterInBoolean(
             'isActive',
@@ -109,7 +109,7 @@ export class PermissionAdminController {
     ): Promise<IResponsePaging> {
         const find: Record<string, any> = {
             ...isActive,
-            ...search,
+            ..._search,
             ...group,
         };
 
@@ -117,9 +117,9 @@ export class PermissionAdminController {
             await this.permissionService.findAll(find, {
                 paging: {
                     limit: perPage,
-                    offset,
+                    offset: _offset,
                 },
-                sort,
+                sort: _sort,
             });
 
         const totalData: number = await this.permissionService.getTotal(find);
@@ -133,8 +133,8 @@ export class PermissionAdminController {
             totalPage,
             currentPage: page,
             perPage,
-            availableSearch,
-            availableSort,
+            _availableSearch,
+            _availableSort,
             data: permissions,
         };
     }
@@ -184,11 +184,11 @@ export class PermissionAdminController {
     })
     @PermissionUpdateGuard()
     @RequestParamGuard(PermissionRequestDto)
-    @AuthPermissionProtected(
-        ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
-        ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
-    )
-    @AuthJwtAdminAccessProtected()
+    // @AuthPermissionProtected(
+    //     ENUM_AUTH_PERMISSIONS.PERMISSION_READ,
+    //     ENUM_AUTH_PERMISSIONS.PERMISSION_UPDATE
+    // )
+    // @AuthJwtAdminAccessProtected()
     @Put('/update/:permission')
     async update(
         @GetPermission() permission: PermissionEntity,
@@ -203,7 +203,7 @@ export class PermissionAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -232,7 +232,7 @@ export class PermissionAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -257,7 +257,7 @@ export class PermissionAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 

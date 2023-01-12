@@ -35,7 +35,7 @@ export class AppController {
         const newDate = this.helperDateService.create();
 
         return {
-            metadata: {
+            _metadata: {
                 properties: {
                     serviceName: this.serviceName,
                 },
@@ -58,7 +58,7 @@ export class AppController {
         const newDate = this.helperDateService.create();
 
         return {
-            metadata: {
+            _metadata: {
                 properties: {
                     serviceName: this.serviceName,
                 },

@@ -25,7 +25,7 @@ export interface IResponseExcelOptions<T> extends IResponseOptions<T> {
 export type IResponseExcel = IHelperFileRows[];
 
 export interface IResponse {
-    metadata?: IResponseMetadata;
+    _metadata?: IResponseMetadata;
     [key: string]: any;
 }
 
@@ -34,9 +34,9 @@ export interface IResponsePaging<T = Record<string, any>> {
     totalPage?: number;
     currentPage?: number;
     perPage?: number;
-    availableSearch?: string[];
-    availableSort?: string[];
-    metadata?: IResponseMetadata;
+    _availableSearch?: string[];
+    _availableSort?: string[];
+    _metadata?: IResponseMetadata;
     data: T[];
 }
 

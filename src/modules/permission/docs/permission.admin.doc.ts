@@ -29,8 +29,8 @@ export function PermissionListDoc(): MethodDecorator {
             },
             response: {
                 serialization: PermissionListSerialization,
-                availableSort: PERMISSION_DEFAULT_AVAILABLE_SORT,
-                availableSearch: PERMISSION_DEFAULT_AVAILABLE_SEARCH,
+                _availableSort: PERMISSION_DEFAULT_AVAILABLE_SORT,
+                _availableSearch: PERMISSION_DEFAULT_AVAILABLE_SEARCH,
             },
         })
     );

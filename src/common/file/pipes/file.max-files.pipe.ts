@@ -36,7 +36,7 @@ export class FileMaxFilesImagePipe implements PipeTransform {
     }
 
     async validate(value: IFile[]): Promise<void> {
-        const maxFiles = this.request.__customMaxFiles || this.maxFile;
+        const maxFiles = this.request.__customMaxFiles ?? this.maxFile;
         if (value.length > maxFiles) {
             throw new UnprocessableEntityException({
                 statusCode: ENUM_FILE_STATUS_CODE_ERROR.FILE_MAX_FILES_ERROR,
@@ -67,7 +67,7 @@ export class FileMaxFilesExcelPipe implements PipeTransform {
     }
 
     async validate(value: IFile[]): Promise<void> {
-        const maxFiles = this.request.__customMaxFiles || this.maxFile;
+        const maxFiles = this.request.__customMaxFiles ?? this.maxFile;
 
         if (value.length > maxFiles) {
             throw new UnprocessableEntityException({
@@ -99,7 +99,7 @@ export class FileMaxFilesVideoPipe implements PipeTransform {
     }
 
     async validate(value: IFile[]): Promise<void> {
-        const maxFiles = this.request.__customMaxFiles || this.maxFile;
+        const maxFiles = this.request.__customMaxFiles ?? this.maxFile;
 
         if (value.length > maxFiles) {
             throw new UnprocessableEntityException({
@@ -131,7 +131,7 @@ export class FileMaxFilesAudioPipe implements PipeTransform {
     }
 
     async validate(value: IFile[]): Promise<void> {
-        const maxFiles = this.request.__customMaxFiles || this.maxFile;
+        const maxFiles = this.request.__customMaxFiles ?? this.maxFile;
 
         if (value.length > maxFiles) {
             throw new UnprocessableEntityException({

@@ -77,7 +77,7 @@ export class ResponseDefaultInterceptor<T>
                         customLanguages: customLang,
                     });
 
-                    // get metadata
+                    // get _metadata
                     const __path = requestExpress.path;
                     const __requestId = requestExpress.id;
                     const __timestamp = requestExpress.timestamp;
@@ -99,7 +99,7 @@ export class ResponseDefaultInterceptor<T>
                     // response
                     const response = (await responseData) as IResponse;
                     if (response) {
-                        const { metadata, ...data } = response;
+                        const { _metadata, ...data } = response;
                         let properties: IMessageOptionsProperties =
                             messageProperties;
                         let serialization = data;
@@ -112,14 +112,14 @@ export class ResponseDefaultInterceptor<T>
                             );
                         }
 
-                        if (metadata) {
-                            statusCode = metadata.statusCode || statusCode;
-                            messagePath = metadata.message || messagePath;
-                            properties = metadata.properties || properties;
+                        if (_metadata) {
+                            statusCode = _metadata.statusCode ?? statusCode;
+                            messagePath = _metadata.message ?? messagePath;
+                            properties = _metadata.properties ?? properties;
 
-                            delete metadata.statusCode;
-                            delete metadata.message;
-                            delete metadata.properties;
+                            delete _metadata.statusCode;
+                            delete _metadata.message;
+                            delete _metadata.properties;
                         }
 
                         // message
@@ -137,7 +137,7 @@ export class ResponseDefaultInterceptor<T>
                         return {
                             statusCode,
                             message,
-                            metadata: { ...resMetadata, ...metadata },
+                            _metadata: { ...resMetadata, ..._metadata },
                             data: serialization,
                         };
                     }
@@ -145,7 +145,7 @@ export class ResponseDefaultInterceptor<T>
                     return {
                         statusCode,
                         message,
-                        metadata: resMetadata,
+                        _metadata: resMetadata,
                     };
                 })
             );

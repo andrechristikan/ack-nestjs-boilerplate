@@ -140,7 +140,7 @@ export class UserController {
                 throw new InternalServerErrorException({
                     statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                     message: 'http.serverError.internalServerError',
-                    error: err.message,
+                    _error: err.message,
                 });
             }
         }
@@ -192,7 +192,7 @@ export class UserController {
 
         if (checkPasswordExpired) {
             return {
-                metadata: {
+                _metadata: {
                     // override status code and message
                     statusCode:
                         ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
@@ -354,7 +354,7 @@ export class UserController {
                 throw new InternalServerErrorException({
                     statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                     message: 'http.serverError.internalServerError',
-                    error: err.message,
+                    _error: err.message,
                 });
             }
         }
@@ -369,7 +369,7 @@ export class UserController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -489,7 +489,7 @@ export class UserController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -507,7 +507,7 @@ export class UserController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 

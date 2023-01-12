@@ -23,8 +23,8 @@ export function UserListDoc(): MethodDecorator {
             request: { queries: UserDocQueryIsActive },
             response: {
                 serialization: UserListSerialization,
-                availableSort: USER_DEFAULT_AVAILABLE_SORT,
-                availableSearch: USER_DEFAULT_AVAILABLE_SEARCH,
+                _availableSort: USER_DEFAULT_AVAILABLE_SORT,
+                _availableSearch: USER_DEFAULT_AVAILABLE_SEARCH,
             },
         })
     );

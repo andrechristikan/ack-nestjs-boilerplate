@@ -18,9 +18,7 @@ export interface IErrorsImport {
     errors: IErrors[];
 }
 
-export interface IValidationErrorImport {
-    row: number;
-    file?: string;
+export interface IValidationErrorImport extends Omit<IErrorsImport, 'errors'> {
     errors: ValidationError[];
 }
 
@@ -28,10 +26,10 @@ export interface IValidationErrorImport {
 export interface IErrorException {
     statusCode: number;
     message: string;
-    error?: string;
+    _error?: string;
     errors?: ValidationError[] | IValidationErrorImport[];
-    errorType?: ERROR_TYPE;
-    metadata?: Record<string, any>;
+    _errorType?: ERROR_TYPE;
+    _metadata?: Record<string, any>;
     data?: Record<string, any>;
     properties?: IMessageOptionsProperties;
 }
@@ -50,8 +48,8 @@ export interface IErrorHttpFilterMetadata {
 export interface IErrorHttpFilter {
     statusCode: number;
     message: string | IMessage;
-    error?: string;
+    _error?: string;
     errors?: IErrors[] | IErrorsImport[];
-    metadata: IErrorHttpFilterMetadata;
+    _metadata: IErrorHttpFilterMetadata;
     data?: Record<string, any>;
 }

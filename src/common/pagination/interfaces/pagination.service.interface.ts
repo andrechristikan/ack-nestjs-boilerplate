@@ -12,12 +12,12 @@ export interface IPaginationService {
     perPage(perPage: number): number;
 
     sort(
-        availableSort: string[],
+        _availableSort: string[],
         sortValue: string
     ): Record<string, number | string>;
 
     search(
-        availableSearch: string[],
+        _availableSearch: string[],
         searchValue?: string
     ): Record<string, any> | undefined;
 

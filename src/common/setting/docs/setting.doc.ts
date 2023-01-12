@@ -19,8 +19,8 @@ export function SettingListDoc(): MethodDecorator {
             },
             response: {
                 serialization: SettingListSerialization,
-                availableSort: SETTING_DEFAULT_AVAILABLE_SORT,
-                availableSearch: SETTING_DEFAULT_AVAILABLE_SEARCH,
+                _availableSort: SETTING_DEFAULT_AVAILABLE_SORT,
+                _availableSearch: SETTING_DEFAULT_AVAILABLE_SEARCH,
             },
         })
     );
