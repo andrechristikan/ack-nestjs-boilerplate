@@ -8,7 +8,7 @@ export default registerAs(
             secret: process.env.AWS_CREDENTIAL_SECRET,
         },
         s3: {
-            bucket: process.env.AWS_S3_BUCKET || 'acks3',
+            bucket: process.env.AWS_S3_BUCKET ?? 'acks3',
             region: process.env.AWS_S3_REGION,
             baseUrl: `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_S3_REGION}.amazonaws.com`,
         },

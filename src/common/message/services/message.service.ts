@@ -32,7 +32,7 @@ export class MessageService implements IMessageService {
         options?: IMessageSetOptions
     ): T {
         return this.i18n.translate(key, {
-            lang: lang || this.appDefaultLanguage.join(','),
+            lang: lang ?? this.appDefaultLanguage.join(','),
             args: options?.properties,
         }) as T;
     }
@@ -45,7 +45,7 @@ export class MessageService implements IMessageService {
         for (const transfomer of requestErrors) {
             let children: Record<string, any>[] = transfomer.children;
             let constraints: string[] = Object.keys(
-                transfomer.constraints || []
+                transfomer.constraints ?? []
             );
             const errors: IErrors[] = [];
             let property: string = transfomer.property;

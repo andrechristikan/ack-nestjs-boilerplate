@@ -58,7 +58,7 @@ export class PaginationService implements IPaginationService {
     }
 
     sort(
-        availableSort: string[],
+        _availableSort: string[],
         sortValue?: string
     ): Record<string, number | string> {
         if (!sortValue) {
@@ -67,7 +67,7 @@ export class PaginationService implements IPaginationService {
 
         const field: string = sortValue.split('@')[0];
         const type: string = sortValue.split('@')[1];
-        const convertField: string = availableSort.includes(field)
+        const convertField: string = _availableSort.includes(field)
             ? field
             : PAGINATION_SORT.split('@')[0];
         const convertType = ENUM_PAGINATION_SORT_TYPE[type.toUpperCase()]
@@ -78,15 +78,15 @@ export class PaginationService implements IPaginationService {
     }
 
     search(
-        availableSearch: string[],
+        _availableSearch: string[],
         searchValue?: string
     ): Record<string, any> | undefined {
-        if (!searchValue || !availableSearch) {
+        if (!searchValue || !_availableSearch) {
             return undefined;
         }
 
         return {
-            $or: availableSearch.map((val) => ({
+            $or: _availableSearch.map((val) => ({
                 [val]: {
                     $regex: new RegExp(searchValue),
                     $options: 'i',

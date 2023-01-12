@@ -57,15 +57,15 @@ export class SettingController {
         {
             page,
             perPage,
-            offset,
-            search,
-            sort,
-            availableSort,
-            availableSearch,
+            _offset,
+            _search,
+            _sort,
+            _availableSort,
+            _availableSearch,
         }: PaginationListDto
     ): Promise<IResponse> {
         const find: Record<string, any> = {
-            ...search,
+            ..._search,
         };
 
         const settings: SettingEntity[] = await this.settingService.findAll(
@@ -73,9 +73,9 @@ export class SettingController {
             {
                 paging: {
                     limit: perPage,
-                    offset,
+                    offset: _offset,
                 },
-                sort,
+                sort: _sort,
             }
         );
         const totalData: number = await this.settingService.getTotal(find);
@@ -89,8 +89,8 @@ export class SettingController {
             totalPage,
             currentPage: page,
             perPage,
-            availableSearch,
-            availableSort,
+            _availableSearch,
+            _availableSort,
             data: settings,
         };
     }

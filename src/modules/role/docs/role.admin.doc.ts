@@ -26,8 +26,8 @@ export function RoleListDoc(): MethodDecorator {
             },
             response: {
                 serialization: RoleListSerialization,
-                availableSort: ROLE_DEFAULT_AVAILABLE_SORT,
-                availableSearch: ROLE_DEFAULT_AVAILABLE_SEARCH,
+                _availableSort: ROLE_DEFAULT_AVAILABLE_SORT,
+                _availableSearch: ROLE_DEFAULT_AVAILABLE_SEARCH,
             },
         })
     );

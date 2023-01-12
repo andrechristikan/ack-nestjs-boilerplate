@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
+import { BadRequestError } from 'passport-headerapikey';
 
 @Injectable()
 export class ApiKeyXApiKeyGuard extends AuthGuard('api-key') {
@@ -25,10 +26,8 @@ export class ApiKeyXApiKeyGuard extends AuthGuard('api-key') {
     ): IApiKeyPayload {
         if (err || !apiKey) {
             if (
-                (info instanceof Error &&
-                    info.name === 'BadRequestError' &&
-                    info.message === 'Missing API Key') ||
-                !apiKey
+                info instanceof BadRequestError &&
+                info.message === 'Missing API Key'
             ) {
                 throw new UnauthorizedException({
                     statusCode:

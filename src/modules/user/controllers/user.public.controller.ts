@@ -85,7 +85,7 @@ export class UserPublicController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
     }

@@ -23,8 +23,8 @@ export class ErrorMetaGuard implements CanActivate {
         const className = context.getClass().name;
         const methodKey = context.getHandler().name;
 
-        request.__class = cls || className;
-        request.__function = func || methodKey;
+        request.__class = cls ?? className;
+        request.__function = func ?? methodKey;
 
         return true;
     }

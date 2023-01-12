@@ -10,7 +10,7 @@ export class AuthJwtAccessGuard extends AuthGuard('jwt') {
                 statusCode:
                     ENUM_AUTH_STATUS_CODE_ERROR.AUTH_JWT_ACCESS_TOKEN_ERROR,
                 message: 'auth.error.accessTokenUnauthorized',
-                error: err ? err.message : info.message,
+                _error: err ? err.message : info.message,
             });
         }
 

@@ -25,8 +25,8 @@ export function ApiKeyListDoc(): MethodDecorator {
             },
             response: {
                 serialization: ApiKeyListSerialization,
-                availableSort: API_KEY_DEFAULT_AVAILABLE_SORT,
-                availableSearch: API_KEY_DEFAULT_AVAILABLE_SEARCH,
+                _availableSort: API_KEY_DEFAULT_AVAILABLE_SORT,
+                _availableSearch: API_KEY_DEFAULT_AVAILABLE_SEARCH,
             },
         })
     );

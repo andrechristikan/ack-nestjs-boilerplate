@@ -24,6 +24,7 @@ import { HelperDateService } from 'src/common/helper/services/helper.date.servic
 import { IMessage } from 'src/common/message/interfaces/message.interface';
 import { MessageService } from 'src/common/message/services/message.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+import { v4 } from 'uuid';
 
 // If we throw error with HttpException, there will always return object
 // The exception filter only catch HttpException
@@ -49,19 +50,19 @@ export class ErrorHttpFilter implements ExceptionFilter {
         const customLang: string[] =
             ctx.getRequest<IRequestApp>().customLang ?? this.appDefaultLanguage;
 
-        // get metadata
-        const __class = request.__class || ErrorHttpFilter.name;
-        const __function = request.__function || this.catch.name;
-        const __requestId = request.id;
+        // get _metadata
+        const __class = request.__class ?? ErrorHttpFilter.name;
+        const __function = request.__function ?? this.catch.name;
+        const __requestId = request.id ?? v4();
         const __path = request.path;
         const __timestamp =
-            request.timestamp || this.helperDateService.timestamp();
+            request.timestamp ?? this.helperDateService.timestamp();
         const __timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         const __version =
-            request.version ||
+            request.version ??
             this.configService.get<string>('app.versioning.version');
         const __repoVersion =
-            request.repoVersion ||
+            request.repoVersion ??
             this.configService.get<string>('app.repoVersion');
 
         if (exception instanceof HttpException) {
@@ -95,17 +96,17 @@ export class ErrorHttpFilter implements ExceptionFilter {
             const {
                 statusCode,
                 message,
-                error,
-                errorType,
+                _error,
+                _errorType,
                 data,
                 properties,
-                metadata,
+                _metadata,
             } = responseException;
 
             let { errors } = responseException;
             if (errors?.length > 0) {
                 errors =
-                    errorType === ERROR_TYPE.IMPORT
+                    _errorType === ERROR_TYPE.IMPORT
                         ? await this.messageService.getImportErrorsMessage(
                               errors as IValidationErrorImport[],
                               customLang
@@ -129,18 +130,19 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 path: __path,
                 version: __version,
                 repoVersion: __repoVersion,
-                ...metadata,
+                ..._metadata,
             };
 
             const resResponse: IErrorHttpFilter = {
-                statusCode: statusCode || statusHttp,
+                statusCode: statusCode ?? statusHttp,
                 message: mapMessage,
-                error:
-                    error && Object.keys(error).length > 0
-                        ? error
-                        : exception.message,
+                _error: _error
+                    ? JSON.stringify(_error)
+                    : exception.message !== mapMessage
+                    ? exception.message
+                    : undefined,
                 errors: errors as IErrors[] | IErrorsImport[],
-                metadata: resMetadata,
+                _metadata: resMetadata,
                 data,
             };
 
@@ -160,7 +162,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 'http.serverError.internalServerError'
             )) as string;
 
-            const metadata: IErrorHttpFilterMetadata = {
+            const _metadata: IErrorHttpFilterMetadata = {
                 languages: customLang,
                 timestamp: __timestamp,
                 timezone: __timezone,
@@ -173,11 +175,11 @@ export class ErrorHttpFilter implements ExceptionFilter {
             const responseBody = {
                 statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
                 message,
-                error:
+                _error:
                     exception instanceof Error && 'message' in exception
                         ? exception.message
                         : undefined,
-                metadata,
+                _metadata,
             };
 
             // Debugger

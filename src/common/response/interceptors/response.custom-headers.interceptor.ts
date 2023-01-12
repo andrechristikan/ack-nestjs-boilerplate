@@ -29,7 +29,7 @@ export class ResponseCustomHeadersInterceptor
             responseExpress.setHeader('x-custom-lang', request.customLang);
             responseExpress.setHeader(
                 'x-timestamp',
-                request.timestamp || this.helperDateService.timestamp()
+                request.timestamp ?? this.helperDateService.timestamp()
             );
             responseExpress.setHeader(
                 'x-timezone',

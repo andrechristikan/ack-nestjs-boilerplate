@@ -52,24 +52,24 @@ export class ResponsePagingSerialization<
     perPage?: number;
 
     @ApiProperty({
-        name: 'availableSearch',
+        name: '_availableSearch',
         type: 'array',
         nullable: false,
         description:
-            'Search will base on availableSearch with rule contains, and case insensitive',
+            'Search will base on _availableSearch with rule contains, and case insensitive',
     })
-    availableSearch?: string[];
+    _availableSearch?: string[];
 
     @ApiProperty({
-        name: 'availableSort',
+        name: '_availableSort',
         type: 'array',
         nullable: false,
-        description: 'Sort will base on availableSort',
+        description: 'Sort will base on _availableSort',
     })
-    availableSort?: string[];
+    _availableSort?: string[];
 
     @ApiProperty({
-        name: 'metadata',
+        name: '_metadata',
         nullable: true,
         description: 'Contain metadata about API',
         type: 'object',
@@ -88,7 +88,7 @@ export class ResponsePagingSerialization<
             lastPage: `http://217.0.0.1/__path?perPage=10&page=20&search=abc`,
         },
     })
-    readonly metadata?: IErrorHttpFilterMetadata &
+    readonly _metadata?: IErrorHttpFilterMetadata &
         ResponsePagingMetadataSerialization;
 
     readonly data?: T[];

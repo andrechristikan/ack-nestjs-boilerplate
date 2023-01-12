@@ -92,26 +92,26 @@ export class ApiKeyAdminController {
         {
             page,
             perPage,
-            sort,
-            offset,
-            search,
-            availableSort,
-            availableSearch,
+            _sort,
+            _offset,
+            _search,
+            _availableSort,
+            _availableSearch,
         }: PaginationListDto,
         @PaginationQueryFilterInBoolean('isActive', API_KEY_DEFAULT_IS_ACTIVE)
         isActive: Record<string, any>
     ): Promise<IResponsePaging> {
         const find: Record<string, any> = {
-            ...search,
+            ..._search,
             ...isActive,
         };
 
         const apiKeys: ApiKeyEntity[] = await this.apiKeyService.findAll(find, {
             paging: {
                 limit: perPage,
-                offset,
+                offset: _offset,
             },
-            sort,
+            sort: _sort,
         });
         const totalData: number = await this.apiKeyService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
@@ -124,8 +124,8 @@ export class ApiKeyAdminController {
             totalPage,
             currentPage: page,
             perPage,
-            availableSearch,
-            availableSort,
+            _availableSearch,
+            _availableSort,
             data: apiKeys,
         };
     }
@@ -165,7 +165,7 @@ export class ApiKeyAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
     }
@@ -188,7 +188,7 @@ export class ApiKeyAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -213,7 +213,7 @@ export class ApiKeyAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -246,7 +246,7 @@ export class ApiKeyAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
     }
@@ -271,7 +271,7 @@ export class ApiKeyAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -299,7 +299,7 @@ export class ApiKeyAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 

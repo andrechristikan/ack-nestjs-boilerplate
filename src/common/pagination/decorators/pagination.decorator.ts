@@ -15,14 +15,14 @@ import { PaginationSortPipe } from 'src/common/pagination/pipes/pagination.sort.
 
 export function PaginationQuery(
     defaultPerPage: number,
-    availableSearch: string[],
+    _availableSearch: string[],
     defaultSort: string,
-    availableSort: string[]
+    _availableSort: string[]
 ): ParameterDecorator {
     return Query(
-        PaginationSearchPipe(availableSearch),
-        PaginationSortPipe(defaultSort, availableSort),
-        PaginationPagingPipe
+        PaginationSearchPipe(_availableSearch),
+        PaginationSortPipe(defaultSort, _availableSort),
+        PaginationPagingPipe(defaultPerPage)
     );
 }
 
