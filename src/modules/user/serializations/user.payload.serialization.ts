@@ -9,6 +9,7 @@ export class UserPayloadSerialization extends OmitType(UserGetSerialization, [
     'photo',
     'role',
     'isActive',
+    'blocked',
     'email',
     'mobileNumber',
     'passwordExpired',
@@ -36,6 +37,9 @@ export class UserPayloadSerialization extends OmitType(UserGetSerialization, [
 
     @Exclude()
     readonly isActive: boolean;
+
+    @Exclude()
+    readonly blocked: boolean;
 
     @Exclude()
     readonly passwordExpired: Date;

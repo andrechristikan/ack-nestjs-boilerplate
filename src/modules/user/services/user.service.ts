@@ -29,6 +29,7 @@ import { plainToInstance } from 'class-transformer';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload-permission.serialization';
 import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
+import { UserBlockedDto } from 'src/modules/user/dtos/user.block.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -233,6 +234,20 @@ export class UserService implements IUserService {
         dto.isActive = false;
 
         return this.userRepository.updateOneById<UserActiveDto>(
+            _id,
+            dto,
+            options
+        );
+    }
+
+    async blocked(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const dto: UserBlockedDto = new UserBlockedDto();
+        dto.blocked = true;
+
+        return this.userRepository.updateOneById<UserBlockedDto>(
             _id,
             dto,
             options
