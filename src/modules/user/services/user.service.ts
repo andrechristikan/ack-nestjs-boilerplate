@@ -112,14 +112,14 @@ export class UserService implements IUserService {
         _id: string,
         options?: IDatabaseSoftDeleteOptions
     ): Promise<UserEntity> {
-        return this.userRepository.deleteOneById(_id, options);
+        return this.userRepository.softDeleteOneById(_id, options);
     }
 
     async deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
     ): Promise<UserEntity> {
-        return this.userRepository.deleteOne(find, options);
+        return this.userRepository.softDeleteOne(find, options);
     }
 
     async updateName(

@@ -97,7 +97,7 @@ describe('LoggerService', () => {
         jest.clearAllMocks();
 
         try {
-            await apiKeyService.deleteOneById(apiKey._id);
+            await apiKeyService.deleteMany({ _id: apiKey._id });
         } catch (err: any) {
             console.error(err);
         }

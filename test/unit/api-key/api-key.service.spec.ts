@@ -66,7 +66,7 @@ describe('ApiKeyService', () => {
         jest.clearAllMocks();
 
         try {
-            await apiKeyService.deleteOne({
+            await apiKeyService.deleteMany({
                 _id: apiKey._id,
             });
             await apiKeyService.deleteMany({
@@ -400,7 +400,7 @@ describe('ApiKeyService', () => {
         });
 
         it('should be not found', async () => {
-            await apiKeyService.deleteOneById(apiKey._id);
+            await apiKeyService.deleteMany({ _id: apiKey._id });
             const result: ApiKeyEntity = await apiKeyService.deleteOneById(
                 apiKey._id
             );
@@ -429,7 +429,7 @@ describe('ApiKeyService', () => {
         });
 
         it('should be not found', async () => {
-            await apiKeyService.deleteOne({
+            await apiKeyService.deleteMany({
                 _id: apiKey._id,
             });
             const result: ApiKeyEntity = await apiKeyService.deleteOne({

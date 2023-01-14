@@ -223,14 +223,14 @@ export class ApiKeyService implements IApiKeyService {
         _id: string,
         options?: IDatabaseSoftDeleteOptions
     ): Promise<ApiKeyEntity> {
-        return this.apiKeyRepository.deleteOneById(_id, options);
+        return this.apiKeyRepository.softDeleteOneById(_id, options);
     }
 
     async deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
     ): Promise<ApiKeyEntity> {
-        return this.apiKeyRepository.deleteOne(find, options);
+        return this.apiKeyRepository.softDeleteOne(find, options);
     }
 
     async validateHashApiKey(
