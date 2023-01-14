@@ -77,12 +77,19 @@ export class UserGetSerialization {
     readonly salt: string;
 
     @ApiProperty({
-        example: faker.date.past(),
+        description: 'Date created at',
+        example: faker.date.recent(),
+        required: true,
     })
     readonly createdAt: Date;
 
     @ApiProperty({
-        example: faker.date.past(),
+        description: 'Date updated at',
+        example: faker.date.recent(),
+        required: false,
     })
     readonly updatedAt: Date;
+
+    @Exclude()
+    readonly deletedAt?: Date;
 }

@@ -3,6 +3,7 @@ import { Doc, DocPaging } from 'src/common/doc/decorators/doc.decorator';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import {
     UserDocParamsGet,
+    UserDocQueryBlocked,
     UserDocQueryIsActive,
 } from 'src/modules/user/constants/user.doc.constant';
 import {
@@ -20,7 +21,9 @@ export function UserListDoc(): MethodDecorator {
                 jwtAccessToken: true,
                 permissionToken: true,
             },
-            request: { queries: UserDocQueryIsActive },
+            request: {
+                queries: [...UserDocQueryIsActive, ...UserDocQueryBlocked],
+            },
             response: {
                 serialization: UserListSerialization,
                 _availableSort: USER_DEFAULT_AVAILABLE_SORT,

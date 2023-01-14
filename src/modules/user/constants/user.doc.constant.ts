@@ -11,6 +11,17 @@ export const UserDocQueryIsActive = [
     },
 ];
 
+export const UserDocQueryBlocked = [
+    {
+        name: 'blocked',
+        allowEmptyValue: false,
+        required: true,
+        type: 'string',
+        example: 'true,false',
+        description: "boolean value with ',' delimiter",
+    },
+];
+
 export const UserDocParamsGet = [
     {
         name: 'user',
