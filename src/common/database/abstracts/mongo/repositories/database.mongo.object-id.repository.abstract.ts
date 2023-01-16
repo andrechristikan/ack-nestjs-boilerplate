@@ -198,7 +198,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
         _id: string,
         options?: IDatabaseFindOneOptions<ClientSession>
     ): Promise<Y> {
-        const findOne = this._repository.findById(_id);
+        const findOne = this._repository.findById(new Types.ObjectId(_id));
 
         if (options?.withDeleted) {
             findOne.or([
@@ -343,7 +343,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
     ): Promise<T> {
         const update = this._repository
             .findByIdAndUpdate(
-                _id,
+                new Types.ObjectId(_id),
                 {
                     $set: data,
                 },
@@ -425,9 +425,12 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
         _id: string,
         options?: IDatabaseDeleteOptions<ClientSession>
     ): Promise<T> {
-        const del = this._repository.findByIdAndDelete(_id, {
-            new: true,
-        });
+        const del = this._repository.findByIdAndDelete(
+            new Types.ObjectId(_id),
+            {
+                new: true,
+            }
+        );
 
         if (options?.join) {
             del.populate(
@@ -450,7 +453,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
     ): Promise<T> {
         const del = this._repository
             .findByIdAndUpdate(
-                _id,
+                new Types.ObjectId(_id),
                 {
                     $set: { deletedAt: new Date() },
                 },
@@ -510,7 +513,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
     ): Promise<T> {
         const rest = this._repository
             .findByIdAndUpdate(
-                _id,
+                new Types.ObjectId(_id),
                 {
                     $set: { deletedAt: undefined },
                 },
@@ -539,7 +542,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
         options?: IDatabaseRestoreOptions<ClientSession>
     ): Promise<T> {
         const rest = this._repository
-            .findByIdAndUpdate(
+            .findOneAndUpdate(
                 find,
                 {
                     $set: { deletedAt: undefined },

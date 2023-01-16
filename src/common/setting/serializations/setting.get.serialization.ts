@@ -77,5 +77,5 @@ export class SettingGetSerialization {
     readonly updatedAt: Date;
 
     @Exclude()
-    readonly deletedAt: Date;
+    readonly deletedAt?: Date;
 }

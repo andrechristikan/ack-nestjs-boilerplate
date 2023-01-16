@@ -1,6 +1,5 @@
 import { Injectable, mixin, Type } from '@nestjs/common';
 import { ArgumentMetadata, PipeTransform } from '@nestjs/common/interfaces';
-import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
 import { ENUM_PAGINATION_FILTER_CASE_OPTIONS } from 'src/common/pagination/constants/pagination.enum.constant';
 import { IPaginationFilterStringContainOptions } from 'src/common/pagination/interfaces/pagination.interface';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
@@ -10,10 +9,7 @@ export function PaginationFilterContainPipe(
 ): Type<PipeTransform> {
     @Injectable()
     class MixinPaginationFilterContainPipe implements PipeTransform {
-        constructor(
-            private readonly paginationService: PaginationService,
-            private readonly helperNumberService: HelperNumberService
-        ) {}
+        constructor(private readonly paginationService: PaginationService) {}
 
         async transform(
             value: string,

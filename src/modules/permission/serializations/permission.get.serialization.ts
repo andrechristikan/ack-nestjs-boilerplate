@@ -54,5 +54,5 @@ export class PermissionGetSerialization {
     readonly updatedAt: Date;
 
     @Exclude()
-    readonly deletedAt: Date;
+    readonly deletedAt?: Date;
 }
