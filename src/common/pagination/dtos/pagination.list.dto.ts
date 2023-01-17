@@ -1,18 +1,19 @@
 import { ApiHideProperty } from '@nestjs/swagger';
 
 export class PaginationListDto {
-    search: Record<string, any>;
+    _search: Record<string, any>;
 
     @ApiHideProperty()
-    availableSearch: string[];
+    _availableSearch: string[];
+
     page: number;
     perPage: number;
 
     @ApiHideProperty()
-    offset: number;
+    _offset: number;
 
-    sort: Record<string, any>;
+    _sort: Record<string, any>;
 
     @ApiHideProperty()
-    availableSort: string[];
+    _availableSort: string[];
 }

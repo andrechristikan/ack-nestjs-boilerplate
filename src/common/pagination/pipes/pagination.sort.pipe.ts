@@ -4,7 +4,7 @@ import { PaginationService } from 'src/common/pagination/services/pagination.ser
 
 export function PaginationSortPipe(
     defaultSort: string,
-    availableSort: string[]
+    _availableSort: string[]
 ): Type<PipeTransform> {
     @Injectable()
     class MixinPaginationSortPipe implements PipeTransform {
@@ -14,14 +14,14 @@ export function PaginationSortPipe(
             value: Record<string, any>
         ): Promise<Record<string, any>> {
             const sort: Record<string, any> = this.paginationService.sort(
-                availableSort,
+                _availableSort,
                 value?.sort ?? defaultSort
             );
 
             return {
                 ...value,
                 sort,
-                availableSort,
+                _availableSort,
             };
         }
     }

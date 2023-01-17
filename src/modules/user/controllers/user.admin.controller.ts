@@ -44,12 +44,14 @@ import {
     UserDeleteGuard,
     UserGetGuard,
     UserUpdateActiveGuard,
+    UserUpdateBlockedGuard,
     UserUpdateGuard,
     UserUpdateInactiveGuard,
 } from 'src/modules/user/decorators/user.admin.decorator';
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
 import {
     UserActiveDoc,
+    UserBlockedDoc,
     UserCreateDoc,
     UserDeleteDoc,
     UserExportDoc,
@@ -73,6 +75,7 @@ import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
 import {
     USER_DEFAULT_AVAILABLE_SEARCH,
     USER_DEFAULT_AVAILABLE_SORT,
+    USER_DEFAULT_BLOCKED,
     USER_DEFAULT_IS_ACTIVE,
     USER_DEFAULT_PER_PAGE,
     USER_DEFAULT_SORT,
@@ -113,26 +116,29 @@ export class UserAdminController {
         {
             page,
             perPage,
-            sort,
-            search,
-            offset,
-            availableSort,
-            availableSearch,
+            _sort,
+            _search,
+            _offset,
+            _availableSort,
+            _availableSearch,
         }: PaginationListDto,
         @PaginationQueryFilterInBoolean('isActive', USER_DEFAULT_IS_ACTIVE)
-        isActive: Record<string, any>
+        isActive: Record<string, any>,
+        @PaginationQueryFilterInBoolean('blocked', USER_DEFAULT_BLOCKED)
+        blocked: Record<string, any>
     ): Promise<IResponsePaging> {
         const find: Record<string, any> = {
-            ...search,
+            ..._search,
             ...isActive,
+            ...blocked,
         };
 
         const users: IUserEntity[] = await this.userService.findAll(find, {
             paging: {
                 limit: perPage,
-                offset,
+                offset: _offset,
             },
-            sort,
+            sort: _sort,
         });
         const totalData: number = await this.userService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
@@ -145,8 +151,8 @@ export class UserAdminController {
             totalPage,
             currentPage: page,
             perPage,
-            availableSearch,
-            availableSort,
+            _availableSearch,
+            _availableSort,
             data: users,
         };
     }
@@ -234,7 +240,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
     }
@@ -256,7 +262,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -286,7 +292,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -313,7 +319,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -338,7 +344,7 @@ export class UserAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -384,5 +390,30 @@ export class UserAdminController {
     @Post('/export')
     async export(): Promise<IResponse> {
         return this.userService.findAll({});
+    }
+
+    @UserBlockedDoc()
+    @Response('user.blocked')
+    @UserUpdateBlockedGuard()
+    @RequestParamGuard(UserRequestDto)
+    @AuthPermissionProtected(
+        ENUM_AUTH_PERMISSIONS.USER_READ,
+        ENUM_AUTH_PERMISSIONS.USER_UPDATE,
+        ENUM_AUTH_PERMISSIONS.USER_BLOCKED
+    )
+    @AuthJwtAdminAccessProtected()
+    @Patch('/update/:user/blocked')
+    async blocked(@GetUser() user: IUserEntity): Promise<void> {
+        try {
+            await this.userService.blocked(user._id);
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
+
+        return;
     }
 }

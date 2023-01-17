@@ -122,9 +122,10 @@ describe('E2E User Admin', () => {
         jest.clearAllMocks();
 
         try {
-            await userService.deleteOneById(userData._id);
-            await userService.deleteOneById(userExist._id);
-            await userService.deleteOne({ username: 'test111' });
+            await userService.deleteMany({
+                _id: { $in: [userData._id, userExist._id] },
+            });
+            await userService.deleteMany({ username: 'test111' });
         } catch (err: any) {
             console.error(err);
         }
@@ -276,8 +277,7 @@ describe('E2E User Admin', () => {
             .send({
                 firstName: [],
                 lastName: 1231231,
-            })
-            .expect(422);
+            });
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
@@ -298,8 +298,7 @@ describe('E2E User Admin', () => {
             .send({
                 firstName: faker.name.firstName(),
                 lastName: faker.name.lastName(),
-            })
-            .expect(404);
+            });
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -315,8 +314,7 @@ describe('E2E User Admin', () => {
             .send({
                 firstName: faker.name.firstName(),
                 lastName: faker.name.lastName(),
-            })
-            .expect(200);
+            });
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -331,9 +329,7 @@ describe('E2E User Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken)
-
-            .expect(404);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -345,9 +341,7 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_USER_ADMIN_INACTIVE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken)
-
-            .expect(200);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -357,9 +351,7 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_USER_ADMIN_INACTIVE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken)
-
-            .expect(400);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -376,9 +368,7 @@ describe('E2E User Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken)
-
-            .expect(404);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -390,9 +380,7 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_USER_ADMIN_ACTIVE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken)
-
-            .expect(200);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -402,9 +390,7 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_USER_ADMIN_ACTIVE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken)
-
-            .expect(400);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -421,9 +407,7 @@ describe('E2E User Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken)
-
-            .expect(404);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -432,12 +416,12 @@ describe('E2E User Admin', () => {
     });
 
     it(`DELETE ${E2E_USER_ADMIN_DELETE_URL} Delete, success`, async () => {
+        await userService.blocked(userData._id);
+
         const response = await request(app.getHttpServer())
             .delete(E2E_USER_ADMIN_DELETE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken)
-
-            .expect(200);
+            .set('x-permission-token', permissionToken);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

@@ -53,6 +53,7 @@ import { UserLoginDto } from 'src/modules/user/dtos/user.login.dto';
 import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { UserGrantPermissionSerialization } from 'src/modules/user/serializations/user.grant-permission.serialization';
+import { UserInfoSerialization } from 'src/modules/user/serializations/user.info.serialization';
 import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
 import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload-permission.serialization';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
@@ -138,7 +139,7 @@ export class UserController {
                 throw new InternalServerErrorException({
                     statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                     message: 'http.serverError.internalServerError',
-                    error: err.message,
+                    _error: err.message,
                 });
             }
         }
@@ -190,7 +191,7 @@ export class UserController {
 
         if (checkPasswordExpired) {
             return {
-                metadata: {
+                _metadata: {
                     // override status code and message
                     statusCode:
                         ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
@@ -352,7 +353,7 @@ export class UserController {
                 throw new InternalServerErrorException({
                     statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                     message: 'http.serverError.internalServerError',
-                    error: err.message,
+                    _error: err.message,
                 });
             }
         }
@@ -367,7 +368,7 @@ export class UserController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -375,7 +376,7 @@ export class UserController {
     }
 
     @UserInfoDoc()
-    @Response('user.info', { serialization: UserPayloadSerialization })
+    @Response('user.info', { serialization: UserInfoSerialization })
     @AuthJwtAccessProtected()
     @Get('/info')
     async info(
@@ -487,7 +488,7 @@ export class UserController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 

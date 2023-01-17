@@ -119,7 +119,7 @@ export class FileValidationPipe<T> implements PipeTransform {
                     ENUM_FILE_STATUS_CODE_ERROR.FILE_VALIDATION_DTO_ERROR,
                 message: 'file.error.validationDto',
                 errors,
-                errorType: 'import',
+                _errorType: 'import',
             });
         }
 

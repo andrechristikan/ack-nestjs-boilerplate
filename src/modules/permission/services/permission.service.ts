@@ -74,7 +74,7 @@ export class PermissionService implements IPermissionService {
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
     ): Promise<PermissionEntity> {
-        return this.permissionRepository.deleteOne(find, options);
+        return this.permissionRepository.softDeleteOne(find, options);
     }
 
     async create(

@@ -92,13 +92,13 @@ export class ResponsePagingInterceptor<T>
                         const response =
                             (await responseData) as IResponsePaging;
                         const {
-                            metadata,
+                            _metadata,
                             totalData,
                             currentPage,
                             perPage,
                             data,
-                            availableSort,
-                            availableSearch,
+                            _availableSort,
+                            _availableSearch,
                             totalPage,
                         } = response;
                         let statusCode: number = responseExpress.statusCode;
@@ -114,7 +114,7 @@ export class ResponsePagingInterceptor<T>
                             );
                         }
 
-                        // get metadata
+                        // get _metadata
                         const __path = requestExpress.path;
                         const __requestId = requestExpress.id;
                         const __timestamp = requestExpress.timestamp;
@@ -123,14 +123,14 @@ export class ResponsePagingInterceptor<T>
                         const __version = requestExpress.version;
                         const __repoVersion = requestExpress.repoVersion;
 
-                        if (metadata) {
-                            statusCode = metadata.statusCode || statusCode;
-                            messagePath = metadata.message || messagePath;
-                            properties = metadata.properties || properties;
+                        if (_metadata) {
+                            statusCode = _metadata.statusCode ?? statusCode;
+                            messagePath = _metadata.message ?? messagePath;
+                            properties = _metadata.properties ?? properties;
 
-                            delete metadata.statusCode;
-                            delete metadata.message;
-                            delete metadata.properties;
+                            delete _metadata.statusCode;
+                            delete _metadata.message;
+                            delete _metadata.properties;
                         }
 
                         const path = requestExpress.path;
@@ -189,12 +189,12 @@ export class ResponsePagingInterceptor<T>
                             totalPage,
                             currentPage,
                             perPage,
-                            availableSort,
-                            availableSearch,
-                            metadata: {
+                            _availableSort,
+                            _availableSearch,
+                            _metadata: {
                                 ...addMetadata,
                                 ...resMetadata,
-                                ...metadata,
+                                ..._metadata,
                             },
                             data: serialization,
                         };
@@ -209,8 +209,8 @@ export class ResponsePagingInterceptor<T>
                         }
 
                         if (type === ENUM_PAGINATION_TYPE.MINI) {
-                            delete responseHttp.availableSort;
-                            delete responseHttp.availableSearch;
+                            delete responseHttp._availableSort;
+                            delete responseHttp._availableSearch;
                         }
 
                         return responseHttp;

@@ -105,11 +105,11 @@ export class RoleAdminController {
         {
             page,
             perPage,
-            sort,
-            offset,
-            search,
-            availableSort,
-            availableSearch,
+            _sort,
+            _offset,
+            _search,
+            _availableSort,
+            _availableSearch,
         }: PaginationListDto,
         @PaginationQueryFilterInBoolean('isActive', ROLE_DEFAULT_IS_ACTIVE)
         isActive: Record<string, any>,
@@ -121,7 +121,7 @@ export class RoleAdminController {
         accessFor: Record<string, any>
     ): Promise<IResponsePaging> {
         const find: Record<string, any> = {
-            ...search,
+            ..._search,
             ...isActive,
             ...accessFor,
         };
@@ -129,9 +129,9 @@ export class RoleAdminController {
         const roles: RoleEntity[] = await this.roleService.findAll(find, {
             paging: {
                 limit: perPage,
-                offset,
+                offset: _offset,
             },
-            sort,
+            sort: _sort,
         });
 
         const totalData: number = await this.roleService.getTotal({});
@@ -145,8 +145,8 @@ export class RoleAdminController {
             totalPage,
             currentPage: page,
             perPage,
-            availableSearch,
-            availableSort,
+            _availableSearch,
+            _availableSort,
             data: roles,
         };
     }
@@ -178,9 +178,7 @@ export class RoleAdminController {
         @Body()
         { name, permissions, accessFor }: RoleCreateDto
     ): Promise<IResponse> {
-        const exist: boolean = await this.roleService.existByName(name, {
-            join: true,
-        });
+        const exist: boolean = await this.roleService.existByName(name);
         if (exist) {
             throw new ConflictException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR,
@@ -215,7 +213,7 @@ export class RoleAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
     }
@@ -253,7 +251,7 @@ export class RoleAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -304,7 +302,7 @@ export class RoleAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -330,7 +328,7 @@ export class RoleAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -355,7 +353,7 @@ export class RoleAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 
@@ -380,7 +378,7 @@ export class RoleAdminController {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
                 message: 'http.serverError.internalServerError',
-                error: err.message,
+                _error: err.message,
             });
         }
 

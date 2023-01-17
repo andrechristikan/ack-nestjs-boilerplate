@@ -1,7 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Response, NextFunction } from 'express';
+import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { v4 } from 'uuid';
 
 @Injectable()
 export class RequestIdMiddleware implements NestMiddleware {
@@ -10,7 +10,7 @@ export class RequestIdMiddleware implements NestMiddleware {
         res: Response,
         next: NextFunction
     ): Promise<void> {
-        const uuid: string = v4();
+        const uuid: string = DatabaseDefaultUUID();
         req.headers['x-request-id'] = uuid;
         req.id = uuid;
         next();

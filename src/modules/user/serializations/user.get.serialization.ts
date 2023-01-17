@@ -16,11 +16,6 @@ export class UserGetSerialization {
     readonly role: RoleGetSerialization;
 
     @ApiProperty({
-        example: faker.internet.email(),
-    })
-    readonly email: string;
-
-    @ApiProperty({
         example: faker.internet.userName(),
     })
     readonly username: string;
@@ -28,12 +23,22 @@ export class UserGetSerialization {
     @ApiProperty({
         example: faker.internet.email(),
     })
-    readonly mobileNumber: string;
+    readonly email: string;
+
+    @ApiProperty({
+        example: faker.internet.email(),
+    })
+    readonly mobileNumber?: string;
 
     @ApiProperty({
         example: true,
     })
     readonly isActive: boolean;
+
+    @ApiProperty({
+        example: false,
+    })
+    readonly blocked: boolean;
 
     @ApiProperty({
         example: faker.name.firstName(),
@@ -72,12 +77,19 @@ export class UserGetSerialization {
     readonly salt: string;
 
     @ApiProperty({
-        example: faker.date.past(),
+        description: 'Date created at',
+        example: faker.date.recent(),
+        required: true,
     })
     readonly createdAt: Date;
 
     @ApiProperty({
-        example: faker.date.past(),
+        description: 'Date updated at',
+        example: faker.date.recent(),
+        required: false,
     })
     readonly updatedAt: Date;
+
+    @Exclude()
+    readonly deletedAt?: Date;
 }

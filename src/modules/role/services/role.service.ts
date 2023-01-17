@@ -58,7 +58,7 @@ export class RoleService implements IRoleService {
             {
                 name,
             },
-            options
+            { ...options, withDeleted: true }
         );
     }
 
@@ -140,14 +140,14 @@ export class RoleService implements IRoleService {
         _id: string,
         options?: IDatabaseSoftDeleteOptions
     ): Promise<RoleEntity> {
-        return this.roleRepository.deleteOneById(_id, options);
+        return this.roleRepository.softDeleteOneById(_id, options);
     }
 
     async deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
     ): Promise<RoleEntity> {
-        return this.roleRepository.deleteOne(find, options);
+        return this.roleRepository.softDeleteOne(find, options);
     }
 
     async deleteMany(

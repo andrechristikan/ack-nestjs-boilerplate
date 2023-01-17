@@ -57,8 +57,8 @@ describe('SettingService', () => {
         jest.clearAllMocks();
 
         try {
-            await settingService.deleteOneById(setting._id);
-            await settingService.deleteOne({
+            await settingService.deleteMany({ _id: setting._id });
+            await settingService.deleteMany({
                 name: {
                     $in: [
                         settingName1,
@@ -319,6 +319,21 @@ describe('SettingService', () => {
             expect(result._id).toBe(setting._id);
             expect(result.type).toBe(ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING);
             expect(result.value).toBe('aa,bb,cc');
+        });
+    });
+
+    describe('deleteOneById', () => {
+        it('should be success', async () => {
+            const result: SettingEntity = await settingService.deleteOneById(
+                setting._id
+            );
+
+            jest.spyOn(settingService, 'deleteOneById').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeTruthy();
+            expect(result._id).toBe(setting._id);
         });
     });
 

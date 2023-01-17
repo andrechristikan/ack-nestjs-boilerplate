@@ -62,7 +62,7 @@ export class HelperEncryptionService implements IHelperEncryptionService {
         return this.jwtService.sign(payload, {
             secret: options.secretKey,
             expiresIn: options.expiredIn,
-            notBefore: options.notBefore || 0,
+            notBefore: options.notBefore ?? 0,
             audience: options.audience,
             issuer: options.issuer,
             subject: options.subject,

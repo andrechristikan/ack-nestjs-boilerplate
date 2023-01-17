@@ -29,6 +29,7 @@ import { plainToInstance } from 'class-transformer';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload-permission.serialization';
 import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
+import { UserBlockedDto } from 'src/modules/user/dtos/user.block.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -111,14 +112,14 @@ export class UserService implements IUserService {
         _id: string,
         options?: IDatabaseSoftDeleteOptions
     ): Promise<UserEntity> {
-        return this.userRepository.deleteOneById(_id, options);
+        return this.userRepository.softDeleteOneById(_id, options);
     }
 
     async deleteOne(
         find: Record<string, any>,
         options?: IDatabaseSoftDeleteOptions
     ): Promise<UserEntity> {
-        return this.userRepository.deleteOne(find, options);
+        return this.userRepository.softDeleteOne(find, options);
     }
 
     async updateName(
@@ -159,7 +160,7 @@ export class UserService implements IUserService {
                     $options: 'i',
                 },
             },
-            options
+            { ...options, withDeleted: true }
         );
     }
 
@@ -171,7 +172,7 @@ export class UserService implements IUserService {
             {
                 mobileNumber,
             },
-            options
+            { ...options, withDeleted: true }
         );
     }
 
@@ -179,7 +180,10 @@ export class UserService implements IUserService {
         username: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean> {
-        return this.userRepository.exists({ username }, options);
+        return this.userRepository.exists(
+            { username },
+            { ...options, withDeleted: true }
+        );
     }
 
     async updatePassword(
@@ -233,6 +237,21 @@ export class UserService implements IUserService {
         dto.isActive = false;
 
         return this.userRepository.updateOneById<UserActiveDto>(
+            _id,
+            dto,
+            options
+        );
+    }
+
+    async blocked(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const dto: UserBlockedDto = new UserBlockedDto();
+        dto.blocked = true;
+        dto.isActive = false;
+
+        return this.userRepository.updateOneById<UserBlockedDto>(
             _id,
             dto,
             options

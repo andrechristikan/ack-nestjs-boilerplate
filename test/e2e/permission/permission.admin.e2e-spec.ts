@@ -86,8 +86,8 @@ describe('E2E Permission Admin', () => {
         jest.clearAllMocks();
 
         try {
-            await permissionService.deleteOne({
-                _id: permission._id,
+            await permissionService.deleteMany({
+                code: 'TEST_PERMISSION_XXXX',
             });
         } catch (err: any) {
             console.error(err);

@@ -3,6 +3,7 @@ import {
     CanActivate,
     ExecutionContext,
     ForbiddenException,
+    UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AUTH_PERMISSION_META_KEY } from 'src/common/auth/constants/auth.constant';
@@ -24,14 +25,18 @@ export class AuthPayloadPermissionGuard implements CanActivate {
                 AUTH_PERMISSION_META_KEY,
                 [context.getHandler(), context.getClass()]
             );
-        if (!requiredPermission) {
-            return true;
-        }
 
         const { permissions, user } = context.switchToHttp().getRequest();
-        const { accessFor } = user;
-
-        if (accessFor === ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN) {
+        if (!user) {
+            throw new UnauthorizedException({
+                statusCode:
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_JWT_ACCESS_TOKEN_ERROR,
+                message: 'auth.error.accessTokenUnauthorized',
+            });
+        } else if (
+            !requiredPermission ||
+            user.accessFor === ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN
+        ) {
             return true;
         }
 

@@ -10,6 +10,7 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { ValidationError } from 'class-validator';
 import { Response } from 'express';
+import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 import { DebuggerService } from 'src/common/debugger/services/debugger.service';
 import { ERROR_TYPE } from 'src/common/error/constants/error.enum.constant';
 import {
@@ -49,19 +50,19 @@ export class ErrorHttpFilter implements ExceptionFilter {
         const customLang: string[] =
             ctx.getRequest<IRequestApp>().customLang ?? this.appDefaultLanguage;
 
-        // get metadata
-        const __class = request.__class || ErrorHttpFilter.name;
-        const __function = request.__function || this.catch.name;
-        const __requestId = request.id;
+        // get _metadata
+        const __class = request.__class ?? ErrorHttpFilter.name;
+        const __function = request.__function ?? this.catch.name;
+        const __requestId = request.id ?? DatabaseDefaultUUID();
         const __path = request.path;
         const __timestamp =
-            request.timestamp || this.helperDateService.timestamp();
+            request.timestamp ?? this.helperDateService.timestamp();
         const __timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         const __version =
-            request.version ||
+            request.version ??
             this.configService.get<string>('app.versioning.version');
         const __repoVersion =
-            request.repoVersion ||
+            request.repoVersion ??
             this.configService.get<string>('app.repoVersion');
 
         if (exception instanceof HttpException) {
@@ -95,17 +96,16 @@ export class ErrorHttpFilter implements ExceptionFilter {
             const {
                 statusCode,
                 message,
-                error,
-                errorType,
+                _errorType,
                 data,
                 properties,
-                metadata,
+                _metadata,
             } = responseException;
 
-            let { errors } = responseException;
+            let { errors, _error } = responseException;
             if (errors?.length > 0) {
                 errors =
-                    errorType === ERROR_TYPE.IMPORT
+                    _errorType === ERROR_TYPE.IMPORT
                         ? await this.messageService.getImportErrorsMessage(
                               errors as IValidationErrorImport[],
                               customLang
@@ -114,6 +114,12 @@ export class ErrorHttpFilter implements ExceptionFilter {
                               errors as ValidationError[],
                               customLang
                           );
+            }
+
+            if (!_error) {
+                _error = 'message' in exception ? exception.message : undefined;
+            } else if (typeof _error !== 'string') {
+                _error = JSON.stringify(_error);
             }
 
             const mapMessage: string | IMessage = await this.messageService.get(
@@ -129,18 +135,15 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 path: __path,
                 version: __version,
                 repoVersion: __repoVersion,
-                ...metadata,
+                ..._metadata,
             };
 
             const resResponse: IErrorHttpFilter = {
-                statusCode: statusCode || statusHttp,
+                statusCode: statusCode ?? statusHttp,
                 message: mapMessage,
-                error:
-                    error && Object.keys(error).length > 0
-                        ? error
-                        : exception.message,
+                _error,
                 errors: errors as IErrors[] | IErrorsImport[],
-                metadata: resMetadata,
+                _metadata: resMetadata,
                 data,
             };
 
@@ -160,7 +163,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 'http.serverError.internalServerError'
             )) as string;
 
-            const metadata: IErrorHttpFilterMetadata = {
+            const _metadata: IErrorHttpFilterMetadata = {
                 languages: customLang,
                 timestamp: __timestamp,
                 timezone: __timezone,
@@ -173,11 +176,11 @@ export class ErrorHttpFilter implements ExceptionFilter {
             const responseBody = {
                 statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
                 message,
-                error:
+                _error:
                     exception instanceof Error && 'message' in exception
                         ? exception.message
                         : undefined,
-                metadata,
+                _metadata,
             };
 
             // Debugger

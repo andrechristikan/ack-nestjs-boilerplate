@@ -47,7 +47,7 @@ export class HelperStringService implements IHelperStringService {
 
     checkPasswordWeak(password: string, length?: number): boolean {
         const regex = new RegExp(
-            `^(?=.*?[A-Z])(?=.*?[a-z]).{${length || 8},}$`
+            `^(?=.*?[A-Z])(?=.*?[a-z]).{${length ?? 8},}$`
         );
 
         return regex.test(password);
@@ -55,7 +55,7 @@ export class HelperStringService implements IHelperStringService {
 
     checkPasswordMedium(password: string, length?: number): boolean {
         const regex = new RegExp(
-            `^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9]).{${length || 8},}$`
+            `^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9]).{${length ?? 8},}$`
         );
 
         return regex.test(password);
@@ -64,7 +64,7 @@ export class HelperStringService implements IHelperStringService {
     checkPasswordStrong(password: string, length?: number): boolean {
         const regex = new RegExp(
             `^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{${
-                length || 8
+                length ?? 8
             },}$`
         );
 

@@ -432,11 +432,11 @@ export function DocPaging<T>(
                             $ref: getSchemaPath(options.response.serialization),
                         },
                     },
-                    availableSearch: {
-                        example: options.response.availableSearch,
+                    _availableSearch: {
+                        example: options.response._availableSearch,
                     },
-                    availableSort: {
-                        example: options.response.availableSort,
+                    _availableSort: {
+                        example: options.response._availableSort,
                     },
                 },
             },
@@ -447,7 +447,7 @@ export function DocPaging<T>(
             allowEmptyValue: true,
             type: 'string',
             description:
-                'Search will base on availableSearch with rule contains, and case insensitive',
+                'Search will base on _availableSearch with rule contains, and case insensitive',
         }),
         ApiQuery({
             name: 'perPage',
@@ -466,12 +466,13 @@ export function DocPaging<T>(
             description: 'page number',
         }),
         ApiQuery({
-            name: 'sort',
+            name: '_sort',
             required: true,
             allowEmptyValue: false,
             example: 'createdAt@desc',
             type: 'string',
-            description: 'Sort base on availableSort, type is `asc` and `desc`',
+            description:
+                'Sort base on _availableSort, type is `asc` and `desc`',
         }),
 
         // default
@@ -563,7 +564,7 @@ export function DocOneOf<T>(
                 },
                 statusCode: {
                     type: 'number',
-                    example: doc.statusCode || HttpStatus.OK,
+                    example: doc.statusCode ?? HttpStatus.OK,
                 },
             },
         };
@@ -609,7 +610,7 @@ export function DocAnyOf<T>(
                 },
                 statusCode: {
                     type: 'number',
-                    example: doc.statusCode || HttpStatus.OK,
+                    example: doc.statusCode ?? HttpStatus.OK,
                 },
             },
         };
@@ -655,7 +656,7 @@ export function DocAllOf<T>(
                 },
                 statusCode: {
                     type: 'number',
-                    example: doc.statusCode || HttpStatus.OK,
+                    example: doc.statusCode ?? HttpStatus.OK,
                 },
             },
         };

@@ -3,6 +3,7 @@ import { Doc, DocPaging } from 'src/common/doc/decorators/doc.decorator';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import {
     UserDocParamsGet,
+    UserDocQueryBlocked,
     UserDocQueryIsActive,
 } from 'src/modules/user/constants/user.doc.constant';
 import {
@@ -20,11 +21,13 @@ export function UserListDoc(): MethodDecorator {
                 jwtAccessToken: true,
                 permissionToken: true,
             },
-            request: { queries: UserDocQueryIsActive },
+            request: {
+                queries: [...UserDocQueryIsActive, ...UserDocQueryBlocked],
+            },
             response: {
                 serialization: UserListSerialization,
-                availableSort: USER_DEFAULT_AVAILABLE_SORT,
-                availableSearch: USER_DEFAULT_AVAILABLE_SEARCH,
+                _availableSort: USER_DEFAULT_AVAILABLE_SORT,
+                _availableSearch: USER_DEFAULT_AVAILABLE_SEARCH,
             },
         })
     );
@@ -135,6 +138,20 @@ export function UserActiveDoc(): MethodDecorator {
 export function UserInactiveDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('user.inactive', {
+            auth: {
+                jwtAccessToken: true,
+                permissionToken: true,
+            },
+            request: {
+                params: UserDocParamsGet,
+            },
+        })
+    );
+}
+
+export function UserBlockedDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc<void>('user.blocked', {
             auth: {
                 jwtAccessToken: true,
                 permissionToken: true,
