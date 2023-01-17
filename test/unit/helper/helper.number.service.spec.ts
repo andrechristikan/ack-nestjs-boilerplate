@@ -83,4 +83,31 @@ describe('HelperNumberService', () => {
             expect(result).toBeTruthy();
         });
     });
+
+    describe('percent', () => {
+        it('should be called', async () => {
+            const test = jest.spyOn(helperNumberService, 'percent');
+
+            helperNumberService.percent(5, 8);
+            expect(test).toHaveBeenCalledWith(5, 8);
+        });
+
+        it('should be success with NaN or Infinite', async () => {
+            const result = helperNumberService.percent(0, 0);
+            jest.spyOn(helperNumberService, 'percent').mockImplementation(
+                () => result
+            );
+
+            expect(helperNumberService.percent(5, 8)).toBe(result);
+        });
+
+        it('should be success', async () => {
+            const result = helperNumberService.percent(5, 8);
+            jest.spyOn(helperNumberService, 'percent').mockImplementation(
+                () => result
+            );
+
+            expect(helperNumberService.percent(5, 8)).toBe(result);
+        });
+    });
 });
