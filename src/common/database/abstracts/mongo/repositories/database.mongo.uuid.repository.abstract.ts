@@ -537,7 +537,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
         options?: IDatabaseRestoreOptions<ClientSession>
     ): Promise<T> {
         const rest = this._repository
-            .findByIdAndUpdate(
+            .findOneAndUpdate(
                 find,
                 {
                     $set: { deletedAt: undefined },
