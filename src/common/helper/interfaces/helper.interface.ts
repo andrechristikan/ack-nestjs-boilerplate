@@ -41,6 +41,16 @@ export interface IHelperGeoRules extends IHelperGeoCurrent {
 }
 
 // Helper Date
+export interface IHelperDateStartAndEnd {
+    month?: number;
+    year?: number;
+}
+
+export interface IHelperDateStartAndEndDate {
+    startDate: Date;
+    endDate: Date;
+}
+
 export interface IHelperDateExtractDate {
     date: Date;
     day: string;

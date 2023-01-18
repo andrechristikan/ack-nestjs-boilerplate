@@ -5,6 +5,8 @@ import {
     IHelperDateOptionsDiff,
     IHelperDateOptionsFormat,
     IHelperDateOptionsForward,
+    IHelperDateStartAndEnd,
+    IHelperDateStartAndEndDate,
 } from 'src/common/helper/interfaces/helper.interface';
 
 export interface IHelperDateService {
@@ -90,4 +92,8 @@ export interface IHelperDateService {
     startOfDay(date?: Date): Date;
 
     extractDate(date: string | Date | number): IHelperDateExtractDate;
+
+    getStartAndEndDate(
+        options?: IHelperDateStartAndEnd
+    ): IHelperDateStartAndEndDate;
 }
