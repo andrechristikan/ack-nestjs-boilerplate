@@ -16,23 +16,18 @@ export function PaginationFilterInBooleanPipe(
         async transform(
             value: string,
             { data: field }: ArgumentMetadata
-        ): Promise<Record<string, any>> {
+        ): Promise<Record<string, { $in: boolean[] }>> {
             if (!value) {
                 return undefined;
             }
 
-            const filter: Record<string, any> = this.paginationService.filterIn<
-                boolean[]
-            >(
-                field,
-                value
-                    ? this.helperArrayService.unique(
-                          value.split(',').map((val: string) => val === 'true')
-                      )
-                    : defaultValue
-            );
+            const val: boolean[] = value
+                ? this.helperArrayService.unique(
+                      value.split(',').map((val: string) => val === 'true')
+                  )
+                : defaultValue;
 
-            return filter;
+            return this.paginationService.filterIn<boolean>(field, val);
         }
     }
 

@@ -22,6 +22,7 @@ import {
     IDatabaseRestoreManyOptions,
     IDatabaseUpdateOptions,
     IDatabaseDeleteOptions,
+    IDatabaseRawOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
 import { ENUM_PAGINATION_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
@@ -314,12 +315,46 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
         return result ? true : false;
     }
 
-    async raw<N, R = PipelineStage[]>(rawOperation: R): Promise<N[]> {
+    async raw<N, R = PipelineStage[]>(
+        rawOperation: R,
+        options?: IDatabaseRawOptions
+    ): Promise<N[]> {
         if (!Array.isArray(rawOperation)) {
             throw new Error('Must in array');
         }
 
-        return this._repository.aggregate<N>(rawOperation);
+        const pipeline: PipelineStage[] = rawOperation;
+
+        if (options?.withDeleted) {
+            pipeline.push({
+                $match: {
+                    $or: [
+                        {
+                            [DATABASE_DELETED_AT_FIELD_NAME]: {
+                                $exists: false,
+                            },
+                        },
+                        {
+                            [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
+                        },
+                    ],
+                },
+            });
+        } else {
+            pipeline.push({
+                $match: {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
+                },
+            });
+        }
+
+        const aggregate = this._repository.aggregate<N>(pipeline);
+
+        if (options?.session) {
+            aggregate.session(options?.session);
+        }
+
+        return aggregate;
     }
 
     async create<N>(

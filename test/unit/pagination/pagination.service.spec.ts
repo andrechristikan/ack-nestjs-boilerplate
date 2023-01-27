@@ -375,22 +375,11 @@ describe('PaginationService', () => {
             expect(result).toBeTruthy();
             expect(result['name']).toBe('test');
         });
-
-        it('should be return undefined', async () => {
-            const result: Record<string, number | string> =
-                paginationService.filterEqual('name', undefined);
-
-            jest.spyOn(paginationService, 'filterEqual').mockReturnValueOnce(
-                result as any
-            );
-
-            expect(result).toBeFalsy();
-        });
     });
 
     describe('filterContain', () => {
         it('should be return a value', async () => {
-            const result: Record<string, number | string> =
+            const result: Record<string, { $regex: RegExp; $options: string }> =
                 paginationService.filterContain('name', 'test');
 
             jest.spyOn(paginationService, 'filterContain').mockReturnValueOnce(
@@ -399,22 +388,11 @@ describe('PaginationService', () => {
 
             expect(result).toBeTruthy();
         });
-
-        it('should be return undefined', async () => {
-            const result: Record<string, number | string> =
-                paginationService.filterContain('name', undefined);
-
-            jest.spyOn(paginationService, 'filterContain').mockReturnValueOnce(
-                result as any
-            );
-
-            expect(result).toBeFalsy();
-        });
     });
 
     describe('filterIn', () => {
         it('should be return a value', async () => {
-            const result: Record<string, number | string> =
+            const result: Record<string, { $in: string[] }> =
                 paginationService.filterIn('name', ['test']);
 
             jest.spyOn(paginationService, 'filterIn').mockReturnValueOnce(
@@ -423,40 +401,20 @@ describe('PaginationService', () => {
 
             expect(result).toBeTruthy();
         });
-
-        it('should be return undefined', async () => {
-            const result: Record<string, number | string> =
-                paginationService.filterIn('name', undefined);
-
-            jest.spyOn(paginationService, 'filterIn').mockReturnValueOnce(
-                result as any
-            );
-
-            expect(result).toBeFalsy();
-        });
     });
 
     describe('filterDate', () => {
         it('should be return a value', async () => {
-            const result: Record<string, number | string> =
-                paginationService.filterDate('name', new Date());
+            const result: Record<string, Date> = paginationService.filterDate(
+                'name',
+                new Date()
+            );
 
             jest.spyOn(paginationService, 'filterDate').mockReturnValueOnce(
                 result as any
             );
 
             expect(result).toBeTruthy();
-        });
-
-        it('should be return undefined', async () => {
-            const result: Record<string, number | string> =
-                paginationService.filterDate('name', undefined);
-
-            jest.spyOn(paginationService, 'filterDate').mockReturnValueOnce(
-                result as any
-            );
-
-            expect(result).toBeFalsy();
         });
     });
 });

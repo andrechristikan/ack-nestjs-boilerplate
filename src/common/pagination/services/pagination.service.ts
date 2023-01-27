@@ -81,7 +81,7 @@ export class PaginationService implements IPaginationService {
         _availableSearch: string[],
         searchValue?: string
     ): Record<string, any> | undefined {
-        if (!searchValue || !_availableSearch) {
+        if (!searchValue) {
             return undefined;
         }
 
@@ -95,48 +95,36 @@ export class PaginationService implements IPaginationService {
         };
     }
 
-    filterEqual<T = string>(
-        field: string,
-        filterValue?: T
-    ): Record<string, any> | undefined {
-        return filterValue ? { [field]: filterValue } : undefined;
+    filterEqual<T = string>(field: string, filterValue: T): Record<string, T> {
+        return { [field]: filterValue };
     }
 
     filterContain(
         field: string,
-        filterValue?: string
-    ): Record<string, any> | undefined {
-        return filterValue
-            ? {
-                  [field]: {
-                      $regex: new RegExp(filterValue),
-                      $options: 'i',
-                  },
-              }
-            : undefined;
+        filterValue: string
+    ): Record<string, { $regex: RegExp; $options: string }> {
+        return {
+            [field]: {
+                $regex: new RegExp(filterValue),
+                $options: 'i',
+            },
+        };
     }
 
     filterIn<T = string>(
         field: string,
-        filterValue?: T
-    ): Record<string, any> | undefined {
-        return filterValue
-            ? {
-                  [field]: {
-                      $in: filterValue,
-                  },
-              }
-            : undefined;
+        filterValue: T[]
+    ): Record<string, { $in: T[] }> {
+        return {
+            [field]: {
+                $in: filterValue,
+            },
+        };
     }
 
-    filterDate(
-        field: string,
-        filterValue?: Date
-    ): Record<string, any> | undefined {
-        return filterValue
-            ? {
-                  [field]: filterValue,
-              }
-            : undefined;
+    filterDate(field: string, filterValue: Date): Record<string, Date> {
+        return {
+            [field]: filterValue,
+        };
     }
 }

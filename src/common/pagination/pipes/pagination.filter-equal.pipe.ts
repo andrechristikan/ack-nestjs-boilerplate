@@ -18,7 +18,7 @@ export function PaginationFilterEqualPipe(
         async transform(
             value: string,
             { data: field }: ArgumentMetadata
-        ): Promise<Record<string, any>> {
+        ): Promise<Record<string, string | number>> {
             if (!value) {
                 return undefined;
             }
@@ -44,13 +44,10 @@ export function PaginationFilterEqualPipe(
                     : value;
             }
 
-            const filter: Record<string, any> =
-                this.paginationService.filterEqual<string | number>(
-                    field,
-                    finalValue
-                );
-
-            return filter;
+            return this.paginationService.filterEqual<string | number>(
+                field,
+                finalValue
+            );
         }
     }
 

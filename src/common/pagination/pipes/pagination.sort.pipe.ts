@@ -20,7 +20,7 @@ export function PaginationSortPipe(
 
             return {
                 ...value,
-                sort,
+                _sort: sort,
                 _availableSort,
             };
         }
