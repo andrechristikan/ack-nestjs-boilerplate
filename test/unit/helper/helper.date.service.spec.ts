@@ -5,7 +5,10 @@ import {
     ENUM_HELPER_DATE_FORMAT,
 } from 'src/common/helper/constants/helper.enum.constant';
 import { HelperModule } from 'src/common/helper/helper.module';
-import { IHelperDateExtractDate } from 'src/common/helper/interfaces/helper.interface';
+import {
+    IHelperDateExtractDate,
+    IHelperDateStartAndEndDate,
+} from 'src/common/helper/interfaces/helper.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import configs from 'src/configs';
 
@@ -910,6 +913,62 @@ describe('HelperDateService', () => {
             );
 
             expect(result).toBeTruthy();
+        });
+    });
+
+    describe('getStartAndEndDate', () => {
+        it('should be success', async () => {
+            const result: IHelperDateStartAndEndDate =
+                helperDateService.getStartAndEndDate();
+
+            jest.spyOn(
+                helperDateService,
+                'getStartAndEndDate'
+            ).mockReturnValueOnce(result);
+
+            const dt = helperDateService.create();
+            const start = helperDateService.startOfYear(dt);
+            const end = helperDateService.endOfYear(dt);
+
+            expect(result).toBeTruthy();
+            expect(`${result.startDate}`).toBe(`${start}`);
+            expect(`${result.endDate}`).toBe(`${end}`);
+        });
+
+        it('should be success options year', async () => {
+            const result: IHelperDateStartAndEndDate =
+                helperDateService.getStartAndEndDate({ year: 2022 });
+
+            jest.spyOn(
+                helperDateService,
+                'getStartAndEndDate'
+            ).mockReturnValueOnce(result);
+
+            const dt = helperDateService.create('2022-01-02');
+            const start = helperDateService.startOfYear(dt);
+            const end = helperDateService.endOfYear(dt);
+
+            expect(result).toBeTruthy();
+            expect(`${result.startDate}`).toBe(`${start}`);
+            expect(`${result.endDate}`).toBe(`${end}`);
+        });
+
+        it('should be success options year and month', async () => {
+            const result: IHelperDateStartAndEndDate =
+                helperDateService.getStartAndEndDate({ year: 2022, month: 2 });
+
+            jest.spyOn(
+                helperDateService,
+                'getStartAndEndDate'
+            ).mockReturnValueOnce(result);
+
+            const dt = helperDateService.create('2022-02-02');
+            const start = helperDateService.startOfMonth(dt);
+            const end = helperDateService.endOfMonth(dt);
+
+            expect(result).toBeTruthy();
+            expect(`${result.startDate}`).toBe(`${start}`);
+            expect(`${result.endDate}`).toBe(`${end}`);
         });
     });
 });

@@ -12,6 +12,7 @@ import {
     IDatabaseRestoreManyOptions,
     IDatabaseUpdateOptions,
     IDatabaseDeleteOptions,
+    IDatabaseRawOptions,
 } from 'src/common/database/interfaces/database.interface';
 
 export abstract class DatabaseBaseRepositoryAbstract<T> {
@@ -46,7 +47,10 @@ export abstract class DatabaseBaseRepositoryAbstract<T> {
         options?: IDatabaseExistOptions<any>
     ): Promise<boolean>;
 
-    abstract raw<N, R = any>(rawOperation: R): Promise<N[]>;
+    abstract raw<N, R = any>(
+        rawOperation: R,
+        options?: IDatabaseRawOptions
+    ): Promise<N[]>;
 
     abstract create<N>(
         data: N,

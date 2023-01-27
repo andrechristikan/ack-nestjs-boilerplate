@@ -13,23 +13,17 @@ export function PaginationFilterInEnumPipe<T>(
         async transform(
             value: string,
             { data: field }: ArgumentMetadata
-        ): Promise<Record<string, any>> {
-            if (!value) {
-                return undefined;
+        ): Promise<Record<string, { $in: T[] }>> {
+            let finalValue: T[] = defaultValue as T[];
+
+            if (value) {
+                finalValue = value
+                    .split(',')
+                    .map((val: string) => defaultEnum[val])
+                    .filter((val: string) => val) as T[];
             }
 
-            const filter: Record<string, any> =
-                this.paginationService.filterIn<T>(
-                    field,
-                    value
-                        ? (value
-                              .split(',')
-                              .map((val: string) => defaultEnum[val])
-                              .filter((val: string) => val) as T)
-                        : defaultValue
-                );
-
-            return filter;
+            return this.paginationService.filterIn<T>(field, finalValue);
         }
     }
 

@@ -43,6 +43,22 @@ export class ApiKeyGetSerialization {
     isActive: boolean;
 
     @ApiProperty({
+        description: 'Api Key start date',
+        example: faker.date.recent(),
+        required: false,
+        nullable: true,
+    })
+    startDate?: Date;
+
+    @ApiProperty({
+        description: 'Api Key end date',
+        example: faker.date.recent(),
+        required: false,
+        nullable: true,
+    })
+    endDate?: Date;
+
+    @ApiProperty({
         description: 'Date created at',
         example: faker.date.recent(),
         required: false,

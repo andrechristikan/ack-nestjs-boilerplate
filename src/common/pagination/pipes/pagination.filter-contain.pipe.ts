@@ -14,9 +14,9 @@ export function PaginationFilterContainPipe(
         async transform(
             value: string,
             { data: field }: ArgumentMetadata
-        ): Promise<Record<string, any>> {
+        ): Promise<Record<string, { $regex: RegExp; $options: string }>> {
             if (!value) {
-                return undefined;
+                value = '';
             }
 
             if (
@@ -33,10 +33,7 @@ export function PaginationFilterContainPipe(
                 value = value.trim();
             }
 
-            const filter: Record<string, any> =
-                this.paginationService.filterContain(field, value);
-
-            return filter;
+            return this.paginationService.filterContain(field, value);
         }
     }
 

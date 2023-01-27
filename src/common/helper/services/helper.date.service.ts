@@ -13,6 +13,8 @@ import {
     IHelperDateOptionsFormat,
     IHelperDateOptionsForward,
     IHelperDateOptionsRoundDown,
+    IHelperDateStartAndEnd,
+    IHelperDateStartAndEndDate,
 } from 'src/common/helper/interfaces/helper.interface';
 
 @Injectable()
@@ -212,5 +214,36 @@ export class HelperDateService implements IHelperDateService {
         }
 
         return mDate.toDate();
+    }
+
+    getStartAndEndDate(
+        options?: IHelperDateStartAndEnd
+    ): IHelperDateStartAndEndDate {
+        const today = moment();
+        const todayMonth = Number(
+            today.format(ENUM_HELPER_DATE_FORMAT.ONLY_MONTH)
+        );
+        const todayYear = Number(
+            today.format(ENUM_HELPER_DATE_FORMAT.ONLY_YEAR)
+        );
+
+        // set month and year
+        const year = options?.year ?? todayYear;
+        const month = options?.month ?? todayMonth;
+
+        const date = moment(`${year}-${month}-02`);
+        let startDate: Date = date.startOf('year').toDate();
+        let endDate: Date = date.endOf('year').toDate();
+
+        if (options?.month) {
+            const date = moment(`${year}-${month}-02`);
+            startDate = date.startOf('month').toDate();
+            endDate = date.endOf('month').toDate();
+        }
+
+        return {
+            startDate,
+            endDate,
+        };
     }
 }

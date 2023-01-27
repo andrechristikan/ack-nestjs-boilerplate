@@ -30,7 +30,7 @@ export function PaginationPagingPipe(
                 ...value,
                 page,
                 perPage,
-                offset,
+                _offset: offset,
             };
         }
     }

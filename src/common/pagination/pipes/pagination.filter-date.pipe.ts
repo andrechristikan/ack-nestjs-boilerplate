@@ -18,11 +18,7 @@ export function PaginationFilterDatePipe(
         async transform(
             value: string,
             { data: field }: ArgumentMetadata
-        ): Promise<Record<string, any>> {
-            if (!value) {
-                return undefined;
-            }
-
+        ): Promise<Record<string, Date>> {
             let date: Date = this.helperDateService.create(value);
 
             if (
@@ -37,10 +33,7 @@ export function PaginationFilterDatePipe(
                 date = this.helperDateService.startOfDay(date);
             }
 
-            const filter: Record<string, any> =
-                this.paginationService.filterDate(field, date);
-
-            return filter;
+            return this.paginationService.filterDate(field, date);
         }
     }
 
