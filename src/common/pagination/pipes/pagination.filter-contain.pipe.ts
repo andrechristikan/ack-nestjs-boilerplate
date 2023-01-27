@@ -16,7 +16,7 @@ export function PaginationFilterContainPipe(
             { data: field }: ArgumentMetadata
         ): Promise<Record<string, { $regex: RegExp; $options: string }>> {
             if (!value) {
-                return undefined;
+                value = '';
             }
 
             if (

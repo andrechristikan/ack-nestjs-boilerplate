@@ -17,17 +17,15 @@ export function PaginationFilterInBooleanPipe(
             value: string,
             { data: field }: ArgumentMetadata
         ): Promise<Record<string, { $in: boolean[] }>> {
-            if (!value) {
-                return undefined;
+            let finalValue: boolean[] = defaultValue as boolean[];
+
+            if (value) {
+                finalValue = this.helperArrayService.unique(
+                    value.split(',').map((val: string) => val === 'true')
+                );
             }
 
-            const val: boolean[] = value
-                ? this.helperArrayService.unique(
-                      value.split(',').map((val: string) => val === 'true')
-                  )
-                : defaultValue;
-
-            return this.paginationService.filterIn<boolean>(field, val);
+            return this.paginationService.filterIn<boolean>(field, finalValue);
         }
     }
 

@@ -19,10 +19,6 @@ export function PaginationFilterDatePipe(
             value: string,
             { data: field }: ArgumentMetadata
         ): Promise<Record<string, Date>> {
-            if (!value) {
-                return undefined;
-            }
-
             let date: Date = this.helperDateService.create(value);
 
             if (
