@@ -118,7 +118,7 @@
     "@types/ua-parser-js": "^0.7.36",
     "@types/uuid": "^9.0.0",
     "@typescript-eslint/eslint-plugin": "^5.49.0",
-    "@typescript-eslint/parser": "^5.49.0",
+    "@typescript-eslint/parser": "^5.50.0",
     "cspell": "^6.19.2",
     "eslint": "^8.32.0",
     "eslint-config-prettier": "^8.6.0",
