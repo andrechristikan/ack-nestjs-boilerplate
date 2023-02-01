@@ -97,6 +97,7 @@ Describes which version.
 * Easy to maintenance
 * NestJs Habit
 * Component based folder structure
+* Stateless authentication and authorization
 * Repository Design Pattern or Data Access Layer Design Pattern
 * Support Microservice Architecture, Serverless Architecture, Clean Architecture, and/or Hexagonal Architecture
 * Follow Community Guide Line
@@ -118,7 +119,7 @@ Describes which version.
 * Request validation with `class-validation`
 * Serialization with `class-transformer`
 * Url Versioning
-* Server Side Pagination, there have 3 of types
+* Server Side Pagination
 * Import and export data with excel by using `decorator`
 
 ### Database
