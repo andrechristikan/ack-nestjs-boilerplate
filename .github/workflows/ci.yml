@@ -63,14 +63,14 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build against builder
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           builder: ${{ steps.builder.outputs.name }}
           file: ${{ env.DOCKERFILE }}
           target: builder
 
       - name: Build against main and push
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           builder: ${{ steps.main.outputs.name }}
           file: ${{ env.DOCKERFILE }}

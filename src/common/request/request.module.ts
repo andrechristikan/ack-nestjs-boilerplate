@@ -23,6 +23,7 @@ import { MinGreaterThanConstraint } from './validations/request.min-greater-than
 import { IsOnlyDigitsConstraint } from './validations/request.only-digits.validation';
 import { SafeStringConstraint } from './validations/request.safe-string.validation';
 import { SkipConstraint } from './validations/request.skip.validation';
+import { MaxBinaryFileConstraint } from 'src/common/request/validations/request.max-binary-file.validation';
 
 @Module({
     controllers: [],
@@ -64,6 +65,7 @@ import { SkipConstraint } from './validations/request.skip.validation';
         MinDateTodayConstraint,
         MobileNumberAllowedConstraint,
         MaxDateTodayConstraint,
+        MaxBinaryFileConstraint,
     ],
     imports: [RequestMiddlewareModule],
 })

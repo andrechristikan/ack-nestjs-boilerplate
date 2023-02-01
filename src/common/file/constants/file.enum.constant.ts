@@ -20,3 +20,10 @@ export enum ENUM_FILE_VIDEO_MIME {
     MP4 = 'video/mp4',
     APPLICATION_MP4 = 'application/mp4',
 }
+
+export enum ENUM_FILE_TYPE {
+    AUDIO = 'audio',
+    IMAGE = 'image',
+    EXCEL = 'excel',
+    VIDEO = 'video',
+}
