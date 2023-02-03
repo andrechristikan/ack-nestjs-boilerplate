@@ -6,11 +6,11 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
-import { FILE_CUSTOM_SIZE_META_KEY } from 'src/common/file/constants/file.constant';
+import { FILE_CUSTOM_MAX_SIZE_META_KEY } from 'src/common/file/constants/file.constant';
 import { Reflector } from '@nestjs/core';
 
 @Injectable()
-export class FileCustomSizeInterceptor implements NestInterceptor<any> {
+export class FileCustomMaxSizeInterceptor implements NestInterceptor<any> {
     constructor(private readonly reflector: Reflector) {}
 
     async intercept(
@@ -22,10 +22,10 @@ export class FileCustomSizeInterceptor implements NestInterceptor<any> {
             const request = ctx.getRequest();
 
             const customSize: string = this.reflector.get<string>(
-                FILE_CUSTOM_SIZE_META_KEY,
+                FILE_CUSTOM_MAX_SIZE_META_KEY,
                 context.getHandler()
             );
-            request.__customFileSize = customSize;
+            request.__customMaxFileSize = customSize;
 
             return next.handle();
         }

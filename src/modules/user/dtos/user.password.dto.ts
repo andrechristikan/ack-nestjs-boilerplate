@@ -11,6 +11,11 @@ export class UserPasswordDto {
     @Type(() => Date)
     passwordExpired: Date;
 
+    @IsNotEmpty()
+    @IsDate()
+    @Type(() => Date)
+    passwordCreated: Date;
+
     @IsString()
     @IsNotEmpty()
     salt: string;

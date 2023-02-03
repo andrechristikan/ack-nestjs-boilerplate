@@ -13,8 +13,11 @@ export class UserPayloadSerialization extends OmitType(UserGetSerialization, [
     'email',
     'mobileNumber',
     'passwordExpired',
+    'passwordCreated',
     'passwordAttempt',
     'signUpDate',
+    'inactiveDate',
+    'blockedDate',
     'createdAt',
     'updatedAt',
 ] as const) {
@@ -47,10 +50,19 @@ export class UserPayloadSerialization extends OmitType(UserGetSerialization, [
     readonly passwordExpired: Date;
 
     @Exclude()
+    readonly passwordCreated: Date;
+
+    @Exclude()
     readonly passwordAttempt: number;
 
     @Exclude()
     readonly signUpDate: Date;
+
+    @Exclude()
+    readonly inactiveDate?: Date;
+
+    @Exclude()
+    readonly blockedDate?: Date;
 
     @Exclude()
     readonly email: Date;

@@ -7,8 +7,11 @@ export class UserListSerialization extends OmitType(UserGetSerialization, [
     'role',
     'photo',
     'passwordExpired',
+    'passwordCreated',
     'passwordAttempt',
     'signUpDate',
+    'inactiveDate',
+    'blockedDate',
 ] as const) {
     @Exclude()
     readonly role: string;
@@ -20,8 +23,17 @@ export class UserListSerialization extends OmitType(UserGetSerialization, [
     readonly passwordExpired: Date;
 
     @Exclude()
+    readonly passwordCreated: Date;
+
+    @Exclude()
     readonly passwordAttempt: number;
 
     @Exclude()
     readonly signUpDate: Date;
+
+    @Exclude()
+    readonly inactiveDate?: Date;
+
+    @Exclude()
+    readonly blockedDate?: Date;
 }

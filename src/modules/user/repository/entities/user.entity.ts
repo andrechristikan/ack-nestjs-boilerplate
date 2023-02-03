@@ -81,6 +81,12 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
 
     @Prop({
         required: true,
+        type: Date,
+    })
+    passwordCreated: Date;
+
+    @Prop({
+        required: true,
         default: 0,
         type: Number,
     })
@@ -112,7 +118,27 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
         index: true,
         type: Boolean,
     })
+    inactivePermanent: boolean;
+
+    @Prop({
+        required: false,
+        type: Date,
+    })
+    inactiveDate?: boolean;
+
+    @Prop({
+        required: true,
+        default: false,
+        index: true,
+        type: Boolean,
+    })
     blocked: boolean;
+
+    @Prop({
+        required: false,
+        type: Date,
+    })
+    blockedDate?: boolean;
 
     @Prop({
         required: false,

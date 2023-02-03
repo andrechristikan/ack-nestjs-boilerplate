@@ -17,7 +17,7 @@ export class FileSizeImagePipe implements PipeTransform {
 
     constructor(
         @Inject(REQUEST)
-        private readonly request: Request & { __customFileSize: string },
+        private readonly request: Request & { __customMaxFileSize: string },
         private readonly configService: ConfigService,
         private readonly helperFileService: HelperFileService
     ) {
@@ -44,9 +44,9 @@ export class FileSizeImagePipe implements PipeTransform {
     }
 
     async validate(size: number): Promise<void> {
-        const maxSizeInBytes = this.request.__customFileSize
+        const maxSizeInBytes = this.request.__customMaxFileSize
             ? this.helperFileService.convertToBytes(
-                  this.request.__customFileSize
+                  this.request.__customMaxFileSize
               )
             : this.maxSize;
 
@@ -67,7 +67,7 @@ export class FileSizeExcelPipe implements PipeTransform {
 
     constructor(
         @Inject(REQUEST)
-        private readonly request: Request & { __customFileSize: string },
+        private readonly request: Request & { __customMaxFileSize: string },
         private readonly configService: ConfigService,
         private readonly helperFileService: HelperFileService
     ) {
@@ -90,9 +90,9 @@ export class FileSizeExcelPipe implements PipeTransform {
     }
 
     async validate(size: number): Promise<void> {
-        const maxSizeInBytes = this.request.__customFileSize
+        const maxSizeInBytes = this.request.__customMaxFileSize
             ? this.helperFileService.convertToBytes(
-                  this.request.__customFileSize
+                  this.request.__customMaxFileSize
               )
             : this.maxSize;
 
@@ -113,7 +113,7 @@ export class FileSizeVideoPipe implements PipeTransform {
 
     constructor(
         @Inject(REQUEST)
-        private readonly request: Request & { __customFileSize: string },
+        private readonly request: Request & { __customMaxFileSize: string },
         private readonly configService: ConfigService,
         private readonly helperFileService: HelperFileService
     ) {
@@ -136,9 +136,9 @@ export class FileSizeVideoPipe implements PipeTransform {
     }
 
     async validate(size: number): Promise<void> {
-        const maxSizeInBytes = this.request.__customFileSize
+        const maxSizeInBytes = this.request.__customMaxFileSize
             ? this.helperFileService.convertToBytes(
-                  this.request.__customFileSize
+                  this.request.__customMaxFileSize
               )
             : this.maxSize;
 
@@ -159,7 +159,7 @@ export class FileSizeAudioPipe implements PipeTransform {
 
     constructor(
         @Inject(REQUEST)
-        private readonly request: Request & { __customFileSize: string },
+        private readonly request: Request & { __customMaxFileSize: string },
         private readonly configService: ConfigService,
         private readonly helperFileService: HelperFileService
     ) {
@@ -182,9 +182,9 @@ export class FileSizeAudioPipe implements PipeTransform {
     }
 
     async validate(size: number): Promise<void> {
-        const maxSizeInBytes = this.request.__customFileSize
+        const maxSizeInBytes = this.request.__customMaxFileSize
             ? this.helperFileService.convertToBytes(
-                  this.request.__customFileSize
+                  this.request.__customMaxFileSize
               )
             : this.maxSize;
 

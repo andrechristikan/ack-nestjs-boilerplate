@@ -315,10 +315,12 @@ export class AuthService implements IAuthService {
         const passwordExpired: Date = this.helperDateService.forwardInSeconds(
             this.passwordExpiredIn
         );
+        const passwordCreated: Date = this.helperDateService.create();
         const passwordHash = this.helperHashService.bcrypt(password, salt);
         return {
             passwordHash,
             passwordExpired,
+            passwordCreated,
             salt,
         };
     }
