@@ -9,7 +9,6 @@ import {
     IDatabaseOptions,
     IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
@@ -90,12 +89,6 @@ export interface IUserService {
         options?: IDatabaseOptions
     ): Promise<UserEntity>;
 
-    updatePasswordExpired(
-        _id: string,
-        passwordExpired: Date,
-        options?: IDatabaseOptions
-    ): Promise<UserEntity>;
-
     active(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
 
     inactive(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
@@ -126,13 +119,14 @@ export interface IUserService {
         permissions: PermissionEntity[]
     ): Promise<UserPayloadPermissionSerialization>;
 
-    permissionByGroup(
-        user: IUserEntity,
-        scope: ENUM_PERMISSION_GROUP[]
-    ): Promise<PermissionEntity[]>;
-
     deleteMany(
         find: Record<string, any>,
         options?: IDatabaseManyOptions
     ): Promise<boolean>;
+
+    updatePasswordExpired(
+        _id: string,
+        passwordExpired: Date,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity>;
 }

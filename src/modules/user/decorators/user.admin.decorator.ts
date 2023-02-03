@@ -13,16 +13,7 @@ export function UserGetGuard(): MethodDecorator {
 }
 
 export function UserDeleteGuard(): MethodDecorator {
-    return applyDecorators(
-        UseGuards(
-            UserPutToRequestGuard,
-            UserNotFoundGuard,
-            UserActiveGuard,
-            UserBlockedGuard
-        ),
-        SetMetadata(USER_ACTIVE_META_KEY, [false]),
-        SetMetadata(USER_BLOCKED_META_KEY, [true])
-    );
+    return applyDecorators(UseGuards(UserPutToRequestGuard, UserNotFoundGuard));
 }
 
 export function UserUpdateGuard(): MethodDecorator {

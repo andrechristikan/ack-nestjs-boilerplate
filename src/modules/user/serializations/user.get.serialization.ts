@@ -36,9 +36,28 @@ export class UserGetSerialization {
     readonly isActive: boolean;
 
     @ApiProperty({
+        example: true,
+    })
+    readonly inactivePermanent: boolean;
+
+    @ApiProperty({
+        required: false,
+        nullable: true,
+        example: faker.date.recent(),
+    })
+    readonly inactiveDate?: Date;
+
+    @ApiProperty({
         example: false,
     })
     readonly blocked: boolean;
+
+    @ApiProperty({
+        required: false,
+        nullable: true,
+        example: faker.date.recent(),
+    })
+    readonly blockedDate?: Date;
 
     @ApiProperty({
         example: faker.name.firstName(),
@@ -62,6 +81,11 @@ export class UserGetSerialization {
         example: faker.date.future(),
     })
     readonly passwordExpired: Date;
+
+    @ApiProperty({
+        example: faker.date.past(),
+    })
+    readonly passwordCreated: Date;
 
     @ApiProperty({
         example: [1, 0],

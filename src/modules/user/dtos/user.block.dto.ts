@@ -1,9 +1,13 @@
-import { PartialType } from '@nestjs/swagger';
-import { IsBoolean, IsNotEmpty } from 'class-validator';
-import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
+import { Type } from 'class-transformer';
+import { IsBoolean, IsDate, IsNotEmpty } from 'class-validator';
 
-export class UserBlockedDto extends PartialType(UserActiveDto) {
+export class UserBlockedDto {
     @IsBoolean()
     @IsNotEmpty()
     blocked: boolean;
+
+    @IsDate()
+    @IsNotEmpty()
+    @Type(() => Date)
+    blockedDate: Date;
 }

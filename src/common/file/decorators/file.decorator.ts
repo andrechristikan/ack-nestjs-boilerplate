@@ -8,10 +8,10 @@ import {
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
     FILE_CUSTOM_MAX_FILES_META_KEY,
-    FILE_CUSTOM_SIZE_META_KEY,
+    FILE_CUSTOM_MAX_SIZE_META_KEY,
 } from 'src/common/file/constants/file.constant';
 import { FileCustomMaxFilesInterceptor } from 'src/common/file/interceptors/file.custom-max-files.interceptor';
-import { FileCustomSizeInterceptor } from 'src/common/file/interceptors/file.custom-size.interceptor';
+import { FileCustomMaxSizeInterceptor } from 'src/common/file/interceptors/file.custom-max-size.interceptor';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function UploadFileSingle(field: string): MethodDecorator {
@@ -29,10 +29,10 @@ export function FileCustomMaxFile(customMaxFiles: number): MethodDecorator {
     );
 }
 
-export function FileCustomSize(customSize: string): MethodDecorator {
+export function FileCustomMaxSize(customMaxSize: string): MethodDecorator {
     return applyDecorators(
-        UseInterceptors(FileCustomSizeInterceptor),
-        SetMetadata(FILE_CUSTOM_SIZE_META_KEY, customSize)
+        UseInterceptors(FileCustomMaxSizeInterceptor),
+        SetMetadata(FILE_CUSTOM_MAX_SIZE_META_KEY, customMaxSize)
     );
 }
 

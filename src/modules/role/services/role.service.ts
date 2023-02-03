@@ -10,10 +10,13 @@ import {
     IDatabaseManyOptions,
     IDatabaseCreateManyOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
+import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { RoleActiveDto } from 'src/modules/role/dtos/role.active.dto';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleUpdateNameDto } from 'src/modules/role/dtos/role.update-name.dto';
 import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
+import { IRoleEntity } from 'src/modules/role/interfaces/role.interface';
 import { IRoleService } from 'src/modules/role/interfaces/role.service.interface';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { RoleRepository } from 'src/modules/role/repository/repositories/role.repository';
@@ -173,5 +176,12 @@ export class RoleService implements IRoleService {
             }
         );
         return this.roleRepository.createMany<RoleEntity>(create, options);
+    }
+
+    async getPermissionByGroup(
+        role: IRoleEntity,
+        scope: ENUM_PERMISSION_GROUP[]
+    ): Promise<PermissionEntity[]> {
+        return role.permissions.filter((val) => scope.includes(val.group));
     }
 }

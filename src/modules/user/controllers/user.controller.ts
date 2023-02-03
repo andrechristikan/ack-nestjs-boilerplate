@@ -35,6 +35,8 @@ import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { SettingService } from 'src/common/setting/services/setting.service';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
+import { IRoleEntity } from 'src/modules/role/interfaces/role.interface';
+import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
 import { UserProfileGuard } from 'src/modules/user/decorators/user.public.decorator';
@@ -68,6 +70,7 @@ import { UserService } from 'src/modules/user/services/user.service';
 export class UserController {
     constructor(
         private readonly userService: UserService,
+        private readonly roleService: RoleService,
         private readonly awsService: AwsS3Service,
         private readonly authService: AuthService,
         private readonly settingService: SettingService
@@ -396,10 +399,7 @@ export class UserController {
         @AuthJwtPayload() user: UserPayloadSerialization,
         @Body() { scope }: UserGrantPermissionDto
     ): Promise<IResponse> {
-        const check: IUserEntity = await this.userService.findOneById(
-            user._id,
-            { join: true }
-        );
+        const check: IUserEntity = await this.userService.findOneById(user._id);
         if (!check) {
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
@@ -407,8 +407,12 @@ export class UserController {
             });
         }
 
+        const role: IRoleEntity =
+            await this.roleService.findOneById<IRoleEntity>(user.role, {
+                join: true,
+            });
         const permissions: PermissionEntity[] =
-            await this.userService.permissionByGroup(check, scope);
+            await this.roleService.getPermissionByGroup(role, scope);
 
         const payload: UserPayloadPermissionSerialization =
             await this.userService.payloadPermissionSerialization(

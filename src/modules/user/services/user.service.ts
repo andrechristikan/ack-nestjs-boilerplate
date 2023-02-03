@@ -13,7 +13,6 @@ import { UserPhotoDto } from 'src/modules/user/dtos/user.photo.dto';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
 import { UserPasswordDto } from 'src/modules/user/dtos/user.password.dto';
-import { UserPasswordExpiredDto } from 'src/modules/user/dtos/user.password-expired.dto';
 import { UserActiveDto } from 'src/modules/user/dtos/user.active.dto';
 import { UserPasswordAttemptDto } from 'src/modules/user/dtos/user.password-attempt.dto';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
@@ -28,8 +27,8 @@ import { UserPayloadSerialization } from 'src/modules/user/serializations/user.p
 import { plainToInstance } from 'class-transformer';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload-permission.serialization';
-import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 import { UserBlockedDto } from 'src/modules/user/dtos/user.block.dto';
+import { UserPasswordExpiredDto } from 'src/modules/user/dtos/user.password-expired.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -88,7 +87,7 @@ export class UserService implements IUserService {
             mobileNumber,
             role,
         }: UserCreateDto,
-        { passwordExpired, passwordHash, salt }: IAuthPassword,
+        { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserEntity> {
         const create: UserEntity = new UserEntity();
@@ -98,9 +97,12 @@ export class UserService implements IUserService {
         create.password = passwordHash;
         create.role = role;
         create.isActive = true;
+        create.inactivePermanent = false;
+        create.blocked = false;
         create.lastName = lastName;
         create.salt = salt;
         create.passwordExpired = passwordExpired;
+        create.passwordCreated = passwordCreated;
         create.signUpDate = this.helperDateService.create();
         create.passwordAttempt = 0;
         create.mobileNumber = mobileNumber ?? undefined;
@@ -188,12 +190,13 @@ export class UserService implements IUserService {
 
     async updatePassword(
         _id: string,
-        { passwordHash, passwordExpired, salt }: IAuthPassword,
+        { passwordHash, passwordExpired, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
         const update: UserPasswordDto = new UserPasswordDto();
         update.password = passwordHash;
         update.passwordExpired = passwordExpired;
+        update.passwordCreated = passwordCreated;
         update.salt = salt;
 
         return this.userRepository.updateOneById<UserPasswordDto>(
@@ -203,24 +206,10 @@ export class UserService implements IUserService {
         );
     }
 
-    async updatePasswordExpired(
-        _id: string,
-        passwordExpired: Date,
-        options?: IDatabaseOptions
-    ): Promise<UserEntity> {
-        const update: UserPasswordDto = new UserPasswordDto();
-        update.passwordExpired = passwordExpired;
-
-        return this.userRepository.updateOneById<UserPasswordExpiredDto>(
-            _id,
-            update,
-            options
-        );
-    }
-
     async active(_id: string, options?: IDatabaseOptions): Promise<UserEntity> {
         const dto: UserActiveDto = new UserActiveDto();
         dto.isActive = true;
+        dto.inactiveDate = undefined;
 
         return this.userRepository.updateOneById<UserActiveDto>(
             _id,
@@ -235,6 +224,7 @@ export class UserService implements IUserService {
     ): Promise<UserEntity> {
         const dto: UserActiveDto = new UserActiveDto();
         dto.isActive = false;
+        dto.inactiveDate = this.helperDateService.create();
 
         return this.userRepository.updateOneById<UserActiveDto>(
             _id,
@@ -249,7 +239,7 @@ export class UserService implements IUserService {
     ): Promise<UserEntity> {
         const dto: UserBlockedDto = new UserBlockedDto();
         dto.blocked = true;
-        dto.isActive = false;
+        dto.blockedDate = this.helperDateService.create();
 
         return this.userRepository.updateOneById<UserBlockedDto>(
             _id,
@@ -325,17 +315,25 @@ export class UserService implements IUserService {
         });
     }
 
-    async permissionByGroup(
-        user: IUserEntity,
-        scope: ENUM_PERMISSION_GROUP[]
-    ): Promise<PermissionEntity[]> {
-        return user.role.permissions.filter((val) => scope.includes(val.group));
-    }
-
     async deleteMany(
         find: Record<string, any>,
         options?: IDatabaseManyOptions
     ): Promise<boolean> {
         return this.userRepository.deleteMany(find, options);
+    }
+
+    async updatePasswordExpired(
+        _id: string,
+        passwordExpired: Date,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const update: UserPasswordExpiredDto = new UserPasswordExpiredDto();
+        update.passwordExpired = passwordExpired;
+
+        return this.userRepository.updateOneById<UserPasswordExpiredDto>(
+            _id,
+            update,
+            options
+        );
     }
 }

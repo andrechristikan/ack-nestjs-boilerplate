@@ -1,4 +1,3 @@
-import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { TerminusModule } from '@nestjs/terminus';
 import { AuthModule } from 'src/common/auth/auth.module';
@@ -7,6 +6,7 @@ import { MessageController } from 'src/common/message/controllers/message.contro
 import { SettingController } from 'src/common/setting/controllers/setting.controller';
 import { HealthController } from 'src/health/controllers/health.controller';
 import { HealthModule } from 'src/health/health.module';
+import { RoleModule } from 'src/modules/role/role.module';
 import { UserController } from 'src/modules/user/controllers/user.controller';
 import { UserModule } from 'src/modules/user/user.module';
 
@@ -21,11 +21,11 @@ import { UserModule } from 'src/modules/user/user.module';
     exports: [],
     imports: [
         AwsModule,
-        HealthModule,
         TerminusModule,
-        HttpModule,
         UserModule,
         AuthModule,
+        HealthModule,
+        RoleModule,
     ],
 })
 export class RoutesModule {}
