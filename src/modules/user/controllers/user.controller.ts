@@ -123,7 +123,12 @@ export class UserController {
                     ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_NOT_MATCH_ERROR,
                 message: 'user.error.passwordNotMatch',
             });
-        } else if (!user.isActive) {
+        } else if (user.blocked) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_BLOCKED_ERROR,
+                message: 'user.error.blocked',
+            });
+        } else if (!user.isActive || user.inactivePermanent) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_ERROR,
                 message: 'user.error.inactive',
@@ -235,7 +240,12 @@ export class UserController {
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
                 message: 'user.error.notFound',
             });
-        } else if (!user.isActive) {
+        } else if (user.blocked) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_BLOCKED_ERROR,
+                message: 'user.error.blocked',
+            });
+        } else if (!user.isActive || user.inactivePermanent) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_ERROR,
                 message: 'user.error.inactive',
@@ -351,7 +361,7 @@ export class UserController {
 
         if (passwordAttempt) {
             try {
-                await this.userService.increasePasswordAttempt(user);
+                await this.userService.resetPasswordAttempt(user._id);
             } catch (err: any) {
                 throw new InternalServerErrorException({
                     statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
