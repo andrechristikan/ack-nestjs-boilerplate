@@ -19,4 +19,6 @@ export interface IDashboardService {
         month,
         year,
     }: IDashboardStartAndEnd): Promise<IDashboardStartAndEndDate>;
+
+    getPercentage(value: number, total: number): Promise<number>;
 }
