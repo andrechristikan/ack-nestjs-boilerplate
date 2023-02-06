@@ -6,9 +6,13 @@ import {
 } from 'src/common/dashboard/interfaces/dashboard.interface';
 import { IDashboardService } from 'src/common/dashboard/interfaces/dashboard.service.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
 
 export class DashboardService implements IDashboardService {
-    constructor(private readonly helperDateService: HelperDateService) {}
+    constructor(
+        private readonly helperDateService: HelperDateService,
+        private readonly helperNumberService: HelperNumberService
+    ) {}
 
     async getStartAndEndDate(
         date: DashboardDto
@@ -69,5 +73,9 @@ export class DashboardService implements IDashboardService {
             startDate,
             endDate,
         };
+    }
+
+    async getPercentage(value: number, total: number): Promise<number> {
+        return this.helperNumberService.percent(value, total);
     }
 }

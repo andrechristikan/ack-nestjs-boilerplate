@@ -114,8 +114,14 @@ export class UserController {
             user.password
         );
         if (!validate) {
-            if (passwordAttempt) {
+            try {
                 await this.userService.increasePasswordAttempt(user);
+            } catch (err: any) {
+                throw new InternalServerErrorException({
+                    statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                    message: 'http.serverError.internalServerError',
+                    _error: err.message,
+                });
             }
 
             throw new BadRequestException({
@@ -140,16 +146,14 @@ export class UserController {
             });
         }
 
-        if (passwordAttempt) {
-            try {
-                await this.userService.resetPasswordAttempt(user._id);
-            } catch (err: any) {
-                throw new InternalServerErrorException({
-                    statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                    message: 'http.serverError.internalServerError',
-                    _error: err.message,
-                });
-            }
+        try {
+            await this.userService.resetPasswordAttempt(user._id);
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
         }
 
         const payload: UserPayloadSerialization =
@@ -336,8 +340,14 @@ export class UserController {
             user.password
         );
         if (!matchPassword) {
-            if (passwordAttempt) {
+            try {
                 await this.userService.increasePasswordAttempt(user);
+            } catch (err: any) {
+                throw new InternalServerErrorException({
+                    statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                    message: 'http.serverError.internalServerError',
+                    _error: err.message,
+                });
             }
 
             throw new BadRequestException({
@@ -359,16 +369,14 @@ export class UserController {
             });
         }
 
-        if (passwordAttempt) {
-            try {
-                await this.userService.resetPasswordAttempt(user._id);
-            } catch (err: any) {
-                throw new InternalServerErrorException({
-                    statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                    message: 'http.serverError.internalServerError',
-                    _error: err.message,
-                });
-            }
+        try {
+            await this.userService.resetPasswordAttempt(user._id);
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
         }
 
         try {
