@@ -220,23 +220,18 @@ export class HelperDateService implements IHelperDateService {
         options?: IHelperDateStartAndEnd
     ): IHelperDateStartAndEndDate {
         const today = moment();
-        const todayMonth = Number(
-            today.format(ENUM_HELPER_DATE_FORMAT.ONLY_MONTH)
-        );
-        const todayYear = Number(
-            today.format(ENUM_HELPER_DATE_FORMAT.ONLY_YEAR)
-        );
-
+        const todayMonth = today.format(ENUM_HELPER_DATE_FORMAT.ONLY_MONTH);
+        const todayYear = today.format(ENUM_HELPER_DATE_FORMAT.ONLY_YEAR);
         // set month and year
         const year = options?.year ?? todayYear;
         const month = options?.month ?? todayMonth;
 
-        const date = moment(`${year}-${month}-02`);
+        const date = moment(`${year}-${month}-02`, 'YYYY-MM-DD');
         let startDate: Date = date.startOf('year').toDate();
         let endDate: Date = date.endOf('year').toDate();
 
         if (options?.month) {
-            const date = moment(`${year}-${month}-02`);
+            const date = moment(`${year}-${month}-02`, 'YYYY-MM-DD');
             startDate = date.startOf('month').toDate();
             endDate = date.endOf('month').toDate();
         }
