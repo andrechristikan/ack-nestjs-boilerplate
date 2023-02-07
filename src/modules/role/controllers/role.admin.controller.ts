@@ -387,7 +387,6 @@ export class RoleAdminController {
 
     @RoleAccessForDoc()
     @Response('role.accessFor', { serialization: RoleAccessForSerialization })
-    @RequestParamGuard(RoleRequestDto)
     @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.ROLE_READ)
     @AuthJwtAdminAccessProtected()
     @Get('/access-for')

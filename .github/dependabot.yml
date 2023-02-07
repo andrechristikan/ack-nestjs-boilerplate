@@ -7,7 +7,7 @@ updates:
       interval: "monthly"
       day: tuesday
       time: "01:00"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     target-branch: "development"
     commit-message:
       prefix: "npm"
@@ -19,7 +19,7 @@ updates:
       interval: "monthly"
       day: tuesday
       time: "00:00"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     target-branch: "development"
     commit-message:
       prefix: "github-action"

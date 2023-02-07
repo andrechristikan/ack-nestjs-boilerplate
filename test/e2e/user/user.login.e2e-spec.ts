@@ -170,6 +170,26 @@ describe('E2E User Login', () => {
         await userService.resetPasswordAttempt(user._id);
     });
 
+    it(`POST ${E2E_USER_LOGIN_URL} Blocked`, async () => {
+        await userService.blocked(user._id);
+
+        const response = await request(app.getHttpServer())
+            .post(E2E_USER_LOGIN_URL)
+            .set('Content-Type', 'application/json')
+            .send({
+                username: user.username,
+                password,
+                rememberMe: false,
+            });
+
+        await userService.unblocked(user._id);
+
+        expect(response.status).toEqual(HttpStatus.FORBIDDEN);
+        expect(response.body.statusCode).toEqual(
+            ENUM_USER_STATUS_CODE_ERROR.USER_BLOCKED_ERROR
+        );
+    });
+
     it(`POST ${E2E_USER_LOGIN_URL} Inactive`, async () => {
         await userService.inactive(user._id);
 

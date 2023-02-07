@@ -4,6 +4,7 @@ import request from 'supertest';
 import { faker } from '@faker-js/faker';
 import {
     E2E_USER_ADMIN_ACTIVE_URL,
+    E2E_USER_ADMIN_BLOCKED_URL,
     E2E_USER_ADMIN_CREATE_URL,
     E2E_USER_ADMIN_DELETE_URL,
     E2E_USER_ADMIN_EXPORT_URL,
@@ -396,6 +397,33 @@ describe('E2E User Admin', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_IS_ACTIVE_ERROR
         );
+    });
+
+    it(`PATCH ${E2E_USER_ADMIN_BLOCKED_URL} Blocked, Not Found`, async () => {
+        const response = await request(app.getHttpServer())
+            .patch(
+                E2E_USER_ADMIN_BLOCKED_URL.replace(
+                    ':_id',
+                    `${DatabaseDefaultUUID()}`
+                )
+            )
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-permission-token', permissionToken);
+
+        expect(response.status).toEqual(HttpStatus.NOT_FOUND);
+        expect(response.body.statusCode).toEqual(
+            ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR
+        );
+    });
+
+    it(`PATCH ${E2E_USER_ADMIN_BLOCKED_URL} Blocked, success`, async () => {
+        const response = await request(app.getHttpServer())
+            .patch(E2E_USER_ADMIN_BLOCKED_URL.replace(':_id', userData._id))
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-permission-token', permissionToken);
+
+        expect(response.status).toEqual(HttpStatus.OK);
+        expect(response.body.statusCode).toEqual(HttpStatus.OK);
     });
 
     it(`DELETE ${E2E_USER_ADMIN_DELETE_URL} Delete, Not Found`, async () => {

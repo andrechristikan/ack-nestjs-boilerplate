@@ -95,6 +95,8 @@ export interface IUserService {
 
     blocked(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
 
+    unblocked(_id: string, options?: IDatabaseOptions): Promise<UserEntity>;
+
     maxPasswordAttempt(
         _id: string,
         options?: IDatabaseOptions
