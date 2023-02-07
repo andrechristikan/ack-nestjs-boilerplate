@@ -141,6 +141,21 @@ describe('E2E User Refresh', () => {
         );
     });
 
+    it(`POST ${E2E_USER_REFRESH_URL} Blocked`, async () => {
+        await userService.blocked(user._id);
+
+        const response = await request(app.getHttpServer())
+            .post(E2E_USER_REFRESH_URL)
+            .set('Authorization', `Bearer ${refreshToken}`);
+
+        await userService.unblocked(user._id);
+
+        expect(response.status).toEqual(HttpStatus.FORBIDDEN);
+        expect(response.body.statusCode).toEqual(
+            ENUM_USER_STATUS_CODE_ERROR.USER_BLOCKED_ERROR
+        );
+    });
+
     it(`POST ${E2E_USER_REFRESH_URL} Inactive`, async () => {
         await userService.inactive(user._id);
 

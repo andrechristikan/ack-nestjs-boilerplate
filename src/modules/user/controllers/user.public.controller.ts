@@ -8,8 +8,8 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
-    AuthJwtAccessProtected,
     AuthJwtPayload,
+    AuthJwtPublicAccessProtected,
 } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
@@ -100,7 +100,7 @@ export class UserPublicController {
 
     @UserDeleteSelfDoc()
     @Response('user.deleteSelf')
-    @AuthJwtAccessProtected()
+    @AuthJwtPublicAccessProtected()
     @Delete('/delete')
     async deleteSelf(@AuthJwtPayload('_id') _id: string): Promise<void> {
         try {

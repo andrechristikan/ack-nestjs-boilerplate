@@ -248,6 +248,21 @@ export class UserService implements IUserService {
         );
     }
 
+    async unblocked(
+        _id: string,
+        options?: IDatabaseOptions
+    ): Promise<UserEntity> {
+        const dto: UserBlockedDto = new UserBlockedDto();
+        dto.blocked = false;
+        dto.blockedDate = undefined;
+
+        return this.userRepository.updateOneById<UserBlockedDto>(
+            _id,
+            dto,
+            options
+        );
+    }
+
     async maxPasswordAttempt(
         _id: string,
         options?: IDatabaseOptions

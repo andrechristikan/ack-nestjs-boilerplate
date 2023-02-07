@@ -7,13 +7,22 @@ import { useContainer } from 'class-validator';
 import { UserService } from 'src/modules/user/services/user.service';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesPublicModule } from 'src/router/routes/routes.public.module';
-import { E2E_USER_PUBLIC_SIGN_UP_URL } from './user.constant';
+import {
+    E2E_USER_PUBLIC_DELETE_URL,
+    E2E_USER_PUBLIC_SIGN_UP_URL,
+} from './user.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
+import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
+import { plainToInstance } from 'class-transformer';
+import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
+import { AuthModule } from 'src/common/auth/auth.module';
+import { AuthService } from 'src/common/auth/services/auth.service';
 
 describe('E2E User Public', () => {
     let app: INestApplication;
     let userService: UserService;
+    let authService: AuthService;
 
     const password = `@!aaAA@123`;
     let userData: Record<string, any>;
@@ -25,6 +34,7 @@ describe('E2E User Public', () => {
             imports: [
                 CommonModule,
                 RoutesPublicModule,
+                AuthModule,
                 RouterModule.register([
                     {
                         path: '/public',
@@ -37,6 +47,7 @@ describe('E2E User Public', () => {
         app = modRef.createNestApplication();
         useContainer(app.select(CommonModule), { fallbackOnErrors: true });
         userService = app.get(UserService);
+        authService = app.get(AuthService);
 
         userData = {
             firstName: faker.name.firstName(),
@@ -138,5 +149,25 @@ describe('E2E User Public', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR
         );
+    });
+
+    it(`DELETE ${E2E_USER_PUBLIC_DELETE_URL} Success`, async () => {
+        const user = await userService.findOneByUsername<IUserEntity>(
+            userData.username,
+            {
+                join: true,
+            }
+        );
+        const map = plainToInstance(UserPayloadSerialization, user);
+        const payload = await authService.createPayloadAccessToken(map, false);
+        const accessToken = await authService.createAccessToken(payload);
+
+        const response = await request(app.getHttpServer())
+            .delete(E2E_USER_PUBLIC_DELETE_URL)
+            .set('Content-Type', 'application/json')
+            .set('Authorization', `Bearer ${accessToken}`);
+
+        expect(response.status).toEqual(HttpStatus.OK);
+        expect(response.body.statusCode).toEqual(HttpStatus.OK);
     });
 });

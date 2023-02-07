@@ -66,7 +66,7 @@
 
 Next development
 
-* Validation guard change to pipe
+* [ ] Validation guard change to pipe
 * [ ] SSO
     * [ ] Google
     * [ ] Apple

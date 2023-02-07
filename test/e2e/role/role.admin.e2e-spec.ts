@@ -2,6 +2,7 @@ import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import {
+    E2E_ROLE_ACCESS_FOR_URL,
     E2E_ROLE_ADMIN_ACTIVE_URL,
     E2E_ROLE_ADMIN_CREATE_URL,
     E2E_ROLE_ADMIN_DELETE_URL,
@@ -478,6 +479,16 @@ describe('E2E Role Admin', () => {
     it(`DELETE ${E2E_ROLE_ADMIN_DELETE_URL} Delete Success`, async () => {
         const response = await request(app.getHttpServer())
             .delete(E2E_ROLE_ADMIN_DELETE_URL.replace(':_id', role._id))
+            .set('Authorization', `Bearer ${accessToken}`)
+            .set('x-permission-token', permissionToken);
+
+        expect(response.status).toEqual(HttpStatus.OK);
+        expect(response.body.statusCode).toEqual(HttpStatus.OK);
+    });
+
+    it(`GET ${E2E_ROLE_ACCESS_FOR_URL} Access For Success`, async () => {
+        const response = await request(app.getHttpServer())
+            .get(E2E_ROLE_ACCESS_FOR_URL)
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-permission-token', permissionToken);
 
