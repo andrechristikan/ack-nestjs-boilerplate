@@ -6,6 +6,7 @@ import {
 } from 'src/common/pagination/interfaces/pagination.interface';
 import { PaginationFilterContainPipe } from 'src/common/pagination/pipes/pagination.filter-contain.pipe';
 import { PaginationFilterDatePipe } from 'src/common/pagination/pipes/pagination.filter-date.pipe';
+import { PaginationFilterEqualObjectIdPipe } from 'src/common/pagination/pipes/pagination.filter-equal-object-id.pipe';
 import { PaginationFilterEqualPipe } from 'src/common/pagination/pipes/pagination.filter-equal.pipe';
 import { PaginationFilterInBooleanPipe } from 'src/common/pagination/pipes/pagination.filter-in-boolean.pipe';
 import { PaginationFilterInEnumPipe } from 'src/common/pagination/pipes/pagination.filter-in-enum.pipe';
@@ -63,4 +64,10 @@ export function PaginationQueryFilterDate(
     options?: IPaginationFilterDateOptions
 ): ParameterDecorator {
     return Query(field, PaginationFilterDatePipe(options));
+}
+
+export function PaginationQueryFilterEqualObjectId(
+    field: string
+): ParameterDecorator {
+    return Query(field, PaginationFilterEqualObjectIdPipe);
 }
