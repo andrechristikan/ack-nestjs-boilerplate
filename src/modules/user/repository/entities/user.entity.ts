@@ -124,7 +124,7 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
         required: false,
         type: Date,
     })
-    inactiveDate?: boolean;
+    inactiveDate?: Date;
 
     @Prop({
         required: true,
@@ -138,7 +138,7 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
         required: false,
         type: Date,
     })
-    blockedDate?: boolean;
+    blockedDate?: Date;
 
     @Prop({
         required: false,
