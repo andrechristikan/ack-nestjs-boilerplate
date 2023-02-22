@@ -1,4 +1,3 @@
-import { PartialType } from '@nestjs/swagger';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import {
     ENUM_LOGGER_ACTION,
@@ -22,6 +21,6 @@ export class LoggerCreateDto {
     statusCode?: number;
 }
 
-export class LoggerCreateRawDto extends PartialType(LoggerCreateDto) {
+export class LoggerCreateRawDto extends LoggerCreateDto {
     level: ENUM_LOGGER_LEVEL;
 }

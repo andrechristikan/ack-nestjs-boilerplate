@@ -1,18 +1,15 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
 import {
-    IsDate,
     IsNotEmpty,
     IsOptional,
     IsString,
     MaxLength,
     MinLength,
 } from 'class-validator';
-import { MinGreaterThanEqual } from 'src/common/request/validations/request.min-greater-than-equal.validation';
-import { MinDateToday } from 'src/common/request/validations/request.min-date-today.validation';
+import { ApiKeyUpdateDateDto } from 'src/common/api-key/dtos/api-key.update-date.dto';
 
-export class ApiKeyCreateDto {
+export class ApiKeyCreateDto extends PartialType(ApiKeyUpdateDateDto) {
     @ApiProperty({
         description: 'Api Key name',
         example: `testapiname`,
@@ -22,30 +19,6 @@ export class ApiKeyCreateDto {
     @IsString()
     @MaxLength(50)
     name: string;
-
-    @ApiProperty({
-        description: 'Api Key start date',
-        example: faker.date.recent(),
-        required: false,
-        nullable: true,
-    })
-    @IsOptional()
-    @Type(() => Date)
-    @IsDate()
-    @MinDateToday()
-    startDate?: Date;
-
-    @ApiProperty({
-        description: 'Api Key end date',
-        example: faker.date.recent(),
-        required: false,
-        nullable: true,
-    })
-    @IsOptional()
-    @Type(() => Date)
-    @IsDate()
-    @MinGreaterThanEqual('startDate')
-    endDate?: Date;
 
     @ApiProperty({
         description: 'Description of api key',
@@ -59,12 +32,24 @@ export class ApiKeyCreateDto {
     description?: string;
 }
 
-export class ApiKeyCreateRawDto extends PartialType(ApiKeyCreateDto) {
+export class ApiKeyCreateRawDto extends ApiKeyCreateDto {
+    @ApiProperty({
+        name: 'key',
+        example: faker.random.alphaNumeric(10),
+        required: true,
+        nullable: false,
+    })
     @IsNotEmpty()
     @IsString()
     @MaxLength(50)
     key: string;
 
+    @ApiProperty({
+        name: 'secret',
+        example: faker.random.alphaNumeric(20),
+        required: true,
+        nullable: false,
+    })
     @IsNotEmpty()
     @IsString()
     @MaxLength(100)

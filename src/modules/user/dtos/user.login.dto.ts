@@ -1,26 +1,11 @@
-import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import {
-    IsNotEmpty,
-    MaxLength,
-    IsBoolean,
-    IsOptional,
-    ValidateIf,
-    IsString,
-} from 'class-validator';
+import { ApiProperty, PickType } from '@nestjs/swagger';
+import { IsBoolean, IsOptional, ValidateIf } from 'class-validator';
+import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 
-export class UserLoginDto {
-    @ApiProperty({
-        example: faker.internet.userName(),
-        required: true,
-    })
-    @IsString()
-    @IsNotEmpty()
-    @MaxLength(100)
-    @Type(() => String)
-    readonly username: string;
-
+export class UserLoginDto extends PickType(UserCreateDto, [
+    'username',
+    'password',
+] as const) {
     @ApiProperty({
         description:
             'if true refresh token expired will extend to 30d, else 7d',
@@ -31,16 +16,4 @@ export class UserLoginDto {
     @IsBoolean()
     @ValidateIf((e) => e.rememberMe !== '')
     readonly rememberMe?: boolean;
-
-    @ApiProperty({
-        description: 'string password',
-        example: `${faker.random.alphaNumeric(5).toLowerCase()}${faker.random
-            .alphaNumeric(5)
-            .toUpperCase()}@@!123`,
-        required: true,
-    })
-    @IsNotEmpty()
-    @Type(() => String)
-    @IsString()
-    readonly password: string;
 }
