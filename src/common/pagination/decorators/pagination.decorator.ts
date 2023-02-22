@@ -27,6 +27,12 @@ export function PaginationQuery(
     );
 }
 
+export function PaginationQuerySearch(
+    _availableSearch: string[]
+): ParameterDecorator {
+    return Query(PaginationSearchPipe(_availableSearch));
+}
+
 export function PaginationQueryFilterInBoolean(
     field: string,
     defaultValue: boolean[]
