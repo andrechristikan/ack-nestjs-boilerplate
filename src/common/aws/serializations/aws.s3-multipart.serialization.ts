@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty, getSchemaPath, PartialType } from '@nestjs/swagger';
+import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 
@@ -18,9 +18,7 @@ export class AwsS3MultipartPartsSerialization {
     PartNumber: number;
 }
 
-export class AwsS3MultipartSerialization extends PartialType(
-    AwsS3Serialization
-) {
+export class AwsS3MultipartSerialization extends AwsS3Serialization {
     @ApiProperty({
         example: faker.random.alpha(20),
         description: 'Upload id from aws after init multipart',

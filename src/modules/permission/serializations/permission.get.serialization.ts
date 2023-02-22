@@ -1,17 +1,10 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { Exclude, Type } from 'class-transformer';
+import { Exclude } from 'class-transformer';
+import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 
-export class PermissionGetSerialization {
-    @ApiProperty({
-        description: 'Id that representative with your target data',
-        example: faker.datatype.uuid(),
-        required: true,
-    })
-    @Type(() => String)
-    readonly _id: string;
-
+export class PermissionGetSerialization extends ResponseIdSerialization {
     @ApiProperty({
         description: 'Active flag of permission',
         example: true,

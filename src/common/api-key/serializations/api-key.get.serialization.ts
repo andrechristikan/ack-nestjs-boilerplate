@@ -1,16 +1,9 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { Exclude, Type } from 'class-transformer';
+import { Exclude } from 'class-transformer';
+import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 
-export class ApiKeyGetSerialization {
-    @ApiProperty({
-        description: 'Id that representative with your target data',
-        example: faker.datatype.uuid(),
-        required: true,
-    })
-    @Type(() => String)
-    readonly _id: string;
-
+export class ApiKeyGetSerialization extends ResponseIdSerialization {
     @ApiProperty({
         description: 'Alias name of api key',
         example: faker.name.jobTitle(),

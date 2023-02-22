@@ -1,17 +1,10 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { Exclude, Transform, Type } from 'class-transformer';
+import { Exclude, Transform } from 'class-transformer';
+import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
 
-export class SettingGetSerialization {
-    @ApiProperty({
-        description: 'Id that representative with your target data',
-        example: faker.datatype.uuid(),
-        required: true,
-    })
-    @Type(() => String)
-    readonly _id: string;
-
+export class SettingGetSerialization extends ResponseIdSerialization {
     @ApiProperty({
         description: 'Name of setting',
         example: 'MaintenanceOn',
