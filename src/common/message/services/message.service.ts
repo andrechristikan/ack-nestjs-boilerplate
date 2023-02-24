@@ -108,10 +108,7 @@ export class MessageService implements IMessageService {
         return newErrors;
     }
 
-    async get(
-        key: string,
-        options?: IMessageOptions
-    ): Promise<string | IMessage> {
+    async get<T = string>(key: string, options?: IMessageOptions): Promise<T> {
         const properties = options?.properties;
         const customLanguages =
             options?.customLanguages?.length > 0
@@ -130,9 +127,9 @@ export class MessageService implements IMessageService {
         }
 
         if (customLanguages.length <= 1) {
-            return messages[customLanguages[0]];
+            return messages[customLanguages[0]] as T;
         }
 
-        return messages;
+        return messages as T;
     }
 }

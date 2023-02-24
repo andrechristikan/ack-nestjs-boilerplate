@@ -86,9 +86,9 @@ export default registerAs(
                 'user-agent',
             ],
         },
-        rateLimit: {
-            resetTime: ms(500), // 0.5 secs
-            maxRequestPerIp: 5, // max request per reset time
+        throttle: {
+            ttl: ms('500'), // 0.5 secs
+            limit: 10, // max request per reset time
         },
     })
 );
