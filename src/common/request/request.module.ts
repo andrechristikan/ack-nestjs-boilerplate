@@ -5,7 +5,7 @@ import {
     ValidationError,
     ValidationPipe,
 } from '@nestjs/common';
-import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { RequestTimeoutInterceptor } from 'src/common/request/interceptors/request.timeout.interceptor';
 import { RequestMiddlewareModule } from 'src/common/request/middleware/request.middleware.module';
 import { MaxDateTodayConstraint } from 'src/common/request/validations/request.max-date-today.validation';
@@ -24,6 +24,8 @@ import { IsOnlyDigitsConstraint } from './validations/request.only-digits.valida
 import { SafeStringConstraint } from './validations/request.safe-string.validation';
 import { SkipConstraint } from './validations/request.skip.validation';
 import { MaxBinaryFileConstraint } from 'src/common/request/validations/request.max-binary-file.validation';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
     controllers: [],
@@ -51,6 +53,10 @@ import { MaxBinaryFileConstraint } from 'src/common/request/validations/request.
                         }),
                 }),
         },
+        {
+            provide: APP_GUARD,
+            useClass: ThrottlerGuard,
+        },
         IsPasswordStrongConstraint,
         IsPasswordMediumConstraint,
         IsPasswordWeakConstraint,
@@ -67,6 +73,16 @@ import { MaxBinaryFileConstraint } from 'src/common/request/validations/request.
         MaxDateTodayConstraint,
         MaxBinaryFileConstraint,
     ],
-    imports: [RequestMiddlewareModule],
+    imports: [
+        RequestMiddlewareModule,
+        ThrottlerModule.forRootAsync({
+            imports: [ConfigModule],
+            inject: [ConfigService],
+            useFactory: (config: ConfigService) => ({
+                ttl: config.get('request.throttle.ttl'),
+                limit: config.get('request.throttle.limit'),
+            }),
+        }),
+    ],
 })
 export class RequestModule {}
