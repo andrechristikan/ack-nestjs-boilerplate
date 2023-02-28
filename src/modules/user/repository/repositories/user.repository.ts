@@ -13,7 +13,8 @@ export class UserRepository extends DatabaseMongoUUIDRepositoryAbstract<UserEnti
     ) {
         super(userModel, {
             path: 'role',
-            match: '_id',
+            localField: 'role',
+            foreignField: '_id',
             model: RoleEntity.name,
         });
     }

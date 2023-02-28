@@ -13,7 +13,8 @@ export class RoleRepository extends DatabaseMongoUUIDRepositoryAbstract<RoleEnti
     ) {
         super(roleModel, {
             path: 'permissions',
-            match: '_id',
+            localField: 'permissions',
+            foreignField: '_id',
             model: PermissionEntity.name,
         });
     }

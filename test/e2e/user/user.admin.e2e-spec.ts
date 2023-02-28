@@ -107,7 +107,6 @@ describe('E2E User Admin', () => {
                 join: true,
             }
         );
-
         const map = plainToInstance(UserPayloadSerialization, user);
         const payload = await authService.createPayloadAccessToken(map, false);
         accessToken = await authService.createAccessToken(payload);
