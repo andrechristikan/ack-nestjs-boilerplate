@@ -52,7 +52,7 @@
     "rollback": "yarn rollback:setting && yarn rollback:apikey && yarn rollback:user && yarn rollback:role && yarn rollback:permission"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.279.0",
+    "@aws-sdk/client-s3": "^3.281.0",
     "@faker-js/faker": "^7.6.0",
     "@joi/date": "^2.1.0",
     "@nestjs/axios": "^2.0.0",
