@@ -23,9 +23,8 @@
 
 ## Other Repo
 
-* [Mini Version][ack-mongoose] : Mini version
-* [Typeorm Integration][ack-typeorm] : Typeorm integration `(Outdated)`
 * [Kafka Integration][ack-kafka] : Hybrid Between HTTP and Microservice (Apache Kafka Integration)
+* [Typeorm Integration][ack-typeorm] : Typeorm integration `(Outdated)`
 
 ## Table of contents
 
@@ -66,13 +65,8 @@
 
 Next development
 
-* [ ] Validation guard change to pipe
-* [ ] SSO
-    * [ ] Google
-    * [ ] Apple
-    * [ ] Microsoft
-    * [ ] Facebook
-    * [ ] Twitter
+* [ ] Google SSO
+* [ ] Background export/import from/to CSV and Excel
 * [ ] Update Documentation, include an diagram for easier comprehension
 
 ## Build with
@@ -99,10 +93,10 @@ Describes which version.
 * Component based folder structure
 * Stateless authentication and authorization
 * Repository Design Pattern or Data Access Layer Design Pattern
-* Support Microservice Architecture, Serverless Architecture, Clean Architecture, and/or Hexagonal Architecture
 * Follow Community Guide Line
 * Follow The Twelve-Factor App
 * Adopt SOLID and KISS principle
+* Support Microservice Architecture, Serverless Architecture, Clean Architecture, and/or Hexagonal Architecture
 
 ## Features
 
@@ -111,16 +105,16 @@ Describes which version.
 * NestJs v9.x 🥳
 * Typescript 🚀
 * Production ready 🔥
-* Repository Design Pattern
-* Swagger included
-* Authentication (`Access Token`, `Refresh Token`, `API Key`)
+* Repository Design Pattern (Multi Repository, can mix with `TypeORM`)
+* Swagger / OpenAPI 3 included
+* Authentication (`Access Token`, `Refresh Token`, `API Key`, and `Google SSO`)
 * Authorization, Role and Permission Management (`PermissionToken`)
-* Support multi-language `i18n` 🗣
-* Request validation with `class-validation`
+* Support multi-language `i18n` 🗣, can controllable with request header `x-custom-lang`
+* Request validation for all request params, query, dan body with `class-validation`
 * Serialization with `class-transformer`
-* Url Versioning
+* Url Versioning, default version is `1`
 * Server Side Pagination
-* Import and export data with excel by using `decorator`
+* Import and export data with CSV or Excel by using `decorator`
 
 ### Database
 
@@ -148,7 +142,6 @@ Describes which version.
 * Centralize response
 * Centralize exception filter
 * Setting from database 🗿
-* Maintenance mode on / off from database 🐤
 
 ### Third Party Integration
 
@@ -157,9 +150,9 @@ Describes which version.
 
 ### Others
 
-* Support Docker Installation
+* Support Docker installation
 * Support CI/CD with Github Action or Jenkins
-* Husky GitHook For Check Source Code, and Run Test Before Commit 🐶
+* Husky GitHook for check source code, and run test before commit 🐶
 * Linter with EsLint for Typescript
 
 ## Structure
@@ -172,8 +165,8 @@ Describes which version.
 4. `/health` health check module for every service integrated
 5. `/jobs` cron job or schedule task
 6. `/language` json languages
-7. `/migration` migrate all init data for test the project
-8. `/modules` other modules based on service/project
+7. `/migration` migrate all init data
+8. `/modules` other modules based on service based on project
 9. `/router` endpoint router. `Controller` will put in this
 
 ### Module structure
@@ -188,7 +181,7 @@ Full structure of module
     ├── controllers // business logic for rest api
     ├── decorators // warper decorator, custom decorator, etc
     ├── dtos // request validation
-    ├── docs // swagger
+    ├── docs // swagger / OpenAPI 3
     ├── errors // custom error
     ├── filters // custom filter 
     ├── guards // validate related with database
@@ -210,27 +203,6 @@ Full structure of module
 ### Response Structure
 
 This section will describe the structure of the response.
-
-#### Response Metadata
-
-This is useful when we need to give the frontend some information that is not related to the endpoint.
-
-```ts
-export interface IResponseMetadata {
-    languages: ENUM_MESSAGE_LANGUAGE[];
-    timestamp: number;
-    timezone: string;
-    requestId: string;
-    path: string;
-    version: string;
-    repoVersion: string;
-    nextPage?: string;
-    previousPage?: string;
-    firstPage?: string;
-    lastPage?: string;
-    [key: string]: any;
-}
-```
 
 #### Response Default
 
@@ -263,6 +235,27 @@ export class ResponsePagingSerialization {
     data: Record<string, any>[];
 }
 
+```
+
+#### Response Metadata
+
+This is useful when we need to give the frontend some information that is related / not related with the endpoint.
+
+```ts
+export interface IResponseMetadata {
+    languages: ENUM_MESSAGE_LANGUAGE[];
+    timestamp: number;
+    timezone: string;
+    requestId: string;
+    path: string;
+    version: string;
+    repoVersion: string;
+    nextPage?: string;
+    previousPage?: string;
+    firstPage?: string;
+    lastPage?: string;
+    [key: string]: any;
+}
 ```
 
 ## Prerequisites
@@ -390,11 +383,11 @@ docker-compose up -d
 
 ## API Reference
 
-You can check The Api Spec in [here][api-reference-docs]
+You can check The ApiSpec after running this project. [here][api-reference-docs]
 
 ## Documentation
 
-Read documentation [here][docs].
+> Ongoing update
 
 ## Adjust Mongoose Setting
 
@@ -408,7 +401,7 @@ const mongooseOptions: MongooseModuleOptions = {
     useNewUrlParser: true,
     useUnifiedTopology: true,
     serverSelectionTimeoutMS: 5000,
-    useMongoClient: true
+    useMongoClient: true // <--- add this
 };
 ```
 
@@ -495,7 +488,6 @@ If your code behind commit with the original, please update your code and resolv
 <!-- Other Repo Links -->
 [ack]: https://github.com/andrechristikan/ack-nestjs-boilerplate
 [ack-typeorm]: https://github.com/andrechristikan/nestjs-boilerplate-typeorm
-[ack-mongoose]: https://github.com/andrechristikan/ack-nestjs-boilerplate-mongoose
 [ack-kafka]: https://github.com/andrechristikan/ack-nestjs-boilerplate-kafka
 
 <!-- license -->
@@ -518,4 +510,3 @@ If your code behind commit with the original, please update your code and resolv
 
 <!-- API Reference -->
 [api-reference-docs]: http://localhost:3000/docs
-[docs]: https://successful-stove-847.notion.site/Ack-docs-572d9a8db1c040bea8a0eb4c35054fd9
