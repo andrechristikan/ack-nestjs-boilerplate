@@ -115,12 +115,11 @@ export class RoleService implements IRoleService {
     }
 
     async active(_id: string, options?: IDatabaseOptions): Promise<RoleEntity> {
-        const dto: RoleActiveDto = new RoleActiveDto();
-        dto.isActive = true;
-
         return this.roleRepository.updateOneById<RoleActiveDto>(
             _id,
-            dto,
+            {
+                isActive: true,
+            },
             options
         );
     }
@@ -129,12 +128,11 @@ export class RoleService implements IRoleService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<RoleEntity> {
-        const dto: RoleActiveDto = new RoleActiveDto();
-        dto.isActive = false;
-
         return this.roleRepository.updateOneById<RoleActiveDto>(
             _id,
-            dto,
+            {
+                isActive: false,
+            },
             options
         );
     }

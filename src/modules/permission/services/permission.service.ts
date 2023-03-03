@@ -121,12 +121,11 @@ export class PermissionService implements IPermissionService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<PermissionEntity> {
-        const dto: PermissionActiveDto = new PermissionActiveDto();
-        dto.isActive = true;
-
         return this.permissionRepository.updateOneById<PermissionActiveDto>(
             _id,
-            dto,
+            {
+                isActive: true,
+            },
             options
         );
     }
@@ -135,12 +134,11 @@ export class PermissionService implements IPermissionService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<PermissionEntity> {
-        const dto: PermissionActiveDto = new PermissionActiveDto();
-        dto.isActive = false;
-
         return this.permissionRepository.updateOneById<PermissionActiveDto>(
             _id,
-            dto,
+            {
+                isActive: false,
+            },
             options
         );
     }
