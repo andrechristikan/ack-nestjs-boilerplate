@@ -141,12 +141,11 @@ export class UserService implements IUserService {
         photo: AwsS3Serialization,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserPhotoDto = new UserPhotoDto();
-        update.photo = photo;
-
         return this.userRepository.updateOneById<UserPhotoDto>(
             _id,
-            update,
+            {
+                photo: photo,
+            },
             options
         );
     }
@@ -193,27 +192,25 @@ export class UserService implements IUserService {
         { passwordHash, passwordExpired, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserPasswordDto = new UserPasswordDto();
-        update.password = passwordHash;
-        update.passwordExpired = passwordExpired;
-        update.passwordCreated = passwordCreated;
-        update.salt = salt;
-
         return this.userRepository.updateOneById<UserPasswordDto>(
             _id,
-            update,
+            {
+                password: passwordHash,
+                passwordExpired,
+                passwordCreated,
+                salt,
+            },
             options
         );
     }
 
     async active(_id: string, options?: IDatabaseOptions): Promise<UserEntity> {
-        const dto: UserActiveDto = new UserActiveDto();
-        dto.isActive = true;
-        dto.inactiveDate = undefined;
-
         return this.userRepository.updateOneById<UserActiveDto>(
             _id,
-            dto,
+            {
+                isActive: true,
+                inactiveDate: undefined,
+            },
             options
         );
     }
@@ -222,13 +219,12 @@ export class UserService implements IUserService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const dto: UserActiveDto = new UserActiveDto();
-        dto.isActive = false;
-        dto.inactiveDate = this.helperDateService.create();
-
         return this.userRepository.updateOneById<UserActiveDto>(
             _id,
-            dto,
+            {
+                isActive: false,
+                inactiveDate: this.helperDateService.create(),
+            },
             options
         );
     }
@@ -237,13 +233,12 @@ export class UserService implements IUserService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const dto: UserBlockedDto = new UserBlockedDto();
-        dto.blocked = true;
-        dto.blockedDate = this.helperDateService.create();
-
         return this.userRepository.updateOneById<UserBlockedDto>(
             _id,
-            dto,
+            {
+                blocked: true,
+                blockedDate: this.helperDateService.create(),
+            },
             options
         );
     }
@@ -252,13 +247,12 @@ export class UserService implements IUserService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const dto: UserBlockedDto = new UserBlockedDto();
-        dto.blocked = false;
-        dto.blockedDate = undefined;
-
         return this.userRepository.updateOneById<UserBlockedDto>(
             _id,
-            dto,
+            {
+                blocked: false,
+                blockedDate: undefined,
+            },
             options
         );
     }
@@ -267,12 +261,11 @@ export class UserService implements IUserService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserPasswordAttemptDto = new UserPasswordAttemptDto();
-        update.passwordAttempt = 3;
-
         return this.userRepository.updateOneById<UserPasswordAttemptDto>(
             _id,
-            update,
+            {
+                passwordAttempt: 3,
+            },
             options
         );
     }
@@ -281,12 +274,11 @@ export class UserService implements IUserService {
         user: UserEntity | IUserEntity,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserPasswordAttemptDto = new UserPasswordAttemptDto();
-        update.passwordAttempt = ++user.passwordAttempt;
-
         return this.userRepository.updateOneById<UserPasswordAttemptDto>(
             user._id,
-            update,
+            {
+                passwordAttempt: ++user.passwordAttempt,
+            },
             options
         );
     }
@@ -295,12 +287,11 @@ export class UserService implements IUserService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserPasswordAttemptDto = new UserPasswordAttemptDto();
-        update.passwordAttempt = 0;
-
         return this.userRepository.updateOneById<UserPasswordAttemptDto>(
             _id,
-            update,
+            {
+                passwordAttempt: 0,
+            },
             options
         );
     }
@@ -342,12 +333,11 @@ export class UserService implements IUserService {
         passwordExpired: Date,
         options?: IDatabaseOptions
     ): Promise<UserEntity> {
-        const update: UserPasswordExpiredDto = new UserPasswordExpiredDto();
-        update.passwordExpired = passwordExpired;
-
         return this.userRepository.updateOneById<UserPasswordExpiredDto>(
             _id,
-            update,
+            {
+                passwordExpired,
+            },
             options
         );
     }

@@ -90,12 +90,11 @@ export class ApiKeyService implements IApiKeyService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<ApiKeyEntity> {
-        const dto: ApiKeyActiveDto = new ApiKeyActiveDto();
-        dto.isActive = true;
-
         return this.apiKeyRepository.updateOneById<ApiKeyActiveDto>(
             _id,
-            dto,
+            {
+                isActive: true,
+            },
             options
         );
     }
@@ -104,12 +103,11 @@ export class ApiKeyService implements IApiKeyService {
         _id: string,
         options?: IDatabaseOptions
     ): Promise<ApiKeyEntity> {
-        const dto: ApiKeyActiveDto = new ApiKeyActiveDto();
-        dto.isActive = false;
-
         return this.apiKeyRepository.updateOneById<ApiKeyActiveDto>(
             _id,
-            dto,
+            {
+                isActive: false,
+            },
             options
         );
     }
@@ -206,13 +204,12 @@ export class ApiKeyService implements IApiKeyService {
         const secret: string = await this.createSecret();
         const hash: string = await this.createHashApiKey(key, secret);
 
-        const dto: ApiKeyResetDto = new ApiKeyResetDto();
-        dto.hash = hash;
-
         const apiKey: ApiKeyEntity =
             await this.apiKeyRepository.updateOneById<ApiKeyResetDto>(
                 _id,
-                dto,
+                {
+                    hash: hash,
+                },
                 options
             );
 
@@ -269,15 +266,15 @@ export class ApiKeyService implements IApiKeyService {
     async inactiveManyByEndDate(
         options?: IDatabaseManyOptions
     ): Promise<boolean> {
-        return this.apiKeyRepository.updateMany(
+        return this.apiKeyRepository.updateMany<ApiKeyActiveDto>(
             {
-                end_date: {
+                endDate: {
                     $lte: this.helperDateService.create(),
                 },
-                is_active: true,
+                isActive: true,
             },
             {
-                is_active: false,
+                isActive: false,
             },
             options
         );
