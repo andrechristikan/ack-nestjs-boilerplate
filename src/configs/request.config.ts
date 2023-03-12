@@ -1,6 +1,7 @@
 import { registerAs } from '@nestjs/config';
 import bytes from 'bytes';
 import ms from 'ms';
+import { seconds } from 'src/common/helper/constants/helper.function.constant';
 import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
 
 export default registerAs(
@@ -87,7 +88,7 @@ export default registerAs(
             ],
         },
         throttle: {
-            ttl: ms('500'), // 0.5 secs
+            ttl: seconds('500'), // 0.5 secs
             limit: 10, // max request per reset time
         },
     })
