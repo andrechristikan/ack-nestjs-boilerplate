@@ -25,7 +25,6 @@ import {
     IDatabaseRawOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
-import { ENUM_PAGINATION_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { IPaginationSort } from 'src/common/pagination/interfaces/pagination.interface';
 
 export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
@@ -45,10 +44,10 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<T>
         this._joinOnFind = options;
     }
 
-    private _convertSort(sort: IPaginationSort): Record<string, number> {
-        const data: Record<string, number> = {};
+    private _convertSort(sort: IPaginationSort): Record<string, string> {
+        const data: Record<string, string> = {};
         Object.keys(sort).forEach((val) => {
-            data[val] = sort[val] === ENUM_PAGINATION_SORT_TYPE.ASC ? 1 : -1;
+            data[val] = sort[val].toLowerCase();
         });
 
         return data;
