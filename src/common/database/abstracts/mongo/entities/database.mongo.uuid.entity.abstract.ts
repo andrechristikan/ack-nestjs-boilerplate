@@ -27,14 +27,14 @@ export abstract class DatabaseMongoUUIDEntityAbstract
 
     @Prop({
         required: false,
-        index: true,
+        index: 'asc',
         type: Date,
     })
     [DATABASE_CREATED_AT_FIELD_NAME]?: Date;
 
     @Prop({
         required: false,
-        index: true,
+        index: 'desc',
         type: Date,
     })
     [DATABASE_UPDATED_AT_FIELD_NAME]?: Date;

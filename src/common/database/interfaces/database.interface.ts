@@ -4,7 +4,7 @@ import { IPaginationOptions } from 'src/common/pagination/interfaces/pagination.
 // find one
 export interface IDatabaseFindOneOptions<T = any>
     extends Pick<IPaginationOptions, 'sort'> {
-    select?: Record<string, number | string>;
+    select?: Record<string, boolean | number>;
     join?: boolean | PopulateOptions | PopulateOptions[];
     session?: T;
     withDeleted?: boolean;

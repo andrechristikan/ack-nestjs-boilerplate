@@ -75,16 +75,16 @@ Describes which version.
 
 | Name       | Version  |
 | ---------- | -------- |
-| NestJs     | v9.2.x     |
+| NestJs     | v9.3.x     |
 | NodeJs     | v18.12.x    |
 | Typescript | v4.9.x     |
-| Mongoose   | v6.8.x     |
+| Mongoose   | v7.0.x     |
 | MongoDB    | v6.0.x     |
 | Yarn       | v1.22.x     |
 | NPM        | v8.19.x     |
 | Docker     | v20.10.x    |
 | Docker Compose | v2.6.x |
-| Swagger | v6.1.x |
+| Swagger | v6.2.x |
 
 ## Objective
 
