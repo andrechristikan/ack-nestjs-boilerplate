@@ -77,7 +77,7 @@ Describes which version.
 | ---------- | -------- |
 | NestJs     | v9.3.x     |
 | NodeJs     | v18.12.x    |
-| Typescript | v4.9.x     |
+| Typescript | v5.0.x     |
 | Mongoose   | v7.0.x     |
 | MongoDB    | v6.0.x     |
 | Yarn       | v1.22.x     |
