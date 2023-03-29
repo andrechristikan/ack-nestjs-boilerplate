@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ApiKeyXApiKeyGuard } from 'src/common/api-key/guards/x-api-key/api-key.x-api-key.guard';
 import { IApiKeyPayload } from 'src/common/api-key/interfaces/api-key.interface';
-import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
+import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
 
 export const ApiKeyPayload: () => ParameterDecorator = createParamDecorator(
     (data: string, ctx: ExecutionContext): IApiKeyPayload => {
@@ -20,7 +20,7 @@ export function ApiKeyProtected(): MethodDecorator {
 }
 
 export const GetApiKey = createParamDecorator(
-    (data: string, ctx: ExecutionContext): ApiKeyEntity => {
+    (data: string, ctx: ExecutionContext): ApiKeyDoc => {
         const { __apiKey } = ctx.switchToHttp().getRequest();
         return __apiKey;
     }

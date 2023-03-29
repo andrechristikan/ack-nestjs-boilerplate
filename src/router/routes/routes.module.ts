@@ -6,26 +6,26 @@ import { MessageController } from 'src/common/message/controllers/message.contro
 import { SettingController } from 'src/common/setting/controllers/setting.controller';
 import { HealthController } from 'src/health/controllers/health.controller';
 import { HealthModule } from 'src/health/health.module';
-import { RoleModule } from 'src/modules/role/role.module';
-import { UserController } from 'src/modules/user/controllers/user.controller';
-import { UserModule } from 'src/modules/user/user.module';
+// import { RoleModule } from 'src/modules/role/role.module';
+// import { UserController } from 'src/modules/user/controllers/user.controller';
+// import { UserModule } from 'src/modules/user/user.module';
 
 @Module({
     controllers: [
         HealthController,
         SettingController,
-        UserController,
         MessageController,
+        // UserController,
     ],
     providers: [],
     exports: [],
     imports: [
         AwsModule,
         TerminusModule,
-        UserModule,
         AuthModule,
         HealthModule,
-        RoleModule,
+        // UserModule,
+        // RoleModule,
     ],
 })
 export class RoutesModule {}

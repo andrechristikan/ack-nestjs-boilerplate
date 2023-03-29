@@ -6,12 +6,8 @@ import {
     DATABASE_UPDATED_AT_FIELD_NAME,
 } from 'src/common/database/constants/database.constant';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
-import { IDatabaseBaseEntity } from 'src/common/database/interfaces/database.entity.interface';
 
-export abstract class DatabaseMongoUUIDEntityAbstract
-    extends DatabaseBaseEntityAbstract
-    implements IDatabaseBaseEntity<string>
-{
+export abstract class DatabaseMongoUUIDEntityAbstract extends DatabaseBaseEntityAbstract<string> {
     @Prop({
         type: String,
         default: DatabaseDefaultUUID,

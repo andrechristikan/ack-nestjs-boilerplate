@@ -8,6 +8,7 @@ import {
     ENUM_LOGGER_LEVEL,
 } from 'src/common/logger/constants/logger.enum.constant';
 import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
+import { Document } from 'mongoose';
 
 export const LoggerDatabaseName = 'loggers';
 
@@ -112,3 +113,5 @@ export class LoggerEntity extends DatabaseMongoUUIDEntityAbstract {
 }
 
 export const LoggerSchema = SchemaFactory.createForClass(LoggerEntity);
+
+export type LoggerDoc = LoggerEntity & Document;

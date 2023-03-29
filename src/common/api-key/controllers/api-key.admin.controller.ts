@@ -36,8 +36,11 @@ import { ApiKeyCreateDto } from 'src/common/api-key/dtos/api-key.create.dto';
 import { ApiKeyRequestDto } from 'src/common/api-key/dtos/api-key.request.dto';
 import { ApiKeyUpdateDateDto } from 'src/common/api-key/dtos/api-key.update-date.dto';
 import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
-import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
-import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
+import { IApiKeyCreatedEntity } from 'src/common/api-key/interfaces/api-key.interface';
+import {
+    ApiKeyDoc,
+    ApiKeyEntity,
+} from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyCreateSerialization } from 'src/common/api-key/serializations/api-key.create.serialization';
 import { ApiKeyGetSerialization } from 'src/common/api-key/serializations/api-key.get.serialization';
 import { ApiKeyListSerialization } from 'src/common/api-key/serializations/api-key.list.serialization';
@@ -111,7 +114,7 @@ export class ApiKeyAdminController {
                 limit: perPage,
                 offset: _offset,
             },
-            sort: _sort,
+            order: _sort,
         });
         const totalData: number = await this.apiKeyService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
@@ -139,7 +142,7 @@ export class ApiKeyAdminController {
     @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.API_KEY_READ)
     @AuthJwtAdminAccessProtected()
     @Get('get/:apiKey')
-    async get(@GetApiKey() apiKey: ApiKeyEntity): Promise<IResponse> {
+    async get(@GetApiKey() apiKey: ApiKeyDoc): Promise<IResponse> {
         return apiKey;
     }
 
@@ -153,9 +156,8 @@ export class ApiKeyAdminController {
     @Post('/create')
     async create(@Body() body: ApiKeyCreateDto): Promise<IResponse> {
         try {
-            const created: IApiKeyEntity = await this.apiKeyService.create(
-                body
-            );
+            const created: IApiKeyCreatedEntity =
+                await this.apiKeyService.create(body);
 
             return {
                 _id: created._id,
@@ -181,9 +183,9 @@ export class ApiKeyAdminController {
     )
     @AuthJwtAdminAccessProtected()
     @Patch('/update/:apiKey/inactive')
-    async inactive(@GetApiKey() apiKey: ApiKeyEntity): Promise<void> {
+    async inactive(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
         try {
-            await this.apiKeyService.inactive(apiKey._id);
+            await this.apiKeyService.inactive(apiKey);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -206,9 +208,9 @@ export class ApiKeyAdminController {
     )
     @AuthJwtAdminAccessProtected()
     @Patch('/update/:apiKey/active')
-    async active(@GetApiKey() apiKey: ApiKeyEntity): Promise<void> {
+    async active(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
         try {
-            await this.apiKeyService.active(apiKey._id);
+            await this.apiKeyService.active(apiKey);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -231,16 +233,17 @@ export class ApiKeyAdminController {
     )
     @AuthJwtAdminAccessProtected()
     @Patch('/update/:apiKey/reset')
-    async reset(@GetApiKey() apiKey: ApiKeyEntity): Promise<IResponse> {
+    async reset(@GetApiKey() apiKey: ApiKeyDoc): Promise<IResponse> {
         try {
-            const updated: IApiKeyEntity = await this.apiKeyService.reset(
-                apiKey._id,
-                apiKey.key
+            const secret: string = await this.apiKeyService.createSecret();
+            const updated: ApiKeyDoc = await this.apiKeyService.reset(
+                apiKey,
+                secret
             );
 
             return {
                 _id: updated._id,
-                secret: updated.secret,
+                secret,
             };
         } catch (err: any) {
             throw new InternalServerErrorException({
@@ -263,10 +266,10 @@ export class ApiKeyAdminController {
     @Put('/update/:apiKey')
     async updateName(
         @Body() body: ApiKeyUpdateDto,
-        @GetApiKey() apiKey: ApiKeyEntity
+        @GetApiKey() apiKey: ApiKeyDoc
     ): Promise<IResponse> {
         try {
-            await this.apiKeyService.update(apiKey._id, body);
+            await this.apiKeyService.update(apiKey, body);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -291,10 +294,10 @@ export class ApiKeyAdminController {
     @Put('/update/:apiKey/date')
     async updateDate(
         @Body() body: ApiKeyUpdateDateDto,
-        @GetApiKey() apiKey: ApiKeyEntity
+        @GetApiKey() apiKey: ApiKeyDoc
     ): Promise<IResponse> {
         try {
-            await this.apiKeyService.updateDate(apiKey._id, body);
+            await this.apiKeyService.updateDate(apiKey, body);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

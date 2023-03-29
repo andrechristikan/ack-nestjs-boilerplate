@@ -6,6 +6,6 @@ export interface IApiKeyPayload {
     name: string;
 }
 
-export interface IApiKeyEntity extends ApiKeyEntity {
+export interface IApiKeyCreatedEntity extends ApiKeyEntity {
     secret: string;
 }

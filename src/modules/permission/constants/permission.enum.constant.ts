@@ -1,7 +1,0 @@
-export enum ENUM_PERMISSION_GROUP {
-    USER = 'USER',
-    ROLE = 'ROLE',
-    PERMISSION = 'PERMISSION',
-    API_KEY = 'API_KEY',
-    SETTING = 'SETTING',
-}

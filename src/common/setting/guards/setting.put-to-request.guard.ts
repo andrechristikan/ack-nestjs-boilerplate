@@ -1,5 +1,5 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
+import { SettingDoc } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingService } from 'src/common/setting/services/setting.service';
 
 @Injectable()
@@ -11,7 +11,7 @@ export class SettingPutToRequestGuard implements CanActivate {
         const { params } = request;
         const { setting } = params;
 
-        const check: SettingEntity = await this.settingService.findOneById(
+        const check: SettingDoc = await this.settingService.findOneById(
             setting
         );
         request.__setting = check;
@@ -29,7 +29,7 @@ export class SettingPutToRequestByNameGuard implements CanActivate {
         const { params } = request;
         const { settingName } = params;
 
-        const check: SettingEntity = await this.settingService.findOneByName(
+        const check: SettingDoc = await this.settingService.findOneByName(
             settingName
         );
         request.__setting = check;

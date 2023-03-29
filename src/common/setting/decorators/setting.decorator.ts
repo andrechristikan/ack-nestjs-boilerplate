@@ -9,10 +9,10 @@ import {
     SettingPutToRequestByNameGuard,
     SettingPutToRequestGuard,
 } from 'src/common/setting/guards/setting.put-to-request.guard';
-import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
+import { SettingDoc } from 'src/common/setting/repository/entities/setting.entity';
 
 export const GetSetting = createParamDecorator(
-    (data: string, ctx: ExecutionContext): SettingEntity => {
+    (data: string, ctx: ExecutionContext): SettingDoc => {
         const { __setting } = ctx.switchToHttp().getRequest();
         return __setting;
     }

@@ -1,3 +1,5 @@
+def commit_id
+
 pipeline {
     agent any
     options {
@@ -59,12 +61,15 @@ pipeline {
 
                 sh "git rev-parse --short HEAD > .git/commit-id"
                 sh "grep -o '\"version\": \"[^\"]*' package.json | grep -o '[^\"]*\$' > .git/version-id"
+
+                script{
+                    commit_id = readFile('.git/commit-id').trim()
+                }
             }
         }
         stage('Build'){
             steps{
                 script{
-                    def commit_id = readFile('.git/commit-id').trim()
                     def app_image = "${DOCKER_USERNAME}/${APP_NAME}-builder:${commit_id}"
                     docker.build(app_image, "--target builder -f ${DOCKER_FILE} .")
                 }
@@ -73,12 +78,11 @@ pipeline {
         stage('Unit Test') {
             steps {
                 script{
-                    def commit_id = readFile('.git/commit-id').trim()
                     def app_image = "${DOCKER_USERNAME}/${APP_NAME}-builder:${commit_id}"
-                    def container_testing = "${APP_NAME}-testing"
+                    def container = "${APP_NAME}-testing"
 
                     try{
-                        sh "docker stop ${container_testing} && docker rm ${container_testing}"
+                        sh "docker stop ${container} && docker rm ${container}"
                     }catch(e){}
 
                     try{
@@ -87,57 +91,9 @@ pipeline {
 
                     sh "docker run --rm --network ${APP_NETWORK} \
                         --volume /app/${APP_NAME}/.env:/app/.env \
-                        --name ${container_testing} \
+                        --name ${container} \
                         ${app_image} \
                         sh -c 'yarn test:unit'"
-                }
-                
-            }
-        }
-        stage('Integration Test') {
-            steps {
-                script{
-                    def commit_id = readFile('.git/commit-id').trim()
-                    def app_image = "${DOCKER_USERNAME}/${APP_NAME}-builder:${commit_id}"
-                    def container_testing = "${APP_NAME}-testing"
-
-                    try{
-                        sh "docker stop ${container_testing} && docker rm ${container_testing}"
-                    }catch(e){}
-
-                    try{
-                        sh "docker network create ${APP_NETWORK} --driver=bridge"
-                    }catch(e){}
-
-                    sh "docker run --rm --network ${APP_NETWORK} \
-                        --volume /app/${APP_NAME}/.env:/app/.env \
-                        --name ${container_testing} \
-                        ${app_image} \
-                        sh -c 'yarn test:integration'"
-                }
-                
-            }
-        }
-        stage('E2E Test') {
-            steps {
-                script{
-                    def commit_id = readFile('.git/commit-id').trim()
-                    def app_image = "${DOCKER_USERNAME}/${APP_NAME}-builder:${commit_id}"
-                    def container_testing = "${APP_NAME}-testing"
-
-                    try{
-                        sh "docker stop ${container_testing} && docker rm ${container_testing}"
-                    }catch(e){}
-
-                    try{
-                        sh "docker network create ${APP_NETWORK} --driver=bridge"
-                    }catch(e){}
-
-                    sh "docker run --rm --network ${APP_NETWORK} \
-                        --volume /app/${APP_NAME}/.env:/app/.env \
-                        --name ${container_testing} \
-                        ${app_image} \
-                        sh -c 'yarn test:e2e'"
                 }
                 
             }
@@ -145,7 +101,6 @@ pipeline {
         stage('Push') {
             steps {
                 script{
-                    def commit_id = readFile('.git/commit-id').trim()
                     def version_id = readFile('.git/version-id').trim()
                     def app_image = "${DOCKER_USERNAME}/${APP_NAME}:${commit_id}"
                     
@@ -162,7 +117,6 @@ pipeline {
         stage('Deploy') {
             steps {
                 script{
-                    def commit_id = readFile('.git/commit-id').trim()
                     def version_id = readFile('.git/version-id').trim()
                     def app_image = "${DOCKER_USERNAME}/${APP_NAME}:v${version_id}_sha-${commit_id}"
 

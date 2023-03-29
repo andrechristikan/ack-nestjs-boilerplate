@@ -20,7 +20,7 @@ import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
 import { SettingUpdateDoc } from 'src/common/setting/docs/setting.admin.doc';
 import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
 import { SettingUpdateValueDto } from 'src/common/setting/dtos/setting.update-value.dto';
-import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
+import { SettingDoc } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingService } from 'src/common/setting/services/setting.service';
 
 @ApiTags('admin.setting')
@@ -44,7 +44,7 @@ export class SettingAdminController {
     @AuthJwtAdminAccessProtected()
     @Put('/update/:setting')
     async update(
-        @GetSetting() setting: SettingEntity,
+        @GetSetting() setting: SettingDoc,
         @Body()
         body: SettingUpdateValueDto
     ): Promise<IResponse> {
@@ -61,7 +61,7 @@ export class SettingAdminController {
         }
 
         try {
-            await this.settingService.updateValue(setting._id, body);
+            await this.settingService.updateValue(setting, body);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

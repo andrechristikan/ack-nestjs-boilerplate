@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     IDatabaseCreateOptions,
-    IDatabaseSoftDeleteOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -13,7 +12,10 @@ import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enu
 import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
 import { SettingUpdateValueDto } from 'src/common/setting/dtos/setting.update-value.dto';
 import { ISettingService } from 'src/common/setting/interfaces/setting.service.interface';
-import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
+import {
+    SettingDoc,
+    SettingEntity,
+} from 'src/common/setting/repository/entities/setting.entity';
 import { SettingRepository } from 'src/common/setting/repository/repositories/setting.repository';
 
 @Injectable()
@@ -41,22 +43,22 @@ export class SettingService implements ISettingService {
     async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<SettingEntity[]> {
-        return this.settingRepository.findAll<SettingEntity>(find, options);
+    ): Promise<SettingDoc[]> {
+        return this.settingRepository.findAll<SettingDoc>(find, options);
     }
 
     async findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<SettingEntity> {
-        return this.settingRepository.findOneById<SettingEntity>(_id, options);
+    ): Promise<SettingDoc> {
+        return this.settingRepository.findOneById<SettingDoc>(_id, options);
     }
 
     async findOneByName(
         name: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<SettingEntity> {
-        return this.settingRepository.findOne<SettingEntity>({ name }, options);
+    ): Promise<SettingDoc> {
+        return this.settingRepository.findOne<SettingDoc>({ name }, options);
     }
 
     async getTotal(
@@ -69,43 +71,35 @@ export class SettingService implements ISettingService {
     async create(
         { name, description, type, value }: SettingCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<SettingEntity> {
+    ): Promise<SettingDoc> {
         const create: SettingEntity = new SettingEntity();
         create.name = name;
         create.description = description ?? undefined;
         create.value = value;
         create.type = type;
 
-        return this.settingRepository.create<SettingEntity>(create, options);
-    }
-
-    async updateValue(
-        _id: string,
-        data: SettingUpdateValueDto,
-        options?: IDatabaseOptions
-    ): Promise<SettingEntity> {
-        return this.settingRepository.updateOneById<SettingUpdateValueDto>(
-            _id,
-            data,
+        return this.settingRepository.create<SettingDoc, SettingEntity>(
+            create,
             options
         );
     }
 
-    async deleteOneById(
-        _id: string,
-        options?: IDatabaseSoftDeleteOptions
-    ): Promise<SettingEntity> {
-        return this.settingRepository.softDeleteOneById(_id, options);
+    async updateValue(
+        repository: SettingDoc,
+        { description, type, value }: SettingUpdateValueDto
+    ): Promise<SettingDoc> {
+        repository.description = description;
+        repository.type = type;
+        repository.value = value;
+
+        return this.settingRepository.save(repository);
     }
 
-    async deleteOne(
-        find: Record<string, any>,
-        options?: IDatabaseSoftDeleteOptions
-    ): Promise<SettingEntity> {
-        return this.settingRepository.softDeleteOne(find, options);
+    async delete(repository: SettingDoc): Promise<SettingDoc> {
+        return this.settingRepository.softDelete(repository);
     }
 
-    async getValue<T>(setting: SettingEntity): Promise<T> {
+    async getValue<T>(setting: SettingDoc): Promise<T> {
         if (
             setting.type === ENUM_SETTING_DATA_TYPE.BOOLEAN &&
             (setting.value === 'true' || setting.value === 'false')
@@ -149,7 +143,11 @@ export class SettingService implements ISettingService {
     }
 
     async getMaintenance(): Promise<boolean> {
-        const setting: SettingEntity = await this.findOneByName('maintenance');
+        const setting: SettingDoc =
+            await this.settingRepository.findOne<SettingDoc>({
+                name: 'maintenance',
+            });
+
         return this.getValue<boolean>(setting);
     }
 

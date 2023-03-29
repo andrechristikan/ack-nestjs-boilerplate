@@ -4,14 +4,14 @@ import {
     ENUM_PAGINATION_FILTER_DATE_TIME_OPTIONS,
 } from 'src/common/pagination/constants/pagination.enum.constant';
 
-export type IPaginationSort = Record<string, ENUM_PAGINATION_SORT_TYPE>;
+export type IPaginationOrder = Record<string, ENUM_PAGINATION_SORT_TYPE>;
 
 export interface IPaginationOptions {
     paging?: {
         limit: number;
         offset: number;
     };
-    sort?: IPaginationSort;
+    order?: IPaginationOrder;
 }
 
 export interface IPaginationFilterDateOptions {

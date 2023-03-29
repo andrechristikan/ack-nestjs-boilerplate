@@ -3,34 +3,33 @@ import { IPaginationOptions } from 'src/common/pagination/interfaces/pagination.
 
 // find one
 export interface IDatabaseFindOneOptions<T = any>
-    extends Pick<IPaginationOptions, 'sort'> {
+    extends Pick<IPaginationOptions, 'order'> {
     select?: Record<string, boolean | number>;
     join?: boolean | PopulateOptions | PopulateOptions[];
     session?: T;
     withDeleted?: boolean;
+    returnPlain?: boolean;
 }
+
+export type IDatabaseFindOneLockOptions<T = any> = Omit<
+    IDatabaseFindOneOptions<T>,
+    'returnPlain'
+>;
 
 export type IDatabaseOptions<T = any> = Pick<
     IDatabaseFindOneOptions<T>,
     'session' | 'withDeleted' | 'join'
 >;
 
-export type IDatabaseUpdateOptions<T = any> = Pick<
-    IDatabaseFindOneOptions<T>,
-    'session' | 'join'
->;
-
-export type IDatabaseDeleteOptions<T = any> = IDatabaseUpdateOptions<T>;
-
 // find
 export interface IDatabaseFindAllOptions<T = any>
     extends IPaginationOptions,
-        Omit<IDatabaseFindOneOptions<T>, 'sort'> {}
+        Omit<IDatabaseFindOneOptions<T>, 'order'> {}
 
 // create
 
 export interface IDatabaseCreateOptions<T = any>
-    extends Omit<IDatabaseOptions<T>, 'withDeleted' | 'join'> {
+    extends Pick<IDatabaseFindOneOptions<T>, 'returnPlain' | 'session'> {
     _id?: string;
 }
 
@@ -39,17 +38,6 @@ export interface IDatabaseCreateOptions<T = any>
 export interface IDatabaseExistOptions<T = any> extends IDatabaseOptions<T> {
     excludeId?: string[];
 }
-
-// soft delete
-
-export type IDatabaseSoftDeleteOptions<T = any> = Pick<
-    IDatabaseFindOneOptions<T>,
-    'session' | 'join'
->;
-
-// restore delete
-
-export type IDatabaseRestoreOptions<T = any> = IDatabaseSoftDeleteOptions<T>;
 
 // bulk
 export type IDatabaseManyOptions<T = any> = Pick<

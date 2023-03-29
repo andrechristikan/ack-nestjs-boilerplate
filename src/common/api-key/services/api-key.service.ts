@@ -1,18 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import {
     IDatabaseCreateOptions,
-    IDatabaseSoftDeleteOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
     IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IApiKeyService } from 'src/common/api-key/interfaces/api-key.service.interface';
-import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
-import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
+import { IApiKeyCreatedEntity } from 'src/common/api-key/interfaces/api-key.interface';
+import {
+    ApiKeyDoc,
+    ApiKeyEntity,
+} from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyRepository } from 'src/common/api-key/repository/repositories/api-key.repository';
 import { ApiKeyActiveDto } from 'src/common/api-key/dtos/api-key.active.dto';
-import { ApiKeyResetDto } from 'src/common/api-key/dtos/api-key.reset.dto';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { ConfigService } from '@nestjs/config';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
@@ -41,36 +42,36 @@ export class ApiKeyService implements IApiKeyService {
     async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<ApiKeyEntity[]> {
-        return this.apiKeyRepository.findAll<ApiKeyEntity>(find, options);
+    ): Promise<ApiKeyDoc[]> {
+        return this.apiKeyRepository.findAll<ApiKeyDoc>(find, options);
     }
 
     async findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKeyEntity> {
-        return this.apiKeyRepository.findOneById<ApiKeyEntity>(_id, options);
+    ): Promise<ApiKeyDoc> {
+        return this.apiKeyRepository.findOneById<ApiKeyDoc>(_id, options);
     }
 
     async findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKeyEntity> {
-        return this.apiKeyRepository.findOne<ApiKeyEntity>(find, options);
+    ): Promise<ApiKeyDoc> {
+        return this.apiKeyRepository.findOne<ApiKeyDoc>(find, options);
     }
 
     async findOneByKey(
         key: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKeyEntity> {
-        return this.apiKeyRepository.findOne<ApiKeyEntity>({ key }, options);
+    ): Promise<ApiKeyDoc> {
+        return this.apiKeyRepository.findOne<ApiKeyDoc>({ key }, options);
     }
 
     async findOneByActiveKey(
         key: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKeyEntity> {
-        return this.apiKeyRepository.findOne<ApiKeyEntity>(
+    ): Promise<ApiKeyDoc> {
+        return this.apiKeyRepository.findOne<ApiKeyDoc>(
             {
                 key,
                 isActive: true,
@@ -86,36 +87,10 @@ export class ApiKeyService implements IApiKeyService {
         return this.apiKeyRepository.getTotal(find, options);
     }
 
-    async active(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<ApiKeyEntity> {
-        return this.apiKeyRepository.updateOneById<ApiKeyActiveDto>(
-            _id,
-            {
-                isActive: true,
-            },
-            options
-        );
-    }
-
-    async inactive(
-        _id: string,
-        options?: IDatabaseOptions
-    ): Promise<ApiKeyEntity> {
-        return this.apiKeyRepository.updateOneById<ApiKeyActiveDto>(
-            _id,
-            {
-                isActive: false,
-            },
-            options
-        );
-    }
-
     async create(
         { name, description, startDate, endDate }: ApiKeyCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyEntity> {
+    ): Promise<IApiKeyCreatedEntity> {
         const key = await this.createKey();
         const secret = await this.createSecret();
         const hash: string = await this.createHashApiKey(key, secret);
@@ -148,7 +123,7 @@ export class ApiKeyService implements IApiKeyService {
             endDate,
         }: ApiKeyCreateRawDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyEntity> {
+    ): Promise<IApiKeyCreatedEntity> {
         const hash: string = await this.createHashApiKey(key, secret);
 
         const dto: ApiKeyEntity = new ApiKeyEntity();
@@ -163,71 +138,59 @@ export class ApiKeyService implements IApiKeyService {
             dto.endDate = this.helperDateService.endOfDay(endDate);
         }
 
-        const created: ApiKeyEntity =
-            await this.apiKeyRepository.create<ApiKeyEntity>(dto, options);
+        const created: ApiKeyDoc = await this.apiKeyRepository.create<
+            ApiKeyDoc,
+            ApiKeyEntity
+        >(dto, options);
 
         return { ...created, secret };
     }
 
+    async active(repository: ApiKeyDoc): Promise<ApiKeyDoc> {
+        repository.isActive = true;
+
+        return this.apiKeyRepository.save(repository);
+    }
+
+    async inactive(repository: ApiKeyDoc): Promise<ApiKeyDoc> {
+        repository.isActive = false;
+
+        return this.apiKeyRepository.save(repository);
+    }
+
     async update(
-        _id: string,
-        data: ApiKeyUpdateDto,
-        options?: IDatabaseOptions
-    ): Promise<ApiKeyEntity> {
-        return this.apiKeyRepository.updateOneById<ApiKeyUpdateDto>(
-            _id,
-            data,
-            options
-        );
+        repository: ApiKeyDoc,
+        { name, description }: ApiKeyUpdateDto
+    ): Promise<ApiKeyDoc> {
+        repository.name = name;
+        repository.description = description;
+
+        return this.apiKeyRepository.save(repository);
     }
 
     async updateDate(
-        _id: string,
-        { startDate, endDate }: ApiKeyUpdateDateDto,
-        options?: IDatabaseOptions
-    ): Promise<ApiKeyEntity> {
-        return this.apiKeyRepository.updateOneById<ApiKeyUpdateDateDto>(
-            _id,
-            {
-                startDate: this.helperDateService.startOfDay(startDate),
-                endDate: this.helperDateService.endOfDay(endDate),
-            },
-            options
+        repository: ApiKeyDoc,
+        { startDate, endDate }: ApiKeyUpdateDateDto
+    ): Promise<ApiKeyDoc> {
+        repository.startDate = this.helperDateService.startOfDay(startDate);
+        repository.endDate = this.helperDateService.endOfDay(endDate);
+
+        return this.apiKeyRepository.save(repository);
+    }
+
+    async reset(repository: ApiKeyDoc, secret: string): Promise<ApiKeyDoc> {
+        const hash: string = await this.createHashApiKey(
+            repository.key,
+            secret
         );
+
+        repository.hash = hash;
+
+        return this.apiKeyRepository.save(repository);
     }
 
-    async reset(
-        _id: string,
-        key: string,
-        options?: IDatabaseOptions
-    ): Promise<IApiKeyEntity> {
-        const secret: string = await this.createSecret();
-        const hash: string = await this.createHashApiKey(key, secret);
-
-        const apiKey: ApiKeyEntity =
-            await this.apiKeyRepository.updateOneById<ApiKeyResetDto>(
-                _id,
-                {
-                    hash: hash,
-                },
-                options
-            );
-
-        return { ...apiKey, secret };
-    }
-
-    async deleteOneById(
-        _id: string,
-        options?: IDatabaseSoftDeleteOptions
-    ): Promise<ApiKeyEntity> {
-        return this.apiKeyRepository.softDeleteOneById(_id, options);
-    }
-
-    async deleteOne(
-        find: Record<string, any>,
-        options?: IDatabaseSoftDeleteOptions
-    ): Promise<ApiKeyEntity> {
-        return this.apiKeyRepository.softDeleteOne(find, options);
+    async delete(repository: ApiKeyDoc): Promise<ApiKeyDoc> {
+        return this.apiKeyRepository.softDelete(repository);
     }
 
     async validateHashApiKey(

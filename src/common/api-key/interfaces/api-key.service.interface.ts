@@ -4,15 +4,17 @@ import {
 } from 'src/common/api-key/dtos/api-key.create.dto';
 import { ApiKeyUpdateDateDto } from 'src/common/api-key/dtos/api-key.update-date.dto';
 import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
-import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
-import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
+import { IApiKeyCreatedEntity } from 'src/common/api-key/interfaces/api-key.interface';
+import {
+    ApiKeyDoc,
+    ApiKeyEntity,
+} from 'src/common/api-key/repository/entities/api-key.entity';
 import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseManyOptions,
     IDatabaseOptions,
-    IDatabaseSoftDeleteOptions,
 } from 'src/common/database/interfaces/database.interface';
 
 export interface IApiKeyService {
@@ -46,47 +48,30 @@ export interface IApiKeyService {
         options?: IDatabaseOptions
     ): Promise<number>;
 
-    active(_id: string, options?: IDatabaseOptions): Promise<ApiKeyEntity>;
-
-    inactive(_id: string, options?: IDatabaseOptions): Promise<ApiKeyEntity>;
-
     create(
         data: ApiKeyCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyEntity>;
+    ): Promise<IApiKeyCreatedEntity>;
 
     createRaw(
         data: ApiKeyCreateRawDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyEntity>;
+    ): Promise<IApiKeyCreatedEntity>;
 
-    update(
-        _id: string,
-        data: ApiKeyUpdateDto,
-        options?: IDatabaseOptions
-    ): Promise<ApiKeyEntity>;
+    active(repository: ApiKeyDoc): Promise<ApiKeyDoc>;
+
+    inactive(repository: ApiKeyDoc): Promise<ApiKeyDoc>;
+
+    update(repository: ApiKeyDoc, data: ApiKeyUpdateDto): Promise<ApiKeyDoc>;
 
     updateDate(
-        _id: string,
-        data: ApiKeyUpdateDateDto,
-        options?: IDatabaseOptions
-    ): Promise<ApiKeyEntity>;
+        repository: ApiKeyDoc,
+        data: ApiKeyUpdateDateDto
+    ): Promise<ApiKeyDoc>;
 
-    reset(
-        _id: string,
-        key: string,
-        options?: IDatabaseOptions
-    ): Promise<IApiKeyEntity>;
+    reset(repository: ApiKeyDoc, secret: string): Promise<ApiKeyDoc>;
 
-    deleteOneById(
-        _id: string,
-        options?: IDatabaseSoftDeleteOptions
-    ): Promise<ApiKeyEntity>;
-
-    deleteOne(
-        find: Record<string, any>,
-        options?: IDatabaseSoftDeleteOptions
-    ): Promise<ApiKeyEntity>;
+    delete(repository: ApiKeyDoc): Promise<ApiKeyDoc>;
 
     validateHashApiKey(hashFromRequest: string, hash: string): Promise<boolean>;
 

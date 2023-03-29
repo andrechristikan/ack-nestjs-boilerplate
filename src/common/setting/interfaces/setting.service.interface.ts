@@ -1,6 +1,5 @@
 import {
     IDatabaseCreateOptions,
-    IDatabaseSoftDeleteOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
@@ -9,23 +8,23 @@ import {
 import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
 import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
 import { SettingUpdateValueDto } from 'src/common/setting/dtos/setting.update-value.dto';
-import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
+import { SettingDoc } from 'src/common/setting/repository/entities/setting.entity';
 
 export interface ISettingService {
     findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<SettingEntity[]>;
+    ): Promise<SettingDoc[]>;
 
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<SettingEntity>;
+    ): Promise<SettingDoc>;
 
     findOneByName(
         name: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<SettingEntity>;
+    ): Promise<SettingDoc>;
 
     getTotal(
         find?: Record<string, any>,
@@ -35,25 +34,17 @@ export interface ISettingService {
     create(
         data: SettingCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<SettingEntity>;
+    ): Promise<SettingDoc>;
 
     updateValue(
-        _id: string,
+        repository: SettingDoc,
         data: SettingUpdateValueDto,
         options?: IDatabaseOptions
-    ): Promise<SettingEntity>;
+    ): Promise<SettingDoc>;
 
-    deleteOneById(
-        _id: string,
-        options?: IDatabaseSoftDeleteOptions
-    ): Promise<SettingEntity>;
+    delete(repository: SettingDoc): Promise<SettingDoc>;
 
-    deleteOne(
-        find: Record<string, any>,
-        options?: IDatabaseSoftDeleteOptions
-    ): Promise<SettingEntity>;
-
-    getValue<T>(setting: SettingEntity): Promise<T>;
+    getValue<T>(setting: SettingDoc): Promise<T>;
 
     checkValue(value: string, type: ENUM_SETTING_DATA_TYPE): Promise<boolean>;
 
