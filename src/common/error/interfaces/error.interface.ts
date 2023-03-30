@@ -2,7 +2,6 @@ import { ValidationError } from 'class-validator';
 import { ERROR_TYPE } from 'src/common/error/constants/error.enum.constant';
 import { IMessage } from 'src/common/message/interfaces/message.interface';
 import { IResponseCustomPropertyMetadata } from 'src/common/response/interfaces/response.interface';
-import { ResponseMetadataSerialization } from 'src/common/response/serializations/response.default.serialization';
 
 // error default
 export interface IErrors {
@@ -33,8 +32,6 @@ export interface IErrorMetadata {
     [key: string]: any;
 }
 
-export type IErrorMetadataFinal = ResponseMetadataSerialization;
-
 export interface IErrorException {
     statusCode: number;
     message: string;
@@ -45,4 +42,7 @@ export interface IErrorException {
     _metadata?: IErrorMetadata;
 }
 
-export type IErrorHttpFilter = Omit<IErrorException, '_errorType'>;
+export interface IErrorHttpFilter
+    extends Omit<IErrorException, '_errorType' | 'message'> {
+    message: string | IMessage;
+}

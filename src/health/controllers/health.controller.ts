@@ -35,10 +35,12 @@ export class HealthController {
     @HealthCheck()
     @Get('/aws')
     async checkAws(): Promise<IResponse> {
+        const data = await this.health.check([
+            () => this.awsS3Indicator.isHealthy('awsS3Bucket'),
+        ]);
+
         return {
-            data: this.health.check([
-                () => this.awsS3Indicator.isHealthy('awsS3Bucket'),
-            ]),
+            data,
         };
     }
 
@@ -47,13 +49,15 @@ export class HealthController {
     @HealthCheck()
     @Get('/database')
     async checkDatabase(): Promise<IResponse> {
+        const data = await this.health.check([
+            () =>
+                this.mongooseIndicator.pingCheck('database', {
+                    connection: this.databaseConnection,
+                }),
+        ]);
+
         return {
-            data: this.health.check([
-                () =>
-                    this.mongooseIndicator.pingCheck('database', {
-                        connection: this.databaseConnection,
-                    }),
-            ]),
+            data,
         };
     }
 
@@ -62,14 +66,16 @@ export class HealthController {
     @HealthCheck()
     @Get('/memory-heap')
     async checkMemoryHeap(): Promise<IResponse> {
+        const data = await this.health.check([
+            () =>
+                this.memoryHealthIndicator.checkHeap(
+                    'memoryHeap',
+                    300 * 1024 * 1024
+                ),
+        ]);
+
         return {
-            data: this.health.check([
-                () =>
-                    this.memoryHealthIndicator.checkHeap(
-                        'memoryHeap',
-                        300 * 1024 * 1024
-                    ),
-            ]),
+            data,
         };
     }
 
@@ -78,14 +84,16 @@ export class HealthController {
     @HealthCheck()
     @Get('/memory-rss')
     async checkMemoryRss(): Promise<IResponse> {
+        const data = await this.health.check([
+            () =>
+                this.memoryHealthIndicator.checkRSS(
+                    'memoryRss',
+                    300 * 1024 * 1024
+                ),
+        ]);
+
         return {
-            data: this.health.check([
-                () =>
-                    this.memoryHealthIndicator.checkRSS(
-                        'memoryRss',
-                        300 * 1024 * 1024
-                    ),
-            ]),
+            data,
         };
     }
 
@@ -94,14 +102,16 @@ export class HealthController {
     @HealthCheck()
     @Get('/storage')
     async checkStorage(): Promise<IResponse> {
+        const data = await this.health.check([
+            () =>
+                this.diskHealthIndicator.checkStorage('diskHealth', {
+                    thresholdPercent: 0.75,
+                    path: '/',
+                }),
+        ]);
+
         return {
-            data: this.health.check([
-                () =>
-                    this.diskHealthIndicator.checkStorage('diskHealth', {
-                        thresholdPercent: 0.75,
-                        path: '/',
-                    }),
-            ]),
+            data,
         };
     }
 }

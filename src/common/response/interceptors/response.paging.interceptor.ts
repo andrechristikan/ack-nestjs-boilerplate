@@ -33,6 +33,8 @@ import {
     RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
 } from 'src/common/response/constants/response.constant';
 import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
+import { Document } from 'mongoose';
+import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
 
 @Injectable()
 export class ResponsePagingInterceptor<T>
@@ -40,7 +42,8 @@ export class ResponsePagingInterceptor<T>
 {
     constructor(
         private readonly reflector: Reflector,
-        private readonly messageService: MessageService
+        private readonly messageService: MessageService,
+        private readonly helperArrayService: HelperArrayService
     ) {}
 
     async intercept(
@@ -49,17 +52,15 @@ export class ResponsePagingInterceptor<T>
     ): Promise<Observable<Promise<ResponsePagingSerialization>>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
-                map(async (responseData: Promise<IResponsePaging>) => {
+                map(async (res: Promise<IResponsePaging>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
-                    const responseExpress: Response = ctx.getResponse();
-                    const requestExpress: IRequestApp =
-                        ctx.getRequest<IRequestApp>();
+                    const response: Response = ctx.getResponse();
+                    const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
                     let messagePath: string = this.reflector.get<string>(
                         RESPONSE_MESSAGE_PATH_META_KEY,
                         context.getHandler()
                     );
-
                     const classSerialization: ClassConstructor<any> =
                         this.reflector.get<ClassConstructor<any>>(
                             RESPONSE_SERIALIZATION_META_KEY,
@@ -70,64 +71,81 @@ export class ResponsePagingInterceptor<T>
                             RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
                             context.getHandler()
                         );
-
-                    // response
-                    const response = (await responseData) as IResponsePaging;
-                    if (!response) {
-                        throw new Error('Paging must have response');
-                    }
-
-                    const { data, _metadata, _pagination } = response;
-
                     let messageProperties: IMessageOptionsProperties =
                         this.reflector.get<IMessageOptionsProperties>(
                             RESPONSE_MESSAGE_PROPERTIES_META_KEY,
                             context.getHandler()
                         );
-                    let statusCode: number = responseExpress.statusCode;
-                    let serialization = data;
+
+                    // metadata
+                    const __customLang = request.__customLang;
+                    const __path = request.path;
+                    const __requestId = request.__id;
+                    const __timestamp =
+                        request.__xTimestamp ?? request.__timestamp;
+                    const __timezone = request.__timezone;
+                    const __version = request.__version;
+                    const __repoVersion = request.__repoVersion;
+                    const __pagination = request.__pagination;
+
+                    let statusCode: number = response.statusCode;
+                    let data: Record<string, any>[] = [];
+                    let metadata: ResponsePagingMetadataSerialization = {
+                        languages: __customLang,
+                        timestamp: __timestamp,
+                        timezone: __timezone,
+                        requestId: __requestId,
+                        path: __path,
+                        version: __version,
+                        repoVersion: __repoVersion,
+                    };
+
+                    // response
+                    const responseData = (await res) as IResponsePaging;
+                    if (!responseData) {
+                        throw new Error('Paging must have response');
+                    }
+
+                    const { _metadata } = responseData;
+                    data =
+                        responseData.data instanceof Document
+                            ? responseData.data.map((val) => val.toObject())
+                            : responseData.data;
 
                     if (classSerialization) {
-                        serialization = plainToInstance(
+                        data = plainToInstance(
                             classSerialization,
                             data,
                             classSerializationOptions
                         );
                     }
 
-                    // _metadata
-                    const __customLang = requestExpress.__customLang;
-                    const __path = requestExpress.path;
-                    const __requestId = requestExpress.__id;
-                    const __timestamp =
-                        requestExpress.__xTimestamp ??
-                        requestExpress.__timestamp;
-                    const __timezone = requestExpress.__timezone;
-                    const __version = requestExpress.__version;
-                    const __repoVersion = requestExpress.__repoVersion;
-                    const __pagination = requestExpress.__pagination;
-
-                    if (_metadata) {
-                        statusCode =
-                            _metadata.customProperty?.statusCode ?? statusCode;
-                        messagePath =
-                            _metadata.customProperty?.message ?? messagePath;
-                        messageProperties =
-                            _metadata.customProperty?.messageProperties ??
-                            messageProperties;
-                    }
+                    statusCode =
+                        _metadata?.customProperty?.statusCode ?? statusCode;
+                    messagePath =
+                        _metadata?.customProperty?.message ?? messagePath;
+                    messageProperties =
+                        _metadata?.customProperty?.messageProperties ??
+                        messageProperties;
 
                     delete _metadata?.customProperty;
 
-                    // add metadata pagination
-                    const { query } = requestExpress;
+                    // metadata pagination
+
+                    const { query } = request;
+
                     delete query.perPage;
+
                     delete query.page;
 
-                    const total: number = _pagination.total;
-                    const totalPage: number = _pagination.totalPage;
+                    const total: number = responseData._pagination.total;
+
+                    const totalPage: number =
+                        responseData._pagination.totalPage;
+
                     const perPage: number = __pagination.perPage;
                     const page: number = __pagination.page;
+
                     const queryString = qs.stringify(query, {
                         encode: false,
                     });
@@ -156,24 +174,25 @@ export class ResponsePagingInterceptor<T>
                                     : undefined,
                         };
 
-                    // message
-                    const finalMetadata: ResponsePagingMetadataSerialization = {
-                        languages: __customLang,
-                        timestamp: __timestamp,
-                        timezone: __timezone,
-                        requestId: __requestId,
-                        path: __path,
-                        version: __version,
-                        repoVersion: __repoVersion,
+                    metadata = {
+                        ...metadata,
+                        ..._metadata,
                         pagination: {
                             ...__pagination,
-                            ..._pagination,
+                            ...metadata._pagination,
                             total,
                             totalPage,
                         },
-                        cursor: cursorPaginationMetadata,
-                        ..._metadata,
                     };
+
+                    if (
+                        !this.helperArrayService.includes(
+                            Object.values(cursorPaginationMetadata),
+                            undefined
+                        )
+                    ) {
+                        metadata.cursor = cursorPaginationMetadata;
+                    }
 
                     const message: string | IMessage =
                         await this.messageService.get(messagePath, {
@@ -184,8 +203,8 @@ export class ResponsePagingInterceptor<T>
                     const responseHttp: ResponsePagingSerialization = {
                         statusCode,
                         message,
-                        _metadata: finalMetadata,
-                        data: serialization,
+                        _metadata: metadata,
+                        data,
                     };
 
                     return responseHttp;

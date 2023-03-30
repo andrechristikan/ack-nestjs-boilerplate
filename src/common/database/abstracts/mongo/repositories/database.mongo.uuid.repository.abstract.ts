@@ -416,7 +416,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             session: options ? options.session : undefined,
         });
 
-        if (options.returnPlain) {
+        if (options?.returnPlain) {
             return created[0].toObject() as T;
         }
 

@@ -31,6 +31,7 @@ import {
     RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
 } from 'src/common/response/constants/response.constant';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
+import { Document } from 'mongoose';
 
 @Injectable()
 export class ResponseDefaultInterceptor<T>
@@ -47,11 +48,10 @@ export class ResponseDefaultInterceptor<T>
     ): Promise<Observable<Promise<ResponseDefaultSerialization>>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
-                map(async (responseData: Promise<Record<string, any>>) => {
+                map(async (res: Promise<Record<string, any>>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
-                    const responseExpress: Response = ctx.getResponse();
-                    const requestExpress: IRequestApp =
-                        ctx.getRequest<IRequestApp>();
+                    const response: Response = ctx.getResponse();
+                    const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
                     let messagePath: string = this.reflector.get<string>(
                         RESPONSE_MESSAGE_PATH_META_KEY,
@@ -73,24 +73,19 @@ export class ResponseDefaultInterceptor<T>
                             context.getHandler()
                         );
 
-                    // get metadata
-                    const __customLang = requestExpress.__customLang;
-                    const __path = requestExpress.path;
-                    const __requestId = requestExpress.__id;
+                    // metadata
+                    const __customLang = request.__customLang;
+                    const __requestId = request.__id;
+                    const __path = request.path;
                     const __timestamp =
-                        requestExpress.__xTimestamp ??
-                        requestExpress.__timestamp;
-                    const __timezone = requestExpress.__timezone;
-                    const __version = requestExpress.__version;
-                    const __repoVersion = requestExpress.__repoVersion;
+                        request.__xTimestamp ?? request.__timestamp;
+                    const __timezone = request.__timezone;
+                    const __version = request.__version;
+                    const __repoVersion = request.__repoVersion;
 
                     // set default response
-                    let statusCode: number = responseExpress.statusCode;
-                    let message: string | IMessage =
-                        await this.messageService.get(messagePath, {
-                            customLanguages: __customLang,
-                            properties: messageProperties,
-                        });
+                    let statusCode: number = response.statusCode;
+                    let data: Record<string, any> = undefined;
                     let metadata: ResponseMetadataSerialization = {
                         languages: __customLang,
                         timestamp: __timestamp,
@@ -100,51 +95,52 @@ export class ResponseDefaultInterceptor<T>
                         version: __version,
                         repoVersion: __repoVersion,
                     };
-                    let serialization = undefined;
 
                     // response
-                    const response = (await responseData) as IResponse;
+                    const responseData = (await res) as IResponse;
 
-                    if (response) {
-                        const { data, _metadata } = response;
-                        serialization = data;
+                    if (responseData) {
+                        const { _metadata } = responseData;
+                        data =
+                            responseData.data instanceof Document
+                                ? responseData.data.toObject()
+                                : responseData.data;
 
                         if (classSerialization) {
-                            serialization = plainToInstance(
+                            data = plainToInstance(
                                 classSerialization,
                                 data,
                                 classSerializationOptions
                             );
                         }
-                        if (_metadata) {
-                            statusCode =
-                                _metadata.customProperty?.statusCode ??
-                                statusCode;
-                            messagePath =
-                                _metadata.customProperty?.message ??
-                                messagePath;
-                            messageProperties =
-                                _metadata.customProperty?.messageProperties ??
-                                messageProperties;
-                        }
+
+                        statusCode =
+                            _metadata?.customProperty?.statusCode ?? statusCode;
+                        messagePath =
+                            _metadata?.customProperty?.message ?? messagePath;
+                        messageProperties =
+                            _metadata?.customProperty?.messageProperties ??
+                            messageProperties;
 
                         delete _metadata?.customProperty;
 
-                        message = await this.messageService.get(messagePath, {
-                            customLanguages: __customLang,
-                            properties: messageProperties,
-                        });
                         metadata = {
                             ...metadata,
                             ..._metadata,
                         };
                     }
 
+                    const message: string | IMessage =
+                        await this.messageService.get(messagePath, {
+                            customLanguages: __customLang,
+                            properties: messageProperties,
+                        });
+
                     return {
                         statusCode,
                         message,
                         _metadata: metadata,
-                        data: serialization,
+                        data,
                     };
                 })
             );

@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, PickType } from '@nestjs/swagger';
+import { PAGINATION_AVAILABLE_ORDER_DIRECTION } from 'src/common/pagination/constants/pagination.constant';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { RequestPaginationSerialization } from 'src/common/request/serializations/request.pagination.serialization';
 import {
@@ -19,10 +20,11 @@ export class ResponsePagingPaginationSerialization extends RequestPaginationSeri
     totalPage: number;
 }
 
+// todo metadata
 export interface ResponsePagingMetadataSerialization
     extends ResponseMetadataSerialization {
-    cursor: ResponsePagingCursorMetadataSerialization;
-    pagination: ResponsePagingPaginationSerialization;
+    cursor?: ResponsePagingCursorMetadataSerialization;
+    pagination?: ResponsePagingPaginationSerialization;
 }
 
 export class ResponsePagingSerialization<
@@ -53,7 +55,7 @@ export class ResponsePagingSerialization<
                 orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
                 availableSearch: ['name'],
                 availableOrderBy: ['createdAt'],
-                availableOrderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
+                availableOrderDirection: PAGINATION_AVAILABLE_ORDER_DIRECTION,
                 total: 100,
                 totalPage: 5,
             },

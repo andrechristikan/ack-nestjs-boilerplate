@@ -43,7 +43,10 @@ export class ApiKeyService implements IApiKeyService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<ApiKeyDoc[]> {
-        return this.apiKeyRepository.findAll<ApiKeyDoc>(find, options);
+        return this.apiKeyRepository.findAll<ApiKeyDoc>(find, {
+            ...options,
+            returnPlain: true,
+        });
     }
 
     async findOneById(

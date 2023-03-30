@@ -44,7 +44,10 @@ export class SettingService implements ISettingService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<SettingDoc[]> {
-        return this.settingRepository.findAll<SettingDoc>(find, options);
+        return this.settingRepository.findAll<SettingDoc>(find, {
+            ...options,
+            returnPlain: true,
+        });
     }
 
     async findOneById(

@@ -4,6 +4,7 @@ import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 import { AuthModule } from 'src/common/auth/auth.module';
 import { CommonModule } from 'src/common/common.module';
 import { MigrationApiKeySeed } from 'src/migration/seeds/migration.api-key.seed';
+import { MigrationSettingSeed } from 'src/migration/seeds/migration.setting.seed';
 // import { MigrationPermissionSeed } from 'src/migration/seeds/migration.permission.seed';
 // import { MigrationRoleSeed } from 'src/migration/seeds/migration.role.seed';
 // import { MigrationSettingSeed } from 'src/migration/seeds/migration.setting.seed';
@@ -24,7 +25,7 @@ import { MigrationApiKeySeed } from 'src/migration/seeds/migration.api-key.seed'
     ],
     providers: [
         MigrationApiKeySeed,
-        // MigrationSettingSeed,
+        MigrationSettingSeed,
         // MigrationPermissionSeed,
         // MigrationRoleSeed,
         // MigrationUserSeed,

@@ -15,16 +15,18 @@ import { DebuggerService } from 'src/common/debugger/services/debugger.service';
 import { ERROR_TYPE } from 'src/common/error/constants/error.enum.constant';
 import {
     IErrorException,
-    IErrorHttpFilter,
-    IErrorMetadataFinal,
     IErrors,
     IErrorsImport,
     IValidationErrorImport,
 } from 'src/common/error/interfaces/error.interface';
+import { ErrorMetadataSerialization } from 'src/common/error/serializations/error.serialization';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import {
+    IMessage,
+    IMessageOptionsProperties,
+} from 'src/common/message/interfaces/message.interface';
 import { MessageService } from 'src/common/message/services/message.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { ResponseMetadataSerialization } from 'src/common/response/serializations/response.default.serialization';
 
 // If we throw error with HttpException, there will always return object
 // The exception filter only catch HttpException
@@ -44,7 +46,8 @@ export class ErrorHttpFilter implements ExceptionFilter {
 
     async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
         const ctx: HttpArgumentsHost = host.switchToHttp();
-        const request = ctx.getRequest<IRequestApp>();
+        const response: Response = ctx.getResponse<Response>();
+        const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
         // get request headers
         const __customLang: string[] =
@@ -86,13 +89,13 @@ export class ErrorHttpFilter implements ExceptionFilter {
 
         // set default
         let statusHttp: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
-        let message: string = await this.messageService.get(
-            `http.${statusHttp}`,
-            {
-                customLanguages: __customLang,
-            }
-        );
-        const _metadata: ResponseMetadataSerialization = {
+        let messagePath = `http.${statusHttp}`;
+        let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+        let _error: string = undefined;
+        let errors: IErrors[] | IErrorsImport[] = undefined;
+        let messageProperties: IMessageOptionsProperties = undefined;
+        let data: Record<string, any> = undefined;
+        let metadata: ErrorMetadataSerialization = {
             languages: __customLang,
             timestamp: __timestamp,
             timezone: __timezone,
@@ -101,100 +104,77 @@ export class ErrorHttpFilter implements ExceptionFilter {
             version: __version,
             repoVersion: __repoVersion,
         };
-        if (exception instanceof HttpException) {
-            const responseExpress: Response = ctx.getResponse<Response>();
 
+        if (exception instanceof HttpException) {
             // Restructure
-            const response = ctx.getResponse<Response>();
+            statusHttp = exception.getStatus();
+            messagePath = `http.${statusHttp}`;
+            statusCode = exception.getStatus();
 
             if (this.isErrorException(response)) {
                 const responseException = response as IErrorException;
-                const {
-                    statusCode,
-                    message: messagePath,
-                    _errorType,
-                    _metadata,
-                    data,
-                } = responseException;
-                statusHttp = exception.getStatus();
+                const { _metadata } = responseException;
 
-                let { errors, _error } = responseException;
-                if (errors?.length > 0) {
+                statusCode = responseException.statusCode;
+                messagePath = responseException.message;
+                data = responseException.data;
+                messageProperties =
+                    _metadata?.customProperty?.messageProperties;
+                delete _metadata?.customProperty;
+
+                metadata = {
+                    ...metadata,
+                    ..._metadata,
+                };
+
+                if (responseException.errors?.length > 0) {
                     errors =
-                        _errorType === ERROR_TYPE.IMPORT
+                        responseException._errorType === ERROR_TYPE.IMPORT
                             ? await this.messageService.getImportErrorsMessage(
-                                  errors as IValidationErrorImport[],
+                                  responseException.errors as IValidationErrorImport[],
                                   __customLang
                               )
                             : await this.messageService.getRequestErrorsMessage(
-                                  errors as ValidationError[],
+                                  responseException.errors as ValidationError[],
                                   __customLang
                               );
                 }
 
-                if (!_error && typeof _error !== 'string') {
-                    _error = JSON.stringify(_error);
+                if (!responseException._error) {
+                    _error =
+                        typeof responseException._error !== 'string'
+                            ? JSON.stringify(responseException._error)
+                            : responseException._error;
                 }
-
-                message = await this.messageService.get(messagePath, {
-                    customLanguages: __customLang,
-                });
-                if (_metadata?.customProperty?.messageProperties) {
-                    message = await this.messageService.get(message, {
-                        customLanguages: __customLang,
-                        properties:
-                            _metadata?.customProperty?.messageProperties,
-                    });
-                }
-
-                delete _metadata?.customProperty;
-
-                const metadata: IErrorMetadataFinal = {
-                    languages: __customLang,
-                    timestamp: __timestamp,
-                    timezone: __timezone,
-                    requestId: __requestId,
-                    path: __path,
-                    version: __version,
-                    repoVersion: __repoVersion,
-                    ..._metadata,
-                };
-
-                const resResponse: IErrorHttpFilter = {
-                    statusCode: statusCode ?? statusHttp,
-                    message,
-                    errors: errors as IErrors[] | IErrorsImport[],
-                    _error,
-                    _metadata: metadata,
-                    data,
-                };
-
-                responseExpress
-                    .setHeader('x-custom-lang', __customLang)
-                    .setHeader('x-timestamp', __timestamp)
-                    .setHeader('x-timezone', __timezone)
-                    .setHeader('x-request-id', __requestId)
-                    .setHeader('x-version', __version)
-                    .setHeader('x-repo-version', __repoVersion)
-                    .status(statusHttp)
-                    .json(resResponse);
-
-                return;
             }
         }
 
+        const message: string | IMessage = await this.messageService.get(
+            messagePath,
+            {
+                customLanguages: __customLang,
+                properties: messageProperties,
+            }
+        );
+
         const responseBody = {
-            statusCode: statusHttp,
+            statusCode,
             message,
-            _error:
-                exception instanceof Error && 'message' in exception
-                    ? exception.message
-                    : exception,
-            _metadata,
+            errors,
+            _error,
+            _metadata: metadata,
+            data,
         };
 
-        const responseExpress: Response = ctx.getResponse<Response>();
-        responseExpress.status(statusHttp).json(responseBody);
+        response
+            .setHeader('x-custom-lang', __customLang)
+            .setHeader('x-timestamp', __timestamp)
+            .setHeader('x-timezone', __timezone)
+            .setHeader('x-request-id', __requestId)
+            .setHeader('x-version', __version)
+            .setHeader('x-repo-version', __repoVersion)
+            .status(statusHttp)
+            .json(responseBody);
 
         return;
     }
