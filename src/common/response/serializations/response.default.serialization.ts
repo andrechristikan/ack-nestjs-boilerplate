@@ -1,6 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IErrorHttpFilterMetadata } from 'src/common/error/interfaces/error.interface';
 import { IMessage } from 'src/common/message/interfaces/message.interface';
+
+export class ResponseMetadataSerialization {
+    languages: string[];
+    timestamp: number;
+    timezone: string;
+    requestId: string;
+    path: string;
+    version: string;
+    repoVersion: string;
+    [key: string]: any;
+}
 
 export class ResponseDefaultSerialization<T = Record<string, any>> {
     @ApiProperty({
@@ -48,7 +58,7 @@ export class ResponseDefaultSerialization<T = Record<string, any>> {
             repoVersion: '1.0.0',
         },
     })
-    _metadata?: IErrorHttpFilterMetadata;
+    _metadata?: ResponseMetadataSerialization;
 
     data?: T;
 }

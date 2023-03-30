@@ -8,12 +8,16 @@ import {
     Response,
     ResponsePaging,
 } from 'src/common/response/decorators/response.decorator';
-import { IResponse } from 'src/common/response/interfaces/response.interface';
 import {
+    IResponse,
+    IResponsePaging,
+} from 'src/common/response/interfaces/response.interface';
+import {
+    SETTING_DEFAULT_AVAILABLE_ORDER_BY,
     SETTING_DEFAULT_AVAILABLE_SEARCH,
-    SETTING_DEFAULT_AVAILABLE_SORT,
+    SETTING_DEFAULT_ORDER_BY,
+    SETTING_DEFAULT_ORDER_DIRECTION,
     SETTING_DEFAULT_PER_PAGE,
-    SETTING_DEFAULT_SORT,
 } from 'src/common/setting/constants/setting.list.constant';
 import {
     GetSetting,
@@ -50,44 +54,32 @@ export class SettingController {
     async list(
         @PaginationQuery(
             SETTING_DEFAULT_PER_PAGE,
+            SETTING_DEFAULT_ORDER_BY,
+            SETTING_DEFAULT_ORDER_DIRECTION,
             SETTING_DEFAULT_AVAILABLE_SEARCH,
-            SETTING_DEFAULT_SORT,
-            SETTING_DEFAULT_AVAILABLE_SORT
+            SETTING_DEFAULT_AVAILABLE_ORDER_BY
         )
-        {
-            page,
-            perPage,
-            _offset,
-            _search,
-            _sort,
-            _availableSort,
-            _availableSearch,
-        }: PaginationListDto
-    ): Promise<IResponse> {
+        { _search, _limit, _offset, _order }: PaginationListDto
+    ): Promise<IResponsePaging> {
         const find: Record<string, any> = {
             ..._search,
         };
 
         const settings: SettingDoc[] = await this.settingService.findAll(find, {
             paging: {
-                limit: perPage,
+                limit: _limit,
                 offset: _offset,
             },
-            order: _sort,
+            order: _order,
         });
-        const totalData: number = await this.settingService.getTotal(find);
+        const total: number = await this.settingService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
-            totalData,
-            perPage
+            total,
+            _limit
         );
 
         return {
-            totalData,
-            totalPage,
-            currentPage: page,
-            perPage,
-            _availableSearch,
-            _availableSort,
+            _pagination: { total, totalPage },
             data: settings,
         };
     }
@@ -100,7 +92,7 @@ export class SettingController {
     @RequestParamGuard(SettingRequestDto)
     @Get('get/:setting')
     async get(@GetSetting() setting: SettingDoc): Promise<IResponse> {
-        return setting;
+        return { data: setting };
     }
 
     @SettingGetByNameDoc()
@@ -110,6 +102,6 @@ export class SettingController {
     @SettingGetByNameGuard()
     @Get('get/name/:settingName')
     async getByName(@GetSetting() setting: SettingDoc): Promise<IResponse> {
-        return setting;
+        return { data: setting };
     }
 }

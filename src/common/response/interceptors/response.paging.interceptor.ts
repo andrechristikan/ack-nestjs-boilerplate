@@ -15,22 +15,20 @@ import {
     ClassTransformOptions,
     plainToInstance,
 } from 'class-transformer';
-import { ENUM_PAGINATION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import qs from 'qs';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import {
     IMessage,
     IMessageOptionsProperties,
 } from 'src/common/message/interfaces/message.interface';
-import { IErrorHttpFilterMetadata } from 'src/common/error/interfaces/error.interface';
 import {
-    ResponsePagingSerialization,
+    ResponsePagingCursorMetadataSerialization,
     ResponsePagingMetadataSerialization,
+    ResponsePagingSerialization,
 } from 'src/common/response/serializations/response.paging.serialization';
 import {
     RESPONSE_MESSAGE_PATH_META_KEY,
     RESPONSE_MESSAGE_PROPERTIES_META_KEY,
-    RESPONSE_PAGING_TYPE_META_KEY,
     RESPONSE_SERIALIZATION_META_KEY,
     RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
 } from 'src/common/response/constants/response.constant';
@@ -51,171 +49,147 @@ export class ResponsePagingInterceptor<T>
     ): Promise<Observable<Promise<ResponsePagingSerialization>>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
-                map(
-                    async (
-                        responseData: Promise<ResponsePagingSerialization>
-                    ) => {
-                        const ctx: HttpArgumentsHost = context.switchToHttp();
-                        const responseExpress: Response = ctx.getResponse();
-                        const requestExpress: IRequestApp =
-                            ctx.getRequest<IRequestApp>();
+                map(async (responseData: Promise<IResponsePaging>) => {
+                    const ctx: HttpArgumentsHost = context.switchToHttp();
+                    const responseExpress: Response = ctx.getResponse();
+                    const requestExpress: IRequestApp =
+                        ctx.getRequest<IRequestApp>();
 
-                        let messagePath: string = this.reflector.get<string>(
-                            RESPONSE_MESSAGE_PATH_META_KEY,
+                    let messagePath: string = this.reflector.get<string>(
+                        RESPONSE_MESSAGE_PATH_META_KEY,
+                        context.getHandler()
+                    );
+
+                    const classSerialization: ClassConstructor<any> =
+                        this.reflector.get<ClassConstructor<any>>(
+                            RESPONSE_SERIALIZATION_META_KEY,
                             context.getHandler()
                         );
-                        const type: ENUM_PAGINATION_TYPE =
-                            this.reflector.get<ENUM_PAGINATION_TYPE>(
-                                RESPONSE_PAGING_TYPE_META_KEY,
-                                context.getHandler()
-                            );
-                        const classSerialization: ClassConstructor<any> =
-                            this.reflector.get<ClassConstructor<any>>(
-                                RESPONSE_SERIALIZATION_META_KEY,
-                                context.getHandler()
-                            );
-                        const classSerializationOptions: ClassTransformOptions =
-                            this.reflector.get<ClassTransformOptions>(
-                                RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
-                                context.getHandler()
-                            );
-                        const messageProperties: IMessageOptionsProperties =
-                            this.reflector.get<IMessageOptionsProperties>(
-                                RESPONSE_MESSAGE_PROPERTIES_META_KEY,
-                                context.getHandler()
-                            );
+                    const classSerializationOptions: ClassTransformOptions =
+                        this.reflector.get<ClassTransformOptions>(
+                            RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
+                            context.getHandler()
+                        );
 
-                        // message base on language
-                        const { customLang } = ctx.getRequest<IRequestApp>();
+                    // response
+                    const response = (await responseData) as IResponsePaging;
+                    if (!response) {
+                        throw new Error('Paging must have response');
+                    }
 
-                        // response
-                        const response =
-                            (await responseData) as IResponsePaging;
-                        const {
-                            _metadata,
-                            totalData,
-                            currentPage,
-                            perPage,
+                    const { data, _metadata, _pagination } = response;
+
+                    let messageProperties: IMessageOptionsProperties =
+                        this.reflector.get<IMessageOptionsProperties>(
+                            RESPONSE_MESSAGE_PROPERTIES_META_KEY,
+                            context.getHandler()
+                        );
+                    let statusCode: number = responseExpress.statusCode;
+                    let serialization = data;
+
+                    if (classSerialization) {
+                        serialization = plainToInstance(
+                            classSerialization,
                             data,
-                            _availableSort,
-                            _availableSearch,
-                            totalPage,
-                        } = response;
-                        let statusCode: number = responseExpress.statusCode;
-                        let properties: IMessageOptionsProperties =
+                            classSerializationOptions
+                        );
+                    }
+
+                    // _metadata
+                    const __customLang = requestExpress.__customLang;
+                    const __path = requestExpress.path;
+                    const __requestId = requestExpress.__id;
+                    const __timestamp =
+                        requestExpress.__xTimestamp ??
+                        requestExpress.__timestamp;
+                    const __timezone = requestExpress.__timezone;
+                    const __version = requestExpress.__version;
+                    const __repoVersion = requestExpress.__repoVersion;
+                    const __pagination = requestExpress.__pagination;
+
+                    if (_metadata) {
+                        statusCode =
+                            _metadata.customProperty?.statusCode ?? statusCode;
+                        messagePath =
+                            _metadata.customProperty?.message ?? messagePath;
+                        messageProperties =
+                            _metadata.customProperty?.messageProperties ??
                             messageProperties;
-                        let serialization = data;
+                    }
 
-                        if (classSerialization) {
-                            serialization = plainToInstance(
-                                classSerialization,
-                                data,
-                                classSerializationOptions
-                            );
-                        }
+                    delete _metadata?.customProperty;
 
-                        // get _metadata
-                        const __path = requestExpress.path;
-                        const __requestId = requestExpress.id;
-                        const __timestamp = requestExpress.timestamp;
-                        const __timezone =
-                            Intl.DateTimeFormat().resolvedOptions().timeZone;
-                        const __version = requestExpress.version;
-                        const __repoVersion = requestExpress.repoVersion;
+                    // add metadata pagination
+                    const { query } = requestExpress;
+                    delete query.perPage;
+                    delete query.page;
 
-                        if (_metadata) {
-                            statusCode = _metadata.statusCode ?? statusCode;
-                            messagePath = _metadata.message ?? messagePath;
-                            properties = _metadata.properties ?? properties;
+                    const total: number = _pagination.total;
+                    const totalPage: number = _pagination.totalPage;
+                    const perPage: number = __pagination.perPage;
+                    const page: number = __pagination.page;
+                    const queryString = qs.stringify(query, {
+                        encode: false,
+                    });
 
-                            delete _metadata.statusCode;
-                            delete _metadata.message;
-                            delete _metadata.properties;
-                        }
+                    const cursorPaginationMetadata: ResponsePagingCursorMetadataSerialization =
+                        {
+                            nextPage:
+                                page < totalPage
+                                    ? `${__path}?perPage=${perPage}&page=${
+                                          page + 1
+                                      }&${queryString}`
+                                    : undefined,
+                            previousPage:
+                                page > 1
+                                    ? `${__path}?perPage=${perPage}&page=${
+                                          page - 1
+                                      }&${queryString}`
+                                    : undefined,
+                            firstPage:
+                                totalPage > 1
+                                    ? `${__path}?perPage=${perPage}&page=${1}&${queryString}`
+                                    : undefined,
+                            lastPage:
+                                totalPage > 1
+                                    ? `${__path}?perPage=${perPage}&page=${totalPage}&${queryString}`
+                                    : undefined,
+                        };
 
-                        const path = requestExpress.path;
-                        const { query } = requestExpress;
-                        delete query.perPage;
-                        delete query.page;
-                        const queryString = qs.stringify(query, {
-                            encode: false,
+                    // message
+                    const finalMetadata: ResponsePagingMetadataSerialization = {
+                        languages: __customLang,
+                        timestamp: __timestamp,
+                        timezone: __timezone,
+                        requestId: __requestId,
+                        path: __path,
+                        version: __version,
+                        repoVersion: __repoVersion,
+                        pagination: {
+                            ...__pagination,
+                            ..._pagination,
+                            total,
+                            totalPage,
+                        },
+                        cursor: cursorPaginationMetadata,
+                        ..._metadata,
+                    };
+
+                    const message: string | IMessage =
+                        await this.messageService.get(messagePath, {
+                            customLanguages: __customLang,
+                            properties: messageProperties,
                         });
 
-                        const addMetadata: ResponsePagingMetadataSerialization =
-                            {
-                                nextPage:
-                                    currentPage < totalPage
-                                        ? `${path}?perPage=${perPage}&page=${
-                                              currentPage + 1
-                                          }&${queryString}`
-                                        : undefined,
-                                previousPage:
-                                    currentPage > 1
-                                        ? `${path}?perPage=${perPage}&page=${
-                                              currentPage - 1
-                                          }&${queryString}`
-                                        : undefined,
-                                firstPage:
-                                    totalPage > 1
-                                        ? `${path}?perPage=${perPage}&page=${1}&${queryString}`
-                                        : undefined,
-                                lastPage:
-                                    totalPage > 1
-                                        ? `${path}?perPage=${perPage}&page=${totalPage}&${queryString}`
-                                        : undefined,
-                            };
+                    const responseHttp: ResponsePagingSerialization = {
+                        statusCode,
+                        message,
+                        _metadata: finalMetadata,
+                        data: serialization,
+                    };
 
-                        const resMetadata: IErrorHttpFilterMetadata = {
-                            languages: customLang,
-                            timestamp: __timestamp,
-                            timezone: __timezone,
-                            requestId: __requestId,
-                            path: __path,
-                            version: __version,
-                            repoVersion: __repoVersion,
-                        };
-
-                        // message
-                        const message: string | IMessage =
-                            await this.messageService.get(messagePath, {
-                                customLanguages: customLang,
-                                properties,
-                            });
-
-                        const responseHttp: ResponsePagingSerialization = {
-                            statusCode,
-                            message,
-                            totalData,
-                            totalPage,
-                            currentPage,
-                            perPage,
-                            _availableSort,
-                            _availableSearch,
-                            _metadata: {
-                                ...addMetadata,
-                                ...resMetadata,
-                                ..._metadata,
-                            },
-                            data: serialization,
-                        };
-
-                        if (
-                            type === ENUM_PAGINATION_TYPE.SIMPLE ||
-                            type === ENUM_PAGINATION_TYPE.MINI
-                        ) {
-                            delete responseHttp.totalPage;
-                            delete responseHttp.currentPage;
-                            delete responseHttp.perPage;
-                        }
-
-                        if (type === ENUM_PAGINATION_TYPE.MINI) {
-                            delete responseHttp._availableSort;
-                            delete responseHttp._availableSearch;
-                        }
-
-                        return responseHttp;
-                    }
-                )
+                    return responseHttp;
+                })
             );
         }
 

@@ -64,7 +64,7 @@ export class ResponseExcelInterceptor implements NestInterceptor<Promise<any>> {
 
                     // response
                     const response = (await responseData) as IResponseExcel;
-                    let serialization = response;
+                    let serialization = response.data;
                     if (classSerialization) {
                         serialization = plainToInstance(
                             classSerialization,

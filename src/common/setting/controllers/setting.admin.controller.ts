@@ -71,7 +71,7 @@ export class SettingAdminController {
         }
 
         return {
-            _id: setting._id,
+            data: { _id: setting._id },
         };
     }
 }

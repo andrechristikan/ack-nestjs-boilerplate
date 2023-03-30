@@ -1,26 +1,38 @@
-import { Injectable, mixin, Type } from '@nestjs/common';
-import { PipeTransform } from '@nestjs/common/interfaces';
+import { Inject, Injectable, mixin, Type } from '@nestjs/common';
+import { PipeTransform, Scope } from '@nestjs/common/interfaces';
+import { REQUEST } from '@nestjs/core';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationSearchPipe(
-    _availableSearch: string[]
+    availableSearch: string[]
 ): Type<PipeTransform> {
-    @Injectable()
+    @Injectable({ scope: Scope.REQUEST })
     class MixinPaginationSearchPipe implements PipeTransform {
-        constructor(private readonly paginationService: PaginationService) {}
+        constructor(
+            @Inject(REQUEST) protected readonly request: IRequestApp,
+            private readonly paginationService: PaginationService
+        ) {}
 
         async transform(
             value: Record<string, any>
         ): Promise<Record<string, any>> {
-            const _search: Record<string, any> = this.paginationService.search(
-                _availableSearch,
-                value?.search
+            const searchText = value?.search ?? '';
+            const search: Record<string, any> = this.paginationService.search(
+                value?.search,
+                availableSearch
             );
+
+            this.request.__pagination = {
+                ...this.request.__pagination,
+                search: searchText,
+                availableSearch,
+            };
 
             return {
                 ...value,
-                _search,
-                _availableSearch,
+                _search: search,
+                _availableSearch: availableSearch,
             };
         }
     }

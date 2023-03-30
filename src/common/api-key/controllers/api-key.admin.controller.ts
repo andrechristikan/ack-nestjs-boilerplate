@@ -9,11 +9,12 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
+    API_KEY_DEFAULT_AVAILABLE_ORDER_BY,
     API_KEY_DEFAULT_AVAILABLE_SEARCH,
-    API_KEY_DEFAULT_AVAILABLE_SORT,
     API_KEY_DEFAULT_IS_ACTIVE,
+    API_KEY_DEFAULT_ORDER_BY,
+    API_KEY_DEFAULT_ORDER_DIRECTION,
     API_KEY_DEFAULT_PER_PAGE,
-    API_KEY_DEFAULT_SORT,
 } from 'src/common/api-key/constants/api-key.list.constant';
 import {
     ApiKeyGetGuard,
@@ -88,19 +89,12 @@ export class ApiKeyAdminController {
     async list(
         @PaginationQuery(
             API_KEY_DEFAULT_PER_PAGE,
+            API_KEY_DEFAULT_ORDER_BY,
+            API_KEY_DEFAULT_ORDER_DIRECTION,
             API_KEY_DEFAULT_AVAILABLE_SEARCH,
-            API_KEY_DEFAULT_SORT,
-            API_KEY_DEFAULT_AVAILABLE_SORT
+            API_KEY_DEFAULT_AVAILABLE_ORDER_BY
         )
-        {
-            page,
-            perPage,
-            _sort,
-            _offset,
-            _search,
-            _availableSort,
-            _availableSearch,
-        }: PaginationListDto,
+        { _search, _limit, _offset, _order }: PaginationListDto,
         @PaginationQueryFilterInBoolean('isActive', API_KEY_DEFAULT_IS_ACTIVE)
         isActive: Record<string, any>
     ): Promise<IResponsePaging> {
@@ -111,24 +105,19 @@ export class ApiKeyAdminController {
 
         const apiKeys: ApiKeyEntity[] = await this.apiKeyService.findAll(find, {
             paging: {
-                limit: perPage,
+                limit: _limit,
                 offset: _offset,
             },
-            order: _sort,
+            order: _order,
         });
-        const totalData: number = await this.apiKeyService.getTotal(find);
+        const total: number = await this.apiKeyService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
-            totalData,
-            perPage
+            total,
+            _limit
         );
 
         return {
-            totalData,
-            totalPage,
-            currentPage: page,
-            perPage,
-            _availableSearch,
-            _availableSort,
+            _pagination: { totalPage, total },
             data: apiKeys,
         };
     }
@@ -143,7 +132,7 @@ export class ApiKeyAdminController {
     @AuthJwtAdminAccessProtected()
     @Get('get/:apiKey')
     async get(@GetApiKey() apiKey: ApiKeyDoc): Promise<IResponse> {
-        return apiKey;
+        return { data: apiKey };
     }
 
     @ApiKeyCreateDoc()
@@ -160,8 +149,10 @@ export class ApiKeyAdminController {
                 await this.apiKeyService.create(body);
 
             return {
-                _id: created._id,
-                secret: created.secret,
+                data: {
+                    _id: created._id,
+                    secret: created.secret,
+                },
             };
         } catch (err: any) {
             throw new InternalServerErrorException({
@@ -242,8 +233,10 @@ export class ApiKeyAdminController {
             );
 
             return {
-                _id: updated._id,
-                secret,
+                data: {
+                    _id: updated._id,
+                    secret,
+                },
             };
         } catch (err: any) {
             throw new InternalServerErrorException({
@@ -278,7 +271,7 @@ export class ApiKeyAdminController {
             });
         }
 
-        return { _id: apiKey._id };
+        return { data: { _id: apiKey._id } };
     }
 
     @ApiKeyUpdateDoc()
@@ -306,6 +299,6 @@ export class ApiKeyAdminController {
             });
         }
 
-        return { _id: apiKey._id };
+        return { data: { _id: apiKey._id } };
     }
 }

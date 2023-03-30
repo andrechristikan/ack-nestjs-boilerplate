@@ -42,8 +42,8 @@ export interface IDocResponseOptions<T> {
 export interface IDocPagingResponseOptions<T>
     extends Pick<IDocResponseOptions<T>, 'statusCode'> {
     serialization: ClassConstructor<T>;
-    _availableSearch: string[];
-    _availableSort: string[];
+    availableSearch: string[];
+    availableOrderBy: string[];
 }
 
 export interface IDocAuthOptions {

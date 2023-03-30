@@ -3,7 +3,6 @@ import {
     Model,
     PipelineStage,
     PopulateOptions,
-    SortOrder,
     Document,
 } from 'mongoose';
 import { DatabaseBaseRepositoryAbstract } from 'src/common/database/abstracts/database.base-repository.abstract';
@@ -21,7 +20,6 @@ import {
     IDatabaseRawOptions,
     IDatabaseFindOneLockOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { IPaginationOrder } from 'src/common/pagination/interfaces/pagination.interface';
 
 export abstract class DatabaseMongoUUIDRepositoryAbstract<
     Entity,
@@ -38,13 +36,6 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
 
         this._repository = repository;
         this._joinOnFind = options;
-    }
-
-    private _convertOrder(order: IPaginationOrder): Record<string, string> {
-        return Object.keys(order).reduce((a, b) => {
-            a[b] = order[b].toLowerCase();
-            return a;
-        }, {});
     }
 
     async findAll<T = EntityDocument>(
@@ -75,11 +66,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         }
 
         if (options?.order) {
-            findAll.sort(
-                this._convertOrder(options.order) as {
-                    [key: string]: SortOrder;
-                }
-            );
+            findAll.sort(options.order);
         }
 
         if (options?.join) {
@@ -133,11 +120,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         }
 
         if (options?.order) {
-            findAll.sort(
-                this._convertOrder(options.order) as {
-                    [key: string]: SortOrder;
-                }
-            );
+            findAll.sort(options.order);
         }
 
         if (options?.join) {
@@ -194,11 +177,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         }
 
         if (options?.order) {
-            findOne.sort(
-                this._convertOrder(options.order) as {
-                    [key: string]: SortOrder;
-                }
-            );
+            findOne.sort(options.order);
         }
 
         if (options?.returnPlain) {
@@ -244,11 +223,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         }
 
         if (options?.order) {
-            findOne.sort(
-                this._convertOrder(options.order) as {
-                    [key: string]: SortOrder;
-                }
-            );
+            findOne.sort(options.order);
         }
 
         if (options?.returnPlain) {
@@ -300,11 +275,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         }
 
         if (options?.order) {
-            findOne.sort(
-                this._convertOrder(options.order) as {
-                    [key: string]: SortOrder;
-                }
-            );
+            findOne.sort(options.order);
         }
 
         return findOne.exec() as any;
@@ -352,11 +323,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         }
 
         if (options?.order) {
-            findOne.sort(
-                this._convertOrder(options.order) as {
-                    [key: string]: SortOrder;
-                }
-            );
+            findOne.sort(options.order);
         }
 
         return findOne.exec() as any;

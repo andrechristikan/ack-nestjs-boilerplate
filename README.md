@@ -65,6 +65,9 @@
 
 Next development
 
+* [ ] update unit test for common modules
+* [ ] excel decorator optimize
+* [ ] Authorization optimize, remove permission entity (?)
 * [ ] Google SSO
 * [ ] Background export/import from/to CSV and Excel
 * [ ] Update Documentation, include an diagram for easier comprehension

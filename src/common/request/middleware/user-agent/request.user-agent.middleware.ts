@@ -1,18 +1,19 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Response, NextFunction } from 'express';
-import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+import { UAParser, IResult } from 'ua-parser-js';
 
 @Injectable()
-export class RequestIdMiddleware implements NestMiddleware {
+export class RequestUserAgentMiddleware implements NestMiddleware {
     async use(
         req: IRequestApp,
         res: Response,
         next: NextFunction
     ): Promise<void> {
-        const uuid: string = DatabaseDefaultUUID();
+        const parserUserAgent = new UAParser(req['User-Agent']);
+        const userAgent: IResult = parserUserAgent.getResult();
 
-        req.__id = uuid;
+        req.__userAgent = userAgent;
         next();
     }
 }

@@ -24,7 +24,7 @@ export class MessageController {
             await this.messageEnumService.getLanguages();
 
         return {
-            languages,
+            data: { languages },
         };
     }
 }

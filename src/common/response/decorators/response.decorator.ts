@@ -5,12 +5,10 @@ import {
     UseInterceptors,
 } from '@nestjs/common';
 import { ENUM_HELPER_FILE_TYPE } from 'src/common/helper/constants/helper.enum.constant';
-import { ENUM_PAGINATION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import {
     RESPONSE_EXCEL_TYPE_META_KEY,
     RESPONSE_MESSAGE_PATH_META_KEY,
     RESPONSE_MESSAGE_PROPERTIES_META_KEY,
-    RESPONSE_PAGING_TYPE_META_KEY,
     RESPONSE_SERIALIZATION_META_KEY,
 } from 'src/common/response/constants/response.constant';
 import { ResponseDefaultInterceptor } from 'src/common/response/interceptors/response.default.interceptor';
@@ -40,12 +38,6 @@ export function Response<T>(
     );
 }
 
-export function ResponsePagingType(
-    type: ENUM_PAGINATION_TYPE
-): MethodDecorator {
-    return applyDecorators(SetMetadata(RESPONSE_PAGING_TYPE_META_KEY, type));
-}
-
 export function ResponseExcel(
     options?: IResponseExcelOptions<void>
 ): MethodDecorator {
@@ -57,7 +49,7 @@ export function ResponseExcel(
         ),
         SetMetadata(
             RESPONSE_EXCEL_TYPE_META_KEY,
-            options ? options.type : ENUM_HELPER_FILE_TYPE.CSV
+            options ? options.fileType : ENUM_HELPER_FILE_TYPE.CSV
         ),
         SetMetadata(
             RESPONSE_MESSAGE_PROPERTIES_META_KEY,

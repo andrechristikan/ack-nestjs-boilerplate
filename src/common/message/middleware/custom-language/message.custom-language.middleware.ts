@@ -43,8 +43,8 @@ export class MessageCustomLanguageMiddleware implements NestMiddleware {
             }
         }
 
+        req.__customLang = customLang;
         req.headers['x-custom-lang'] = language;
-        req.customLang = customLang;
 
         next();
     }

@@ -8,7 +8,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Observable } from 'rxjs';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
@@ -20,8 +19,7 @@ export class RequestTimestampInterceptor
 
     constructor(
         private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService,
-        private readonly helperNumberService: HelperNumberService
+        private readonly helperDateService: HelperDateService
     ) {
         this.maxRequestTimestampInMs = this.configService.get<number>(
             'request.timestamp.toleranceTimeInMs'
@@ -34,10 +32,9 @@ export class RequestTimestampInterceptor
     ): Promise<Observable<Promise<any> | string>> {
         if (context.getType() === 'http') {
             const request: IRequestApp = context.switchToHttp().getRequest();
-            const { headers } = request;
-            const requestTimestamp: string = headers['x-timestamp'] as string;
+            const timestamp: number = request.__timestamp;
 
-            if (!requestTimestamp) {
+            if (!timestamp) {
                 throw new ForbiddenException({
                     statusCode:
                         ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
@@ -45,7 +42,6 @@ export class RequestTimestampInterceptor
                 });
             }
 
-            const timestamp = this.helperNumberService.create(requestTimestamp);
             const checkTimestamp =
                 this.helperDateService.checkTimestamp(timestamp);
 

@@ -3,7 +3,6 @@ import {
     Model,
     PipelineStage,
     PopulateOptions,
-    SortOrder,
     Types,
     Document,
 } from 'mongoose';
@@ -22,7 +21,6 @@ import {
     IDatabaseRawOptions,
     IDatabaseFindOneLockOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { IPaginationOrder } from 'src/common/pagination/interfaces/pagination.interface';
 
 export abstract class DatabaseMongoObjectIdRepositoryAbstract<
     Entity,
@@ -39,13 +37,6 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
 
         this._repository = repository;
         this._joinOnFind = options;
-    }
-
-    private _convertOrder(order: IPaginationOrder): Record<string, string> {
-        return Object.keys(order).reduce((a, b) => {
-            a[b] = order[b].toLowerCase();
-            return a;
-        }, {});
     }
 
     async findAll<T = EntityDocument>(
@@ -76,11 +67,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
         }
 
         if (options?.order) {
-            findAll.sort(
-                this._convertOrder(options.order) as {
-                    [key: string]: SortOrder;
-                }
-            );
+            findAll.sort(options.order);
         }
 
         if (options?.join) {
@@ -134,11 +121,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
         }
 
         if (options?.order) {
-            findAll.sort(
-                this._convertOrder(options.order) as {
-                    [key: string]: SortOrder;
-                }
-            );
+            findAll.sort(options.order);
         }
 
         if (options?.join) {
@@ -196,11 +179,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
         }
 
         if (options?.order) {
-            findOne.sort(
-                this._convertOrder(options.order) as {
-                    [key: string]: SortOrder;
-                }
-            );
+            findOne.sort(options.order);
         }
 
         if (options?.returnPlain) {
@@ -248,11 +227,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
         }
 
         if (options?.order) {
-            findOne.sort(
-                this._convertOrder(options.order) as {
-                    [key: string]: SortOrder;
-                }
-            );
+            findOne.sort(options.order);
         }
 
         if (options?.returnPlain) {
@@ -304,11 +279,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
         }
 
         if (options?.order) {
-            findOne.sort(
-                this._convertOrder(options.order) as {
-                    [key: string]: SortOrder;
-                }
-            );
+            findOne.sort(options.order);
         }
 
         return findOne.exec() as T;
@@ -356,11 +327,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
         }
 
         if (options?.order) {
-            findOne.sort(
-                this._convertOrder(options.order) as {
-                    [key: string]: SortOrder;
-                }
-            );
+            findOne.sort(options.order);
         }
 
         return findOne.exec() as T;

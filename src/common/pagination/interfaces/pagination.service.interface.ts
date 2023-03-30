@@ -1,3 +1,6 @@
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { IPaginationOrder } from 'src/common/pagination/interfaces/pagination.interface';
+
 export interface IPaginationService {
     offset(page: number, perPage: number): number;
 
@@ -11,14 +14,16 @@ export interface IPaginationService {
 
     perPage(perPage: number): number;
 
-    sort(
-        _availableSort: string[],
-        sortValue: string
-    ): Record<string, number | string>;
+    order(
+        orderByValue: string,
+        orderDirectionValue: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
+        availableOrderBy: string[],
+        availableOrderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE[]
+    ): IPaginationOrder;
 
     search(
-        _availableSearch: string[],
-        searchValue?: string
+        searchValue: string,
+        availableSearch: string[]
     ): Record<string, any> | undefined;
 
     filterEqual<T = string>(

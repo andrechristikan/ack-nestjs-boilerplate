@@ -40,10 +40,12 @@ export class AppController {
                     serviceName: this.serviceName,
                 },
             },
-            userAgent,
-            date: newDate,
-            format: this.helperDateService.format(newDate),
-            timestamp: this.helperDateService.timestamp(newDate),
+            data: {
+                userAgent,
+                date: newDate,
+                format: this.helperDateService.format(newDate),
+                timestamp: this.helperDateService.timestamp(newDate),
+            },
         };
     }
 
@@ -63,10 +65,12 @@ export class AppController {
                     serviceName: this.serviceName,
                 },
             },
-            userAgent,
-            date: newDate,
-            format: this.helperDateService.format(newDate),
-            timestamp: this.helperDateService.timestamp(newDate),
+            data: {
+                userAgent,
+                date: newDate,
+                format: this.helperDateService.format(newDate),
+                timestamp: this.helperDateService.timestamp(newDate),
+            },
         };
     }
 }

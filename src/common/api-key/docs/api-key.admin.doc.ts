@@ -4,8 +4,8 @@ import {
     ApiKeyDocQueryIsActive,
 } from 'src/common/api-key/constants/api-key.doc';
 import {
+    API_KEY_DEFAULT_AVAILABLE_ORDER_BY,
     API_KEY_DEFAULT_AVAILABLE_SEARCH,
-    API_KEY_DEFAULT_AVAILABLE_SORT,
 } from 'src/common/api-key/constants/api-key.list.constant';
 import { ApiKeyCreateSerialization } from 'src/common/api-key/serializations/api-key.create.serialization';
 import { ApiKeyGetSerialization } from 'src/common/api-key/serializations/api-key.get.serialization';
@@ -25,8 +25,8 @@ export function ApiKeyListDoc(): MethodDecorator {
             },
             response: {
                 serialization: ApiKeyListSerialization,
-                _availableSort: API_KEY_DEFAULT_AVAILABLE_SORT,
-                _availableSearch: API_KEY_DEFAULT_AVAILABLE_SEARCH,
+                availableOrderBy: API_KEY_DEFAULT_AVAILABLE_ORDER_BY,
+                availableSearch: API_KEY_DEFAULT_AVAILABLE_SEARCH,
             },
         })
     );

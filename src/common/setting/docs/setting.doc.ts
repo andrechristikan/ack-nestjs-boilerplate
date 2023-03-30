@@ -7,8 +7,8 @@ import {
 import { SettingGetSerialization } from 'src/common/setting/serializations/setting.get.serialization';
 import { SettingListSerialization } from 'src/common/setting/serializations/setting.list.serialization';
 import {
+    SETTING_DEFAULT_AVAILABLE_ORDER_BY,
     SETTING_DEFAULT_AVAILABLE_SEARCH,
-    SETTING_DEFAULT_AVAILABLE_SORT,
 } from 'src/common/setting/constants/setting.list.constant';
 
 export function SettingListDoc(): MethodDecorator {
@@ -19,8 +19,8 @@ export function SettingListDoc(): MethodDecorator {
             },
             response: {
                 serialization: SettingListSerialization,
-                _availableSort: SETTING_DEFAULT_AVAILABLE_SORT,
-                _availableSearch: SETTING_DEFAULT_AVAILABLE_SEARCH,
+                availableOrderBy: SETTING_DEFAULT_AVAILABLE_ORDER_BY,
+                availableSearch: SETTING_DEFAULT_AVAILABLE_SEARCH,
             },
         })
     );

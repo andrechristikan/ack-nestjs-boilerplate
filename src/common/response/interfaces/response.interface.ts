@@ -2,14 +2,20 @@ import { ClassConstructor } from 'class-transformer';
 import { ENUM_HELPER_FILE_TYPE } from 'src/common/helper/constants/helper.enum.constant';
 import { IHelperFileRows } from 'src/common/helper/interfaces/helper.interface';
 import { IMessageOptionsProperties } from 'src/common/message/interfaces/message.interface';
-import { Response } from 'express';
 
-export interface IResponseMetadata {
+export interface IResponseCustomPropertyMetadata {
     statusCode?: number;
     message?: string;
     messageProperties?: IMessageOptionsProperties;
+}
+
+// metadata
+export interface IResponseMetadata {
+    customProperty?: IResponseCustomPropertyMetadata;
     [key: string]: any;
 }
+
+// decorator options
 
 export interface IResponseOptions<T> {
     serialization?: ClassConstructor<T>;
@@ -19,27 +25,26 @@ export interface IResponseOptions<T> {
 export type IResponsePagingOptions<T> = IResponseOptions<T>;
 
 export interface IResponseExcelOptions<T> extends IResponseOptions<T> {
-    type?: ENUM_HELPER_FILE_TYPE;
+    fileType?: ENUM_HELPER_FILE_TYPE;
 }
 
-export type IResponseExcel = IHelperFileRows[];
-
+// type
 export interface IResponse {
     _metadata?: IResponseMetadata;
-    [key: string]: any;
+    data: Record<string, any>;
 }
 
-export interface IResponsePaging<T = Record<string, any>> {
-    totalData: number;
-    totalPage?: number;
-    currentPage?: number;
-    perPage?: number;
-    _availableSearch?: string[];
-    _availableSort?: string[];
+export interface IResponsePagingPagination {
+    totalPage: number;
+    total: number;
+}
+
+export interface IResponsePaging {
     _metadata?: IResponseMetadata;
-    data: T[];
+    _pagination: IResponsePagingPagination;
+    data: Record<string, any>[];
 }
 
-export interface IResponseCustom extends Response {
-    body: string;
+export interface IResponseExcel {
+    data: IHelperFileRows[];
 }
