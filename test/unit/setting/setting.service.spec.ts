@@ -6,16 +6,16 @@ import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database
 import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
 import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
 import { HelperModule } from 'src/common/helper/helper.module';
-import { ENUM_PAGINATION_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
-import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
+import { SettingDoc } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingService } from 'src/common/setting/services/setting.service';
 import { SettingModule } from 'src/common/setting/setting.module';
 import configs from 'src/configs';
 
 describe('SettingService', () => {
     let settingService: SettingService;
-    let setting: SettingEntity;
+    let setting: SettingDoc;
     const settingName1 = `${faker.name.jobArea()}${+new Date()}`;
     const settingName2 = `${faker.name.jobArea()}${+new Date()}`;
     const settingName3 = `${faker.name.jobArea()}${+new Date()}`;
@@ -79,7 +79,7 @@ describe('SettingService', () => {
 
     describe('findAll', () => {
         it('get all setting', async () => {
-            const result: SettingEntity[] = await settingService.findAll({
+            const result: SettingDoc[] = await settingService.findAll({
                 name: setting.name,
             });
 
@@ -118,7 +118,7 @@ describe('SettingService', () => {
                 },
                 {
                     paging: { limit: 1, offset: 0 },
-                    sort: { name: ENUM_PAGINATION_SORT_TYPE.ASC },
+                    order: { name: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC },
                 }
             );
 
@@ -150,7 +150,7 @@ describe('SettingService', () => {
 
     describe('findOneById', () => {
         it('should be success', async () => {
-            const result: SettingEntity = await settingService.findOneById(
+            const result: SettingDoc = await settingService.findOneById(
                 setting._id
             );
 
@@ -165,7 +165,7 @@ describe('SettingService', () => {
 
     describe('findOneByName', () => {
         it('should be return a setting entity', async () => {
-            const result: SettingEntity = await settingService.findOneByName(
+            const result: SettingDoc = await settingService.findOneByName(
                 setting.name
             );
 
@@ -180,7 +180,7 @@ describe('SettingService', () => {
 
     describe('create', () => {
         it('should be create a new setting, number', async () => {
-            const result: SettingEntity = await settingService.create({
+            const result: SettingDoc = await settingService.create({
                 name: settingName1,
                 type: ENUM_SETTING_DATA_TYPE.NUMBER,
                 description: 'aaa',
@@ -196,7 +196,7 @@ describe('SettingService', () => {
         });
 
         it('should be create a new setting, string', async () => {
-            const result: SettingEntity = await settingService.create({
+            const result: SettingDoc = await settingService.create({
                 name: settingName2,
                 description: 'test',
                 type: ENUM_SETTING_DATA_TYPE.STRING,
@@ -212,7 +212,7 @@ describe('SettingService', () => {
         });
 
         it('should be create a new setting, boolean', async () => {
-            const result: SettingEntity = await settingService.create({
+            const result: SettingDoc = await settingService.create({
                 name: settingName3,
                 type: ENUM_SETTING_DATA_TYPE.BOOLEAN,
                 description: 'aaa',
@@ -228,7 +228,7 @@ describe('SettingService', () => {
         });
 
         it('should be create a new setting, string', async () => {
-            const result: SettingEntity = await settingService.create({
+            const result: SettingDoc = await settingService.create({
                 name: settingName4,
                 description: 'test',
                 type: ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING,
@@ -246,8 +246,8 @@ describe('SettingService', () => {
 
     describe('updateValue', () => {
         it('should be update a value, number', async () => {
-            const result: SettingEntity = await settingService.updateValue(
-                setting._id,
+            const result: SettingDoc = await settingService.updateValue(
+                setting,
                 {
                     value: '1',
                     type: ENUM_SETTING_DATA_TYPE.NUMBER,
@@ -265,8 +265,8 @@ describe('SettingService', () => {
         });
 
         it('should be update a value, string', async () => {
-            const result: SettingEntity = await settingService.updateValue(
-                setting._id,
+            const result: SettingDoc = await settingService.updateValue(
+                setting,
                 {
                     value: 'aaa',
                     type: ENUM_SETTING_DATA_TYPE.STRING,
@@ -284,8 +284,8 @@ describe('SettingService', () => {
         });
 
         it('should be update a value, boolean', async () => {
-            const result: SettingEntity = await settingService.updateValue(
-                setting._id,
+            const result: SettingDoc = await settingService.updateValue(
+                setting,
                 {
                     value: 'true',
                     type: ENUM_SETTING_DATA_TYPE.BOOLEAN,
@@ -303,8 +303,8 @@ describe('SettingService', () => {
         });
 
         it('should be update a value, array of string', async () => {
-            const result: SettingEntity = await settingService.updateValue(
-                setting._id,
+            const result: SettingDoc = await settingService.updateValue(
+                setting,
                 {
                     value: 'aa,bb,cc',
                     type: ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING,
@@ -322,28 +322,11 @@ describe('SettingService', () => {
         });
     });
 
-    describe('deleteOneById', () => {
+    describe('delete', () => {
         it('should be success', async () => {
-            const result: SettingEntity = await settingService.deleteOneById(
-                setting._id
-            );
+            const result: SettingDoc = await settingService.delete(setting);
 
-            jest.spyOn(settingService, 'deleteOneById').mockReturnValueOnce(
-                result as any
-            );
-
-            expect(result).toBeTruthy();
-            expect(result._id).toBe(setting._id);
-        });
-    });
-
-    describe('deleteOne', () => {
-        it('should be success', async () => {
-            const result: SettingEntity = await settingService.deleteOne({
-                _id: setting._id,
-            });
-
-            jest.spyOn(settingService, 'deleteOne').mockReturnValueOnce(
+            jest.spyOn(settingService, 'delete').mockReturnValueOnce(
                 result as any
             );
 
@@ -420,7 +403,7 @@ describe('SettingService', () => {
 
     describe('getValue', () => {
         it('should be return a number value', async () => {
-            const setting1: SettingEntity = await settingService.create({
+            const setting1: SettingDoc = await settingService.create({
                 name: settingName1,
                 value: '1',
                 type: ENUM_SETTING_DATA_TYPE.NUMBER,
@@ -438,7 +421,7 @@ describe('SettingService', () => {
         });
 
         it('should be return a string value', async () => {
-            const setting2: SettingEntity = await settingService.create({
+            const setting2: SettingDoc = await settingService.create({
                 name: settingName2,
                 value: 'aaa',
                 type: ENUM_SETTING_DATA_TYPE.STRING,
@@ -456,7 +439,7 @@ describe('SettingService', () => {
         });
 
         it('should be return a boolean value true', async () => {
-            const setting3: SettingEntity = await settingService.create({
+            const setting3: SettingDoc = await settingService.create({
                 name: settingName3,
                 value: 'true',
                 type: ENUM_SETTING_DATA_TYPE.BOOLEAN,
@@ -474,7 +457,7 @@ describe('SettingService', () => {
         });
 
         it('should be return a boolean value false', async () => {
-            const setting3: SettingEntity = await settingService.create({
+            const setting3: SettingDoc = await settingService.create({
                 name: settingName3,
                 value: 'false',
                 type: ENUM_SETTING_DATA_TYPE.BOOLEAN,
@@ -492,7 +475,7 @@ describe('SettingService', () => {
         });
 
         it('should be return a array of string value', async () => {
-            const setting4: SettingEntity = await settingService.create({
+            const setting4: SettingDoc = await settingService.create({
                 name: settingName4,
                 value: '1,2,3',
                 type: ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING,

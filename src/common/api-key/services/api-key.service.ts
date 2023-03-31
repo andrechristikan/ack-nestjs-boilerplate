@@ -43,10 +43,7 @@ export class ApiKeyService implements IApiKeyService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<ApiKeyDoc[]> {
-        return this.apiKeyRepository.findAll<ApiKeyDoc>(find, {
-            ...options,
-            returnPlain: true,
-        });
+        return this.apiKeyRepository.findAll<ApiKeyDoc>(find, options);
     }
 
     async findOneById(
@@ -111,7 +108,10 @@ export class ApiKeyService implements IApiKeyService {
         }
 
         const created: ApiKeyEntity =
-            await this.apiKeyRepository.create<ApiKeyEntity>(dto, options);
+            await this.apiKeyRepository.create<ApiKeyEntity>(dto, {
+                ...options,
+                returnPlain: true,
+            });
 
         return { ...created, secret };
     }
@@ -144,7 +144,10 @@ export class ApiKeyService implements IApiKeyService {
         const created: ApiKeyDoc = await this.apiKeyRepository.create<
             ApiKeyDoc,
             ApiKeyEntity
-        >(dto, options);
+        >(dto, {
+            ...options,
+            returnPlain: true,
+        });
 
         return { ...created, secret };
     }

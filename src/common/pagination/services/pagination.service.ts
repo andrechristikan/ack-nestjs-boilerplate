@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
     PAGINATION_AVAILABLE_ORDER_BY,
-    PAGINATION_AVAILABLE_ORDER_DIRECTION,
     PAGINATION_MAX_PAGE,
     PAGINATION_MAX_PER_PAGE,
     PAGINATION_ORDER_BY,
@@ -68,13 +67,8 @@ export class PaginationService implements IPaginationService {
         const orderBy: string = availableOrderBy.includes(orderByValue)
             ? orderByValue
             : PAGINATION_ORDER_BY;
-        const orderDirection = PAGINATION_AVAILABLE_ORDER_DIRECTION.includes(
-            orderDirectionValue
-        )
-            ? orderDirectionValue
-            : PAGINATION_ORDER_DIRECTION;
 
-        return { [orderBy]: orderDirection };
+        return { [orderBy]: orderDirectionValue };
     }
 
     search(

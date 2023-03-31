@@ -7,6 +7,7 @@ import {
     IErrorsImport,
     IValidationErrorImport,
 } from 'src/common/error/interfaces/error.interface';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 import {
     IMessage,
     IMessageOptions,
@@ -24,6 +25,10 @@ export class MessageService implements IMessageService {
     ) {
         this.appDefaultLanguage =
             this.configService.get<string[]>('app.language');
+    }
+
+    async getAvailableLanguages(): Promise<string[]> {
+        return Object.values(ENUM_MESSAGE_LANGUAGE);
     }
 
     setMessage<T = string>(

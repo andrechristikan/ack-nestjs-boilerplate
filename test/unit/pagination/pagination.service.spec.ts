@@ -2,13 +2,15 @@ import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { HelperModule } from 'src/common/helper/helper.module';
 import {
-    PAGINATION_AVAILABLE_SORT,
+    PAGINATION_AVAILABLE_ORDER_BY,
     PAGINATION_MAX_PAGE,
     PAGINATION_MAX_PER_PAGE,
+    PAGINATION_ORDER_BY,
+    PAGINATION_ORDER_DIRECTION,
     PAGINATION_PAGE,
     PAGINATION_PER_PAGE,
-    PAGINATION_SORT,
 } from 'src/common/pagination/constants/pagination.constant';
+import { IPaginationOrder } from 'src/common/pagination/interfaces/pagination.interface';
 import { PaginationModule } from 'src/common/pagination/pagination.module';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import configs from 'src/configs';
@@ -290,48 +292,35 @@ describe('PaginationService', () => {
         });
     });
 
-    describe('sort', () => {
-        it('should be return sort', async () => {
-            const result: Record<string, number | string> =
-                paginationService.sort(
-                    PAGINATION_AVAILABLE_SORT,
-                    PAGINATION_SORT
-                );
+    describe('order', () => {
+        it('should be return order with null parameter', async () => {
+            const result: IPaginationOrder = paginationService.order();
 
-            jest.spyOn(paginationService, 'sort').mockReturnValueOnce(
+            jest.spyOn(paginationService, 'order').mockReturnValueOnce(
                 result as any
             );
 
             expect(result).toBeTruthy();
         });
 
-        it('should be return sort default field', async () => {
-            const result: Record<string, number | string> =
-                paginationService.sort(['createdAt'], 'name@asc');
+        it('should be return order with unallow order by value', async () => {
+            const result: IPaginationOrder = paginationService.order('status');
 
-            jest.spyOn(paginationService, 'sort').mockReturnValueOnce(
+            jest.spyOn(paginationService, 'order').mockReturnValueOnce(
                 result as any
             );
 
             expect(result).toBeTruthy();
         });
 
-        it('should be return sort default type', async () => {
-            const result: Record<string, number | string> =
-                paginationService.sort(['createdAt'], 'name@aaa');
-
-            jest.spyOn(paginationService, 'sort').mockReturnValueOnce(
-                result as any
+        it('should be return order', async () => {
+            const result: IPaginationOrder = paginationService.order(
+                PAGINATION_ORDER_BY,
+                PAGINATION_ORDER_DIRECTION,
+                PAGINATION_AVAILABLE_ORDER_BY
             );
 
-            expect(result).toBeTruthy();
-        });
-
-        it('should be return sort default', async () => {
-            const result: Record<string, number | string> =
-                paginationService.sort(['createdAt']);
-
-            jest.spyOn(paginationService, 'sort').mockReturnValueOnce(
+            jest.spyOn(paginationService, 'order').mockReturnValueOnce(
                 result as any
             );
 
@@ -342,7 +331,7 @@ describe('PaginationService', () => {
     describe('search', () => {
         it('should be return search', async () => {
             const result: Record<string, number | string> =
-                paginationService.search(['name'], 'test');
+                paginationService.search('test', ['name']);
 
             jest.spyOn(paginationService, 'search').mockReturnValueOnce(
                 result as any
@@ -353,7 +342,7 @@ describe('PaginationService', () => {
 
         it('should be return undefined', async () => {
             const result: Record<string, number | string> =
-                paginationService.search(['name'], undefined);
+                paginationService.search(undefined, ['name']);
 
             jest.spyOn(paginationService, 'search').mockReturnValueOnce(
                 result as any
@@ -385,6 +374,20 @@ describe('PaginationService', () => {
             jest.spyOn(paginationService, 'filterContain').mockReturnValueOnce(
                 result as any
             );
+
+            expect(result).toBeTruthy();
+        });
+    });
+
+    describe('filterContainFullMatch', () => {
+        it('should be return a value', async () => {
+            const result: Record<string, { $regex: RegExp; $options: string }> =
+                paginationService.filterContainFullMatch('name', 'test');
+
+            jest.spyOn(
+                paginationService,
+                'filterContainFullMatch'
+            ).mockReturnValueOnce(result as any);
 
             expect(result).toBeTruthy();
         });

@@ -8,10 +8,6 @@ import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
-import {
-    E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
-    E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
-} from 'test/e2e/user/user.constant';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
 import {
     E2E_API_KEY_ADMIN_ACTIVE_URL,
@@ -23,10 +19,14 @@ import {
     E2E_API_KEY_ADMIN_UPDATE_NAME_URL,
     E2E_API_KEY_ADMIN_UPDATE_RESET_URL,
 } from 'test/e2e/api-key/api-key.constant';
-import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { faker } from '@faker-js/faker';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
+import {
+    E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
+    E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
+} from 'test/e2e/user/user.constant';
 
 describe('E2E Api Key Admin', () => {
     let app: INestApplication;
@@ -37,8 +37,8 @@ describe('E2E Api Key Admin', () => {
     let accessToken: string;
     let permissionToken: string;
 
-    let apiKey: ApiKeyEntity;
-    let apiKeyExpired: ApiKeyEntity;
+    let apiKey: ApiKeyDoc;
+    let apiKeyExpired: ApiKeyDoc;
     const apiKeyCreate = {
         name: `${faker.name.firstName()}${faker.random.alphaNumeric(20)}`,
     };
@@ -78,16 +78,20 @@ describe('E2E Api Key Admin', () => {
             _id: payload._id,
         });
 
-        apiKey = await apiKeyService.create({
+        const apiKeyCreated1 = await apiKeyService.create({
             name: faker.internet.userName(),
             description: faker.random.alphaNumeric(),
         });
 
-        apiKeyExpired = await apiKeyService.create({
+        apiKey = await apiKeyService.findOneById(apiKeyCreated1._id);
+
+        const apiKeyCreated2 = await apiKeyService.create({
             name: faker.internet.userName(),
             startDate: helperDateService.backwardInDays(7),
             endDate: helperDateService.backwardInDays(1),
         });
+
+        apiKeyExpired = await apiKeyService.findOneById(apiKeyCreated2._id);
 
         await app.init();
     });
@@ -237,7 +241,7 @@ describe('E2E Api Key Admin', () => {
     });
 
     it(`PATCH ${E2E_API_KEY_ADMIN_ACTIVE_URL} Expired`, async () => {
-        await apiKeyService.inactive(apiKeyExpired._id);
+        await apiKeyService.inactive(apiKeyExpired);
         const response = await request(app.getHttpServer())
             .patch(
                 E2E_API_KEY_ADMIN_ACTIVE_URL.replace(':_id', apiKeyExpired._id)
@@ -245,7 +249,7 @@ describe('E2E Api Key Admin', () => {
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-permission-token', permissionToken);
 
-        await apiKeyService.active(apiKeyExpired._id);
+        await apiKeyService.active(apiKeyExpired);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(

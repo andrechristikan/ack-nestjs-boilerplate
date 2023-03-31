@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
-import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
+import { IApiKeyCreatedEntity } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
@@ -26,7 +26,7 @@ describe('LoggerService', () => {
     let apiKeyService: ApiKeyService;
     let loggerService: LoggerService;
 
-    let apiKey: IApiKeyEntity;
+    let apiKey: IApiKeyCreatedEntity;
 
     const loggerLevel: ENUM_LOGGER_LEVEL = ENUM_LOGGER_LEVEL.INFO;
     const logger: LoggerCreateDto = {

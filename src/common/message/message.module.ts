@@ -3,14 +3,13 @@ import * as path from 'path';
 import { I18nModule, HeaderResolver, I18nJsonLoader } from 'nestjs-i18n';
 import { ConfigService } from '@nestjs/config';
 import { MessageService } from './services/message.service';
-import { MessageEnumService } from './services/message.enum.service';
 import { ENUM_MESSAGE_LANGUAGE } from './constants/message.enum.constant';
 import { MessageMiddlewareModule } from 'src/common/message/middleware/message.middleware.module';
 
 @Global()
 @Module({
-    providers: [MessageService, MessageEnumService],
-    exports: [MessageService, MessageEnumService],
+    providers: [MessageService],
+    exports: [MessageService],
     imports: [
         I18nModule.forRootAsync({
             useFactory: (configService: ConfigService) => ({

@@ -11,6 +11,8 @@ import {
 } from 'src/common/message/interfaces/message.interface';
 
 export interface IMessageService {
+    getAvailableLanguages(): Promise<string[]>;
+
     setMessage<T = string>(
         lang: string,
         key: string,

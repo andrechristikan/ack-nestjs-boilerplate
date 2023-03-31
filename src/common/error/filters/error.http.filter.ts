@@ -104,15 +104,14 @@ export class ErrorHttpFilter implements ExceptionFilter {
             version: __version,
             repoVersion: __repoVersion,
         };
-
         if (exception instanceof HttpException) {
             // Restructure
+            const responseException = exception.getResponse();
             statusHttp = exception.getStatus();
             messagePath = `http.${statusHttp}`;
             statusCode = exception.getStatus();
 
-            if (this.isErrorException(response)) {
-                const responseException = response as IErrorException;
+            if (this.isErrorException(responseException)) {
                 const { _metadata } = responseException;
 
                 statusCode = responseException.statusCode;

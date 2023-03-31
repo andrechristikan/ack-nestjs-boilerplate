@@ -66,7 +66,7 @@
 Next development
 
 * [x] serialization update
-* [ ] update unit test for common modules
+* [x] update unit test for common modules
 * [ ] excel decorator optimize
 * [ ] Authorization optimize, remove permission entity (?)
 * [ ] Google SSO
