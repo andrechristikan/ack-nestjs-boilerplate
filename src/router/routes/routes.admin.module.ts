@@ -3,8 +3,8 @@ import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 import { ApiKeyAdminController } from 'src/common/api-key/controllers/api-key.admin.controller';
 import { AuthModule } from 'src/common/auth/auth.module';
 import { SettingAdminController } from 'src/common/setting/controllers/setting.admin.controller';
-// import { PermissionAdminController } from 'src/modules/permission/controllers/permission.admin.controller';
-// import { PermissionModule } from 'src/modules/permission/permission.module';
+import { PermissionAdminController } from 'src/modules/permission/controllers/permission.admin.controller';
+import { PermissionModule } from 'src/modules/permission/permission.module';
 // import { RoleAdminController } from 'src/modules/role/controllers/role.admin.controller';
 // import { RoleModule } from 'src/modules/role/role.module';
 // import { UserAdminController } from 'src/modules/user/controllers/user.admin.controller';
@@ -14,7 +14,7 @@ import { SettingAdminController } from 'src/common/setting/controllers/setting.a
     controllers: [
         SettingAdminController,
         ApiKeyAdminController,
-        // PermissionAdminController,
+        PermissionAdminController,
         // RoleAdminController,
         // UserAdminController,
     ],
@@ -23,7 +23,7 @@ import { SettingAdminController } from 'src/common/setting/controllers/setting.a
     imports: [
         AuthModule,
         ApiKeyModule,
-        // PermissionModule,
+        PermissionModule,
         // RoleModule,
         // UserModule,
     ],
