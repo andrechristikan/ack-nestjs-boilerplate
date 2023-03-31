@@ -65,6 +65,18 @@ export class RoleService implements IRoleService {
         return this.roleRepository.getTotal(find, options);
     }
 
+    async exist(
+        _id: string,
+        options?: IDatabaseExistOptions
+    ): Promise<boolean> {
+        return this.roleRepository.exists(
+            {
+                _id,
+            },
+            { ...options, withDeleted: false }
+        );
+    }
+
     async existByName(
         name: string,
         options?: IDatabaseExistOptions
