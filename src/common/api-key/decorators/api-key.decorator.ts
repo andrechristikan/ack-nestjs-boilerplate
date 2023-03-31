@@ -20,8 +20,8 @@ export function ApiKeyProtected(): MethodDecorator {
 }
 
 export const GetApiKey = createParamDecorator(
-    (data: string, ctx: ExecutionContext): ApiKeyDoc => {
+    (returnPlain: boolean, ctx: ExecutionContext): ApiKeyDoc => {
         const { __apiKey } = ctx.switchToHttp().getRequest();
-        return __apiKey;
+        return returnPlain ? __apiKey.toObject() : __apiKey;
     }
 );

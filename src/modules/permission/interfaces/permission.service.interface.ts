@@ -22,7 +22,12 @@ export interface IPermissionService {
     ): Promise<PermissionEntity[]>;
 
     findAllByGroup(
-        groups?: Record<string, any>,
+        filterGroups?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<PermissionEntity[]>;
+
+    findAllByIds(
+        ids: string[],
         options?: IDatabaseFindAllOptions
     ): Promise<PermissionEntity[]>;
 
@@ -41,7 +46,7 @@ export interface IPermissionService {
         options?: IDatabaseOptions
     ): Promise<number>;
 
-    delete(repository: PermissionDoc): Promise<PermissionEntity>;
+    delete(repository: PermissionDoc): Promise<PermissionDoc>;
 
     create(
         data: PermissionCreateDto,

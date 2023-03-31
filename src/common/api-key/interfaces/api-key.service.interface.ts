@@ -26,22 +26,22 @@ export interface IApiKeyService {
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKeyEntity>;
+    ): Promise<ApiKeyDoc>;
 
     findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKeyEntity>;
+    ): Promise<ApiKeyDoc>;
 
     findOneByKey(
         key: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKeyEntity>;
+    ): Promise<ApiKeyDoc>;
 
     findOneByActiveKey(
         key: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKeyEntity>;
+    ): Promise<ApiKeyDoc>;
 
     getTotal(
         find?: Record<string, any>,

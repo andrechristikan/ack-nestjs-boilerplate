@@ -42,29 +42,41 @@ export class ApiKeyService implements IApiKeyService {
     async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<ApiKeyDoc[]> {
-        return this.apiKeyRepository.findAll<ApiKeyDoc>(find, options);
+    ): Promise<ApiKeyEntity[]> {
+        return this.apiKeyRepository.findAll<ApiKeyEntity>(find, {
+            ...options,
+            returnPlain: true,
+        });
     }
 
     async findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc> {
-        return this.apiKeyRepository.findOneById<ApiKeyDoc>(_id, options);
+        return this.apiKeyRepository.findOneById<ApiKeyDoc>(_id, {
+            ...options,
+            returnPlain: false,
+        });
     }
 
     async findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc> {
-        return this.apiKeyRepository.findOne<ApiKeyDoc>(find, options);
+        return this.apiKeyRepository.findOne<ApiKeyDoc>(find, {
+            ...options,
+            returnPlain: false,
+        });
     }
 
     async findOneByKey(
         key: string,
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc> {
-        return this.apiKeyRepository.findOne<ApiKeyDoc>({ key }, options);
+        return this.apiKeyRepository.findOne<ApiKeyDoc>(
+            { key },
+            { ...options, returnPlain: false }
+        );
     }
 
     async findOneByActiveKey(
@@ -76,7 +88,7 @@ export class ApiKeyService implements IApiKeyService {
                 key,
                 isActive: true,
             },
-            options
+            { ...options, returnPlain: false }
         );
     }
 

@@ -56,7 +56,10 @@ import {
 import { PermissionUpdateDescriptionDto } from 'src/modules/permission/dtos/permission.update-description.dto';
 import { PermissionRequestDto } from 'src/modules/permission/dtos/permissions.request.dto';
 import { IPermissionGroup } from 'src/modules/permission/interfaces/permission.interface';
-import { PermissionDoc } from 'src/modules/permission/repository/entities/permission.entity';
+import {
+    PermissionDoc,
+    PermissionEntity,
+} from 'src/modules/permission/repository/entities/permission.entity';
 import { PermissionGetSerialization } from 'src/modules/permission/serializations/permission.get.serialization';
 import { PermissionGroupsSerialization } from 'src/modules/permission/serializations/permission.group.serialization';
 import { PermissionListSerialization } from 'src/modules/permission/serializations/permission.list.serialization';
@@ -107,7 +110,7 @@ export class PermissionAdminController {
             ...group,
         };
 
-        const permissions: PermissionDoc[] =
+        const permissions: PermissionEntity[] =
             await this.permissionService.findAll(find, {
                 paging: {
                     limit: _limit,
@@ -143,7 +146,7 @@ export class PermissionAdminController {
         )
         groups: Record<string, any>
     ): Promise<IResponse> {
-        const permissions: PermissionDoc[] =
+        const permissions: PermissionEntity[] =
             await this.permissionService.findAllByGroup(groups);
 
         const permissionGroups: IPermissionGroup[] =
@@ -161,7 +164,9 @@ export class PermissionAdminController {
     @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.PERMISSION_READ)
     @AuthJwtAdminAccessProtected()
     @Get('/get/:permission')
-    async get(@GetPermission() permission: PermissionDoc): Promise<IResponse> {
+    async get(
+        @GetPermission(true) permission: PermissionEntity
+    ): Promise<IResponse> {
         return { data: permission };
     }
 

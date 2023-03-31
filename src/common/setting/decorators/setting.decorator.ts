@@ -12,9 +12,9 @@ import {
 import { SettingDoc } from 'src/common/setting/repository/entities/setting.entity';
 
 export const GetSetting = createParamDecorator(
-    (data: string, ctx: ExecutionContext): SettingDoc => {
+    (returnPlain: boolean, ctx: ExecutionContext): SettingDoc => {
         const { __setting } = ctx.switchToHttp().getRequest();
-        return __setting;
+        return returnPlain ? __setting.toObject() : __setting;
     }
 );
 

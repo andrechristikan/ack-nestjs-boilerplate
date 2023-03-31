@@ -131,7 +131,7 @@ export class ApiKeyAdminController {
     @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.API_KEY_READ)
     @AuthJwtAdminAccessProtected()
     @Get('get/:apiKey')
-    async get(@GetApiKey() apiKey: ApiKeyDoc): Promise<IResponse> {
+    async get(@GetApiKey(true) apiKey: ApiKeyEntity): Promise<IResponse> {
         return { data: apiKey };
     }
 

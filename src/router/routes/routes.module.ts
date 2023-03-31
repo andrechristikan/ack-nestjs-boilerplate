@@ -24,8 +24,8 @@ import { HealthModule } from 'src/health/health.module';
         TerminusModule,
         AuthModule,
         HealthModule,
-        // UserModule,
         // RoleModule,
+        // UserModule,
     ],
 })
 export class RoutesModule {}

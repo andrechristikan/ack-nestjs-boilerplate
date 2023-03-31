@@ -43,22 +43,34 @@ export class SettingService implements ISettingService {
     async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<SettingDoc[]> {
-        return this.settingRepository.findAll<SettingDoc>(find, options);
+    ): Promise<SettingEntity[]> {
+        return this.settingRepository.findAll<SettingEntity>(find, {
+            ...options,
+            returnPlain: true,
+        });
     }
 
     async findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
     ): Promise<SettingDoc> {
-        return this.settingRepository.findOneById<SettingDoc>(_id, options);
+        return this.settingRepository.findOneById<SettingDoc>(_id, {
+            ...options,
+            returnPlain: false,
+        });
     }
 
     async findOneByName(
         name: string,
         options?: IDatabaseFindOneOptions
     ): Promise<SettingDoc> {
-        return this.settingRepository.findOne<SettingDoc>({ name }, options);
+        return this.settingRepository.findOne<SettingDoc>(
+            { name },
+            {
+                ...options,
+                returnPlain: false,
+            }
+        );
     }
 
     async getTotal(
@@ -71,7 +83,7 @@ export class SettingService implements ISettingService {
     async create(
         { name, description, type, value }: SettingCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<SettingDoc> {
+    ): Promise<SettingEntity> {
         const create: SettingEntity = new SettingEntity();
         create.name = name;
         create.description = description ?? undefined;
@@ -80,7 +92,10 @@ export class SettingService implements ISettingService {
 
         return this.settingRepository.create<SettingDoc, SettingEntity>(
             create,
-            options
+            {
+                ...options,
+                returnPlain: false,
+            }
         );
     }
 

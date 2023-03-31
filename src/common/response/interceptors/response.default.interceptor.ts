@@ -31,7 +31,6 @@ import {
     RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
 } from 'src/common/response/constants/response.constant';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
-import { Document } from 'mongoose';
 
 @Injectable()
 export class ResponseDefaultInterceptor<T>
@@ -101,10 +100,7 @@ export class ResponseDefaultInterceptor<T>
 
                     if (responseData) {
                         const { _metadata } = responseData;
-                        data =
-                            responseData.data instanceof Document
-                                ? responseData.data.toObject()
-                                : responseData.data;
+                        data = responseData.data;
 
                         if (classSerialization) {
                             data = plainToInstance(

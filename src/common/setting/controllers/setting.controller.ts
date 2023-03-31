@@ -30,7 +30,7 @@ import {
     SettingListDoc,
 } from 'src/common/setting/docs/setting.doc';
 import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
-import { SettingDoc } from 'src/common/setting/repository/entities/setting.entity';
+import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingGetSerialization } from 'src/common/setting/serializations/setting.get.serialization';
 import { SettingListSerialization } from 'src/common/setting/serializations/setting.list.serialization';
 import { SettingService } from 'src/common/setting/services/setting.service';
@@ -65,13 +65,16 @@ export class SettingController {
             ..._search,
         };
 
-        const settings: SettingDoc[] = await this.settingService.findAll(find, {
-            paging: {
-                limit: _limit,
-                offset: _offset,
-            },
-            order: _order,
-        });
+        const settings: SettingEntity[] = await this.settingService.findAll(
+            find,
+            {
+                paging: {
+                    limit: _limit,
+                    offset: _offset,
+                },
+                order: _order,
+            }
+        );
         const total: number = await this.settingService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
             total,
@@ -91,7 +94,7 @@ export class SettingController {
     @SettingGetGuard()
     @RequestParamGuard(SettingRequestDto)
     @Get('get/:setting')
-    async get(@GetSetting() setting: SettingDoc): Promise<IResponse> {
+    async get(@GetSetting(true) setting: SettingEntity): Promise<IResponse> {
         return { data: setting };
     }
 
@@ -101,7 +104,9 @@ export class SettingController {
     })
     @SettingGetByNameGuard()
     @Get('get/name/:settingName')
-    async getByName(@GetSetting() setting: SettingDoc): Promise<IResponse> {
+    async getByName(
+        @GetSetting(true) setting: SettingEntity
+    ): Promise<IResponse> {
         return { data: setting };
     }
 }

@@ -8,13 +8,16 @@ import {
 import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
 import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
 import { SettingUpdateValueDto } from 'src/common/setting/dtos/setting.update-value.dto';
-import { SettingDoc } from 'src/common/setting/repository/entities/setting.entity';
+import {
+    SettingDoc,
+    SettingEntity,
+} from 'src/common/setting/repository/entities/setting.entity';
 
 export interface ISettingService {
     findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<SettingDoc[]>;
+    ): Promise<SettingEntity[]>;
 
     findOneById(
         _id: string,
@@ -34,7 +37,7 @@ export interface ISettingService {
     create(
         data: SettingCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<SettingDoc>;
+    ): Promise<SettingEntity>;
 
     updateValue(
         repository: SettingDoc,

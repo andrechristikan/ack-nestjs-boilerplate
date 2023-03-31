@@ -33,7 +33,6 @@ import {
     RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
 } from 'src/common/response/constants/response.constant';
 import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
-import { Document } from 'mongoose';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
 
 @Injectable()
@@ -107,10 +106,7 @@ export class ResponsePagingInterceptor<T>
                     }
 
                     const { _metadata } = responseData;
-                    data =
-                        responseData.data instanceof Document
-                            ? responseData.data.map((val) => val.toObject())
-                            : responseData.data;
+                    data = responseData.data;
 
                     if (classSerialization) {
                         data = plainToInstance(

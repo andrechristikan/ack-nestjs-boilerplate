@@ -27,19 +27,36 @@ export class PermissionService implements IPermissionService {
     async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<PermissionDoc[]> {
-        return this.permissionRepository.findAll<PermissionDoc>(find, options);
+    ): Promise<PermissionEntity[]> {
+        return this.permissionRepository.findAll<PermissionEntity>(find, {
+            ...options,
+            returnPlain: false,
+        });
+    }
+
+    async findAllByIds(
+        ids: string[],
+        options?: IDatabaseFindAllOptions
+    ): Promise<PermissionEntity[]> {
+        return this.permissionRepository.findAll<PermissionEntity>(
+            { _id: { $in: ids } },
+            {
+                ...options,
+                returnPlain: false,
+            }
+        );
     }
 
     async findAllByGroup(
-        groups?: Record<string, any>,
+        filterGroups?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<PermissionDoc[]> {
-        return this.permissionRepository.findAll<PermissionDoc>(
-            { ...groups },
+    ): Promise<PermissionEntity[]> {
+        return this.permissionRepository.findAll<PermissionEntity>(
+            { ...filterGroups },
             {
                 ...options,
                 order: { group: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC },
+                returnPlain: false,
             }
         );
     }
@@ -48,17 +65,20 @@ export class PermissionService implements IPermissionService {
         _id: string,
         options?: IDatabaseFindOneOptions
     ): Promise<PermissionDoc> {
-        return this.permissionRepository.findOneById<PermissionDoc>(
-            _id,
-            options
-        );
+        return this.permissionRepository.findOneById<PermissionDoc>(_id, {
+            ...options,
+            returnPlain: true,
+        });
     }
 
     async findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
     ): Promise<PermissionDoc> {
-        return this.permissionRepository.findOne<PermissionDoc>(find, options);
+        return this.permissionRepository.findOne<PermissionDoc>(find, {
+            ...options,
+            returnPlain: true,
+        });
     }
 
     async getTotal(
@@ -75,14 +95,20 @@ export class PermissionService implements IPermissionService {
     async create(
         { group, code, description }: PermissionCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<PermissionDoc> {
+    ): Promise<PermissionEntity> {
         const create: PermissionEntity = new PermissionEntity();
         create.group = group;
         create.code = code;
         create.description = description ?? undefined;
         create.isActive = true;
 
-        return this.permissionRepository.create<PermissionDoc>(create, options);
+        return this.permissionRepository.create<
+            PermissionDoc,
+            PermissionEntity
+        >(create, {
+            ...options,
+            returnPlain: false,
+        });
     }
 
     async updateDescription(
@@ -115,11 +141,11 @@ export class PermissionService implements IPermissionService {
     }
 
     async groupingByGroups(
-        permissions: PermissionDoc[]
+        permissions: PermissionEntity[]
     ): Promise<IPermissionGroup[]> {
         return Object.values(ENUM_PERMISSION_GROUP)
             .map((val) => {
-                const pms: PermissionDoc[] = permissions.filter(
+                const pms: PermissionEntity[] = permissions.filter(
                     (l) => l.group === val
                 );
 
