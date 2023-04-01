@@ -8,13 +8,7 @@ export interface IDatabaseFindOneOptions<T = any>
     join?: boolean | PopulateOptions | PopulateOptions[];
     session?: T;
     withDeleted?: boolean;
-    returnPlain?: boolean;
 }
-
-export type IDatabaseFindOneLockOptions<T = any> = Omit<
-    IDatabaseFindOneOptions<T>,
-    'returnPlain'
->;
 
 export type IDatabaseOptions<T = any> = Pick<
     IDatabaseFindOneOptions<T>,
@@ -29,7 +23,7 @@ export interface IDatabaseFindAllOptions<T = any>
 // create
 
 export interface IDatabaseCreateOptions<T = any>
-    extends Pick<IDatabaseFindOneOptions<T>, 'returnPlain' | 'session'> {
+    extends Pick<IDatabaseFindOneOptions<T>, 'session'> {
     _id?: string;
 }
 

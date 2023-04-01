@@ -7,7 +7,6 @@ import {
     IDatabaseCreateManyOptions,
     IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 import { PermissionCreateDto } from 'src/modules/permission/dtos/permission.create.dto';
 import { PermissionUpdateDescriptionDto } from 'src/modules/permission/dtos/permission.update-description.dto';
@@ -28,36 +27,29 @@ export class PermissionService implements IPermissionService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<PermissionEntity[]> {
-        return this.permissionRepository.findAll<PermissionEntity>(find, {
-            ...options,
-            returnPlain: false,
-        });
+        return this.permissionRepository.findAll<PermissionEntity>(
+            find,
+            options
+        );
     }
 
     async findAllByIds(
         ids: string[],
         options?: IDatabaseFindAllOptions
-    ): Promise<PermissionEntity[]> {
-        return this.permissionRepository.findAll<PermissionEntity>(
+    ): Promise<PermissionDoc[]> {
+        return this.permissionRepository.findAll<PermissionDoc>(
             { _id: { $in: ids } },
-            {
-                ...options,
-                returnPlain: false,
-            }
+            options
         );
     }
 
     async findAllByGroup(
         filterGroups?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<PermissionEntity[]> {
-        return this.permissionRepository.findAll<PermissionEntity>(
+    ): Promise<PermissionDoc[]> {
+        return this.permissionRepository.findAll<PermissionDoc>(
             { ...filterGroups },
-            {
-                ...options,
-                order: { group: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC },
-                returnPlain: false,
-            }
+            options
         );
     }
 
@@ -65,20 +57,17 @@ export class PermissionService implements IPermissionService {
         _id: string,
         options?: IDatabaseFindOneOptions
     ): Promise<PermissionDoc> {
-        return this.permissionRepository.findOneById<PermissionDoc>(_id, {
-            ...options,
-            returnPlain: true,
-        });
+        return this.permissionRepository.findOneById<PermissionDoc>(
+            _id,
+            options
+        );
     }
 
     async findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
     ): Promise<PermissionDoc> {
-        return this.permissionRepository.findOne<PermissionDoc>(find, {
-            ...options,
-            returnPlain: true,
-        });
+        return this.permissionRepository.findOne<PermissionDoc>(find, options);
     }
 
     async getTotal(
@@ -95,20 +84,17 @@ export class PermissionService implements IPermissionService {
     async create(
         { group, code, description }: PermissionCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<PermissionEntity> {
+    ): Promise<PermissionDoc> {
         const create: PermissionEntity = new PermissionEntity();
         create.group = group;
         create.code = code;
         create.description = description ?? undefined;
         create.isActive = true;
 
-        return this.permissionRepository.create<
-            PermissionDoc,
-            PermissionEntity
-        >(create, {
-            ...options,
-            returnPlain: false,
-        });
+        return this.permissionRepository.create<PermissionEntity>(
+            create,
+            options
+        );
     }
 
     async updateDescription(
@@ -141,20 +127,19 @@ export class PermissionService implements IPermissionService {
     }
 
     async groupingByGroups(
-        permissions: PermissionEntity[]
+        permissions: PermissionDoc[],
+        scope?: ENUM_PERMISSION_GROUP[]
     ): Promise<IPermissionGroup[]> {
-        return Object.values(ENUM_PERMISSION_GROUP)
-            .map((val) => {
-                const pms: PermissionEntity[] = permissions.filter(
-                    (l) => l.group === val
-                );
+        const permissionGroups: ENUM_PERMISSION_GROUP[] =
+            scope ?? Object.values(ENUM_PERMISSION_GROUP);
+        const permissionEntity: PermissionEntity[] = permissions
+            .map((val) => val.toObject())
+            .filter((val) => permissionGroups.includes(val.group));
 
-                return {
-                    group: val,
-                    permissions: pms,
-                };
-            })
-            .filter((val) => val.permissions.length !== 0);
+        return permissionGroups.map((val) => ({
+            group: val,
+            permissions: permissionEntity.filter((l) => l.group === val),
+        }));
     }
 
     async createMany(

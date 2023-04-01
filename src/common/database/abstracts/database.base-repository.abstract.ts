@@ -9,7 +9,6 @@ import {
     IDatabaseSoftDeleteManyOptions,
     IDatabaseRestoreManyOptions,
     IDatabaseRawOptions,
-    IDatabaseFindOneLockOptions,
 } from 'src/common/database/interfaces/database.interface';
 
 export abstract class DatabaseBaseRepositoryAbstract<Entity> {
@@ -36,12 +35,12 @@ export abstract class DatabaseBaseRepositoryAbstract<Entity> {
 
     abstract findOneAndLock<T = Entity>(
         find: Record<string, any>,
-        options?: IDatabaseFindOneLockOptions<any>
+        options?: IDatabaseFindOneOptions<any>
     ): Promise<T>;
 
     abstract findOneByIdAndLock<T = Entity>(
         _id: string,
-        options?: IDatabaseFindOneLockOptions<any>
+        options?: IDatabaseFindOneOptions<any>
     ): Promise<T>;
 
     abstract getTotal(
@@ -54,7 +53,7 @@ export abstract class DatabaseBaseRepositoryAbstract<Entity> {
         options?: IDatabaseExistOptions<any>
     ): Promise<boolean>;
 
-    abstract create<Dto>(
+    abstract create<Dto = any>(
         data: Dto,
         options?: IDatabaseCreateOptions<any>
     ): Promise<Entity>;

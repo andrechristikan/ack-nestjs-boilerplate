@@ -7,7 +7,7 @@ import {
     IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IApiKeyService } from 'src/common/api-key/interfaces/api-key.service.interface';
-import { IApiKeyCreatedEntity } from 'src/common/api-key/interfaces/api-key.interface';
+import { IApiKeyCreated } from 'src/common/api-key/interfaces/api-key.interface';
 import {
     ApiKeyDoc,
     ApiKeyEntity,
@@ -43,40 +43,28 @@ export class ApiKeyService implements IApiKeyService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<ApiKeyEntity[]> {
-        return this.apiKeyRepository.findAll<ApiKeyEntity>(find, {
-            ...options,
-            returnPlain: true,
-        });
+        return this.apiKeyRepository.findAll<ApiKeyEntity>(find, options);
     }
 
     async findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc> {
-        return this.apiKeyRepository.findOneById<ApiKeyDoc>(_id, {
-            ...options,
-            returnPlain: false,
-        });
+        return this.apiKeyRepository.findOneById<ApiKeyDoc>(_id, options);
     }
 
     async findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc> {
-        return this.apiKeyRepository.findOne<ApiKeyDoc>(find, {
-            ...options,
-            returnPlain: false,
-        });
+        return this.apiKeyRepository.findOne<ApiKeyDoc>(find, options);
     }
 
     async findOneByKey(
         key: string,
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc> {
-        return this.apiKeyRepository.findOne<ApiKeyDoc>(
-            { key },
-            { ...options, returnPlain: false }
-        );
+        return this.apiKeyRepository.findOne<ApiKeyDoc>({ key }, options);
     }
 
     async findOneByActiveKey(
@@ -88,7 +76,7 @@ export class ApiKeyService implements IApiKeyService {
                 key,
                 isActive: true,
             },
-            { ...options, returnPlain: false }
+            options
         );
     }
 
@@ -102,7 +90,7 @@ export class ApiKeyService implements IApiKeyService {
     async create(
         { name, description, startDate, endDate }: ApiKeyCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyCreatedEntity> {
+    ): Promise<IApiKeyCreated> {
         const key = await this.createKey();
         const secret = await this.createSecret();
         const hash: string = await this.createHashApiKey(key, secret);
@@ -119,13 +107,10 @@ export class ApiKeyService implements IApiKeyService {
             dto.endDate = endDate;
         }
 
-        const created: ApiKeyEntity =
-            await this.apiKeyRepository.create<ApiKeyEntity>(dto, {
-                ...options,
-                returnPlain: true,
-            });
+        const created: ApiKeyDoc =
+            await this.apiKeyRepository.create<ApiKeyEntity>(dto, options);
 
-        return { ...created, secret };
+        return { doc: created, secret };
     }
 
     async createRaw(
@@ -138,7 +123,7 @@ export class ApiKeyService implements IApiKeyService {
             endDate,
         }: ApiKeyCreateRawDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyCreatedEntity> {
+    ): Promise<IApiKeyCreated> {
         const hash: string = await this.createHashApiKey(key, secret);
 
         const dto: ApiKeyEntity = new ApiKeyEntity();
@@ -153,15 +138,10 @@ export class ApiKeyService implements IApiKeyService {
             dto.endDate = this.helperDateService.endOfDay(endDate);
         }
 
-        const created: ApiKeyDoc = await this.apiKeyRepository.create<
-            ApiKeyDoc,
-            ApiKeyEntity
-        >(dto, {
-            ...options,
-            returnPlain: true,
-        });
+        const created: ApiKeyDoc =
+            await this.apiKeyRepository.create<ApiKeyEntity>(dto, options);
 
-        return { ...created, secret };
+        return { doc: created, secret };
     }
 
     async active(repository: ApiKeyDoc): Promise<ApiKeyDoc> {

@@ -83,7 +83,7 @@ describe('E2E Api Key Admin', () => {
             description: faker.random.alphaNumeric(),
         });
 
-        apiKey = await apiKeyService.findOneById(apiKeyCreated1._id);
+        apiKey = await apiKeyService.findOneById(apiKeyCreated1.doc._id);
 
         const apiKeyCreated2 = await apiKeyService.create({
             name: faker.internet.userName(),
@@ -91,7 +91,7 @@ describe('E2E Api Key Admin', () => {
             endDate: helperDateService.backwardInDays(1),
         });
 
-        apiKeyExpired = await apiKeyService.findOneById(apiKeyCreated2._id);
+        apiKeyExpired = await apiKeyService.findOneById(apiKeyCreated2.doc._id);
 
         await app.init();
     });

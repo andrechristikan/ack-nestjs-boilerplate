@@ -34,7 +34,10 @@ import {
 } from 'src/common/response/interfaces/response.interface';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import { ENUM_PERMISSION_STATUS_CODE_ERROR } from 'src/modules/permission/constants/permission.status-code.constant';
-import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
+import {
+    PermissionDoc,
+    PermissionEntity,
+} from 'src/modules/permission/repository/entities/permission.entity';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
 import {
     ROLE_DEFAULT_ACCESS_FOR,
@@ -177,10 +180,9 @@ export class RoleAdminController {
             });
         }
 
-        const permissionsCheck = await Promise.all(
-            permissions.map((val) => this.permissionService.findOneById(val))
-        );
-        if (permissionsCheck.find((val) => !val) === null) {
+        const permissionsCheck: PermissionDoc[] =
+            await this.permissionService.findAllByIds(permissions);
+        if (permissionsCheck.length !== permissions.length) {
             throw new NotFoundException({
                 statusCode:
                     ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR,
@@ -266,15 +268,9 @@ export class RoleAdminController {
         @Body()
         { accessFor, permissions }: RoleUpdatePermissionDto
     ): Promise<IResponse> {
-        const promPermissions: Promise<PermissionEntity>[] = permissions.map(
-            (value) => this.permissionService.findOneById(value)
-        );
-        let checkPermission: PermissionEntity[] = await Promise.all(
-            promPermissions
-        );
-        checkPermission = checkPermission.filter((val) => val);
-
-        if (checkPermission.length !== permissions.length) {
+        const permissionsCheck: PermissionDoc[] =
+            await this.permissionService.findAllByIds(permissions);
+        if (permissionsCheck.length !== permissions.length) {
             throw new NotFoundException({
                 statusCode:
                     ENUM_PERMISSION_STATUS_CODE_ERROR.PERMISSION_NOT_FOUND_ERROR,

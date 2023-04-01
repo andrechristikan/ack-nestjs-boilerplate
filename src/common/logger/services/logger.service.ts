@@ -47,7 +47,7 @@ export class LoggerService implements ILoggerService {
         create.statusCode = statusCode;
         create.tags = tags;
 
-        return this.loggerRepository.create<LoggerDoc, LoggerEntity>(create);
+        return this.loggerRepository.create<LoggerEntity>(create);
     }
 
     async debug({
@@ -82,7 +82,7 @@ export class LoggerService implements ILoggerService {
         create.statusCode = statusCode;
         create.tags = tags;
 
-        return this.loggerRepository.create<LoggerDoc, LoggerEntity>(create);
+        return this.loggerRepository.create<LoggerEntity>(create);
     }
 
     async warn({
@@ -117,7 +117,7 @@ export class LoggerService implements ILoggerService {
         create.statusCode = statusCode;
         create.tags = tags;
 
-        return this.loggerRepository.create<LoggerDoc, LoggerEntity>(create);
+        return this.loggerRepository.create<LoggerEntity>(create);
     }
 
     async fatal({
@@ -152,7 +152,7 @@ export class LoggerService implements ILoggerService {
         create.statusCode = statusCode;
         create.tags = tags;
 
-        return this.loggerRepository.create<LoggerDoc, LoggerEntity>(create);
+        return this.loggerRepository.create<LoggerEntity>(create);
     }
 
     async raw({
@@ -188,6 +188,6 @@ export class LoggerService implements ILoggerService {
         create.statusCode = statusCode;
         create.tags = tags;
 
-        return this.loggerRepository.create<LoggerDoc, LoggerEntity>(create);
+        return this.loggerRepository.create<LoggerEntity>(create);
     }
 }

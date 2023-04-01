@@ -64,7 +64,10 @@ import {
 import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 import { UserRequestDto } from 'src/modules/user/dtos/user.request.dto';
-import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
+import {
+    IUserDoc,
+    IUserEntity,
+} from 'src/modules/user/interfaces/user.interface';
 import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
 import { UserImportSerialization } from 'src/modules/user/serializations/user.import.serialization';
 import { UserListSerialization } from 'src/modules/user/serializations/user.list.serialization';
@@ -87,6 +90,7 @@ import {
     PaginationQueryFilterInBoolean,
 } from 'src/common/pagination/decorators/pagination.decorator';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -156,8 +160,11 @@ export class UserAdminController {
     @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.USER_READ)
     @AuthJwtAdminAccessProtected()
     @Get('get/:user')
-    async get(@GetUser(true) user: IUserEntity): Promise<IResponse> {
-        return { data: user };
+    async get(@GetUser() user: UserDoc): Promise<IResponse> {
+        const userWithRole: IUserDoc = await this.userService.joinWithRole(
+            user
+        );
+        return { data: userWithRole.toObject() };
     }
 
     @UserCreateDoc()
@@ -214,17 +221,16 @@ export class UserAdminController {
         }
 
         try {
-            const password = await this.authService.createPassword(
-                body.password
-            );
+            const password: IAuthPassword =
+                await this.authService.createPassword(body.password);
 
-            const create = await this.userService.create(
+            const created: UserDoc = await this.userService.create(
                 { username, email, mobileNumber, role, ...body },
                 password
             );
 
             return {
-                data: { _id: create._id },
+                data: { _id: created._id },
             };
         } catch (err: any) {
             throw new InternalServerErrorException({
@@ -247,7 +253,7 @@ export class UserAdminController {
     @Delete('/delete/:user')
     async delete(@GetUser() user: UserDoc): Promise<void> {
         try {
-            await this.userService.delete(user._id);
+            await this.userService.delete(user);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

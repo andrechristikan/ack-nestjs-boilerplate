@@ -12,11 +12,11 @@ import {
     IDatabaseManyOptions,
     IDatabaseCreateManyOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleUpdateNameDto } from 'src/modules/role/dtos/role.update-name.dto';
 import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
+import { IRoleDoc } from 'src/modules/role/interfaces/role.interface';
 import { IRoleService } from 'src/modules/role/interfaces/role.service.interface';
 import {
     RoleDoc,
@@ -34,28 +34,29 @@ export class RoleService implements IRoleService {
     ): Promise<RoleEntity[]> {
         return this.roleRepository.findAll<RoleEntity>(find, {
             ...options,
-            returnPlain: true,
+            join: false,
         });
     }
 
-    async findOneById(
+    async findOneById<T>(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<RoleDoc> {
-        return this.roleRepository.findOneById<RoleDoc>(_id, {
-            ...options,
-            returnPlain: false,
-        });
+    ): Promise<T> {
+        return this.roleRepository.findOneById<T>(_id, options);
     }
 
-    async findOne(
+    async findOne<T>(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<RoleDoc> {
-        return this.roleRepository.findOne<RoleDoc>(find, {
-            ...options,
-            returnPlain: false,
-        });
+    ): Promise<T> {
+        return this.roleRepository.findOne<T>(find, options);
+    }
+
+    async findOneByName<T>(
+        name: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<T> {
+        return this.roleRepository.findOne<T>({ name }, options);
     }
 
     async getTotal(
@@ -92,32 +93,24 @@ export class RoleService implements IRoleService {
     async create(
         { accessFor, permissions, name }: RoleCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<RoleEntity> {
+    ): Promise<RoleDoc> {
         const create: RoleEntity = new RoleEntity();
         create.accessFor = accessFor;
         create.permissions = permissions;
         create.isActive = true;
         create.name = name;
 
-        return this.roleRepository.create<RoleEntity>(create, {
-            ...options,
-            returnPlain: true,
-        });
+        return this.roleRepository.create<RoleEntity>(create, options);
     }
 
-    async createSuperAdmin(
-        options?: IDatabaseCreateOptions
-    ): Promise<RoleEntity> {
+    async createSuperAdmin(options?: IDatabaseCreateOptions): Promise<RoleDoc> {
         const create: RoleEntity = new RoleEntity();
         create.name = 'superadmin';
         create.permissions = [];
         create.isActive = true;
         create.accessFor = ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN;
 
-        return this.roleRepository.create<RoleEntity>(create, {
-            ...options,
-            returnPlain: true,
-        });
+        return this.roleRepository.create<RoleEntity>(create, options);
     }
 
     async updateName(
@@ -151,6 +144,15 @@ export class RoleService implements IRoleService {
         return this.roleRepository.save(repository);
     }
 
+    async joinWithPermission(repository: RoleDoc): Promise<IRoleDoc> {
+        return repository.populate({
+            path: 'permissions',
+            localField: 'permissions',
+            foreignField: '_id',
+            model: PermissionEntity.name,
+        });
+    }
+
     async delete(repository: RoleDoc): Promise<RoleDoc> {
         return this.roleRepository.softDelete(repository);
     }
@@ -178,13 +180,6 @@ export class RoleService implements IRoleService {
             }
         );
         return this.roleRepository.createMany<RoleEntity>(create, options);
-    }
-
-    async getPermissionByGroup(
-        permissions: PermissionEntity[],
-        scope: ENUM_PERMISSION_GROUP[]
-    ): Promise<PermissionEntity[]> {
-        return permissions.filter((val) => scope.includes(val.group));
     }
 
     async getAccessFor(): Promise<string[]> {

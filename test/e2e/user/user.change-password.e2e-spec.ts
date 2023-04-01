@@ -16,9 +16,18 @@ import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.sta
 import { RoleService } from 'src/modules/role/services/role.service';
 import { RoleModule } from 'src/modules/role/role.module';
 import { PermissionModule } from 'src/modules/permission/permission.module';
-import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
-import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
-import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
+import {
+    UserDoc,
+    UserEntity,
+} from 'src/modules/user/repository/entities/user.entity';
+import {
+    RoleDoc,
+    RoleEntity,
+} from 'src/modules/role/repository/entities/role.entity';
+import {
+    IUserDoc,
+    IUserEntity,
+} from 'src/modules/user/interfaces/user.interface';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 
 describe('E2E User Change Password', () => {
@@ -30,7 +39,7 @@ describe('E2E User Change Password', () => {
     const password = `aaAA@!123`;
     const newPassword = `bbBB@!456`;
 
-    let user: UserEntity;
+    let user: UserDoc;
 
     let accessToken: string;
     let accessTokenNotFound: string;
@@ -59,9 +68,7 @@ describe('E2E User Change Password', () => {
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
 
-        const role: RoleEntity = await roleService.findOne({
-            name: 'user',
-        });
+        const role: RoleDoc = await roleService.findOneByName('user');
 
         const passwordHash = await authService.createPassword(password);
 
@@ -78,14 +85,11 @@ describe('E2E User Change Password', () => {
             passwordHash
         );
 
-        const userPopulate = await userService.findOneById<IUserEntity>(
-            user._id,
-            {
-                join: true,
-            }
-        );
+        const userPopulate = await userService.findOneById<IUserDoc>(user._id, {
+            join: true,
+        });
 
-        const map = plainToInstance(UserPayloadSerialization, userPopulate);
+        const map = await userService.payloadSerialization(userPopulate);
         const payload = await authService.createPayloadAccessToken(map, false);
         const payloadNotFound = {
             ...payload,
@@ -156,7 +160,7 @@ describe('E2E User Change Password', () => {
     });
 
     it(`PATCH ${E2E_USER_CHANGE_PASSWORD_URL} Old Password Password Attempt Max`, async () => {
-        await userService.maxPasswordAttempt(user._id);
+        await userService.maxPasswordAttempt(user);
         const response = await request(app.getHttpServer())
             .patch(E2E_USER_CHANGE_PASSWORD_URL)
             .send({
@@ -170,7 +174,7 @@ describe('E2E User Change Password', () => {
             ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_ATTEMPT_MAX_ERROR
         );
 
-        await userService.resetPasswordAttempt(user._id);
+        await userService.resetPasswordAttempt(user);
     });
 
     it(`PATCH ${E2E_USER_CHANGE_PASSWORD_URL} New Password must different with old password`, async () => {

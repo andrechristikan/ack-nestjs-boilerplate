@@ -13,7 +13,10 @@ import {
 } from './user.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
-import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
+import {
+    IUserDoc,
+    IUserEntity,
+} from 'src/modules/user/interfaces/user.interface';
 import { plainToInstance } from 'class-transformer';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { AuthModule } from 'src/common/auth/auth.module';
@@ -152,13 +155,13 @@ describe('E2E User Public', () => {
     });
 
     it(`DELETE ${E2E_USER_PUBLIC_DELETE_URL} Success`, async () => {
-        const user = await userService.findOneByUsername<IUserEntity>(
+        const user = await userService.findOneByUsername<IUserDoc>(
             userData.username,
             {
                 join: true,
             }
         );
-        const map = plainToInstance(UserPayloadSerialization, user);
+        const map = await userService.payloadSerialization(user);
         const payload = await authService.createPayloadAccessToken(map, false);
         const accessToken = await authService.createAccessToken(payload);
 

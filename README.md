@@ -67,7 +67,8 @@ Next development
 
 * [x] serialization update
 * [x] update unit test for common modules
-* [ ] Rapikan service dan controller, manfaatkan options repository dan type doc atau entity
+* [x] Rapikan service dan controller, manfaatkan options repository dan type doc atau entity
+* [ ] user e2e
 * [ ] excel decorator optimize
 * [ ] Authorization optimize, remove permission entity (?)
 * [ ] Google SSO

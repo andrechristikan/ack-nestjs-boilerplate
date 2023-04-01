@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
-import { IApiKeyCreatedEntity } from 'src/common/api-key/interfaces/api-key.interface';
+import { IApiKeyCreated } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
@@ -26,7 +26,7 @@ describe('LoggerService', () => {
     let apiKeyService: ApiKeyService;
     let loggerService: LoggerService;
 
-    let apiKey: IApiKeyCreatedEntity;
+    let apiKey: IApiKeyCreated;
 
     const loggerLevel: ENUM_LOGGER_LEVEL = ENUM_LOGGER_LEVEL.INFO;
     const logger: LoggerCreateDto = {
@@ -90,14 +90,14 @@ describe('LoggerService', () => {
         };
         apiKey = await apiKeyService.create(apiKeyCreate);
 
-        loggerComplete.apiKey = apiKey._id;
+        loggerComplete.apiKey = apiKey.doc._id;
     });
 
     afterEach(async () => {
         jest.clearAllMocks();
 
         try {
-            await apiKeyService.deleteMany({ _id: apiKey._id });
+            await apiKeyService.deleteMany({ _id: apiKey.doc._id });
         } catch (err: any) {
             console.error(err);
         }

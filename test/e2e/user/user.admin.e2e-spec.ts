@@ -27,9 +27,18 @@ import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.sta
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
-import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
-import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
+import {
+    UserDoc,
+    UserEntity,
+} from 'src/modules/user/repository/entities/user.entity';
+import {
+    RoleDoc,
+    RoleEntity,
+} from 'src/modules/role/repository/entities/role.entity';
+import {
+    IUserDoc,
+    IUserEntity,
+} from 'src/modules/user/interfaces/user.interface';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 
 describe('E2E User Admin', () => {
@@ -43,7 +52,7 @@ describe('E2E User Admin', () => {
         .toUpperCase()}${faker.datatype.number({ min: 1, max: 99 })}`;
 
     let userData: Record<string, any>;
-    let userExist: UserEntity;
+    let userExist: UserDoc;
 
     let accessToken: string;
     let permissionToken: string;
@@ -70,9 +79,7 @@ describe('E2E User Admin', () => {
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
 
-        const role: RoleEntity = await roleService.findOne({
-            name: 'user',
-        });
+        const role: RoleDoc = await roleService.findOneByName('user');
 
         userData = {
             firstName: faker.name.firstName(),
@@ -99,7 +106,7 @@ describe('E2E User Admin', () => {
             passwordHash
         );
 
-        const user = await userService.findOne<IUserEntity>(
+        const user = await userService.findOne<IUserDoc>(
             {
                 email: 'superadmin@mail.com',
             },
@@ -107,8 +114,10 @@ describe('E2E User Admin', () => {
                 join: true,
             }
         );
-        const map = plainToInstance(UserPayloadSerialization, user);
+
+        const map = await userService.payloadSerialization(user);
         const payload = await authService.createPayloadAccessToken(map, false);
+
         accessToken = await authService.createAccessToken(payload);
         permissionToken = await authService.createPermissionToken({
             ...E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
@@ -160,17 +169,16 @@ describe('E2E User Admin', () => {
     });
 
     it(`POST ${E2E_USER_ADMIN_CREATE_URL} Create, Role Not Found`, async () => {
-        const req = {
+        const datauser = {
             ...userData,
             role: `${DatabaseDefaultUUID()}`,
             password,
         };
-
         const response = await request(app.getHttpServer())
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
             .set('x-permission-token', permissionToken)
-            .send(req);
+            .send(datauser);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -443,7 +451,10 @@ describe('E2E User Admin', () => {
     });
 
     it(`DELETE ${E2E_USER_ADMIN_DELETE_URL} Delete, success`, async () => {
-        await userService.blocked(userData._id);
+        const userBlocked = await userService.findOneByUsername<UserDoc>(
+            userExist.username
+        );
+        await userService.blocked(userBlocked);
 
         const response = await request(app.getHttpServer())
             .delete(E2E_USER_ADMIN_DELETE_URL.replace(':_id', userData._id))

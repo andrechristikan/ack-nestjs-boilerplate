@@ -14,6 +14,7 @@ import {
     PermissionDoc,
     PermissionEntity,
 } from 'src/modules/permission/repository/entities/permission.entity';
+import { ENUM_PERMISSION_GROUP } from 'src/modules/permission/constants/permission.enum.constant';
 
 export interface IPermissionService {
     findAll(
@@ -21,15 +22,15 @@ export interface IPermissionService {
         options?: IDatabaseFindAllOptions
     ): Promise<PermissionEntity[]>;
 
-    findAllByGroup(
-        filterGroups?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<PermissionEntity[]>;
-
     findAllByIds(
         ids: string[],
         options?: IDatabaseFindAllOptions
-    ): Promise<PermissionEntity[]>;
+    ): Promise<PermissionDoc[]>;
+
+    findAllByGroup(
+        filterGroups?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<PermissionDoc[]>;
 
     findOneById(
         _id: string,
@@ -49,18 +50,18 @@ export interface IPermissionService {
     delete(repository: PermissionDoc): Promise<PermissionDoc>;
 
     create(
-        data: PermissionCreateDto,
+        { group, code, description }: PermissionCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<PermissionEntity>;
+    ): Promise<PermissionDoc>;
 
     updateDescription(
         repository: PermissionDoc,
-        data: PermissionUpdateDescriptionDto
+        { description }: PermissionUpdateDescriptionDto
     ): Promise<PermissionDoc>;
 
     updateGroup(
         repository: PermissionDoc,
-        data: PermissionUpdateGroupDto
+        { group }: PermissionUpdateGroupDto
     ): Promise<PermissionDoc>;
 
     active(repository: PermissionDoc): Promise<PermissionDoc>;
@@ -68,7 +69,8 @@ export interface IPermissionService {
     inactive(repository: PermissionDoc): Promise<PermissionDoc>;
 
     groupingByGroups(
-        permissions: PermissionEntity[]
+        permissions: PermissionDoc[],
+        scope?: ENUM_PERMISSION_GROUP[]
     ): Promise<IPermissionGroup[]>;
 
     createMany(

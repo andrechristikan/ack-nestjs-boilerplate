@@ -44,9 +44,7 @@ export class UserPublicController {
         @Body()
         { email, mobileNumber, username, ...body }: UserSignUpDto
     ): Promise<void> {
-        const role: RoleDoc = await this.roleService.findOne({
-            name: 'user',
-        });
+        const role: RoleDoc = await this.roleService.findOneByName('user');
 
         const usernameExist: boolean = await this.userService.existByUsername(
             username

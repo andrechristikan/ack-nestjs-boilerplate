@@ -18,7 +18,6 @@ import {
     IDatabaseSoftDeleteManyOptions,
     IDatabaseRestoreManyOptions,
     IDatabaseRawOptions,
-    IDatabaseFindOneLockOptions,
 } from 'src/common/database/interfaces/database.interface';
 
 export abstract class DatabaseMongoUUIDRepositoryAbstract<
@@ -81,11 +80,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             findAll.session(options.session);
         }
 
-        if (options?.returnPlain) {
-            return findAll.lean();
-        }
-
-        return findAll.exec() as any;
+        return findAll.lean() as any;
     }
 
     async findAllDistinct<T = EntityDocument>(
@@ -135,11 +130,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             findAll.session(options.session);
         }
 
-        if (options?.returnPlain) {
-            return findAll.lean();
-        }
-
-        return findAll.exec() as any;
+        return findAll.lean() as any;
     }
     async findOne<T = EntityDocument>(
         find: Record<string, any>,
@@ -178,10 +169,6 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
 
         if (options?.order) {
             findOne.sort(options.order);
-        }
-
-        if (options?.returnPlain) {
-            return findOne.lean();
         }
 
         return findOne.exec() as any;
@@ -226,16 +213,12 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             findOne.sort(options.order);
         }
 
-        if (options?.returnPlain) {
-            return findOne.lean();
-        }
-
         return findOne.exec() as any;
     }
 
     async findOneAndLock<T = EntityDocument>(
         find: Record<string, any>,
-        options?: IDatabaseFindOneLockOptions<ClientSession>
+        options?: IDatabaseFindOneOptions<ClientSession>
     ): Promise<T> {
         const findOne = this._repository.findOneAndUpdate<EntityDocument>(
             find,
@@ -283,7 +266,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
 
     async findOneByIdAndLock<T = EntityDocument>(
         _id: string,
-        options?: IDatabaseFindOneLockOptions<ClientSession>
+        options?: IDatabaseFindOneOptions<ClientSession>
     ): Promise<T> {
         const findOne = this._repository.findByIdAndUpdate<EntityDocument>(
             _id,
@@ -367,13 +350,16 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         find: Record<string, any>,
         options?: IDatabaseExistOptions<ClientSession>
     ): Promise<boolean> {
-        const exist = this._repository.exists({
-            ...find,
-            _id: {
-                $nin: options?.excludeId ?? [],
-            },
-        });
+        if (options?.excludeId) {
+            find = {
+                ...find,
+                _id: {
+                    $nin: options?.excludeId ?? [],
+                },
+            };
+        }
 
+        const exist = this._repository.exists(find);
         if (options?.withDeleted) {
             exist.or([
                 {
@@ -403,10 +389,10 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         return result ? true : false;
     }
 
-    async create<T, Dto = any>(
+    async create<Dto = any>(
         data: Dto,
         options?: IDatabaseCreateOptions<ClientSession>
-    ): Promise<T> {
+    ): Promise<EntityDocument> {
         const dataCreate: Record<string, any> = data;
         if (options?._id) {
             dataCreate._id = options._id;
@@ -416,11 +402,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             session: options ? options.session : undefined,
         });
 
-        if (options?.returnPlain) {
-            return created[0].toObject() as T;
-        }
-
-        return created[0] as T;
+        return created[0] as EntityDocument;
     }
 
     async save(

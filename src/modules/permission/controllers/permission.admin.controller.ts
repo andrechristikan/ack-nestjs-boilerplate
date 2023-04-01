@@ -146,7 +146,7 @@ export class PermissionAdminController {
         )
         groups: Record<string, any>
     ): Promise<IResponse> {
-        const permissions: PermissionEntity[] =
+        const permissions: PermissionDoc[] =
             await this.permissionService.findAllByGroup(groups);
 
         const permissionGroups: IPermissionGroup[] =

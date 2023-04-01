@@ -4,7 +4,7 @@ import {
 } from 'src/common/api-key/dtos/api-key.create.dto';
 import { ApiKeyUpdateDateDto } from 'src/common/api-key/dtos/api-key.update-date.dto';
 import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
-import { IApiKeyCreatedEntity } from 'src/common/api-key/interfaces/api-key.interface';
+import { IApiKeyCreated } from 'src/common/api-key/interfaces/api-key.interface';
 import {
     ApiKeyDoc,
     ApiKeyEntity,
@@ -49,24 +49,34 @@ export interface IApiKeyService {
     ): Promise<number>;
 
     create(
-        data: ApiKeyCreateDto,
+        { name, description, startDate, endDate }: ApiKeyCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyCreatedEntity>;
+    ): Promise<IApiKeyCreated>;
 
     createRaw(
-        data: ApiKeyCreateRawDto,
+        {
+            name,
+            description,
+            key,
+            secret,
+            startDate,
+            endDate,
+        }: ApiKeyCreateRawDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyCreatedEntity>;
+    ): Promise<IApiKeyCreated>;
 
     active(repository: ApiKeyDoc): Promise<ApiKeyDoc>;
 
     inactive(repository: ApiKeyDoc): Promise<ApiKeyDoc>;
 
-    update(repository: ApiKeyDoc, data: ApiKeyUpdateDto): Promise<ApiKeyDoc>;
+    update(
+        repository: ApiKeyDoc,
+        { name, description }: ApiKeyUpdateDto
+    ): Promise<ApiKeyDoc>;
 
     updateDate(
         repository: ApiKeyDoc,
-        data: ApiKeyUpdateDateDto
+        { startDate, endDate }: ApiKeyUpdateDateDto
     ): Promise<ApiKeyDoc>;
 
     reset(repository: ApiKeyDoc, secret: string): Promise<ApiKeyDoc>;

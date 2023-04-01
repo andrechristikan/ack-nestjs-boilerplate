@@ -17,9 +17,18 @@ import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.stat
 import { RoleService } from 'src/modules/role/services/role.service';
 import { RoleModule } from 'src/modules/role/role.module';
 import { PermissionModule } from 'src/modules/permission/permission.module';
-import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
-import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
-import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
+import {
+    UserDoc,
+    UserEntity,
+} from 'src/modules/user/repository/entities/user.entity';
+import {
+    RoleDoc,
+    RoleEntity,
+} from 'src/modules/role/repository/entities/role.entity';
+import {
+    IUserDoc,
+    IUserEntity,
+} from 'src/modules/user/interfaces/user.interface';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 
 describe('E2E User', () => {
@@ -28,7 +37,7 @@ describe('E2E User', () => {
     let authService: AuthService;
     let roleService: RoleService;
 
-    let user: UserEntity;
+    let user: UserDoc;
 
     let accessToken: string;
     let accessTokenNotFound: string;
@@ -57,9 +66,7 @@ describe('E2E User', () => {
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
 
-        const role: RoleEntity = await roleService.findOne({
-            name: 'user',
-        });
+        const role: RoleDoc = await roleService.findOneByName('user');
 
         const password = faker.internet.password(20, true, /[A-Za-z0-9]/);
         const passwordHash = await authService.createPassword(password);
@@ -77,12 +84,9 @@ describe('E2E User', () => {
             passwordHash
         );
 
-        const userPopulate = await userService.findOneById<IUserEntity>(
-            user._id,
-            {
-                join: true,
-            }
-        );
+        const userPopulate = await userService.findOneById<IUserDoc>(user._id, {
+            join: true,
+        });
 
         const map = await userService.payloadSerialization(userPopulate);
         const payload = await authService.createPayloadAccessToken(map, false);

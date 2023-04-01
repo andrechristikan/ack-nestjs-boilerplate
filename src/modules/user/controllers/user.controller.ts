@@ -19,6 +19,7 @@ import {
     AuthJwtRefreshProtected,
     AuthJwtToken,
 } from 'src/common/auth/decorators/auth.jwt.decorator';
+import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { AwsS3Service } from 'src/common/aws/services/aws.s3.service';
@@ -33,10 +34,10 @@ import { Logger } from 'src/common/logger/decorators/logger.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { SettingService } from 'src/common/setting/services/setting.service';
-import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
+import { IPermissionGroup } from 'src/modules/permission/interfaces/permission.interface';
+import { PermissionDoc } from 'src/modules/permission/repository/entities/permission.entity';
 import { PermissionService } from 'src/modules/permission/services/permission.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
@@ -53,10 +54,7 @@ import {
 import { UserChangePasswordDto } from 'src/modules/user/dtos/user.change-password.dto';
 import { UserGrantPermissionDto } from 'src/modules/user/dtos/user.grant-permission.dto';
 import { UserLoginDto } from 'src/modules/user/dtos/user.login.dto';
-import {
-    IUserDoc,
-    IUserEntity,
-} from 'src/modules/user/interfaces/user.interface';
+import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserGrantPermissionSerialization } from 'src/modules/user/serializations/user.grant-permission.serialization';
 import { UserInfoSerialization } from 'src/modules/user/serializations/user.info.serialization';
@@ -145,8 +143,10 @@ export class UserController {
             });
         }
 
-        const role: RoleDoc = await this.roleService.findOneById(user.role);
-        if (!role.isActive) {
+        const userWithRole: IUserDoc = await this.userService.joinWithRole(
+            user
+        );
+        if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_INACTIVE_ERROR,
                 message: 'role.error.inactive',
@@ -164,10 +164,7 @@ export class UserController {
         }
 
         const payload: UserPayloadSerialization =
-            await this.userService.payloadSerialization({
-                ...user.toObject,
-                role: role.toObject(),
-            } as IUserEntity);
+            await this.userService.payloadSerialization(userWithRole);
         const tokenType: string = await this.authService.getTokenType();
         const expiresIn: number =
             await this.authService.getAccessTokenExpirationTime();
@@ -214,10 +211,12 @@ export class UserController {
         if (checkPasswordExpired) {
             return {
                 _metadata: {
-                    // override status code and message
-                    statusCode:
-                        ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
-                    message: 'user.error.passwordExpired',
+                    customProperty: {
+                        // override status code and message
+                        statusCode:
+                            ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
+                        message: 'user.error.passwordExpired',
+                    },
                 },
                 data: { tokenType, expiresIn, accessToken, refreshToken },
             };
@@ -262,8 +261,10 @@ export class UserController {
             });
         }
 
-        const role: RoleDoc = await this.roleService.findOneById(user.role);
-        if (!role.isActive) {
+        const userWithRole: IUserDoc = await this.userService.joinWithRole(
+            user
+        );
+        if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_INACTIVE_ERROR,
                 message: 'role.error.inactive',
@@ -282,10 +283,7 @@ export class UserController {
         }
 
         const payload: UserPayloadSerialization =
-            await this.userService.payloadSerialization({
-                ...user.toObject(),
-                role: role.toObject(),
-            });
+            await this.userService.payloadSerialization(userWithRole);
         const tokenType: string = await this.authService.getTokenType();
         const expiresIn: number =
             await this.authService.getAccessTokenExpirationTime();
@@ -394,11 +392,10 @@ export class UserController {
         }
 
         try {
-            const password = await this.authService.createPassword(
-                body.newPassword
-            );
+            const password: IAuthPassword =
+                await this.authService.createPassword(body.newPassword);
 
-            await this.userService.updatePassword(user._id, password);
+            await this.userService.updatePassword(user, password);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -415,9 +412,9 @@ export class UserController {
     @AuthJwtAccessProtected()
     @Get('/info')
     async info(
-        @AuthJwtPayload() user: UserPayloadSerialization
+        @AuthJwtPayload() payload: UserPayloadSerialization
     ): Promise<IResponse> {
-        return { data: user };
+        return { data: payload };
     }
 
     @UserGrantPermissionDoc()
@@ -428,24 +425,28 @@ export class UserController {
     @HttpCode(HttpStatus.OK)
     @Post('/grant-permission')
     async grantPermission(
-        @AuthJwtPayload() user: UserPayloadSerialization,
+        @AuthJwtPayload() payload: UserPayloadSerialization,
         @Body() { scope }: UserGrantPermissionDto
     ): Promise<IResponse> {
-        const check: UserDoc = await this.userService.findOneById(user._id);
-        if (!check) {
+        const user: UserDoc = await this.userService.findOneById(payload._id);
+        if (!user) {
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
                 message: 'user.error.notFound',
             });
         }
 
-        const role: RoleDoc = await this.roleService.findOneById(user.role);
-        const permissions: PermissionEntity[] =
-            await this.permissionService.findAllByIds(role.permissions);
-        const grantPermissions: PermissionEntity[] =
-            await this.roleService.getPermissionByGroup(permissions, scope);
+        const userWithRole: IUserDoc = await this.userService.joinWithRole(
+            user
+        );
+        const permissions: PermissionDoc[] =
+            await this.permissionService.findAllByIds(
+                userWithRole.role.permissions
+            );
+        const grantPermissions: IPermissionGroup[] =
+            await this.permissionService.groupingByGroups(permissions, scope);
 
-        const payload: UserPayloadPermissionSerialization =
+        const payloadPermission: UserPayloadPermissionSerialization =
             await this.userService.payloadPermissionSerialization(
                 user._id,
                 grantPermissions
@@ -454,7 +455,9 @@ export class UserController {
         const expiresIn: number =
             await this.authService.getPermissionTokenExpirationTime();
         const payloadPermissionToken: Record<string, any> =
-            await this.authService.createPayloadPermissionToken(payload);
+            await this.authService.createPayloadPermissionToken(
+                payloadPermission
+            );
 
         const payloadEncryption = await this.authService.getPayloadEncryption();
         let payloadHashedPermissionToken: Record<string, any> | string =
@@ -484,8 +487,11 @@ export class UserController {
     @UserProfileGuard()
     @AuthJwtAccessProtected()
     @Get('/profile')
-    async profile(@GetUser(true) user: IUserEntity): Promise<IResponse> {
-        return { data: user };
+    async profile(@GetUser() user: UserDoc): Promise<IResponse> {
+        const userWithRole: IUserDoc = await this.userService.joinWithRole(
+            user
+        );
+        return { data: userWithRole.toObject() };
     }
 
     @UserUploadProfileDoc()

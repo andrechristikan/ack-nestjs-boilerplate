@@ -19,7 +19,6 @@ import {
     IDatabaseSoftDeleteManyOptions,
     IDatabaseRestoreManyOptions,
     IDatabaseRawOptions,
-    IDatabaseFindOneLockOptions,
 } from 'src/common/database/interfaces/database.interface';
 
 export abstract class DatabaseMongoObjectIdRepositoryAbstract<
@@ -39,11 +38,11 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
         this._joinOnFind = options;
     }
 
-    async findAll<T = EntityDocument>(
+    async findAll<T = Entity>(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions<ClientSession>
     ): Promise<T[]> {
-        const findAll = this._repository.find<EntityDocument>(find);
+        const findAll = this._repository.find<Entity>(find);
 
         if (options?.withDeleted) {
             findAll.or([
@@ -82,22 +81,15 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
             findAll.session(options.session);
         }
 
-        if (options?.returnPlain) {
-            return findAll.lean();
-        }
-
-        return findAll.exec() as any;
+        return findAll.lean() as any;
     }
 
-    async findAllDistinct<T = EntityDocument>(
+    async findAllDistinct<T = Entity>(
         fieldDistinct: string,
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions<ClientSession>
     ): Promise<T[]> {
-        const findAll = this._repository.distinct<EntityDocument>(
-            fieldDistinct,
-            find
-        );
+        const findAll = this._repository.distinct<Entity>(fieldDistinct, find);
 
         if (options?.withDeleted) {
             findAll.or([
@@ -136,11 +128,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
             findAll.session(options.session);
         }
 
-        if (options?.returnPlain) {
-            return findAll.lean();
-        }
-
-        return findAll.exec() as any;
+        return findAll.lean() as any;
     }
 
     async findOne<T = EntityDocument>(
@@ -180,10 +168,6 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
 
         if (options?.order) {
             findOne.sort(options.order);
-        }
-
-        if (options?.returnPlain) {
-            return findOne.lean();
         }
 
         return findOne.exec() as any;
@@ -230,16 +214,12 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
             findOne.sort(options.order);
         }
 
-        if (options?.returnPlain) {
-            return findOne.lean();
-        }
-
         return findOne.exec() as any;
     }
 
     async findOneAndLock<T = EntityDocument>(
         find: Record<string, any>,
-        options?: IDatabaseFindOneLockOptions<ClientSession>
+        options?: IDatabaseFindOneOptions<ClientSession>
     ): Promise<T> {
         const findOne = this._repository.findOneAndUpdate<EntityDocument>(
             find,
@@ -287,7 +267,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
 
     async findOneByIdAndLock<T = EntityDocument>(
         _id: string,
-        options?: IDatabaseFindOneLockOptions<ClientSession>
+        options?: IDatabaseFindOneOptions<ClientSession>
     ): Promise<T> {
         const findOne = this._repository.findByIdAndUpdate(
             new Types.ObjectId(_id),
@@ -371,15 +351,19 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
         find: Record<string, any>,
         options?: IDatabaseExistOptions<ClientSession>
     ): Promise<boolean> {
-        const exist = this._repository.exists({
-            ...find,
-            _id: {
-                $nin:
-                    options?.excludeId.map((val) => new Types.ObjectId(val)) ??
-                    [],
-            },
-        });
+        if (options?.excludeId) {
+            find = {
+                ...find,
+                _id: {
+                    $nin:
+                        options?.excludeId.map(
+                            (val) => new Types.ObjectId(val)
+                        ) ?? [],
+                },
+            };
+        }
 
+        const exist = this._repository.exists(find);
         if (options?.withDeleted) {
             exist.or([
                 {
@@ -409,10 +393,10 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
         return result ? true : false;
     }
 
-    async create<T, Dto = any>(
+    async create<Dto = any>(
         data: Dto,
         options?: IDatabaseCreateOptions<ClientSession>
-    ): Promise<T> {
+    ): Promise<EntityDocument> {
         const dataCreate: Record<string, any> = data;
         dataCreate._id = new Types.ObjectId(options?._id);
 
@@ -420,11 +404,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
             session: options ? options.session : undefined,
         });
 
-        if (options?.returnPlain) {
-            return created[0].toObject() as T;
-        }
-
-        return created[0] as T;
+        return created[0] as EntityDocument;
     }
 
     async save(

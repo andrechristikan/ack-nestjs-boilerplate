@@ -20,11 +20,16 @@ import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
-import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
+import {
+    IUserDoc,
+    IUserEntity,
+} from 'src/modules/user/interfaces/user.interface';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { plainToInstance } from 'class-transformer';
 import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload-permission.serialization';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
+import { IPermissionGroup } from 'src/modules/permission/interfaces/permission.interface';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -45,39 +50,29 @@ export class UserService implements IUserService {
     ): Promise<IUserEntity[]> {
         return this.userRepository.findAll<IUserEntity>(find, {
             ...options,
-            returnPlain: true,
             join: true,
         });
     }
 
-    async findOneById(
+    async findOneById<T>(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<UserDoc> {
-        return this.userRepository.findOneById<UserDoc>(_id, {
-            ...options,
-            returnPlain: false,
-        });
+    ): Promise<T> {
+        return this.userRepository.findOneById<T>(_id, options);
     }
 
-    async findOne(
+    async findOne<T>(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<UserDoc> {
-        return this.userRepository.findOne<UserDoc>(find, {
-            ...options,
-            returnPlain: false,
-        });
+    ): Promise<T> {
+        return this.userRepository.findOne<T>(find, options);
     }
 
-    async findOneByUsername(
+    async findOneByUsername<T>(
         username: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<UserDoc> {
-        return this.userRepository.findOne<UserDoc>(
-            { username },
-            { ...options, returnPlain: false }
-        );
+    ): Promise<T> {
+        return this.userRepository.findOne<T>({ username }, options);
     }
 
     async getTotal(
@@ -98,7 +93,7 @@ export class UserService implements IUserService {
         }: UserCreateDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
-    ): Promise<UserEntity> {
+    ): Promise<UserDoc> {
         const create: UserEntity = new UserEntity();
         create.username = username;
         create.firstName = firstName;
@@ -116,10 +111,7 @@ export class UserService implements IUserService {
         create.passwordAttempt = 0;
         create.mobileNumber = mobileNumber ?? undefined;
 
-        return this.userRepository.create<UserEntity>(create, {
-            ...options,
-            returnPlain: true,
-        });
+        return this.userRepository.create<UserEntity>(create, options);
     }
 
     async existByEmail(
@@ -201,40 +193,40 @@ export class UserService implements IUserService {
         return this.userRepository.save(repository);
     }
 
-    async inactive(repository: UserDoc): Promise<UserEntity> {
+    async inactive(repository: UserDoc): Promise<UserDoc> {
         repository.isActive = false;
         repository.inactiveDate = this.helperDateService.create();
 
         return this.userRepository.save(repository);
     }
 
-    async blocked(repository: UserDoc): Promise<UserEntity> {
+    async blocked(repository: UserDoc): Promise<UserDoc> {
         repository.blocked = true;
         repository.blockedDate = this.helperDateService.create();
 
         return this.userRepository.save(repository);
     }
 
-    async unblocked(repository: UserDoc): Promise<UserEntity> {
+    async unblocked(repository: UserDoc): Promise<UserDoc> {
         repository.blocked = false;
         repository.blockedDate = undefined;
 
         return this.userRepository.save(repository);
     }
 
-    async maxPasswordAttempt(repository: UserDoc): Promise<UserEntity> {
+    async maxPasswordAttempt(repository: UserDoc): Promise<UserDoc> {
         repository.passwordAttempt = 3;
 
         return this.userRepository.save(repository);
     }
 
-    async increasePasswordAttempt(repository: UserDoc): Promise<UserEntity> {
+    async increasePasswordAttempt(repository: UserDoc): Promise<UserDoc> {
         repository.passwordAttempt = ++repository.passwordAttempt;
 
         return this.userRepository.save(repository);
     }
 
-    async resetPasswordAttempt(repository: UserDoc): Promise<UserEntity> {
+    async resetPasswordAttempt(repository: UserDoc): Promise<UserDoc> {
         repository.passwordAttempt = 0;
 
         return this.userRepository.save(repository);
@@ -243,10 +235,19 @@ export class UserService implements IUserService {
     async updatePasswordExpired(
         repository: UserDoc,
         passwordExpired: Date
-    ): Promise<UserEntity> {
+    ): Promise<UserDoc> {
         repository.passwordExpired = passwordExpired;
 
         return this.userRepository.save(repository);
+    }
+
+    async joinWithRole(repository: UserDoc): Promise<IUserDoc> {
+        return repository.populate({
+            path: 'role',
+            localField: 'role',
+            foreignField: '_id',
+            model: RoleEntity.name,
+        });
     }
 
     async createPhotoFilename(): Promise<Record<string, any>> {
@@ -259,18 +260,21 @@ export class UserService implements IUserService {
     }
 
     async payloadSerialization(
-        data: IUserEntity
+        data: IUserDoc
     ): Promise<UserPayloadSerialization> {
-        return plainToInstance(UserPayloadSerialization, data);
+        return plainToInstance(UserPayloadSerialization, data.toObject());
     }
 
     async payloadPermissionSerialization(
         _id: string,
-        permissions: PermissionEntity[]
+        permissions: IPermissionGroup[]
     ): Promise<UserPayloadPermissionSerialization> {
+        const permissionEntity: PermissionEntity[] = permissions
+            .map((val) => val.permissions)
+            .flat(1);
         return plainToInstance(UserPayloadPermissionSerialization, {
             _id,
-            permissions,
+            permissions: permissionEntity,
         });
     }
 

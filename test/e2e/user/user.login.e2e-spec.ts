@@ -17,8 +17,14 @@ import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { RoleModule } from 'src/modules/role/role.module';
 import { PermissionModule } from 'src/modules/permission/permission.module';
-import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
-import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
+import {
+    UserDoc,
+    UserEntity,
+} from 'src/modules/user/repository/entities/user.entity';
+import {
+    RoleDoc,
+    RoleEntity,
+} from 'src/modules/role/repository/entities/role.entity';
 
 describe('E2E User Login', () => {
     let app: INestApplication;
@@ -31,7 +37,8 @@ describe('E2E User Login', () => {
         .firstName()
         .toUpperCase()}${faker.datatype.number({ min: 1, max: 99 })}`;
 
-    let user: UserEntity;
+    let user: UserDoc;
+    let role: RoleDoc;
     const roleName = faker.random.alphaNumeric(5);
     let passwordExpired: Date;
 
@@ -65,9 +72,8 @@ describe('E2E User Login', () => {
             accessFor: ENUM_AUTH_ACCESS_FOR_DEFAULT.USER,
             permissions: [],
         });
-        const role: RoleEntity = await roleService.findOne({
-            name: roleName,
-        });
+
+        role = await roleService.findOneByName(roleName);
 
         passwordExpired = helperDateService.backwardInDays(5);
 
@@ -151,7 +157,7 @@ describe('E2E User Login', () => {
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Password Attempt Max`, async () => {
-        await userService.maxPasswordAttempt(user._id);
+        await userService.maxPasswordAttempt(user);
 
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
@@ -167,11 +173,11 @@ describe('E2E User Login', () => {
             ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_ATTEMPT_MAX_ERROR
         );
 
-        await userService.resetPasswordAttempt(user._id);
+        await userService.resetPasswordAttempt(user);
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Blocked`, async () => {
-        await userService.blocked(user._id);
+        await userService.blocked(user);
 
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
@@ -182,7 +188,7 @@ describe('E2E User Login', () => {
                 rememberMe: false,
             });
 
-        await userService.unblocked(user._id);
+        await userService.unblocked(user);
 
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
         expect(response.body.statusCode).toEqual(
@@ -191,7 +197,7 @@ describe('E2E User Login', () => {
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Inactive`, async () => {
-        await userService.inactive(user._id);
+        await userService.inactive(user);
 
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
@@ -202,7 +208,7 @@ describe('E2E User Login', () => {
                 rememberMe: false,
             });
 
-        await userService.active(user._id);
+        await userService.active(user);
 
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
         expect(response.body.statusCode).toEqual(
@@ -211,7 +217,7 @@ describe('E2E User Login', () => {
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Role Inactive`, async () => {
-        await roleService.inactive(user.role);
+        await roleService.inactive(role);
 
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
@@ -222,7 +228,7 @@ describe('E2E User Login', () => {
                 rememberMe: false,
             });
 
-        await roleService.active(user.role);
+        await roleService.active(role);
 
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
         expect(response.body.statusCode).toEqual(
@@ -245,7 +251,7 @@ describe('E2E User Login', () => {
     });
 
     it(`POST ${E2E_USER_LOGIN_URL} Password Expired`, async () => {
-        await userService.updatePasswordExpired(user._id, passwordExpired);
+        await userService.updatePasswordExpired(user, passwordExpired);
 
         const response = await request(app.getHttpServer())
             .post(E2E_USER_LOGIN_URL)
@@ -305,9 +311,8 @@ describe('E2E User Login Payload Encryption', () => {
             accessFor: ENUM_AUTH_ACCESS_FOR_DEFAULT.USER,
             permissions: [],
         });
-        const role: RoleEntity = await roleService.findOne({
-            name: roleName,
-        });
+
+        const role: RoleDoc = await roleService.findOneByName(roleName);
 
         const passwordHash = await authService.createPassword(password);
 

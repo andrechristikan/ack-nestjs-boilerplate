@@ -37,7 +37,7 @@ import { ApiKeyCreateDto } from 'src/common/api-key/dtos/api-key.create.dto';
 import { ApiKeyRequestDto } from 'src/common/api-key/dtos/api-key.request.dto';
 import { ApiKeyUpdateDateDto } from 'src/common/api-key/dtos/api-key.update-date.dto';
 import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
-import { IApiKeyCreatedEntity } from 'src/common/api-key/interfaces/api-key.interface';
+import { IApiKeyCreated } from 'src/common/api-key/interfaces/api-key.interface';
 import {
     ApiKeyDoc,
     ApiKeyEntity,
@@ -145,12 +145,13 @@ export class ApiKeyAdminController {
     @Post('/create')
     async create(@Body() body: ApiKeyCreateDto): Promise<IResponse> {
         try {
-            const created: IApiKeyCreatedEntity =
-                await this.apiKeyService.create(body);
+            const created: IApiKeyCreated = await this.apiKeyService.create(
+                body
+            );
 
             return {
                 data: {
-                    _id: created._id,
+                    _id: created.doc._id,
                     secret: created.secret,
                 },
             };

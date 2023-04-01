@@ -8,10 +8,13 @@ import {
     IDatabaseOptions,
     IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
+import { IPermissionGroup } from 'src/modules/permission/interfaces/permission.interface';
 import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
-import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
+import {
+    IUserDoc,
+    IUserEntity,
+} from 'src/modules/user/interfaces/user.interface';
 import {
     UserDoc,
     UserEntity,
@@ -25,20 +28,17 @@ export interface IUserService {
         options?: IDatabaseFindAllOptions
     ): Promise<IUserEntity[]>;
 
-    findOneById(
-        _id: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<UserDoc>;
+    findOneById<T>(_id: string, options?: IDatabaseFindOneOptions): Promise<T>;
 
-    findOne(
+    findOne<T>(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<UserDoc>;
+    ): Promise<T>;
 
-    findOneByUsername(
+    findOneByUsername<T>(
         username: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<UserDoc>;
+    ): Promise<T>;
 
     getTotal(
         find?: Record<string, any>,
@@ -56,7 +56,7 @@ export interface IUserService {
         }: UserCreateDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
-    ): Promise<UserEntity>;
+    ): Promise<UserDoc>;
 
     existByEmail(
         email: string,
@@ -109,13 +109,15 @@ export interface IUserService {
         passwordExpired: Date
     ): Promise<UserEntity>;
 
+    joinWithRole(repository: UserDoc): Promise<IUserDoc>;
+
     createPhotoFilename(): Promise<Record<string, any>>;
 
-    payloadSerialization(data: IUserEntity): Promise<UserPayloadSerialization>;
+    payloadSerialization(data: IUserDoc): Promise<UserPayloadSerialization>;
 
     payloadPermissionSerialization(
         _id: string,
-        permissions: PermissionEntity[]
+        permissions: IPermissionGroup[]
     ): Promise<UserPayloadPermissionSerialization>;
 
     deleteMany(

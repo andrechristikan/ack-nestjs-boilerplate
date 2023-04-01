@@ -1,4 +1,4 @@
-import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
+import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
 
 export interface IApiKeyPayload {
     _id: string;
@@ -6,6 +6,7 @@ export interface IApiKeyPayload {
     name: string;
 }
 
-export interface IApiKeyCreatedEntity extends ApiKeyEntity {
+export interface IApiKeyCreated {
     secret: string;
+    doc: ApiKeyDoc;
 }

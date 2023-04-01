@@ -36,8 +36,10 @@ export class AppController {
 
         return {
             _metadata: {
-                properties: {
-                    serviceName: this.serviceName,
+                customProperty: {
+                    messageProperties: {
+                        serviceName: this.serviceName,
+                    },
                 },
             },
             data: {
@@ -61,8 +63,10 @@ export class AppController {
 
         return {
             _metadata: {
-                properties: {
-                    serviceName: this.serviceName,
+                customProperty: {
+                    messageProperties: {
+                        serviceName: this.serviceName,
+                    },
                 },
             },
             data: {

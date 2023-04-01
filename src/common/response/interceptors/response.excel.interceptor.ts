@@ -68,7 +68,7 @@ export class ResponseExcelInterceptor implements NestInterceptor<Promise<any>> {
                     if (classSerialization) {
                         serialization = plainToInstance(
                             classSerialization,
-                            response,
+                            serialization,
                             classSerializationOptions
                         );
                     }

@@ -8,7 +8,10 @@ import { DatabaseOptionsService } from 'src/common/database/services/database.op
 import { HelperModule } from 'src/common/helper/helper.module';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
-import { SettingDoc } from 'src/common/setting/repository/entities/setting.entity';
+import {
+    SettingDoc,
+    SettingEntity,
+} from 'src/common/setting/repository/entities/setting.entity';
 import { SettingService } from 'src/common/setting/services/setting.service';
 import { SettingModule } from 'src/common/setting/setting.module';
 import configs from 'src/configs';
@@ -79,7 +82,7 @@ describe('SettingService', () => {
 
     describe('findAll', () => {
         it('get all setting', async () => {
-            const result: SettingDoc[] = await settingService.findAll({
+            const result: SettingEntity[] = await settingService.findAll({
                 name: setting.name,
             });
 

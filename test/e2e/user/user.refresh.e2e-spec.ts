@@ -17,10 +17,19 @@ import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { RoleModule } from 'src/modules/role/role.module';
 import { PermissionModule } from 'src/modules/permission/permission.module';
-import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
-import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
+import {
+    UserDoc,
+    UserEntity,
+} from 'src/modules/user/repository/entities/user.entity';
+import {
+    RoleDoc,
+    RoleEntity,
+} from 'src/modules/role/repository/entities/role.entity';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
-import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
+import {
+    IUserDoc,
+    IUserEntity,
+} from 'src/modules/user/interfaces/user.interface';
 
 describe('E2E User Refresh', () => {
     let app: INestApplication;
@@ -33,7 +42,8 @@ describe('E2E User Refresh', () => {
         .firstName()
         .toUpperCase()}${faker.datatype.number({ min: 1, max: 99 })}`;
 
-    let user: UserEntity;
+    let user: UserDoc;
+    let role: RoleDoc;
     let passwordExpired: Date;
     let passwordExpiredForward: Date;
 
@@ -65,9 +75,7 @@ describe('E2E User Refresh', () => {
         roleService = app.get(RoleService);
         helperDateService = app.get(HelperDateService);
 
-        const role: RoleEntity = await roleService.findOne({
-            name: 'user',
-        });
+        role = await roleService.findOneByName('user');
 
         passwordExpired = helperDateService.backwardInDays(5);
         passwordExpiredForward = helperDateService.forwardInDays(5);
@@ -87,14 +95,11 @@ describe('E2E User Refresh', () => {
             passwordHash
         );
 
-        const userPopulate = await userService.findOneById<IUserEntity>(
-            user._id,
-            {
-                join: true,
-            }
-        );
+        const userPopulate = await userService.findOneById<IUserDoc>(user._id, {
+            join: true,
+        });
 
-        const map = plainToInstance(UserPayloadSerialization, userPopulate);
+        const map = await userService.payloadSerialization(userPopulate);
         const payload = await authService.createPayloadRefreshToken(
             map._id,
             false
@@ -142,13 +147,13 @@ describe('E2E User Refresh', () => {
     });
 
     it(`POST ${E2E_USER_REFRESH_URL} Blocked`, async () => {
-        await userService.blocked(user._id);
+        await userService.blocked(user);
 
         const response = await request(app.getHttpServer())
             .post(E2E_USER_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`);
 
-        await userService.unblocked(user._id);
+        await userService.unblocked(user);
 
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
         expect(response.body.statusCode).toEqual(
@@ -157,13 +162,13 @@ describe('E2E User Refresh', () => {
     });
 
     it(`POST ${E2E_USER_REFRESH_URL} Inactive`, async () => {
-        await userService.inactive(user._id);
+        await userService.inactive(user);
 
         const response = await request(app.getHttpServer())
             .post(E2E_USER_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`);
 
-        await userService.active(user._id);
+        await userService.active(user);
 
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
         expect(response.body.statusCode).toEqual(
@@ -172,13 +177,13 @@ describe('E2E User Refresh', () => {
     });
 
     it(`POST ${E2E_USER_REFRESH_URL} Role Inactive`, async () => {
-        await roleService.inactive(user.role);
+        await roleService.inactive(role);
 
         const response = await request(app.getHttpServer())
             .post(E2E_USER_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`);
 
-        await roleService.active(user.role);
+        await roleService.active(role);
 
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
         expect(response.body.statusCode).toEqual(
@@ -187,16 +192,13 @@ describe('E2E User Refresh', () => {
     });
 
     it(`POST ${E2E_USER_REFRESH_URL} Password Expired`, async () => {
-        await userService.updatePasswordExpired(user._id, passwordExpired);
+        await userService.updatePasswordExpired(user, passwordExpired);
 
         const response = await request(app.getHttpServer())
             .post(E2E_USER_REFRESH_URL)
             .set('Authorization', `Bearer ${refreshToken}`);
 
-        await userService.updatePasswordExpired(
-            user._id,
-            passwordExpiredForward
-        );
+        await userService.updatePasswordExpired(user, passwordExpiredForward);
 
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
         expect(response.body.statusCode).toEqual(
@@ -251,9 +253,7 @@ describe('E2E User Refresh Payload Encryption', () => {
         authService = app.get(AuthService);
         roleService = app.get(RoleService);
 
-        const role: RoleEntity = await roleService.findOne({
-            name: 'user',
-        });
+        const role: RoleDoc = await roleService.findOneByName('user');
 
         const passwordHash = await authService.createPassword(password);
 
@@ -270,14 +270,11 @@ describe('E2E User Refresh Payload Encryption', () => {
             passwordHash
         );
 
-        const userPopulate = await userService.findOneById<IUserEntity>(
-            user._id,
-            {
-                join: true,
-            }
-        );
+        const userPopulate = await userService.findOneById<IUserDoc>(user._id, {
+            join: true,
+        });
 
-        const map = plainToInstance(UserPayloadSerialization, userPopulate);
+        const map = await userService.payloadSerialization(userPopulate);
         const payload = await authService.createPayloadRefreshToken(
             map._id,
             false
