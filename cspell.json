@@ -30,7 +30,9 @@
         "apikeys",
         "apikey",
         "maxlength",
-        "Streamable"
+        "Streamable",
+        "unallow",
+        "datauser"
     ],
     "ignoreWords": [
         "psheon",
