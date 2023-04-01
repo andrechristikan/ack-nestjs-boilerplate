@@ -20,7 +20,6 @@ export class ResponsePagingPaginationSerialization extends RequestPaginationSeri
     totalPage: number;
 }
 
-// todo metadata
 export interface ResponsePagingMetadataSerialization
     extends ResponseMetadataSerialization {
     cursor?: ResponsePagingCursorMetadataSerialization;

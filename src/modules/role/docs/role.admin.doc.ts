@@ -6,10 +6,6 @@ import {
     RoleDocQueryAccessFor,
     RoleDocQueryIsActive,
 } from 'src/modules/role/constants/role.doc.constant';
-import {
-    ROLE_DEFAULT_AVAILABLE_ORDER_BY,
-    ROLE_DEFAULT_AVAILABLE_SEARCH,
-} from 'src/modules/role/constants/role.list.constant';
 import { RoleAccessForSerialization } from 'src/modules/role/serializations/role.access-for.serialization';
 import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
 import { RoleListSerialization } from 'src/modules/role/serializations/role.list.serialization';
@@ -26,8 +22,6 @@ export function RoleListDoc(): MethodDecorator {
             },
             response: {
                 serialization: RoleListSerialization,
-                availableOrderBy: ROLE_DEFAULT_AVAILABLE_ORDER_BY,
-                availableSearch: ROLE_DEFAULT_AVAILABLE_SEARCH,
             },
         })
     );

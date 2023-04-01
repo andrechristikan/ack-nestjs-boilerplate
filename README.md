@@ -72,7 +72,7 @@ Next development
 * [ ] user plan module
 * [ ] invoicing plan module
 * [x] excel decorator optimize
-* [ ] Authorization optimize, remove permission entity (?)
+* [ ] Authorization optimize, remove permission entity and implement policy guard
 * [ ] Google SSO
 * [ ] Background export/import from/to CSV and Excel
 * [ ] Update Documentation, include an diagram for easier comprehension

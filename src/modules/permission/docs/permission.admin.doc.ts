@@ -6,10 +6,6 @@ import {
     PermissionDocQueryGroup,
     PermissionDocQueryIsActive,
 } from 'src/modules/permission/constants/permission.doc.constant';
-import {
-    PERMISSION_DEFAULT_AVAILABLE_ORDER_BY,
-    PERMISSION_DEFAULT_AVAILABLE_SEARCH,
-} from 'src/modules/permission/constants/permission.list.constant';
 import { PermissionGetSerialization } from 'src/modules/permission/serializations/permission.get.serialization';
 import { PermissionGroupsSerialization } from 'src/modules/permission/serializations/permission.group.serialization';
 import { PermissionListSerialization } from 'src/modules/permission/serializations/permission.list.serialization';
@@ -29,8 +25,6 @@ export function PermissionListDoc(): MethodDecorator {
             },
             response: {
                 serialization: PermissionListSerialization,
-                availableOrderBy: PERMISSION_DEFAULT_AVAILABLE_ORDER_BY,
-                availableSearch: PERMISSION_DEFAULT_AVAILABLE_SEARCH,
             },
         })
     );

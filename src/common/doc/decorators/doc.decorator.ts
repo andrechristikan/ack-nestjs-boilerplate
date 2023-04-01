@@ -433,15 +433,6 @@ export function DocPaging<T>(
                             $ref: getSchemaPath(options.response.serialization),
                         },
                     },
-                    // todo metadata
-                    // _metadata: {
-                    //     pagination: {
-                    //         availableSearch: options.response.availableSearch
-                    //     }
-                    // },
-                    // '_metadata.pagination.availableOrderBy': {
-                    //     example: options.response.availableOrderBy,
-                    // },
                 },
             },
         }),

@@ -6,10 +6,6 @@ import {
     UserDocQueryBlocked,
     UserDocQueryIsActive,
 } from 'src/modules/user/constants/user.doc.constant';
-import {
-    USER_DEFAULT_AVAILABLE_SEARCH,
-    USER_DEFAULT_AVAILABLE_ORDER_BY,
-} from 'src/modules/user/constants/user.list.constant';
 import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
 import { UserImportSerialization } from 'src/modules/user/serializations/user.import.serialization';
 import { UserListSerialization } from 'src/modules/user/serializations/user.list.serialization';
@@ -26,8 +22,6 @@ export function UserListDoc(): MethodDecorator {
             },
             response: {
                 serialization: UserListSerialization,
-                availableOrderBy: USER_DEFAULT_AVAILABLE_ORDER_BY,
-                availableSearch: USER_DEFAULT_AVAILABLE_SEARCH,
             },
         })
     );

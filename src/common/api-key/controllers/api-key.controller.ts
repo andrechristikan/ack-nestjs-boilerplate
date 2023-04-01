@@ -65,7 +65,6 @@ import {
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
-import { UserService } from 'src/modules/user/services/user.service';
 
 @ApiTags('apiKey')
 @Controller({

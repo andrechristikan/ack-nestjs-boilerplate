@@ -6,10 +6,6 @@ import {
 } from 'src/common/setting/constants/setting.doc.constant';
 import { SettingGetSerialization } from 'src/common/setting/serializations/setting.get.serialization';
 import { SettingListSerialization } from 'src/common/setting/serializations/setting.list.serialization';
-import {
-    SETTING_DEFAULT_AVAILABLE_ORDER_BY,
-    SETTING_DEFAULT_AVAILABLE_SEARCH,
-} from 'src/common/setting/constants/setting.list.constant';
 
 export function SettingListDoc(): MethodDecorator {
     return applyDecorators(
@@ -19,8 +15,6 @@ export function SettingListDoc(): MethodDecorator {
             },
             response: {
                 serialization: SettingListSerialization,
-                availableOrderBy: SETTING_DEFAULT_AVAILABLE_ORDER_BY,
-                availableSearch: SETTING_DEFAULT_AVAILABLE_SEARCH,
             },
         })
     );
