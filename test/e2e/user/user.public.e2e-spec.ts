@@ -13,12 +13,7 @@ import {
 } from './user.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
-import {
-    IUserDoc,
-    IUserEntity,
-} from 'src/modules/user/interfaces/user.interface';
-import { plainToInstance } from 'class-transformer';
-import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
+import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { AuthModule } from 'src/common/auth/auth.module';
 import { AuthService } from 'src/common/auth/services/auth.service';
 

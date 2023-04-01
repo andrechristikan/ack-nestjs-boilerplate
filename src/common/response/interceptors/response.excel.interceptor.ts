@@ -47,9 +47,9 @@ export class ResponseExcelInterceptor implements NestInterceptor<Promise<any>> {
 
         if (context.getType() === 'http') {
             return next.handle().pipe(
-                map(async (responseData: Promise<IResponseExcel>) => {
+                map(async (res: Promise<IResponseExcel>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
-                    const responseExpress: Response = ctx.getResponse();
+                    const response: Response = ctx.getResponse();
 
                     const classSerialization: ClassConstructor<any> =
                         this.reflector.get<ClassConstructor<any>>(
@@ -62,22 +62,20 @@ export class ResponseExcelInterceptor implements NestInterceptor<Promise<any>> {
                             context.getHandler()
                         );
 
-                    // response
-                    const response = (await responseData) as IResponseExcel;
-                    let serialization = response.data;
+                    // set default response
+                    const responseData = (await res) as IResponseExcel;
+                    let data: Record<string, any>[] = responseData.data;
                     if (classSerialization) {
-                        serialization = plainToInstance(
+                        data = plainToInstance(
                             classSerialization,
-                            serialization,
+                            data,
                             classSerializationOptions
                         );
                     }
 
                     // create excel
                     const workbook: WorkBook =
-                        this.helperFileService.createExcelWorkbook(
-                            serialization
-                        );
+                        this.helperFileService.createExcelWorkbook(data);
                     const excel: Buffer =
                         this.helperFileService.writeExcelToBuffer(workbook, {
                             type: excelType,
@@ -85,7 +83,7 @@ export class ResponseExcelInterceptor implements NestInterceptor<Promise<any>> {
 
                     // set headers
                     const timestamp = this.helperDateService.timestamp();
-                    responseExpress
+                    response
                         .setHeader(
                             'Content-Type',
                             ENUM_FILE_EXCEL_MIME[excelType.toUpperCase()]

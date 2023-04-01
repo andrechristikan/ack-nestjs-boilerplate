@@ -67,9 +67,11 @@ Next development
 
 * [x] serialization update
 * [x] update unit test for common modules
-* [x] Rapikan service dan controller, manfaatkan options repository dan type doc atau entity
-* [ ] user e2e
-* [ ] excel decorator optimize
+* [x] user e2e
+* [x] api key for saas, change `x-api-key` to `${key}:${secret}`
+* [ ] user plan module
+* [ ] invoicing plan module
+* [x] excel decorator optimize
 * [ ] Authorization optimize, remove permission entity (?)
 * [ ] Google SSO
 * [ ] Background export/import from/to CSV and Excel

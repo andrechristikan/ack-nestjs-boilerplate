@@ -3,14 +3,8 @@ import { Injectable } from '@nestjs/common';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { UserService } from 'src/modules/user/services/user.service';
 import { RoleService } from 'src/modules/role/services/role.service';
-import {
-    RoleDoc,
-    RoleEntity,
-} from 'src/modules/role/repository/entities/role.entity';
-import {
-    UserDoc,
-    UserEntity,
-} from 'src/modules/user/repository/entities/user.entity';
+import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
+import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 
 @Injectable()
 export class MigrationUserSeed {

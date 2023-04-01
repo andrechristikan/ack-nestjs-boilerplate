@@ -69,6 +69,8 @@ export interface IAuthService {
         data: Record<string, any>
     ): Promise<Record<string, any>>;
 
+    createSalt(length: number): Promise<string>;
+
     createPassword(password: string): Promise<IAuthPassword>;
 
     checkPasswordExpired(passwordExpired: Date): Promise<boolean>;

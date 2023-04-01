@@ -307,10 +307,12 @@ export class AuthService implements IAuthService {
         return data;
     }
 
+    async createSalt(length: number): Promise<string> {
+        return this.helperHashService.randomSalt(length);
+    }
+
     async createPassword(password: string): Promise<IAuthPassword> {
-        const salt: string = this.helperHashService.randomSalt(
-            this.passwordSaltLength
-        );
+        const salt: string = await this.createSalt(this.passwordSaltLength);
 
         const passwordExpired: Date = this.helperDateService.forwardInSeconds(
             this.passwordExpiredIn

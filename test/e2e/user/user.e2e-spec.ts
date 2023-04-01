@@ -17,18 +17,9 @@ import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.stat
 import { RoleService } from 'src/modules/role/services/role.service';
 import { RoleModule } from 'src/modules/role/role.module';
 import { PermissionModule } from 'src/modules/permission/permission.module';
-import {
-    UserDoc,
-    UserEntity,
-} from 'src/modules/user/repository/entities/user.entity';
-import {
-    RoleDoc,
-    RoleEntity,
-} from 'src/modules/role/repository/entities/role.entity';
-import {
-    IUserDoc,
-    IUserEntity,
-} from 'src/modules/user/interfaces/user.interface';
+import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
+import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 
 describe('E2E User', () => {

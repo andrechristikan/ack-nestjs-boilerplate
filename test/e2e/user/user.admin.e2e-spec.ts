@@ -21,24 +21,13 @@ import { UserService } from 'src/modules/user/services/user.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
-import { plainToInstance } from 'class-transformer';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
-import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import {
-    UserDoc,
-    UserEntity,
-} from 'src/modules/user/repository/entities/user.entity';
-import {
-    RoleDoc,
-    RoleEntity,
-} from 'src/modules/role/repository/entities/role.entity';
-import {
-    IUserDoc,
-    IUserEntity,
-} from 'src/modules/user/interfaces/user.interface';
+import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
+import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 
 describe('E2E User Admin', () => {

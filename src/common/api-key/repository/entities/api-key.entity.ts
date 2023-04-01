@@ -3,11 +3,19 @@ import { CallbackWithoutResultAndOptionalError } from 'mongoose';
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import { Document } from 'mongoose';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
 export const ApiKeyDatabaseName = 'apikeys';
 
 @DatabaseEntity({ collection: ApiKeyDatabaseName })
 export class ApiKeyEntity extends DatabaseMongoUUIDEntityAbstract {
+    @Prop({
+        required: true,
+        ref: UserEntity.name,
+        index: true,
+    })
+    user: string;
+
     @Prop({
         required: true,
         index: true,

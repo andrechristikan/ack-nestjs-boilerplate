@@ -74,7 +74,7 @@ export class RoleService implements IRoleService {
             {
                 _id,
             },
-            { ...options, withDeleted: false }
+            options
         );
     }
 

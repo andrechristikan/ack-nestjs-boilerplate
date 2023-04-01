@@ -10,6 +10,8 @@ import { UserController } from 'src/modules/user/controllers/user.controller';
 import { RoleModule } from 'src/modules/role/role.module';
 import { UserModule } from 'src/modules/user/user.module';
 import { PermissionModule } from 'src/modules/permission/permission.module';
+import { ApiKeyController } from 'src/common/api-key/controllers/api-key.controller';
+import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 
 @Module({
     controllers: [
@@ -17,6 +19,7 @@ import { PermissionModule } from 'src/modules/permission/permission.module';
         SettingController,
         MessageController,
         UserController,
+        ApiKeyController,
     ],
     providers: [],
     exports: [],
@@ -28,6 +31,7 @@ import { PermissionModule } from 'src/modules/permission/permission.module';
         RoleModule,
         UserModule,
         PermissionModule,
+        ApiKeyModule,
     ],
 })
 export class RoutesModule {}

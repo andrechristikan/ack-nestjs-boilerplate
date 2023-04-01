@@ -9,8 +9,6 @@ import { AuthService } from 'src/common/auth/services/auth.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { CommonModule } from 'src/common/common.module';
 import { RoutesModule } from 'src/router/routes/routes.module';
-import { plainToInstance } from 'class-transformer';
-import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { E2E_USER_REFRESH_URL } from './user.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
@@ -21,15 +19,9 @@ import {
     UserDoc,
     UserEntity,
 } from 'src/modules/user/repository/entities/user.entity';
-import {
-    RoleDoc,
-    RoleEntity,
-} from 'src/modules/role/repository/entities/role.entity';
+import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
-import {
-    IUserDoc,
-    IUserEntity,
-} from 'src/modules/user/interfaces/user.interface';
+import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 
 describe('E2E User Refresh', () => {
     let app: INestApplication;

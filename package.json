@@ -48,7 +48,7 @@
     "rollback:permission": "nestjs-command remove:permission",
     "rollback:role": "nestjs-command remove:role",
     "rollback:user": "nestjs-command remove:user",
-    "seed": "yarn seed:setting && yarn seed:apikey && yarn seed:permission && yarn seed:role && yarn seed:user",
+    "seed": "yarn seed:setting && yarn seed:permission && yarn seed:role && yarn seed:user && yarn seed:apikey",
     "rollback": "yarn rollback:setting && yarn rollback:apikey && yarn rollback:user && yarn rollback:role && yarn rollback:permission"
   },
   "dependencies": {
