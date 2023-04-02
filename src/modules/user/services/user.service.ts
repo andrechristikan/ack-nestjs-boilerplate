@@ -31,6 +31,7 @@ import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 @Injectable()
 export class UserService implements IUserService {
     private readonly uploadPath: string;
+    private readonly authMaxPasswordAttempt: number;
 
     constructor(
         private readonly userRepository: UserRepository,
@@ -39,6 +40,9 @@ export class UserService implements IUserService {
         private readonly configService: ConfigService
     ) {
         this.uploadPath = this.configService.get<string>('user.uploadPath');
+        this.authMaxPasswordAttempt = this.configService.get<number>(
+            'auth.password.maxAttempt'
+        );
     }
 
     async findAll(
@@ -212,7 +216,7 @@ export class UserService implements IUserService {
     }
 
     async maxPasswordAttempt(repository: UserDoc): Promise<UserDoc> {
-        repository.passwordAttempt = 3;
+        repository.passwordAttempt = this.authMaxPasswordAttempt;
 
         return this.userRepository.save(repository);
     }

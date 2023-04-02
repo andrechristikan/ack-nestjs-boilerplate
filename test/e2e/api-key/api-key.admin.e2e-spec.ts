@@ -55,13 +55,10 @@ describe('E2E Api Key Admin', () => {
         apiKeyService = app.get(ApiKeyService);
         helperDateService = app.get(HelperDateService);
 
-        const payload = await authService.createPayloadAccessToken(
-            {
-                ...E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
-                loginDate: new Date(),
-            },
-            false
-        );
+        const payload = await authService.createPayloadAccessToken({
+            ...E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
+            loginDate: new Date(),
+        });
         accessToken = await authService.createAccessToken(payload);
 
         const apiKeyCreated1 = await apiKeyService.create(

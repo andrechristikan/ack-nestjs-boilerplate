@@ -119,8 +119,8 @@ export function Doc<T>(
         });
         oneOfForbidden.push({
             statusCode:
-                ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PAYLOAD_ACCESS_FOR_INVALID_ERROR,
-            messagePath: 'auth.error.accessForForbidden',
+                ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PAYLOAD_TYPE_INVALID_ERROR,
+            messagePath: 'auth.error.typeForbidden',
         });
     }
 
@@ -273,8 +273,8 @@ export function DocPaging<T>(
         });
         oneOfForbidden.push({
             statusCode:
-                ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PAYLOAD_ACCESS_FOR_INVALID_ERROR,
-            messagePath: 'auth.error.accessForForbidden',
+                ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PAYLOAD_TYPE_INVALID_ERROR,
+            messagePath: 'auth.error.typeForbidden',
         });
     }
 

@@ -1,1 +1,1 @@
-export const AUTH_ACCESS_FOR_META_KEY = 'AuthAccessForMetaKey';
+export const AUTH_TYPE_META_KEY = 'AuthTypeMetaKey';

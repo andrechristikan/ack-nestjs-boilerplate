@@ -3,10 +3,9 @@ import { Doc, DocPaging } from 'src/common/doc/decorators/doc.decorator';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import {
     RoleDocParamsGet,
-    RoleDocQueryAccessFor,
+    RoleDocQueryType,
     RoleDocQueryIsActive,
 } from 'src/modules/role/constants/role.doc.constant';
-import { RoleAccessForSerialization } from 'src/modules/role/serializations/role.access-for.serialization';
 import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
 import { RoleListSerialization } from 'src/modules/role/serializations/role.list.serialization';
 
@@ -17,7 +16,7 @@ export function RoleListDoc(): MethodDecorator {
                 jwtAccessToken: true,
             },
             request: {
-                queries: [...RoleDocQueryIsActive, ...RoleDocQueryAccessFor],
+                queries: [...RoleDocQueryIsActive, ...RoleDocQueryType],
             },
             response: {
                 serialization: RoleListSerialization,
@@ -103,17 +102,6 @@ export function RoleInactiveDoc(): MethodDecorator {
             request: {
                 params: RoleDocParamsGet,
             },
-        })
-    );
-}
-
-export function RoleAccessForDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc<RoleAccessForSerialization>('role.accessFor', {
-            auth: {
-                jwtAccessToken: true,
-            },
-            response: { serialization: RoleAccessForSerialization },
         })
     );
 }

@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+import { ENUM_AUTH_TYPE } from 'src/common/auth/constants/auth.enum.constant';
 
 export const RoleDocQueryIsActive = [
     {
@@ -12,13 +12,13 @@ export const RoleDocQueryIsActive = [
     },
 ];
 
-export const RoleDocQueryAccessFor = [
+export const RoleDocQueryType = [
     {
-        name: 'accessFor',
+        name: 'type',
         allowEmptyValue: false,
         required: true,
         type: 'string',
-        example: Object.values(ENUM_AUTH_ACCESS_FOR).join(','),
+        example: Object.values(ENUM_AUTH_TYPE).join(','),
         description: "enum value with ',' delimiter",
     },
 ];

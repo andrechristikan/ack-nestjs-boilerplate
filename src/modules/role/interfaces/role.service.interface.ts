@@ -8,8 +8,7 @@ import {
     IDatabaseCreateManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
-import { RoleUpdateNameDto } from 'src/modules/role/dtos/role.update-name.dto';
-import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
+import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
 import {
     RoleDoc,
     RoleEntity,
@@ -21,24 +20,25 @@ export interface IRoleService {
         options?: IDatabaseFindAllOptions
     ): Promise<RoleEntity[]>;
 
-    findOneById<T>(_id: string, options?: IDatabaseFindOneOptions): Promise<T>;
+    findOneById(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<RoleDoc>;
 
-    findOne<T>(
+    findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<T>;
+    ): Promise<RoleDoc>;
 
-    findOneByName<T>(
+    findOneByName(
         name: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<T>;
+    ): Promise<RoleDoc>;
 
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseOptions
     ): Promise<number>;
-
-    exist(_id: string, options?: IDatabaseExistOptions): Promise<boolean>;
 
     existByName(
         name: string,
@@ -46,20 +46,13 @@ export interface IRoleService {
     ): Promise<boolean>;
 
     create(
-        { accessFor, name }: RoleCreateDto,
+        { name, description, type }: RoleCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<RoleDoc>;
 
-    createSuperAdmin(options?: IDatabaseCreateOptions): Promise<RoleDoc>;
-
-    updateName(
+    update(
         repository: RoleDoc,
-        { name }: RoleUpdateNameDto
-    ): Promise<RoleDoc>;
-
-    updatePermission(
-        repository: RoleDoc,
-        { accessFor }: RoleUpdatePermissionDto
+        { description }: RoleUpdateDto
     ): Promise<RoleDoc>;
 
     active(repository: RoleDoc): Promise<RoleDoc>;
@@ -77,6 +70,4 @@ export interface IRoleService {
         data: RoleCreateDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean>;
-
-    getAccessFor(): Promise<string[]>;
 }

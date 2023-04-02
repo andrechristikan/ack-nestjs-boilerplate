@@ -1,6 +1,6 @@
 import { Prop, SchemaFactory } from '@nestjs/mongoose';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+import { ENUM_AUTH_TYPE } from 'src/common/auth/constants/auth.enum.constant';
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import {
@@ -69,10 +69,10 @@ export class LoggerEntity extends DatabaseMongoUUIDEntityAbstract {
 
     @Prop({
         required: false,
-        enum: ENUM_AUTH_ACCESS_FOR,
+        enum: ENUM_AUTH_TYPE,
         type: String,
     })
-    accessFor?: ENUM_AUTH_ACCESS_FOR;
+    type?: ENUM_AUTH_TYPE;
 
     @Prop({
         required: true,

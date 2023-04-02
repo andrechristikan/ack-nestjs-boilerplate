@@ -12,7 +12,7 @@ import { RoutesModule } from 'src/router/routes/routes.module';
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { ENUM_AUTH_ACCESS_FOR_DEFAULT } from 'src/common/auth/constants/auth.enum.constant';
+import { ENUM_AUTH_TYPE } from 'src/common/auth/constants/auth.enum.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import {
@@ -62,7 +62,7 @@ describe('E2E User Login', () => {
 
         await roleService.create({
             name: roleName,
-            accessFor: ENUM_AUTH_ACCESS_FOR_DEFAULT.USER,
+            type: ENUM_AUTH_TYPE.USER,
         });
 
         role = await roleService.findOneByName(roleName);
@@ -289,7 +289,7 @@ describe('E2E User Login Payload Encryption', () => {
 
         await roleService.create({
             name: roleName,
-            accessFor: ENUM_AUTH_ACCESS_FOR_DEFAULT.USER,
+            type: ENUM_AUTH_TYPE.USER,
         });
 
         const role: RoleDoc = await roleService.findOneByName(roleName);

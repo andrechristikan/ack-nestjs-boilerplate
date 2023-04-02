@@ -17,12 +17,18 @@ import {
     ApiKeyEntity,
 } from 'src/common/api-key/repository/entities/api-key.entity';
 import { IApiKeyCreated } from 'src/common/api-key/interfaces/api-key.interface';
+import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 
 describe('ApiKeyService', () => {
     const apiKeyName1: string = faker.random.alphaNumeric(15);
     const apiKeyName2: string = faker.random.alphaNumeric(15);
     const apiKeyName3: string = faker.random.alphaNumeric(15);
+    const apiKeyId1 = DatabaseDefaultUUID();
+    const apiKeyId2 = DatabaseDefaultUUID();
+    const apiKeyId3 = DatabaseDefaultUUID();
+
     let apiKeyService: ApiKeyService;
+
     let helperDateService: HelperDateService;
     let helperHashService: HelperHashService;
     let apiKeyCreated: IApiKeyCreated;
@@ -57,7 +63,7 @@ describe('ApiKeyService', () => {
         helperDateService = moduleRef.get<HelperDateService>(HelperDateService);
         helperHashService = moduleRef.get<HelperHashService>(HelperHashService);
 
-        apiKeyCreated = await apiKeyService.create({
+        apiKeyCreated = await apiKeyService.create(apiKeyId1, {
             name: apiKeyName1,
             description: faker.random.alphaNumeric(20),
         });
@@ -101,22 +107,12 @@ describe('ApiKeyService', () => {
                 result as any
             );
 
-            const newApiKey: ApiKeyEntity = {
-                name: apiKeyCreated.doc.name,
-                description: apiKeyCreated.doc.description,
-                key: apiKeyCreated.doc.key,
-                hash: apiKeyCreated.doc.hash,
-                isActive: apiKeyCreated.doc.isActive,
-                _id: apiKeyCreated.doc._id,
-                createdAt: apiKeyCreated.doc.createdAt,
-                updatedAt: apiKeyCreated.doc.updatedAt,
-            };
-
             expect(result).toBeTruthy();
             expect(result.length).toBe(1);
-            expect(result[0]).toEqual(newApiKey);
+            expect(result[0]).toEqual(apiKey.toObject());
             expect(result[0]._id).toBe(apiKeyCreated.doc._id);
             expect(result[0].key).toBe(apiKeyCreated.doc.key);
+            expect(result[0].user).toBe(apiKeyCreated.doc.user);
         });
     });
 
@@ -226,6 +222,20 @@ describe('ApiKeyService', () => {
         });
     });
 
+    describe('existByUser', () => {
+        it('should return boolean value of exist api key by user', async () => {
+            const result: boolean = await apiKeyService.existByUser(
+                apiKey.user
+            );
+
+            jest.spyOn(apiKeyService, 'active').mockReturnValueOnce(
+                result as any
+            );
+
+            expect(result).toBeTruthy();
+        });
+    });
+
     describe('getTotal', () => {
         it('should return total data of apikeys', async () => {
             const result: number = await apiKeyService.getTotal({
@@ -271,9 +281,12 @@ describe('ApiKeyService', () => {
 
     describe('create', () => {
         it('should return a new apikeys', async () => {
-            const result: IApiKeyCreated = await apiKeyService.create({
-                name: apiKeyName2,
-            });
+            const result: IApiKeyCreated = await apiKeyService.create(
+                apiKeyId2,
+                {
+                    name: apiKeyName2,
+                }
+            );
 
             jest.spyOn(apiKeyService, 'create').mockReturnValueOnce(
                 result as any
@@ -284,11 +297,14 @@ describe('ApiKeyService', () => {
         });
 
         it('should return a new apikeys with expiration', async () => {
-            const result: IApiKeyCreated = await apiKeyService.create({
-                name: apiKeyName3,
-                startDate,
-                endDate,
-            });
+            const result: IApiKeyCreated = await apiKeyService.create(
+                apiKeyId3,
+                {
+                    name: apiKeyName3,
+                    startDate,
+                    endDate,
+                }
+            );
 
             jest.spyOn(apiKeyService, 'create').mockReturnValueOnce(
                 result as any
@@ -301,12 +317,15 @@ describe('ApiKeyService', () => {
 
     describe('createRaw', () => {
         it('should return a new apikeys', async () => {
-            const result: IApiKeyCreated = await apiKeyService.createRaw({
-                name: apiKeyName3,
-                description: faker.random.alphaNumeric(),
-                key: await apiKeyService.createKey(),
-                secret: await apiKeyService.createSecret(),
-            });
+            const result: IApiKeyCreated = await apiKeyService.createRaw(
+                apiKeyId3,
+                {
+                    name: apiKeyName3,
+                    description: faker.random.alphaNumeric(),
+                    key: await apiKeyService.createKey(),
+                    secret: await apiKeyService.createSecret(),
+                }
+            );
 
             jest.spyOn(apiKeyService, 'createRaw').mockReturnValueOnce(
                 result as any
@@ -317,14 +336,17 @@ describe('ApiKeyService', () => {
         });
 
         it('should return a new apikeys with expiration', async () => {
-            const result: IApiKeyCreated = await apiKeyService.createRaw({
-                name: apiKeyName2,
-                description: faker.random.alphaNumeric(),
-                key: await apiKeyService.createKey(),
-                secret: await apiKeyService.createSecret(),
-                startDate,
-                endDate,
-            });
+            const result: IApiKeyCreated = await apiKeyService.createRaw(
+                apiKeyId2,
+                {
+                    name: apiKeyName2,
+                    description: faker.random.alphaNumeric(),
+                    key: await apiKeyService.createKey(),
+                    secret: await apiKeyService.createSecret(),
+                    startDate,
+                    endDate,
+                }
+            );
 
             jest.spyOn(apiKeyService, 'createRaw').mockReturnValueOnce(
                 result as any

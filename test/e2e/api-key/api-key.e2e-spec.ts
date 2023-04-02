@@ -36,6 +36,7 @@ describe('E2E Api Key', () => {
     const apiKeyCreate = {
         name: `${faker.name.firstName()}${faker.random.alphaNumeric(20)}`,
     };
+    const apiKeyCreateId = DatabaseDefaultUUID();
 
     beforeAll(async () => {
         process.env.AUTH_JWT_PAYLOAD_ENCRYPT = 'false';
@@ -59,23 +60,17 @@ describe('E2E Api Key', () => {
         apiKeyService = app.get(ApiKeyService);
         helperDateService = app.get(HelperDateService);
 
-        const payload = await authService.createPayloadAccessToken(
-            {
-                ...E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
-                loginDate: new Date(),
-            },
-            false
-        );
+        const payload = await authService.createPayloadAccessToken({
+            ...E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
+            loginDate: new Date(),
+        });
         accessToken = await authService.createAccessToken(payload);
 
-        const payloadCreate = await authService.createPayloadAccessToken(
-            {
-                ...E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
-                loginDate: new Date(),
-                _id: DatabaseDefaultUUID(),
-            },
-            false
-        );
+        const payloadCreate = await authService.createPayloadAccessToken({
+            ...E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
+            loginDate: new Date(),
+            _id: apiKeyCreateId,
+        });
         accessTokenCreate = await authService.createAccessToken(payloadCreate);
 
         const apiKeyCreated1 = await apiKeyService.create(
@@ -107,9 +102,11 @@ describe('E2E Api Key', () => {
 
         try {
             await apiKeyService.deleteMany({
-                _id: apiKey._id,
+                user: E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST._id,
             });
-
+            await apiKeyService.deleteMany({
+                _id: { $in: [apiKey._id, apiKeyCreateId] },
+            });
             await apiKeyService.deleteMany({
                 name: apiKeyCreate.name,
             });
@@ -160,7 +157,7 @@ describe('E2E Api Key', () => {
             .send({
                 name: [1231231],
             })
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessTokenCreate}`);
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
@@ -176,6 +173,18 @@ describe('E2E Api Key', () => {
 
         expect(response.status).toEqual(HttpStatus.CREATED);
         expect(response.body.statusCode).toEqual(HttpStatus.CREATED);
+    });
+
+    it(`POST ${E2E_API_KEY_ADMIN_CREATE_URL} Create Exist`, async () => {
+        const response = await request(app.getHttpServer())
+            .post(E2E_API_KEY_ADMIN_CREATE_URL)
+            .send(apiKeyCreate)
+            .set('Authorization', `Bearer ${accessTokenCreate}`);
+
+        expect(response.status).toEqual(HttpStatus.CONFLICT);
+        expect(response.body.statusCode).toEqual(
+            ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_EXIST_ERROR
+        );
     });
 
     it(`PATCH ${E2E_API_KEY_ADMIN_UPDATE_RESET_URL} Reset Not Found`, async () => {

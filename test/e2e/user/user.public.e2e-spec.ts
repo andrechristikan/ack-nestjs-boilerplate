@@ -157,7 +157,7 @@ describe('E2E User Public', () => {
             }
         );
         const map = await userService.payloadSerialization(user);
-        const payload = await authService.createPayloadAccessToken(map, false);
+        const payload = await authService.createPayloadAccessToken(map);
         const accessToken = await authService.createAccessToken(payload);
 
         const response = await request(app.getHttpServer())

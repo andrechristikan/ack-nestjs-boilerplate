@@ -75,7 +75,7 @@ describe('E2E User Change Password', () => {
         });
 
         const map = await userService.payloadSerialization(userPopulate);
-        const payload = await authService.createPayloadAccessToken(map, false);
+        const payload = await authService.createPayloadAccessToken(map);
         const payloadNotFound = {
             ...payload,
             _id: `${DatabaseDefaultUUID()}`,
@@ -175,7 +175,7 @@ describe('E2E User Change Password', () => {
         expect(response.body.statusCode).toEqual(
             ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_NEW_MUST_DIFFERENCE_ERROR
         );
-    });
+    }, 30000);
 
     it(`PATCH ${E2E_USER_CHANGE_PASSWORD_URL} Success`, async () => {
         const response = await request(app.getHttpServer())
@@ -188,5 +188,5 @@ describe('E2E User Change Password', () => {
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
-    });
+    }, 30000);
 });

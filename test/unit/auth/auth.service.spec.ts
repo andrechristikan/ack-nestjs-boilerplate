@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { faker } from '@faker-js/faker';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+import { ENUM_AUTH_TYPE } from 'src/common/auth/constants/auth.enum.constant';
 import configs from 'src/configs';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { HelperModule } from 'src/common/helper/helper.module';
@@ -41,7 +41,7 @@ describe('AuthService', () => {
             '$2b$08$GZfqgaDMPpWQ3lJEGQ8Ueu1vJ3C6G3stnkS/5e61bK/4f1.Fuw2Eq',
         role: {
             _id: '623cb7f7965a74bf7a0e9e53',
-            accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
+            type: ENUM_AUTH_TYPE.SUPER_ADMIN,
             isActive: true,
             name: 'admin',
         },

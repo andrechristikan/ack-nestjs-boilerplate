@@ -1,6 +1,6 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+import { ENUM_AUTH_TYPE } from 'src/common/auth/constants/auth.enum.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 
@@ -15,18 +15,21 @@ export class MigrationRoleSeed {
     async seeds(): Promise<void> {
         const dataAdmin: RoleCreateDto[] = [
             {
+                name: 'superadmin',
+                type: ENUM_AUTH_TYPE.SUPER_ADMIN,
+            },
+            {
                 name: 'admin',
-                accessFor: ENUM_AUTH_ACCESS_FOR.ADMIN,
+                type: ENUM_AUTH_TYPE.ADMIN,
             },
             {
                 name: 'user',
-                accessFor: ENUM_AUTH_ACCESS_FOR.USER,
+                type: ENUM_AUTH_TYPE.USER,
             },
         ];
 
         try {
             await this.roleService.createMany(dataAdmin);
-            await this.roleService.createSuperAdmin();
         } catch (err: any) {
             throw new Error(err.message);
         }

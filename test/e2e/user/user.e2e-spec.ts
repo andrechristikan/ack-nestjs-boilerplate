@@ -76,7 +76,7 @@ describe('E2E User', () => {
         });
 
         const map = await userService.payloadSerialization(userPopulate);
-        const payload = await authService.createPayloadAccessToken(map, false);
+        const payload = await authService.createPayloadAccessToken(map);
         const payloadNotFound = {
             ...payload,
             _id: `${DatabaseDefaultUUID()}`,

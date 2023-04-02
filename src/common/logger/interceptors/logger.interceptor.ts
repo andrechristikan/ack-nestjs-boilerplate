@@ -75,7 +75,7 @@ export class LoggerInterceptor implements NestInterceptor<any> {
                         requestId: __id,
                         method: method as ENUM_REQUEST_METHOD,
                         role: user?.role,
-                        accessFor: user?.accessFor,
+                        type: user?.type,
                         params,
                         bodies: body,
                         path,

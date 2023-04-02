@@ -38,8 +38,7 @@ describe('E2E User', () => {
         authService = app.get(AuthService);
 
         const payload = await authService.createPayloadAccessToken(
-            E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
-            false
+            E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST
         );
         accessToken = await authService.createAccessToken(payload);
 

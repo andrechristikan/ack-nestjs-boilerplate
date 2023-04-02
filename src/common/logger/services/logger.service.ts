@@ -23,7 +23,7 @@ export class LoggerService implements ILoggerService {
         method,
         requestId,
         role,
-        accessFor,
+        type,
         params,
         bodies,
         path,
@@ -40,7 +40,7 @@ export class LoggerService implements ILoggerService {
         create.method = method;
         create.requestId = requestId;
         create.role = role;
-        create.accessFor = accessFor;
+        create.type = type;
         create.params = params;
         create.bodies = bodies;
         create.path = path;
@@ -58,7 +58,7 @@ export class LoggerService implements ILoggerService {
         method,
         requestId,
         role,
-        accessFor,
+        type,
         params,
         bodies,
         path,
@@ -75,7 +75,7 @@ export class LoggerService implements ILoggerService {
         create.method = method;
         create.requestId = requestId;
         create.role = role;
-        create.accessFor = accessFor;
+        create.type = type;
         create.params = params;
         create.bodies = bodies;
         create.path = path;
@@ -93,7 +93,7 @@ export class LoggerService implements ILoggerService {
         method,
         requestId,
         role,
-        accessFor,
+        type,
         params,
         bodies,
         path,
@@ -110,7 +110,7 @@ export class LoggerService implements ILoggerService {
         create.method = method;
         create.requestId = requestId;
         create.role = role;
-        create.accessFor = accessFor;
+        create.type = type;
         create.params = params;
         create.bodies = bodies;
         create.path = path;
@@ -128,7 +128,7 @@ export class LoggerService implements ILoggerService {
         method,
         requestId,
         role,
-        accessFor,
+        type,
         params,
         bodies,
         path,
@@ -145,7 +145,7 @@ export class LoggerService implements ILoggerService {
         create.method = method;
         create.requestId = requestId;
         create.role = role;
-        create.accessFor = accessFor;
+        create.type = type;
         create.params = params;
         create.bodies = bodies;
         create.path = path;
@@ -164,7 +164,7 @@ export class LoggerService implements ILoggerService {
         method,
         requestId,
         role,
-        accessFor,
+        type,
         params,
         bodies,
         path,
@@ -181,7 +181,7 @@ export class LoggerService implements ILoggerService {
         create.method = method;
         create.requestId = requestId;
         create.role = role;
-        create.accessFor = accessFor;
+        create.type = type;
         create.params = params;
         create.bodies = bodies;
         create.path = path;

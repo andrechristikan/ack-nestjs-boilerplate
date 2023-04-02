@@ -103,7 +103,7 @@ describe('E2E User Admin', () => {
         );
 
         const map = await userService.payloadSerialization(user);
-        const payload = await authService.createPayloadAccessToken(map, false);
+        const payload = await authService.createPayloadAccessToken(map);
 
         accessToken = await authService.createAccessToken(payload);
 
@@ -141,7 +141,6 @@ describe('E2E User Admin', () => {
 
             .send({
                 role: 'test_roles',
-                accessFor: 'test',
             });
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);

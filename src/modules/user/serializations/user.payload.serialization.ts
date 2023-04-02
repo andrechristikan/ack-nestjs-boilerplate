@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, OmitType } from '@nestjs/swagger';
 import { Exclude, Expose, Transform } from 'class-transformer';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+import { ENUM_AUTH_TYPE } from 'src/common/auth/constants/auth.enum.constant';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
 
@@ -32,13 +32,13 @@ export class UserPayloadSerialization extends OmitType(UserGetSerialization, [
     readonly role: string;
 
     @ApiProperty({
-        example: ENUM_AUTH_ACCESS_FOR.ADMIN,
+        example: ENUM_AUTH_TYPE.ADMIN,
         type: 'string',
-        enum: ENUM_AUTH_ACCESS_FOR,
+        enum: ENUM_AUTH_TYPE,
     })
     @Expose()
-    @Transform(({ obj }) => obj.role.accessFor)
-    readonly accessFor: ENUM_AUTH_ACCESS_FOR;
+    @Transform(({ obj }) => obj.role.type)
+    readonly type: ENUM_AUTH_TYPE;
 
     @Exclude()
     readonly isActive: boolean;

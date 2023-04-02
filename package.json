@@ -40,16 +40,14 @@
     "spell:test": "cspell lint --config cspell.json test/**/*.ts --color --gitignore --no-must-find-files --no-summary --no-progress || true",
     "seed:setting": "nestjs-command seed:setting",
     "seed:apikey": "nestjs-command seed:apikey",
-    "seed:permission": "nestjs-command seed:permission",
     "seed:role": "nestjs-command seed:role",
     "seed:user": "nestjs-command seed:user",
     "rollback:setting": "nestjs-command remove:setting",
     "rollback:apikey": "nestjs-command remove:apikey",
-    "rollback:permission": "nestjs-command remove:permission",
     "rollback:role": "nestjs-command remove:role",
     "rollback:user": "nestjs-command remove:user",
-    "seed": "yarn seed:setting && yarn seed:permission && yarn seed:role && yarn seed:user && yarn seed:apikey",
-    "rollback": "yarn rollback:setting && yarn rollback:apikey && yarn rollback:user && yarn rollback:role && yarn rollback:permission"
+    "seed": "yarn seed:setting && yarn seed:role && yarn seed:user && yarn seed:apikey",
+    "rollback": "yarn rollback:setting && yarn rollback:apikey && yarn rollback:user && yarn rollback:role"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.304.0",

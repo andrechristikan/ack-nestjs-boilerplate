@@ -10,7 +10,7 @@ import {
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+import { ENUM_AUTH_TYPE } from 'src/common/auth/constants/auth.enum.constant';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import {
@@ -31,13 +31,13 @@ import {
 } from 'src/common/response/interfaces/response.interface';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import {
-    ROLE_DEFAULT_ACCESS_FOR,
     ROLE_DEFAULT_AVAILABLE_ORDER_BY,
     ROLE_DEFAULT_AVAILABLE_SEARCH,
     ROLE_DEFAULT_IS_ACTIVE,
     ROLE_DEFAULT_ORDER_BY,
     ROLE_DEFAULT_ORDER_DIRECTION,
     ROLE_DEFAULT_PER_PAGE,
+    ROLE_DEFAULT_TYPE,
 } from 'src/modules/role/constants/role.list.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import {
@@ -49,7 +49,6 @@ import {
 } from 'src/modules/role/decorators/role.admin.decorator';
 import { GetRole } from 'src/modules/role/decorators/role.decorator';
 import {
-    RoleAccessForDoc,
     RoleActiveDoc,
     RoleCreateDoc,
     RoleDeleteDoc,
@@ -60,13 +59,11 @@ import {
 } from 'src/modules/role/docs/role.admin.doc';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleRequestDto } from 'src/modules/role/dtos/role.request.dto';
-import { RoleUpdateNameDto } from 'src/modules/role/dtos/role.update-name.dto';
-import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
+import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
 import {
     RoleDoc,
     RoleEntity,
 } from 'src/modules/role/repository/entities/role.entity';
-import { RoleAccessForSerialization } from 'src/modules/role/serializations/role.access-for.serialization';
 import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
 import { RoleListSerialization } from 'src/modules/role/serializations/role.list.serialization';
 import { RoleService } from 'src/modules/role/services/role.service';
@@ -99,17 +96,13 @@ export class RoleAdminController {
         { _search, _limit, _offset, _order }: PaginationListDto,
         @PaginationQueryFilterInBoolean('isActive', ROLE_DEFAULT_IS_ACTIVE)
         isActive: Record<string, any>,
-        @PaginationQueryFilterInEnum(
-            'accessFor',
-            ROLE_DEFAULT_ACCESS_FOR,
-            ENUM_AUTH_ACCESS_FOR
-        )
-        accessFor: Record<string, any>
+        @PaginationQueryFilterInEnum('type', ROLE_DEFAULT_TYPE, ENUM_AUTH_TYPE)
+        type: Record<string, any>
     ): Promise<IResponsePaging> {
         const find: Record<string, any> = {
             ..._search,
             ...isActive,
-            ...accessFor,
+            ...type,
         };
 
         const roles: RoleEntity[] = await this.roleService.findAll(find, {
@@ -152,7 +145,7 @@ export class RoleAdminController {
     @Post('/create')
     async create(
         @Body()
-        { name, accessFor }: RoleCreateDto
+        { name, description, type }: RoleCreateDto
     ): Promise<IResponse> {
         const exist: boolean = await this.roleService.existByName(name);
         if (exist) {
@@ -165,7 +158,8 @@ export class RoleAdminController {
         try {
             const create = await this.roleService.create({
                 name,
-                accessFor,
+                description,
+                type,
             });
 
             return {
@@ -191,50 +185,10 @@ export class RoleAdminController {
     async update(
         @GetRole() role: RoleDoc,
         @Body()
-        { name }: RoleUpdateNameDto
-    ): Promise<IResponse> {
-        const check: boolean = await this.roleService.existByName(name, {
-            excludeId: [role._id],
-        });
-        if (check) {
-            throw new ConflictException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR,
-                message: 'role.error.exist',
-            });
-        }
-
-        try {
-            await this.roleService.updateName(role, { name });
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
-
-        return {
-            data: { _id: role._id },
-        };
-    }
-
-    @RoleUpdateDoc()
-    @Response('role.updatePermission', {
-        serialization: ResponseIdSerialization,
-    })
-    @RoleUpdateGuard()
-    @RequestParamGuard(RoleRequestDto)
-    @AuthJwtAdminAccessProtected()
-    @Put('/update/:role/permission')
-    async updatePermission(
-        @GetRole() role: RoleDoc,
-        @Body()
-        { accessFor }: RoleUpdatePermissionDto
+        { description }: RoleUpdateDto
     ): Promise<IResponse> {
         try {
-            await this.roleService.updatePermission(role, {
-                accessFor,
-            });
+            await this.roleService.update(role, { description });
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -306,15 +260,5 @@ export class RoleAdminController {
         }
 
         return;
-    }
-
-    @RoleAccessForDoc()
-    @Response('role.accessFor', { serialization: RoleAccessForSerialization })
-    @AuthJwtAdminAccessProtected()
-    @Get('/access-for')
-    async accessFor(): Promise<IResponse> {
-        const accessFor: string[] = await this.roleService.getAccessFor();
-
-        return { data: { accessFor } };
     }
 }

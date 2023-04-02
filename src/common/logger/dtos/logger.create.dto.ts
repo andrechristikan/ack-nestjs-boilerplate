@@ -1,4 +1,4 @@
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+import { ENUM_AUTH_TYPE } from 'src/common/auth/constants/auth.enum.constant';
 import {
     ENUM_LOGGER_ACTION,
     ENUM_LOGGER_LEVEL,
@@ -14,7 +14,7 @@ export class LoggerCreateDto {
     method: ENUM_REQUEST_METHOD;
     path: string;
     role?: string;
-    accessFor?: ENUM_AUTH_ACCESS_FOR;
+    type?: ENUM_AUTH_TYPE;
     tags?: string[];
     params?: Record<string, any>;
     bodies?: Record<string, any>;

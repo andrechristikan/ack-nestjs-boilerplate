@@ -1,9 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import {
-    ENUM_AUTH_ACCESS_FOR,
-    ENUM_AUTH_ACCESS_FOR_DEFAULT,
-} from 'src/common/auth/constants/auth.enum.constant';
-import {
     IDatabaseCreateOptions,
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
@@ -13,8 +9,7 @@ import {
     IDatabaseCreateManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
-import { RoleUpdateNameDto } from 'src/modules/role/dtos/role.update-name.dto';
-import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
+import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
 import { IRoleService } from 'src/modules/role/interfaces/role.service.interface';
 import {
     RoleDoc,
@@ -30,31 +25,28 @@ export class RoleService implements IRoleService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<RoleEntity[]> {
-        return this.roleRepository.findAll<RoleEntity>(find, {
-            ...options,
-            join: false,
-        });
+        return this.roleRepository.findAll<RoleEntity>(find, options);
     }
 
-    async findOneById<T>(
+    async findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<T> {
-        return this.roleRepository.findOneById<T>(_id, options);
+    ): Promise<RoleDoc> {
+        return this.roleRepository.findOneById<RoleDoc>(_id, options);
     }
 
-    async findOne<T>(
+    async findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<T> {
-        return this.roleRepository.findOne<T>(find, options);
+    ): Promise<RoleDoc> {
+        return this.roleRepository.findOne<RoleDoc>(find, options);
     }
 
-    async findOneByName<T>(
+    async findOneByName(
         name: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<T> {
-        return this.roleRepository.findOne<T>({ name }, options);
+    ): Promise<RoleDoc> {
+        return this.roleRepository.findOne<RoleDoc>({ name }, options);
     }
 
     async getTotal(
@@ -62,18 +54,6 @@ export class RoleService implements IRoleService {
         options?: IDatabaseOptions
     ): Promise<number> {
         return this.roleRepository.getTotal(find, options);
-    }
-
-    async exist(
-        _id: string,
-        options?: IDatabaseExistOptions
-    ): Promise<boolean> {
-        return this.roleRepository.exists(
-            {
-                _id,
-            },
-            options
-        );
     }
 
     async existByName(
@@ -89,40 +69,23 @@ export class RoleService implements IRoleService {
     }
 
     async create(
-        { accessFor, name }: RoleCreateDto,
+        { name, description, type }: RoleCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<RoleDoc> {
         const create: RoleEntity = new RoleEntity();
-        create.accessFor = accessFor;
-        create.isActive = true;
         create.name = name;
-
-        return this.roleRepository.create<RoleEntity>(create, options);
-    }
-
-    async createSuperAdmin(options?: IDatabaseCreateOptions): Promise<RoleDoc> {
-        const create: RoleEntity = new RoleEntity();
-        create.name = 'superadmin';
+        create.description = description;
+        create.type = type;
         create.isActive = true;
-        create.accessFor = ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN;
 
         return this.roleRepository.create<RoleEntity>(create, options);
     }
 
-    async updateName(
+    async update(
         repository: RoleDoc,
-        { name }: RoleUpdateNameDto
+        { description }: RoleUpdateDto
     ): Promise<RoleDoc> {
-        repository.name = name;
-
-        return this.roleRepository.save(repository);
-    }
-
-    async updatePermission(
-        repository: RoleDoc,
-        { accessFor }: RoleUpdatePermissionDto
-    ): Promise<RoleDoc> {
-        repository.accessFor = accessFor;
+        repository.description = description;
 
         return this.roleRepository.save(repository);
     }
@@ -154,18 +117,14 @@ export class RoleService implements IRoleService {
         data: RoleCreateDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean> {
-        const create: RoleEntity[] = data.map(({ accessFor, name }) => {
+        const create: RoleEntity[] = data.map(({ type, name }) => {
             const entity: RoleEntity = new RoleEntity();
-            entity.accessFor = accessFor;
+            entity.type = type;
             entity.isActive = true;
             entity.name = name;
 
             return entity;
         });
         return this.roleRepository.createMany<RoleEntity>(create, options);
-    }
-
-    async getAccessFor(): Promise<string[]> {
-        return Object.values(ENUM_AUTH_ACCESS_FOR_DEFAULT);
     }
 }

@@ -1,4 +1,4 @@
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+import { ENUM_AUTH_TYPE } from 'src/common/auth/constants/auth.enum.constant';
 
 export const E2E_USER_ADMIN_LIST_URL = '/admin/user/list';
 export const E2E_USER_ADMIN_GET_URL = '/admin/user/get/:_id';
@@ -23,7 +23,7 @@ export const E2E_USER_PUBLIC_DELETE_URL = '/public/user/delete';
 
 export const E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST = {
     role: '613ee8e5b2fdd012b94484cb',
-    accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
+    type: ENUM_AUTH_TYPE.SUPER_ADMIN,
     phoneNumber: '628123123112',
     email: 'test@kadence.com',
     _id: '613ee8e5b2fdd012b94484ca',

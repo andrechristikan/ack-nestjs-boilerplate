@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
     IsString,
@@ -8,11 +8,12 @@ import {
     MinLength,
     IsEnum,
 } from 'class-validator';
-import { ENUM_AUTH_ACCESS_FOR_DEFAULT } from 'src/common/auth/constants/auth.enum.constant';
+import { ENUM_AUTH_TYPE } from 'src/common/auth/constants/auth.enum.constant';
+import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
 
-export class RoleCreateDto {
+export class RoleCreateDto extends PartialType(RoleUpdateDto) {
     @ApiProperty({
-        description: 'Alias name of role',
+        description: 'Name of role',
         example: faker.name.jobTitle(),
         required: true,
     })
@@ -24,11 +25,11 @@ export class RoleCreateDto {
     readonly name: string;
 
     @ApiProperty({
-        description: 'Representative for role',
+        description: 'Representative for role type',
         example: 'ADMIN',
         required: true,
     })
-    @IsEnum(ENUM_AUTH_ACCESS_FOR_DEFAULT)
+    @IsEnum(ENUM_AUTH_TYPE)
     @IsNotEmpty()
-    readonly accessFor: ENUM_AUTH_ACCESS_FOR_DEFAULT;
+    readonly type: ENUM_AUTH_TYPE;
 }

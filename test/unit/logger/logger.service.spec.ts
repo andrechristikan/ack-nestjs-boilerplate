@@ -5,7 +5,7 @@ import { Test } from '@nestjs/testing';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 import { IApiKeyCreated } from 'src/common/api-key/interfaces/api-key.interface';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
+import { ENUM_AUTH_TYPE } from 'src/common/auth/constants/auth.enum.constant';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
 import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
@@ -21,6 +21,7 @@ import { LoggerEntity } from 'src/common/logger/repository/entities/logger.entit
 import { LoggerService } from 'src/common/logger/services/logger.service';
 import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
 import configs from 'src/configs';
+import { E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST } from 'test/e2e/user/user.constant';
 
 describe('LoggerService', () => {
     let apiKeyService: ApiKeyService;
@@ -44,7 +45,7 @@ describe('LoggerService', () => {
         apiKey: DatabaseDefaultUUID(),
         requestId: DatabaseDefaultUUID(),
         role: DatabaseDefaultUUID(),
-        accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
+        type: ENUM_AUTH_TYPE.SUPER_ADMIN,
         method: ENUM_REQUEST_METHOD.GET,
         statusCode: 10000,
         bodies: {
@@ -88,7 +89,10 @@ describe('LoggerService', () => {
             name: faker.internet.userName(),
             description: faker.random.alphaNumeric(),
         };
-        apiKey = await apiKeyService.create(apiKeyCreate);
+        apiKey = await apiKeyService.create(
+            E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST._id,
+            apiKeyCreate
+        );
 
         loggerComplete.apiKey = apiKey.doc._id;
     });

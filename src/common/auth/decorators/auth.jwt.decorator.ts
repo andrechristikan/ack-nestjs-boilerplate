@@ -1,10 +1,10 @@
 import { applyDecorators, SetMetadata, UseGuards } from '@nestjs/common';
-import { AUTH_ACCESS_FOR_META_KEY } from 'src/common/auth/constants/auth.constant';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { AuthJwtAccessGuard } from 'src/common/auth/guards/jwt-access/auth.jwt-access.guard';
 import { AuthJwtRefreshGuard } from 'src/common/auth/guards/jwt-refresh/auth.jwt-refresh.guard';
-import { AuthPayloadAccessForGuard } from 'src/common/auth/guards/payload/auth.payload.access-for.guard';
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import { ENUM_AUTH_TYPE } from 'src/common/auth/constants/auth.enum.constant';
+import { AUTH_TYPE_META_KEY } from 'src/common/auth/constants/auth.constant';
+import { AuthPayloadTypeGuard } from 'src/common/auth/guards/payload/auth.payload.type.guard';
 
 export const AuthJwtPayload = createParamDecorator(
     (data: string, ctx: ExecutionContext): Record<string, any> => {
@@ -29,17 +29,17 @@ export function AuthJwtAccessProtected(): MethodDecorator {
 
 export function AuthJwtPublicAccessProtected(): MethodDecorator {
     return applyDecorators(
-        UseGuards(AuthJwtAccessGuard, AuthPayloadAccessForGuard),
-        SetMetadata(AUTH_ACCESS_FOR_META_KEY, [ENUM_AUTH_ACCESS_FOR.USER])
+        UseGuards(AuthJwtAccessGuard, AuthPayloadTypeGuard),
+        SetMetadata(AUTH_TYPE_META_KEY, [ENUM_AUTH_TYPE.USER])
     );
 }
 
 export function AuthJwtAdminAccessProtected(): MethodDecorator {
     return applyDecorators(
-        UseGuards(AuthJwtAccessGuard, AuthPayloadAccessForGuard),
-        SetMetadata(AUTH_ACCESS_FOR_META_KEY, [
-            ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
-            ENUM_AUTH_ACCESS_FOR.ADMIN,
+        UseGuards(AuthJwtAccessGuard, AuthPayloadTypeGuard),
+        SetMetadata(AUTH_TYPE_META_KEY, [
+            ENUM_AUTH_TYPE.SUPER_ADMIN,
+            ENUM_AUTH_TYPE.ADMIN,
         ])
     );
 }

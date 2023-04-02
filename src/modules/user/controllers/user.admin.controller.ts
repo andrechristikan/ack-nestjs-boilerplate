@@ -89,6 +89,7 @@ import {
 } from 'src/common/pagination/decorators/pagination.decorator';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
+import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -173,7 +174,7 @@ export class UserAdminController {
         @Body()
         { username, email, mobileNumber, role, ...body }: UserCreateDto
     ): Promise<IResponse> {
-        const checkRole = await this.roleService.exist(role);
+        const checkRole: RoleDoc = await this.roleService.findOneById(role);
         if (!checkRole) {
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
