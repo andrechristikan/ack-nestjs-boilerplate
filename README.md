@@ -70,7 +70,10 @@ Next development
 * [x] user e2e
 * [x] api key for saas, change `x-api-key` to `${key}:${secret}`
 * [x] excel decorator optimize
-* [ ] Authorization optimize, remove permission entity and implement policy guard
+* [ ] Authorization optimize
+    - remove permission entity
+    - implement acl policy guard
+    - remember me remove
 * [ ] user plan module
 * [ ] invoicing plan module
 * [ ] Google SSO

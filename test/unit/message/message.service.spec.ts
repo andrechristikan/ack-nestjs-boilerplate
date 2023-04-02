@@ -43,7 +43,6 @@ describe('MessageService', () => {
                 target: {
                     email: 'admin-mail.com',
                     password: 'aaAA@@123444',
-                    rememberMe: true,
                 },
                 value: 'admin-mail.com',
                 property: 'email',
@@ -57,7 +56,6 @@ describe('MessageService', () => {
                 target: {
                     email: 'admin-mail.com',
                     password: 'aaAA@@123444',
-                    rememberMe: true,
                 },
                 value: 'admin-mail.com',
                 property: 'email',
@@ -67,7 +65,6 @@ describe('MessageService', () => {
                         target: {
                             email: 'admin-mail.com',
                             password: 'aaAA@@123444',
-                            rememberMe: true,
                         },
                         value: 'admin-mail.com',
                         property: 'email',
@@ -85,7 +82,6 @@ describe('MessageService', () => {
                 target: {
                     email: 'admin-mail.com',
                     password: 'aaAA@@123444',
-                    rememberMe: true,
                 },
                 value: 'admin-mail.com',
                 property: 'email',
@@ -95,7 +91,6 @@ describe('MessageService', () => {
                         target: {
                             email: 'admin-mail.com',
                             password: 'aaAA@@123444',
-                            rememberMe: true,
                         },
                         value: 'admin-mail.com',
                         property: 'email',
@@ -107,7 +102,6 @@ describe('MessageService', () => {
                                 target: {
                                     email: 'admin-mail.com',
                                     password: 'aaAA@@123444',
-                                    rememberMe: true,
                                 },
                                 value: 'admin-mail.com',
                                 property: 'email',
@@ -127,7 +121,6 @@ describe('MessageService', () => {
                 target: {
                     email: 'admin-mail.com',
                     password: 'aaAA@@123444',
-                    rememberMe: true,
                 },
                 value: 'admin-mail.com',
                 property: 'email',

@@ -88,23 +88,18 @@ describe('E2E User Refresh', () => {
         });
 
         const map = await userService.payloadSerialization(userPopulate);
-        const payload = await authService.createPayloadRefreshToken(
-            map._id,
-            false
-        );
+        const payload = await authService.createPayloadRefreshToken(map._id);
         const payloadNotFound = {
             ...payload,
             _id: `${DatabaseDefaultUUID()}`,
         };
 
         refreshToken = await authService.createRefreshToken(payload, {
-            rememberMe: false,
             notBeforeExpirationTime: '0',
         });
         refreshTokenNotFound = await authService.createRefreshToken(
             payloadNotFound,
             {
-                rememberMe: false,
                 notBeforeExpirationTime: '0',
             }
         );
@@ -261,10 +256,7 @@ describe('E2E User Refresh Payload Encryption', () => {
         });
 
         const map = await userService.payloadSerialization(userPopulate);
-        const payload = await authService.createPayloadRefreshToken(
-            map._id,
-            false
-        );
+        const payload = await authService.createPayloadRefreshToken(map._id);
 
         const payloadHashedRefreshToken: string =
             await authService.encryptRefreshToken(payload);
@@ -272,7 +264,6 @@ describe('E2E User Refresh Payload Encryption', () => {
         refreshToken = await authService.createRefreshToken(
             payloadHashedRefreshToken,
             {
-                rememberMe: true,
                 notBeforeExpirationTime: '0',
             }
         );

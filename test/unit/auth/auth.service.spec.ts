@@ -24,7 +24,6 @@ describe('AuthService', () => {
     let accessTokenExpirationTime: number;
 
     let refreshTokenExpirationTime: number;
-    let refreshTokenExpirationTimeRememberMe: number;
 
     let issuer: string;
     let audience: string;
@@ -89,9 +88,6 @@ describe('AuthService', () => {
 
         refreshTokenExpirationTime = configService.get<number>(
             'auth.refreshToken.expirationTime'
-        );
-        refreshTokenExpirationTimeRememberMe = configService.get<number>(
-            'auth.refreshToken.expirationTimeRememberMe'
         );
 
         issuer = configService.get<string>('auth.issuer');
@@ -251,18 +247,6 @@ describe('AuthService', () => {
 
             expect(result).toBeTruthy();
         });
-
-        it('should be create refresh token in string with options rememberMe, from string', async () => {
-            const result: string = await authService.createRefreshToken(user, {
-                rememberMe: true,
-            });
-
-            jest.spyOn(authService, 'createRefreshToken').mockReturnValueOnce(
-                result as any
-            );
-
-            expect(result).toBeTruthy();
-        });
     });
 
     describe('validateRefreshToken', () => {
@@ -344,7 +328,7 @@ describe('AuthService', () => {
     describe('createPayloadAccessToken', () => {
         it('should be mapped', async () => {
             const result: Record<string, any> =
-                await authService.createPayloadAccessToken(user, false);
+                await authService.createPayloadAccessToken(user);
 
             jest.spyOn(
                 authService,
@@ -357,7 +341,7 @@ describe('AuthService', () => {
 
         it('payload with login date options', async () => {
             const result: Record<string, any> =
-                await authService.createPayloadAccessToken(user, false, {
+                await authService.createPayloadAccessToken(user, {
                     loginDate: new Date(),
                 });
 
@@ -375,7 +359,7 @@ describe('AuthService', () => {
     describe('createPayloadRefreshToken', () => {
         it('should be mapped', async () => {
             const result: Record<string, any> =
-                await authService.createPayloadRefreshToken(user._id, false);
+                await authService.createPayloadRefreshToken(user._id);
 
             jest.spyOn(
                 authService,
@@ -388,7 +372,7 @@ describe('AuthService', () => {
 
         it('payload with login date options', async () => {
             const result: Record<string, any> =
-                await authService.createPayloadRefreshToken(user._id, false, {
+                await authService.createPayloadRefreshToken(user._id, {
                     loginDate: new Date(),
                 });
 
@@ -486,19 +470,6 @@ describe('AuthService', () => {
 
             expect(result).toBeTruthy();
             expect(result).toBe(refreshTokenExpirationTime);
-        });
-
-        it('should be give number in days for refresh token expiration with long period', async () => {
-            const result: number =
-                await authService.getRefreshTokenExpirationTime(true);
-
-            jest.spyOn(
-                authService,
-                'getRefreshTokenExpirationTime'
-            ).mockReturnValueOnce(result as any);
-
-            expect(result).toBeTruthy();
-            expect(result).toBe(refreshTokenExpirationTimeRememberMe);
         });
     });
 

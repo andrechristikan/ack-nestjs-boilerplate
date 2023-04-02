@@ -70,7 +70,6 @@ export class UserPayloadSerialization extends OmitType(UserGetSerialization, [
     @Exclude()
     readonly mobileNumber?: number;
 
-    readonly rememberMe: boolean;
     readonly loginDate: Date;
 
     @Exclude()

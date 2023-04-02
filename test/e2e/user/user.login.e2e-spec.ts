@@ -107,7 +107,6 @@ describe('E2E User Login', () => {
             .send({
                 username: [1231],
                 password,
-                rememberMe: false,
             });
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
@@ -123,7 +122,6 @@ describe('E2E User Login', () => {
             .send({
                 username: faker.internet.userName(),
                 password,
-                rememberMe: false,
             });
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
@@ -139,7 +137,6 @@ describe('E2E User Login', () => {
             .send({
                 username: user.username,
                 password: 'Password@@1231',
-                rememberMe: false,
             });
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
@@ -157,7 +154,6 @@ describe('E2E User Login', () => {
             .send({
                 username: user.username,
                 password: 'Password@@1231',
-                rememberMe: false,
             });
 
         expect(response.status).toEqual(HttpStatus.FORBIDDEN);
@@ -177,7 +173,6 @@ describe('E2E User Login', () => {
             .send({
                 username: user.username,
                 password,
-                rememberMe: false,
             });
 
         await userService.unblocked(user);
@@ -197,7 +192,6 @@ describe('E2E User Login', () => {
             .send({
                 username: user.username,
                 password,
-                rememberMe: false,
             });
 
         await userService.active(user);
@@ -217,7 +211,6 @@ describe('E2E User Login', () => {
             .send({
                 username: user.username,
                 password,
-                rememberMe: false,
             });
 
         await roleService.active(role);
@@ -235,7 +228,6 @@ describe('E2E User Login', () => {
             .send({
                 username: user.username,
                 password,
-                rememberMe: false,
             });
 
         expect(response.status).toEqual(HttpStatus.OK);
@@ -251,7 +243,6 @@ describe('E2E User Login', () => {
             .send({
                 username: user.username,
                 password,
-                rememberMe: false,
             });
 
         expect(response.status).toEqual(HttpStatus.OK);
@@ -328,7 +319,6 @@ describe('E2E User Login Payload Encryption', () => {
             .send({
                 username: user.username,
                 password,
-                rememberMe: true,
             });
 
         expect(response.status).toEqual(HttpStatus.OK);

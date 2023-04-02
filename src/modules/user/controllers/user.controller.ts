@@ -79,7 +79,7 @@ export class UserController {
     @HttpCode(HttpStatus.OK)
     @Post('/login')
     async login(
-        @Body() { username, password, rememberMe }: UserLoginDto
+        @Body() { username, password }: UserLoginDto
     ): Promise<IResponse> {
         const user: UserDoc = await this.userService.findOneByUsername(
             username
@@ -160,20 +160,12 @@ export class UserController {
         const tokenType: string = await this.authService.getTokenType();
         const expiresIn: number =
             await this.authService.getAccessTokenExpirationTime();
-        rememberMe = rememberMe ? true : false;
         const payloadAccessToken: Record<string, any> =
-            await this.authService.createPayloadAccessToken(
-                payload,
-                rememberMe
-            );
+            await this.authService.createPayloadAccessToken(payload);
         const payloadRefreshToken: Record<string, any> =
-            await this.authService.createPayloadRefreshToken(
-                payload._id,
-                rememberMe,
-                {
-                    loginDate: payloadAccessToken.loginDate,
-                }
-            );
+            await this.authService.createPayloadRefreshToken(payload._id, {
+                loginDate: payloadAccessToken.loginDate,
+            });
 
         const payloadEncryption = await this.authService.getPayloadEncryption();
         let payloadHashedAccessToken: Record<string, any> | string =
@@ -193,8 +185,7 @@ export class UserController {
         );
 
         const refreshToken: string = await this.authService.createRefreshToken(
-            payloadHashedRefreshToken,
-            { rememberMe }
+            payloadHashedRefreshToken
         );
 
         const checkPasswordExpired: boolean =
@@ -231,7 +222,7 @@ export class UserController {
     @Post('/refresh')
     async refresh(
         @AuthJwtPayload()
-        { _id, rememberMe, loginDate }: Record<string, any>,
+        { _id, loginDate }: Record<string, any>,
         @AuthJwtToken() refreshToken: string
     ): Promise<IResponse> {
         const user: UserDoc = await this.userService.findOneById(_id);
@@ -280,13 +271,9 @@ export class UserController {
         const expiresIn: number =
             await this.authService.getAccessTokenExpirationTime();
         const payloadAccessToken: Record<string, any> =
-            await this.authService.createPayloadAccessToken(
-                payload,
-                rememberMe,
-                {
-                    loginDate,
-                }
-            );
+            await this.authService.createPayloadAccessToken(payload, {
+                loginDate,
+            });
 
         const payloadEncryption = await this.authService.getPayloadEncryption();
         let payloadHashedAccessToken: Record<string, any> | string =

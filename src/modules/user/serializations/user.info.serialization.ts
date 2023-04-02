@@ -5,7 +5,6 @@ import { UserPayloadSerialization } from 'src/modules/user/serializations/user.p
 export class UserInfoSerialization extends PickType(UserPayloadSerialization, [
     '_id',
     'username',
-    'rememberMe',
     'loginDate',
 ] as const) {
     readonly role: string;

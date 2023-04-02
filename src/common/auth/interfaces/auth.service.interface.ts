@@ -41,13 +41,11 @@ export interface IAuthService {
 
     createPayloadAccessToken(
         data: Record<string, any>,
-        rememberMe: boolean,
         options?: IAuthPayloadOptions
     ): Promise<Record<string, any>>;
 
     createPayloadRefreshToken(
         _id: string,
-        rememberMe: boolean,
         options?: IAuthPayloadOptions
     ): Promise<Record<string, any>>;
 
@@ -61,7 +59,7 @@ export interface IAuthService {
 
     getAccessTokenExpirationTime(): Promise<number>;
 
-    getRefreshTokenExpirationTime(rememberMe?: boolean): Promise<number>;
+    getRefreshTokenExpirationTime(): Promise<number>;
 
     getIssuer(): Promise<string>;
 

@@ -96,9 +96,6 @@ import { APP_LANGUAGE } from 'src/app/constants/app.constant';
                 AUTH_JWT_REFRESH_TOKEN_EXPIRED: Joi.string()
                     .default('7d')
                     .required(),
-                AUTH_JWT_REFRESH_TOKEN_REMEMBER_ME_EXPIRED: Joi.string()
-                    .default('30d')
-                    .required(),
                 AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION: Joi.string()
                     .default('15m')
                     .required(),

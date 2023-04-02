@@ -29,6 +29,7 @@ describe('E2E Api Key', () => {
     let helperDateService: HelperDateService;
 
     let accessToken: string;
+    let accessTokenCreate: string;
 
     let apiKey: ApiKeyDoc;
     let apiKeyExpired: ApiKeyDoc;
@@ -66,6 +67,16 @@ describe('E2E Api Key', () => {
             false
         );
         accessToken = await authService.createAccessToken(payload);
+
+        const payloadCreate = await authService.createPayloadAccessToken(
+            {
+                ...E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
+                loginDate: new Date(),
+                _id: DatabaseDefaultUUID(),
+            },
+            false
+        );
+        accessTokenCreate = await authService.createAccessToken(payloadCreate);
 
         const apiKeyCreated1 = await apiKeyService.create(
             E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST._id,
@@ -161,7 +172,7 @@ describe('E2E Api Key', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_API_KEY_ADMIN_CREATE_URL)
             .send(apiKeyCreate)
-            .set('Authorization', `Bearer ${accessToken}`);
+            .set('Authorization', `Bearer ${accessTokenCreate}`);
 
         expect(response.status).toEqual(HttpStatus.CREATED);
         expect(response.body.statusCode).toEqual(HttpStatus.CREATED);

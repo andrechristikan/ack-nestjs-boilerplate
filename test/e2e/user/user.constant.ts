@@ -27,7 +27,6 @@ export const E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST = {
     phoneNumber: '628123123112',
     email: 'test@kadence.com',
     _id: '613ee8e5b2fdd012b94484ca',
-    rememberMe: false,
     loginWith: 'EMAIL',
     loginDate: '2021-9-13',
 };

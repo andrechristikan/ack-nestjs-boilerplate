@@ -20,7 +20,6 @@ export class AuthService implements IAuthService {
 
     private readonly refreshTokenSecretKey: string;
     private readonly refreshTokenExpirationTime: number;
-    private readonly refreshTokenExpirationTimeRememberMe: number;
     private readonly refreshTokenNotBeforeExpirationTime: number;
     private readonly refreshTokenEncryptKey: string;
     private readonly refreshTokenEncryptIv: string;
@@ -63,10 +62,6 @@ export class AuthService implements IAuthService {
         this.refreshTokenExpirationTime = this.configService.get<number>(
             'auth.refreshToken.expirationTime'
         );
-        this.refreshTokenExpirationTimeRememberMe =
-            this.configService.get<number>(
-                'auth.refreshToken.expirationTimeRememberMe'
-            );
         this.refreshTokenNotBeforeExpirationTime =
             this.configService.get<number>(
                 'auth.refreshToken.notBeforeExpirationTime'
@@ -169,9 +164,7 @@ export class AuthService implements IAuthService {
             { data: payloadHashed },
             {
                 secretKey: this.refreshTokenSecretKey,
-                expiredIn: options?.rememberMe
-                    ? this.refreshTokenExpirationTimeRememberMe
-                    : this.refreshTokenExpirationTime,
+                expiredIn: this.refreshTokenExpirationTime,
                 notBefore:
                     options?.notBeforeExpirationTime ??
                     this.refreshTokenNotBeforeExpirationTime,
@@ -207,24 +200,20 @@ export class AuthService implements IAuthService {
 
     async createPayloadAccessToken(
         data: Record<string, any>,
-        rememberMe: boolean,
         options?: IAuthPayloadOptions
     ): Promise<Record<string, any>> {
         return {
             ...data,
-            rememberMe,
             loginDate: options?.loginDate ?? this.helperDateService.create(),
         };
     }
 
     async createPayloadRefreshToken(
         _id: string,
-        rememberMe: boolean,
         options?: IAuthPayloadOptions
     ): Promise<Record<string, any>> {
         return {
             _id,
-            rememberMe,
             loginDate: options?.loginDate,
         };
     }
@@ -265,10 +254,8 @@ export class AuthService implements IAuthService {
         return this.accessTokenExpirationTime;
     }
 
-    async getRefreshTokenExpirationTime(rememberMe?: boolean): Promise<number> {
-        return rememberMe
-            ? this.refreshTokenExpirationTimeRememberMe
-            : this.refreshTokenExpirationTime;
+    async getRefreshTokenExpirationTime(): Promise<number> {
+        return this.refreshTokenExpirationTime;
     }
 
     async getIssuer(): Promise<string> {

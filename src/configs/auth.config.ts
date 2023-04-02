@@ -21,9 +21,6 @@ export default registerAs(
             expirationTime: seconds(
                 process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED ?? '7d'
             ), // recommendation for production is 7d
-            expirationTimeRememberMe: seconds(
-                process.env.AUTH_JWT_REFRESH_TOKEN_REMEMBER_ME_EXPIRED ?? '30d'
-            ), // recommendation for production is 30d
             notBeforeExpirationTime: seconds(
                 process.env.AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION ??
                     '15m'
