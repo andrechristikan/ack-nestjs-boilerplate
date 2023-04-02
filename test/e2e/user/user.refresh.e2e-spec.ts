@@ -13,8 +13,6 @@ import { E2E_USER_REFRESH_URL } from './user.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { RoleModule } from 'src/modules/role/role.module';
-import { PermissionModule } from 'src/modules/permission/permission.module';
 import {
     UserDoc,
     UserEntity,
@@ -48,8 +46,6 @@ describe('E2E User Refresh', () => {
         const modRef = await Test.createTestingModule({
             imports: [
                 CommonModule,
-                RoleModule,
-                PermissionModule,
                 RoutesModule,
                 RouterModule.register([
                     {
@@ -227,8 +223,6 @@ describe('E2E User Refresh Payload Encryption', () => {
         const modRef = await Test.createTestingModule({
             imports: [
                 CommonModule,
-                RoleModule,
-                PermissionModule,
                 RoutesModule,
                 RouterModule.register([
                     {

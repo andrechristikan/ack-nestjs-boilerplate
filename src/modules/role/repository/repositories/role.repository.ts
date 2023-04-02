@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { DatabaseMongoUUIDRepositoryAbstract } from 'src/common/database/abstracts/mongo/repositories/database.mongo.uuid.repository.abstract';
 import { DatabaseModel } from 'src/common/database/decorators/database.decorator';
-import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import {
     RoleDoc,
     RoleEntity,
@@ -17,11 +16,6 @@ export class RoleRepository extends DatabaseMongoUUIDRepositoryAbstract<
         @DatabaseModel(RoleEntity.name)
         private readonly roleModel: Model<RoleEntity>
     ) {
-        super(roleModel, {
-            path: 'permissions',
-            localField: 'permissions',
-            foreignField: '_id',
-            model: PermissionEntity.name,
-        });
+        super(roleModel);
     }
 }

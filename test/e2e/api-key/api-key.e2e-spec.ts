@@ -19,10 +19,7 @@ import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { faker } from '@faker-js/faker';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
-import {
-    E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
-    E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
-} from 'test/e2e/user/user.constant';
+import { E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST } from 'test/e2e/user/user.constant';
 import { RoutesModule } from 'src/router/routes/routes.module';
 
 describe('E2E Api Key', () => {
@@ -32,7 +29,6 @@ describe('E2E Api Key', () => {
     let helperDateService: HelperDateService;
 
     let accessToken: string;
-    let permissionToken: string;
 
     let apiKey: ApiKeyDoc;
     let apiKeyExpired: ApiKeyDoc;
@@ -70,10 +66,6 @@ describe('E2E Api Key', () => {
             false
         );
         accessToken = await authService.createAccessToken(payload);
-        permissionToken = await authService.createPermissionToken({
-            ...E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
-            _id: payload._id,
-        });
 
         const apiKeyCreated1 = await apiKeyService.create(
             E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST._id,
@@ -120,8 +112,7 @@ describe('E2E Api Key', () => {
     it(`GET ${E2E_API_KEY_ADMIN_LIST_URL} List Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_API_KEY_ADMIN_LIST_URL)
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -135,8 +126,7 @@ describe('E2E Api Key', () => {
                     `${DatabaseDefaultUUID()}`
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -147,8 +137,7 @@ describe('E2E Api Key', () => {
     it(`GET ${E2E_API_KEY_ADMIN_GET_URL} Get Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_API_KEY_ADMIN_GET_URL.replace(':_id', apiKey._id))
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -160,8 +149,7 @@ describe('E2E Api Key', () => {
             .send({
                 name: [1231231],
             })
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
@@ -173,8 +161,7 @@ describe('E2E Api Key', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_API_KEY_ADMIN_CREATE_URL)
             .send(apiKeyCreate)
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.CREATED);
         expect(response.body.statusCode).toEqual(HttpStatus.CREATED);
@@ -188,8 +175,7 @@ describe('E2E Api Key', () => {
                     DatabaseDefaultUUID()
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -205,8 +191,7 @@ describe('E2E Api Key', () => {
                     apiKeyExpired._id
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -219,8 +204,7 @@ describe('E2E Api Key', () => {
             .patch(
                 E2E_API_KEY_ADMIN_UPDATE_RESET_URL.replace(':_id', apiKey._id)
             )
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -232,8 +216,7 @@ describe('E2E Api Key', () => {
             .send({
                 name: [],
             })
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
         expect(response.body.statusCode).toEqual(
@@ -252,8 +235,7 @@ describe('E2E Api Key', () => {
             .send({
                 name: faker.name.jobArea(),
             })
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -272,8 +254,7 @@ describe('E2E Api Key', () => {
             .send({
                 name: faker.name.jobArea(),
             })
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -287,8 +268,7 @@ describe('E2E Api Key', () => {
             .send({
                 name: faker.name.jobArea(),
             })
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

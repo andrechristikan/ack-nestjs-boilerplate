@@ -16,20 +16,21 @@ describe('AuthService', () => {
 
     let encryptedAccessToken: string;
     let accessToken: string;
+
     let encryptedRefreshToken: string;
     let refreshToken: string;
-    let encryptedPermissionToken: string;
-    let permissionToken: string;
 
     let prefixAuthorization: string;
     let accessTokenExpirationTime: number;
+
     let refreshTokenExpirationTime: number;
     let refreshTokenExpirationTimeRememberMe: number;
+
     let issuer: string;
     let audience: string;
     let subject: string;
+
     let payloadEncryption: boolean;
-    let permissionTokenExpirationTime: number;
 
     // cSpell:ignore ZfqgaDMPpWQ3lJEGQ8Ueu stnk
     const user: Record<string, any> = {
@@ -43,7 +44,6 @@ describe('AuthService', () => {
             _id: '623cb7f7965a74bf7a0e9e53',
             accessFor: ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
             isActive: true,
-            permissions: [],
             name: 'admin',
         },
         email: 'admin@mail.com',
@@ -74,14 +74,11 @@ describe('AuthService', () => {
 
         accessToken = await authService.createAccessToken(user);
         encryptedAccessToken = await authService.encryptAccessToken(user);
+
         refreshToken = await authService.createRefreshToken(user, {
             notBeforeExpirationTime: 0,
         });
         encryptedRefreshToken = await authService.encryptRefreshToken(user);
-        permissionToken = await authService.createPermissionToken(user);
-        encryptedPermissionToken = await authService.encryptPermissionToken(
-            user
-        );
 
         prefixAuthorization = configService.get<string>(
             'auth.prefixAuthorization'
@@ -89,20 +86,20 @@ describe('AuthService', () => {
         accessTokenExpirationTime = configService.get<number>(
             'auth.accessToken.expirationTime'
         );
+
         refreshTokenExpirationTime = configService.get<number>(
             'auth.refreshToken.expirationTime'
         );
         refreshTokenExpirationTimeRememberMe = configService.get<number>(
             'auth.refreshToken.expirationTimeRememberMe'
         );
+
         issuer = configService.get<string>('auth.issuer');
         audience = configService.get<string>('auth.audience');
         subject = configService.get<string>('auth.subject');
+
         payloadEncryption = configService.get<boolean>(
             'auth.payloadEncryption'
-        );
-        permissionTokenExpirationTime = configService.get<number>(
-            'auth.permissionToken.expirationTime'
         );
     });
 
@@ -310,109 +307,6 @@ describe('AuthService', () => {
         });
     });
 
-    describe('encryptPermissionToken', () => {
-        it('should be success', async () => {
-            const payloadHashedPermissionToken =
-                await authService.encryptPermissionToken(user);
-            jest.spyOn(
-                authService,
-                'encryptPermissionToken'
-            ).mockImplementation(async () => payloadHashedPermissionToken);
-
-            expect(await authService.encryptPermissionToken(user)).toBe(
-                payloadHashedPermissionToken
-            );
-        });
-    });
-
-    describe('decryptPermissionToken', () => {
-        it('should be return payload data', async () => {
-            const result: Record<string, any> =
-                await authService.decryptPermissionToken({
-                    data: encryptedPermissionToken,
-                });
-
-            jest.spyOn(
-                authService,
-                'decryptPermissionToken'
-            ).mockReturnValueOnce(result as any);
-
-            expect(result).toBeTruthy();
-            expect(result._id).toBe(user._id);
-        });
-    });
-
-    describe('createPermissionToken', () => {
-        it('should be create refresh token in string, from object', async () => {
-            const result: string = await authService.createPermissionToken(
-                user
-            );
-
-            jest.spyOn(
-                authService,
-                'createPermissionToken'
-            ).mockReturnValueOnce(result as any);
-
-            expect(result).toBeTruthy();
-        });
-
-        it('should be create refresh token in string, from string', async () => {
-            const result: string = await authService.createPermissionToken('');
-
-            jest.spyOn(
-                authService,
-                'createPermissionToken'
-            ).mockReturnValueOnce(result as any);
-
-            expect(result).toBeTruthy();
-        });
-    });
-
-    describe('validatePermissionToken', () => {
-        it('should be verified', async () => {
-            const result: boolean = await authService.validatePermissionToken(
-                permissionToken
-            );
-
-            jest.spyOn(
-                authService,
-                'validatePermissionToken'
-            ).mockReturnValueOnce(result as any);
-
-            expect(result).toBeTruthy();
-            expect(result).toBe(true);
-        });
-
-        it('should be failed', async () => {
-            const result: boolean = await authService.validatePermissionToken(
-                faker.random.alphaNumeric(20)
-            );
-
-            jest.spyOn(
-                authService,
-                'validatePermissionToken'
-            ).mockReturnValueOnce(result as any);
-
-            expect(result).toBeFalsy();
-            expect(result).toBe(false);
-        });
-    });
-
-    describe('payloadPermissionToken', () => {
-        it('should given a payload of token', async () => {
-            const result: Record<string, any> =
-                await authService.payloadPermissionToken(permissionToken);
-
-            jest.spyOn(
-                authService,
-                'payloadPermissionToken'
-            ).mockReturnValueOnce(result as any);
-
-            expect(result).toBeTruthy();
-            expect(result.data._id).toBe(user._id);
-        });
-    });
-
     describe('validateUser', () => {
         it('should be a valid user', async () => {
             const password = faker.internet.password(20, true, /[A-Za-z0-9]/);
@@ -506,21 +400,6 @@ describe('AuthService', () => {
             expect(result).toBeTruthy();
             expect(result._id).toBe(user._id);
             expect(result.loginDate).toBeDefined();
-        });
-    });
-
-    describe('createPayloadPermissionToken', () => {
-        it('should be mapped', async () => {
-            const result: Record<string, any> =
-                await authService.createPayloadPermissionToken(user);
-
-            jest.spyOn(
-                authService,
-                'createPayloadPermissionToken'
-            ).mockReturnValueOnce(result as any);
-
-            expect(result).toBeTruthy();
-            expect(result).toEqual(user);
         });
     });
 
@@ -672,21 +551,6 @@ describe('AuthService', () => {
 
             expect(result).toBeDefined();
             expect(result).toBe(payloadEncryption);
-        });
-    });
-
-    describe('getPermissionTokenExpirationTime', () => {
-        it('should be success', async () => {
-            const result: number =
-                await authService.getPermissionTokenExpirationTime();
-
-            jest.spyOn(
-                authService,
-                'getPermissionTokenExpirationTime'
-            ).mockReturnValueOnce(result as any);
-
-            expect(result).toBeTruthy();
-            expect(result).toBe(permissionTokenExpirationTime);
         });
     });
 });

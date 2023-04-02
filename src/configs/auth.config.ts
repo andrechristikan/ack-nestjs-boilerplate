@@ -40,18 +40,6 @@ export default registerAs(
         payloadEncryption:
             process.env.AUTH_JWT_PAYLOAD_ENCRYPT === 'true' ? true : false,
 
-        permissionToken: {
-            headerName: 'x-permission-token',
-            secretKey: process.env.AUTH_PERMISSION_TOKEN_SECRET_KEY ?? '123456',
-            expirationTime: seconds(
-                process.env.AUTH_PERMISSION_TOKEN_EXPIRED ?? '5m'
-            ), // recommendation for production is 5m
-            notBeforeExpirationTime: seconds('0'), // keep it in zero value
-
-            encryptKey: process.env.AUTH_PAYLOAD_PERMISSION_TOKEN_ENCRYPT_KEY,
-            encryptIv: process.env.AUTH_PAYLOAD_PERMISSION_TOKEN_ENCRYPT_IV,
-        },
-
         password: {
             attempt: true,
             maxAttempt: 3,

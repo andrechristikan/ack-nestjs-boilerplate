@@ -69,10 +69,10 @@ Next development
 * [x] update unit test for common modules
 * [x] user e2e
 * [x] api key for saas, change `x-api-key` to `${key}:${secret}`
-* [ ] user plan module
-* [ ] invoicing plan module
 * [x] excel decorator optimize
 * [ ] Authorization optimize, remove permission entity and implement policy guard
+* [ ] user plan module
+* [ ] invoicing plan module
 * [ ] Google SSO
 * [ ] Background export/import from/to CSV and Excel
 * [ ] Update Documentation, include an diagram for easier comprehension

@@ -21,9 +21,7 @@ import { ApiKeyRequestDto } from 'src/common/api-key/dtos/api-key.request.dto';
 import { ApiKeyUpdateDateDto } from 'src/common/api-key/dtos/api-key.update-date.dto';
 import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
-import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { AuthJwtAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
-import { AuthPermissionProtected } from 'src/common/auth/decorators/auth.permission.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
@@ -42,11 +40,6 @@ export class ApiKeyAdminController {
     @Response('apiKey.inactive')
     @ApiKeyUpdateInactiveGuard()
     @RequestParamGuard(ApiKeyRequestDto)
-    @AuthPermissionProtected(
-        ENUM_AUTH_PERMISSIONS.API_KEY_READ,
-        ENUM_AUTH_PERMISSIONS.API_KEY_UPDATE,
-        ENUM_AUTH_PERMISSIONS.API_KEY_INACTIVE
-    )
     @AuthJwtAccessProtected()
     @Patch('/update/:apiKey/inactive')
     async inactive(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
@@ -67,11 +60,6 @@ export class ApiKeyAdminController {
     @Response('apiKey.active')
     @ApiKeyUpdateActiveGuard()
     @RequestParamGuard(ApiKeyRequestDto)
-    @AuthPermissionProtected(
-        ENUM_AUTH_PERMISSIONS.API_KEY_READ,
-        ENUM_AUTH_PERMISSIONS.API_KEY_UPDATE,
-        ENUM_AUTH_PERMISSIONS.API_KEY_ACTIVE
-    )
     @AuthJwtAccessProtected()
     @Patch('/update/:apiKey/active')
     async active(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
@@ -92,11 +80,6 @@ export class ApiKeyAdminController {
     @Response('apiKey.updateDate', { serialization: ResponseIdSerialization })
     @ApiKeyUpdateGuard()
     @RequestParamGuard(ApiKeyRequestDto)
-    @AuthPermissionProtected(
-        ENUM_AUTH_PERMISSIONS.API_KEY_READ,
-        ENUM_AUTH_PERMISSIONS.API_KEY_UPDATE,
-        ENUM_AUTH_PERMISSIONS.API_KEY_UPDATE_DATE
-    )
     @AuthJwtAccessProtected()
     @Put('/update/:apiKey/date')
     async updateDate(

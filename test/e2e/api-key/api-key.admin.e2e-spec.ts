@@ -17,10 +17,7 @@ import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { faker } from '@faker-js/faker';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
-import {
-    E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST,
-    E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
-} from 'test/e2e/user/user.constant';
+import { E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST } from 'test/e2e/user/user.constant';
 
 describe('E2E Api Key Admin', () => {
     let app: INestApplication;
@@ -29,7 +26,6 @@ describe('E2E Api Key Admin', () => {
     let helperDateService: HelperDateService;
 
     let accessToken: string;
-    let permissionToken: string;
 
     let apiKey: ApiKeyDoc;
     let apiKeyExpired: ApiKeyDoc;
@@ -67,13 +63,9 @@ describe('E2E Api Key Admin', () => {
             false
         );
         accessToken = await authService.createAccessToken(payload);
-        permissionToken = await authService.createPermissionToken({
-            ...E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
-            _id: payload._id,
-        });
 
         const apiKeyCreated1 = await apiKeyService.create(
-            E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST._id,
+            E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST._id,
             {
                 name: faker.internet.userName(),
                 description: faker.random.alphaNumeric(),
@@ -83,7 +75,7 @@ describe('E2E Api Key Admin', () => {
         apiKey = await apiKeyService.findOneById(apiKeyCreated1.doc._id);
 
         const apiKeyCreated2 = await apiKeyService.create(
-            E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST._id,
+            E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST._id,
             {
                 name: faker.internet.userName(),
                 startDate: helperDateService.backwardInDays(7),
@@ -122,8 +114,7 @@ describe('E2E Api Key Admin', () => {
                     `${DatabaseDefaultUUID()}`
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -137,8 +128,7 @@ describe('E2E Api Key Admin', () => {
             .patch(
                 E2E_API_KEY_ADMIN_ACTIVE_URL.replace(':_id', apiKeyExpired._id)
             )
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         await apiKeyService.active(apiKeyExpired);
 
@@ -151,8 +141,7 @@ describe('E2E Api Key Admin', () => {
     it(`PATCH ${E2E_API_KEY_ADMIN_ACTIVE_URL} already Active`, async () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_API_KEY_ADMIN_ACTIVE_URL.replace(':_id', apiKey._id))
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -168,8 +157,7 @@ describe('E2E Api Key Admin', () => {
                     `${DatabaseDefaultUUID()}`
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -185,8 +173,7 @@ describe('E2E Api Key Admin', () => {
                     apiKeyExpired._id
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -197,8 +184,7 @@ describe('E2E Api Key Admin', () => {
     it(`PATCH ${E2E_API_KEY_ADMIN_INACTIVE_URL} Inactive Success`, async () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_API_KEY_ADMIN_INACTIVE_URL.replace(':_id', apiKey._id))
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -207,8 +193,7 @@ describe('E2E Api Key Admin', () => {
     it(`PATCH ${E2E_API_KEY_ADMIN_INACTIVE_URL} Inactive already inactive`, async () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_API_KEY_ADMIN_INACTIVE_URL.replace(':_id', apiKey._id))
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -219,8 +204,7 @@ describe('E2E Api Key Admin', () => {
     it(`PATCH ${E2E_API_KEY_ADMIN_ACTIVE_URL} Success`, async () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_API_KEY_ADMIN_ACTIVE_URL.replace(':_id', apiKey._id))
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -238,8 +222,7 @@ describe('E2E Api Key Admin', () => {
                 startDate: helperDateService.forwardInDays(1),
                 endDate: helperDateService.forwardInDays(7),
             })
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -259,8 +242,7 @@ describe('E2E Api Key Admin', () => {
                 startDate: helperDateService.forwardInDays(1),
                 endDate: helperDateService.forwardInDays(7),
             })
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -275,8 +257,7 @@ describe('E2E Api Key Admin', () => {
                 startDate: helperDateService.forwardInDays(1),
                 endDate: helperDateService.forwardInDays(7),
             })
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);

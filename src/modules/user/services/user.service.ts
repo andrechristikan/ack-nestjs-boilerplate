@@ -26,10 +26,7 @@ import {
 } from 'src/modules/user/interfaces/user.interface';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { plainToInstance } from 'class-transformer';
-import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
-import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload-permission.serialization';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
-import { IPermissionGroup } from 'src/modules/permission/interfaces/permission.interface';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -263,19 +260,6 @@ export class UserService implements IUserService {
         data: IUserDoc
     ): Promise<UserPayloadSerialization> {
         return plainToInstance(UserPayloadSerialization, data.toObject());
-    }
-
-    async payloadPermissionSerialization(
-        _id: string,
-        permissions: IPermissionGroup[]
-    ): Promise<UserPayloadPermissionSerialization> {
-        const permissionEntity: PermissionEntity[] = permissions
-            .map((val) => val.permissions)
-            .flat(1);
-        return plainToInstance(UserPayloadPermissionSerialization, {
-            _id,
-            permissions: permissionEntity,
-        });
     }
 
     async deleteMany(

@@ -10,7 +10,6 @@ import {
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleUpdateNameDto } from 'src/modules/role/dtos/role.update-name.dto';
 import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
-import { IRoleDoc } from 'src/modules/role/interfaces/role.interface';
 import {
     RoleDoc,
     RoleEntity,
@@ -47,7 +46,7 @@ export interface IRoleService {
     ): Promise<boolean>;
 
     create(
-        { accessFor, permissions, name }: RoleCreateDto,
+        { accessFor, name }: RoleCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<RoleDoc>;
 
@@ -60,14 +59,12 @@ export interface IRoleService {
 
     updatePermission(
         repository: RoleDoc,
-        { accessFor, permissions }: RoleUpdatePermissionDto
+        { accessFor }: RoleUpdatePermissionDto
     ): Promise<RoleDoc>;
 
     active(repository: RoleDoc): Promise<RoleDoc>;
 
     inactive(repository: RoleDoc): Promise<RoleDoc>;
-
-    joinWithPermission(repository: RoleDoc): Promise<IRoleDoc>;
 
     delete(repository: RoleDoc): Promise<RoleDoc>;
 

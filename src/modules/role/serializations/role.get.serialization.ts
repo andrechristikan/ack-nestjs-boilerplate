@@ -1,9 +1,8 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { Exclude, Type } from 'class-transformer';
+import { Exclude } from 'class-transformer';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
-import { PermissionGetSerialization } from 'src/modules/permission/serializations/permission.get.serialization';
 
 export class RoleGetSerialization extends ResponseIdSerialization {
     @ApiProperty({
@@ -26,15 +25,6 @@ export class RoleGetSerialization extends ResponseIdSerialization {
         required: true,
     })
     readonly accessFor: ENUM_AUTH_ACCESS_FOR;
-
-    @ApiProperty({
-        description: 'List of permission',
-        type: () => PermissionGetSerialization,
-        isArray: true,
-        required: true,
-    })
-    @Type(() => PermissionGetSerialization)
-    readonly permissions: PermissionGetSerialization[];
 
     @ApiProperty({
         description: 'Date created at',

@@ -3,7 +3,6 @@ import { CallbackWithoutResultAndOptionalError, Document } from 'mongoose';
 import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
-import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 
 export const RoleDatabaseName = 'roles';
 
@@ -19,15 +18,6 @@ export class RoleEntity extends DatabaseMongoUUIDEntityAbstract {
         type: String,
     })
     name: string;
-
-    @Prop({
-        required: true,
-        default: [],
-        _id: false,
-        type: Array<string>,
-        ref: PermissionEntity.name,
-    })
-    permissions: string[];
 
     @Prop({
         required: true,

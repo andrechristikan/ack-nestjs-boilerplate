@@ -12,11 +12,9 @@ import {
     IDatabaseManyOptions,
     IDatabaseCreateManyOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleUpdateNameDto } from 'src/modules/role/dtos/role.update-name.dto';
 import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
-import { IRoleDoc } from 'src/modules/role/interfaces/role.interface';
 import { IRoleService } from 'src/modules/role/interfaces/role.service.interface';
 import {
     RoleDoc,
@@ -91,12 +89,11 @@ export class RoleService implements IRoleService {
     }
 
     async create(
-        { accessFor, permissions, name }: RoleCreateDto,
+        { accessFor, name }: RoleCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<RoleDoc> {
         const create: RoleEntity = new RoleEntity();
         create.accessFor = accessFor;
-        create.permissions = permissions;
         create.isActive = true;
         create.name = name;
 
@@ -106,7 +103,6 @@ export class RoleService implements IRoleService {
     async createSuperAdmin(options?: IDatabaseCreateOptions): Promise<RoleDoc> {
         const create: RoleEntity = new RoleEntity();
         create.name = 'superadmin';
-        create.permissions = [];
         create.isActive = true;
         create.accessFor = ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN;
 
@@ -124,10 +120,9 @@ export class RoleService implements IRoleService {
 
     async updatePermission(
         repository: RoleDoc,
-        { accessFor, permissions }: RoleUpdatePermissionDto
+        { accessFor }: RoleUpdatePermissionDto
     ): Promise<RoleDoc> {
         repository.accessFor = accessFor;
-        repository.permissions = permissions;
 
         return this.roleRepository.save(repository);
     }
@@ -142,15 +137,6 @@ export class RoleService implements IRoleService {
         repository.isActive = false;
 
         return this.roleRepository.save(repository);
-    }
-
-    async joinWithPermission(repository: RoleDoc): Promise<IRoleDoc> {
-        return repository.populate({
-            path: 'permissions',
-            localField: 'permissions',
-            foreignField: '_id',
-            model: PermissionEntity.name,
-        });
     }
 
     async delete(repository: RoleDoc): Promise<RoleDoc> {
@@ -168,17 +154,14 @@ export class RoleService implements IRoleService {
         data: RoleCreateDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean> {
-        const create: RoleEntity[] = data.map(
-            ({ accessFor, permissions, name }) => {
-                const entity: RoleEntity = new RoleEntity();
-                entity.accessFor = accessFor;
-                entity.permissions = permissions;
-                entity.isActive = true;
-                entity.name = name;
+        const create: RoleEntity[] = data.map(({ accessFor, name }) => {
+            const entity: RoleEntity = new RoleEntity();
+            entity.accessFor = accessFor;
+            entity.isActive = true;
+            entity.name = name;
 
-                return entity;
-            }
-        );
+            return entity;
+        });
         return this.roleRepository.createMany<RoleEntity>(create, options);
     }
 

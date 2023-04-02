@@ -8,7 +8,6 @@ import {
     IDatabaseOptions,
     IDatabaseManyOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { IPermissionGroup } from 'src/modules/permission/interfaces/permission.interface';
 import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
 import {
@@ -19,7 +18,6 @@ import {
     UserDoc,
     UserEntity,
 } from 'src/modules/user/repository/entities/user.entity';
-import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload-permission.serialization';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 
 export interface IUserService {
@@ -114,11 +112,6 @@ export interface IUserService {
     createPhotoFilename(): Promise<Record<string, any>>;
 
     payloadSerialization(data: IUserDoc): Promise<UserPayloadSerialization>;
-
-    payloadPermissionSerialization(
-        _id: string,
-        permissions: IPermissionGroup[]
-    ): Promise<UserPayloadPermissionSerialization>;
 
     deleteMany(
         find: Record<string, any>,

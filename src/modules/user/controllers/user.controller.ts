@@ -34,9 +34,6 @@ import { Logger } from 'src/common/logger/decorators/logger.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { SettingService } from 'src/common/setting/services/setting.service';
-import { IPermissionGroup } from 'src/modules/permission/interfaces/permission.interface';
-import { PermissionDoc } from 'src/modules/permission/repository/entities/permission.entity';
-import { PermissionService } from 'src/modules/permission/services/permission.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
@@ -44,7 +41,6 @@ import { GetUser } from 'src/modules/user/decorators/user.decorator';
 import { UserProfileGuard } from 'src/modules/user/decorators/user.public.decorator';
 import {
     UserChangePasswordDoc,
-    UserGrantPermissionDoc,
     UserInfoDoc,
     UserLoginDoc,
     UserProfileDoc,
@@ -52,14 +48,11 @@ import {
     UserUploadProfileDoc,
 } from 'src/modules/user/docs/user.doc';
 import { UserChangePasswordDto } from 'src/modules/user/dtos/user.change-password.dto';
-import { UserGrantPermissionDto } from 'src/modules/user/dtos/user.grant-permission.dto';
 import { UserLoginDto } from 'src/modules/user/dtos/user.login.dto';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { UserGrantPermissionSerialization } from 'src/modules/user/serializations/user.grant-permission.serialization';
 import { UserInfoSerialization } from 'src/modules/user/serializations/user.info.serialization';
 import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
-import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload-permission.serialization';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
@@ -75,8 +68,7 @@ export class UserController {
         private readonly roleService: RoleService,
         private readonly awsService: AwsS3Service,
         private readonly authService: AuthService,
-        private readonly settingService: SettingService,
-        private readonly permissionService: PermissionService
+        private readonly settingService: SettingService
     ) {}
 
     @UserLoginDoc()
@@ -415,69 +407,6 @@ export class UserController {
         @AuthJwtPayload() payload: UserPayloadSerialization
     ): Promise<IResponse> {
         return { data: payload };
-    }
-
-    @UserGrantPermissionDoc()
-    @Response('user.grantPermission', {
-        serialization: UserGrantPermissionSerialization,
-    })
-    @AuthJwtAccessProtected()
-    @HttpCode(HttpStatus.OK)
-    @Post('/grant-permission')
-    async grantPermission(
-        @AuthJwtPayload() payload: UserPayloadSerialization,
-        @Body() { scope }: UserGrantPermissionDto
-    ): Promise<IResponse> {
-        const user: UserDoc = await this.userService.findOneById(payload._id);
-        if (!user) {
-            throw new NotFoundException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
-                message: 'user.error.notFound',
-            });
-        }
-
-        const userWithRole: IUserDoc = await this.userService.joinWithRole(
-            user
-        );
-        const permissions: PermissionDoc[] =
-            await this.permissionService.findAllByIds(
-                userWithRole.role.permissions
-            );
-        const grantPermissions: IPermissionGroup[] =
-            await this.permissionService.groupingByGroups(permissions, scope);
-
-        const payloadPermission: UserPayloadPermissionSerialization =
-            await this.userService.payloadPermissionSerialization(
-                user._id,
-                grantPermissions
-            );
-
-        const expiresIn: number =
-            await this.authService.getPermissionTokenExpirationTime();
-        const payloadPermissionToken: Record<string, any> =
-            await this.authService.createPayloadPermissionToken(
-                payloadPermission
-            );
-
-        const payloadEncryption = await this.authService.getPayloadEncryption();
-        let payloadHashedPermissionToken: Record<string, any> | string =
-            payloadPermissionToken;
-
-        if (payloadEncryption) {
-            payloadHashedPermissionToken =
-                await this.authService.encryptPermissionToken(
-                    payloadPermissionToken
-                );
-        }
-
-        const permissionToken: string =
-            await this.authService.createPermissionToken(
-                payloadHashedPermissionToken
-            );
-
-        return {
-            data: { permissionToken, expiresIn },
-        };
     }
 
     @UserProfileDoc()

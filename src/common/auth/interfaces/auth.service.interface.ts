@@ -34,20 +34,6 @@ export interface IAuthService {
 
     payloadRefreshToken(token: string): Promise<Record<string, any>>;
 
-    encryptPermissionToken(payload: Record<string, any>): Promise<string>;
-
-    decryptPermissionToken({
-        data,
-    }: Record<string, any>): Promise<Record<string, any>>;
-
-    createPermissionToken(
-        payloadHashed: string | Record<string, any>
-    ): Promise<string>;
-
-    validatePermissionToken(token: string): Promise<boolean>;
-
-    payloadPermissionToken(token: string): Promise<Record<string, any>>;
-
     validateUser(
         passwordString: string,
         passwordHash: string
@@ -63,10 +49,6 @@ export interface IAuthService {
         _id: string,
         rememberMe: boolean,
         options?: IAuthPayloadOptions
-    ): Promise<Record<string, any>>;
-
-    createPayloadPermissionToken(
-        data: Record<string, any>
     ): Promise<Record<string, any>>;
 
     createSalt(length: number): Promise<string>;
@@ -88,6 +70,4 @@ export interface IAuthService {
     getSubject(): Promise<string>;
 
     getPayloadEncryption(): Promise<boolean>;
-
-    getPermissionTokenExpirationTime(): Promise<number>;
 }

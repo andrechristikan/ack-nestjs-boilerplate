@@ -15,8 +15,6 @@ import { HelperDateService } from 'src/common/helper/services/helper.date.servic
 import { ENUM_AUTH_ACCESS_FOR_DEFAULT } from 'src/common/auth/constants/auth.enum.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { RoleModule } from 'src/modules/role/role.module';
-import { PermissionModule } from 'src/modules/permission/permission.module';
 import {
     UserDoc,
     UserEntity,
@@ -45,8 +43,6 @@ describe('E2E User Login', () => {
         const modRef = await Test.createTestingModule({
             imports: [
                 CommonModule,
-                RoleModule,
-                PermissionModule,
                 RoutesModule,
                 RouterModule.register([
                     {
@@ -67,7 +63,6 @@ describe('E2E User Login', () => {
         await roleService.create({
             name: roleName,
             accessFor: ENUM_AUTH_ACCESS_FOR_DEFAULT.USER,
-            permissions: [],
         });
 
         role = await roleService.findOneByName(roleName);
@@ -285,8 +280,6 @@ describe('E2E User Login Payload Encryption', () => {
         const modRef = await Test.createTestingModule({
             imports: [
                 CommonModule,
-                RoleModule,
-                PermissionModule,
                 RoutesModule,
                 RouterModule.register([
                     {
@@ -306,7 +299,6 @@ describe('E2E User Login Payload Encryption', () => {
         await roleService.create({
             name: roleName,
             accessFor: ENUM_AUTH_ACCESS_FOR_DEFAULT.USER,
-            permissions: [],
         });
 
         const role: RoleDoc = await roleService.findOneByName(roleName);

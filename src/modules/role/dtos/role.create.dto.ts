@@ -7,8 +7,6 @@ import {
     MaxLength,
     MinLength,
     IsEnum,
-    IsArray,
-    IsUUID,
 } from 'class-validator';
 import { ENUM_AUTH_ACCESS_FOR_DEFAULT } from 'src/common/auth/constants/auth.enum.constant';
 
@@ -24,16 +22,6 @@ export class RoleCreateDto {
     @MaxLength(30)
     @Type(() => String)
     readonly name: string;
-
-    @ApiProperty({
-        description: 'List of permission',
-        example: [faker.datatype.uuid(), faker.datatype.uuid()],
-        required: true,
-    })
-    @IsUUID('4', { each: true })
-    @IsArray()
-    @IsNotEmpty()
-    readonly permissions: string[];
 
     @ApiProperty({
         description: 'Representative for role',

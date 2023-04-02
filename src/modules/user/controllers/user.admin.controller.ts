@@ -14,7 +14,6 @@ import {
     HttpStatus,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ENUM_AUTH_PERMISSIONS } from 'src/common/auth/constants/auth.enum.permission.constant';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { UploadFileSingle } from 'src/common/file/decorators/file.decorator';
@@ -73,7 +72,6 @@ import { UserImportSerialization } from 'src/modules/user/serializations/user.im
 import { UserListSerialization } from 'src/modules/user/serializations/user.list.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
-import { AuthPermissionProtected } from 'src/common/auth/decorators/auth.permission.decorator';
 import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
 import {
     USER_DEFAULT_AVAILABLE_ORDER_BY,
@@ -109,7 +107,6 @@ export class UserAdminController {
     @ResponsePaging('user.list', {
         serialization: UserListSerialization,
     })
-    @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.USER_READ)
     @AuthJwtAdminAccessProtected()
     @Get('/list')
     async list(
@@ -157,7 +154,6 @@ export class UserAdminController {
     })
     @UserGetGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthPermissionProtected(ENUM_AUTH_PERMISSIONS.USER_READ)
     @AuthJwtAdminAccessProtected()
     @Get('get/:user')
     async get(@GetUser() user: UserDoc): Promise<IResponse> {
@@ -171,10 +167,6 @@ export class UserAdminController {
     @Response('user.create', {
         serialization: ResponseIdSerialization,
     })
-    @AuthPermissionProtected(
-        ENUM_AUTH_PERMISSIONS.USER_READ,
-        ENUM_AUTH_PERMISSIONS.USER_CREATE
-    )
     @AuthJwtAdminAccessProtected()
     @Post('/create')
     async create(
@@ -245,10 +237,6 @@ export class UserAdminController {
     @Response('user.delete')
     @UserDeleteGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthPermissionProtected(
-        ENUM_AUTH_PERMISSIONS.USER_READ,
-        ENUM_AUTH_PERMISSIONS.USER_DELETE
-    )
     @AuthJwtAdminAccessProtected()
     @Delete('/delete/:user')
     async delete(@GetUser() user: UserDoc): Promise<void> {
@@ -271,10 +259,6 @@ export class UserAdminController {
     })
     @UserUpdateGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthPermissionProtected(
-        ENUM_AUTH_PERMISSIONS.USER_READ,
-        ENUM_AUTH_PERMISSIONS.USER_UPDATE
-    )
     @AuthJwtAdminAccessProtected()
     @Put('/update/:user')
     async update(
@@ -301,11 +285,6 @@ export class UserAdminController {
     @Response('user.inactive')
     @UserUpdateInactiveGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthPermissionProtected(
-        ENUM_AUTH_PERMISSIONS.USER_READ,
-        ENUM_AUTH_PERMISSIONS.USER_UPDATE,
-        ENUM_AUTH_PERMISSIONS.USER_INACTIVE
-    )
     @AuthJwtAdminAccessProtected()
     @Patch('/update/:user/inactive')
     async inactive(@GetUser() user: UserDoc): Promise<void> {
@@ -326,11 +305,6 @@ export class UserAdminController {
     @Response('user.active')
     @UserUpdateActiveGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthPermissionProtected(
-        ENUM_AUTH_PERMISSIONS.USER_READ,
-        ENUM_AUTH_PERMISSIONS.USER_UPDATE,
-        ENUM_AUTH_PERMISSIONS.USER_ACTIVE
-    )
     @AuthJwtAdminAccessProtected()
     @Patch('/update/:user/active')
     async active(@GetUser() user: UserDoc): Promise<void> {
@@ -352,11 +326,6 @@ export class UserAdminController {
         serialization: UserImportSerialization,
     })
     @UploadFileSingle('file')
-    @AuthPermissionProtected(
-        ENUM_AUTH_PERMISSIONS.USER_READ,
-        ENUM_AUTH_PERMISSIONS.USER_CREATE,
-        ENUM_AUTH_PERMISSIONS.USER_IMPORT
-    )
     @AuthJwtAdminAccessProtected()
     @Post('/import')
     async import(
@@ -377,10 +346,6 @@ export class UserAdminController {
         serialization: UserListSerialization,
         fileType: ENUM_HELPER_FILE_TYPE.CSV,
     })
-    @AuthPermissionProtected(
-        ENUM_AUTH_PERMISSIONS.USER_READ,
-        ENUM_AUTH_PERMISSIONS.USER_EXPORT
-    )
     @AuthJwtAdminAccessProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/export')
@@ -394,11 +359,6 @@ export class UserAdminController {
     @Response('user.blocked')
     @UserUpdateBlockedGuard()
     @RequestParamGuard(UserRequestDto)
-    @AuthPermissionProtected(
-        ENUM_AUTH_PERMISSIONS.USER_READ,
-        ENUM_AUTH_PERMISSIONS.USER_UPDATE,
-        ENUM_AUTH_PERMISSIONS.USER_BLOCKED
-    )
     @AuthJwtAdminAccessProtected()
     @Patch('/update/:user/blocked')
     async blocked(@GetUser() user: UserDoc): Promise<void> {

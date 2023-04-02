@@ -53,6 +53,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.304.0",
+    "@casl/ability": "^6.3.4",
     "@faker-js/faker": "^7.6.0",
     "@joi/date": "^2.1.0",
     "@nestjs/axios": "^2.0.0",

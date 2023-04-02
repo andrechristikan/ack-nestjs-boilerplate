@@ -17,7 +17,6 @@ export const E2E_USER_LOGIN_URL = '/user/login';
 export const E2E_USER_REFRESH_URL = '/user/refresh';
 export const E2E_USER_CHANGE_PASSWORD_URL = '/user/change-password';
 export const E2E_USER_INFO = '/user/info';
-export const E2E_USER_GRANT_PERMISSION = '/user/grant-permission';
 
 export const E2E_USER_PUBLIC_SIGN_UP_URL = '/public/user/sign-up';
 export const E2E_USER_PUBLIC_DELETE_URL = '/public/user/delete';
@@ -31,9 +30,4 @@ export const E2E_USER_ACCESS_TOKEN_PAYLOAD_TEST = {
     rememberMe: false,
     loginWith: 'EMAIL',
     loginDate: '2021-9-13',
-};
-
-export const E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST = {
-    permissions: [],
-    _id: '613ee8e5b2fdd012b94484ca',
 };

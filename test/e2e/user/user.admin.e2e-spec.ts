@@ -13,7 +13,6 @@ import {
     E2E_USER_ADMIN_INACTIVE_URL,
     E2E_USER_ADMIN_LIST_URL,
     E2E_USER_ADMIN_UPDATE_URL,
-    E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
 } from './user.constant';
 import { RouterModule } from '@nestjs/core';
 import { useContainer } from 'class-validator';
@@ -44,7 +43,6 @@ describe('E2E User Admin', () => {
     let userExist: UserDoc;
 
     let accessToken: string;
-    let permissionToken: string;
 
     beforeAll(async () => {
         process.env.AUTH_JWT_PAYLOAD_ENCRYPT = 'false';
@@ -108,10 +106,6 @@ describe('E2E User Admin', () => {
         const payload = await authService.createPayloadAccessToken(map, false);
 
         accessToken = await authService.createAccessToken(payload);
-        permissionToken = await authService.createPermissionToken({
-            ...E2E_USER_PERMISSION_TOKEN_PAYLOAD_TEST,
-            _id: payload._id,
-        });
 
         await app.init();
     });
@@ -134,8 +128,7 @@ describe('E2E User Admin', () => {
     it(`GET ${E2E_USER_ADMIN_LIST_URL} List Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_USER_ADMIN_LIST_URL)
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -145,7 +138,7 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken)
+
             .send({
                 role: 'test_roles',
                 accessFor: 'test',
@@ -166,7 +159,7 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken)
+
             .send(datauser);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
@@ -179,7 +172,7 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken)
+
             .send({
                 ...userData,
                 username: userExist.username,
@@ -196,7 +189,7 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken)
+
             .send({
                 ...userData,
                 email: userExist.email,
@@ -213,7 +206,7 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken)
+
             .send({
                 ...userData,
                 mobileNumber: userExist.mobileNumber,
@@ -230,7 +223,7 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_ADMIN_CREATE_URL)
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken)
+
             .send(userData);
 
         userData = response.body.data;
@@ -247,8 +240,7 @@ describe('E2E User Admin', () => {
                     `${DatabaseDefaultUUID()}`
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -259,8 +251,7 @@ describe('E2E User Admin', () => {
     it(`GET ${E2E_USER_ADMIN_GET_URL} Get Success`, async () => {
         const response = await request(app.getHttpServer())
             .get(E2E_USER_ADMIN_GET_URL.replace(':_id', userData._id))
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -270,7 +261,7 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .put(E2E_USER_ADMIN_UPDATE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken)
+
             .send({
                 firstName: [],
                 lastName: 1231231,
@@ -291,7 +282,7 @@ describe('E2E User Admin', () => {
                 )
             )
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken)
+
             .send({
                 firstName: faker.name.firstName(),
                 lastName: faker.name.lastName(),
@@ -307,7 +298,7 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .put(E2E_USER_ADMIN_UPDATE_URL.replace(':_id', userData._id))
             .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken)
+
             .send({
                 firstName: faker.name.firstName(),
                 lastName: faker.name.lastName(),
@@ -325,8 +316,7 @@ describe('E2E User Admin', () => {
                     `${DatabaseDefaultUUID()}`
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -337,8 +327,7 @@ describe('E2E User Admin', () => {
     it(`PATCH ${E2E_USER_ADMIN_INACTIVE_URL} Inactive, success`, async () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_USER_ADMIN_INACTIVE_URL.replace(':_id', userData._id))
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -347,8 +336,7 @@ describe('E2E User Admin', () => {
     it(`PATCH ${E2E_USER_ADMIN_INACTIVE_URL} Inactive, already inactive`, async () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_USER_ADMIN_INACTIVE_URL.replace(':_id', userData._id))
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -364,8 +352,7 @@ describe('E2E User Admin', () => {
                     `${DatabaseDefaultUUID()}`
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -376,8 +363,7 @@ describe('E2E User Admin', () => {
     it(`PATCH ${E2E_USER_ADMIN_ACTIVE_URL} Active, success`, async () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_USER_ADMIN_ACTIVE_URL.replace(':_id', userData._id))
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -386,8 +372,7 @@ describe('E2E User Admin', () => {
     it(`PATCH ${E2E_USER_ADMIN_ACTIVE_URL} Active, already active`, async () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_USER_ADMIN_ACTIVE_URL.replace(':_id', userData._id))
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.BAD_REQUEST);
         expect(response.body.statusCode).toEqual(
@@ -403,8 +388,7 @@ describe('E2E User Admin', () => {
                     `${DatabaseDefaultUUID()}`
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -415,8 +399,7 @@ describe('E2E User Admin', () => {
     it(`PATCH ${E2E_USER_ADMIN_BLOCKED_URL} Blocked, success`, async () => {
         const response = await request(app.getHttpServer())
             .patch(E2E_USER_ADMIN_BLOCKED_URL.replace(':_id', userData._id))
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -430,8 +413,7 @@ describe('E2E User Admin', () => {
                     `${DatabaseDefaultUUID()}`
                 )
             )
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.NOT_FOUND);
         expect(response.body.statusCode).toEqual(
@@ -447,8 +429,7 @@ describe('E2E User Admin', () => {
 
         const response = await request(app.getHttpServer())
             .delete(E2E_USER_ADMIN_DELETE_URL.replace(':_id', userData._id))
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
         expect(response.body.statusCode).toEqual(HttpStatus.OK);
@@ -458,8 +439,7 @@ describe('E2E User Admin', () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_ADMIN_IMPORT_URL)
             .attach('file', './test/e2e/user/files/import.csv')
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.CREATED);
         expect(response.body.statusCode).toEqual(HttpStatus.CREATED);
@@ -468,8 +448,7 @@ describe('E2E User Admin', () => {
     it(`POST ${E2E_USER_ADMIN_EXPORT_URL} Export Success`, async () => {
         const response = await request(app.getHttpServer())
             .post(E2E_USER_ADMIN_EXPORT_URL)
-            .set('Authorization', `Bearer ${accessToken}`)
-            .set('x-permission-token', permissionToken);
+            .set('Authorization', `Bearer ${accessToken}`);
 
         expect(response.status).toEqual(HttpStatus.OK);
     });

@@ -48,7 +48,6 @@ export interface IDocAuthOptions {
     jwtAccessToken?: boolean;
     jwtRefreshToken?: boolean;
     apiKey?: boolean;
-    permissionToken?: boolean;
 }
 
 export interface IDocRequestHeaderOptions {

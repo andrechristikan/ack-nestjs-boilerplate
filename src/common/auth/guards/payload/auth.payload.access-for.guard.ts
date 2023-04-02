@@ -39,7 +39,7 @@ export class AuthPayloadAccessForGuard implements CanActivate {
         if (!hasFor) {
             throw new ForbiddenException({
                 statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_ACCESS_FOR_INVALID_ERROR,
+                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PAYLOAD_ACCESS_FOR_INVALID_ERROR,
                 message: 'auth.error.accessForForbidden',
             });
         }

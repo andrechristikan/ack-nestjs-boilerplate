@@ -117,18 +117,11 @@ export function Doc<T>(
             messagePath: 'auth.error.accessTokenUnauthorized',
             statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_JWT_ACCESS_TOKEN_ERROR,
         });
-        oneOfForbidden.push(
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_INVALID_ERROR,
-                messagePath: 'auth.error.permissionForbidden',
-            },
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_ACCESS_FOR_INVALID_ERROR,
-                messagePath: 'auth.error.accessForForbidden',
-            }
-        );
+        oneOfForbidden.push({
+            statusCode:
+                ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PAYLOAD_ACCESS_FOR_INVALID_ERROR,
+            messagePath: 'auth.error.accessForForbidden',
+        });
     }
 
     if (options?.auth?.apiKey) {
@@ -152,27 +145,6 @@ export function Doc<T>(
                 statusCode:
                     ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INVALID_ERROR,
                 messagePath: 'apiKey.error.invalid',
-            }
-        );
-    }
-
-    if (options?.auth?.permissionToken) {
-        auths.push(ApiSecurity('permissionToken'));
-        oneOfUnauthorized.push(
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_ERROR,
-                messagePath: 'auth.error.permissionTokenUnauthorized',
-            },
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_INVALID_ERROR,
-                messagePath: 'auth.error.permissionTokenInvalid',
-            },
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_NOT_YOUR_ERROR,
-                messagePath: 'auth.error.permissionTokenNotYour',
             }
         );
     }
@@ -299,18 +271,11 @@ export function DocPaging<T>(
             messagePath: 'auth.error.accessTokenUnauthorized',
             statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_JWT_ACCESS_TOKEN_ERROR,
         });
-        oneOfForbidden.push(
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_INVALID_ERROR,
-                messagePath: 'auth.error.permissionForbidden',
-            },
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_ACCESS_FOR_INVALID_ERROR,
-                messagePath: 'auth.error.accessForForbidden',
-            }
-        );
+        oneOfForbidden.push({
+            statusCode:
+                ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PAYLOAD_ACCESS_FOR_INVALID_ERROR,
+            messagePath: 'auth.error.accessForForbidden',
+        });
     }
 
     if (options?.auth?.apiKey) {
@@ -334,27 +299,6 @@ export function DocPaging<T>(
                 statusCode:
                     ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INVALID_ERROR,
                 messagePath: 'apiKey.error.invalid',
-            }
-        );
-    }
-
-    if (options?.auth?.permissionToken) {
-        auths.push(ApiSecurity('permissionToken'));
-        oneOfUnauthorized.push(
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_ERROR,
-                messagePath: 'auth.error.permissionTokenUnauthorized',
-            },
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_INVALID_ERROR,
-                messagePath: 'auth.error.permissionTokenInvalid',
-            },
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_NOT_YOUR_ERROR,
-                messagePath: 'auth.error.permissionTokenNotYour',
             }
         );
     }

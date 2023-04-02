@@ -15,8 +15,6 @@ import { RoutesModule } from 'src/router/routes/routes.module';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { RoleModule } from 'src/modules/role/role.module';
-import { PermissionModule } from 'src/modules/permission/permission.module';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
@@ -39,8 +37,6 @@ describe('E2E User', () => {
         const modRef = await Test.createTestingModule({
             imports: [
                 CommonModule,
-                RoleModule,
-                PermissionModule,
                 RoutesModule,
                 RouterModule.register([
                     {

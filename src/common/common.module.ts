@@ -103,15 +103,6 @@ import { APP_LANGUAGE } from 'src/app/constants/app.constant';
                     .default('15m')
                     .required(),
 
-                AUTH_PERMISSION_TOKEN_SECRET_KEY: Joi.string()
-                    .alphanum()
-                    .min(5)
-                    .max(50)
-                    .required(),
-                AUTH_PERMISSION_TOKEN_EXPIRED: Joi.string()
-                    .default('5m')
-                    .required(),
-
                 AUTH_JWT_PAYLOAD_ENCRYPT: Joi.boolean()
                     .default(false)
                     .required(),
@@ -131,16 +122,6 @@ import { APP_LANGUAGE } from 'src/app/constants/app.constant';
                     .max(50)
                     .optional(),
                 AUTH_JWT_PAYLOAD_REFRESH_TOKEN_ENCRYPT_IV: Joi.string()
-                    .allow(null, '')
-                    .min(16)
-                    .max(50)
-                    .optional(),
-                AUTH_PAYLOAD_PERMISSION_TOKEN_ENCRYPT_KEY: Joi.string()
-                    .allow(null, '')
-                    .min(20)
-                    .max(50)
-                    .optional(),
-                AUTH_PAYLOAD_PERMISSION_TOKEN_ENCRYPT_IV: Joi.string()
                     .allow(null, '')
                     .min(16)
                     .max(50)
