@@ -5,8 +5,10 @@ import {
     BadRequestException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ROLE_ACTIVE_META_KEY } from 'src/modules/role/constants/role.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
+import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 
 @Injectable()
 export class RoleActiveGuard implements CanActivate {
@@ -22,7 +24,9 @@ export class RoleActiveGuard implements CanActivate {
             return true;
         }
 
-        const { __role } = context.switchToHttp().getRequest();
+        const { __role } = context
+            .switchToHttp()
+            .getRequest<IRequestApp & { __role: RoleDoc }>();
 
         if (!required.includes(__role.isActive)) {
             throw new BadRequestException({

@@ -75,8 +75,6 @@ Next development
     - implement acl policy guard
     - remember me remove. done
     - role access for to type. done
-* [ ] user plan module
-* [ ] invoicing plan module
 * [ ] Google SSO
 * [ ] Background export/import from/to CSV and Excel
 * [ ] Update Documentation, include an diagram for easier comprehension

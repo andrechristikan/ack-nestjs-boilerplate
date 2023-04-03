@@ -67,6 +67,8 @@ import {
 import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
 import { RoleListSerialization } from 'src/modules/role/serializations/role.list.serialization';
 import { RoleService } from 'src/modules/role/services/role.service';
+import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+import { UserService } from 'src/modules/user/services/user.service';
 
 @ApiTags('modules.admin.role')
 @Controller({
@@ -76,7 +78,8 @@ import { RoleService } from 'src/modules/role/services/role.service';
 export class RoleAdminController {
     constructor(
         private readonly paginationService: PaginationService,
-        private readonly roleService: RoleService
+        private readonly roleService: RoleService,
+        private readonly userService: UserService
     ) {}
 
     @RoleListDoc()
@@ -209,6 +212,16 @@ export class RoleAdminController {
     @AuthJwtAdminAccessProtected()
     @Delete('/delete/:role')
     async delete(@GetRole() role: RoleDoc): Promise<void> {
+        const used: UserDoc = await this.userService.findOne({
+            role: role._id,
+        });
+        if (used) {
+            throw new ConflictException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_USED_ERROR,
+                message: 'role.error.used',
+            });
+        }
+
         try {
             await this.roleService.delete(role);
         } catch (err: any) {

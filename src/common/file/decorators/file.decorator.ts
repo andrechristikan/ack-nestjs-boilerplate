@@ -38,7 +38,7 @@ export function FileCustomMaxSize(customMaxSize: string): MethodDecorator {
 
 export const FilePartNumber: () => ParameterDecorator = createParamDecorator(
     (data: string, ctx: ExecutionContext): number => {
-        const request = ctx.switchToHttp().getRequest() as IRequestApp;
+        const request = ctx.switchToHttp().getRequest<IRequestApp>();
         const { headers } = request;
         return headers['x-part-number'] ? Number(headers['x-part-number']) : 0;
     }

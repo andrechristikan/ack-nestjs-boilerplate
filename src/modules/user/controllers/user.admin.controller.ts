@@ -89,7 +89,6 @@ import {
 } from 'src/common/pagination/decorators/pagination.decorator';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
-import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -174,43 +173,41 @@ export class UserAdminController {
         @Body()
         { username, email, mobileNumber, role, ...body }: UserCreateDto
     ): Promise<IResponse> {
-        const checkRole: RoleDoc = await this.roleService.findOneById(role);
+        const promises: Promise<any>[] = [
+            this.roleService.findOneById(role),
+            this.userService.existByUsername(username),
+            this.userService.existByEmail(email),
+        ];
+
+        if (mobileNumber) {
+            promises.push(this.userService.existByMobileNumber(mobileNumber));
+        }
+
+        const [checkRole, usernameExist, emailExist, mobileNumberExist] =
+            await Promise.all(promises);
+
         if (!checkRole) {
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
                 message: 'role.error.notFound',
             });
-        }
-
-        const usernameExist: boolean = await this.userService.existByUsername(
-            username
-        );
-        if (usernameExist) {
+        } else if (usernameExist) {
             throw new ConflictException({
                 statusCode:
                     ENUM_USER_STATUS_CODE_ERROR.USER_USERNAME_EXISTS_ERROR,
                 message: 'user.error.usernameExist',
             });
-        }
-
-        const emailExist: boolean = await this.userService.existByEmail(email);
-        if (emailExist) {
+        } else if (emailExist) {
             throw new ConflictException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
                 message: 'user.error.emailExist',
             });
-        }
-
-        if (mobileNumber) {
-            const mobileNumberExist: boolean =
-                await this.userService.existByMobileNumber(mobileNumber);
-            if (mobileNumberExist) {
-                throw new ConflictException({
-                    statusCode:
-                        ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
-                    message: 'user.error.mobileNumberExist',
-                });
-            }
+        } else if (mobileNumberExist) {
+            throw new ConflictException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
+                message: 'user.error.mobileNumberExist',
+            });
         }
 
         try {

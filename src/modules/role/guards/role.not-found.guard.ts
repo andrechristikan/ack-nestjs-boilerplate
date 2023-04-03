@@ -4,12 +4,16 @@ import {
     ExecutionContext,
     NotFoundException,
 } from '@nestjs/common';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
+import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 
 @Injectable()
 export class RoleNotFoundGuard implements CanActivate {
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const { __role } = context.switchToHttp().getRequest();
+        const { __role } = context
+            .switchToHttp()
+            .getRequest<IRequestApp & { __role: RoleDoc }>();
 
         if (!__role) {
             throw new NotFoundException({

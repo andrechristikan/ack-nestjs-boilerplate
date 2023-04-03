@@ -20,35 +20,35 @@ import { RequestUserAgentInterceptor } from 'src/common/request/interceptors/req
 
 export const RequestUserAgent: () => ParameterDecorator = createParamDecorator(
     (data: string, ctx: ExecutionContext): IResult => {
-        const { __userAgent } = ctx.switchToHttp().getRequest() as IRequestApp;
+        const { __userAgent } = ctx.switchToHttp().getRequest<IRequestApp>();
         return __userAgent;
     }
 );
 
 export const RequestId: () => ParameterDecorator = createParamDecorator(
     (data: string, ctx: ExecutionContext): string => {
-        const { __id } = ctx.switchToHttp().getRequest() as IRequestApp;
+        const { __id } = ctx.switchToHttp().getRequest<IRequestApp>();
         return __id;
     }
 );
 
 export const RequestXTimestamp: () => ParameterDecorator = createParamDecorator(
     (data: string, ctx: ExecutionContext): number => {
-        const { __xTimestamp } = ctx.switchToHttp().getRequest() as IRequestApp;
+        const { __xTimestamp } = ctx.switchToHttp().getRequest<IRequestApp>();
         return __xTimestamp;
     }
 );
 
 export const RequestTimestamp: () => ParameterDecorator = createParamDecorator(
     (data: string, ctx: ExecutionContext): number => {
-        const { __timestamp } = ctx.switchToHttp().getRequest() as IRequestApp;
+        const { __timestamp } = ctx.switchToHttp().getRequest<IRequestApp>();
         return __timestamp;
     }
 );
 
 export const RequestCustomLang: () => ParameterDecorator = createParamDecorator(
     (data: string, ctx: ExecutionContext): string[] => {
-        const { __customLang } = ctx.switchToHttp().getRequest() as IRequestApp;
+        const { __customLang } = ctx.switchToHttp().getRequest<IRequestApp>();
         return __customLang;
     }
 );

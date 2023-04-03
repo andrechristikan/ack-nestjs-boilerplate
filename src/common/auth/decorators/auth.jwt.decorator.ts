@@ -5,17 +5,21 @@ import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { ENUM_AUTH_TYPE } from 'src/common/auth/constants/auth.enum.constant';
 import { AUTH_TYPE_META_KEY } from 'src/common/auth/constants/auth.constant';
 import { AuthPayloadTypeGuard } from 'src/common/auth/guards/payload/auth.payload.type.guard';
+import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export const AuthJwtPayload = createParamDecorator(
     (data: string, ctx: ExecutionContext): Record<string, any> => {
-        const { user } = ctx.switchToHttp().getRequest();
+        const { user } = ctx
+            .switchToHttp()
+            .getRequest<IRequestApp & { user: UserPayloadSerialization }>();
         return data ? user[data] : user;
     }
 );
 
 export const AuthJwtToken = createParamDecorator(
     (data: string, ctx: ExecutionContext): string => {
-        const { headers } = ctx.switchToHttp().getRequest();
+        const { headers } = ctx.switchToHttp().getRequest<IRequestApp>();
         const { authorization } = headers;
         const authorizations: string[] = authorization.split(' ');
 
