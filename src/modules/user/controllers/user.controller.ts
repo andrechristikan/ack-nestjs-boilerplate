@@ -29,13 +29,10 @@ import { IFile } from 'src/common/file/interfaces/file.interface';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
 import { FileSizeImagePipe } from 'src/common/file/pipes/file.size.pipe';
 import { FileTypeImagePipe } from 'src/common/file/pipes/file.type.pipe';
-import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.enum.constant';
-import { Logger } from 'src/common/logger/decorators/logger.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { SettingService } from 'src/common/setting/services/setting.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
 import { UserProfileGuard } from 'src/modules/user/decorators/user.public.decorator';
@@ -65,7 +62,6 @@ import { UserService } from 'src/modules/user/services/user.service';
 export class UserController {
     constructor(
         private readonly userService: UserService,
-        private readonly roleService: RoleService,
         private readonly awsService: AwsS3Service,
         private readonly authService: AuthService,
         private readonly settingService: SettingService
@@ -75,7 +71,6 @@ export class UserController {
     @Response('user.login', {
         serialization: UserLoginSerialization,
     })
-    @Logger(ENUM_LOGGER_ACTION.LOGIN, { tags: ['login', 'withEmail'] })
     @HttpCode(HttpStatus.OK)
     @Post('/login')
     async login(

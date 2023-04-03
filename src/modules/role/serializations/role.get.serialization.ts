@@ -2,7 +2,29 @@ import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import { ENUM_AUTH_TYPE } from 'src/common/auth/constants/auth.enum.constant';
+import {
+    ENUM_POLICY_ACTION,
+    ENUM_POLICY_SUBJECT,
+} from 'src/common/policy/constants/policy.enum.constant';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
+
+export class RoleGetPermissionSerialization {
+    @ApiProperty({
+        required: true,
+        description: 'Permission subject',
+        enum: ENUM_POLICY_SUBJECT,
+    })
+    subject: ENUM_POLICY_SUBJECT;
+
+    @ApiProperty({
+        required: true,
+        description: 'Permission action base on subject',
+        isArray: true,
+        enum: ENUM_POLICY_ACTION,
+        default: [],
+    })
+    action: ENUM_POLICY_ACTION[];
+}
 
 export class RoleGetSerialization extends ResponseIdSerialization {
     @ApiProperty({
@@ -33,6 +55,13 @@ export class RoleGetSerialization extends ResponseIdSerialization {
         required: true,
     })
     readonly type: ENUM_AUTH_TYPE;
+
+    @ApiProperty({
+        type: RoleGetPermissionSerialization,
+        required: true,
+        default: [],
+    })
+    readonly permissions: RoleGetPermissionSerialization;
 
     @ApiProperty({
         description: 'Date created at',

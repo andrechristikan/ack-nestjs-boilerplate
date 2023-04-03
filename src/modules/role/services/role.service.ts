@@ -9,6 +9,7 @@ import {
     IDatabaseCreateManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
+import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
 import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
 import { IRoleService } from 'src/modules/role/interfaces/role.service.interface';
 import {
@@ -69,13 +70,14 @@ export class RoleService implements IRoleService {
     }
 
     async create(
-        { name, description, type }: RoleCreateDto,
+        { name, description, type, permissions }: RoleCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<RoleDoc> {
         const create: RoleEntity = new RoleEntity();
         create.name = name;
         create.description = description;
         create.type = type;
+        create.permissions = permissions;
         create.isActive = true;
 
         return this.roleRepository.create<RoleEntity>(create, options);
@@ -86,6 +88,15 @@ export class RoleService implements IRoleService {
         { description }: RoleUpdateDto
     ): Promise<RoleDoc> {
         repository.description = description;
+
+        return this.roleRepository.save(repository);
+    }
+
+    async updatePermissions(
+        repository: RoleDoc,
+        { permissions }: RoleUpdatePermissionDto
+    ): Promise<RoleDoc> {
+        repository.permissions = permissions;
 
         return this.roleRepository.save(repository);
     }

@@ -71,10 +71,10 @@ Next development
 * [x] api key for saas, change `x-api-key` to `${key}:${secret}`
 * [x] excel decorator optimize
 * [ ] Authorization optimize
-    - remove permission entity. done
-    - implement acl policy guard
-    - remember me remove. done
-    - role access for to type. done
+    - remove permission entity. `done`
+    - implement acl policy guard. `ongoing`
+    - remember me remove. `done`
+    - role access for to type. `done`
 * [ ] Google SSO
 * [ ] Background export/import from/to CSV and Excel
 * [ ] Update Documentation, include an diagram for easier comprehension

@@ -59,6 +59,7 @@ import {
 } from 'src/modules/role/docs/role.admin.doc';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleRequestDto } from 'src/modules/role/dtos/role.request.dto';
+import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
 import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
 import {
     RoleDoc,
@@ -148,7 +149,7 @@ export class RoleAdminController {
     @Post('/create')
     async create(
         @Body()
-        { name, description, type }: RoleCreateDto
+        { name, description, type, permissions }: RoleCreateDto
     ): Promise<IResponse> {
         const exist: boolean = await this.roleService.existByName(name);
         if (exist) {
@@ -158,11 +159,14 @@ export class RoleAdminController {
             });
         }
 
+        // todo
+        // mapping permission
         try {
             const create = await this.roleService.create({
                 name,
                 description,
                 type,
+                permissions,
             });
 
             return {
@@ -192,6 +196,36 @@ export class RoleAdminController {
     ): Promise<IResponse> {
         try {
             await this.roleService.update(role, { description });
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
+
+        return {
+            data: { _id: role._id },
+        };
+    }
+
+    @RoleUpdateDoc()
+    @Response('role.updatePermission', {
+        serialization: ResponseIdSerialization,
+    })
+    @RoleUpdateGuard()
+    @RequestParamGuard(RoleRequestDto)
+    @AuthJwtAdminAccessProtected()
+    @Put('/update/:role/permission')
+    async updatePermission(
+        @GetRole() role: RoleDoc,
+        @Body()
+        { permissions }: RoleUpdatePermissionDto
+    ): Promise<IResponse> {
+        // todo
+        // mapping permission
+        try {
+            await this.roleService.updatePermissions(role, { permissions });
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

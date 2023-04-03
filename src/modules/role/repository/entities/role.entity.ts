@@ -3,6 +3,8 @@ import { CallbackWithoutResultAndOptionalError, Document } from 'mongoose';
 import { ENUM_AUTH_TYPE } from 'src/common/auth/constants/auth.enum.constant';
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+import { ENUM_POLICY_SUBJECT } from 'src/common/policy/constants/policy.enum.constant';
+import { IRolePermission } from 'src/modules/role/interfaces/role.interface';
 
 export const RoleDatabaseName = 'roles';
 
@@ -41,6 +43,26 @@ export class RoleEntity extends DatabaseMongoUUIDEntityAbstract {
         type: String,
     })
     type: ENUM_AUTH_TYPE;
+
+    @Prop({
+        required: true,
+        default: [],
+        type: [
+            {
+                subject: {
+                    type: String,
+                    enum: ENUM_POLICY_SUBJECT,
+                    required: true,
+                },
+                action: {
+                    type: Array,
+                    required: true,
+                    default: [],
+                },
+            },
+        ],
+    })
+    permissions: IRolePermission[];
 }
 
 export const RoleSchema = SchemaFactory.createForClass(RoleEntity);

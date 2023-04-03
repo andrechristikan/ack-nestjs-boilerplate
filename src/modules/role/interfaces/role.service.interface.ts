@@ -8,6 +8,7 @@ import {
     IDatabaseCreateManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
+import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
 import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
 import {
     RoleDoc,
@@ -46,13 +47,18 @@ export interface IRoleService {
     ): Promise<boolean>;
 
     create(
-        { name, description, type }: RoleCreateDto,
+        { name, description, type, permissions }: RoleCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<RoleDoc>;
 
     update(
         repository: RoleDoc,
         { description }: RoleUpdateDto
+    ): Promise<RoleDoc>;
+
+    updatePermissions(
+        repository: RoleDoc,
+        { permissions }: RoleUpdatePermissionDto
     ): Promise<RoleDoc>;
 
     active(repository: RoleDoc): Promise<RoleDoc>;
