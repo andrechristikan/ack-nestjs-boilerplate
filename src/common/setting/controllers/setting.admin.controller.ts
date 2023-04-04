@@ -8,6 +8,11 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
+import {
+    ENUM_POLICY_ACTION,
+    ENUM_POLICY_SUBJECT,
+} from 'src/common/policy/constants/policy.enum.constant';
+import { PolicyAbilityProtected } from 'src/common/policy/decorators/policy.decorator';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
@@ -21,7 +26,7 @@ import { SettingUpdateValueDto } from 'src/common/setting/dtos/setting.update-va
 import { SettingDoc } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingService } from 'src/common/setting/services/setting.service';
 
-@ApiTags('admin.setting')
+@ApiTags('common.setting.admin')
 @Controller({
     version: '1',
     path: '/setting',
@@ -34,8 +39,12 @@ export class SettingAdminController {
         serialization: ResponseIdSerialization,
     })
     @SettingAdminUpdateGuard()
-    @RequestParamGuard(SettingRequestDto)
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.SETTING,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+    })
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(SettingRequestDto)
     @Put('/update/:setting')
     async update(
         @GetSetting() setting: SettingDoc,

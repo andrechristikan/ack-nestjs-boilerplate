@@ -89,6 +89,11 @@ import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { RoleService } from 'src/common/role/services/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/common/role/constants/role.status-code.constant';
+import { PolicyAbilityProtected } from 'src/common/policy/decorators/policy.decorator';
+import {
+    ENUM_POLICY_ACTION,
+    ENUM_POLICY_SUBJECT,
+} from 'src/common/policy/constants/policy.enum.constant';
 
 @ApiTags('modules.user.admin')
 @Controller({
@@ -106,6 +111,10 @@ export class UserAdminController {
     @UserListDoc()
     @ResponsePaging('user.list', {
         serialization: UserListSerialization,
+    })
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ],
     })
     @AuthJwtAdminAccessProtected()
     @Get('/list')
@@ -153,8 +162,12 @@ export class UserAdminController {
         serialization: UserGetSerialization,
     })
     @UserAdminGetGuard()
-    @RequestParamGuard(UserRequestDto)
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ],
+    })
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(UserRequestDto)
     @Get('get/:user')
     async get(@GetUser() user: UserDoc): Promise<IResponse> {
         const userWithRole: IUserDoc = await this.userService.joinWithRole(
@@ -166,6 +179,10 @@ export class UserAdminController {
     @UserCreateDoc()
     @Response('user.create', {
         serialization: ResponseIdSerialization,
+    })
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
     @AuthJwtAdminAccessProtected()
     @Post('/create')
@@ -234,8 +251,12 @@ export class UserAdminController {
     @UserDeleteDoc()
     @Response('user.delete')
     @UserAdminDeleteGuard()
-    @RequestParamGuard(UserRequestDto)
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
+    })
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(UserRequestDto)
     @Delete('/delete/:user')
     async delete(@GetUser() user: UserDoc): Promise<void> {
         try {
@@ -256,8 +277,12 @@ export class UserAdminController {
         serialization: ResponseIdSerialization,
     })
     @UserAdminUpdateGuard()
-    @RequestParamGuard(UserRequestDto)
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+    })
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(UserRequestDto)
     @Put('/update/:user')
     async update(
         @GetUser() user: UserDoc,
@@ -282,8 +307,12 @@ export class UserAdminController {
     @UserInactiveDoc()
     @Response('user.inactive')
     @UserAdminUpdateInactiveGuard()
-    @RequestParamGuard(UserRequestDto)
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+    })
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(UserRequestDto)
     @Patch('/update/:user/inactive')
     async inactive(@GetUser() user: UserDoc): Promise<void> {
         try {
@@ -302,8 +331,12 @@ export class UserAdminController {
     @UserActiveDoc()
     @Response('user.active')
     @UserAdminUpdateActiveGuard()
-    @RequestParamGuard(UserRequestDto)
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+    })
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(UserRequestDto)
     @Patch('/update/:user/active')
     async active(@GetUser() user: UserDoc): Promise<void> {
         try {
@@ -324,6 +357,14 @@ export class UserAdminController {
         serialization: UserImportSerialization,
     })
     @UploadFileSingle('file')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [
+            ENUM_POLICY_ACTION.READ,
+            ENUM_POLICY_ACTION.CREATE,
+            ENUM_POLICY_ACTION.IMPORT,
+        ],
+    })
     @AuthJwtAdminAccessProtected()
     @Post('/import')
     async import(
@@ -344,6 +385,10 @@ export class UserAdminController {
         serialization: UserListSerialization,
         fileType: ENUM_HELPER_FILE_TYPE.CSV,
     })
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.EXPORT],
+    })
     @AuthJwtAdminAccessProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/export')
@@ -356,8 +401,12 @@ export class UserAdminController {
     @UserBlockedDoc()
     @Response('user.blocked')
     @UserAdminUpdateBlockedGuard()
-    @RequestParamGuard(UserRequestDto)
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+    })
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(UserRequestDto)
     @Patch('/update/:user/blocked')
     async blocked(@GetUser() user: UserDoc): Promise<void> {
         try {

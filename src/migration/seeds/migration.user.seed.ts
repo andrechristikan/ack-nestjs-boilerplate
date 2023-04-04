@@ -26,6 +26,9 @@ export class MigrationUserSeed {
         const adminRole: RoleDoc = await this.roleService.findOneByName(
             'admin'
         );
+        const memberRole: RoleDoc = await this.roleService.findOneByName(
+            'member'
+        );
         const userRole: RoleDoc = await this.roleService.findOneByName('user');
         const passwordHash = await this.authService.createPassword(
             'aaAA@@123444'
@@ -66,9 +69,21 @@ export class MigrationUserSeed {
             },
             passwordHash
         );
+        const user4: Promise<UserDoc> = this.userService.create(
+            {
+                username: 'member',
+                firstName: 'member',
+                lastName: 'test',
+                email: 'member@mail.com',
+                password,
+                mobileNumber: '08111111444',
+                role: memberRole._id,
+            },
+            passwordHash
+        );
 
         try {
-            await Promise.all([user1, user2, user3]);
+            await Promise.all([user1, user2, user3, user4]);
         } catch (err: any) {
             throw new Error(err.message);
         }

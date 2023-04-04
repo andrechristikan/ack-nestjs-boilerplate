@@ -8,20 +8,20 @@ import {
     PolicyHandler,
 } from 'src/common/policy/interfaces/policy.interface';
 import { ENUM_ROLE_TYPE } from 'src/common/role/constants/role.enum.constant';
-import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
+import { RoleDoc } from 'src/common/role/repository/entities/role.entity';
 
 @Injectable()
 export class PolicyAbilityFactory {
-    defineAbilityForUser(user: IUserEntity) {
+    defineAbilityFromRole({ type, permissions }: RoleDoc) {
         const { can, build } = new AbilityBuilder<IPolicyAbility>(
             createMongoAbility
         );
 
-        if (user.role.type === ENUM_ROLE_TYPE.SUPER_ADMIN) {
+        if (type === ENUM_ROLE_TYPE.SUPER_ADMIN) {
             can(ENUM_POLICY_ACTION.MANAGE, 'all');
         }
 
-        for (const permission of user.role.permissions) {
+        for (const permission of permissions) {
             const abilities = this.mappingAbility(permission);
 
             for (const ability of abilities) {

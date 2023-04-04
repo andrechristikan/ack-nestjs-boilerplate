@@ -129,11 +129,12 @@ export class RoleService implements IRoleService {
         data: RoleCreateDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean> {
-        const create: RoleEntity[] = data.map(({ type, name }) => {
+        const create: RoleEntity[] = data.map(({ type, name, permissions }) => {
             const entity: RoleEntity = new RoleEntity();
             entity.type = type;
             entity.isActive = true;
             entity.name = name;
+            entity.permissions = permissions;
 
             return entity;
         });

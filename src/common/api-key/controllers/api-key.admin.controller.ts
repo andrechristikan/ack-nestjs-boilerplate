@@ -73,7 +73,7 @@ import {
 } from 'src/common/response/interfaces/response.interface';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 
-@ApiTags('admin.apiKey')
+@ApiTags('common.apiKey.admin')
 @Controller({
     version: '1',
     path: '/api-key',
@@ -135,12 +135,12 @@ export class ApiKeyAdminController {
         serialization: ApiKeyGetSerialization,
     })
     @ApiKeyAdminGetGuard()
-    @RequestParamGuard(ApiKeyRequestDto)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ],
     })
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(ApiKeyRequestDto)
     @Get('get/:apiKey')
     async get(@GetApiKey(true) apiKey: ApiKeyEntity): Promise<IResponse> {
         return { data: apiKey };
@@ -189,12 +189,12 @@ export class ApiKeyAdminController {
     @ApiKeyResetDoc()
     @Response('apiKey.reset', { serialization: ApiKeyResetSerialization })
     @ApiKeyAdminUpdateResetGuard()
-    @RequestParamGuard(ApiKeyRequestDto)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(ApiKeyRequestDto)
     @Patch('/update/:apiKey/reset')
     async reset(@GetApiKey() apiKey: ApiKeyDoc): Promise<IResponse> {
         try {
@@ -222,12 +222,12 @@ export class ApiKeyAdminController {
     @ApiKeyUpdateDoc()
     @Response('apiKey.update', { serialization: ResponseIdSerialization })
     @ApiKeyAdminUpdateGuard()
-    @RequestParamGuard(ApiKeyRequestDto)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(ApiKeyRequestDto)
     @Put('/update/:apiKey')
     async updateName(
         @Body() body: ApiKeyUpdateDto,
@@ -249,12 +249,12 @@ export class ApiKeyAdminController {
     @ApiKeyInactiveDoc()
     @Response('apiKey.inactive')
     @ApiKeyAdminUpdateInactiveGuard()
-    @RequestParamGuard(ApiKeyRequestDto)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(ApiKeyRequestDto)
     @Patch('/update/:apiKey/inactive')
     async inactive(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
         try {
@@ -273,12 +273,12 @@ export class ApiKeyAdminController {
     @ApiKeyActiveDoc()
     @Response('apiKey.active')
     @ApiKeyAdminUpdateActiveGuard()
-    @RequestParamGuard(ApiKeyRequestDto)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(ApiKeyRequestDto)
     @Patch('/update/:apiKey/active')
     async active(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
         try {
@@ -297,12 +297,12 @@ export class ApiKeyAdminController {
     @ApiKeyUpdateDoc()
     @Response('apiKey.updateDate', { serialization: ResponseIdSerialization })
     @ApiKeyAdminUpdateGuard()
-    @RequestParamGuard(ApiKeyRequestDto)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(ApiKeyRequestDto)
     @Put('/update/:apiKey/date')
     async updateDate(
         @Body() body: ApiKeyUpdateDateDto,

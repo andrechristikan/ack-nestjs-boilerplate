@@ -19,6 +19,11 @@ import {
 } from 'src/common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
+import {
+    ENUM_POLICY_ACTION,
+    ENUM_POLICY_SUBJECT,
+} from 'src/common/policy/constants/policy.enum.constant';
+import { PolicyAbilityProtected } from 'src/common/policy/decorators/policy.decorator';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
     Response,
@@ -71,7 +76,7 @@ import { RoleService } from 'src/common/role/services/role.service';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserService } from 'src/modules/user/services/user.service';
 
-@ApiTags('admin.role')
+@ApiTags('common.role.admin')
 @Controller({
     version: '1',
     path: '/role',
@@ -86,6 +91,10 @@ export class RoleAdminController {
     @RoleListDoc()
     @ResponsePaging('role.list', {
         serialization: RoleListSerialization,
+    })
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.ROLE,
+        action: [ENUM_POLICY_ACTION.READ],
     })
     @AuthJwtAdminAccessProtected()
     @Get('/list')
@@ -134,8 +143,12 @@ export class RoleAdminController {
         serialization: RoleGetSerialization,
     })
     @RoleAdminGetGuard()
-    @RequestParamGuard(RoleRequestDto)
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.ROLE,
+        action: [ENUM_POLICY_ACTION.READ],
+    })
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(RoleRequestDto)
     @Get('get/:role')
     async get(@GetRole(true) role: RoleEntity): Promise<IResponse> {
         return { data: role };
@@ -144,6 +157,10 @@ export class RoleAdminController {
     @RoleCreateDoc()
     @Response('role.create', {
         serialization: ResponseIdSerialization,
+    })
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.ROLE,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
     @AuthJwtAdminAccessProtected()
     @Post('/create')
@@ -184,8 +201,12 @@ export class RoleAdminController {
         serialization: ResponseIdSerialization,
     })
     @RoleAdminUpdateGuard()
-    @RequestParamGuard(RoleRequestDto)
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.ROLE,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+    })
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(RoleRequestDto)
     @Put('/update/:role')
     async update(
         @GetRole() role: RoleDoc,
@@ -212,8 +233,12 @@ export class RoleAdminController {
         serialization: ResponseIdSerialization,
     })
     @RoleAdminUpdateGuard()
-    @RequestParamGuard(RoleRequestDto)
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.ROLE,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+    })
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(RoleRequestDto)
     @Put('/update/:role/permission')
     async updatePermission(
         @GetRole() role: RoleDoc,
@@ -241,8 +266,12 @@ export class RoleAdminController {
     @RoleDeleteDoc()
     @Response('role.delete')
     @RoleAdminDeleteGuard()
-    @RequestParamGuard(RoleRequestDto)
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.ROLE,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
+    })
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(RoleRequestDto)
     @Delete('/delete/:role')
     async delete(@GetRole() role: RoleDoc): Promise<void> {
         const used: UserDoc = await this.userService.findOne({
@@ -271,8 +300,8 @@ export class RoleAdminController {
     @RoleInactiveDoc()
     @Response('role.inactive')
     @RoleAdminUpdateInactiveGuard()
-    @RequestParamGuard(RoleRequestDto)
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(RoleRequestDto)
     @Patch('/update/:role/inactive')
     async inactive(@GetRole() role: RoleDoc): Promise<void> {
         try {
@@ -291,8 +320,8 @@ export class RoleAdminController {
     @RoleActiveDoc()
     @Response('role.active')
     @RoleAdminUpdateActiveGuard()
-    @RequestParamGuard(RoleRequestDto)
     @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(RoleRequestDto)
     @Patch('/update/:role/active')
     async active(@GetRole() role: RoleDoc): Promise<void> {
         try {

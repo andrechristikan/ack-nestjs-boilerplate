@@ -31,7 +31,16 @@ export class MigrationRoleSeed {
                     action: [ENUM_POLICY_ACTION.MANAGE],
                 })),
             },
-
+            {
+                name: 'member',
+                type: ENUM_ROLE_TYPE.USER,
+                permissions: [
+                    {
+                        subject: ENUM_POLICY_SUBJECT.API_KEY,
+                        action: [ENUM_POLICY_ACTION.MANAGE],
+                    },
+                ],
+            },
             {
                 name: 'user',
                 type: ENUM_ROLE_TYPE.USER,

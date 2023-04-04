@@ -71,7 +71,7 @@ import {
 } from 'src/common/response/interfaces/response.interface';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 
-@ApiTags('user.apiKey')
+@ApiTags('common.apiKey.user')
 @Controller({
     version: '1',
     path: '/api-key',
@@ -141,12 +141,12 @@ export class ApiKeyUserController {
         serialization: ApiKeyGetSerialization,
     })
     @ApiKeyUserGetGuard()
-    @RequestParamGuard(ApiKeyRequestDto)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ],
     })
     @AuthJwtPublicAccessProtected()
+    @RequestParamGuard(ApiKeyRequestDto)
     @Get('get/:apiKey')
     async get(@GetApiKey(true) apiKey: ApiKeyEntity): Promise<IResponse> {
         return { data: apiKey };
@@ -194,12 +194,12 @@ export class ApiKeyUserController {
     @ApiKeyResetDoc()
     @Response('apiKey.reset', { serialization: ApiKeyResetSerialization })
     @ApiKeyUserUpdateResetGuard()
-    @RequestParamGuard(ApiKeyRequestDto)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtPublicAccessProtected()
+    @RequestParamGuard(ApiKeyRequestDto)
     @Patch('/update/:apiKey/reset')
     async reset(@GetApiKey() apiKey: ApiKeyDoc): Promise<IResponse> {
         try {
@@ -227,12 +227,12 @@ export class ApiKeyUserController {
     @ApiKeyUpdateDoc()
     @Response('apiKey.update', { serialization: ResponseIdSerialization })
     @ApiKeyUserUpdateGuard()
-    @RequestParamGuard(ApiKeyRequestDto)
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtPublicAccessProtected()
+    @RequestParamGuard(ApiKeyRequestDto)
     @Put('/update/:apiKey')
     async updateName(
         @Body() body: ApiKeyUpdateDto,

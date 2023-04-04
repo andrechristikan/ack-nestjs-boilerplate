@@ -15,7 +15,7 @@ import { HealthCheckDoc } from 'src/health/docs/health.doc';
 import { HealthAwsS3Indicator } from 'src/health/indicators/health.aws-s3.indicator';
 import { HealthSerialization } from 'src/health/serializations/health.serialization';
 
-@ApiTags('public.health')
+@ApiTags('health')
 @Controller({
     version: VERSION_NEUTRAL,
     path: '/health',

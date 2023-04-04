@@ -20,12 +20,8 @@ import {
     SETTING_DEFAULT_PER_PAGE,
 } from 'src/common/setting/constants/setting.list.constant';
 import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
+import { SettingPublicGetGuard } from 'src/common/setting/decorators/setting.public.decorator';
 import {
-    SettingPublicGetByNameGuard,
-    SettingPublicGetGuard,
-} from 'src/common/setting/decorators/setting.public.decorator';
-import {
-    SettingGetByNameDoc,
     SettingGetDoc,
     SettingListDoc,
 } from 'src/common/setting/docs/setting.doc';
@@ -35,7 +31,7 @@ import { SettingGetSerialization } from 'src/common/setting/serializations/setti
 import { SettingListSerialization } from 'src/common/setting/serializations/setting.list.serialization';
 import { SettingService } from 'src/common/setting/services/setting.service';
 
-@ApiTags('public.setting')
+@ApiTags('common.setting.public')
 @Controller({
     version: '1',
     path: '/setting',
@@ -95,18 +91,6 @@ export class SettingPublicController {
     @RequestParamGuard(SettingRequestDto)
     @Get('get/:setting')
     async get(@GetSetting(true) setting: SettingEntity): Promise<IResponse> {
-        return { data: setting };
-    }
-
-    @SettingGetByNameDoc()
-    @Response('setting.getByName', {
-        serialization: SettingGetSerialization,
-    })
-    @SettingPublicGetByNameGuard()
-    @Get('get/name/:settingName')
-    async getByName(
-        @GetSetting(true) setting: SettingEntity
-    ): Promise<IResponse> {
         return { data: setting };
     }
 }

@@ -75,7 +75,7 @@ Next development
     - implement acl policy guard. `done`
     - remember me remove. `done`
     - role access for to type. `done`
-* [ ] add policy for each endpoint
+* [x] add policy for each endpoint
 * [ ] testing and unit testing for common module
 * [ ] Google SSO
 * [ ] Background export/import from/to CSV and Excel
