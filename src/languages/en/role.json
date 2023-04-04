@@ -11,6 +11,7 @@
         "exist": "Role exist",
         "active": "Role active invalid",
         "used": "Role in used",
-        "inactive": "Role is inactive"
+        "inactive": "Role is inactive",
+        "typeForbidden": "Auth type not allowed"
     }
 }

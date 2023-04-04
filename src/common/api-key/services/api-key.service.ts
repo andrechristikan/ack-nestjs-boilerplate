@@ -19,6 +19,7 @@ import { HelperStringService } from 'src/common/helper/services/helper.string.se
 import { ConfigService } from '@nestjs/config';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
 import {
+    ApiKeyCreateByUserDto,
     ApiKeyCreateDto,
     ApiKeyCreateRawDto,
 } from 'src/common/api-key/dtos/api-key.create.dto';
@@ -81,6 +82,59 @@ export class ApiKeyService implements IApiKeyService {
         );
     }
 
+    async findAllByUser(
+        user: string,
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<ApiKeyEntity[]> {
+        return this.apiKeyRepository.findAll<ApiKeyEntity>(
+            { ...find, user },
+            options
+        );
+    }
+
+    async findOneByIdAndUser(
+        user: string,
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ApiKeyDoc> {
+        return this.apiKeyRepository.findOne<ApiKeyDoc>({ _id, user }, options);
+    }
+
+    async findOneByUser(
+        user: string,
+        find: Record<string, any>,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ApiKeyDoc> {
+        return this.apiKeyRepository.findOne<ApiKeyDoc>(
+            { ...find, user },
+            options
+        );
+    }
+
+    async findOneByKeyAndUser(
+        user: string,
+        key: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ApiKeyDoc> {
+        return this.apiKeyRepository.findOne<ApiKeyDoc>({ key, user }, options);
+    }
+
+    async findOneByActiveKeyAndUser(
+        user: string,
+        key: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ApiKeyDoc> {
+        return this.apiKeyRepository.findOne<ApiKeyDoc>(
+            {
+                key,
+                isActive: true,
+                user,
+            },
+            options
+        );
+    }
+
     async existByUser(
         user: string,
         options?: IDatabaseExistOptions
@@ -100,9 +154,44 @@ export class ApiKeyService implements IApiKeyService {
         return this.apiKeyRepository.getTotal(find, options);
     }
 
-    async create(
+    async getTotalByUser(
         user: string,
-        { name, description, startDate, endDate }: ApiKeyCreateDto,
+        find?: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<number> {
+        return this.apiKeyRepository.getTotal({ ...find, user }, options);
+    }
+
+    async create(
+        { name, description, startDate, endDate, user }: ApiKeyCreateDto,
+        options?: IDatabaseCreateOptions
+    ): Promise<IApiKeyCreated> {
+        const key = await this.createKey();
+        const secret = await this.createSecret();
+        const hash: string = await this.createHashApiKey(key, secret);
+
+        const dto: ApiKeyEntity = new ApiKeyEntity();
+        dto.user = user;
+        dto.name = name;
+        dto.description = description;
+        dto.key = key;
+        dto.hash = hash;
+        dto.isActive = true;
+
+        if (startDate && endDate) {
+            dto.startDate = startDate;
+            dto.endDate = endDate;
+        }
+
+        const created: ApiKeyDoc =
+            await this.apiKeyRepository.create<ApiKeyEntity>(dto, options);
+
+        return { doc: created, secret };
+    }
+
+    async createByUser(
+        user: string,
+        { name, description, startDate, endDate }: ApiKeyCreateByUserDto,
         options?: IDatabaseCreateOptions
     ): Promise<IApiKeyCreated> {
         const key = await this.createKey();
@@ -129,7 +218,6 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     async createRaw(
-        user: string,
         {
             name,
             description,
@@ -137,6 +225,7 @@ export class ApiKeyService implements IApiKeyService {
             secret,
             startDate,
             endDate,
+            user,
         }: ApiKeyCreateRawDto,
         options?: IDatabaseCreateOptions
     ): Promise<IApiKeyCreated> {

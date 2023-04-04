@@ -13,7 +13,7 @@ import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/common/setting/constants/setting.status-code.constant';
-import { SettingUpdateGuard } from 'src/common/setting/decorators/setting.admin.decorator';
+import { SettingAdminUpdateGuard } from 'src/common/setting/decorators/setting.admin.decorator';
 import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
 import { SettingUpdateDoc } from 'src/common/setting/docs/setting.admin.doc';
 import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
@@ -33,7 +33,7 @@ export class SettingAdminController {
     @Response('setting.update', {
         serialization: ResponseIdSerialization,
     })
-    @SettingUpdateGuard()
+    @SettingAdminUpdateGuard()
     @RequestParamGuard(SettingRequestDto)
     @AuthJwtAdminAccessProtected()
     @Put('/update/:setting')

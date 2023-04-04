@@ -1,6 +1,5 @@
 import { AbilityBuilder, createMongoAbility } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
-import { ENUM_AUTH_TYPE } from 'src/common/auth/constants/auth.enum.constant';
 import { ENUM_POLICY_ACTION } from 'src/common/policy/constants/policy.enum.constant';
 import {
     IPolicyAbility,
@@ -8,6 +7,7 @@ import {
     IPolicyRuleAbility,
     PolicyHandler,
 } from 'src/common/policy/interfaces/policy.interface';
+import { ENUM_ROLE_TYPE } from 'src/common/role/constants/role.enum.constant';
 import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
 
 @Injectable()
@@ -17,12 +17,10 @@ export class PolicyAbilityFactory {
             createMongoAbility
         );
 
-        if (user.role.type === ENUM_AUTH_TYPE.SUPER_ADMIN) {
+        if (user.role.type === ENUM_ROLE_TYPE.SUPER_ADMIN) {
             can(ENUM_POLICY_ACTION.MANAGE, 'all');
         }
 
-        // todo
-        // mapping permission
         for (const permission of user.role.permissions) {
             const abilities = this.mappingAbility(permission);
 

@@ -36,16 +36,14 @@ import {
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import {
-    UserDeleteGuard,
-    UserGetGuard,
-    UserUpdateActiveGuard,
-    UserUpdateBlockedGuard,
-    UserUpdateGuard,
-    UserUpdateInactiveGuard,
+    UserAdminDeleteGuard,
+    UserAdminGetGuard,
+    UserAdminUpdateActiveGuard,
+    UserAdminUpdateBlockedGuard,
+    UserAdminUpdateGuard,
+    UserAdminUpdateInactiveGuard,
 } from 'src/modules/user/decorators/user.admin.decorator';
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
 import {
@@ -89,8 +87,10 @@ import {
 } from 'src/common/pagination/decorators/pagination.decorator';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
+import { RoleService } from 'src/common/role/services/role.service';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/common/role/constants/role.status-code.constant';
 
-@ApiTags('modules.admin.user')
+@ApiTags('modules.user.admin')
 @Controller({
     version: '1',
     path: '/user',
@@ -152,7 +152,7 @@ export class UserAdminController {
     @Response('user.get', {
         serialization: UserGetSerialization,
     })
-    @UserGetGuard()
+    @UserAdminGetGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthJwtAdminAccessProtected()
     @Get('get/:user')
@@ -233,7 +233,7 @@ export class UserAdminController {
 
     @UserDeleteDoc()
     @Response('user.delete')
-    @UserDeleteGuard()
+    @UserAdminDeleteGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthJwtAdminAccessProtected()
     @Delete('/delete/:user')
@@ -255,7 +255,7 @@ export class UserAdminController {
     @Response('user.update', {
         serialization: ResponseIdSerialization,
     })
-    @UserUpdateGuard()
+    @UserAdminUpdateGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthJwtAdminAccessProtected()
     @Put('/update/:user')
@@ -281,7 +281,7 @@ export class UserAdminController {
 
     @UserInactiveDoc()
     @Response('user.inactive')
-    @UserUpdateInactiveGuard()
+    @UserAdminUpdateInactiveGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthJwtAdminAccessProtected()
     @Patch('/update/:user/inactive')
@@ -301,7 +301,7 @@ export class UserAdminController {
 
     @UserActiveDoc()
     @Response('user.active')
-    @UserUpdateActiveGuard()
+    @UserAdminUpdateActiveGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthJwtAdminAccessProtected()
     @Patch('/update/:user/active')
@@ -355,7 +355,7 @@ export class UserAdminController {
 
     @UserBlockedDoc()
     @Response('user.blocked')
-    @UserUpdateBlockedGuard()
+    @UserAdminUpdateBlockedGuard()
     @RequestParamGuard(UserRequestDto)
     @AuthJwtAdminAccessProtected()
     @Patch('/update/:user/blocked')

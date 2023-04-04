@@ -35,6 +35,7 @@ import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/req
 import { Skip } from 'src/common/request/validations/request.skip.validation';
 import { ResponseDefaultSerialization } from 'src/common/response/serializations/response.default.serialization';
 import { ResponsePagingSerialization } from 'src/common/response/serializations/response.paging.serialization';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/common/role/constants/role.status-code.constant';
 
 export function Doc<T>(
     messagePath: string,
@@ -119,8 +120,8 @@ export function Doc<T>(
         });
         oneOfForbidden.push({
             statusCode:
-                ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PAYLOAD_TYPE_INVALID_ERROR,
-            messagePath: 'auth.error.typeForbidden',
+                ENUM_ROLE_STATUS_CODE_ERROR.ROLE_PAYLOAD_TYPE_INVALID_ERROR,
+            messagePath: 'role.error.typeForbidden',
         });
     }
 
@@ -273,8 +274,8 @@ export function DocPaging<T>(
         });
         oneOfForbidden.push({
             statusCode:
-                ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PAYLOAD_TYPE_INVALID_ERROR,
-            messagePath: 'auth.error.typeForbidden',
+                ENUM_ROLE_STATUS_CODE_ERROR.ROLE_PAYLOAD_TYPE_INVALID_ERROR,
+            messagePath: 'role.error.typeForbidden',
         });
     }
 

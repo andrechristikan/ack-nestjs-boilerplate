@@ -1,7 +1,7 @@
 import {
     RoleDoc,
     RoleEntity,
-} from 'src/modules/role/repository/entities/role.entity';
+} from 'src/common/role/repository/entities/role.entity';
 import {
     UserDoc,
     UserEntity,

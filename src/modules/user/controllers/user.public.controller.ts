@@ -14,8 +14,8 @@ import {
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { Response } from 'src/common/response/decorators/response.decorator';
-import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
-import { RoleService } from 'src/modules/role/services/role.service';
+import { RoleDoc } from 'src/common/role/repository/entities/role.entity';
+import { RoleService } from 'src/common/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import {
     UserDeleteSelfDoc,

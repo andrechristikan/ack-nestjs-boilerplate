@@ -1,4 +1,5 @@
 import {
+    ApiKeyCreateByUserDto,
     ApiKeyCreateDto,
     ApiKeyCreateRawDto,
 } from 'src/common/api-key/dtos/api-key.create.dto';
@@ -43,19 +44,53 @@ export interface IApiKeyService {
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc>;
 
+    findAllByUser(
+        user: string,
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<ApiKeyEntity[]>;
+
+    findOneByIdAndUser(
+        user: string,
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ApiKeyDoc>;
+
+    findOneByUser(
+        user: string,
+        find: Record<string, any>,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ApiKeyDoc>;
+
+    findOneByKeyAndUser(
+        user: string,
+        key: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ApiKeyDoc>;
+
+    findOneByActiveKeyAndUser(
+        user: string,
+        key: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ApiKeyDoc>;
+
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseOptions
     ): Promise<number>;
 
-    create(
+    getTotalByUser(
         user: string,
-        { name, description, startDate, endDate }: ApiKeyCreateDto,
+        find?: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<number>;
+
+    create(
+        { name, description, startDate, endDate, user }: ApiKeyCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<IApiKeyCreated>;
 
     createRaw(
-        user: string,
         {
             name,
             description,
@@ -63,7 +98,14 @@ export interface IApiKeyService {
             secret,
             startDate,
             endDate,
+            user,
         }: ApiKeyCreateRawDto,
+        options?: IDatabaseCreateOptions
+    ): Promise<IApiKeyCreated>;
+
+    createByUser(
+        user: string,
+        { name, description, startDate, endDate }: ApiKeyCreateByUserDto,
         options?: IDatabaseCreateOptions
     ): Promise<IApiKeyCreated>;
 

@@ -5,13 +5,13 @@ import { ApiKeyExpiredGuard } from 'src/common/api-key/guards/api-key.expired.gu
 import { ApiKeyNotFoundGuard } from 'src/common/api-key/guards/api-key.not-found.guard';
 import { ApiKeyPutToRequestGuard } from 'src/common/api-key/guards/api-key.put-to-request.guard';
 
-export function ApiKeyGetGuard(): MethodDecorator {
+export function ApiKeyAdminGetGuard(): MethodDecorator {
     return applyDecorators(
         UseGuards(ApiKeyPutToRequestGuard, ApiKeyNotFoundGuard)
     );
 }
 
-export function ApiKeyUpdateGuard(): MethodDecorator {
+export function ApiKeyAdminUpdateGuard(): MethodDecorator {
     return applyDecorators(
         UseGuards(
             ApiKeyPutToRequestGuard,
@@ -23,7 +23,7 @@ export function ApiKeyUpdateGuard(): MethodDecorator {
     );
 }
 
-export function ApiKeyUpdateResetGuard(): MethodDecorator {
+export function ApiKeyAdminUpdateResetGuard(): MethodDecorator {
     return applyDecorators(
         UseGuards(
             ApiKeyPutToRequestGuard,
@@ -35,7 +35,7 @@ export function ApiKeyUpdateResetGuard(): MethodDecorator {
     );
 }
 
-export function ApiKeyUpdateActiveGuard(): MethodDecorator {
+export function ApiKeyAdminUpdateActiveGuard(): MethodDecorator {
     return applyDecorators(
         UseGuards(
             ApiKeyPutToRequestGuard,
@@ -47,7 +47,7 @@ export function ApiKeyUpdateActiveGuard(): MethodDecorator {
     );
 }
 
-export function ApiKeyUpdateInactiveGuard(): MethodDecorator {
+export function ApiKeyAdminUpdateInactiveGuard(): MethodDecorator {
     return applyDecorators(
         UseGuards(
             ApiKeyPutToRequestGuard,

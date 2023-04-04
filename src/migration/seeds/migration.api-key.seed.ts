@@ -20,7 +20,8 @@ export class MigrationApiKeySeed {
             const user: UserDoc = await this.userService.findOneByUsername(
                 'superadmin'
             );
-            await this.apiKeyService.createRaw(user._id, {
+            await this.apiKeyService.createRaw({
+                user: user._id,
                 name: 'Api Key Migration',
                 description: 'From migration',
                 key: 'qwertyuiop12345zxcvbnmkjh',
