@@ -70,11 +70,13 @@ Next development
 * [x] user e2e
 * [x] api key for saas, change `x-api-key` to `${key}:${secret}`
 * [x] excel decorator optimize
-* [ ] Authorization optimize
+* [x] Authorization optimize
     - remove permission entity. `done`
-    - implement acl policy guard. `ongoing`
+    - implement acl policy guard. `done`
     - remember me remove. `done`
     - role access for to type. `done`
+* [ ] add policy for each endpoint
+* [ ] testing and unit testing for common module
 * [ ] Google SSO
 * [ ] Background export/import from/to CSV and Excel
 * [ ] Update Documentation, include an diagram for easier comprehension

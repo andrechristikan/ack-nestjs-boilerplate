@@ -173,8 +173,6 @@ export class ApiKeyUserController {
         }
 
         try {
-            // todo
-            // startDate and endDate
             const created: IApiKeyCreated =
                 await this.apiKeyService.createByUser(user, body);
 
