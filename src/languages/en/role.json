@@ -12,6 +12,6 @@
         "active": "Role active invalid",
         "used": "Role in used",
         "inactive": "Role is inactive",
-        "typeForbidden": "Auth type not allowed"
+        "typeForbidden": "Role type not allowed"
     }
 }

@@ -12,7 +12,7 @@ import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.seriali
 import { Readable } from 'stream';
 
 export interface IAwsS3Service {
-    checkConnection(): Promise<HeadBucketCommandOutput>;
+    checkBucketExistence(): Promise<HeadBucketCommandOutput>;
 
     listBucket(): Promise<string[]>;
 

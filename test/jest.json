@@ -6,12 +6,11 @@
     ],
     "testEnvironment": "node",
     "testMatch": [
-        "<rootDir>/test/integration/**/*.spec.ts"
     ],
     "collectCoverage": true,
-    "coverageDirectory": "coverage-integration",
+    "coverageDirectory": "coverage",
     "collectCoverageFrom": [
-        "./integration"
+        "./src/common/**/services/**"
     ],
     "coverageThreshold": {
       "global": {
