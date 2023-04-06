@@ -1,16 +1,17 @@
 {
     "testTimeout": 5000,
-    "rootDir": "../../",
+    "rootDir": "../",
     "modulePaths": [
         "."
     ],
     "testEnvironment": "node",
     "testMatch": [
+        "<rootDir>/test/**/*.spec.ts"
     ],
     "collectCoverage": true,
     "coverageDirectory": "coverage",
     "collectCoverageFrom": [
-        "./src/common/**/services/**"
+        "./src/common/**/services/*.service.ts"
     ],
     "coverageThreshold": {
       "global": {

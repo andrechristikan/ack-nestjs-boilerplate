@@ -10,7 +10,7 @@ import {
 } from 'src/common/helper/interfaces/helper.interface';
 
 export interface IHelperDateService {
-    calculateAge(dateOfBirth: Date): number;
+    calculateAge(dateOfBirth: Date, year?: number): number;
 
     diff(
         dateOne: Date,

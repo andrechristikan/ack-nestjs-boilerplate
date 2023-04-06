@@ -17,7 +17,7 @@ export class HelperFileService implements IHelperFileService {
         options?: IHelperFileCreateExcelWorkbookOptions
     ): WorkBook {
         // headers
-        const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
+        const headers = Object.keys(rows[0]);
 
         // worksheet
         const worksheet = utils.json_to_sheet(rows);

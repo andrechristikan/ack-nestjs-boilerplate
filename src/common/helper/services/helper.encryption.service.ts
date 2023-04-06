@@ -81,6 +81,7 @@ export class HelperEncryptionService implements IHelperEncryptionService {
                 issuer: options.issuer,
                 subject: options.subject,
             });
+
             return true;
         } catch (err: unknown) {
             return false;
