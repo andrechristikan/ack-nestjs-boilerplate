@@ -7,36 +7,28 @@ import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 
 @Injectable()
 export class DatabaseOptionsService implements IDatabaseOptionsService {
-    private readonly host: string;
-    private readonly database: string;
-    private readonly user: string;
-    private readonly password: string;
-    private readonly debug: boolean;
-    private readonly options: string;
-    private readonly env: string;
-
-    constructor(private readonly configService: ConfigService) {
-        this.env = this.configService.get<string>('app.env');
-        this.host = this.configService.get<string>('database.host');
-        this.database = this.configService.get<string>('database.name');
-        this.user = this.configService.get<string>('database.user');
-        this.password = this.configService.get<string>('database.password');
-        this.debug = this.configService.get<boolean>('database.debug');
-
-        this.options = this.configService.get<string>('database.options')
-            ? `?${this.configService.get<string>('database.options')}`
-            : '';
-    }
+    constructor(private readonly configService: ConfigService) {}
 
     createOptions(): MongooseModuleOptions {
-        let uri = `${this.host}`;
+        const env = this.configService.get<string>('app.env');
+        const host = this.configService.get<string>('database.host');
+        const database = this.configService.get<string>('database.name');
+        const user = this.configService.get<string>('database.user');
+        const password = this.configService.get<string>('database.password');
+        const debug = this.configService.get<boolean>('database.debug');
 
-        if (this.database) {
-            uri = `${uri}/${this.database}${this.options}`;
+        const options = this.configService.get<string>('database.options')
+            ? `?${this.configService.get<string>('database.options')}`
+            : '';
+
+        let uri = `${host}`;
+
+        if (database) {
+            uri = `${uri}/${database}${options}`;
         }
 
-        if (this.env !== ENUM_APP_ENVIRONMENT.PRODUCTION) {
-            mongoose.set('debug', this.debug);
+        if (env !== ENUM_APP_ENVIRONMENT.PRODUCTION) {
+            mongoose.set('debug', debug);
         }
 
         const mongooseOptions: MongooseModuleOptions = {
@@ -48,10 +40,10 @@ export class DatabaseOptionsService implements IDatabaseOptionsService {
             // useMongoClient: true,
         };
 
-        if (this.user && this.password) {
+        if (user && password) {
             mongooseOptions.auth = {
-                username: this.user,
-                password: this.password,
+                username: user,
+                password: password,
             };
         }
 

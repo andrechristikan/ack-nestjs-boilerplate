@@ -12,6 +12,7 @@ export interface IRequestApp extends Request {
     __timestamp: number;
     __timezone: string;
     __customLang: string[];
+    __xCustomLang: string;
     __version: string;
     __repoVersion: string;
     __userAgent: IResult;

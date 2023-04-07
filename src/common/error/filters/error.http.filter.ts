@@ -32,17 +32,12 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 // The exception filter only catch HttpException
 @Catch()
 export class ErrorHttpFilter implements ExceptionFilter {
-    private readonly appDefaultLanguage: string[];
-
     constructor(
         @Optional() private readonly debuggerService: DebuggerService,
         private readonly configService: ConfigService,
         private readonly messageService: MessageService,
         private readonly helperDateService: HelperDateService
-    ) {
-        this.appDefaultLanguage =
-            this.configService.get<string[]>('app.language');
-    }
+    ) {}
 
     async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
         const ctx: HttpArgumentsHost = host.switchToHttp();
@@ -50,8 +45,9 @@ export class ErrorHttpFilter implements ExceptionFilter {
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
         // get request headers
-        const __customLang: string[] =
-            request.__customLang ?? this.appDefaultLanguage;
+        const __customLang: string[] = request.__customLang ?? [
+            this.messageService.getLanguage(),
+        ];
         const __class = request.__class ?? ErrorHttpFilter.name;
         const __function = request.__function ?? this.catch.name;
         const __requestId = request.__id ?? DatabaseDefaultUUID();
@@ -129,13 +125,13 @@ export class ErrorHttpFilter implements ExceptionFilter {
                 if (responseException.errors?.length > 0) {
                     errors =
                         responseException._errorType === ERROR_TYPE.IMPORT
-                            ? await this.messageService.getImportErrorsMessage(
+                            ? this.messageService.getImportErrorsMessage(
                                   responseException.errors as IValidationErrorImport[],
-                                  __customLang
+                                  { customLanguages: __customLang }
                               )
-                            : await this.messageService.getRequestErrorsMessage(
+                            : this.messageService.getRequestErrorsMessage(
                                   responseException.errors as ValidationError[],
-                                  __customLang
+                                  { customLanguages: __customLang }
                               );
                 }
 

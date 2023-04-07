@@ -8,38 +8,33 @@ import { IDebuggerOptionService } from 'src/common/debugger/interfaces/debugger.
 
 @Injectable()
 export class DebuggerOptionService implements IDebuggerOptionService {
-    private readonly writeIntoFile: boolean;
-    private readonly writeIntoConsole: boolean;
-    private readonly maxSize: string;
-    private readonly maxFiles: string;
-
-    constructor(private configService: ConfigService) {
-        this.writeIntoFile = this.configService.get<boolean>(
-            'debugger.system.writeIntoFile'
-        );
-        this.writeIntoConsole = this.configService.get<boolean>(
-            'debugger.system.writeIntoConsole'
-        );
-        this.maxSize = this.configService.get<string>(
-            'debugger.system.maxSize'
-        );
-        this.maxFiles = this.configService.get<string>(
-            'debugger.system.maxFiles'
-        );
-    }
+    constructor(private configService: ConfigService) {}
 
     createLogger(): LoggerOptions {
+        const writeIntoFile = this.configService.get<boolean>(
+            'debugger.system.writeIntoFile'
+        );
+        const writeIntoConsole = this.configService.get<boolean>(
+            'debugger.system.writeIntoConsole'
+        );
+        const maxSize = this.configService.get<string>(
+            'debugger.system.maxSize'
+        );
+        const maxFiles = this.configService.get<string>(
+            'debugger.system.maxFiles'
+        );
+
         const transports = [];
 
-        if (this.writeIntoFile) {
+        if (writeIntoFile) {
             transports.push(
                 new DailyRotateFile({
                     filename: `%DATE%.log`,
                     dirname: `logs/${DEBUGGER_NAME}/error`,
                     datePattern: 'YYYY-MM-DD',
                     zippedArchive: true,
-                    maxSize: this.maxSize,
-                    maxFiles: this.maxFiles,
+                    maxSize: maxSize,
+                    maxFiles: maxFiles,
                     level: 'error',
                 })
             );
@@ -49,8 +44,8 @@ export class DebuggerOptionService implements IDebuggerOptionService {
                     dirname: `logs/${DEBUGGER_NAME}/default`,
                     datePattern: 'YYYY-MM-DD',
                     zippedArchive: true,
-                    maxSize: this.maxSize,
-                    maxFiles: this.maxFiles,
+                    maxSize: maxSize,
+                    maxFiles: maxFiles,
                     level: 'info',
                 })
             );
@@ -60,14 +55,14 @@ export class DebuggerOptionService implements IDebuggerOptionService {
                     dirname: `logs/${DEBUGGER_NAME}/debug`,
                     datePattern: 'YYYY-MM-DD',
                     zippedArchive: true,
-                    maxSize: this.maxSize,
-                    maxFiles: this.maxFiles,
+                    maxSize: maxSize,
+                    maxFiles: maxFiles,
                     level: 'debug',
                 })
             );
         }
 
-        if (this.writeIntoConsole) {
+        if (writeIntoConsole) {
             transports.push(new winston.transports.Console());
         }
 

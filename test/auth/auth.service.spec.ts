@@ -217,6 +217,14 @@ describe('AuthService', () => {
             );
             expect(payload).toEqual(expectedPayload);
         });
+
+        it('should create access token payload without options', async () => {
+            const data = { userId: 1 };
+
+            const payload = await service.createPayloadAccessToken(data);
+
+            expect(payload.loginDate).toBeDefined();
+        });
     });
 
     describe('createPayloadRefreshToken', () => {

@@ -5,29 +5,29 @@ import {
     IValidationErrorImport,
 } from 'src/common/error/interfaces/error.interface';
 import {
-    IMessage,
+    IMessageErrorOptions,
     IMessageOptions,
     IMessageSetOptions,
 } from 'src/common/message/interfaces/message.interface';
 
 export interface IMessageService {
-    getAvailableLanguages(): Promise<string[]>;
+    getAvailableLanguages(): string[];
 
-    setMessage<T = string>(
-        lang: string,
-        key: string,
-        options?: IMessageSetOptions
-    ): T;
+    getLanguage(): string;
+
+    filterLanguage(customLanguages: string[]): string[];
+
+    setMessage(lang: string, key: string, options?: IMessageSetOptions): string;
 
     getRequestErrorsMessage(
         requestErrors: ValidationError[],
-        customLanguages?: string[]
-    ): Promise<IErrors[]>;
+        options?: IMessageErrorOptions
+    ): IErrors[];
 
     getImportErrorsMessage(
         errors: IValidationErrorImport[],
-        customLanguages?: string[]
-    ): Promise<IErrorsImport[]>;
+        options?: IMessageErrorOptions
+    ): IErrorsImport[];
 
-    get(key: string, options?: IMessageOptions): Promise<string | IMessage>;
+    get<T = string>(key: string, options?: IMessageOptions): T;
 }

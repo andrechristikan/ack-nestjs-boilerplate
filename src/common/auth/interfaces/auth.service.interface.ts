@@ -46,7 +46,7 @@ export interface IAuthService {
 
     createPayloadRefreshToken(
         _id: string,
-        options?: IAuthPayloadOptions
+        options: IAuthPayloadOptions
     ): Promise<Record<string, any>>;
 
     createSalt(length: number): Promise<string>;

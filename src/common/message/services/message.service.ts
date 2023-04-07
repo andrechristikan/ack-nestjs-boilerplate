@@ -7,9 +7,9 @@ import {
     IErrorsImport,
     IValidationErrorImport,
 } from 'src/common/error/interfaces/error.interface';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
+import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
 import {
-    IMessage,
+    IMessageErrorOptions,
     IMessageOptions,
     IMessageSetOptions,
 } from 'src/common/message/interfaces/message.interface';
@@ -17,74 +17,81 @@ import { IMessageService } from 'src/common/message/interfaces/message.service.i
 
 @Injectable()
 export class MessageService implements IMessageService {
-    private readonly appDefaultLanguage: string[];
+    private readonly appDefaultLanguage: string;
+    private readonly appDefaultAvailableLanguage: string[];
 
     constructor(
         private readonly i18n: I18nService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly helperArrayService: HelperArrayService
     ) {
         this.appDefaultLanguage =
-            this.configService.get<string[]>('app.language');
+            this.configService.get<string>('message.language');
+        this.appDefaultAvailableLanguage = this.configService.get<string[]>(
+            'message.availableLanguage'
+        );
     }
 
-    async getAvailableLanguages(): Promise<string[]> {
-        return Object.values(ENUM_MESSAGE_LANGUAGE);
+    getAvailableLanguages(): string[] {
+        return this.appDefaultAvailableLanguage;
     }
 
-    setMessage<T = string>(
+    getLanguage(): string {
+        return this.appDefaultLanguage;
+    }
+
+    filterLanguage(customLanguages: string[]): string[] {
+        return this.helperArrayService.filterIncludeUniqueByArray(
+            customLanguages,
+            this.appDefaultAvailableLanguage
+        );
+    }
+
+    setMessage(
         lang: string,
         key: string,
         options?: IMessageSetOptions
-    ): T {
+    ): string {
         return this.i18n.translate(key, {
-            lang: lang ?? this.appDefaultLanguage.join(','),
+            lang: lang,
             args: options?.properties,
-        }) as T;
+        }) as any;
     }
 
-    async getRequestErrorsMessage(
+    getRequestErrorsMessage(
         requestErrors: ValidationError[],
-        customLanguages?: string[]
-    ): Promise<IErrors[]> {
+        options?: IMessageErrorOptions
+    ): IErrors[] {
         const messages: Array<IErrors[]> = [];
-        for (const transfomer of requestErrors) {
-            let children: Record<string, any>[] = transfomer.children;
-            let constraints: string[] = Object.keys(
-                transfomer.constraints ?? []
-            );
-            const errors: IErrors[] = [];
-            let property: string = transfomer.property;
-            let propertyValue: string = transfomer.value;
+        for (const requestError of requestErrors) {
+            let children: Record<string, any>[] = requestError.children;
+            let constraints: string[] = Object.keys(requestError.constraints);
+            let property: string = requestError.property;
+            let propertyValue: string = requestError.value;
 
-            if (children.length > 0) {
-                while (children.length > 0) {
-                    for (const child of children) {
-                        property = `${property}.${child.property}`;
+            while (children.length > 0) {
+                property = `${property}.${children[0].property}`;
 
-                        if (child.children?.length > 0) {
-                            children = child.children;
-                            break;
-                        } else if (child.constraints) {
-                            constraints = Object.keys(child.constraints);
-                            children = [];
-                            propertyValue = child.value;
-                            break;
-                        }
-                    }
+                if (children[0].children?.length > 0) {
+                    children = children[0].children;
+                } else {
+                    constraints = Object.keys(children[0].constraints);
+                    propertyValue = children[0].value;
+                    children = [];
                 }
             }
 
+            const errors: IErrors[] = [];
             for (const constraint of constraints) {
-                const message = await this.get(`request.${constraint}`, {
-                    customLanguages,
-                    properties: {
-                        property,
-                        value: propertyValue,
-                    },
-                });
                 errors.push({
                     property,
-                    message,
+                    message: this.get(`request.${constraint}`, {
+                        customLanguages: options?.customLanguages,
+                        properties: {
+                            property,
+                            value: propertyValue,
+                        },
+                    }),
                 });
             }
 
@@ -94,47 +101,37 @@ export class MessageService implements IMessageService {
         return messages.flat(1) as IErrors[];
     }
 
-    async getImportErrorsMessage(
+    getImportErrorsMessage(
         errors: IValidationErrorImport[],
-        customLanguages?: string[]
-    ): Promise<IErrorsImport[]> {
-        const newErrors: IErrorsImport[] = [];
-        for (const error of errors) {
-            newErrors.push({
-                row: error.row,
-                file: error.file,
-                errors: await this.getRequestErrorsMessage(
-                    error.errors,
-                    customLanguages
-                ),
-            });
-        }
-
-        return newErrors;
+        options?: IMessageErrorOptions
+    ): IErrorsImport[] {
+        return errors.map((val) => ({
+            row: val.row,
+            file: val.file,
+            errors: this.getRequestErrorsMessage(val.errors, options),
+        }));
     }
 
-    async get<T = string>(key: string, options?: IMessageOptions): Promise<T> {
-        const properties = options?.properties;
+    get<T = string>(key: string, options?: IMessageOptions): T {
         const customLanguages =
             options?.customLanguages?.length > 0
-                ? options.customLanguages
-                : this.appDefaultLanguage;
+                ? this.filterLanguage(options.customLanguages)
+                : [this.appDefaultLanguage];
 
-        const messages: IMessage = {};
-        for (const customLanguage of customLanguages) {
-            messages[customLanguage] = await this.setMessage(
-                customLanguage,
-                key,
-                {
-                    properties,
-                }
-            );
+        if (customLanguages.length > 1) {
+            return customLanguages.reduce(
+                (a, v) => ({
+                    ...a,
+                    [v]: this.setMessage(v, key, {
+                        properties: options?.properties,
+                    }),
+                }),
+                {}
+            ) as any;
         }
 
-        if (customLanguages.length <= 1) {
-            return messages[customLanguages[0]] as T;
-        }
-
-        return messages as T;
+        return this.setMessage(customLanguages[0], key, {
+            properties: options?.properties,
+        }) as any;
     }
 }

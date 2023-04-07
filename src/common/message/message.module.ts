@@ -14,7 +14,7 @@ import { MessageMiddlewareModule } from 'src/common/message/middleware/message.m
         I18nModule.forRootAsync({
             useFactory: (configService: ConfigService) => ({
                 fallbackLanguage: configService
-                    .get<string[]>('app.language')
+                    .get<string[]>('message.availableLanguage')
                     .join(','),
                 fallbacks: Object.values(ENUM_MESSAGE_LANGUAGE).reduce(
                     (a, v) => ({ ...a, [`${v}-*`]: v }),

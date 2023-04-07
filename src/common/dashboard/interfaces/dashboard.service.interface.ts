@@ -6,7 +6,7 @@ import {
 } from 'src/common/dashboard/interfaces/dashboard.interface';
 
 export interface IDashboardService {
-    getStartAndEndDate(date: DashboardDto): Promise<IDashboardStartAndEndDate>;
+    getStartAndEndDate(date?: DashboardDto): Promise<IDashboardStartAndEndDate>;
 
     getMonths(): Promise<number[]>;
 

@@ -210,7 +210,7 @@ export class AuthService implements IAuthService {
 
     async createPayloadRefreshToken(
         _id: string,
-        options?: IAuthPayloadOptions
+        options: IAuthPayloadOptions
     ): Promise<Record<string, any>> {
         return {
             _id,
