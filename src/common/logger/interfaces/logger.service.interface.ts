@@ -5,13 +5,80 @@ import {
 import { LoggerDoc } from 'src/common/logger/repository/entities/logger.entity';
 
 export interface ILoggerService {
-    info(data: LoggerCreateDto): Promise<LoggerDoc>;
-
-    debug(data: LoggerCreateDto): Promise<LoggerDoc>;
-
-    warn(data: LoggerCreateDto): Promise<LoggerDoc>;
-
-    fatal(data: LoggerCreateDto): Promise<LoggerDoc>;
-
-    raw(data: LoggerCreateRawDto): Promise<LoggerDoc>;
+    info({
+        action,
+        description,
+        apiKey,
+        user,
+        method,
+        requestId,
+        role,
+        type,
+        params,
+        bodies,
+        path,
+        statusCode,
+        tags,
+    }: LoggerCreateDto): Promise<LoggerDoc>;
+    debug({
+        action,
+        description,
+        apiKey,
+        user,
+        method,
+        requestId,
+        role,
+        type,
+        params,
+        bodies,
+        path,
+        statusCode,
+        tags,
+    }: LoggerCreateDto): Promise<LoggerDoc>;
+    warn({
+        action,
+        description,
+        apiKey,
+        user,
+        method,
+        requestId,
+        role,
+        type,
+        params,
+        bodies,
+        path,
+        statusCode,
+        tags,
+    }: LoggerCreateDto): Promise<LoggerDoc>;
+    fatal({
+        action,
+        description,
+        apiKey,
+        user,
+        method,
+        requestId,
+        role,
+        type,
+        params,
+        bodies,
+        path,
+        statusCode,
+        tags,
+    }: LoggerCreateDto): Promise<LoggerDoc>;
+    raw({
+        level,
+        action,
+        description,
+        apiKey,
+        user,
+        method,
+        requestId,
+        role,
+        type,
+        params,
+        bodies,
+        path,
+        statusCode,
+        tags,
+    }: LoggerCreateRawDto): Promise<LoggerDoc>;
 }

@@ -7,18 +7,12 @@ import {
 
 export interface IDashboardService {
     getStartAndEndDate(date?: DashboardDto): Promise<IDashboardStartAndEndDate>;
-
     getMonths(): Promise<number[]>;
-
-    getStartAndEndYear({
-        startDate,
-        endDate,
-    }: IDashboardStartAndEndDate): Promise<IDashboardStartAndEndYear>;
-
-    getStartAndEndMonth({
-        month,
-        year,
-    }: IDashboardStartAndEnd): Promise<IDashboardStartAndEndDate>;
-
+    getStartAndEndYear(
+        date: IDashboardStartAndEndDate
+    ): Promise<IDashboardStartAndEndYear>;
+    getStartAndEndMonth(
+        date: IDashboardStartAndEnd
+    ): Promise<IDashboardStartAndEndDate>;
     getPercentage(value: number, total: number): Promise<number>;
 }
