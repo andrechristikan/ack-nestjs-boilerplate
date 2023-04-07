@@ -10,7 +10,10 @@
         "MILIS",
         "ength",
         "strongpassword",
-        "weakpassword"
+        "weakpassword",
+        "apikey",
+        "requestid",
+        "dtos"
     ],
     "ignorePaths": [
         "node_modules/**", 

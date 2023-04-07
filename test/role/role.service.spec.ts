@@ -5,16 +5,11 @@ import { RoleUpdateDto } from 'src/common/role/dtos/role.update.dto';
 import { RoleRepository } from 'src/common/role/repository/repositories/role.repository';
 import {
     RoleDatabaseName,
-    RoleDoc,
     RoleEntity,
     RoleSchema,
 } from 'src/common/role/repository/entities/role.entity';
 import { RoleService } from 'src/common/role/services/role.service';
 import { ENUM_ROLE_TYPE } from 'src/common/role/constants/role.enum.constant';
-import {
-    ENUM_POLICY_ACTION,
-    ENUM_POLICY_SUBJECT,
-} from 'src/common/policy/constants/policy.enum.constant';
 import mongoose from 'mongoose';
 import { faker } from '@faker-js/faker';
 

@@ -27,29 +27,45 @@
 
 ## Table of contents
 
-* [Important](#important)
-* [Next Todo](#next-todo)
-* [Build With](#build-with)
-* [Objective](#objective)
-* [Features](#features)
-* [Behaviors](#behaviors)
-* [Structure](#structure)
-    * [Folder Structure](#folder-structure)
-    * [Module Structure](#module-structure)
-    * [Response Structure](#response-structure)
-* [Prerequisites](#prerequisites)
-* [Getting Started](#getting-started)
-    * [Clone Repo](#clone-repo)
-    * [Install Dependencies](#install-dependencies)
-    * [Create environment](#create-environment)
-    * [Database Migration](#database-migration)
-    * [Test](#test)
-    * [Run Project](#run-project)
-    * [Run Project with Docker](#run-project-with-docker)
-* [API Reference](#api-reference)
-* [Adjust Mongoose Setting](#adjust-mongoose-setting)
-* [License](#license)
-* [Contact](#contact)
+- [ACK NestJs Boilerplate  🔥 🚀](#ack-nestjs-boilerplate---)
+  - [Other Repo](#other-repo)
+  - [Table of contents](#table-of-contents)
+  - [Important](#important)
+  - [Next Todo](#next-todo)
+  - [Build with](#build-with)
+  - [Objective](#objective)
+  - [Features](#features)
+    - [Main Features](#main-features)
+    - [Database](#database)
+    - [Logger and Debugger](#logger-and-debugger)
+    - [Security](#security)
+    - [Setting](#setting)
+    - [Third Party Integration](#third-party-integration)
+    - [Others](#others)
+  - [Behaviors](#behaviors)
+  - [Structure](#structure)
+    - [Folder Structure](#folder-structure)
+    - [Module structure](#module-structure)
+    - [Response Structure](#response-structure)
+      - [Response Default](#response-default)
+      - [Response Paging](#response-paging)
+      - [Response Metadata](#response-metadata)
+  - [Prerequisites](#prerequisites)
+  - [Getting Started](#getting-started)
+    - [Clone Repo](#clone-repo)
+    - [Install Dependencies](#install-dependencies)
+    - [Create environment](#create-environment)
+    - [Database Migration](#database-migration)
+    - [Test](#test)
+    - [Run Project](#run-project)
+    - [Run Project with Docker](#run-project-with-docker)
+  - [API Reference](#api-reference)
+  - [Documentation](#documentation)
+  - [Adjust Mongoose Setting](#adjust-mongoose-setting)
+  - [License](#license)
+  - [Contribute](#contribute)
+    - [Rule](#rule)
+  - [Contact](#contact)
 
 ## Important
 
@@ -71,8 +87,9 @@ Next development
     - role access for to type
     - remove permission token
 * [x] add policy for each endpoint
-* [ ] Refactor Unit Testing for common module
+* [x] Refactor Unit Testing for common module
 * [ ] Google SSO for login and sign up
+* [ ] Refactor Doc or Swagger 
 * [ ] Update Documentation, include an diagram for easier comprehension
 
 ## Build with

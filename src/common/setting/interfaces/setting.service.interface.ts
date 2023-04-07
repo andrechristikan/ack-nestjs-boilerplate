@@ -36,7 +36,7 @@ export interface ISettingService {
     ): Promise<SettingDoc>;
     updateValue(
         repository: SettingDoc,
-        { description, type, value }: SettingUpdateValueDto
+        { type, value }: SettingUpdateValueDto
     ): Promise<SettingDoc>;
     delete(repository: SettingDoc): Promise<SettingDoc>;
     getValue<T>(setting: SettingDoc): Promise<T>;

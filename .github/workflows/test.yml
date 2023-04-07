@@ -93,12 +93,7 @@ jobs:
         run: yarn seed
 
       - name: Unit Test
-        run: yarn test:unit
+        run: yarn test
         env:
           CI: true
 
-      - name: Unit Integration
-        run: yarn test:integration
-
-      - name: E2E Test
-        run: yarn test:e2e

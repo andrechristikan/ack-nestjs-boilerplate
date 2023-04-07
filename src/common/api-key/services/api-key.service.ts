@@ -179,8 +179,8 @@ export class ApiKeyService implements IApiKeyService {
         dto.isActive = true;
 
         if (startDate && endDate) {
-            dto.startDate = startDate;
-            dto.endDate = endDate;
+            dto.startDate = this.helperDateService.startOfDay(startDate);
+            dto.endDate = this.helperDateService.endOfDay(endDate);
         }
 
         const created: ApiKeyDoc =
@@ -207,8 +207,8 @@ export class ApiKeyService implements IApiKeyService {
         dto.isActive = true;
 
         if (startDate && endDate) {
-            dto.startDate = startDate;
-            dto.endDate = endDate;
+            dto.startDate = this.helperDateService.startOfDay(startDate);
+            dto.endDate = this.helperDateService.endOfDay(endDate);
         }
 
         const created: ApiKeyDoc =

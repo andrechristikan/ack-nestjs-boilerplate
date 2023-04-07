@@ -124,7 +124,7 @@ export class AwsS3Service implements IAwsS3Service {
                 const lastIndex: number = val.Key.lastIndexOf('/');
                 const path: string = val.Key.substring(0, lastIndex);
                 const filename: string = val.Key.substring(
-                    lastIndex,
+                    lastIndex + 1,
                     val.Key.length
                 );
                 const mime: string = filename
