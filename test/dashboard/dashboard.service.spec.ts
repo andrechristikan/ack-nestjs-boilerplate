@@ -7,7 +7,7 @@ describe('DashboardService', () => {
     let service: DashboardService;
 
     beforeEach(async () => {
-        const module: TestingModule = await Test.createTestingModule({
+        const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 DashboardService,
                 HelperNumberService,
@@ -16,7 +16,7 @@ describe('DashboardService', () => {
             imports: [],
         }).compile();
 
-        service = module.get<DashboardService>(DashboardService);
+        service = moduleRef.get<DashboardService>(DashboardService);
     });
 
     it('should be defined', () => {

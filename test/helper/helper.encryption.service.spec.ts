@@ -15,14 +15,16 @@ describe('HelperEncryptionService', () => {
     };
 
     beforeEach(async () => {
-        const module: TestingModule = await Test.createTestingModule({
+        const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 HelperEncryptionService,
                 { provide: JwtService, useValue: mockJwtService },
             ],
         }).compile();
 
-        service = module.get<HelperEncryptionService>(HelperEncryptionService);
+        service = moduleRef.get<HelperEncryptionService>(
+            HelperEncryptionService
+        );
     });
 
     it('should be defined', () => {

@@ -101,7 +101,7 @@ export class LoggerService implements ILoggerService {
         tags,
     }: LoggerCreateDto): Promise<LoggerDoc> {
         const create: LoggerEntity = new LoggerEntity();
-        create.level = ENUM_LOGGER_LEVEL.WARM;
+        create.level = ENUM_LOGGER_LEVEL.WARN;
         create.user = user;
         create.apiKey = apiKey;
         create.anonymous = !user;

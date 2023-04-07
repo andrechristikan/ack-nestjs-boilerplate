@@ -83,9 +83,8 @@ export class SettingService implements ISettingService {
 
     async updateValue(
         repository: SettingDoc,
-        { description, type, value }: SettingUpdateValueDto
+        { type, value }: SettingUpdateValueDto
     ): Promise<SettingDoc> {
-        repository.description = description;
         repository.type = type;
         repository.value = value;
 

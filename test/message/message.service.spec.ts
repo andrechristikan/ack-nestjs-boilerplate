@@ -19,7 +19,7 @@ describe('MessageService', () => {
     let validationErrorImport: IValidationErrorImport[];
 
     beforeEach(async () => {
-        const moduleRef = await Test.createTestingModule({
+        const moduleRefRef = await Test.createTestingModule({
             providers: [
                 MessageService,
                 HelperArrayService,
@@ -46,7 +46,7 @@ describe('MessageService', () => {
             ],
         }).compile();
 
-        service = moduleRef.get<MessageService>(MessageService);
+        service = moduleRefRef.get<MessageService>(MessageService);
 
         validationError = [
             {

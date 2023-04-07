@@ -6,11 +6,11 @@ describe('PaginationService', () => {
     let service: PaginationService;
 
     beforeEach(async () => {
-        const module: TestingModule = await Test.createTestingModule({
+        const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [PaginationService],
         }).compile();
 
-        service = module.get<PaginationService>(PaginationService);
+        service = moduleRef.get<PaginationService>(PaginationService);
     });
 
     describe('offset', () => {

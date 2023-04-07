@@ -6,11 +6,11 @@ describe('HelperHashService', () => {
     let service: HelperHashService;
 
     beforeEach(async () => {
-        const moduleRef = await Test.createTestingModule({
+        const moduleRefRef = await Test.createTestingModule({
             providers: [HelperHashService],
         }).compile();
 
-        service = moduleRef.get<HelperHashService>(HelperHashService);
+        service = moduleRefRef.get<HelperHashService>(HelperHashService);
     });
 
     it('should be defined', () => {

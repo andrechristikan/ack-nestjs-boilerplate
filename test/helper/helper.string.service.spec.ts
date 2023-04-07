@@ -6,11 +6,11 @@ describe('HelperStringService', () => {
     let service: HelperStringService;
 
     beforeEach(async () => {
-        const moduleRef = await Test.createTestingModule({
+        const moduleRefRef = await Test.createTestingModule({
             providers: [HelperStringService],
         }).compile();
 
-        service = moduleRef.get<HelperStringService>(HelperStringService);
+        service = moduleRefRef.get<HelperStringService>(HelperStringService);
     });
 
     it('should be defined', () => {

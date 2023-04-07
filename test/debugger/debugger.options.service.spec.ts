@@ -7,7 +7,7 @@ describe('DebuggerOptionService', () => {
     let service: DebuggerOptionService;
 
     beforeEach(async () => {
-        const module: TestingModule = await Test.createTestingModule({
+        const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 DebuggerOptionService,
                 {
@@ -31,7 +31,7 @@ describe('DebuggerOptionService', () => {
             ],
         }).compile();
 
-        service = module.get<DebuggerOptionService>(DebuggerOptionService);
+        service = moduleRef.get<DebuggerOptionService>(DebuggerOptionService);
     });
 
     it('should be defined', () => {

@@ -9,7 +9,7 @@ describe('DebuggerService', () => {
     let logger: Logger;
 
     beforeEach(async () => {
-        const moduleRef = await Test.createTestingModule({
+        const moduleRefRef = await Test.createTestingModule({
             providers: [
                 DebuggerService,
                 {
@@ -24,8 +24,8 @@ describe('DebuggerService', () => {
             ],
         }).compile();
 
-        service = moduleRef.get<DebuggerService>(DebuggerService);
-        logger = moduleRef.get<Logger>(WINSTON_MODULE_PROVIDER);
+        service = moduleRefRef.get<DebuggerService>(DebuggerService);
+        logger = moduleRefRef.get<Logger>(WINSTON_MODULE_PROVIDER);
     });
 
     describe('info', () => {
@@ -41,7 +41,7 @@ describe('DebuggerService', () => {
 
             service.info(requestId, log, data);
 
-            expect(logger.info).toBeCalledWith(log.description, {
+            expect(logger.info).toHaveBeenCalledWith(log.description, {
                 _id: requestId,
                 class: log.class,
                 function: log.function,
@@ -64,7 +64,7 @@ describe('DebuggerService', () => {
 
             service.debug(requestId, log, data);
 
-            expect(logger.debug).toBeCalledWith(log.description, {
+            expect(logger.debug).toHaveBeenCalledWith(log.description, {
                 _id: requestId,
                 class: log.class,
                 function: log.function,
@@ -87,7 +87,7 @@ describe('DebuggerService', () => {
 
             service.warn(requestId, log, data);
 
-            expect(logger.warn).toBeCalledWith(log.description, {
+            expect(logger.warn).toHaveBeenCalledWith(log.description, {
                 _id: requestId,
                 class: log.class,
                 function: log.function,
@@ -110,7 +110,7 @@ describe('DebuggerService', () => {
 
             service.error(requestId, log, data);
 
-            expect(logger.error).toBeCalledWith(log.description, {
+            expect(logger.error).toHaveBeenCalledWith(log.description, {
                 _id: requestId,
                 class: log.class,
                 function: log.function,

@@ -7,11 +7,11 @@ describe('HelperArrayService', () => {
     let service: HelperArrayService;
 
     beforeEach(async () => {
-        const module: TestingModule = await Test.createTestingModule({
+        const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [HelperArrayService],
         }).compile();
 
-        service = module.get<HelperArrayService>(HelperArrayService);
+        service = moduleRef.get<HelperArrayService>(HelperArrayService);
     });
 
     it('should be defined', () => {

@@ -8,7 +8,7 @@ describe('DatabaseOptionsService', () => {
     let service: DatabaseOptionsService;
 
     beforeEach(async () => {
-        const module: TestingModule = await Test.createTestingModule({
+        const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 DatabaseOptionsService,
                 {
@@ -38,7 +38,7 @@ describe('DatabaseOptionsService', () => {
             ],
         }).compile();
 
-        service = module.get<DatabaseOptionsService>(DatabaseOptionsService);
+        service = moduleRef.get<DatabaseOptionsService>(DatabaseOptionsService);
     });
 
     afterEach(async () => {

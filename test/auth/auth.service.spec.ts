@@ -61,7 +61,7 @@ describe('AuthService', () => {
     };
 
     beforeEach(async () => {
-        const module: TestingModule = await Test.createTestingModule({
+        const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthService,
                 ConfigService,
@@ -74,7 +74,7 @@ describe('AuthService', () => {
             imports: [],
         }).compile();
 
-        service = module.get<AuthService>(AuthService);
+        service = moduleRef.get<AuthService>(AuthService);
     });
 
     it('should be defined', () => {

@@ -9,12 +9,12 @@ describe('HelperDateService', () => {
     let service: HelperDateService;
 
     beforeEach(async () => {
-        const module: TestingModule = await Test.createTestingModule({
+        const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [HelperDateService],
         }).compile();
 
         process.env.TZ = 'UTC';
-        service = module.get<HelperDateService>(HelperDateService);
+        service = moduleRef.get<HelperDateService>(HelperDateService);
     });
 
     it('should be defined', () => {

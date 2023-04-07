@@ -5,11 +5,11 @@ describe('HelperFileService', () => {
     let service: HelperFileService;
 
     beforeEach(async () => {
-        const module: TestingModule = await Test.createTestingModule({
+        const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [HelperFileService],
         }).compile();
 
-        service = module.get<HelperFileService>(HelperFileService);
+        service = moduleRef.get<HelperFileService>(HelperFileService);
     });
 
     it('should be defined', () => {
