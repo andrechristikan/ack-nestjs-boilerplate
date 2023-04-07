@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: ['18.x']
+        node-version: ['18.x', '16.x','14.x']
         mongodb-version: ['5.0', '6.0']
 
     steps:
@@ -23,14 +23,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-
-      - name: Start MongoDB ${{ matrix.mongodb-version }}
-        uses: supercharge/mongodb-github-action@1.8.0
-        with:
-          mongodb-version: ${{ matrix.mongodb-version }}
-          mongodb-replica-set: test-rs
-          mongodb-db: ack
-          mongodb-port: 27017
 
       - name: Install dependencies
         run: yarn --frozen-lockfile
@@ -88,9 +80,6 @@ jobs:
           AWS_CREDENTIAL_SECRET: ${{ secrets.AWS_CREDENTIAL_SECRET }}
           AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
           AWS_S3_REGION: ${{ secrets.AWS_S3_REGION }}
-          
-      - name: Migration
-        run: yarn seed
 
       - name: Unit Test
         run: yarn test
