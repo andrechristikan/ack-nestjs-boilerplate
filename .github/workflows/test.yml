@@ -13,7 +13,6 @@ jobs:
     strategy:
       matrix:
         node-version: ['18.x', '16.x','14.x']
-        mongodb-version: ['5.0', '6.0']
 
     steps:
       - name: Git checkout
