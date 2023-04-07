@@ -3,38 +3,32 @@ import {
     Model,
     PipelineStage,
     PopulateOptions,
-    SortOrder,
+    Document,
 } from 'mongoose';
 import { DatabaseBaseRepositoryAbstract } from 'src/common/database/abstracts/database.base-repository.abstract';
 import { DATABASE_DELETED_AT_FIELD_NAME } from 'src/common/database/constants/database.constant';
 import {
     IDatabaseCreateOptions,
-    IDatabaseSoftDeleteOptions,
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
-    IDatabaseRestoreOptions,
     IDatabaseCreateManyOptions,
     IDatabaseManyOptions,
     IDatabaseSoftDeleteManyOptions,
     IDatabaseRestoreManyOptions,
-    IDatabaseUpdateOptions,
-    IDatabaseDeleteOptions,
     IDatabaseRawOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { IDatabaseRepository } from 'src/common/database/interfaces/database.repository.interface';
-import { IPaginationSort } from 'src/common/pagination/interfaces/pagination.interface';
 
-export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
-    extends DatabaseBaseRepositoryAbstract<T>
-    implements IDatabaseRepository<T>
-{
-    protected _repository: Model<T>;
+export abstract class DatabaseMongoUUIDRepositoryAbstract<
+    Entity,
+    EntityDocument
+> extends DatabaseBaseRepositoryAbstract<EntityDocument> {
+    protected _repository: Model<Entity>;
     protected _joinOnFind?: PopulateOptions | PopulateOptions[];
 
     constructor(
-        repository: Model<T>,
+        repository: Model<Entity>,
         options?: PopulateOptions | PopulateOptions[]
     ) {
         super();
@@ -43,20 +37,11 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
         this._joinOnFind = options;
     }
 
-    private _convertSort(sort: IPaginationSort): Record<string, string> {
-        const data: Record<string, string> = {};
-        Object.keys(sort).forEach((val) => {
-            data[val] = sort[val].toLowerCase();
-        });
-
-        return data;
-    }
-
-    async findAll<Y = T>(
-        find?: Record<string, any> | Record<string, any>[],
+    async findAll<T = EntityDocument>(
+        find?: Record<string, any>,
         options?: IDatabaseFindAllOptions<ClientSession>
-    ): Promise<Y[]> {
-        const findAll = this._repository.find(find);
+    ): Promise<T[]> {
+        const findAll = this._repository.find<EntityDocument>(find);
 
         if (options?.withDeleted) {
             findAll.or([
@@ -79,10 +64,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             findAll.limit(options.paging.limit).skip(options.paging.offset);
         }
 
-        if (options?.sort) {
-            findAll.sort(
-                this._convertSort(options.sort) as { [key: string]: SortOrder }
-            );
+        if (options?.order) {
+            findAll.sort(options.order);
         }
 
         if (options?.join) {
@@ -97,15 +80,18 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             findAll.session(options.session);
         }
 
-        return findAll.lean();
+        return findAll.lean() as any;
     }
 
-    async findAllDistinct<Y = T>(
+    async findAllDistinct<T = EntityDocument>(
         fieldDistinct: string,
-        find?: Record<string, any> | Record<string, any>[],
+        find?: Record<string, any>,
         options?: IDatabaseFindAllOptions<ClientSession>
-    ): Promise<Y[]> {
-        const findAll = this._repository.distinct(fieldDistinct, find);
+    ): Promise<T[]> {
+        const findAll = this._repository.distinct<EntityDocument>(
+            fieldDistinct,
+            find
+        );
 
         if (options?.withDeleted) {
             findAll.or([
@@ -128,10 +114,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             findAll.limit(options.paging.limit).skip(options.paging.offset);
         }
 
-        if (options?.sort) {
-            findAll.sort(
-                this._convertSort(options.sort) as { [key: string]: SortOrder }
-            );
+        if (options?.order) {
+            findAll.sort(options.order);
         }
 
         if (options?.join) {
@@ -146,13 +130,13 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             findAll.session(options.session);
         }
 
-        return findAll.lean();
+        return findAll.lean() as any;
     }
-    async findOne<Y = T>(
-        find: Record<string, any> | Record<string, any>[],
+    async findOne<T = EntityDocument>(
+        find: Record<string, any>,
         options?: IDatabaseFindOneOptions<ClientSession>
-    ): Promise<Y> {
-        const findOne = this._repository.findOne(find);
+    ): Promise<T> {
+        const findOne = this._repository.findOne<EntityDocument>(find);
 
         if (options?.withDeleted) {
             findOne.or([
@@ -183,20 +167,18 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             findOne.session(options.session);
         }
 
-        if (options?.sort) {
-            findOne.sort(
-                this._convertSort(options.sort) as { [key: string]: SortOrder }
-            );
+        if (options?.order) {
+            findOne.sort(options.order);
         }
 
-        return findOne.lean();
+        return findOne.exec() as any;
     }
 
-    async findOneById<Y = T>(
+    async findOneById<T = EntityDocument>(
         _id: string,
         options?: IDatabaseFindOneOptions<ClientSession>
-    ): Promise<Y> {
-        const findOne = this._repository.findById(_id);
+    ): Promise<T> {
+        const findOne = this._repository.findById<EntityDocument>(_id);
 
         if (options?.withDeleted) {
             findOne.or([
@@ -227,17 +209,111 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
             findOne.session(options.session);
         }
 
-        if (options?.sort) {
-            findOne.sort(
-                this._convertSort(options.sort) as { [key: string]: SortOrder }
+        if (options?.order) {
+            findOne.sort(options.order);
+        }
+
+        return findOne.exec() as any;
+    }
+
+    async findOneAndLock<T = EntityDocument>(
+        find: Record<string, any>,
+        options?: IDatabaseFindOneOptions<ClientSession>
+    ): Promise<T> {
+        const findOne = this._repository.findOneAndUpdate<EntityDocument>(
+            find,
+            {
+                new: true,
+                useFindAndModify: false,
+            }
+        );
+
+        if (options?.withDeleted) {
+            findOne.or([
+                {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
+                },
+                {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
+                },
+            ]);
+        } else {
+            findOne.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
+        }
+
+        if (options?.select) {
+            findOne.select(options.select);
+        }
+
+        if (options?.join) {
+            findOne.populate(
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as PopulateOptions | PopulateOptions[])
             );
         }
 
-        return findOne.lean();
+        if (options?.session) {
+            findOne.session(options.session);
+        }
+
+        if (options?.order) {
+            findOne.sort(options.order);
+        }
+
+        return findOne.exec() as any;
+    }
+
+    async findOneByIdAndLock<T = EntityDocument>(
+        _id: string,
+        options?: IDatabaseFindOneOptions<ClientSession>
+    ): Promise<T> {
+        const findOne = this._repository.findByIdAndUpdate<EntityDocument>(
+            _id,
+            {
+                new: true,
+                useFindAndModify: false,
+            }
+        );
+
+        if (options?.withDeleted) {
+            findOne.or([
+                {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
+                },
+                {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
+                },
+            ]);
+        } else {
+            findOne.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
+        }
+
+        if (options?.select) {
+            findOne.select(options.select);
+        }
+
+        if (options?.join) {
+            findOne.populate(
+                typeof options.join === 'boolean'
+                    ? this._joinOnFind
+                    : (options.join as PopulateOptions | PopulateOptions[])
+            );
+        }
+
+        if (options?.session) {
+            findOne.session(options.session);
+        }
+
+        if (options?.order) {
+            findOne.sort(options.order);
+        }
+
+        return findOne.exec() as any;
     }
 
     async getTotal(
-        find?: Record<string, any> | Record<string, any>[],
+        find?: Record<string, any>,
         options?: IDatabaseOptions<ClientSession>
     ): Promise<number> {
         const count = this._repository.countDocuments(find);
@@ -271,16 +347,19 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
     }
 
     async exists(
-        find: Record<string, any> | Record<string, any>[],
+        find: Record<string, any>,
         options?: IDatabaseExistOptions<ClientSession>
     ): Promise<boolean> {
-        const exist = this._repository.exists({
-            ...find,
-            _id: {
-                $nin: options?.excludeId ?? [],
-            },
-        });
+        if (options?.excludeId) {
+            find = {
+                ...find,
+                _id: {
+                    $nin: options?.excludeId ?? [],
+                },
+            };
+        }
 
+        const exist = this._repository.exists(find);
         if (options?.withDeleted) {
             exist.or([
                 {
@@ -310,295 +389,51 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
         return result ? true : false;
     }
 
-    async raw<N, R = PipelineStage[]>(
-        rawOperation: R,
-        options?: IDatabaseRawOptions
-    ): Promise<N[]> {
-        if (!Array.isArray(rawOperation)) {
-            throw new Error('Must in array');
-        }
-
-        const pipeline: PipelineStage[] = rawOperation;
-
-        if (options?.withDeleted) {
-            pipeline.push({
-                $match: {
-                    $or: [
-                        {
-                            [DATABASE_DELETED_AT_FIELD_NAME]: {
-                                $exists: false,
-                            },
-                        },
-                        {
-                            [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
-                        },
-                    ],
-                },
-            });
-        } else {
-            pipeline.push({
-                $match: {
-                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
-                },
-            });
-        }
-
-        const aggregate = this._repository.aggregate<N>(pipeline);
-
-        if (options?.session) {
-            aggregate.session(options?.session);
-        }
-
-        return aggregate;
-    }
-
-    async create<N>(
-        data: N,
+    async create<Dto = any>(
+        data: Dto,
         options?: IDatabaseCreateOptions<ClientSession>
-    ): Promise<T> {
+    ): Promise<EntityDocument> {
         const dataCreate: Record<string, any> = data;
         if (options?._id) {
             dataCreate._id = options._id;
         }
 
-        const create = await this._repository.create([dataCreate], {
+        const created = await this._repository.create([dataCreate], {
             session: options ? options.session : undefined,
         });
 
-        return create[0].toObject();
+        return created[0] as EntityDocument;
     }
 
-    async updateOneById<N>(
-        _id: string,
-        data: N,
-        options?: IDatabaseUpdateOptions<ClientSession>
-    ): Promise<T> {
-        const update = this._repository
-            .findByIdAndUpdate(
-                _id,
-                {
-                    $set: data,
-                },
-                { new: true }
-            )
-            .where(DATABASE_DELETED_AT_FIELD_NAME)
-            .exists(false);
-
-        if (options?.join) {
-            update.populate(
-                typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
-            );
-        }
-
-        if (options?.session) {
-            update.session(options.session);
-        }
-
-        const updated = await update;
-        return updated.toObject();
+    async save(
+        repository: EntityDocument & Document<string>
+    ): Promise<EntityDocument> {
+        return repository.save();
     }
 
-    async updateOne<N>(
-        find: Record<string, any> | Record<string, any>[],
-        data: N,
-        options?: IDatabaseUpdateOptions<ClientSession>
-    ): Promise<T> {
-        const update = this._repository
-            .findOneAndUpdate(
-                find,
-                {
-                    $set: data,
-                },
-                { new: true }
-            )
-            .where(DATABASE_DELETED_AT_FIELD_NAME)
-            .exists(false);
-
-        if (options?.join) {
-            update.populate(
-                typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
-            );
-        }
-
-        if (options?.session) {
-            update.session(options.session);
-        }
-
-        const updated = await update;
-        return updated.toObject();
+    async delete(
+        repository: EntityDocument & Document<string>
+    ): Promise<EntityDocument> {
+        return repository.deleteOne();
     }
 
-    async deleteOne(
-        find: Record<string, any> | Record<string, any>[],
-        options?: IDatabaseDeleteOptions<ClientSession>
-    ): Promise<T> {
-        const del = this._repository.findOneAndDelete(find, { new: true });
-
-        if (options?.join) {
-            del.populate(
-                typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
-            );
-        }
-
-        if (options?.session) {
-            del.session(options.session);
-        }
-
-        return del;
+    async softDelete(
+        repository: EntityDocument & Document<string> & { deletedAt?: Date }
+    ): Promise<EntityDocument> {
+        repository.deletedAt = new Date();
+        return repository.save();
     }
 
-    async deleteOneById(
-        _id: string,
-        options?: IDatabaseDeleteOptions<ClientSession>
-    ): Promise<T> {
-        const del = this._repository.findByIdAndDelete(_id, {
-            new: true,
-        });
-
-        if (options?.join) {
-            del.populate(
-                typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
-            );
-        }
-
-        if (options?.session) {
-            del.session(options.session);
-        }
-
-        return del;
-    }
-
-    async softDeleteOneById(
-        _id: string,
-        options?: IDatabaseSoftDeleteOptions<ClientSession>
-    ): Promise<T> {
-        const del = this._repository
-            .findByIdAndUpdate(
-                _id,
-                {
-                    $set: { deletedAt: new Date() },
-                },
-                { new: true }
-            )
-            .where(DATABASE_DELETED_AT_FIELD_NAME)
-            .exists(false);
-
-        if (options?.join) {
-            del.populate(
-                typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
-            );
-        }
-
-        if (options?.session) {
-            del.session(options.session);
-        }
-
-        return del;
-    }
-
-    async softDeleteOne(
-        find: Record<string, any> | Record<string, any>[],
-        options?: IDatabaseSoftDeleteOptions<ClientSession>
-    ): Promise<T> {
-        const del = this._repository
-            .findOneAndUpdate(
-                find,
-                {
-                    $set: { deletedAt: new Date() },
-                },
-                { new: true }
-            )
-            .where(DATABASE_DELETED_AT_FIELD_NAME)
-            .exists(false);
-
-        if (options?.join) {
-            del.populate(
-                typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
-            );
-        }
-
-        if (options?.session) {
-            del.session(options.session);
-        }
-
-        return del;
-    }
-
-    async restoreOneById(
-        _id: string,
-        options?: IDatabaseRestoreOptions<ClientSession>
-    ): Promise<T> {
-        const rest = this._repository
-            .findByIdAndUpdate(
-                _id,
-                {
-                    $set: { deletedAt: undefined },
-                },
-                { new: true }
-            )
-            .where(DATABASE_DELETED_AT_FIELD_NAME)
-            .exists(true);
-
-        if (options?.join) {
-            rest.populate(
-                typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
-            );
-        }
-
-        if (options?.session) {
-            rest.session(options.session);
-        }
-
-        return rest;
-    }
-
-    async restoreOne(
-        find: Record<string, any> | Record<string, any>[],
-        options?: IDatabaseRestoreOptions<ClientSession>
-    ): Promise<T> {
-        const rest = this._repository
-            .findOneAndUpdate(
-                find,
-                {
-                    $set: { deletedAt: undefined },
-                },
-                { new: true }
-            )
-            .where(DATABASE_DELETED_AT_FIELD_NAME)
-            .exists(true);
-
-        if (options?.join) {
-            rest.populate(
-                typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
-            );
-        }
-
-        if (options?.session) {
-            rest.session(options.session);
-        }
-
-        return rest;
+    async restore(
+        repository: EntityDocument & Document<string> & { deletedAt?: Date }
+    ): Promise<EntityDocument> {
+        repository.deletedAt = undefined;
+        return repository.save();
     }
 
     // bulk
-    async createMany<N>(
-        data: N[],
+    async createMany<Dto>(
+        data: Dto[],
         options?: IDatabaseCreateManyOptions<ClientSession>
     ): Promise<boolean> {
         const create = this._repository.insertMany(data, {
@@ -644,7 +479,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
     }
 
     async deleteMany(
-        find: Record<string, any> | Record<string, any>[],
+        find: Record<string, any>,
         options?: IDatabaseManyOptions<ClientSession>
     ): Promise<boolean> {
         const del = this._repository.deleteMany(find);
@@ -710,7 +545,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
     }
 
     async softDeleteMany(
-        find: Record<string, any> | Record<string, any>[],
+        find: Record<string, any>,
         options?: IDatabaseSoftDeleteManyOptions<ClientSession>
     ): Promise<boolean> {
         const softDel = this._repository
@@ -783,7 +618,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
     }
 
     async restoreMany(
-        find: Record<string, any> | Record<string, any>[],
+        find: Record<string, any>,
         options?: IDatabaseRestoreManyOptions<ClientSession>
     ): Promise<boolean> {
         const rest = this._repository
@@ -815,9 +650,9 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
         }
     }
 
-    async updateMany<N>(
-        find: Record<string, any> | Record<string, any>[],
-        data: N,
+    async updateMany<Dto>(
+        find: Record<string, any>,
+        data: Dto,
         options?: IDatabaseManyOptions<ClientSession>
     ): Promise<boolean> {
         const update = this._repository
@@ -847,7 +682,49 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<T>
         }
     }
 
-    async model<N = T>(): Promise<N> {
-        return this._repository as N;
+    async raw<RawResponse, RawQuery = PipelineStage[]>(
+        rawOperation: RawQuery,
+        options?: IDatabaseRawOptions
+    ): Promise<RawResponse[]> {
+        if (!Array.isArray(rawOperation)) {
+            throw new Error('Must in array');
+        }
+
+        const pipeline: PipelineStage[] = rawOperation;
+
+        if (options?.withDeleted) {
+            pipeline.push({
+                $match: {
+                    $or: [
+                        {
+                            [DATABASE_DELETED_AT_FIELD_NAME]: {
+                                $exists: false,
+                            },
+                        },
+                        {
+                            [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
+                        },
+                    ],
+                },
+            });
+        } else {
+            pipeline.push({
+                $match: {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
+                },
+            });
+        }
+
+        const aggregate = this._repository.aggregate<RawResponse>(pipeline);
+
+        if (options?.session) {
+            aggregate.session(options?.session);
+        }
+
+        return aggregate;
+    }
+
+    async model(): Promise<Model<Entity>> {
+        return this._repository;
     }
 }

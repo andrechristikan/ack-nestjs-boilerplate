@@ -30,16 +30,6 @@ export interface IHelperStringRandomOptions {
     prefix?: string;
 }
 
-// Helper Geo
-export interface IHelperGeoCurrent {
-    latitude: number;
-    longitude: number;
-}
-
-export interface IHelperGeoRules extends IHelperGeoCurrent {
-    radiusInMeters: number;
-}
-
 // Helper Date
 export interface IHelperDateStartAndEnd {
     month?: number;

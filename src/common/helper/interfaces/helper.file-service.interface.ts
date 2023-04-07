@@ -11,16 +11,13 @@ export interface IHelperFileService {
         rows: IHelperFileRows[],
         options?: IHelperFileCreateExcelWorkbookOptions
     ): WorkBook;
-
     writeExcelToBuffer(
         workbook: WorkBook,
         options?: IHelperFileWriteExcelOptions
     ): Buffer;
-
     readExcelFromBuffer(
         file: Buffer,
         options?: IHelperFileReadExcelOptions
     ): IHelperFileRows[];
-
     convertToBytes(megabytes: string): number;
 }

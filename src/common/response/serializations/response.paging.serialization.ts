@@ -1,12 +1,29 @@
+import { faker } from '@faker-js/faker';
 import { ApiProperty, PickType } from '@nestjs/swagger';
-import { IErrorHttpFilterMetadata } from 'src/common/error/interfaces/error.interface';
-import { ResponseDefaultSerialization } from 'src/common/response/serializations/response.default.serialization';
+import { PAGINATION_AVAILABLE_ORDER_DIRECTION } from 'src/common/pagination/constants/pagination.constant';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { RequestPaginationSerialization } from 'src/common/request/serializations/request.pagination.serialization';
+import {
+    ResponseDefaultSerialization,
+    ResponseMetadataSerialization,
+} from 'src/common/response/serializations/response.default.serialization';
 
-export class ResponsePagingMetadataSerialization {
-    nextPage?: string;
-    previousPage?: string;
-    firstPage?: string;
-    lastPage?: string;
+export class ResponsePagingCursorMetadataSerialization {
+    nextPage: string;
+    previousPage: string;
+    firstPage: string;
+    lastPage: string;
+}
+
+export class ResponsePagingPaginationSerialization extends RequestPaginationSerialization {
+    total: number;
+    totalPage: number;
+}
+
+export interface ResponsePagingMetadataSerialization
+    extends ResponseMetadataSerialization {
+    cursor?: ResponsePagingCursorMetadataSerialization;
+    pagination?: ResponsePagingPaginationSerialization;
 }
 
 export class ResponsePagingSerialization<
@@ -16,61 +33,8 @@ export class ResponsePagingSerialization<
     'message',
 ] as const) {
     @ApiProperty({
-        name: 'totalData',
-        type: Number,
-        nullable: false,
-        description: 'return total data in database',
-        example: 100,
-    })
-    readonly totalData: number;
-
-    @ApiProperty({
-        name: 'totalPage',
-        type: Number,
-        nullable: true,
-        description: 'return total page, max 20',
-        example: 20,
-    })
-    totalPage?: number;
-
-    @ApiProperty({
-        name: 'currentPage',
-        type: Number,
-        nullable: true,
-        description: 'return current page',
-        example: 2,
-    })
-    currentPage?: number;
-
-    @ApiProperty({
-        name: 'perPage',
-        type: Number,
-        nullable: true,
-        description: 'return per page',
-        example: 10,
-    })
-    perPage?: number;
-
-    @ApiProperty({
-        name: '_availableSearch',
-        type: 'array',
-        nullable: false,
-        description:
-            'Search will base on _availableSearch with rule contains, and case insensitive',
-    })
-    _availableSearch?: string[];
-
-    @ApiProperty({
-        name: '_availableSort',
-        type: 'array',
-        nullable: false,
-        description: 'Sort will base on _availableSort',
-    })
-    _availableSort?: string[];
-
-    @ApiProperty({
         name: '_metadata',
-        nullable: true,
+        nullable: false,
         description: 'Contain metadata about API',
         type: 'object',
         required: true,
@@ -82,14 +46,27 @@ export class ResponsePagingSerialization<
             path: '/api/v1/test/hello',
             version: '1',
             repoVersion: '1.0.0',
-            nextPage: `http://217.0.0.1/__path?perPage=10&page=3&search=abc`,
-            previousPage: `http://217.0.0.1/__path?perPage=10&page=1&search=abc`,
-            firstPage: `http://217.0.0.1/__path?perPage=10&page=1&search=abc`,
-            lastPage: `http://217.0.0.1/__path?perPage=10&page=20&search=abc`,
+            pagination: {
+                search: faker.name.firstName(),
+                page: 1,
+                perPage: 20,
+                orderBy: 'createdAt',
+                orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
+                availableSearch: ['name'],
+                availableOrderBy: ['createdAt'],
+                availableOrderDirection: PAGINATION_AVAILABLE_ORDER_DIRECTION,
+                total: 100,
+                totalPage: 5,
+            },
+            cursor: {
+                nextPage: `http://217.0.0.1/__path?perPage=10&page=3&search=abc`,
+                previousPage: `http://217.0.0.1/__path?perPage=10&page=1&search=abc`,
+                firstPage: `http://217.0.0.1/__path?perPage=10&page=1&search=abc`,
+                lastPage: `http://217.0.0.1/__path?perPage=10&page=20&search=abc`,
+            },
         },
     })
-    readonly _metadata?: IErrorHttpFilterMetadata &
-        ResponsePagingMetadataSerialization;
+    readonly _metadata: ResponsePagingMetadataSerialization;
 
-    readonly data?: T[];
+    readonly data: T[];
 }

@@ -30,10 +30,12 @@ import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.s
 import { ENUM_FILE_EXCEL_MIME } from 'src/common/file/constants/file.enum.constant';
 import { FileMultipleDto } from 'src/common/file/dtos/file.multiple.dto';
 import { FileSingleDto } from 'src/common/file/dtos/file.single.dto';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { Skip } from 'src/common/request/validations/request.skip.validation';
 import { ResponseDefaultSerialization } from 'src/common/response/serializations/response.default.serialization';
 import { ResponsePagingSerialization } from 'src/common/response/serializations/response.paging.serialization';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/common/role/constants/role.status-code.constant';
 
 export function Doc<T>(
     messagePath: string,
@@ -116,18 +118,11 @@ export function Doc<T>(
             messagePath: 'auth.error.accessTokenUnauthorized',
             statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_JWT_ACCESS_TOKEN_ERROR,
         });
-        oneOfForbidden.push(
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_INVALID_ERROR,
-                messagePath: 'auth.error.permissionForbidden',
-            },
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_ACCESS_FOR_INVALID_ERROR,
-                messagePath: 'auth.error.accessForForbidden',
-            }
-        );
+        oneOfForbidden.push({
+            statusCode:
+                ENUM_ROLE_STATUS_CODE_ERROR.ROLE_PAYLOAD_TYPE_INVALID_ERROR,
+            messagePath: 'role.error.typeForbidden',
+        });
     }
 
     if (options?.auth?.apiKey) {
@@ -151,27 +146,6 @@ export function Doc<T>(
                 statusCode:
                     ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INVALID_ERROR,
                 messagePath: 'apiKey.error.invalid',
-            }
-        );
-    }
-
-    if (options?.auth?.permissionToken) {
-        auths.push(ApiSecurity('permissionToken'));
-        oneOfUnauthorized.push(
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_ERROR,
-                messagePath: 'auth.error.permissionTokenUnauthorized',
-            },
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_INVALID_ERROR,
-                messagePath: 'auth.error.permissionTokenInvalid',
-            },
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_NOT_YOUR_ERROR,
-                messagePath: 'auth.error.permissionTokenNotYour',
             }
         );
     }
@@ -265,7 +239,7 @@ export function Doc<T>(
 
 export function DocPaging<T>(
     messagePath: string,
-    options?: IDocPagingOptions<T>
+    options: IDocPagingOptions<T>
 ): MethodDecorator {
     // paging
     const docs = [];
@@ -298,18 +272,11 @@ export function DocPaging<T>(
             messagePath: 'auth.error.accessTokenUnauthorized',
             statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_JWT_ACCESS_TOKEN_ERROR,
         });
-        oneOfForbidden.push(
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_INVALID_ERROR,
-                messagePath: 'auth.error.permissionForbidden',
-            },
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_ACCESS_FOR_INVALID_ERROR,
-                messagePath: 'auth.error.accessForForbidden',
-            }
-        );
+        oneOfForbidden.push({
+            statusCode:
+                ENUM_ROLE_STATUS_CODE_ERROR.ROLE_PAYLOAD_TYPE_INVALID_ERROR,
+            messagePath: 'role.error.typeForbidden',
+        });
     }
 
     if (options?.auth?.apiKey) {
@@ -333,27 +300,6 @@ export function DocPaging<T>(
                 statusCode:
                     ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INVALID_ERROR,
                 messagePath: 'apiKey.error.invalid',
-            }
-        );
-    }
-
-    if (options?.auth?.permissionToken) {
-        auths.push(ApiSecurity('permissionToken'));
-        oneOfUnauthorized.push(
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_ERROR,
-                messagePath: 'auth.error.permissionTokenUnauthorized',
-            },
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_INVALID_ERROR,
-                messagePath: 'auth.error.permissionTokenInvalid',
-            },
-            {
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_PERMISSION_TOKEN_NOT_YOUR_ERROR,
-                messagePath: 'auth.error.permissionTokenNotYour',
             }
         );
     }
@@ -432,12 +378,6 @@ export function DocPaging<T>(
                             $ref: getSchemaPath(options.response.serialization),
                         },
                     },
-                    _availableSearch: {
-                        example: options.response._availableSearch,
-                    },
-                    _availableSort: {
-                        example: options.response._availableSort,
-                    },
                 },
             },
         }),
@@ -451,28 +391,36 @@ export function DocPaging<T>(
         }),
         ApiQuery({
             name: 'perPage',
-            required: true,
-            allowEmptyValue: false,
+            required: false,
+            allowEmptyValue: true,
             example: 20,
             type: 'number',
             description: 'Data per page',
         }),
         ApiQuery({
             name: 'page',
-            required: true,
-            allowEmptyValue: false,
+            required: false,
+            allowEmptyValue: true,
             example: 1,
             type: 'number',
             description: 'page number',
         }),
         ApiQuery({
-            name: '_sort',
-            required: true,
-            allowEmptyValue: false,
-            example: 'createdAt@desc',
+            name: 'orderBy',
+            required: false,
+            allowEmptyValue: true,
+            example: 'createdAt',
             type: 'string',
-            description:
-                'Sort base on _availableSort, type is `asc` and `desc`',
+            description: 'Order by base on _availableOrderBy',
+        }),
+        ApiQuery({
+            name: 'orderDirection',
+            required: false,
+            allowEmptyValue: true,
+            example: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
+            enum: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
+            type: 'string',
+            description: 'Order direction base on _availableOrderDirection',
         }),
 
         // default

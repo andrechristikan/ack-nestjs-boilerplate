@@ -1,9 +1,9 @@
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import {
     ENUM_LOGGER_ACTION,
     ENUM_LOGGER_LEVEL,
 } from 'src/common/logger/constants/logger.enum.constant';
 import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
+import { ENUM_ROLE_TYPE } from 'src/common/role/constants/role.enum.constant';
 
 export class LoggerCreateDto {
     action: ENUM_LOGGER_ACTION;
@@ -14,7 +14,7 @@ export class LoggerCreateDto {
     method: ENUM_REQUEST_METHOD;
     path: string;
     role?: string;
-    accessFor?: ENUM_AUTH_ACCESS_FOR;
+    type?: ENUM_ROLE_TYPE;
     tags?: string[];
     params?: Record<string, any>;
     bodies?: Record<string, any>;

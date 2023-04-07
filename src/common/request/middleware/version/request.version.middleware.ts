@@ -45,10 +45,8 @@ export class RequestVersionMiddleware implements NestMiddleware {
             version = url[2].replace(this.versioningPrefix, '');
         }
 
-        req.version = version;
-        req.headers['x-version'] = version;
-        req.repoVersion = this.repoVersion;
-        req.headers['x-repo-version'] = this.repoVersion;
+        req.__version = version;
+        req.__repoVersion = this.repoVersion;
 
         next();
     }

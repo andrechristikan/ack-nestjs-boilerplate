@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
-import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
+import { RoleGetSerialization } from 'src/common/role/serializations/role.get.serialization';
 
 export class UserGetSerialization {
     @ApiProperty({ example: faker.datatype.uuid() })

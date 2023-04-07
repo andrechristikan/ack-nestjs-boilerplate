@@ -4,10 +4,10 @@ import { Request, Response, NextFunction } from 'express';
 import { createStream } from 'rotating-file-stream';
 import { ConfigService } from '@nestjs/config';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { IResponseCustom } from 'src/common/response/interfaces/response.interface';
 import {
     IDebuggerHttpConfig,
     IDebuggerHttpConfigOptions,
+    IDebuggerHttpMiddleware,
 } from 'src/common/debugger/interfaces/debugger.interface';
 import {
     DEBUGGER_HTTP_FORMAT,
@@ -37,7 +37,7 @@ export class DebuggerHttpMiddleware implements NestMiddleware {
 
         morgan.token(
             'res-body',
-            (req: Request, res: IResponseCustom) => res.body
+            (req: Request, res: IDebuggerHttpMiddleware) => res.body
         );
 
         morgan.token('req-headers', (req: Request) =>

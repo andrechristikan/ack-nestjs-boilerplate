@@ -1,41 +1,23 @@
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
+import { ApiHideProperty } from '@nestjs/swagger';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { IPaginationOrder } from 'src/common/pagination/interfaces/pagination.interface';
 
 export class PaginationListDto {
-    @ApiProperty({
-        name: 'search',
-        required: true,
-        nullable: false,
-    })
+    @ApiHideProperty()
     _search: Record<string, any>;
 
     @ApiHideProperty()
-    _availableSearch: string[];
-
-    @ApiProperty({
-        name: 'page',
-        required: true,
-        nullable: false,
-    })
-    page: number;
-
-    @ApiProperty({
-        name: 'perPage',
-        required: true,
-        nullable: false,
-    })
-    perPage: number;
+    _limit: number;
 
     @ApiHideProperty()
     _offset: number;
 
-    @ApiProperty({
-        name: 'search',
-        example: 'createdAt@asc',
-        required: true,
-        nullable: false,
-    })
-    _sort: Record<string, any>;
+    @ApiHideProperty()
+    _order: IPaginationOrder;
 
     @ApiHideProperty()
-    _availableSort: string[];
+    _availableOrderBy: string[];
+
+    @ApiHideProperty()
+    _availableOrderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE[];
 }

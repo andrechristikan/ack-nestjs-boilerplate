@@ -23,39 +23,53 @@
 
 ## Other Repo
 
-* [Kafka Integration][ack-kafka] : Hybrid Between HTTP and Microservice (Apache Kafka Integration)
-* [Typeorm Integration][ack-typeorm] : Typeorm integration `(Outdated)`
+* [Kafka Integration][ack-kafka] : Microservice (Apache Kafka Integration)
 
 ## Table of contents
 
-* [Important](#important)
-* [Next Todo](#next-todo)
-* [Build With](#build-with)
-* [Objective](#objective)
-* [Features](#features)
-* [Structure](#structure)
-    * [Folder Structure](#folder-structure)
-    * [Module Structure](#module-structure)
-    * [Response Structure](#response-structure)
-* [Prerequisites](#prerequisites)
-* [Getting Started](#getting-started)
-    * [Clone Repo](#clone-repo)
-    * [Install Dependencies](#install-dependencies)
-    * [Create environment](#create-environment)
-    * [Database Migration](#database-migration)
-    * [Test](#test)
-    * [Run Project](#run-project)
-    * [Run Project with Docker](#run-project-with-docker)
-* [API Reference](#api-reference)
-* [Environment](#environment)
-* [Api Key Encryption](#api-key-encryption)
-* [Adjust Mongoose Setting](#adjust-mongoose-setting)
-* [License](#license)
-* [Contact](#contact)
+- [ACK NestJs Boilerplate  🔥 🚀](#ack-nestjs-boilerplate---)
+  - [Other Repo](#other-repo)
+  - [Table of contents](#table-of-contents)
+  - [Important](#important)
+  - [Next Todo](#next-todo)
+  - [Build with](#build-with)
+  - [Objective](#objective)
+  - [Features](#features)
+    - [Main Features](#main-features)
+    - [Database](#database)
+    - [Logger and Debugger](#logger-and-debugger)
+    - [Security](#security)
+    - [Setting](#setting)
+    - [Third Party Integration](#third-party-integration)
+    - [Others](#others)
+  - [Behaviors](#behaviors)
+  - [Structure](#structure)
+    - [Folder Structure](#folder-structure)
+    - [Module structure](#module-structure)
+    - [Response Structure](#response-structure)
+      - [Response Default](#response-default)
+      - [Response Paging](#response-paging)
+      - [Response Metadata](#response-metadata)
+  - [Prerequisites](#prerequisites)
+  - [Getting Started](#getting-started)
+    - [Clone Repo](#clone-repo)
+    - [Install Dependencies](#install-dependencies)
+    - [Create environment](#create-environment)
+    - [Database Migration](#database-migration)
+    - [Test](#test)
+    - [Run Project](#run-project)
+    - [Run Project with Docker](#run-project-with-docker)
+  - [API Reference](#api-reference)
+  - [Documentation](#documentation)
+  - [Adjust Mongoose Setting](#adjust-mongoose-setting)
+  - [License](#license)
+  - [Contribute](#contribute)
+    - [Rule](#rule)
+  - [Contact](#contact)
 
 ## Important
 
-* The features will replated with AWS Features
+* The features will replated with AWS for Cloud Computing
 * If you want to implement `database transactions`, you must run MongoDB as a `replication set`.
 * If you change the environment value of `APP_ENV` to `production`, that will trigger.
     1. CorsMiddleware will implement `src/configs/middleware.config.ts`.
@@ -65,8 +79,17 @@
 
 Next development
 
-* [ ] Google SSO
-* [ ] Background export/import from/to CSV and Excel
+* [x] Refactor apikey module, change `x-api-key` to `${key}:${secret}`. Free for user to create ApiKey by themself.
+* [x] Refactor Authorization, optimize
+    - remove permission entity, make then static permission
+    - implement acl policy guard
+    - remember me remove
+    - role access for to type
+    - remove permission token
+* [x] add policy for each endpoint
+* [x] Refactor Unit Testing for common module
+* [ ] Google SSO for login and sign up
+* [ ] Refactor Doc or Swagger 
 * [ ] Update Documentation, include an diagram for easier comprehension
 
 ## Build with
@@ -75,7 +98,7 @@ Describes which version.
 
 | Name       | Version  |
 | ---------- | -------- |
-| NestJs     | v9.3.x     |
+| NestJs     | v9.4.x     |
 | NodeJs     | v18.12.x    |
 | Typescript | v5.0.x     |
 | Mongoose   | v7.0.x     |
@@ -84,19 +107,19 @@ Describes which version.
 | NPM        | v8.19.x     |
 | Docker     | v20.10.x    |
 | Docker Compose | v2.6.x |
-| Swagger | v6.2.x |
+| Swagger | v6.3.x |
 
 ## Objective
 
 * Easy to maintenance
 * NestJs Habit
-* Component based folder structure
+* Component based / modular folder structure
 * Stateless authentication and authorization
 * Repository Design Pattern or Data Access Layer Design Pattern
 * Follow Community Guide Line
 * Follow The Twelve-Factor App
 * Adopt SOLID and KISS principle
-* Support Microservice Architecture, Serverless Architecture, Clean Architecture, and/or Hexagonal Architecture
+* Support for Microservice Architecture, Serverless Architecture, Clean Architecture, and/or Hexagonal Architecture
 
 ## Features
 
@@ -105,10 +128,10 @@ Describes which version.
 * NestJs v9.x 🥳
 * Typescript 🚀
 * Production ready 🔥
-* Repository Design Pattern (Multi Repository, can mix with `TypeORM`)
+* Repository Design Pattern (Multi Repository, can mix with other orm)
 * Swagger / OpenAPI 3 included
-* Authentication (`Access Token`, `Refresh Token`, `API Key`, and `Google SSO`)
-* Authorization, Role and Permission Management (`PermissionToken`)
+* Authentication (`Access Token`, `Refresh Token`, `API Key`)
+* Authorization, Role and Permission Management
 * Support multi-language `i18n` 🗣, can controllable with request header `x-custom-lang`
 * Request validation for all request params, query, dan body with `class-validation`
 * Serialization with `class-transformer`
@@ -131,7 +154,7 @@ Describes which version.
 
 ### Security
 
-* Apply `helmet`, `cors`, and `rate-limit`
+* Apply `helmet`, `cors`, and `throttler`
 * Timeout awareness and can override ⌛️
 * User agent awareness, and can whitelist user agent
 
@@ -152,8 +175,11 @@ Describes which version.
 
 * Support Docker installation
 * Support CI/CD with Github Action or Jenkins
-* Husky GitHook for check source code, and run test before commit 🐶
+* Husky GitHook for run linter before commit 🐶
 * Linter with EsLint for Typescript
+
+## Behaviors
+
 
 ## Structure
 
@@ -183,6 +209,7 @@ Full structure of module
     ├── dtos // request validation
     ├── docs // swagger / OpenAPI 3
     ├── errors // custom error
+    ├── factories
     ├── filters // custom filter 
     ├── guards // validate related with database
     ├── indicators // custom health check indicator
@@ -213,7 +240,7 @@ export class ResponseDefaultSerialization {
     statusCode: number;
     message: string;
     _metadata?: IResponseMetadata;
-    data?: Record<string, any>;
+    data: Record<string, any>;
 }
 ```
 
@@ -222,16 +249,21 @@ export class ResponseDefaultSerialization {
 Default response for pagination.
 
 ```ts
+export class ResponseMetadataSerialization {
+    languages: string[];
+    timestamp: number;
+    timezone: string;
+    requestId: string;
+    path: string;
+    version: string;
+    repoVersion: string;
+    [key: string]: any;
+}
+
 export class ResponsePagingSerialization {
     statusCode: number;
     message: string;
-    totalData: number;
-    totalPage?: number;
-    currentPage?: number;
-    perPage?: number;
-    _availableSearch?: string[];
-    _availableSort?: string[];
-    _metadata?: IResponseMetadata;
+    _metadata?: ResponseMetadataSerialization;
     data: Record<string, any>[];
 }
 
@@ -242,6 +274,46 @@ export class ResponsePagingSerialization {
 This is useful when we need to give the frontend some information that is related / not related with the endpoint.
 
 ```ts
+export class RequestPaginationSerialization {
+    search: string;
+    filters: Record<
+        string,
+        string | number | boolean | Array<string | number | boolean>
+    >;
+    page: number;
+    perPage: number;
+    orderBy: string;
+    orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE;
+    availableSearch: string[];
+    availableOrderBy: string[];
+    availableOrderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE[];
+}
+
+export class ResponsePagingCursorMetadataSerialization {
+    nextPage: string;
+    previousPage: string;
+    firstPage: string;
+    lastPage: string;
+}
+
+export class ResponsePagingPaginationSerialization extends RequestPaginationSerialization {
+    total: number;
+    totalPage: number;
+}
+
+export interface ResponsePagingMetadataSerialization  {
+    languages: string[];
+    timestamp: number;
+    timezone: string;
+    requestId: string;
+    path: string;
+    version: string;
+    repoVersion: string;
+    cursor?: ResponsePagingCursorMetadataSerialization;
+    pagination?: ResponsePagingPaginationSerialization;
+    [key: string]: any;
+}
+
 export interface IResponseMetadata {
     languages: ENUM_MESSAGE_LANGUAGE[];
     timestamp: number;
@@ -332,31 +404,11 @@ yarn rollback
 
 > The test is still not good net. I'm still lazy too do that.
 
-The project provide 3 automation testing `unit testing`, `integration testing`, and `e2e testing`.
+The project only provide `unit testing`.
 
 ```bash
 yarn test
 ```
-
-For specific test do this
-
-* Unit testing
-
-    ```bash
-    yarn test:unit
-    ```
-
-* Integration testing
-
-    ```bash
-    yarn test:integration
-    ```
-
-* E2E testing
-
-    ```bash
-    yarn test:e2e
-    ```
 
 ### Run Project
 
@@ -440,13 +492,12 @@ If your code behind commit with the original, please update your code and resolv
 ### Rule
 
 * Avoid Circular Dependency
-* Consume component folder structure, and repository design pattern
+* Consume component based / modular folder structure, and repository design pattern
 * Always make `service` for every module is independently.
 * Do not put `controller` into service modules, cause this will break the dependency. Only put the controller into `router` and then inject the dependency.
 * Put the config in `/configs` folder, and for dynamic config put as `environment variable`
 * `CommonModule` only for main package, and put the module that related of service/project into `/src/modules`. So, if we want to clear the unnecessary module, we just need to delete the `src/modules/**`
-* If there a new service in CommonModule. Make sure to create the unit test in `/test/unit`.
-* If there a new controller, make sure to create the e2e testing in `test/e2e`
+* If there a new service in CommonModule. Make sure to create the unit test in `/unit`.
 
 ## Contact
 

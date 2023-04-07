@@ -1,20 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { faker } from '@faker-js/faker';
-import { HelperDateService } from './helper.date.service';
 import { IHelperStringRandomOptions } from 'src/common/helper/interfaces/helper.interface';
 import { IHelperStringService } from 'src/common/helper/interfaces/helper.string-service.interface';
 
 @Injectable()
 export class HelperStringService implements IHelperStringService {
-    constructor(private readonly helperDateService: HelperDateService) {}
-
     checkEmail(email: string): boolean {
         const regex = /\S+@\S+\.\S+/;
         return regex.test(email);
     }
 
     randomReference(length: number, prefix?: string): string {
-        const timestamp = `${this.helperDateService.timestamp()}`;
+        const timestamp = `${new Date().getTime()}`;
         const randomString: string = this.random(length, {
             safe: true,
             upperCase: true,
@@ -34,12 +31,13 @@ export class HelperStringService implements IHelperStringService {
     }
 
     censor(value: string): string {
+        value = value.replaceAll(' ', '');
         const length = value.length;
-        if (length === 1) {
+        if (length <= 3) {
             return value;
         }
 
-        const end = length > 4 ? length - 4 : 1;
+        const end = Math.ceil(length * 0.7);
         const censorString = '*'.repeat(end > 10 ? 10 : end);
         const visibleString = value.substring(end, length);
         return `${censorString}${visibleString}`;

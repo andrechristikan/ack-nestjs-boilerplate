@@ -42,15 +42,12 @@ export interface IDocResponseOptions<T> {
 export interface IDocPagingResponseOptions<T>
     extends Pick<IDocResponseOptions<T>, 'statusCode'> {
     serialization: ClassConstructor<T>;
-    _availableSearch: string[];
-    _availableSort: string[];
 }
 
 export interface IDocAuthOptions {
     jwtAccessToken?: boolean;
     jwtRefreshToken?: boolean;
     apiKey?: boolean;
-    permissionToken?: boolean;
 }
 
 export interface IDocRequestHeaderOptions {

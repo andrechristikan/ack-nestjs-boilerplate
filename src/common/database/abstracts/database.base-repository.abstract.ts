@@ -1,106 +1,73 @@
 import {
     IDatabaseCreateOptions,
-    IDatabaseSoftDeleteOptions,
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseOptions,
-    IDatabaseRestoreOptions,
     IDatabaseCreateManyOptions,
     IDatabaseManyOptions,
     IDatabaseSoftDeleteManyOptions,
     IDatabaseRestoreManyOptions,
-    IDatabaseUpdateOptions,
-    IDatabaseDeleteOptions,
     IDatabaseRawOptions,
 } from 'src/common/database/interfaces/database.interface';
 
-export abstract class DatabaseBaseRepositoryAbstract<T> {
-    abstract findAll<Y = T>(
-        find?: Record<string, any> | Record<string, any>[],
+export abstract class DatabaseBaseRepositoryAbstract<Entity> {
+    abstract findAll<T = Entity>(
+        find?: Record<string, any>,
         options?: IDatabaseFindAllOptions<any>
-    ): Promise<Y[]>;
+    ): Promise<T[]>;
 
-    abstract findAllDistinct<Y = T>(
+    abstract findAllDistinct<T = Entity>(
         fieldDistinct: string,
-        find?: Record<string, any> | Record<string, any>[],
+        find?: Record<string, any>,
         options?: IDatabaseFindAllOptions<any>
-    ): Promise<Y[]>;
+    ): Promise<T[]>;
 
-    abstract findOne<Y = T>(
-        find: Record<string, any> | Record<string, any>[],
+    abstract findOne<T = Entity>(
+        find: Record<string, any>,
         options?: IDatabaseFindOneOptions<any>
-    ): Promise<Y>;
+    ): Promise<T>;
 
-    abstract findOneById<Y = T>(
+    abstract findOneById<T = Entity>(
         _id: string,
         options?: IDatabaseFindOneOptions<any>
-    ): Promise<Y>;
+    ): Promise<T>;
+
+    abstract findOneAndLock<T = Entity>(
+        find: Record<string, any>,
+        options?: IDatabaseFindOneOptions<any>
+    ): Promise<T>;
+
+    abstract findOneByIdAndLock<T = Entity>(
+        _id: string,
+        options?: IDatabaseFindOneOptions<any>
+    ): Promise<T>;
 
     abstract getTotal(
-        find?: Record<string, any> | Record<string, any>[],
+        find?: Record<string, any>,
         options?: IDatabaseOptions<any>
     ): Promise<number>;
 
     abstract exists(
-        find: Record<string, any> | Record<string, any>[],
+        find: Record<string, any>,
         options?: IDatabaseExistOptions<any>
     ): Promise<boolean>;
 
-    abstract raw<N, R = any>(
-        rawOperation: R,
-        options?: IDatabaseRawOptions
-    ): Promise<N[]>;
-
-    abstract create<N>(
-        data: N,
+    abstract create<Dto = any>(
+        data: Dto,
         options?: IDatabaseCreateOptions<any>
-    ): Promise<T>;
+    ): Promise<Entity>;
 
-    abstract updateOneById<N>(
-        _id: string,
-        data: N,
-        options?: IDatabaseUpdateOptions<any>
-    ): Promise<T>;
+    abstract save(repository: Entity): Promise<Entity>;
 
-    abstract updateOne<N>(
-        find: Record<string, any> | Record<string, any>[],
-        data: N,
-        options?: IDatabaseUpdateOptions<any>
-    ): Promise<T>;
+    abstract delete(repository: Entity): Promise<Entity>;
 
-    abstract deleteOne(
-        find: Record<string, any> | Record<string, any>[],
-        options?: IDatabaseDeleteOptions<any>
-    ): Promise<T>;
+    abstract softDelete(repository: Entity): Promise<Entity>;
 
-    abstract deleteOneById(
-        _id: string,
-        options?: IDatabaseDeleteOptions<any>
-    ): Promise<T>;
+    abstract restore(repository: Entity): Promise<Entity>;
 
-    abstract softDeleteOneById(
-        _id: string,
-        options?: IDatabaseSoftDeleteOptions<any>
-    ): Promise<T>;
-
-    abstract softDeleteOne(
-        find: Record<string, any> | Record<string, any>[],
-        options?: IDatabaseSoftDeleteOptions<any>
-    ): Promise<T>;
-
-    abstract restoreOneById(
-        _id: string,
-        options?: IDatabaseRestoreOptions<any>
-    ): Promise<T>;
-
-    abstract restoreOne(
-        find: Record<string, any> | Record<string, any>[],
-        options?: IDatabaseRestoreOptions<any>
-    ): Promise<T>;
-
-    abstract createMany<N>(
-        data: N[],
+    abstract createMany<Dto>(
+        data: Dto[],
         options?: IDatabaseCreateManyOptions<any>
     ): Promise<boolean>;
 
@@ -110,7 +77,7 @@ export abstract class DatabaseBaseRepositoryAbstract<T> {
     ): Promise<boolean>;
 
     abstract deleteMany(
-        find: Record<string, any> | Record<string, any>[],
+        find: Record<string, any>,
         options?: IDatabaseManyOptions<any>
     ): Promise<boolean>;
 
@@ -120,7 +87,7 @@ export abstract class DatabaseBaseRepositoryAbstract<T> {
     ): Promise<boolean>;
 
     abstract softDeleteMany(
-        find: Record<string, any> | Record<string, any>[],
+        find: Record<string, any>,
         options?: IDatabaseSoftDeleteManyOptions<any>
     ): Promise<boolean>;
 
@@ -130,15 +97,20 @@ export abstract class DatabaseBaseRepositoryAbstract<T> {
     ): Promise<boolean>;
 
     abstract restoreMany(
-        find: Record<string, any> | Record<string, any>[],
+        find: Record<string, any>,
         options?: IDatabaseRestoreManyOptions<any>
     ): Promise<boolean>;
 
-    abstract updateMany<N>(
-        find: Record<string, any> | Record<string, any>[],
-        data: N,
+    abstract updateMany<Dto>(
+        find: Record<string, any>,
+        data: Dto,
         options?: IDatabaseManyOptions<any>
     ): Promise<boolean>;
 
-    abstract model<N = T>(): Promise<N>;
+    abstract raw<RawResponse, RawQuery = any>(
+        rawOperation: RawQuery,
+        options?: IDatabaseRawOptions
+    ): Promise<RawResponse[]>;
+
+    abstract model(): Promise<any>;
 }

@@ -1,5 +1,10 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty, PartialType } from '@nestjs/swagger';
+import {
+    ApiProperty,
+    IntersectionType,
+    OmitType,
+    PartialType,
+} from '@nestjs/swagger';
 import {
     IsNotEmpty,
     IsOptional,
@@ -8,8 +13,12 @@ import {
     MinLength,
 } from 'class-validator';
 import { ApiKeyUpdateDateDto } from 'src/common/api-key/dtos/api-key.update-date.dto';
+import { UserRequestDto } from 'src/modules/user/dtos/user.request.dto';
 
-export class ApiKeyCreateDto extends PartialType(ApiKeyUpdateDateDto) {
+export class ApiKeyCreateDto extends IntersectionType(
+    PartialType(ApiKeyUpdateDateDto),
+    UserRequestDto
+) {
     @ApiProperty({
         description: 'Api Key name',
         example: `testapiname`,
@@ -55,3 +64,7 @@ export class ApiKeyCreateRawDto extends ApiKeyCreateDto {
     @MaxLength(100)
     secret: string;
 }
+
+export class ApiKeyCreateByUserDto extends OmitType(ApiKeyCreateDto, [
+    'user',
+] as const) {}

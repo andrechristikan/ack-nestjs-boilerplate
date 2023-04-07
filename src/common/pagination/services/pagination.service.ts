@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import {
+    PAGINATION_AVAILABLE_ORDER_BY,
     PAGINATION_MAX_PAGE,
     PAGINATION_MAX_PER_PAGE,
+    PAGINATION_ORDER_BY,
+    PAGINATION_ORDER_DIRECTION,
     PAGINATION_PAGE,
     PAGINATION_PER_PAGE,
-    PAGINATION_SORT,
 } from 'src/common/pagination/constants/pagination.constant';
-import { ENUM_PAGINATION_SORT_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { IPaginationOrder } from 'src/common/pagination/interfaces/pagination.interface';
 import { IPaginationService } from 'src/common/pagination/interfaces/pagination.service.interface';
 
 @Injectable()
@@ -57,36 +59,28 @@ export class PaginationService implements IPaginationService {
             : PAGINATION_PER_PAGE;
     }
 
-    sort(
-        _availableSort: string[],
-        sortValue?: string
-    ): Record<string, number | string> {
-        if (!sortValue) {
-            sortValue = PAGINATION_SORT;
-        }
+    order(
+        orderByValue = PAGINATION_ORDER_BY,
+        orderDirectionValue = PAGINATION_ORDER_DIRECTION,
+        availableOrderBy = PAGINATION_AVAILABLE_ORDER_BY
+    ): IPaginationOrder {
+        const orderBy: string = availableOrderBy.includes(orderByValue)
+            ? orderByValue
+            : PAGINATION_ORDER_BY;
 
-        const field: string = sortValue.split('@')[0];
-        const type: string = sortValue.split('@')[1];
-        const convertField: string = _availableSort.includes(field)
-            ? field
-            : PAGINATION_SORT.split('@')[0];
-        const convertType = ENUM_PAGINATION_SORT_TYPE[type.toUpperCase()]
-            ? type.toUpperCase()
-            : ENUM_PAGINATION_SORT_TYPE.ASC;
-
-        return { [convertField]: convertType };
+        return { [orderBy]: orderDirectionValue };
     }
 
     search(
-        _availableSearch: string[],
-        searchValue?: string
+        searchValue = '',
+        availableSearch: string[]
     ): Record<string, any> | undefined {
         if (!searchValue) {
             return undefined;
         }
 
         return {
-            $or: _availableSearch.map((val) => ({
+            $or: availableSearch.map((val) => ({
                 [val]: {
                     $regex: new RegExp(searchValue),
                     $options: 'i',
@@ -106,6 +100,18 @@ export class PaginationService implements IPaginationService {
         return {
             [field]: {
                 $regex: new RegExp(filterValue),
+                $options: 'i',
+            },
+        };
+    }
+
+    filterContainFullMatch(
+        field: string,
+        filterValue: string
+    ): Record<string, { $regex: RegExp; $options: string }> {
+        return {
+            [field]: {
+                $regex: new RegExp(`\\b${filterValue}\\b`),
                 $options: 'i',
             },
         };

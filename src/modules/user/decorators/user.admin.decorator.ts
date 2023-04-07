@@ -8,33 +8,33 @@ import { UserBlockedGuard } from 'src/modules/user/guards/user.blocked.guard';
 import { UserNotFoundGuard } from 'src/modules/user/guards/user.not-found.guard';
 import { UserPutToRequestGuard } from 'src/modules/user/guards/user.put-to-request.guard';
 
-export function UserGetGuard(): MethodDecorator {
+export function UserAdminGetGuard(): MethodDecorator {
     return applyDecorators(UseGuards(UserPutToRequestGuard, UserNotFoundGuard));
 }
 
-export function UserDeleteGuard(): MethodDecorator {
+export function UserAdminDeleteGuard(): MethodDecorator {
     return applyDecorators(UseGuards(UserPutToRequestGuard, UserNotFoundGuard));
 }
 
-export function UserUpdateGuard(): MethodDecorator {
+export function UserAdminUpdateGuard(): MethodDecorator {
     return applyDecorators(UseGuards(UserPutToRequestGuard, UserNotFoundGuard));
 }
 
-export function UserUpdateInactiveGuard(): MethodDecorator {
+export function UserAdminUpdateInactiveGuard(): MethodDecorator {
     return applyDecorators(
         UseGuards(UserPutToRequestGuard, UserNotFoundGuard, UserActiveGuard),
         SetMetadata(USER_ACTIVE_META_KEY, [true])
     );
 }
 
-export function UserUpdateActiveGuard(): MethodDecorator {
+export function UserAdminUpdateActiveGuard(): MethodDecorator {
     return applyDecorators(
         UseGuards(UserPutToRequestGuard, UserNotFoundGuard, UserActiveGuard),
         SetMetadata(USER_ACTIVE_META_KEY, [false])
     );
 }
 
-export function UserUpdateBlockedGuard(): MethodDecorator {
+export function UserAdminUpdateBlockedGuard(): MethodDecorator {
     return applyDecorators(
         UseGuards(UserPutToRequestGuard, UserNotFoundGuard, UserBlockedGuard),
         SetMetadata(USER_BLOCKED_META_KEY, [false])

@@ -1,14 +1,21 @@
-import { Injectable, mixin, Type } from '@nestjs/common';
-import { ArgumentMetadata, PipeTransform } from '@nestjs/common/interfaces';
+import { Inject, Injectable, mixin, Type } from '@nestjs/common';
+import {
+    ArgumentMetadata,
+    PipeTransform,
+    Scope,
+} from '@nestjs/common/interfaces';
+import { REQUEST } from '@nestjs/core';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationFilterInBooleanPipe(
     defaultValue: boolean[]
 ): Type<PipeTransform> {
-    @Injectable()
+    @Injectable({ scope: Scope.REQUEST })
     class MixinPaginationFilterInBooleanPipe implements PipeTransform {
         constructor(
+            @Inject(REQUEST) protected readonly request: IRequestApp,
             private readonly paginationService: PaginationService,
             private readonly helperArrayService: HelperArrayService
         ) {}
@@ -24,6 +31,11 @@ export function PaginationFilterInBooleanPipe(
                     value.split(',').map((val: string) => val === 'true')
                 );
             }
+
+            this.request.__filters = {
+                ...this.request.__filters,
+                [field]: finalValue,
+            };
 
             return this.paginationService.filterIn<boolean>(field, finalValue);
         }

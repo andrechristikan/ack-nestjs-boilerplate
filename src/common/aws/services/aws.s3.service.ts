@@ -31,10 +31,26 @@ import {
     HeadBucketCommand,
     HeadBucketCommandOutput,
     ListBucketsOutput,
-    Bucket,
     ListObjectsV2Output,
-    _Object,
     GetObjectOutput,
+    DeleteObjectsCommandInput,
+    ListObjectsV2CommandInput,
+    ListObjectsV2CommandOutput,
+    DeleteObjectsCommandOutput,
+    DeleteObjectCommandInput,
+    DeleteObjectCommandOutput,
+    HeadBucketCommandInput,
+    ListBucketsCommandInput,
+    ListBucketsCommandOutput,
+    GetObjectCommandOutput,
+    PutObjectCommandInput,
+    PutObjectCommandOutput,
+    CreateMultipartUploadCommandOutput,
+    UploadPartCommandOutput,
+    CompleteMultipartUploadCommandOutput,
+    AbortMultipartUploadCommandOutput,
+    Bucket,
+    _Object,
 } from '@aws-sdk/client-s3';
 
 @Injectable()
@@ -59,16 +75,16 @@ export class AwsS3Service implements IAwsS3Service {
         this.baseUrl = this.configService.get<string>('aws.s3.baseUrl');
     }
 
-    async checkConnection(): Promise<HeadBucketCommandOutput> {
+    async checkBucketExistence(): Promise<HeadBucketCommandOutput> {
         const command: HeadBucketCommand = new HeadBucketCommand({
             Bucket: this.bucket,
         });
 
         try {
-            const check: HeadBucketCommandOutput = await this.s3Client.send(
-                command
-            );
-
+            const check = await this.s3Client.send<
+                HeadBucketCommandInput,
+                HeadBucketCommandOutput
+            >(command);
             return check;
         } catch (err: any) {
             throw err;
@@ -79,11 +95,13 @@ export class AwsS3Service implements IAwsS3Service {
         const command: ListBucketsCommand = new ListBucketsCommand({});
 
         try {
-            const listBucket: ListBucketsOutput = await this.s3Client.send(
-                command
+            const listBucket: ListBucketsOutput = await this.s3Client.send<
+                ListBucketsCommandInput,
+                ListBucketsCommandOutput
+            >(command);
+            const mapList: string[] = listBucket.Buckets.map(
+                (val: Bucket) => val.Name
             );
-            const mapList = listBucket.Buckets.map((val: Bucket) => val.Name);
-
             return mapList;
         } catch (err: any) {
             throw err;
@@ -97,15 +115,16 @@ export class AwsS3Service implements IAwsS3Service {
         });
 
         try {
-            const listItems: ListObjectsV2Output = await this.s3Client.send(
-                command
-            );
+            const listItems: ListObjectsV2Output = await this.s3Client.send<
+                ListObjectsV2CommandInput,
+                ListObjectsV2CommandOutput
+            >(command);
 
             const mapList = listItems.Contents.map((val: _Object) => {
                 const lastIndex: number = val.Key.lastIndexOf('/');
                 const path: string = val.Key.substring(0, lastIndex);
                 const filename: string = val.Key.substring(
-                    lastIndex,
+                    lastIndex + 1,
                     val.Key.length
                 );
                 const mime: string = filename
@@ -136,15 +155,16 @@ export class AwsS3Service implements IAwsS3Service {
             path = path.startsWith('/') ? path.replace('/', '') : `${path}`;
 
         const key: string = path ? `${path}/${filename}` : filename;
-        const input: GetObjectCommandInput = {
+        const command: GetObjectCommand = new GetObjectCommand({
             Bucket: this.bucket,
             Key: key,
-        };
-        const command: GetObjectCommand = new GetObjectCommand(input);
+        });
 
         try {
-            const item: GetObjectOutput = await this.s3Client.send(command);
-
+            const item: GetObjectOutput = await this.s3Client.send<
+                GetObjectCommandInput,
+                GetObjectCommandOutput
+            >(command);
             return item.Body;
         } catch (err: any) {
             throw err;
@@ -180,7 +200,10 @@ export class AwsS3Service implements IAwsS3Service {
         });
 
         try {
-            await this.s3Client.send(command);
+            await this.s3Client.send<
+                PutObjectCommandInput,
+                PutObjectCommandOutput
+            >(command);
         } catch (err: any) {
             throw err;
         }
@@ -202,7 +225,10 @@ export class AwsS3Service implements IAwsS3Service {
         });
 
         try {
-            await this.s3Client.send(command);
+            await this.s3Client.send<
+                DeleteObjectCommandInput,
+                DeleteObjectCommandOutput
+            >(command);
             return;
         } catch (err: any) {
             throw err;
@@ -210,7 +236,7 @@ export class AwsS3Service implements IAwsS3Service {
     }
 
     async deleteItemsInBucket(filenames: string[]): Promise<void> {
-        const keys: ObjectIdentifier[] = filenames.map((val) => ({
+        const keys: ObjectIdentifier[] = filenames.map((val: string) => ({
             Key: val,
         }));
         const command: DeleteObjectsCommand = new DeleteObjectsCommand({
@@ -221,7 +247,10 @@ export class AwsS3Service implements IAwsS3Service {
         });
 
         try {
-            await this.s3Client.send(command);
+            await this.s3Client.send<
+                DeleteObjectsCommandInput,
+                DeleteObjectsCommandOutput
+            >(command);
             return;
         } catch (err: any) {
             throw err;
@@ -233,7 +262,10 @@ export class AwsS3Service implements IAwsS3Service {
             Bucket: this.bucket,
             Prefix: dir,
         });
-        const lists = await this.s3Client.send(commandList);
+        const lists = await this.s3Client.send<
+            ListObjectsV2CommandInput,
+            ListObjectsV2CommandOutput
+        >(commandList);
 
         try {
             const listItems = lists.Contents.map((val) => ({
@@ -247,13 +279,19 @@ export class AwsS3Service implements IAwsS3Service {
                     },
                 });
 
-            await this.s3Client.send(commandDeleteItems);
+            await this.s3Client.send<
+                DeleteObjectsCommandInput,
+                DeleteObjectsCommandOutput
+            >(commandDeleteItems);
 
             const commandDelete: DeleteObjectCommand = new DeleteObjectCommand({
                 Bucket: this.bucket,
                 Key: dir,
             });
-            await this.s3Client.send(commandDelete);
+            await this.s3Client.send<
+                DeleteObjectCommandInput,
+                DeleteObjectCommandOutput
+            >(commandDelete);
 
             return;
         } catch (err: any) {
@@ -276,16 +314,18 @@ export class AwsS3Service implements IAwsS3Service {
             .toUpperCase();
         const key: string = path ? `${path}/${filename}` : filename;
 
-        const multiPartInput: CreateMultipartUploadCommandInput = {
-            Bucket: this.bucket,
-            Key: key,
-            ACL: acl,
-        };
         const multiPartCommand: CreateMultipartUploadCommand =
-            new CreateMultipartUploadCommand(multiPartInput);
+            new CreateMultipartUploadCommand({
+                Bucket: this.bucket,
+                Key: key,
+                ACL: acl,
+            });
 
         try {
-            const response = await this.s3Client.send(multiPartCommand);
+            const response = await this.s3Client.send<
+                CreateMultipartUploadCommandInput,
+                CreateMultipartUploadCommandOutput
+            >(multiPartCommand);
 
             return {
                 uploadId: response.UploadId,
@@ -307,19 +347,19 @@ export class AwsS3Service implements IAwsS3Service {
         uploadId: string,
         partNumber: number
     ): Promise<AwsS3MultipartPartsSerialization> {
-        const uploadPartInput: UploadPartCommandInput = {
+        const uploadPartCommand: UploadPartCommand = new UploadPartCommand({
             Bucket: this.bucket,
             Key: path,
             Body: content,
             PartNumber: partNumber,
             UploadId: uploadId,
-        };
-        const uploadPartCommand: UploadPartCommand = new UploadPartCommand(
-            uploadPartInput
-        );
+        });
 
         try {
-            const { ETag } = await this.s3Client.send(uploadPartCommand);
+            const { ETag } = await this.s3Client.send<
+                UploadPartCommandInput,
+                UploadPartCommandOutput
+            >(uploadPartCommand);
 
             return {
                 ETag,
@@ -335,20 +375,21 @@ export class AwsS3Service implements IAwsS3Service {
         uploadId: string,
         parts: CompletedPart[]
     ): Promise<void> {
-        const completeMultipartInput: CompleteMultipartUploadCommandInput = {
-            Bucket: this.bucket,
-            Key: path,
-            UploadId: uploadId,
-            MultipartUpload: {
-                Parts: parts,
-            },
-        };
-
         const completeMultipartCommand: CompleteMultipartUploadCommand =
-            new CompleteMultipartUploadCommand(completeMultipartInput);
+            new CompleteMultipartUploadCommand({
+                Bucket: this.bucket,
+                Key: path,
+                UploadId: uploadId,
+                MultipartUpload: {
+                    Parts: parts,
+                },
+            });
 
         try {
-            await this.s3Client.send(completeMultipartCommand);
+            await this.s3Client.send<
+                CompleteMultipartUploadCommandInput,
+                CompleteMultipartUploadCommandOutput
+            >(completeMultipartCommand);
 
             return;
         } catch (err: any) {
@@ -357,17 +398,18 @@ export class AwsS3Service implements IAwsS3Service {
     }
 
     async abortMultipart(path: string, uploadId: string): Promise<void> {
-        const abortMultipartInput: AbortMultipartUploadCommandInput = {
-            Bucket: this.bucket,
-            Key: path,
-            UploadId: uploadId,
-        };
-
         const abortMultipartCommand: AbortMultipartUploadCommand =
-            new AbortMultipartUploadCommand(abortMultipartInput);
+            new AbortMultipartUploadCommand({
+                Bucket: this.bucket,
+                Key: path,
+                UploadId: uploadId,
+            });
 
         try {
-            await this.s3Client.send(abortMultipartCommand);
+            await this.s3Client.send<
+                AbortMultipartUploadCommandInput,
+                AbortMultipartUploadCommandOutput
+            >(abortMultipartCommand);
 
             return;
         } catch (err: any) {

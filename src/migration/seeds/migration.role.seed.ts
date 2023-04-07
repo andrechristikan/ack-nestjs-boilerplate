@@ -1,43 +1,55 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
-import { PermissionService } from 'src/modules/permission/services/permission.service';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
-import { RoleService } from 'src/modules/role/services/role.service';
-import { PermissionEntity } from 'src/modules/permission/repository/entities/permission.entity';
-import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
+import {
+    ENUM_POLICY_ACTION,
+    ENUM_POLICY_SUBJECT,
+} from 'src/common/policy/constants/policy.enum.constant';
+import { RoleService } from 'src/common/role/services/role.service';
+import { RoleCreateDto } from 'src/common/role/dtos/role.create.dto';
+import { ENUM_ROLE_TYPE } from 'src/common/role/constants/role.enum.constant';
 
 @Injectable()
 export class MigrationRoleSeed {
-    constructor(
-        private readonly permissionService: PermissionService,
-        private readonly roleService: RoleService
-    ) {}
+    constructor(private readonly roleService: RoleService) {}
 
     @Command({
         command: 'seed:role',
         describe: 'seed roles',
     })
     async seeds(): Promise<void> {
-        const permissions: PermissionEntity[] =
-            await this.permissionService.findAll();
-        const permissionsMap = permissions.map((val) => val._id);
-
         const dataAdmin: RoleCreateDto[] = [
             {
+                name: 'superadmin',
+                type: ENUM_ROLE_TYPE.SUPER_ADMIN,
+                permissions: [],
+            },
+            {
                 name: 'admin',
-                permissions: permissionsMap,
-                accessFor: ENUM_AUTH_ACCESS_FOR.ADMIN,
+                type: ENUM_ROLE_TYPE.ADMIN,
+                permissions: Object.values(ENUM_POLICY_SUBJECT).map((val) => ({
+                    subject: val,
+                    action: [ENUM_POLICY_ACTION.MANAGE],
+                })),
+            },
+            {
+                name: 'member',
+                type: ENUM_ROLE_TYPE.USER,
+                permissions: [
+                    {
+                        subject: ENUM_POLICY_SUBJECT.API_KEY,
+                        action: [ENUM_POLICY_ACTION.MANAGE],
+                    },
+                ],
             },
             {
                 name: 'user',
+                type: ENUM_ROLE_TYPE.USER,
                 permissions: [],
-                accessFor: ENUM_AUTH_ACCESS_FOR.USER,
             },
         ];
 
         try {
             await this.roleService.createMany(dataAdmin);
-            await this.roleService.createSuperAdmin();
         } catch (err: any) {
             throw new Error(err.message);
         }

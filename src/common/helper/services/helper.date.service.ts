@@ -19,8 +19,14 @@ import {
 
 @Injectable()
 export class HelperDateService implements IHelperDateService {
-    calculateAge(dateOfBirth: Date): number {
-        return moment().diff(dateOfBirth, 'years');
+    calculateAge(dateOfBirth: Date, year?: number): number {
+        const m = moment();
+
+        if (year) {
+            m.set('year', year);
+        }
+
+        return m.diff(dateOfBirth, 'years');
     }
 
     diff(
@@ -227,8 +233,8 @@ export class HelperDateService implements IHelperDateService {
         const month = options?.month ?? todayMonth;
 
         const date = moment(`${year}-${month}-02`, 'YYYY-MM-DD');
-        let startDate: Date = date.startOf('year').toDate();
-        let endDate: Date = date.endOf('year').toDate();
+        let startDate: Date = date.startOf('month').toDate();
+        let endDate: Date = date.endOf('month').toDate();
 
         if (options?.month) {
             const date = moment(`${year}-${month}-02`, 'YYYY-MM-DD');

@@ -34,20 +34,6 @@ export interface IAuthService {
 
     payloadRefreshToken(token: string): Promise<Record<string, any>>;
 
-    encryptPermissionToken(payload: Record<string, any>): Promise<string>;
-
-    decryptPermissionToken({
-        data,
-    }: Record<string, any>): Promise<Record<string, any>>;
-
-    createPermissionToken(
-        payloadHashed: string | Record<string, any>
-    ): Promise<string>;
-
-    validatePermissionToken(token: string): Promise<boolean>;
-
-    payloadPermissionToken(token: string): Promise<Record<string, any>>;
-
     validateUser(
         passwordString: string,
         passwordHash: string
@@ -55,19 +41,15 @@ export interface IAuthService {
 
     createPayloadAccessToken(
         data: Record<string, any>,
-        rememberMe: boolean,
         options?: IAuthPayloadOptions
     ): Promise<Record<string, any>>;
 
     createPayloadRefreshToken(
         _id: string,
-        rememberMe: boolean,
-        options?: IAuthPayloadOptions
+        options: IAuthPayloadOptions
     ): Promise<Record<string, any>>;
 
-    createPayloadPermissionToken(
-        data: Record<string, any>
-    ): Promise<Record<string, any>>;
+    createSalt(length: number): Promise<string>;
 
     createPassword(password: string): Promise<IAuthPassword>;
 
@@ -77,7 +59,7 @@ export interface IAuthService {
 
     getAccessTokenExpirationTime(): Promise<number>;
 
-    getRefreshTokenExpirationTime(rememberMe?: boolean): Promise<number>;
+    getRefreshTokenExpirationTime(): Promise<number>;
 
     getIssuer(): Promise<string>;
 
@@ -86,6 +68,4 @@ export interface IAuthService {
     getSubject(): Promise<string>;
 
     getPayloadEncryption(): Promise<boolean>;
-
-    getPermissionTokenExpirationTime(): Promise<number>;
 }

@@ -29,7 +29,6 @@ export default async function (app: NestApplication) {
             .addTag("API's")
             .addServer(`/`)
             .addServer(`/staging`)
-            .addServer(`/production`)
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
                 'accessToken'
@@ -41,15 +40,6 @@ export default async function (app: NestApplication) {
             .addApiKey(
                 { type: 'apiKey', in: 'header', name: 'x-api-key' },
                 'apiKey'
-            )
-            .addApiKey(
-                {
-                    type: 'apiKey',
-                    in: 'header',
-                    name: 'x-permission-token',
-                    description: 'grant permission for /admin prefix endpoints',
-                },
-                'permissionToken'
             )
             .build();
 

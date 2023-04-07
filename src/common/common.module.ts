@@ -20,6 +20,7 @@ import { DatabaseOptionsModule } from 'src/common/database/database.options.modu
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 import { APP_LANGUAGE } from 'src/app/constants/app.constant';
+import { PolicyModule } from 'src/common/policy/policy.module';
 
 @Module({
     controllers: [],
@@ -96,20 +97,8 @@ import { APP_LANGUAGE } from 'src/app/constants/app.constant';
                 AUTH_JWT_REFRESH_TOKEN_EXPIRED: Joi.string()
                     .default('7d')
                     .required(),
-                AUTH_JWT_REFRESH_TOKEN_REMEMBER_ME_EXPIRED: Joi.string()
-                    .default('30d')
-                    .required(),
                 AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION: Joi.string()
                     .default('15m')
-                    .required(),
-
-                AUTH_PERMISSION_TOKEN_SECRET_KEY: Joi.string()
-                    .alphanum()
-                    .min(5)
-                    .max(50)
-                    .required(),
-                AUTH_PERMISSION_TOKEN_EXPIRED: Joi.string()
-                    .default('5m')
                     .required(),
 
                 AUTH_JWT_PAYLOAD_ENCRYPT: Joi.boolean()
@@ -131,16 +120,6 @@ import { APP_LANGUAGE } from 'src/app/constants/app.constant';
                     .max(50)
                     .optional(),
                 AUTH_JWT_PAYLOAD_REFRESH_TOKEN_ENCRYPT_IV: Joi.string()
-                    .allow(null, '')
-                    .min(16)
-                    .max(50)
-                    .optional(),
-                AUTH_PAYLOAD_PERMISSION_TOKEN_ENCRYPT_KEY: Joi.string()
-                    .allow(null, '')
-                    .min(20)
-                    .max(50)
-                    .optional(),
-                AUTH_PAYLOAD_PERMISSION_TOKEN_ENCRYPT_IV: Joi.string()
                     .allow(null, '')
                     .min(16)
                     .max(50)
@@ -170,6 +149,7 @@ import { APP_LANGUAGE } from 'src/app/constants/app.constant';
         DebuggerModule.forRoot(),
         ResponseModule,
         RequestModule,
+        PolicyModule,
         SettingModule,
         LoggerModule,
         ApiKeyModule,

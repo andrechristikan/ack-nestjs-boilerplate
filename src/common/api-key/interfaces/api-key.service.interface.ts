@@ -1,18 +1,22 @@
 import {
+    ApiKeyCreateByUserDto,
     ApiKeyCreateDto,
     ApiKeyCreateRawDto,
 } from 'src/common/api-key/dtos/api-key.create.dto';
 import { ApiKeyUpdateDateDto } from 'src/common/api-key/dtos/api-key.update-date.dto';
 import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
-import { IApiKeyEntity } from 'src/common/api-key/interfaces/api-key.interface';
-import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
+import { IApiKeyCreated } from 'src/common/api-key/interfaces/api-key.interface';
+import {
+    ApiKeyDoc,
+    ApiKeyEntity,
+} from 'src/common/api-key/repository/entities/api-key.entity';
 import {
     IDatabaseCreateOptions,
+    IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
     IDatabaseManyOptions,
     IDatabaseOptions,
-    IDatabaseSoftDeleteOptions,
 } from 'src/common/database/interfaces/database.interface';
 
 export interface IApiKeyService {
@@ -24,82 +28,112 @@ export interface IApiKeyService {
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKeyEntity>;
+    ): Promise<ApiKeyDoc>;
 
     findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKeyEntity>;
+    ): Promise<ApiKeyDoc>;
 
     findOneByKey(
         key: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKeyEntity>;
+    ): Promise<ApiKeyDoc>;
 
     findOneByActiveKey(
         key: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<ApiKeyEntity>;
+    ): Promise<ApiKeyDoc>;
+
+    findAllByUser(
+        user: string,
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<ApiKeyEntity[]>;
+
+    findOneByIdAndUser(
+        user: string,
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ApiKeyDoc>;
+
+    findOneByUser(
+        user: string,
+        find: Record<string, any>,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ApiKeyDoc>;
+
+    findOneByKeyAndUser(
+        user: string,
+        key: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ApiKeyDoc>;
+
+    findOneByActiveKeyAndUser(
+        user: string,
+        key: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<ApiKeyDoc>;
+
+    existByUser(
+        user: string,
+        options?: IDatabaseExistOptions
+    ): Promise<boolean>;
 
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseOptions
     ): Promise<number>;
 
-    active(_id: string, options?: IDatabaseOptions): Promise<ApiKeyEntity>;
-
-    inactive(_id: string, options?: IDatabaseOptions): Promise<ApiKeyEntity>;
+    getTotalByUser(
+        user: string,
+        find?: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<number>;
 
     create(
-        data: ApiKeyCreateDto,
+        { name, description, startDate, endDate, user }: ApiKeyCreateDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyEntity>;
+    ): Promise<IApiKeyCreated>;
+
+    createByUser(
+        user: string,
+        { name, description, startDate, endDate }: ApiKeyCreateByUserDto,
+        options?: IDatabaseCreateOptions
+    ): Promise<IApiKeyCreated>;
 
     createRaw(
-        data: ApiKeyCreateRawDto,
+        {
+            name,
+            description,
+            key,
+            secret,
+            startDate,
+            endDate,
+            user,
+        }: ApiKeyCreateRawDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyEntity>;
+    ): Promise<IApiKeyCreated>;
 
+    active(repository: ApiKeyDoc): Promise<ApiKeyDoc>;
+    inactive(repository: ApiKeyDoc): Promise<ApiKeyDoc>;
     update(
-        _id: string,
-        data: ApiKeyUpdateDto,
-        options?: IDatabaseOptions
-    ): Promise<ApiKeyEntity>;
-
+        repository: ApiKeyDoc,
+        { name, description }: ApiKeyUpdateDto
+    ): Promise<ApiKeyDoc>;
     updateDate(
-        _id: string,
-        data: ApiKeyUpdateDateDto,
-        options?: IDatabaseOptions
-    ): Promise<ApiKeyEntity>;
-
-    reset(
-        _id: string,
-        key: string,
-        options?: IDatabaseOptions
-    ): Promise<IApiKeyEntity>;
-
-    deleteOneById(
-        _id: string,
-        options?: IDatabaseSoftDeleteOptions
-    ): Promise<ApiKeyEntity>;
-
-    deleteOne(
-        find: Record<string, any>,
-        options?: IDatabaseSoftDeleteOptions
-    ): Promise<ApiKeyEntity>;
-
+        repository: ApiKeyDoc,
+        { startDate, endDate }: ApiKeyUpdateDateDto
+    ): Promise<ApiKeyDoc>;
+    reset(repository: ApiKeyDoc, secret: string): Promise<ApiKeyDoc>;
+    delete(repository: ApiKeyDoc): Promise<ApiKeyDoc>;
     validateHashApiKey(hashFromRequest: string, hash: string): Promise<boolean>;
-
     createKey(): Promise<string>;
-
     createSecret(): Promise<string>;
-
     createHashApiKey(key: string, secret: string): Promise<string>;
-
     deleteMany(
         find: Record<string, any>,
         options?: IDatabaseManyOptions
     ): Promise<boolean>;
-
     inactiveManyByEndDate(options?: IDatabaseManyOptions): Promise<boolean>;
 }

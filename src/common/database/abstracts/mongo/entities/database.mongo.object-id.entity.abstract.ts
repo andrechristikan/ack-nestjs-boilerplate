@@ -7,12 +7,8 @@ import {
     DATABASE_UPDATED_AT_FIELD_NAME,
 } from 'src/common/database/constants/database.constant';
 import { DatabaseDefaultObjectId } from 'src/common/database/constants/database.function.constant';
-import { IDatabaseBaseEntity } from 'src/common/database/interfaces/database.entity.interface';
 
-export abstract class DatabaseMongoObjectIdEntityAbstract
-    extends DatabaseBaseEntityAbstract
-    implements IDatabaseBaseEntity<Types.ObjectId>
-{
+export abstract class DatabaseMongoObjectIdEntityAbstract extends DatabaseBaseEntityAbstract<Types.ObjectId> {
     @Prop({
         type: Types.ObjectId,
         default: DatabaseDefaultObjectId,

@@ -5,7 +5,10 @@ import {
     LoggerCreateRawDto,
 } from 'src/common/logger/dtos/logger.create.dto';
 import { ILoggerService } from 'src/common/logger/interfaces/logger.service.interface';
-import { LoggerEntity } from 'src/common/logger/repository/entities/logger.entity';
+import {
+    LoggerDoc,
+    LoggerEntity,
+} from 'src/common/logger/repository/entities/logger.entity';
 import { LoggerRepository } from 'src/common/logger/repository/repositories/logger.repository';
 
 @Injectable()
@@ -20,13 +23,13 @@ export class LoggerService implements ILoggerService {
         method,
         requestId,
         role,
-        accessFor,
+        type,
         params,
         bodies,
         path,
         statusCode,
         tags,
-    }: LoggerCreateDto): Promise<LoggerEntity> {
+    }: LoggerCreateDto): Promise<LoggerDoc> {
         const create: LoggerEntity = new LoggerEntity();
         create.level = ENUM_LOGGER_LEVEL.INFO;
         create.user = user;
@@ -37,7 +40,7 @@ export class LoggerService implements ILoggerService {
         create.method = method;
         create.requestId = requestId;
         create.role = role;
-        create.accessFor = accessFor;
+        create.type = type;
         create.params = params;
         create.bodies = bodies;
         create.path = path;
@@ -55,13 +58,13 @@ export class LoggerService implements ILoggerService {
         method,
         requestId,
         role,
-        accessFor,
+        type,
         params,
         bodies,
         path,
         statusCode,
         tags,
-    }: LoggerCreateDto): Promise<LoggerEntity> {
+    }: LoggerCreateDto): Promise<LoggerDoc> {
         const create: LoggerEntity = new LoggerEntity();
         create.level = ENUM_LOGGER_LEVEL.DEBUG;
         create.user = user;
@@ -72,7 +75,7 @@ export class LoggerService implements ILoggerService {
         create.method = method;
         create.requestId = requestId;
         create.role = role;
-        create.accessFor = accessFor;
+        create.type = type;
         create.params = params;
         create.bodies = bodies;
         create.path = path;
@@ -90,15 +93,15 @@ export class LoggerService implements ILoggerService {
         method,
         requestId,
         role,
-        accessFor,
+        type,
         params,
         bodies,
         path,
         statusCode,
         tags,
-    }: LoggerCreateDto): Promise<LoggerEntity> {
+    }: LoggerCreateDto): Promise<LoggerDoc> {
         const create: LoggerEntity = new LoggerEntity();
-        create.level = ENUM_LOGGER_LEVEL.WARM;
+        create.level = ENUM_LOGGER_LEVEL.WARN;
         create.user = user;
         create.apiKey = apiKey;
         create.anonymous = !user;
@@ -107,7 +110,7 @@ export class LoggerService implements ILoggerService {
         create.method = method;
         create.requestId = requestId;
         create.role = role;
-        create.accessFor = accessFor;
+        create.type = type;
         create.params = params;
         create.bodies = bodies;
         create.path = path;
@@ -125,13 +128,13 @@ export class LoggerService implements ILoggerService {
         method,
         requestId,
         role,
-        accessFor,
+        type,
         params,
         bodies,
         path,
         statusCode,
         tags,
-    }: LoggerCreateDto): Promise<LoggerEntity> {
+    }: LoggerCreateDto): Promise<LoggerDoc> {
         const create: LoggerEntity = new LoggerEntity();
         create.level = ENUM_LOGGER_LEVEL.FATAL;
         create.user = user;
@@ -142,7 +145,7 @@ export class LoggerService implements ILoggerService {
         create.method = method;
         create.requestId = requestId;
         create.role = role;
-        create.accessFor = accessFor;
+        create.type = type;
         create.params = params;
         create.bodies = bodies;
         create.path = path;
@@ -161,13 +164,13 @@ export class LoggerService implements ILoggerService {
         method,
         requestId,
         role,
-        accessFor,
+        type,
         params,
         bodies,
         path,
         statusCode,
         tags,
-    }: LoggerCreateRawDto): Promise<LoggerEntity> {
+    }: LoggerCreateRawDto): Promise<LoggerDoc> {
         const create: LoggerEntity = new LoggerEntity();
         create.level = level;
         create.user = user;
@@ -178,7 +181,7 @@ export class LoggerService implements ILoggerService {
         create.method = method;
         create.requestId = requestId;
         create.role = role;
-        create.accessFor = accessFor;
+        create.type = type;
         create.params = params;
         create.bodies = bodies;
         create.path = path;

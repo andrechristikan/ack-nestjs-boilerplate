@@ -3,10 +3,6 @@ import {
     ApiKeyDocParamsGet,
     ApiKeyDocQueryIsActive,
 } from 'src/common/api-key/constants/api-key.doc';
-import {
-    API_KEY_DEFAULT_AVAILABLE_SEARCH,
-    API_KEY_DEFAULT_AVAILABLE_SORT,
-} from 'src/common/api-key/constants/api-key.list.constant';
 import { ApiKeyCreateSerialization } from 'src/common/api-key/serializations/api-key.create.serialization';
 import { ApiKeyGetSerialization } from 'src/common/api-key/serializations/api-key.get.serialization';
 import { ApiKeyListSerialization } from 'src/common/api-key/serializations/api-key.list.serialization';
@@ -18,15 +14,12 @@ export function ApiKeyListDoc(): MethodDecorator {
         DocPaging<ApiKeyListSerialization>('apiKey.list', {
             auth: {
                 jwtAccessToken: true,
-                permissionToken: true,
             },
             request: {
                 queries: ApiKeyDocQueryIsActive,
             },
             response: {
                 serialization: ApiKeyListSerialization,
-                _availableSort: API_KEY_DEFAULT_AVAILABLE_SORT,
-                _availableSearch: API_KEY_DEFAULT_AVAILABLE_SEARCH,
             },
         })
     );
@@ -37,7 +30,6 @@ export function ApiKeyGetDoc(): MethodDecorator {
         Doc<ApiKeyGetSerialization>('apiKey.get', {
             auth: {
                 jwtAccessToken: true,
-                permissionToken: true,
             },
             request: {
                 params: ApiKeyDocParamsGet,
@@ -52,7 +44,6 @@ export function ApiKeyCreateDoc(): MethodDecorator {
         Doc<ApiKeyCreateSerialization>('apiKey.create', {
             auth: {
                 jwtAccessToken: true,
-                permissionToken: true,
             },
             response: {
                 httpStatus: HttpStatus.CREATED,
@@ -67,7 +58,6 @@ export function ApiKeyActiveDoc(): MethodDecorator {
         Doc<void>('apiKey.active', {
             auth: {
                 jwtAccessToken: true,
-                permissionToken: true,
             },
             request: {
                 params: ApiKeyDocParamsGet,
@@ -81,7 +71,6 @@ export function ApiKeyInactiveDoc(): MethodDecorator {
         Doc<void>('apiKey.inactive', {
             auth: {
                 jwtAccessToken: true,
-                permissionToken: true,
             },
             request: {
                 params: ApiKeyDocParamsGet,
@@ -95,7 +84,6 @@ export function ApiKeyResetDoc(): MethodDecorator {
         Doc<void>('apiKey.reset', {
             auth: {
                 jwtAccessToken: true,
-                permissionToken: true,
             },
             request: {
                 params: ApiKeyDocParamsGet,
@@ -112,7 +100,6 @@ export function ApiKeyUpdateDoc(): MethodDecorator {
         Doc<ResponseIdSerialization>('apiKey.update', {
             auth: {
                 jwtAccessToken: true,
-                permissionToken: true,
             },
             request: {
                 params: ApiKeyDocParamsGet,

@@ -12,17 +12,13 @@ import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.seriali
 import { Readable } from 'stream';
 
 export interface IAwsS3Service {
-    checkConnection(): Promise<HeadBucketCommandOutput>;
-
+    checkBucketExistence(): Promise<HeadBucketCommandOutput>;
     listBucket(): Promise<string[]>;
-
     listItemInBucket(prefix?: string): Promise<AwsS3Serialization[]>;
-
     getItemInBucket(
         filename: string,
         path?: string
     ): Promise<Readable | ReadableStream<any> | Blob>;
-
     putItemInBucket(
         filename: string,
         content:
@@ -34,30 +30,23 @@ export interface IAwsS3Service {
             | Blob,
         options?: IAwsS3PutItemOptions
     ): Promise<AwsS3Serialization>;
-
     deleteItemInBucket(filename: string): Promise<void>;
-
     deleteItemsInBucket(filenames: string[]): Promise<void>;
-
     deleteFolder(dir: string): Promise<void>;
-
     createMultiPart(
         filename: string,
         options?: IAwsS3PutItemOptions
     ): Promise<AwsS3MultipartSerialization>;
-
     uploadPart(
         path: string,
         content: UploadPartRequest['Body'] | string | Uint8Array | Buffer,
         uploadId: string,
         partNumber: number
     ): Promise<AwsS3MultipartPartsSerialization>;
-
     completeMultipart(
         path: string,
         uploadId: string,
         parts: CompletedPart[]
     ): Promise<void>;
-
     abortMultipart(path: string, uploadId: string): Promise<void>;
 }

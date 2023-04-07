@@ -1,9 +1,7 @@
 import { ValidationError } from 'class-validator';
 import { ERROR_TYPE } from 'src/common/error/constants/error.enum.constant';
-import {
-    IMessage,
-    IMessageOptionsProperties,
-} from 'src/common/message/interfaces/message.interface';
+import { IMessage } from 'src/common/message/interfaces/message.interface';
+import { IResponseCustomPropertyMetadata } from 'src/common/response/interfaces/response.interface';
 
 // error default
 export interface IErrors {
@@ -23,33 +21,28 @@ export interface IValidationErrorImport extends Omit<IErrorsImport, 'errors'> {
 }
 
 // error exception
-export interface IErrorException {
-    statusCode: number;
-    message: string;
-    _error?: string;
-    errors?: ValidationError[] | IValidationErrorImport[];
-    _errorType?: ERROR_TYPE;
-    _metadata?: Record<string, any>;
-    data?: Record<string, any>;
-    properties?: IMessageOptionsProperties;
-}
 
-// final error
+export type IErrorCustomPropertyMetadata = Pick<
+    IResponseCustomPropertyMetadata,
+    'messageProperties'
+>;
 
-export interface IErrorHttpFilterMetadata {
-    languages: string[];
-    timestamp: number;
-    timezone: string;
-    requestId: string;
-    path: string;
+export interface IErrorMetadata {
+    customProperty?: IErrorCustomPropertyMetadata;
     [key: string]: any;
 }
 
-export interface IErrorHttpFilter {
+export interface IErrorException {
     statusCode: number;
-    message: string | IMessage;
-    _error?: string;
-    errors?: IErrors[] | IErrorsImport[];
-    _metadata: IErrorHttpFilterMetadata;
+    message: string;
+    errors?: ValidationError[] | IValidationErrorImport[];
     data?: Record<string, any>;
+    _error?: string;
+    _errorType?: ERROR_TYPE;
+    _metadata?: IErrorMetadata;
+}
+
+export interface IErrorHttpFilter
+    extends Omit<IErrorException, '_errorType' | 'message'> {
+    message: string | IMessage;
 }

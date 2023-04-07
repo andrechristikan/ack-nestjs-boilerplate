@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import { DashboardDto } from 'src/common/dashboard/dtos/dashboard';
 import {
     IDashboardStartAndEnd,
@@ -8,6 +9,7 @@ import { IDashboardService } from 'src/common/dashboard/interfaces/dashboard.ser
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
 
+@Injectable()
 export class DashboardService implements IDashboardService {
     constructor(
         private readonly helperDateService: HelperDateService,
@@ -15,9 +17,10 @@ export class DashboardService implements IDashboardService {
     ) {}
 
     async getStartAndEndDate(
-        date: DashboardDto
+        date?: DashboardDto
     ): Promise<IDashboardStartAndEndDate> {
         const today = this.helperDateService.create();
+
         let { startDate, endDate } = date;
 
         if (!startDate && !endDate) {

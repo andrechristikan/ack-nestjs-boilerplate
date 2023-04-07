@@ -8,7 +8,6 @@ export function SettingUpdateDoc(): MethodDecorator {
         Doc<ResponseIdSerialization>('setting.update', {
             auth: {
                 jwtAccessToken: true,
-                permissionToken: true,
             },
             request: {
                 params: SettingDocParamsGet,

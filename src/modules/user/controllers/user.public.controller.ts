@@ -14,14 +14,15 @@ import {
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { Response } from 'src/common/response/decorators/response.decorator';
-import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
-import { RoleService } from 'src/modules/role/services/role.service';
+import { RoleDoc } from 'src/common/role/repository/entities/role.entity';
+import { RoleService } from 'src/common/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import {
     UserDeleteSelfDoc,
     UserSignUpDoc,
 } from 'src/modules/user/docs/user.public.doc';
 import { UserSignUpDto } from 'src/modules/user/dtos/user.sign-up.dto';
+import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserService } from 'src/modules/user/services/user.service';
 
 @ApiTags('modules.public.user')
@@ -43,9 +44,7 @@ export class UserPublicController {
         @Body()
         { email, mobileNumber, username, ...body }: UserSignUpDto
     ): Promise<void> {
-        const role: RoleEntity = await this.roleService.findOne<RoleEntity>({
-            name: 'user',
-        });
+        const role: RoleDoc = await this.roleService.findOneByName('user');
 
         const usernameExist: boolean = await this.userService.existByUsername(
             username
@@ -104,7 +103,9 @@ export class UserPublicController {
     @Delete('/delete')
     async deleteSelf(@AuthJwtPayload('_id') _id: string): Promise<void> {
         try {
-            await this.userService.inactive(_id);
+            const user: UserDoc = await this.userService.findOneById(_id);
+
+            await this.userService.inactive(user);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

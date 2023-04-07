@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { Observable } from 'rxjs';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+import { IResult } from 'ua-parser-js';
 
 @Injectable()
 export class RequestUserAgentInterceptor
@@ -35,7 +36,7 @@ export class RequestUserAgentInterceptor
                 .switchToHttp()
                 .getRequest<IRequestApp>();
 
-            const userAgent = request.userAgent;
+            const userAgent: IResult = request.__userAgent;
 
             if (
                 !this.userAgentOs.some((val) =>

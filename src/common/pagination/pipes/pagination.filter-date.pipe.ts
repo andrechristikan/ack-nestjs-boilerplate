@@ -1,16 +1,23 @@
-import { Injectable, mixin, Type } from '@nestjs/common';
-import { ArgumentMetadata, PipeTransform } from '@nestjs/common/interfaces';
+import { Inject, Injectable, mixin, Type } from '@nestjs/common';
+import {
+    ArgumentMetadata,
+    PipeTransform,
+    Scope,
+} from '@nestjs/common/interfaces';
+import { REQUEST } from '@nestjs/core';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { ENUM_PAGINATION_FILTER_DATE_TIME_OPTIONS } from 'src/common/pagination/constants/pagination.enum.constant';
 import { IPaginationFilterDateOptions } from 'src/common/pagination/interfaces/pagination.interface';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationFilterDatePipe(
     options?: IPaginationFilterDateOptions
 ): Type<PipeTransform> {
-    @Injectable()
+    @Injectable({ scope: Scope.REQUEST })
     class MixinPaginationFilterDatePipe implements PipeTransform {
         constructor(
+            @Inject(REQUEST) protected readonly request: IRequestApp,
             private readonly paginationService: PaginationService,
             private readonly helperDateService: HelperDateService
         ) {}
@@ -32,6 +39,11 @@ export function PaginationFilterDatePipe(
             ) {
                 date = this.helperDateService.startOfDay(date);
             }
+
+            this.request.__filters = {
+                ...this.request.__filters,
+                [field]: value,
+            };
 
             return this.paginationService.filterDate(field, date);
         }

@@ -1,10 +1,10 @@
 import { DynamicModule, ForwardReference, Module, Type } from '@nestjs/common';
 import { RouterModule as NestJsRouterModule } from '@nestjs/core';
 import { RoutesAdminModule } from './routes/routes.admin.module';
-import { RoutesCallbackModule } from './routes/routes.callback.module';
-import { RoutesModule } from './routes/routes.module';
-import { RoutesPublicModule } from './routes/routes.public.module';
-import { RoutesTestModule } from './routes/routes.test.module';
+import { RoutesUserModule } from 'src/router/routes/routes.user.module';
+import { RoutesPublicModule } from 'src/router/routes/routes.public.module';
+import { AppController } from 'src/app/controllers/app.controller';
+import { RoutesAuthModule } from 'src/router/routes/routes.auth.module';
 
 @Module({})
 export class RouterModule {
@@ -18,20 +18,11 @@ export class RouterModule {
 
         if (process.env.HTTP_ENABLE === 'true') {
             imports.push(
-                RoutesModule,
-                RoutesTestModule,
                 RoutesPublicModule,
+                RoutesUserModule,
                 RoutesAdminModule,
-                RoutesCallbackModule,
+                RoutesAuthModule,
                 NestJsRouterModule.register([
-                    {
-                        path: '/',
-                        module: RoutesModule,
-                    },
-                    {
-                        path: '/test',
-                        module: RoutesTestModule,
-                    },
                     {
                         path: '/public',
                         module: RoutesPublicModule,
@@ -41,8 +32,12 @@ export class RouterModule {
                         module: RoutesAdminModule,
                     },
                     {
-                        path: '/callback',
-                        module: RoutesCallbackModule,
+                        path: '/user',
+                        module: RoutesUserModule,
+                    },
+                    {
+                        path: '/auth',
+                        module: RoutesAuthModule,
                     },
                 ])
             );
@@ -52,7 +47,7 @@ export class RouterModule {
             module: RouterModule,
             providers: [],
             exports: [],
-            controllers: [],
+            controllers: [AppController],
             imports,
         };
     }

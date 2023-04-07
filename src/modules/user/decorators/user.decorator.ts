@@ -1,9 +1,15 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { IUserEntity } from 'src/modules/user/interfaces/user.interface';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+import {
+    UserDoc,
+    UserEntity,
+} from 'src/modules/user/repository/entities/user.entity';
 
 export const GetUser = createParamDecorator(
-    (data: string, ctx: ExecutionContext): IUserEntity => {
-        const { __user } = ctx.switchToHttp().getRequest();
-        return __user;
+    (returnPlain: boolean, ctx: ExecutionContext): UserDoc | UserEntity => {
+        const { __user } = ctx
+            .switchToHttp()
+            .getRequest<IRequestApp & { __user: UserDoc }>();
+        return returnPlain ? __user.toObject() : __user;
     }
 );

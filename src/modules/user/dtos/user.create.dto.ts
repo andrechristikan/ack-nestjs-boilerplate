@@ -87,5 +87,6 @@ export class UserCreateDto {
     })
     @IsNotEmpty()
     @IsPasswordStrong()
+    @MaxLength(50)
     readonly password: string;
 }

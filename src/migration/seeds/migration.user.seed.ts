@@ -2,9 +2,9 @@ import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { UserService } from 'src/modules/user/services/user.service';
-import { RoleService } from 'src/modules/role/services/role.service';
-import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
-import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
+import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+import { RoleDoc } from 'src/common/role/repository/entities/role.entity';
+import { RoleService } from 'src/common/role/services/role.service';
 
 @Injectable()
 export class MigrationUserSeed {
@@ -20,24 +20,20 @@ export class MigrationUserSeed {
     })
     async seeds(): Promise<void> {
         const password = 'aaAA@@123444';
-        const superadminRole: RoleEntity =
-            await this.roleService.findOne<RoleEntity>({
-                name: 'superadmin',
-            });
-        const adminRole: RoleEntity =
-            await this.roleService.findOne<RoleEntity>({
-                name: 'admin',
-            });
-        const userRole: RoleEntity = await this.roleService.findOne<RoleEntity>(
-            {
-                name: 'user',
-            }
+        const superadminRole: RoleDoc = await this.roleService.findOneByName(
+            'superadmin'
         );
+        const adminRole: RoleDoc = await this.roleService.findOneByName(
+            'admin'
+        );
+        const memberRole: RoleDoc = await this.roleService.findOneByName(
+            'member'
+        );
+        const userRole: RoleDoc = await this.roleService.findOneByName('user');
         const passwordHash = await this.authService.createPassword(
             'aaAA@@123444'
         );
-
-        const user1: Promise<UserEntity> = this.userService.create(
+        const user1: Promise<UserDoc> = this.userService.create(
             {
                 username: 'superadmin',
                 firstName: 'superadmin',
@@ -49,8 +45,7 @@ export class MigrationUserSeed {
             },
             passwordHash
         );
-
-        const user2: Promise<UserEntity> = this.userService.create(
+        const user2: Promise<UserDoc> = this.userService.create(
             {
                 username: 'admin',
                 firstName: 'admin',
@@ -62,8 +57,7 @@ export class MigrationUserSeed {
             },
             passwordHash
         );
-
-        const user3: Promise<UserEntity> = this.userService.create(
+        const user3: Promise<UserDoc> = this.userService.create(
             {
                 username: 'user',
                 firstName: 'user',
@@ -75,9 +69,21 @@ export class MigrationUserSeed {
             },
             passwordHash
         );
+        const user4: Promise<UserDoc> = this.userService.create(
+            {
+                username: 'member',
+                firstName: 'member',
+                lastName: 'test',
+                email: 'member@mail.com',
+                password,
+                mobileNumber: '08111111444',
+                role: memberRole._id,
+            },
+            passwordHash
+        );
 
         try {
-            await Promise.all([user1, user2, user3]);
+            await Promise.all([user1, user2, user3, user4]);
         } catch (err: any) {
             throw new Error(err.message);
         }

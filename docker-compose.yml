@@ -1,9 +1,9 @@
 version: '3.8'
 services:
-  ackService:
+  service:
     build: .
-    container_name: ackService
-    hostname: ackService
+    container_name: service
+    hostname: service
     ports:
       - 3000:3000
     networks:
@@ -14,24 +14,49 @@ services:
     restart: unless-stopped
     depends_on: 
       - ackDatabase
-  ackDatabase:
-    image: mongo:latest
-    container_name: ackDatabase
-    hostname: ackDatabase
+  mongo1:
+    container_name: mongo1
+    hostname: mongo1
+    image: mongo
     ports:
-      - 27017:27017
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: 123456
-      MONGO_INITDB_DATABASE: ack
-    volumes:
-      - dbdata:/data/db
-    restart: unless-stopped
+      - 30001:27017 
+    restart: always
     networks:
       - app-network
+    volumes:
+      - dbdata1:/data/db
+    command: mongod --bind_ip_all --replSet rs0
+
+  mongo2:
+    container_name: mongo2
+    hostname: mongo2
+    image: mongo
+    ports:
+      - 30002:27017
+    networks:
+      - app-network
+    restart: always
+    volumes:
+      - dbdata2:/data/db
+    command: mongod --bind_ip_all --replSet rs0
+
+  mongo3:
+    container_name: mongo3
+    hostname: mongo3
+    image: mongo
+    ports:
+      - 30003:27017
+    networks:
+      - app-network
+    restart: always
+    volumes:
+      - dbdata3:/data/db
+    command: mongod --bind_ip_all --replSet rs0
 networks:
   app-network:
     name: app-network
     driver: bridge
 volumes:
-  dbdata:
+  dbdata1:
+  dbdata2:
+  dbdata3:

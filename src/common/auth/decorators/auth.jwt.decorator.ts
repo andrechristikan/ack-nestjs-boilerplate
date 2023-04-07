@@ -1,21 +1,25 @@
 import { applyDecorators, SetMetadata, UseGuards } from '@nestjs/common';
-import { AUTH_ACCESS_FOR_META_KEY } from 'src/common/auth/constants/auth.constant';
-import { ENUM_AUTH_ACCESS_FOR } from 'src/common/auth/constants/auth.enum.constant';
 import { AuthJwtAccessGuard } from 'src/common/auth/guards/jwt-access/auth.jwt-access.guard';
 import { AuthJwtRefreshGuard } from 'src/common/auth/guards/jwt-refresh/auth.jwt-refresh.guard';
-import { AuthPayloadAccessForGuard } from 'src/common/auth/guards/payload/auth.payload.access-for.guard';
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+import { RolePayloadTypeGuard } from 'src/common/role/guards/payload/role.payload.type.guard';
+import { ROLE_TYPE_META_KEY } from 'src/common/role/constants/role.constant';
+import { ENUM_ROLE_TYPE } from 'src/common/role/constants/role.enum.constant';
 
 export const AuthJwtPayload = createParamDecorator(
     (data: string, ctx: ExecutionContext): Record<string, any> => {
-        const { user } = ctx.switchToHttp().getRequest();
+        const { user } = ctx
+            .switchToHttp()
+            .getRequest<IRequestApp & { user: UserPayloadSerialization }>();
         return data ? user[data] : user;
     }
 );
 
 export const AuthJwtToken = createParamDecorator(
     (data: string, ctx: ExecutionContext): string => {
-        const { headers } = ctx.switchToHttp().getRequest();
+        const { headers } = ctx.switchToHttp().getRequest<IRequestApp>();
         const { authorization } = headers;
         const authorizations: string[] = authorization.split(' ');
 
@@ -29,17 +33,17 @@ export function AuthJwtAccessProtected(): MethodDecorator {
 
 export function AuthJwtPublicAccessProtected(): MethodDecorator {
     return applyDecorators(
-        UseGuards(AuthJwtAccessGuard, AuthPayloadAccessForGuard),
-        SetMetadata(AUTH_ACCESS_FOR_META_KEY, [ENUM_AUTH_ACCESS_FOR.USER])
+        UseGuards(AuthJwtAccessGuard, RolePayloadTypeGuard),
+        SetMetadata(ROLE_TYPE_META_KEY, [ENUM_ROLE_TYPE.USER])
     );
 }
 
 export function AuthJwtAdminAccessProtected(): MethodDecorator {
     return applyDecorators(
-        UseGuards(AuthJwtAccessGuard, AuthPayloadAccessForGuard),
-        SetMetadata(AUTH_ACCESS_FOR_META_KEY, [
-            ENUM_AUTH_ACCESS_FOR.SUPER_ADMIN,
-            ENUM_AUTH_ACCESS_FOR.ADMIN,
+        UseGuards(AuthJwtAccessGuard, RolePayloadTypeGuard),
+        SetMetadata(ROLE_TYPE_META_KEY, [
+            ENUM_ROLE_TYPE.SUPER_ADMIN,
+            ENUM_ROLE_TYPE.ADMIN,
         ])
     );
 }

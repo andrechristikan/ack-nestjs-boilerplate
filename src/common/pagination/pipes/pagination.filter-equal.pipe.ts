@@ -1,16 +1,23 @@
-import { Injectable, mixin, Type } from '@nestjs/common';
-import { ArgumentMetadata, PipeTransform } from '@nestjs/common/interfaces';
+import { Inject, Injectable, mixin, Type } from '@nestjs/common';
+import {
+    ArgumentMetadata,
+    PipeTransform,
+    Scope,
+} from '@nestjs/common/interfaces';
+import { REQUEST } from '@nestjs/core';
 import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
 import { ENUM_PAGINATION_FILTER_CASE_OPTIONS } from 'src/common/pagination/constants/pagination.enum.constant';
 import { IPaginationFilterStringEqualOptions } from 'src/common/pagination/interfaces/pagination.interface';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationFilterEqualPipe(
     options?: IPaginationFilterStringEqualOptions
 ): Type<PipeTransform> {
-    @Injectable()
+    @Injectable({ scope: Scope.REQUEST })
     class MixinPaginationFilterEqualPipe implements PipeTransform {
         constructor(
+            @Inject(REQUEST) protected readonly request: IRequestApp,
             private readonly paginationService: PaginationService,
             private readonly helperNumberService: HelperNumberService
         ) {}
@@ -43,6 +50,11 @@ export function PaginationFilterEqualPipe(
                     ? this.helperNumberService.create(value)
                     : value;
             }
+
+            this.request.__filters = {
+                ...this.request.__filters,
+                [field]: finalValue,
+            };
 
             return this.paginationService.filterEqual<string | number>(
                 field,
