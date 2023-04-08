@@ -2,8 +2,9 @@ import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
-    IDatabaseOptions,
+    IDatabaseGetTotalOptions,
     IDatabaseManyOptions,
+    IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
 import { SettingCreateDto } from 'src/common/setting/dtos/setting.create.dto';
@@ -28,7 +29,7 @@ export interface ISettingService {
     ): Promise<SettingDoc>;
     getTotal(
         find?: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseGetTotalOptions
     ): Promise<number>;
     create(
         { name, description, type, value }: SettingCreateDto,
@@ -36,9 +37,13 @@ export interface ISettingService {
     ): Promise<SettingDoc>;
     updateValue(
         repository: SettingDoc,
-        { type, value }: SettingUpdateValueDto
+        { type, value }: SettingUpdateValueDto,
+        options?: IDatabaseSaveOptions
     ): Promise<SettingDoc>;
-    delete(repository: SettingDoc): Promise<SettingDoc>;
+    delete(
+        repository: SettingDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<SettingDoc>;
     getValue<T>(setting: SettingDoc): Promise<T>;
     checkValue(value: string, type: ENUM_SETTING_DATA_TYPE): Promise<boolean>;
     getMaintenance(): Promise<boolean>;

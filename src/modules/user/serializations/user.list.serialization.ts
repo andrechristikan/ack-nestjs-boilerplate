@@ -1,17 +1,12 @@
 import { OmitType } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
-import { UserGetSerialization } from './user.get.serialization';
+import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 
-export class UserListSerialization extends OmitType(UserGetSerialization, [
+export class UserListSerialization extends OmitType(UserProfileSerialization, [
     'role',
     'photo',
-    'passwordExpired',
-    'passwordCreated',
-    'passwordAttempt',
     'signUpDate',
-    'inactiveDate',
-    'blockedDate',
 ] as const) {
     @Exclude()
     readonly role: string;
@@ -20,20 +15,5 @@ export class UserListSerialization extends OmitType(UserGetSerialization, [
     readonly photo?: AwsS3Serialization;
 
     @Exclude()
-    readonly passwordExpired: Date;
-
-    @Exclude()
-    readonly passwordCreated: Date;
-
-    @Exclude()
-    readonly passwordAttempt: number;
-
-    @Exclude()
     readonly signUpDate: Date;
-
-    @Exclude()
-    readonly inactiveDate?: Date;
-
-    @Exclude()
-    readonly blockedDate?: Date;
 }

@@ -1,5 +1,19 @@
 import { applyDecorators, HttpStatus } from '@nestjs/common';
 import { Doc } from 'src/common/doc/decorators/doc.decorator';
+import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
+
+export function UserLoginDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc<UserLoginSerialization>('user.login', {
+            auth: {
+                jwtAccessToken: true,
+            },
+            response: {
+                serialization: UserLoginSerialization,
+            },
+        })
+    );
+}
 
 export function UserSignUpDoc(): MethodDecorator {
     return applyDecorators(
@@ -9,16 +23,6 @@ export function UserSignUpDoc(): MethodDecorator {
             },
             response: {
                 httpStatus: HttpStatus.CREATED,
-            },
-        })
-    );
-}
-
-export function UserDeleteSelfDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc<void>('user.deleteSelf', {
-            auth: {
-                jwtAccessToken: true,
             },
         })
     );

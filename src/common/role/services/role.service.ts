@@ -4,9 +4,10 @@ import {
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
-    IDatabaseOptions,
+    IDatabaseGetTotalOptions,
     IDatabaseManyOptions,
     IDatabaseCreateManyOptions,
+    IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { RoleCreateDto } from 'src/common/role/dtos/role.create.dto';
 import { RoleUpdatePermissionDto } from 'src/common/role/dtos/role.update-permission.dto';
@@ -52,7 +53,7 @@ export class RoleService implements IRoleService {
 
     async getTotal(
         find?: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseGetTotalOptions
     ): Promise<number> {
         return this.roleRepository.getTotal(find, options);
     }
@@ -85,37 +86,48 @@ export class RoleService implements IRoleService {
 
     async update(
         repository: RoleDoc,
-        { description }: RoleUpdateDto
+        { description }: RoleUpdateDto,
+        options?: IDatabaseSaveOptions
     ): Promise<RoleDoc> {
         repository.description = description;
 
-        return this.roleRepository.save(repository);
+        return this.roleRepository.save(repository, options);
     }
 
     async updatePermissions(
         repository: RoleDoc,
-        { permissions, type }: RoleUpdatePermissionDto
+        { permissions, type }: RoleUpdatePermissionDto,
+        options?: IDatabaseSaveOptions
     ): Promise<RoleDoc> {
         repository.permissions = permissions;
         repository.type = type;
 
-        return this.roleRepository.save(repository);
+        return this.roleRepository.save(repository, options);
     }
 
-    async active(repository: RoleDoc): Promise<RoleDoc> {
+    async active(
+        repository: RoleDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<RoleDoc> {
         repository.isActive = true;
 
-        return this.roleRepository.save(repository);
+        return this.roleRepository.save(repository, options);
     }
 
-    async inactive(repository: RoleDoc): Promise<RoleDoc> {
+    async inactive(
+        repository: RoleDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<RoleDoc> {
         repository.isActive = false;
 
-        return this.roleRepository.save(repository);
+        return this.roleRepository.save(repository, options);
     }
 
-    async delete(repository: RoleDoc): Promise<RoleDoc> {
-        return this.roleRepository.softDelete(repository);
+    async delete(
+        repository: RoleDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<RoleDoc> {
+        return this.roleRepository.softDelete(repository, options);
     }
 
     async deleteMany(

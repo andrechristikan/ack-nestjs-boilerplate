@@ -4,8 +4,9 @@ import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
-    IDatabaseOptions,
+    IDatabaseGetTotalOptions,
     IDatabaseManyOptions,
+    IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
 import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
@@ -63,7 +64,7 @@ export class SettingService implements ISettingService {
 
     async getTotal(
         find?: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseGetTotalOptions
     ): Promise<number> {
         return this.settingRepository.getTotal(find, options);
     }
@@ -83,16 +84,20 @@ export class SettingService implements ISettingService {
 
     async updateValue(
         repository: SettingDoc,
-        { type, value }: SettingUpdateValueDto
+        { type, value }: SettingUpdateValueDto,
+        options?: IDatabaseSaveOptions
     ): Promise<SettingDoc> {
         repository.type = type;
         repository.value = value;
 
-        return this.settingRepository.save(repository);
+        return this.settingRepository.save(repository, options);
     }
 
-    async delete(repository: SettingDoc): Promise<SettingDoc> {
-        return this.settingRepository.softDelete(repository);
+    async delete(
+        repository: SettingDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<SettingDoc> {
+        return this.settingRepository.softDelete(repository, options);
     }
 
     async getValue<T>(setting: SettingDoc): Promise<T> {

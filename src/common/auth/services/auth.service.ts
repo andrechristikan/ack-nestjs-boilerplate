@@ -6,6 +6,7 @@ import {
     IAuthRefreshTokenOptions,
 } from 'src/common/auth/interfaces/auth.interface';
 import { IAuthService } from 'src/common/auth/interfaces/auth.service.interface';
+import { ENUM_HELPER_DATE_FORMAT } from 'src/common/helper/constants/helper.enum.constant';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
@@ -236,6 +237,13 @@ export class AuthService implements IAuthService {
             passwordCreated,
             salt,
         };
+    }
+
+    async createPasswordRandom(): Promise<string> {
+        const today: Date = this.helperDateService.create();
+        return this.helperDateService.format(today, {
+            format: ENUM_HELPER_DATE_FORMAT.DATE,
+        });
     }
 
     async checkPasswordExpired(passwordExpired: Date): Promise<boolean> {

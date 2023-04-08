@@ -3,9 +3,10 @@ import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
-    IDatabaseOptions,
+    IDatabaseGetTotalOptions,
     IDatabaseManyOptions,
     IDatabaseExistOptions,
+    IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { IApiKeyService } from 'src/common/api-key/interfaces/api-key.service.interface';
 import { IApiKeyCreated } from 'src/common/api-key/interfaces/api-key.interface';
@@ -149,7 +150,7 @@ export class ApiKeyService implements IApiKeyService {
 
     async getTotal(
         find?: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseGetTotalOptions
     ): Promise<number> {
         return this.apiKeyRepository.getTotal(find, options);
     }
@@ -157,7 +158,7 @@ export class ApiKeyService implements IApiKeyService {
     async getTotalByUser(
         user: string,
         find?: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseGetTotalOptions
     ): Promise<number> {
         return this.apiKeyRepository.getTotal({ ...find, user }, options);
     }
@@ -250,39 +251,51 @@ export class ApiKeyService implements IApiKeyService {
         return { doc: created, secret };
     }
 
-    async active(repository: ApiKeyDoc): Promise<ApiKeyDoc> {
+    async active(
+        repository: ApiKeyDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<ApiKeyDoc> {
         repository.isActive = true;
 
-        return this.apiKeyRepository.save(repository);
+        return this.apiKeyRepository.save(repository, options);
     }
 
-    async inactive(repository: ApiKeyDoc): Promise<ApiKeyDoc> {
+    async inactive(
+        repository: ApiKeyDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<ApiKeyDoc> {
         repository.isActive = false;
 
-        return this.apiKeyRepository.save(repository);
+        return this.apiKeyRepository.save(repository, options);
     }
 
     async update(
         repository: ApiKeyDoc,
-        { name, description }: ApiKeyUpdateDto
+        { name, description }: ApiKeyUpdateDto,
+        options?: IDatabaseSaveOptions
     ): Promise<ApiKeyDoc> {
         repository.name = name;
         repository.description = description;
 
-        return this.apiKeyRepository.save(repository);
+        return this.apiKeyRepository.save(repository, options);
     }
 
     async updateDate(
         repository: ApiKeyDoc,
-        { startDate, endDate }: ApiKeyUpdateDateDto
+        { startDate, endDate }: ApiKeyUpdateDateDto,
+        options?: IDatabaseSaveOptions
     ): Promise<ApiKeyDoc> {
         repository.startDate = this.helperDateService.startOfDay(startDate);
         repository.endDate = this.helperDateService.endOfDay(endDate);
 
-        return this.apiKeyRepository.save(repository);
+        return this.apiKeyRepository.save(repository, options);
     }
 
-    async reset(repository: ApiKeyDoc, secret: string): Promise<ApiKeyDoc> {
+    async reset(
+        repository: ApiKeyDoc,
+        secret: string,
+        options?: IDatabaseSaveOptions
+    ): Promise<ApiKeyDoc> {
         const hash: string = await this.createHashApiKey(
             repository.key,
             secret
@@ -290,11 +303,14 @@ export class ApiKeyService implements IApiKeyService {
 
         repository.hash = hash;
 
-        return this.apiKeyRepository.save(repository);
+        return this.apiKeyRepository.save(repository, options);
     }
 
-    async delete(repository: ApiKeyDoc): Promise<ApiKeyDoc> {
-        return this.apiKeyRepository.softDelete(repository);
+    async delete(
+        repository: ApiKeyDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<ApiKeyDoc> {
+        return this.apiKeyRepository.softDelete(repository, options);
     }
 
     async validateHashApiKey(

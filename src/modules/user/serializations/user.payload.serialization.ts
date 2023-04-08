@@ -3,24 +3,12 @@ import { ApiProperty, OmitType } from '@nestjs/swagger';
 import { Exclude, Expose, Transform } from 'class-transformer';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { ENUM_ROLE_TYPE } from 'src/common/role/constants/role.enum.constant';
-import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
+import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 
-export class UserPayloadSerialization extends OmitType(UserGetSerialization, [
-    'photo',
-    'role',
-    'isActive',
-    'blocked',
-    'email',
-    'mobileNumber',
-    'passwordExpired',
-    'passwordCreated',
-    'passwordAttempt',
-    'signUpDate',
-    'inactiveDate',
-    'blockedDate',
-    'createdAt',
-    'updatedAt',
-] as const) {
+export class UserPayloadSerialization extends OmitType(
+    UserProfileSerialization,
+    ['photo', 'role', 'signUpDate', 'createdAt', 'updatedAt'] as const
+) {
     @Exclude()
     readonly photo?: AwsS3Serialization;
 
@@ -41,34 +29,7 @@ export class UserPayloadSerialization extends OmitType(UserGetSerialization, [
     readonly type: ENUM_ROLE_TYPE;
 
     @Exclude()
-    readonly isActive: boolean;
-
-    @Exclude()
-    readonly blocked: boolean;
-
-    @Exclude()
-    readonly passwordExpired: Date;
-
-    @Exclude()
-    readonly passwordCreated: Date;
-
-    @Exclude()
-    readonly passwordAttempt: number;
-
-    @Exclude()
     readonly signUpDate: Date;
-
-    @Exclude()
-    readonly inactiveDate?: Date;
-
-    @Exclude()
-    readonly blockedDate?: Date;
-
-    @Exclude()
-    readonly email: Date;
-
-    @Exclude()
-    readonly mobileNumber?: number;
 
     readonly loginDate: Date;
 
