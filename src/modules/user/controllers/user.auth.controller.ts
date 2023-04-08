@@ -82,7 +82,13 @@ export class UserAuthController {
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_BLOCKED_ERROR,
                 message: 'user.error.blocked',
             });
-        } else if (!user.isActive || user.inactivePermanent) {
+        } else if (user.inactivePermanent) {
+            throw new ForbiddenException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_PERMANENT_ERROR,
+                message: 'user.error.inactivePermanent',
+            });
+        } else if (!user.isActive) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_ERROR,
                 message: 'user.error.inactive',
