@@ -27,13 +27,13 @@ import {
 } from 'src/common/api-key/decorators/api-key.admin.decorator';
 import { GetApiKey } from 'src/common/api-key/decorators/api-key.decorator';
 import {
-    ApiKeyActiveDoc,
-    ApiKeyCreateDoc,
-    ApiKeyGetDoc,
-    ApiKeyInactiveDoc,
-    ApiKeyListDoc,
-    ApiKeyResetDoc,
-    ApiKeyUpdateDoc,
+    ApiKeyAdminActiveDoc,
+    ApiKeyAdminCreateDoc,
+    ApiKeyAdminGetDoc,
+    ApiKeyAdminInactiveDoc,
+    ApiKeyAdminListDoc,
+    ApiKeyAdminResetDoc,
+    ApiKeyAdminUpdateDoc,
 } from 'src/common/api-key/docs/api-key.admin.doc';
 import { ApiKeyCreateDto } from 'src/common/api-key/dtos/api-key.create.dto';
 import { ApiKeyRequestDto } from 'src/common/api-key/dtos/api-key.request.dto';
@@ -84,7 +84,7 @@ export class ApiKeyAdminController {
         private readonly paginationService: PaginationService
     ) {}
 
-    @ApiKeyListDoc()
+    @ApiKeyAdminListDoc()
     @ResponsePaging('apiKey.list', {
         serialization: ApiKeyListSerialization,
     })
@@ -130,7 +130,7 @@ export class ApiKeyAdminController {
         };
     }
 
-    @ApiKeyGetDoc()
+    @ApiKeyAdminGetDoc()
     @Response('apiKey.get', {
         serialization: ApiKeyGetSerialization,
     })
@@ -146,7 +146,7 @@ export class ApiKeyAdminController {
         return { data: apiKey };
     }
 
-    @ApiKeyCreateDoc()
+    @ApiKeyAdminCreateDoc()
     @Response('apiKey.create', { serialization: ApiKeyCreateSerialization })
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
@@ -186,7 +186,7 @@ export class ApiKeyAdminController {
         }
     }
 
-    @ApiKeyResetDoc()
+    @ApiKeyAdminResetDoc()
     @Response('apiKey.reset', { serialization: ApiKeyResetSerialization })
     @ApiKeyAdminUpdateResetGuard()
     @PolicyAbilityProtected({
@@ -219,7 +219,7 @@ export class ApiKeyAdminController {
         }
     }
 
-    @ApiKeyUpdateDoc()
+    @ApiKeyAdminUpdateDoc()
     @Response('apiKey.update', { serialization: ResponseIdSerialization })
     @ApiKeyAdminUpdateGuard()
     @PolicyAbilityProtected({
@@ -246,7 +246,7 @@ export class ApiKeyAdminController {
         return { data: { _id: apiKey._id } };
     }
 
-    @ApiKeyInactiveDoc()
+    @ApiKeyAdminInactiveDoc()
     @Response('apiKey.inactive')
     @ApiKeyAdminUpdateInactiveGuard()
     @PolicyAbilityProtected({
@@ -270,7 +270,7 @@ export class ApiKeyAdminController {
         return;
     }
 
-    @ApiKeyActiveDoc()
+    @ApiKeyAdminActiveDoc()
     @Response('apiKey.active')
     @ApiKeyAdminUpdateActiveGuard()
     @PolicyAbilityProtected({
@@ -294,7 +294,7 @@ export class ApiKeyAdminController {
         return;
     }
 
-    @ApiKeyUpdateDoc()
+    @ApiKeyAdminUpdateDoc()
     @Response('apiKey.updateDate', { serialization: ResponseIdSerialization })
     @ApiKeyAdminUpdateGuard()
     @PolicyAbilityProtected({

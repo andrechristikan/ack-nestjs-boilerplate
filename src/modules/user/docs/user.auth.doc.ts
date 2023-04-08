@@ -5,7 +5,7 @@ import { UserLoginSerialization } from 'src/modules/user/serializations/user.log
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 
-export function UserRefreshDoc(): MethodDecorator {
+export function UserAuthRefreshDoc(): MethodDecorator {
     return applyDecorators(
         Doc<UserLoginSerialization>('user.refresh', {
             auth: {
@@ -18,7 +18,7 @@ export function UserRefreshDoc(): MethodDecorator {
     );
 }
 
-export function UserProfileDoc(): MethodDecorator {
+export function UserAuthProfileDoc(): MethodDecorator {
     return applyDecorators(
         Doc<UserProfileSerialization>('user.profile', {
             auth: {
@@ -31,7 +31,7 @@ export function UserProfileDoc(): MethodDecorator {
     );
 }
 
-export function UserUploadProfileDoc(): MethodDecorator {
+export function UserAuthUploadProfileDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('user.upload', {
             auth: {
@@ -47,7 +47,7 @@ export function UserUploadProfileDoc(): MethodDecorator {
     );
 }
 
-export function UserInfoDoc(): MethodDecorator {
+export function UserAuthInfoDoc(): MethodDecorator {
     return applyDecorators(
         Doc<UserPayloadSerialization>('user.info', {
             auth: {
@@ -60,7 +60,7 @@ export function UserInfoDoc(): MethodDecorator {
     );
 }
 
-export function UserChangePasswordDoc(): MethodDecorator {
+export function UserAuthChangePasswordDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('user.changePassword', {
             auth: {
@@ -70,7 +70,7 @@ export function UserChangePasswordDoc(): MethodDecorator {
     );
 }
 
-export function UserDeleteSelfDoc(): MethodDecorator {
+export function UserAuthDeleteSelfDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('user.deleteSelf', {
             auth: {

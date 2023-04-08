@@ -9,7 +9,7 @@ import {
 import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
 import { UserListSerialization } from 'src/modules/user/serializations/user.list.serialization';
 
-export function UserListDoc(): MethodDecorator {
+export function UserAdminListDoc(): MethodDecorator {
     return applyDecorators(
         DocPaging<UserListSerialization>('user.list', {
             auth: {
@@ -25,7 +25,7 @@ export function UserListDoc(): MethodDecorator {
     );
 }
 
-export function UserGetDoc(): MethodDecorator {
+export function UserAdminGetDoc(): MethodDecorator {
     return applyDecorators(
         Doc<UserGetSerialization>('user.get', {
             auth: {
@@ -39,7 +39,7 @@ export function UserGetDoc(): MethodDecorator {
     );
 }
 
-export function UserCreateDoc(): MethodDecorator {
+export function UserAdminCreateDoc(): MethodDecorator {
     return applyDecorators(
         Doc<ResponseIdSerialization>('user.create', {
             auth: {
@@ -53,7 +53,7 @@ export function UserCreateDoc(): MethodDecorator {
     );
 }
 
-export function UserUpdateDoc(): MethodDecorator {
+export function UserAdminUpdateDoc(): MethodDecorator {
     return applyDecorators(
         Doc<ResponseIdSerialization>('user.update', {
             auth: {
@@ -67,7 +67,7 @@ export function UserUpdateDoc(): MethodDecorator {
     );
 }
 
-export function UserDeleteDoc(): MethodDecorator {
+export function UserAdminDeleteDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('user.delete', {
             auth: {
@@ -80,7 +80,7 @@ export function UserDeleteDoc(): MethodDecorator {
     );
 }
 
-export function UserImportDoc(): MethodDecorator {
+export function UserAdminImportDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('user.import', {
             auth: {
@@ -93,7 +93,7 @@ export function UserImportDoc(): MethodDecorator {
     );
 }
 
-export function UserExportDoc(): MethodDecorator {
+export function UserAdminExportDoc(): MethodDecorator {
     return applyDecorators(
         Doc('user.export', {
             auth: {
@@ -106,7 +106,7 @@ export function UserExportDoc(): MethodDecorator {
     );
 }
 
-export function UserActiveDoc(): MethodDecorator {
+export function UserAdminActiveDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('user.active', {
             auth: {
@@ -119,7 +119,7 @@ export function UserActiveDoc(): MethodDecorator {
     );
 }
 
-export function UserInactiveDoc(): MethodDecorator {
+export function UserAdminInactiveDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('user.inactive', {
             auth: {
@@ -132,7 +132,7 @@ export function UserInactiveDoc(): MethodDecorator {
     );
 }
 
-export function UserBlockedDoc(): MethodDecorator {
+export function UserAdminBlockedDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('user.blocked', {
             auth: {

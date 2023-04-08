@@ -54,13 +54,13 @@ import {
 } from 'src/common/role/decorators/role.admin.decorator';
 import { GetRole } from 'src/common/role/decorators/role.decorator';
 import {
-    RoleActiveDoc,
-    RoleCreateDoc,
-    RoleDeleteDoc,
-    RoleGetDoc,
-    RoleInactiveDoc,
-    RoleListDoc,
-    RoleUpdateDoc,
+    RoleAdminActiveDoc,
+    RoleAdminCreateDoc,
+    RoleAdminDeleteDoc,
+    RoleAdminGetDoc,
+    RoleAdminInactiveDoc,
+    RoleAdminListDoc,
+    RoleAdminUpdateDoc,
 } from 'src/common/role/docs/role.admin.doc';
 import { RoleCreateDto } from 'src/common/role/dtos/role.create.dto';
 import { RoleRequestDto } from 'src/common/role/dtos/role.request.dto';
@@ -88,7 +88,7 @@ export class RoleAdminController {
         private readonly userService: UserService
     ) {}
 
-    @RoleListDoc()
+    @RoleAdminListDoc()
     @ResponsePaging('role.list', {
         serialization: RoleListSerialization,
     })
@@ -138,7 +138,7 @@ export class RoleAdminController {
         };
     }
 
-    @RoleGetDoc()
+    @RoleAdminGetDoc()
     @Response('role.get', {
         serialization: RoleGetSerialization,
     })
@@ -154,7 +154,7 @@ export class RoleAdminController {
         return { data: role };
     }
 
-    @RoleCreateDoc()
+    @RoleAdminCreateDoc()
     @Response('role.create', {
         serialization: ResponseIdSerialization,
     })
@@ -196,7 +196,7 @@ export class RoleAdminController {
         }
     }
 
-    @RoleUpdateDoc()
+    @RoleAdminUpdateDoc()
     @Response('role.update', {
         serialization: ResponseIdSerialization,
     })
@@ -228,7 +228,7 @@ export class RoleAdminController {
         };
     }
 
-    @RoleUpdateDoc()
+    @RoleAdminUpdateDoc()
     @Response('role.updatePermission', {
         serialization: ResponseIdSerialization,
     })
@@ -263,7 +263,7 @@ export class RoleAdminController {
         };
     }
 
-    @RoleDeleteDoc()
+    @RoleAdminDeleteDoc()
     @Response('role.delete')
     @RoleAdminDeleteGuard()
     @PolicyAbilityProtected({
@@ -297,7 +297,7 @@ export class RoleAdminController {
         return;
     }
 
-    @RoleInactiveDoc()
+    @RoleAdminInactiveDoc()
     @Response('role.inactive')
     @RoleAdminUpdateInactiveGuard()
     @AuthJwtAdminAccessProtected()
@@ -317,7 +317,7 @@ export class RoleAdminController {
         return;
     }
 
-    @RoleActiveDoc()
+    @RoleAdminActiveDoc()
     @Response('role.active')
     @RoleAdminUpdateActiveGuard()
     @AuthJwtAdminAccessProtected()

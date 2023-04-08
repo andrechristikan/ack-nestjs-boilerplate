@@ -25,11 +25,11 @@ import {
     ApiKeyUserUpdateResetGuard,
 } from 'src/common/api-key/decorators/api-key.user.decorator';
 import {
-    ApiKeyCreateDoc,
-    ApiKeyGetDoc,
-    ApiKeyListDoc,
-    ApiKeyResetDoc,
-    ApiKeyUpdateDoc,
+    ApiKeyAdminCreateDoc,
+    ApiKeyAdminGetDoc,
+    ApiKeyAdminListDoc,
+    ApiKeyAdminResetDoc,
+    ApiKeyAdminUpdateDoc,
 } from 'src/common/api-key/docs/api-key.admin.doc';
 import { ApiKeyCreateByUserDto } from 'src/common/api-key/dtos/api-key.create.dto';
 import { ApiKeyRequestDto } from 'src/common/api-key/dtos/api-key.request.dto';
@@ -82,7 +82,7 @@ export class ApiKeyUserController {
         private readonly paginationService: PaginationService
     ) {}
 
-    @ApiKeyListDoc()
+    @ApiKeyAdminListDoc()
     @ResponsePaging('apiKey.list', {
         serialization: ApiKeyListSerialization,
     })
@@ -136,7 +136,7 @@ export class ApiKeyUserController {
         };
     }
 
-    @ApiKeyGetDoc()
+    @ApiKeyAdminGetDoc()
     @Response('apiKey.get', {
         serialization: ApiKeyGetSerialization,
     })
@@ -152,7 +152,7 @@ export class ApiKeyUserController {
         return { data: apiKey };
     }
 
-    @ApiKeyCreateDoc()
+    @ApiKeyAdminCreateDoc()
     @Response('apiKey.create', { serialization: ApiKeyCreateSerialization })
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
@@ -191,7 +191,7 @@ export class ApiKeyUserController {
         }
     }
 
-    @ApiKeyResetDoc()
+    @ApiKeyAdminResetDoc()
     @Response('apiKey.reset', { serialization: ApiKeyResetSerialization })
     @ApiKeyUserUpdateResetGuard()
     @PolicyAbilityProtected({
@@ -224,7 +224,7 @@ export class ApiKeyUserController {
         }
     }
 
-    @ApiKeyUpdateDoc()
+    @ApiKeyAdminUpdateDoc()
     @Response('apiKey.update', { serialization: ResponseIdSerialization })
     @ApiKeyUserUpdateGuard()
     @PolicyAbilityProtected({

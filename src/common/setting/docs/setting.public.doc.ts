@@ -4,7 +4,7 @@ import { SettingDocParamsGet } from 'src/common/setting/constants/setting.doc.co
 import { SettingGetSerialization } from 'src/common/setting/serializations/setting.get.serialization';
 import { SettingListSerialization } from 'src/common/setting/serializations/setting.list.serialization';
 
-export function SettingListDoc(): MethodDecorator {
+export function SettingPublicListDoc(): MethodDecorator {
     return applyDecorators(
         DocPaging<SettingListSerialization>('setting.list', {
             auth: {
@@ -17,7 +17,7 @@ export function SettingListDoc(): MethodDecorator {
     );
 }
 
-export function SettingGetDoc(): MethodDecorator {
+export function SettingPublicGetDoc(): MethodDecorator {
     return applyDecorators(
         Doc<SettingGetSerialization>('setting.get', {
             auth: {
