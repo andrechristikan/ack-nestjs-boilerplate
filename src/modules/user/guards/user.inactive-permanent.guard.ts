@@ -6,10 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import {
-    USER_ACTIVE_META_KEY,
-    USER_INACTIVE_PERMANENT_META_KEY,
-} from 'src/modules/user/constants/user.constant';
+import { USER_INACTIVE_PERMANENT_META_KEY } from 'src/modules/user/constants/user.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 

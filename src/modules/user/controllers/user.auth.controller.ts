@@ -37,12 +37,12 @@ import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.sta
 import { UserAuthProfileGuard } from 'src/modules/user/decorators/user.auth.decorator';
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
 import {
-    UserChangePasswordDoc,
-    UserDeleteSelfDoc,
-    UserInfoDoc,
-    UserProfileDoc,
-    UserRefreshDoc,
-    UserUploadProfileDoc,
+    UserAuthChangePasswordDoc,
+    UserAuthDeleteSelfDoc,
+    UserAuthInfoDoc,
+    UserAuthProfileDoc,
+    UserAuthRefreshDoc,
+    UserAuthUploadProfileDoc,
 } from 'src/modules/user/docs/user.auth.doc';
 import { UserChangePasswordDto } from 'src/modules/user/dtos/user.change-password.dto';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
@@ -65,7 +65,7 @@ export class UserAuthController {
         private readonly awsS3Service: AwsS3Service
     ) {}
 
-    @UserRefreshDoc()
+    @UserAuthRefreshDoc()
     @Response('user.refresh', { serialization: UserLoginSerialization })
     @UserAuthProfileGuard()
     @AuthJwtRefreshProtected()
@@ -149,7 +149,7 @@ export class UserAuthController {
         };
     }
 
-    @UserChangePasswordDoc()
+    @UserAuthChangePasswordDoc()
     @Response('user.changePassword')
     @UserAuthProfileGuard()
     @AuthJwtAccessProtected()
@@ -230,7 +230,7 @@ export class UserAuthController {
         return;
     }
 
-    @UserInfoDoc()
+    @UserAuthInfoDoc()
     @Response('user.info', { serialization: UserPayloadSerialization })
     @AuthJwtAccessProtected()
     @Get('/info')
@@ -240,7 +240,7 @@ export class UserAuthController {
         return { data: payload };
     }
 
-    @UserProfileDoc()
+    @UserAuthProfileDoc()
     @Response('user.profile', {
         serialization: UserProfileSerialization,
     })
@@ -254,7 +254,7 @@ export class UserAuthController {
         return { data: userWithRole.toObject() };
     }
 
-    @UserUploadProfileDoc()
+    @UserAuthUploadProfileDoc()
     @Response('user.upload')
     @UserAuthProfileGuard()
     @AuthJwtAccessProtected()
@@ -295,14 +295,14 @@ export class UserAuthController {
         return;
     }
 
-    @UserDeleteSelfDoc()
+    @UserAuthDeleteSelfDoc()
     @Response('user.deleteSelf')
     @UserAuthProfileGuard()
     @AuthJwtAccessProtected()
     @Delete('/delete')
     async deleteSelf(@GetUser() user: UserDoc): Promise<void> {
         try {
-            await this.userService.inactive(user);
+            await this.userService.inactivePermanent(user);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

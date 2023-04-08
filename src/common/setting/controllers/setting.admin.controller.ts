@@ -20,7 +20,7 @@ import { ResponseIdSerialization } from 'src/common/response/serializations/resp
 import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/common/setting/constants/setting.status-code.constant';
 import { SettingAdminUpdateGuard } from 'src/common/setting/decorators/setting.admin.decorator';
 import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
-import { SettingUpdateDoc } from 'src/common/setting/docs/setting.admin.doc';
+import { SettingAdminUpdateDoc } from 'src/common/setting/docs/setting.admin.doc';
 import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
 import { SettingUpdateValueDto } from 'src/common/setting/dtos/setting.update-value.dto';
 import { SettingDoc } from 'src/common/setting/repository/entities/setting.entity';
@@ -34,7 +34,7 @@ import { SettingService } from 'src/common/setting/services/setting.service';
 export class SettingAdminController {
     constructor(private readonly settingService: SettingService) {}
 
-    @SettingUpdateDoc()
+    @SettingAdminUpdateDoc()
     @Response('setting.update', {
         serialization: ResponseIdSerialization,
     })

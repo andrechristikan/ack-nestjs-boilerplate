@@ -9,7 +9,7 @@ import { ApiKeyListSerialization } from 'src/common/api-key/serializations/api-k
 import { Doc, DocPaging } from 'src/common/doc/decorators/doc.decorator';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 
-export function ApiKeyListDoc(): MethodDecorator {
+export function ApiKeyAdminListDoc(): MethodDecorator {
     return applyDecorators(
         DocPaging<ApiKeyListSerialization>('apiKey.list', {
             auth: {
@@ -25,7 +25,7 @@ export function ApiKeyListDoc(): MethodDecorator {
     );
 }
 
-export function ApiKeyGetDoc(): MethodDecorator {
+export function ApiKeyAdminGetDoc(): MethodDecorator {
     return applyDecorators(
         Doc<ApiKeyGetSerialization>('apiKey.get', {
             auth: {
@@ -39,7 +39,7 @@ export function ApiKeyGetDoc(): MethodDecorator {
     );
 }
 
-export function ApiKeyCreateDoc(): MethodDecorator {
+export function ApiKeyAdminCreateDoc(): MethodDecorator {
     return applyDecorators(
         Doc<ApiKeyCreateSerialization>('apiKey.create', {
             auth: {
@@ -53,7 +53,7 @@ export function ApiKeyCreateDoc(): MethodDecorator {
     );
 }
 
-export function ApiKeyActiveDoc(): MethodDecorator {
+export function ApiKeyAdminActiveDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('apiKey.active', {
             auth: {
@@ -66,7 +66,7 @@ export function ApiKeyActiveDoc(): MethodDecorator {
     );
 }
 
-export function ApiKeyInactiveDoc(): MethodDecorator {
+export function ApiKeyAdminInactiveDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('apiKey.inactive', {
             auth: {
@@ -79,7 +79,7 @@ export function ApiKeyInactiveDoc(): MethodDecorator {
     );
 }
 
-export function ApiKeyResetDoc(): MethodDecorator {
+export function ApiKeyAdminResetDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('apiKey.reset', {
             auth: {
@@ -95,7 +95,7 @@ export function ApiKeyResetDoc(): MethodDecorator {
     );
 }
 
-export function ApiKeyUpdateDoc(): MethodDecorator {
+export function ApiKeyAdminUpdateDoc(): MethodDecorator {
     return applyDecorators(
         Doc<ResponseIdSerialization>('apiKey.update', {
             auth: {

@@ -22,9 +22,9 @@ import {
 import { GetSetting } from 'src/common/setting/decorators/setting.decorator';
 import { SettingPublicGetGuard } from 'src/common/setting/decorators/setting.public.decorator';
 import {
-    SettingGetDoc,
-    SettingListDoc,
-} from 'src/common/setting/docs/setting.doc';
+    SettingPublicGetDoc,
+    SettingPublicListDoc,
+} from 'src/common/setting/docs/setting.public.doc';
 import { SettingRequestDto } from 'src/common/setting/dtos/setting.request.dto';
 import { SettingEntity } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingGetSerialization } from 'src/common/setting/serializations/setting.get.serialization';
@@ -42,7 +42,7 @@ export class SettingPublicController {
         private readonly paginationService: PaginationService
     ) {}
 
-    @SettingListDoc()
+    @SettingPublicListDoc()
     @ResponsePaging('setting.list', {
         serialization: SettingListSerialization,
     })
@@ -83,7 +83,7 @@ export class SettingPublicController {
         };
     }
 
-    @SettingGetDoc()
+    @SettingPublicGetDoc()
     @Response('setting.get', {
         serialization: SettingGetSerialization,
     })

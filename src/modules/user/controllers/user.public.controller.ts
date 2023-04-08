@@ -21,8 +21,8 @@ import { RoleService } from 'src/common/role/services/role.service';
 import { SettingService } from 'src/common/setting/services/setting.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import {
-    UserLoginDoc,
-    UserSignUpDoc,
+    UserPublicLoginDoc,
+    UserPublicSignUpDoc,
 } from 'src/modules/user/docs/user.public.doc';
 import { UserLoginDto } from 'src/modules/user/dtos/user.login.dto';
 import { UserSignUpDto } from 'src/modules/user/dtos/user.sign-up.dto';
@@ -45,7 +45,7 @@ export class UserPublicController {
         private readonly settingService: SettingService
     ) {}
 
-    @UserLoginDoc()
+    @UserPublicLoginDoc()
     @Response('user.login', {
         serialization: UserLoginSerialization,
     })
@@ -194,7 +194,7 @@ export class UserPublicController {
         };
     }
 
-    @UserSignUpDoc()
+    @UserPublicSignUpDoc()
     @Response('user.signUp')
     @Post('/sign-up')
     async signUp(

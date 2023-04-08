@@ -9,7 +9,7 @@ import {
 import { RoleGetSerialization } from 'src/common/role/serializations/role.get.serialization';
 import { RoleListSerialization } from 'src/common/role/serializations/role.list.serialization';
 
-export function RoleListDoc(): MethodDecorator {
+export function RoleAdminListDoc(): MethodDecorator {
     return applyDecorators(
         DocPaging<RoleListSerialization>('role.list', {
             auth: {
@@ -25,7 +25,7 @@ export function RoleListDoc(): MethodDecorator {
     );
 }
 
-export function RoleGetDoc(): MethodDecorator {
+export function RoleAdminGetDoc(): MethodDecorator {
     return applyDecorators(
         Doc<RoleGetSerialization>('role.get', {
             auth: {
@@ -39,7 +39,7 @@ export function RoleGetDoc(): MethodDecorator {
     );
 }
 
-export function RoleCreateDoc(): MethodDecorator {
+export function RoleAdminCreateDoc(): MethodDecorator {
     return applyDecorators(
         Doc<ResponseIdSerialization>('role.create', {
             auth: {
@@ -53,7 +53,7 @@ export function RoleCreateDoc(): MethodDecorator {
     );
 }
 
-export function RoleUpdateDoc(): MethodDecorator {
+export function RoleAdminUpdateDoc(): MethodDecorator {
     return applyDecorators(
         Doc<ResponseIdSerialization>('role.update', {
             auth: {
@@ -67,7 +67,7 @@ export function RoleUpdateDoc(): MethodDecorator {
     );
 }
 
-export function RoleDeleteDoc(): MethodDecorator {
+export function RoleAdminDeleteDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('role.delete', {
             auth: {
@@ -80,7 +80,7 @@ export function RoleDeleteDoc(): MethodDecorator {
     );
 }
 
-export function RoleActiveDoc(): MethodDecorator {
+export function RoleAdminActiveDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('role.active', {
             auth: {
@@ -93,7 +93,7 @@ export function RoleActiveDoc(): MethodDecorator {
     );
 }
 
-export function RoleInactiveDoc(): MethodDecorator {
+export function RoleAdminInactiveDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('role.inactive', {
             auth: {

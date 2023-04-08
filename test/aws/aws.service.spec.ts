@@ -619,8 +619,6 @@ describe('AwsS3Service', () => {
         });
     });
 
-    // todo
-
     describe('completeMultipart', () => {
         it('should complete multipart', async () => {
             const data: CompleteMultipartUploadCommandOutput = {

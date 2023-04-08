@@ -46,18 +46,6 @@ import {
     UserAdminUpdateInactiveGuard,
 } from 'src/modules/user/decorators/user.admin.decorator';
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
-import {
-    UserActiveDoc,
-    UserBlockedDoc,
-    UserCreateDoc,
-    UserDeleteDoc,
-    UserExportDoc,
-    UserGetDoc,
-    UserImportDoc,
-    UserInactiveDoc,
-    UserListDoc,
-    UserUpdateDoc,
-} from 'src/modules/user/docs/user.admin.doc';
 import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 import { UserRequestDto } from 'src/modules/user/dtos/user.request.dto';
@@ -94,6 +82,18 @@ import {
     ENUM_POLICY_SUBJECT,
 } from 'src/common/policy/constants/policy.enum.constant';
 import { RoleDoc } from 'src/common/role/repository/entities/role.entity';
+import {
+    UserAdminActiveDoc,
+    UserAdminBlockedDoc,
+    UserAdminCreateDoc,
+    UserAdminDeleteDoc,
+    UserAdminExportDoc,
+    UserAdminGetDoc,
+    UserAdminImportDoc,
+    UserAdminInactiveDoc,
+    UserAdminListDoc,
+    UserAdminUpdateDoc,
+} from 'src/modules/user/docs/user.admin.doc';
 
 @ApiTags('modules.user.admin')
 @Controller({
@@ -108,7 +108,7 @@ export class UserAdminController {
         private readonly roleService: RoleService
     ) {}
 
-    @UserListDoc()
+    @UserAdminListDoc()
     @ResponsePaging('user.list', {
         serialization: UserListSerialization,
     })
@@ -157,7 +157,7 @@ export class UserAdminController {
         };
     }
 
-    @UserGetDoc()
+    @UserAdminGetDoc()
     @Response('user.get', {
         serialization: UserGetSerialization,
     })
@@ -176,7 +176,7 @@ export class UserAdminController {
         return { data: userWithRole.toObject() };
     }
 
-    @UserCreateDoc()
+    @UserAdminCreateDoc()
     @Response('user.create', {
         serialization: ResponseIdSerialization,
     })
@@ -248,7 +248,7 @@ export class UserAdminController {
         }
     }
 
-    @UserDeleteDoc()
+    @UserAdminDeleteDoc()
     @Response('user.delete')
     @UserAdminDeleteGuard()
     @PolicyAbilityProtected({
@@ -272,7 +272,7 @@ export class UserAdminController {
         return;
     }
 
-    @UserUpdateDoc()
+    @UserAdminUpdateDoc()
     @Response('user.update', {
         serialization: ResponseIdSerialization,
     })
@@ -304,7 +304,7 @@ export class UserAdminController {
         };
     }
 
-    @UserInactiveDoc()
+    @UserAdminInactiveDoc()
     @Response('user.inactive')
     @UserAdminUpdateInactiveGuard()
     @PolicyAbilityProtected({
@@ -328,7 +328,7 @@ export class UserAdminController {
         return;
     }
 
-    @UserActiveDoc()
+    @UserAdminActiveDoc()
     @Response('user.active')
     @UserAdminUpdateActiveGuard()
     @PolicyAbilityProtected({
@@ -352,7 +352,7 @@ export class UserAdminController {
         return;
     }
 
-    @UserImportDoc()
+    @UserAdminImportDoc()
     @Response('user.import')
     @UploadFileSingle('file')
     @PolicyAbilityProtected({
@@ -396,7 +396,7 @@ export class UserAdminController {
         return;
     }
 
-    @UserExportDoc()
+    @UserAdminExportDoc()
     @ResponseExcel({
         serialization: UserListSerialization,
         fileType: ENUM_HELPER_FILE_TYPE.CSV,
@@ -414,7 +414,7 @@ export class UserAdminController {
         return { data: users };
     }
 
-    @UserBlockedDoc()
+    @UserAdminBlockedDoc()
     @Response('user.blocked')
     @UserAdminUpdateBlockedGuard()
     @PolicyAbilityProtected({
