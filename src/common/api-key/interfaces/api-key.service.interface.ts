@@ -25,84 +25,69 @@ export interface IApiKeyService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<ApiKeyEntity[]>;
-
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc>;
-
     findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc>;
-
     findOneByKey(
         key: string,
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc>;
-
     findOneByActiveKey(
         key: string,
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc>;
-
     findAllByUser(
         user: string,
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<ApiKeyEntity[]>;
-
     findOneByIdAndUser(
         user: string,
         _id: string,
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc>;
-
     findOneByUser(
         user: string,
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc>;
-
     findOneByKeyAndUser(
         user: string,
         key: string,
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc>;
-
     findOneByActiveKeyAndUser(
         user: string,
         key: string,
         options?: IDatabaseFindOneOptions
     ): Promise<ApiKeyDoc>;
-
     existByUser(
         user: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean>;
-
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
-
     getTotalByUser(
         user: string,
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
-
     create(
         { name, description, startDate, endDate, user }: ApiKeyCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<IApiKeyCreated>;
-
     createByUser(
         user: string,
         { name, description, startDate, endDate }: ApiKeyCreateByUserDto,
         options?: IDatabaseCreateOptions
     ): Promise<IApiKeyCreated>;
-
     createRaw(
         {
             name,

@@ -270,6 +270,19 @@ describe('AuthService', () => {
         });
     });
 
+    describe('createPasswordRandom', () => {
+        it('should create password random', async () => {
+            const today = new Date();
+            const month = `${today.getMonth() + 1}`.padStart(2, '0');
+            const date = `${today.getDate()}`.padStart(2, '0');
+            const todayString = `${today.getFullYear()}-${month}-${date}`;
+            const password = await service.createPasswordRandom();
+
+            expect(typeof password).toEqual('string');
+            expect(password).toEqual(todayString);
+        });
+    });
+
     describe('checkPasswordExpired', () => {
         it('should check password expiration', async () => {
             const passwordExpiredIn = 3600;
