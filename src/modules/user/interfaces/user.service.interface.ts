@@ -5,9 +5,10 @@ import {
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
-    IDatabaseOptions,
     IDatabaseManyOptions,
     IDatabaseCreateManyOptions,
+    IDatabaseGetTotalOptions,
+    IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
@@ -38,7 +39,7 @@ export interface IUserService {
     ): Promise<T>;
     getTotal(
         find?: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseGetTotalOptions
     ): Promise<number>;
     create(
         {
@@ -64,30 +65,61 @@ export interface IUserService {
         username: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean>;
-    delete(repository: UserDoc): Promise<UserDoc>;
+    delete(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
     updateName(
         repository: UserDoc,
-        { firstName, lastName }: UserUpdateNameDto
+        { firstName, lastName }: UserUpdateNameDto,
+        options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     updatePhoto(
         repository: UserDoc,
-        photo: AwsS3Serialization
+        photo: AwsS3Serialization,
+        options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     updatePassword(
         repository: UserDoc,
-        { passwordHash, passwordExpired, salt, passwordCreated }: IAuthPassword
+        { passwordHash, passwordExpired, salt, passwordCreated }: IAuthPassword,
+        options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
-    active(repository: UserDoc): Promise<UserEntity>;
-    inactive(repository: UserDoc): Promise<UserDoc>;
-    inactivePermanent(repository: UserDoc): Promise<UserDoc>;
-    blocked(repository: UserDoc): Promise<UserDoc>;
-    unblocked(repository: UserDoc): Promise<UserDoc>;
-    maxPasswordAttempt(repository: UserDoc): Promise<UserDoc>;
-    increasePasswordAttempt(repository: UserDoc): Promise<UserDoc>;
-    resetPasswordAttempt(repository: UserDoc): Promise<UserDoc>;
+    active(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserEntity>;
+    inactive(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
+    inactivePermanent(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
+    blocked(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
+    unblocked(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
+    maxPasswordAttempt(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
+    increasePasswordAttempt(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
+    resetPasswordAttempt(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
     updatePasswordExpired(
         repository: UserDoc,
-        passwordExpired: Date
+        passwordExpired: Date,
+        options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     joinWithRole(repository: UserDoc): Promise<IUserDoc>;
     createPhotoFilename(): Promise<Record<string, any>>;

@@ -3,9 +3,10 @@ import {
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
-    IDatabaseOptions,
     IDatabaseManyOptions,
     IDatabaseCreateManyOptions,
+    IDatabaseGetTotalOptions,
+    IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { RoleCreateDto } from 'src/common/role/dtos/role.create.dto';
 import { RoleUpdatePermissionDto } from 'src/common/role/dtos/role.update-permission.dto';
@@ -34,7 +35,7 @@ export interface IRoleService {
     ): Promise<RoleDoc>;
     getTotal(
         find?: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseGetTotalOptions
     ): Promise<number>;
     existByName(
         name: string,
@@ -44,14 +45,28 @@ export interface IRoleService {
         data: RoleCreateDto,
         options?: IDatabaseCreateOptions
     ): Promise<RoleDoc>;
-    update(repository: RoleDoc, data: RoleUpdateDto): Promise<RoleDoc>;
+    update(
+        repository: RoleDoc,
+        data: RoleUpdateDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<RoleDoc>;
     updatePermissions(
         repository: RoleDoc,
-        data: RoleUpdatePermissionDto
+        data: RoleUpdatePermissionDto,
+        options?: IDatabaseSaveOptions
     ): Promise<RoleDoc>;
-    active(repository: RoleDoc): Promise<RoleDoc>;
-    inactive(repository: RoleDoc): Promise<RoleDoc>;
-    delete(repository: RoleDoc): Promise<RoleDoc>;
+    active(
+        repository: RoleDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<RoleDoc>;
+    inactive(
+        repository: RoleDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<RoleDoc>;
+    delete(
+        repository: RoleDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<RoleDoc>;
     deleteMany(
         find: Record<string, any>,
         options?: IDatabaseManyOptions

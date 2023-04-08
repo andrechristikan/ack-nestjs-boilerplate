@@ -15,8 +15,9 @@ import {
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
+    IDatabaseGetTotalOptions,
     IDatabaseManyOptions,
-    IDatabaseOptions,
+    IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 
 export interface IApiKeyService {
@@ -82,13 +83,13 @@ export interface IApiKeyService {
 
     getTotal(
         find?: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseGetTotalOptions
     ): Promise<number>;
 
     getTotalByUser(
         user: string,
         find?: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseGetTotalOptions
     ): Promise<number>;
 
     create(
@@ -114,19 +115,33 @@ export interface IApiKeyService {
         }: ApiKeyCreateRawDto,
         options?: IDatabaseCreateOptions
     ): Promise<IApiKeyCreated>;
-
-    active(repository: ApiKeyDoc): Promise<ApiKeyDoc>;
-    inactive(repository: ApiKeyDoc): Promise<ApiKeyDoc>;
+    active(
+        repository: ApiKeyDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<ApiKeyDoc>;
+    inactive(
+        repository: ApiKeyDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<ApiKeyDoc>;
     update(
         repository: ApiKeyDoc,
-        { name, description }: ApiKeyUpdateDto
+        { name, description }: ApiKeyUpdateDto,
+        options?: IDatabaseSaveOptions
     ): Promise<ApiKeyDoc>;
     updateDate(
         repository: ApiKeyDoc,
-        { startDate, endDate }: ApiKeyUpdateDateDto
+        { startDate, endDate }: ApiKeyUpdateDateDto,
+        options?: IDatabaseSaveOptions
     ): Promise<ApiKeyDoc>;
-    reset(repository: ApiKeyDoc, secret: string): Promise<ApiKeyDoc>;
-    delete(repository: ApiKeyDoc): Promise<ApiKeyDoc>;
+    reset(
+        repository: ApiKeyDoc,
+        secret: string,
+        options?: IDatabaseSaveOptions
+    ): Promise<ApiKeyDoc>;
+    delete(
+        repository: ApiKeyDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<ApiKeyDoc>;
     validateHashApiKey(hashFromRequest: string, hash: string): Promise<boolean>;
     createKey(): Promise<string>;
     createSecret(): Promise<string>;

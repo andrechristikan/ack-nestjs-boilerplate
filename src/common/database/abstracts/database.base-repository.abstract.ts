@@ -3,12 +3,13 @@ import {
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
-    IDatabaseOptions,
     IDatabaseCreateManyOptions,
     IDatabaseManyOptions,
     IDatabaseSoftDeleteManyOptions,
     IDatabaseRestoreManyOptions,
     IDatabaseRawOptions,
+    IDatabaseGetTotalOptions,
+    IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 
 export abstract class DatabaseBaseRepositoryAbstract<Entity> {
@@ -45,7 +46,7 @@ export abstract class DatabaseBaseRepositoryAbstract<Entity> {
 
     abstract getTotal(
         find?: Record<string, any>,
-        options?: IDatabaseOptions<any>
+        options?: IDatabaseGetTotalOptions<any>
     ): Promise<number>;
 
     abstract exists(
@@ -58,13 +59,25 @@ export abstract class DatabaseBaseRepositoryAbstract<Entity> {
         options?: IDatabaseCreateOptions<any>
     ): Promise<Entity>;
 
-    abstract save(repository: Entity): Promise<Entity>;
+    abstract save(
+        repository: Entity,
+        options?: IDatabaseSaveOptions
+    ): Promise<Entity>;
 
-    abstract delete(repository: Entity): Promise<Entity>;
+    abstract delete(
+        repository: Entity,
+        options?: IDatabaseSaveOptions
+    ): Promise<Entity>;
 
-    abstract softDelete(repository: Entity): Promise<Entity>;
+    abstract softDelete(
+        repository: Entity,
+        options?: IDatabaseSaveOptions
+    ): Promise<Entity>;
 
-    abstract restore(repository: Entity): Promise<Entity>;
+    abstract restore(
+        repository: Entity,
+        options?: IDatabaseSaveOptions
+    ): Promise<Entity>;
 
     abstract createMany<Dto>(
         data: Dto[],
