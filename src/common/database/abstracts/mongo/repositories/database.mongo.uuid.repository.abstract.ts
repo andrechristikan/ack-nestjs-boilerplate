@@ -12,12 +12,13 @@ import {
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
-    IDatabaseOptions,
+    IDatabaseGetTotalOptions,
     IDatabaseCreateManyOptions,
     IDatabaseManyOptions,
     IDatabaseSoftDeleteManyOptions,
     IDatabaseRestoreManyOptions,
     IDatabaseRawOptions,
+    IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 
 export abstract class DatabaseMongoUUIDRepositoryAbstract<
@@ -314,7 +315,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
 
     async getTotal(
         find?: Record<string, any>,
-        options?: IDatabaseOptions<ClientSession>
+        options?: IDatabaseGetTotalOptions<ClientSession>
     ): Promise<number> {
         const count = this._repository.countDocuments(find);
 
@@ -406,29 +407,33 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
     }
 
     async save(
-        repository: EntityDocument & Document<string>
+        repository: EntityDocument & Document<string>,
+        options?: IDatabaseSaveOptions
     ): Promise<EntityDocument> {
-        return repository.save();
+        return repository.save(options);
     }
 
     async delete(
-        repository: EntityDocument & Document<string>
+        repository: EntityDocument & Document<string>,
+        options?: IDatabaseSaveOptions
     ): Promise<EntityDocument> {
-        return repository.deleteOne();
+        return repository.deleteOne(options);
     }
 
     async softDelete(
-        repository: EntityDocument & Document<string> & { deletedAt?: Date }
+        repository: EntityDocument & Document<string> & { deletedAt?: Date },
+        options?: IDatabaseSaveOptions
     ): Promise<EntityDocument> {
         repository.deletedAt = new Date();
-        return repository.save();
+        return repository.save(options);
     }
 
     async restore(
-        repository: EntityDocument & Document<string> & { deletedAt?: Date }
+        repository: EntityDocument & Document<string> & { deletedAt?: Date },
+        options?: IDatabaseSaveOptions
     ): Promise<EntityDocument> {
         repository.deletedAt = undefined;
-        return repository.save();
+        return repository.save(options);
     }
 
     // bulk

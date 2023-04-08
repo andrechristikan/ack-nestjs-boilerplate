@@ -66,7 +66,6 @@ import {
     IUserEntity,
 } from 'src/modules/user/interfaces/user.interface';
 import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
-import { UserImportSerialization } from 'src/modules/user/serializations/user.import.serialization';
 import { UserListSerialization } from 'src/modules/user/serializations/user.list.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
@@ -94,6 +93,7 @@ import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_SUBJECT,
 } from 'src/common/policy/constants/policy.enum.constant';
+import { RoleDoc } from 'src/common/role/repository/entities/role.entity';
 
 @ApiTags('modules.user.admin')
 @Controller({
@@ -353,9 +353,7 @@ export class UserAdminController {
     }
 
     @UserImportDoc()
-    @Response('user.import', {
-        serialization: UserImportSerialization,
-    })
+    @Response('user.import')
     @UploadFileSingle('file')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
@@ -377,7 +375,25 @@ export class UserAdminController {
         )
         file: IFileExtract<UserImportDto>
     ): Promise<IResponse> {
-        return { data: { file } };
+        const role: RoleDoc = await this.roleService.findOneByName('user');
+
+        const passwordString: string =
+            await this.authService.createPasswordRandom();
+        const password: IAuthPassword = await this.authService.createPassword(
+            passwordString
+        );
+
+        try {
+            await this.userService.import(file.dto, role._id, password);
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
+
+        return;
     }
 
     @UserExportDoc()

@@ -2,12 +2,12 @@ import {
     BadRequestException,
     Body,
     Controller,
+    Delete,
     ForbiddenException,
     Get,
     HttpCode,
     HttpStatus,
     InternalServerErrorException,
-    NotFoundException,
     Patch,
     Post,
     UploadedFile,
@@ -38,17 +38,15 @@ import { UserAuthProfileGuard } from 'src/modules/user/decorators/user.auth.deco
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
 import {
     UserChangePasswordDoc,
+    UserDeleteSelfDoc,
     UserInfoDoc,
-    UserLoginDoc,
     UserProfileDoc,
     UserRefreshDoc,
     UserUploadProfileDoc,
-} from 'src/modules/user/docs/user.doc';
+} from 'src/modules/user/docs/user.auth.doc';
 import { UserChangePasswordDto } from 'src/modules/user/dtos/user.change-password.dto';
-import { UserLoginDto } from 'src/modules/user/dtos/user.login.dto';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { UserInfoSerialization } from 'src/modules/user/serializations/user.info.serialization';
 import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
@@ -67,167 +65,19 @@ export class UserAuthController {
         private readonly awsS3Service: AwsS3Service
     ) {}
 
-    @UserLoginDoc()
-    @Response('user.login', {
-        serialization: UserLoginSerialization,
-    })
-    @HttpCode(HttpStatus.OK)
-    @Post('/login')
-    async login(
-        @Body() { username, password }: UserLoginDto
-    ): Promise<IResponse> {
-        const user: UserDoc = await this.userService.findOneByUsername(
-            username
-        );
-        if (!user) {
-            throw new NotFoundException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
-                message: 'user.error.notFound',
-            });
-        }
-
-        const passwordAttempt: boolean =
-            await this.settingService.getPasswordAttempt();
-        const maxPasswordAttempt: number =
-            await this.settingService.getMaxPasswordAttempt();
-        if (passwordAttempt && user.passwordAttempt >= maxPasswordAttempt) {
-            throw new ForbiddenException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_ATTEMPT_MAX_ERROR,
-                message: 'user.error.passwordAttemptMax',
-            });
-        }
-
-        const validate: boolean = await this.authService.validateUser(
-            password,
-            user.password
-        );
-        if (!validate) {
-            try {
-                await this.userService.increasePasswordAttempt(user);
-            } catch (err: any) {
-                throw new InternalServerErrorException({
-                    statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                    message: 'http.serverError.internalServerError',
-                    _error: err.message,
-                });
-            }
-
-            throw new BadRequestException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_NOT_MATCH_ERROR,
-                message: 'user.error.passwordNotMatch',
-            });
-        } else if (user.blocked) {
-            throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_BLOCKED_ERROR,
-                message: 'user.error.blocked',
-            });
-        } else if (!user.isActive || user.inactivePermanent) {
-            throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_ERROR,
-                message: 'user.error.inactive',
-            });
-        }
-
-        const userWithRole: IUserDoc = await this.userService.joinWithRole(
-            user
-        );
-        if (!userWithRole.role.isActive) {
-            throw new ForbiddenException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_INACTIVE_ERROR,
-                message: 'role.error.inactive',
-            });
-        }
-
-        try {
-            await this.userService.resetPasswordAttempt(user);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
-
-        const payload: UserPayloadSerialization =
-            await this.userService.payloadSerialization(userWithRole);
-        const tokenType: string = await this.authService.getTokenType();
-        const expiresIn: number =
-            await this.authService.getAccessTokenExpirationTime();
-        const payloadAccessToken: Record<string, any> =
-            await this.authService.createPayloadAccessToken(payload);
-        const payloadRefreshToken: Record<string, any> =
-            await this.authService.createPayloadRefreshToken(payload._id, {
-                loginDate: payloadAccessToken.loginDate,
-            });
-
-        const payloadEncryption = await this.authService.getPayloadEncryption();
-        let payloadHashedAccessToken: Record<string, any> | string =
-            payloadAccessToken;
-        let payloadHashedRefreshToken: Record<string, any> | string =
-            payloadRefreshToken;
-
-        if (payloadEncryption) {
-            payloadHashedAccessToken =
-                await this.authService.encryptAccessToken(payloadAccessToken);
-            payloadHashedRefreshToken =
-                await this.authService.encryptRefreshToken(payloadRefreshToken);
-        }
-
-        const accessToken: string = await this.authService.createAccessToken(
-            payloadHashedAccessToken
-        );
-
-        const refreshToken: string = await this.authService.createRefreshToken(
-            payloadHashedRefreshToken
-        );
-
-        const checkPasswordExpired: boolean =
-            await this.authService.checkPasswordExpired(user.passwordExpired);
-
-        if (checkPasswordExpired) {
-            return {
-                _metadata: {
-                    customProperty: {
-                        // override status code and message
-                        statusCode:
-                            ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
-                        message: 'user.error.passwordExpired',
-                    },
-                },
-                data: { tokenType, expiresIn, accessToken, refreshToken },
-            };
-        }
-
-        return {
-            data: {
-                tokenType,
-                expiresIn,
-                accessToken,
-                refreshToken,
-            },
-        };
-    }
-
     @UserRefreshDoc()
     @Response('user.refresh', { serialization: UserLoginSerialization })
+    @UserAuthProfileGuard()
     @AuthJwtRefreshProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
     async refresh(
         @AuthJwtPayload()
-        { _id, loginDate }: Record<string, any>,
-        @AuthJwtToken() refreshToken: string
+        { loginDate }: Record<string, any>,
+        @AuthJwtToken() refreshToken: string,
+        @GetUser() user: UserDoc
     ): Promise<IResponse> {
-        const user: UserDoc = await this.userService.findOneById(_id);
-
-        if (!user) {
-            throw new NotFoundException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
-                message: 'user.error.notFound',
-            });
-        } else if (user.blocked) {
+        if (user.blocked) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_BLOCKED_ERROR,
                 message: 'user.error.blocked',
@@ -295,20 +145,13 @@ export class UserAuthController {
 
     @UserChangePasswordDoc()
     @Response('user.changePassword')
+    @UserAuthProfileGuard()
     @AuthJwtAccessProtected()
     @Patch('/change-password')
     async changePassword(
         @Body() body: UserChangePasswordDto,
-        @AuthJwtPayload('_id') _id: string
+        @GetUser() user: UserDoc
     ): Promise<void> {
-        const user: UserDoc = await this.userService.findOneById(_id);
-        if (!user) {
-            throw new NotFoundException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
-                message: 'user.error.notFound',
-            });
-        }
-
         const passwordAttempt: boolean =
             await this.settingService.getPasswordAttempt();
         const maxPasswordAttempt: number =
@@ -382,7 +225,7 @@ export class UserAuthController {
     }
 
     @UserInfoDoc()
-    @Response('user.info', { serialization: UserInfoSerialization })
+    @Response('user.info', { serialization: UserPayloadSerialization })
     @AuthJwtAccessProtected()
     @Get('/info')
     async info(
@@ -413,12 +256,10 @@ export class UserAuthController {
     @HttpCode(HttpStatus.OK)
     @Post('/profile/upload')
     async upload(
-        @GetUser() usr: IUserDoc,
+        @GetUser() user: UserDoc,
         @UploadedFile(FileRequiredPipe, FileSizeImagePipe, FileTypeImagePipe)
         file: IFile
     ): Promise<void> {
-        const user: UserDoc = await this.userService.findOneById(usr._id);
-
         const filename: string = file.originalname;
         const content: Buffer = file.buffer;
         const mime: string = filename
@@ -437,6 +278,25 @@ export class UserAuthController {
                     }
                 );
             await this.userService.updatePhoto(user, aws);
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
+
+        return;
+    }
+
+    @UserDeleteSelfDoc()
+    @Response('user.deleteSelf')
+    @UserAuthProfileGuard()
+    @AuthJwtAccessProtected()
+    @Delete('/delete')
+    async deleteSelf(@GetUser() user: UserDoc): Promise<void> {
+        try {
+            await this.userService.inactive(user);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

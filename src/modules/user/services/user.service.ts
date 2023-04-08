@@ -5,8 +5,10 @@ import {
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
-    IDatabaseOptions,
+    IDatabaseGetTotalOptions,
     IDatabaseManyOptions,
+    IDatabaseCreateManyOptions,
+    IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 import {
     UserDoc,
@@ -27,6 +29,7 @@ import {
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { plainToInstance } from 'class-transformer';
 import { RoleEntity } from 'src/common/role/repository/entities/role.entity';
+import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -78,7 +81,7 @@ export class UserService implements IUserService {
 
     async getTotal(
         find?: Record<string, any>,
-        options?: IDatabaseOptions
+        options?: IDatabaseGetTotalOptions
     ): Promise<number> {
         return this.userRepository.getTotal(find, options);
     }
@@ -152,94 +155,133 @@ export class UserService implements IUserService {
         );
     }
 
-    async delete(repository: UserDoc): Promise<UserDoc> {
-        return this.userRepository.softDelete(repository);
+    async delete(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        return this.userRepository.softDelete(repository, options);
     }
 
     async updateName(
         repository: UserDoc,
-        { firstName, lastName }: UserUpdateNameDto
+        { firstName, lastName }: UserUpdateNameDto,
+        options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.firstName = firstName;
         repository.lastName = lastName;
 
-        return this.userRepository.save(repository);
+        return this.userRepository.save(repository, options);
     }
 
     async updatePhoto(
         repository: UserDoc,
-        photo: AwsS3Serialization
+        photo: AwsS3Serialization,
+        options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.photo = photo;
 
-        return this.userRepository.save(repository);
+        return this.userRepository.save(repository, options);
     }
 
     async updatePassword(
         repository: UserDoc,
-        { passwordHash, passwordExpired, salt, passwordCreated }: IAuthPassword
+        { passwordHash, passwordExpired, salt, passwordCreated }: IAuthPassword,
+        options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.password = passwordHash;
         repository.passwordExpired = passwordExpired;
         repository.passwordCreated = passwordCreated;
         repository.salt = salt;
 
-        return this.userRepository.save(repository);
+        return this.userRepository.save(repository, options);
     }
 
-    async active(repository: UserDoc): Promise<UserEntity> {
+    async active(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserEntity> {
         repository.isActive = true;
         repository.inactiveDate = undefined;
 
-        return this.userRepository.save(repository);
+        return this.userRepository.save(repository, options);
     }
 
-    async inactive(repository: UserDoc): Promise<UserDoc> {
+    async inactive(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
         repository.isActive = false;
         repository.inactiveDate = this.helperDateService.create();
 
-        return this.userRepository.save(repository);
+        return this.userRepository.save(repository, options);
     }
 
-    async blocked(repository: UserDoc): Promise<UserDoc> {
+    async inactivePermanent(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        repository.isActive = false;
+        repository.inactivePermanent = true;
+        repository.inactiveDate = this.helperDateService.create();
+
+        return this.userRepository.save(repository, options);
+    }
+
+    async blocked(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
         repository.blocked = true;
         repository.blockedDate = this.helperDateService.create();
 
-        return this.userRepository.save(repository);
+        return this.userRepository.save(repository, options);
     }
 
-    async unblocked(repository: UserDoc): Promise<UserDoc> {
+    async unblocked(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
         repository.blocked = false;
         repository.blockedDate = undefined;
 
-        return this.userRepository.save(repository);
+        return this.userRepository.save(repository, options);
     }
 
-    async maxPasswordAttempt(repository: UserDoc): Promise<UserDoc> {
+    async maxPasswordAttempt(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
         repository.passwordAttempt = this.authMaxPasswordAttempt;
 
-        return this.userRepository.save(repository);
+        return this.userRepository.save(repository, options);
     }
 
-    async increasePasswordAttempt(repository: UserDoc): Promise<UserDoc> {
+    async increasePasswordAttempt(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
         repository.passwordAttempt = ++repository.passwordAttempt;
 
-        return this.userRepository.save(repository);
+        return this.userRepository.save(repository, options);
     }
 
-    async resetPasswordAttempt(repository: UserDoc): Promise<UserDoc> {
+    async resetPasswordAttempt(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
         repository.passwordAttempt = 0;
 
-        return this.userRepository.save(repository);
+        return this.userRepository.save(repository, options);
     }
 
     async updatePasswordExpired(
         repository: UserDoc,
-        passwordExpired: Date
+        passwordExpired: Date,
+        options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.passwordExpired = passwordExpired;
 
-        return this.userRepository.save(repository);
+        return this.userRepository.save(repository, options);
     }
 
     async joinWithRole(repository: UserDoc): Promise<IUserDoc> {
@@ -264,6 +306,39 @@ export class UserService implements IUserService {
         data: IUserDoc
     ): Promise<UserPayloadSerialization> {
         return plainToInstance(UserPayloadSerialization, data.toObject());
+    }
+
+    async import(
+        data: UserImportDto[],
+        role: string,
+        { passwordCreated, passwordHash, salt }: IAuthPassword,
+        options?: IDatabaseCreateManyOptions
+    ): Promise<boolean> {
+        const passwordExpired: Date = this.helperDateService.backwardInDays(1);
+        const users: UserEntity[] = data.map(
+            ({ email, firstName, lastName, username, mobileNumber }) => {
+                const create: UserEntity = new UserEntity();
+                create.username = username;
+                create.firstName = firstName;
+                create.email = email;
+                create.password = passwordHash;
+                create.role = role;
+                create.isActive = true;
+                create.inactivePermanent = false;
+                create.blocked = false;
+                create.lastName = lastName;
+                create.salt = salt;
+                create.passwordExpired = passwordExpired;
+                create.passwordCreated = passwordCreated;
+                create.signUpDate = this.helperDateService.create();
+                create.passwordAttempt = 0;
+                create.mobileNumber = mobileNumber ?? undefined;
+
+                return create;
+            }
+        );
+
+        return this.userRepository.createMany<UserEntity>(users, options);
     }
 
     async deleteMany(

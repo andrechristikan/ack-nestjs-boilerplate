@@ -5,6 +5,19 @@ import { UserLoginSerialization } from 'src/modules/user/serializations/user.log
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 
+export function UserRefreshDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc<UserLoginSerialization>('user.refresh', {
+            auth: {
+                jwtRefreshToken: true,
+            },
+            response: {
+                serialization: UserLoginSerialization,
+            },
+        })
+    );
+}
+
 export function UserProfileDoc(): MethodDecorator {
     return applyDecorators(
         Doc<UserProfileSerialization>('user.profile', {
@@ -34,32 +47,6 @@ export function UserUploadProfileDoc(): MethodDecorator {
     );
 }
 
-export function UserLoginDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc<UserLoginSerialization>('user.login', {
-            auth: {
-                jwtAccessToken: true,
-            },
-            response: {
-                serialization: UserLoginSerialization,
-            },
-        })
-    );
-}
-
-export function UserRefreshDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc<UserLoginSerialization>('user.refresh', {
-            auth: {
-                jwtRefreshToken: true,
-            },
-            response: {
-                serialization: UserLoginSerialization,
-            },
-        })
-    );
-}
-
 export function UserInfoDoc(): MethodDecorator {
     return applyDecorators(
         Doc<UserPayloadSerialization>('user.info', {
@@ -76,6 +63,16 @@ export function UserInfoDoc(): MethodDecorator {
 export function UserChangePasswordDoc(): MethodDecorator {
     return applyDecorators(
         Doc<void>('user.changePassword', {
+            auth: {
+                jwtAccessToken: true,
+            },
+        })
+    );
+}
+
+export function UserDeleteSelfDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc<void>('user.deleteSelf', {
             auth: {
                 jwtAccessToken: true,
             },

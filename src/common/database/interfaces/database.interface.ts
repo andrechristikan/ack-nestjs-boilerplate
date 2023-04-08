@@ -10,9 +10,14 @@ export interface IDatabaseFindOneOptions<T = any>
     withDeleted?: boolean;
 }
 
-export type IDatabaseOptions<T = any> = Pick<
+export type IDatabaseGetTotalOptions<T = any> = Pick<
     IDatabaseFindOneOptions<T>,
     'session' | 'withDeleted' | 'join'
+>;
+
+export type IDatabaseSaveOptions<T = any> = Pick<
+    IDatabaseFindOneOptions<T>,
+    'session'
 >;
 
 // find
@@ -29,7 +34,11 @@ export interface IDatabaseCreateOptions<T = any>
 
 // exist
 
-export interface IDatabaseExistOptions<T = any> extends IDatabaseOptions<T> {
+export interface IDatabaseExistOptions<T = any>
+    extends Pick<
+        IDatabaseFindOneOptions<T>,
+        'session' | 'withDeleted' | 'join'
+    > {
     excludeId?: string[];
 }
 
@@ -40,7 +49,7 @@ export type IDatabaseManyOptions<T = any> = Pick<
 >;
 
 export type IDatabaseCreateManyOptions<T = any> = Pick<
-    IDatabaseOptions<T>,
+    IDatabaseFindOneOptions<T>,
     'session'
 >;
 
@@ -49,6 +58,6 @@ export type IDatabaseSoftDeleteManyOptions<T = any> = IDatabaseManyOptions<T>;
 export type IDatabaseRestoreManyOptions<T = any> = IDatabaseManyOptions<T>;
 
 export type IDatabaseRawOptions<T = any> = Pick<
-    IDatabaseOptions<T>,
+    IDatabaseFindOneOptions<T>,
     'session' | 'withDeleted'
 >;

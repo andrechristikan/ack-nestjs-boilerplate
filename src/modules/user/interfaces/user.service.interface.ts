@@ -7,8 +7,10 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseOptions,
     IDatabaseManyOptions,
+    IDatabaseCreateManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
+import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
 import {
     IUserDoc,
@@ -77,6 +79,7 @@ export interface IUserService {
     ): Promise<UserDoc>;
     active(repository: UserDoc): Promise<UserEntity>;
     inactive(repository: UserDoc): Promise<UserDoc>;
+    inactivePermanent(repository: UserDoc): Promise<UserDoc>;
     blocked(repository: UserDoc): Promise<UserDoc>;
     unblocked(repository: UserDoc): Promise<UserDoc>;
     maxPasswordAttempt(repository: UserDoc): Promise<UserDoc>;
@@ -92,5 +95,11 @@ export interface IUserService {
     deleteMany(
         find: Record<string, any>,
         options?: IDatabaseManyOptions
+    ): Promise<boolean>;
+    import(
+        data: UserImportDto[],
+        role: string,
+        { passwordCreated, passwordHash, salt }: IAuthPassword,
+        options?: IDatabaseCreateManyOptions
     ): Promise<boolean>;
 }

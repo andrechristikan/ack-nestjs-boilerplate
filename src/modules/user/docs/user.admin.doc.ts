@@ -7,7 +7,6 @@ import {
     UserDocQueryIsActive,
 } from 'src/modules/user/constants/user.doc.constant';
 import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
-import { UserImportSerialization } from 'src/modules/user/serializations/user.import.serialization';
 import { UserListSerialization } from 'src/modules/user/serializations/user.list.serialization';
 
 export function UserListDoc(): MethodDecorator {
@@ -83,13 +82,12 @@ export function UserDeleteDoc(): MethodDecorator {
 
 export function UserImportDoc(): MethodDecorator {
     return applyDecorators(
-        Doc<UserImportSerialization>('user.import', {
+        Doc<void>('user.import', {
             auth: {
                 jwtAccessToken: true,
             },
             response: {
                 httpStatus: HttpStatus.CREATED,
-                serialization: UserImportSerialization,
             },
         })
     );
