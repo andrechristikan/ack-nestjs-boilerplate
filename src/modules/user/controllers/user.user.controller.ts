@@ -4,7 +4,8 @@ import {
     InternalServerErrorException,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { AuthJwtAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
+import { ApiKeyProtected } from 'src/common/api-key/decorators/api-key.decorator';
+import { AuthJwtUserAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { UserAuthProfileGuard } from 'src/modules/user/decorators/user.auth.decorator';
@@ -18,13 +19,14 @@ import { UserService } from 'src/modules/user/services/user.service';
     version: '1',
     path: '/user',
 })
-export class UserAuthController {
+export class UserUserController {
     constructor(private readonly userService: UserService) {}
 
     @UserAuthDeleteSelfDoc()
     @Response('user.deleteSelf')
     @UserAuthProfileGuard()
-    @AuthJwtAccessProtected()
+    @AuthJwtUserAccessProtected()
+    @ApiKeyProtected()
     @Delete('/delete')
     async deleteSelf(@GetUser() user: UserDoc): Promise<void> {
         try {
