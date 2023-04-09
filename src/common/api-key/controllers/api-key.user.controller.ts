@@ -45,7 +45,7 @@ import { ApiKeyListSerialization } from 'src/common/api-key/serializations/api-k
 import { ApiKeyResetSerialization } from 'src/common/api-key/serializations/api-key.reset.serialization';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import {
-    AuthJwtPublicAccessProtected,
+    AuthJwtUserAccessProtected,
     AuthJwtPayload,
 } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
@@ -90,7 +90,7 @@ export class ApiKeyUserController {
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ],
     })
-    @AuthJwtPublicAccessProtected()
+    @AuthJwtUserAccessProtected()
     @Get('/list')
     async list(
         @PaginationQuery(
@@ -145,7 +145,7 @@ export class ApiKeyUserController {
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ],
     })
-    @AuthJwtPublicAccessProtected()
+    @AuthJwtUserAccessProtected()
     @RequestParamGuard(ApiKeyRequestDto)
     @Get('get/:apiKey')
     async get(@GetApiKey(true) apiKey: ApiKeyEntity): Promise<IResponse> {
@@ -158,7 +158,7 @@ export class ApiKeyUserController {
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
-    @AuthJwtPublicAccessProtected()
+    @AuthJwtUserAccessProtected()
     @Post('/create')
     async create(
         @AuthJwtPayload('_id') user: string,
@@ -198,7 +198,7 @@ export class ApiKeyUserController {
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @AuthJwtPublicAccessProtected()
+    @AuthJwtUserAccessProtected()
     @RequestParamGuard(ApiKeyRequestDto)
     @Patch('/update/:apiKey/reset')
     async reset(@GetApiKey() apiKey: ApiKeyDoc): Promise<IResponse> {
@@ -231,7 +231,7 @@ export class ApiKeyUserController {
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @AuthJwtPublicAccessProtected()
+    @AuthJwtUserAccessProtected()
     @RequestParamGuard(ApiKeyRequestDto)
     @Put('/update/:apiKey')
     async updateName(
