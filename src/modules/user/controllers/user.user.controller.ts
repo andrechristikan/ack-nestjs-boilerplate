@@ -9,7 +9,7 @@ import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.s
 import { Response } from 'src/common/response/decorators/response.decorator';
 import {
     GetUser,
-    UserAuthProtected,
+    UserProtected,
 } from 'src/modules/user/decorators/user.decorator';
 import { UserUserDeleteSelfDoc } from 'src/modules/user/docs/user.user.doc';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
@@ -25,7 +25,7 @@ export class UserUserController {
 
     @UserUserDeleteSelfDoc()
     @Response('user.deleteSelf')
-    @UserAuthProtected()
+    @UserProtected()
     @AuthJwtUserAccessProtected()
     @Delete('/delete')
     async deleteSelf(@GetUser() user: UserDoc): Promise<void> {

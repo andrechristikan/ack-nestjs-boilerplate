@@ -33,9 +33,10 @@ import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/common/role/constants/role.status-code.constant';
 import { SettingService } from 'src/common/setting/services/setting.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
+import { UserAuthProtected } from 'src/modules/user/decorators/user.auth.decorator';
 import {
     GetUser,
-    UserAuthProtected,
+    UserProtected,
 } from 'src/modules/user/decorators/user.decorator';
 import {
     UserAuthChangePasswordDoc,
@@ -68,6 +69,7 @@ export class UserAuthController {
     @UserAuthRefreshDoc()
     @Response('user.refresh', { serialization: UserLoginSerialization })
     @UserAuthProtected()
+    @UserProtected()
     @AuthJwtRefreshProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
@@ -133,7 +135,7 @@ export class UserAuthController {
 
     @UserAuthChangePasswordDoc()
     @Response('user.changePassword')
-    @UserAuthProtected()
+    @UserProtected()
     @AuthJwtAccessProtected()
     @Patch('/change-password')
     async changePassword(
@@ -227,6 +229,7 @@ export class UserAuthController {
         serialization: UserProfileSerialization,
     })
     @UserAuthProtected()
+    @UserProtected()
     @AuthJwtAccessProtected()
     @Get('/profile')
     async profile(@GetUser() user: UserDoc): Promise<IResponse> {
@@ -239,6 +242,7 @@ export class UserAuthController {
     @UserAuthUploadProfileDoc()
     @Response('user.upload')
     @UserAuthProtected()
+    @UserProtected()
     @AuthJwtAccessProtected()
     @UploadFileSingle('file')
     @HttpCode(HttpStatus.OK)

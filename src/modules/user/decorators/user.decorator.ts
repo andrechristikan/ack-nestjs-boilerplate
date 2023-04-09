@@ -30,17 +30,8 @@ export const GetUser = createParamDecorator(
     }
 );
 
-export function UserAuthProtected(): MethodDecorator {
+export function UserProtected(): MethodDecorator {
     return applyDecorators(
-        UseGuards(
-            UserPayloadPutToRequestGuard,
-            UserNotFoundGuard,
-            UserBlockedGuard,
-            UserInactivePermanentGuard,
-            UserActiveGuard
-        ),
-        SetMetadata(USER_INACTIVE_PERMANENT_META_KEY, [false]),
-        SetMetadata(USER_BLOCKED_META_KEY, [false]),
-        SetMetadata(USER_ACTIVE_META_KEY, [true])
+        UseGuards(UserPayloadPutToRequestGuard, UserNotFoundGuard)
     );
 }
