@@ -27,11 +27,13 @@ export function UserAdminUpdateInactiveGuard(): MethodDecorator {
         UseGuards(
             UserPutToRequestGuard,
             UserNotFoundGuard,
+            UserBlockedGuard,
             UserInactivePermanentGuard,
             UserActiveGuard
         ),
         SetMetadata(USER_INACTIVE_PERMANENT_META_KEY, [false]),
-        SetMetadata(USER_ACTIVE_META_KEY, [true])
+        SetMetadata(USER_ACTIVE_META_KEY, [true]),
+        SetMetadata(USER_BLOCKED_META_KEY, [false])
     );
 }
 
@@ -40,23 +42,19 @@ export function UserAdminUpdateActiveGuard(): MethodDecorator {
         UseGuards(
             UserPutToRequestGuard,
             UserNotFoundGuard,
+            UserBlockedGuard,
             UserInactivePermanentGuard,
             UserActiveGuard
         ),
         SetMetadata(USER_INACTIVE_PERMANENT_META_KEY, [false]),
-        SetMetadata(USER_ACTIVE_META_KEY, [false])
+        SetMetadata(USER_ACTIVE_META_KEY, [false]),
+        SetMetadata(USER_BLOCKED_META_KEY, [false])
     );
 }
 
 export function UserAdminUpdateBlockedGuard(): MethodDecorator {
     return applyDecorators(
-        UseGuards(
-            UserPutToRequestGuard,
-            UserNotFoundGuard,
-            UserInactivePermanentGuard,
-            UserBlockedGuard
-        ),
-        SetMetadata(USER_INACTIVE_PERMANENT_META_KEY, [false]),
+        UseGuards(UserPutToRequestGuard, UserNotFoundGuard, UserBlockedGuard),
         SetMetadata(USER_BLOCKED_META_KEY, [false])
     );
 }

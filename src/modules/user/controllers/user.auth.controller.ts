@@ -33,8 +33,10 @@ import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/common/role/constants/role.status-code.constant';
 import { SettingService } from 'src/common/setting/services/setting.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
-import { UserAuthProfileGuard } from 'src/modules/user/decorators/user.auth.decorator';
-import { GetUser } from 'src/modules/user/decorators/user.decorator';
+import {
+    GetUser,
+    UserAuthProtected,
+} from 'src/modules/user/decorators/user.decorator';
 import {
     UserAuthChangePasswordDoc,
     UserAuthInfoDoc,
@@ -65,7 +67,7 @@ export class UserAuthController {
 
     @UserAuthRefreshDoc()
     @Response('user.refresh', { serialization: UserLoginSerialization })
-    @UserAuthProfileGuard()
+    @UserAuthProtected()
     @AuthJwtRefreshProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
@@ -75,24 +77,6 @@ export class UserAuthController {
         @AuthJwtToken() refreshToken: string,
         @GetUser() user: UserDoc
     ): Promise<IResponse> {
-        if (user.blocked) {
-            throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_BLOCKED_ERROR,
-                message: 'user.error.blocked',
-            });
-        } else if (user.inactivePermanent) {
-            throw new ForbiddenException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_PERMANENT_ERROR,
-                message: 'user.error.inactivePermanent',
-            });
-        } else if (!user.isActive) {
-            throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_ERROR,
-                message: 'user.error.inactive',
-            });
-        }
-
         const userWithRole: IUserDoc = await this.userService.joinWithRole(
             user
         );
@@ -149,7 +133,7 @@ export class UserAuthController {
 
     @UserAuthChangePasswordDoc()
     @Response('user.changePassword')
-    @UserAuthProfileGuard()
+    @UserAuthProtected()
     @AuthJwtAccessProtected()
     @Patch('/change-password')
     async changePassword(
@@ -242,7 +226,7 @@ export class UserAuthController {
     @Response('user.profile', {
         serialization: UserProfileSerialization,
     })
-    @UserAuthProfileGuard()
+    @UserAuthProtected()
     @AuthJwtAccessProtected()
     @Get('/profile')
     async profile(@GetUser() user: UserDoc): Promise<IResponse> {
@@ -254,7 +238,7 @@ export class UserAuthController {
 
     @UserAuthUploadProfileDoc()
     @Response('user.upload')
-    @UserAuthProfileGuard()
+    @UserAuthProtected()
     @AuthJwtAccessProtected()
     @UploadFileSingle('file')
     @HttpCode(HttpStatus.OK)
