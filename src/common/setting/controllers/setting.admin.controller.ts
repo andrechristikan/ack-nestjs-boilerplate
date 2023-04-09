@@ -26,7 +26,7 @@ import { SettingUpdateValueDto } from 'src/common/setting/dtos/setting.update-va
 import { SettingDoc } from 'src/common/setting/repository/entities/setting.entity';
 import { SettingService } from 'src/common/setting/services/setting.service';
 
-@ApiTags('common.setting.admin')
+@ApiTags('common.admin.setting')
 @Controller({
     version: '1',
     path: '/setting',

@@ -76,7 +76,7 @@ import { RoleService } from 'src/common/role/services/role.service';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserService } from 'src/modules/user/services/user.service';
 
-@ApiTags('common.role.admin')
+@ApiTags('common.admin.role')
 @Controller({
     version: '1',
     path: '/role',

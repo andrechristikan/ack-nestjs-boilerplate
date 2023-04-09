@@ -31,7 +31,7 @@ export function AuthJwtAccessProtected(): MethodDecorator {
     return applyDecorators(UseGuards(AuthJwtAccessGuard));
 }
 
-export function AuthJwtPublicAccessProtected(): MethodDecorator {
+export function AuthJwtUserAccessProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(AuthJwtAccessGuard, RolePayloadTypeGuard),
         SetMetadata(ROLE_TYPE_META_KEY, [ENUM_ROLE_TYPE.USER])
