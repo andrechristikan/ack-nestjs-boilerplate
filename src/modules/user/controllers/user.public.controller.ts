@@ -253,4 +253,7 @@ export class UserPublicController {
             });
         }
     }
+
+    // todo signUp google
+    // todo login google
 }
