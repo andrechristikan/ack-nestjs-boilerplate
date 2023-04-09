@@ -7,8 +7,10 @@ import { ApiTags } from '@nestjs/swagger';
 import { AuthJwtUserAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { Response } from 'src/common/response/decorators/response.decorator';
-import { UserAuthProfileGuard } from 'src/modules/user/decorators/user.auth.decorator';
-import { GetUser } from 'src/modules/user/decorators/user.decorator';
+import {
+    GetUser,
+    UserProtected,
+} from 'src/modules/user/decorators/user.decorator';
 import { UserUserDeleteSelfDoc } from 'src/modules/user/docs/user.user.doc';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserService } from 'src/modules/user/services/user.service';
@@ -23,7 +25,7 @@ export class UserUserController {
 
     @UserUserDeleteSelfDoc()
     @Response('user.deleteSelf')
-    @UserAuthProfileGuard()
+    @UserProtected()
     @AuthJwtUserAccessProtected()
     @Delete('/delete')
     async deleteSelf(@GetUser() user: UserDoc): Promise<void> {
