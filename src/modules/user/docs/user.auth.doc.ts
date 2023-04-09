@@ -69,13 +69,3 @@ export function UserAuthChangePasswordDoc(): MethodDecorator {
         })
     );
 }
-
-export function UserAuthDeleteSelfDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc<void>('user.deleteSelf', {
-            auth: {
-                jwtAccessToken: true,
-            },
-        })
-    );
-}
