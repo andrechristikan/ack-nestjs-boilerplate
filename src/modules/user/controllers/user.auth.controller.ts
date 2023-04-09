@@ -228,7 +228,6 @@ export class UserAuthController {
     @Response('user.profile', {
         serialization: UserProfileSerialization,
     })
-    @UserAuthProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @Get('/profile')
@@ -241,7 +240,6 @@ export class UserAuthController {
 
     @UserAuthUploadProfileDoc()
     @Response('user.upload')
-    @UserAuthProtected()
     @UserProtected()
     @AuthJwtAccessProtected()
     @UploadFileSingle('file')
