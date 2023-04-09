@@ -35,3 +35,16 @@ export function UserProtected(): MethodDecorator {
         UseGuards(UserPayloadPutToRequestGuard, UserNotFoundGuard)
     );
 }
+
+export function UserAuthProtected(): MethodDecorator {
+    return applyDecorators(
+        UseGuards(
+            UserBlockedGuard,
+            UserInactivePermanentGuard,
+            UserActiveGuard
+        ),
+        SetMetadata(USER_INACTIVE_PERMANENT_META_KEY, [false]),
+        SetMetadata(USER_BLOCKED_META_KEY, [false]),
+        SetMetadata(USER_ACTIVE_META_KEY, [true])
+    );
+}

@@ -33,9 +33,9 @@ import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/common/role/constants/role.status-code.constant';
 import { SettingService } from 'src/common/setting/services/setting.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
-import { UserAuthProtected } from 'src/modules/user/decorators/user.auth.decorator';
 import {
     GetUser,
+    UserAuthProtected,
     UserProtected,
 } from 'src/modules/user/decorators/user.decorator';
 import {
