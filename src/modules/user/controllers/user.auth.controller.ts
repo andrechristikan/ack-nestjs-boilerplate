@@ -2,7 +2,6 @@ import {
     BadRequestException,
     Body,
     Controller,
-    Delete,
     ForbiddenException,
     Get,
     HttpCode,
@@ -38,7 +37,6 @@ import { UserAuthProfileGuard } from 'src/modules/user/decorators/user.auth.deco
 import { GetUser } from 'src/modules/user/decorators/user.decorator';
 import {
     UserAuthChangePasswordDoc,
-    UserAuthDeleteSelfDoc,
     UserAuthInfoDoc,
     UserAuthProfileDoc,
     UserAuthRefreshDoc,
@@ -52,7 +50,7 @@ import { UserPayloadSerialization } from 'src/modules/user/serializations/user.p
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
 
-@ApiTags('modules.user.auth')
+@ApiTags('modules.auth.user')
 @Controller({
     version: '1',
     path: '/user',
@@ -284,25 +282,6 @@ export class UserAuthController {
                     }
                 );
             await this.userService.updatePhoto(user, aws);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
-
-        return;
-    }
-
-    @UserAuthDeleteSelfDoc()
-    @Response('user.deleteSelf')
-    @UserAuthProfileGuard()
-    @AuthJwtAccessProtected()
-    @Delete('/delete')
-    async deleteSelf(@GetUser() user: UserDoc): Promise<void> {
-        try {
-            await this.userService.inactivePermanent(user);
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,

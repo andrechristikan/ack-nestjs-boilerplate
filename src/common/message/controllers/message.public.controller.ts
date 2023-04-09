@@ -6,7 +6,7 @@ import { MessageService } from 'src/common/message/services/message.service';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 
-@ApiTags('common.message.public')
+@ApiTags('common.public.message')
 @Controller({
     version: VERSION_NEUTRAL,
     path: '/message',

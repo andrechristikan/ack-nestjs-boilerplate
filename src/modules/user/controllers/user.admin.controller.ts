@@ -95,7 +95,7 @@ import {
     UserAdminUpdateDoc,
 } from 'src/modules/user/docs/user.admin.doc';
 
-@ApiTags('modules.user.admin')
+@ApiTags('modules.admin.user')
 @Controller({
     version: '1',
     path: '/user',
