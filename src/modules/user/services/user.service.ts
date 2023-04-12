@@ -30,6 +30,8 @@ import { UserPayloadSerialization } from 'src/modules/user/serializations/user.p
 import { plainToInstance } from 'class-transformer';
 import { RoleEntity } from 'src/common/role/repository/entities/role.entity';
 import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
+import { UserUpdateUsernameDto } from 'src/modules/user/dtos/user.update-username.dto';
+import { UserUpdateGoogleSSODto } from 'src/modules/user/dtos/user.update-google-sso.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -79,6 +81,20 @@ export class UserService implements IUserService {
         return this.userRepository.findOne<T>({ username }, options);
     }
 
+    async findOneByEmail<T>(
+        email: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<T> {
+        return this.userRepository.findOne<T>({ email }, options);
+    }
+
+    async findOneByMobileNumber<T>(
+        mobileNumber: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<T> {
+        return this.userRepository.findOne<T>({ mobileNumber }, options);
+    }
+
     async getTotal(
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
@@ -88,18 +104,17 @@ export class UserService implements IUserService {
 
     async create(
         {
-            username,
             firstName,
             lastName,
             email,
             mobileNumber,
             role,
+            signUpFrom,
         }: UserCreateDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc> {
         const create: UserEntity = new UserEntity();
-        create.username = username;
         create.firstName = firstName;
         create.email = email;
         create.password = passwordHash;
@@ -114,6 +129,7 @@ export class UserService implements IUserService {
         create.signUpDate = this.helperDateService.create();
         create.passwordAttempt = 0;
         create.mobileNumber = mobileNumber ?? undefined;
+        create.signUpFrom = signUpFrom;
 
         return this.userRepository.create<UserEntity>(create, options);
     }
@@ -169,6 +185,29 @@ export class UserService implements IUserService {
     ): Promise<UserDoc> {
         repository.firstName = firstName;
         repository.lastName = lastName;
+
+        return this.userRepository.save(repository, options);
+    }
+
+    async updateUsername(
+        repository: UserDoc,
+        { username }: UserUpdateUsernameDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        repository.username = username;
+
+        return this.userRepository.save(repository, options);
+    }
+
+    async updateGoogleSSO(
+        repository: UserDoc,
+        { accessToken, refreshToken }: UserUpdateGoogleSSODto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        repository.google = {
+            accessToken,
+            refreshToken,
+        };
 
         return this.userRepository.save(repository, options);
     }
@@ -316,9 +355,8 @@ export class UserService implements IUserService {
     ): Promise<boolean> {
         const passwordExpired: Date = this.helperDateService.backwardInDays(1);
         const users: UserEntity[] = data.map(
-            ({ email, firstName, lastName, username, mobileNumber }) => {
+            ({ email, firstName, lastName, mobileNumber, signUpFrom }) => {
                 const create: UserEntity = new UserEntity();
-                create.username = username;
                 create.firstName = firstName;
                 create.email = email;
                 create.password = passwordHash;
@@ -333,6 +371,7 @@ export class UserService implements IUserService {
                 create.signUpDate = this.helperDateService.create();
                 create.passwordAttempt = 0;
                 create.mobileNumber = mobileNumber ?? undefined;
+                create.signUpFrom = signUpFrom;
 
                 return create;
             }

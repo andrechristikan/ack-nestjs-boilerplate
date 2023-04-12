@@ -88,7 +88,7 @@ Next development
     - remove permission token
 * [x] add policy for each endpoint
 * [x] Refactor Unit Testing for common module
-* [ ] Google SSO for login and sign up
+* [x] Google SSO for login and sign up
 * [ ] Refactor Doc or Swagger 
 * [ ] Update Documentation, include an diagram for easier comprehension
 

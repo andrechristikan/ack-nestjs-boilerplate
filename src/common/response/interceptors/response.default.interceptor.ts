@@ -3,6 +3,7 @@ import {
     NestInterceptor,
     ExecutionContext,
     CallHandler,
+    HttpStatus,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -83,6 +84,7 @@ export class ResponseDefaultInterceptor<T>
                     const __repoVersion = request.__repoVersion;
 
                     // set default response
+                    let httpStatus: HttpStatus = response.statusCode;
                     let statusCode: number = response.statusCode;
                     let data: Record<string, any> = undefined;
                     let metadata: ResponseMetadataSerialization = {
@@ -102,7 +104,7 @@ export class ResponseDefaultInterceptor<T>
                         const { _metadata } = responseData;
                         data = responseData.data;
 
-                        if (classSerialization) {
+                        if (data && classSerialization) {
                             data = plainToInstance(
                                 classSerialization,
                                 data,
@@ -110,6 +112,8 @@ export class ResponseDefaultInterceptor<T>
                             );
                         }
 
+                        httpStatus =
+                            _metadata?.customProperty?.httpStatus ?? httpStatus;
                         statusCode =
                             _metadata?.customProperty?.statusCode ?? statusCode;
                         messagePath =
@@ -131,6 +135,8 @@ export class ResponseDefaultInterceptor<T>
                             customLanguages: __customLang,
                             properties: messageProperties,
                         });
+
+                    response.status(httpStatus);
 
                     return {
                         statusCode,

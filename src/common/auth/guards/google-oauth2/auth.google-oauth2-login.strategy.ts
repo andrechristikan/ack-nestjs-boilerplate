@@ -1,14 +1,14 @@
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
-import { config } from 'dotenv';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AuthGoogleOAuth2Scope } from 'src/common/auth/constants/auth.constant';
-config();
+import { Profile } from 'passport';
+import { IAuthGooglePayload } from 'src/common/auth/interfaces/auth.interface';
+
 @Injectable()
-export class AuthGoogleOAuth2Strategy extends PassportStrategy(
+export class AuthGoogleOAuth2LoginStrategy extends PassportStrategy(
     Strategy,
-    'google'
+    'googleLogin'
 ) {
     constructor(private readonly configService: ConfigService) {
         super({
@@ -17,22 +17,25 @@ export class AuthGoogleOAuth2Strategy extends PassportStrategy(
                 'auth.googleOAuth2.clientSecret'
             ),
             callbackURL: configService.get<string>(
-                'auth.googleOAuth2.callbackUrl'
+                'auth.googleOAuth2.callbackUrlLogin'
             ),
-            scope: AuthGoogleOAuth2Scope,
+            scope: ['profile', 'email', 'openid'],
         });
     }
+
     async validate(
         accessToken: string,
         refreshToken: string,
-        profile: any,
+        profile: Profile,
         done: VerifyCallback
     ): Promise<any> {
         const { name, emails } = profile;
-        const user = {
+        const user: IAuthGooglePayload = {
             email: emails[0].value,
             firstName: name.givenName,
             lastName: name.familyName,
+            accessToken,
+            refreshToken,
         };
 
         done(null, user);

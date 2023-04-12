@@ -34,3 +34,9 @@ export function ApiKeyUserUpdateResetGuard(): MethodDecorator {
         SetMetadata(API_KEY_ACTIVE_META_KEY, [true])
     );
 }
+
+export function ApiKeyUserDeleteGuard(): MethodDecorator {
+    return applyDecorators(
+        UseGuards(ApiKeyPayloadPutToRequestGuard, ApiKeyNotFoundGuard)
+    );
+}

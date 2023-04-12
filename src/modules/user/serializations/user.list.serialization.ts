@@ -7,6 +7,7 @@ export class UserListSerialization extends OmitType(UserProfileSerialization, [
     'role',
     'photo',
     'signUpDate',
+    'signUpFrom',
 ] as const) {
     @Exclude()
     readonly role: string;

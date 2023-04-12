@@ -10,21 +10,13 @@ import {
     IsUUID,
     IsOptional,
     ValidateIf,
+    IsEnum,
 } from 'class-validator';
 import { IsPasswordStrong } from 'src/common/request/validations/request.is-password-strong.validation';
 import { MobileNumberAllowed } from 'src/common/request/validations/request.mobile-number-allowed.validation';
+import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 
 export class UserCreateDto {
-    @ApiProperty({
-        example: faker.internet.userName(),
-        required: true,
-    })
-    @IsString()
-    @IsNotEmpty()
-    @MaxLength(100)
-    @Type(() => String)
-    readonly username: string;
-
     @ApiProperty({
         example: faker.internet.email(),
         required: true,
@@ -89,4 +81,9 @@ export class UserCreateDto {
     @IsPasswordStrong()
     @MaxLength(50)
     readonly password: string;
+
+    @IsEnum(ENUM_USER_SIGN_UP_FROM)
+    @IsString()
+    @IsNotEmpty()
+    readonly signUpFrom: ENUM_USER_SIGN_UP_FROM;
 }

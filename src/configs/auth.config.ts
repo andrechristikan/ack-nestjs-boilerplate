@@ -46,7 +46,8 @@ export default registerAs(
         googleOAuth2: {
             clientId: process.env.SSO_GOOGLE_CLIENT_ID,
             clientSecret: process.env.SSO_GOOGLE_CLIENT_SECRET,
-            callbackUrl: process.env.SSO_GOOGLE_CALLBACK_URL,
+            callbackUrlLogin: process.env.SSO_GOOGLE_CALLBACK_URL_LOGIN,
+            callbackUrlSignUp: process.env.SSO_GOOGLE_CALLBACK_URL_SIGN_UP,
         },
     })
 );

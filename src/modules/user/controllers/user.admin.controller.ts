@@ -94,6 +94,7 @@ import {
     UserAdminListDoc,
     UserAdminUpdateDoc,
 } from 'src/modules/user/docs/user.admin.doc';
+import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -168,7 +169,7 @@ export class UserAdminController {
     })
     @AuthJwtAdminAccessProtected()
     @RequestParamGuard(UserRequestDto)
-    @Get('get/:user')
+    @Get('/get/:user')
     async get(@GetUser() user: UserDoc): Promise<IResponse> {
         const userWithRole: IUserDoc = await this.userService.joinWithRole(
             user
@@ -188,11 +189,10 @@ export class UserAdminController {
     @Post('/create')
     async create(
         @Body()
-        { username, email, mobileNumber, role, ...body }: UserCreateDto
+        { email, mobileNumber, role, ...body }: UserCreateDto
     ): Promise<IResponse> {
         const promises: Promise<any>[] = [
             this.roleService.findOneById(role),
-            this.userService.existByUsername(username),
             this.userService.existByEmail(email),
         ];
 
@@ -200,19 +200,14 @@ export class UserAdminController {
             promises.push(this.userService.existByMobileNumber(mobileNumber));
         }
 
-        const [checkRole, usernameExist, emailExist, mobileNumberExist] =
-            await Promise.all(promises);
+        const [checkRole, emailExist, mobileNumberExist] = await Promise.all(
+            promises
+        );
 
         if (!checkRole) {
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
                 message: 'role.error.notFound',
-            });
-        } else if (usernameExist) {
-            throw new ConflictException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.USER_USERNAME_EXISTS_ERROR,
-                message: 'user.error.usernameExist',
             });
         } else if (emailExist) {
             throw new ConflictException({
@@ -232,7 +227,13 @@ export class UserAdminController {
                 await this.authService.createPassword(body.password);
 
             const created: UserDoc = await this.userService.create(
-                { username, email, mobileNumber, role, ...body },
+                {
+                    email,
+                    mobileNumber,
+                    signUpFrom: ENUM_USER_SIGN_UP_FROM.LOCAL,
+                    role,
+                    ...body,
+                },
                 password
             );
 
