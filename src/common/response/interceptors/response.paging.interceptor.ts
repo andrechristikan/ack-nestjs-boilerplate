@@ -3,6 +3,7 @@ import {
     NestInterceptor,
     ExecutionContext,
     CallHandler,
+    HttpStatus,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -22,7 +23,7 @@ import {
     IMessageOptionsProperties,
 } from 'src/common/message/interfaces/message.interface';
 import {
-    ResponsePagingCursorMetadataSerialization,
+    ResponsePaginationCursorSerialization,
     ResponsePagingMetadataSerialization,
     ResponsePagingSerialization,
 } from 'src/common/response/serializations/response.paging.serialization';
@@ -87,6 +88,7 @@ export class ResponsePagingInterceptor<T>
                     const __repoVersion = request.__repoVersion;
                     const __pagination = request.__pagination;
 
+                    let httpStatus: HttpStatus = response.statusCode;
                     let statusCode: number = response.statusCode;
                     let data: Record<string, any>[] = [];
                     let metadata: ResponsePagingMetadataSerialization = {
@@ -116,6 +118,8 @@ export class ResponsePagingInterceptor<T>
                         );
                     }
 
+                    httpStatus =
+                        _metadata?.customProperty?.httpStatus ?? httpStatus;
                     statusCode =
                         _metadata?.customProperty?.statusCode ?? statusCode;
                     messagePath =
@@ -146,7 +150,7 @@ export class ResponsePagingInterceptor<T>
                         encode: false,
                     });
 
-                    const cursorPaginationMetadata: ResponsePagingCursorMetadataSerialization =
+                    const cursorPaginationMetadata: ResponsePaginationCursorSerialization =
                         {
                             nextPage:
                                 page < totalPage
@@ -196,14 +200,14 @@ export class ResponsePagingInterceptor<T>
                             properties: messageProperties,
                         });
 
-                    const responseHttp: ResponsePagingSerialization = {
+                    response.status(httpStatus);
+
+                    return {
                         statusCode,
                         message,
                         _metadata: metadata,
                         data,
                     };
-
-                    return responseHttp;
                 })
             );
         }

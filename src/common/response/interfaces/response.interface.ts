@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { ClassConstructor } from 'class-transformer';
 import { ENUM_HELPER_FILE_TYPE } from 'src/common/helper/constants/helper.enum.constant';
 import { IHelperFileRows } from 'src/common/helper/interfaces/helper.interface';
@@ -6,6 +7,7 @@ import { IMessageOptionsProperties } from 'src/common/message/interfaces/message
 export interface IResponseCustomPropertyMetadata {
     statusCode?: number;
     message?: string;
+    httpStatus?: HttpStatus;
     messageProperties?: IMessageOptionsProperties;
 }
 
@@ -31,7 +33,7 @@ export interface IResponseExcelOptions<T> extends IResponseOptions<T> {
 // type
 export interface IResponse {
     _metadata?: IResponseMetadata;
-    data: Record<string, any>;
+    data?: Record<string, any>;
 }
 
 export interface IResponsePagingPagination {

@@ -4,20 +4,21 @@ import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.seriali
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import { RoleEntity } from 'src/common/role/repository/entities/role.entity';
+import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
+import { IUserGoogleEntity } from 'src/modules/user/interfaces/user.interface';
 
 export const UserDatabaseName = 'users';
 
 @DatabaseEntity({ collection: UserDatabaseName })
 export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     @Prop({
-        required: true,
+        required: false,
         index: true,
         trim: true,
-        unique: true,
         type: String,
         maxlength: 100,
     })
-    username: string;
+    username?: string;
 
     @Prop({
         required: true,
@@ -100,6 +101,12 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
 
     @Prop({
         required: true,
+        enum: ENUM_USER_SIGN_UP_FROM,
+    })
+    signUpFrom: ENUM_USER_SIGN_UP_FROM;
+
+    @Prop({
+        required: true,
         type: String,
     })
     salt: string;
@@ -153,6 +160,16 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
         },
     })
     photo?: AwsS3Serialization;
+
+    @Prop({
+        required: false,
+        _id: false,
+        type: {
+            accessToken: String,
+            refreshToken: String,
+        },
+    })
+    google?: IUserGoogleEntity;
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserEntity);

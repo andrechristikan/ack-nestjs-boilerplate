@@ -1,4 +1,13 @@
 {
+    "list":"Get list of api keys succeed",
+    "get":"Get Detail of api key succeed",
+    "create":"Create api key succeed",
+    "update":"Update api key succeed",
+    "reset":"Reset api key succeed",
+    "delete":"Delete api key succeed",
+    "inactive":"Inactive api key succeed",
+    "active":"Active api key succeed",
+    "updateDate":"Update date api key succeed",
     "error": {
         "timestampInvalid": "Request timestamp not acceptable",
         "keyNeeded": "Need API Key",

@@ -1,6 +1,7 @@
 import {
     BadRequestException,
     Body,
+    ConflictException,
     Controller,
     ForbiddenException,
     Get,
@@ -30,6 +31,7 @@ import { FileSizeImagePipe } from 'src/common/file/pipes/file.size.pipe';
 import { FileTypeImagePipe } from 'src/common/file/pipes/file.type.pipe';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
+import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/common/role/constants/role.status-code.constant';
 import { SettingService } from 'src/common/setting/services/setting.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
@@ -46,6 +48,8 @@ import {
     UserAuthUploadProfileDoc,
 } from 'src/modules/user/docs/user.auth.doc';
 import { UserChangePasswordDto } from 'src/modules/user/dtos/user.change-password.dto';
+import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
+import { UserUpdateUsernameDto } from 'src/modules/user/dtos/user.update-username.dto';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
@@ -238,6 +242,63 @@ export class UserAuthController {
         return { data: userWithRole.toObject() };
     }
 
+    @Response('user.updateProfile', {
+        serialization: ResponseIdSerialization,
+    })
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @Patch('/profile/update')
+    async updateProfile(
+        @GetUser() user: UserDoc,
+        @Body() body: UserUpdateNameDto
+    ): Promise<void> {
+        try {
+            await this.userService.updateName(user, body);
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
+
+        return;
+    }
+
+    @Response('user.claimUsername', {
+        serialization: ResponseIdSerialization,
+    })
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @Patch('/profile/claim-username')
+    async claimUsername(
+        @GetUser() user: UserDoc,
+        @Body() { username }: UserUpdateUsernameDto
+    ): Promise<void> {
+        const checkUsername: boolean = await this.userService.existByUsername(
+            username
+        );
+        if (checkUsername) {
+            throw new ConflictException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_USERNAME_EXISTS_ERROR,
+                message: 'user.error.usernameExist',
+            });
+        }
+
+        try {
+            await this.userService.updateUsername(user, { username });
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
+
+        return;
+    }
+
     @UserAuthUploadProfileDoc()
     @Response('user.upload')
     @UserProtected()
@@ -254,7 +315,7 @@ export class UserAuthController {
         const content: Buffer = file.buffer;
         const mime: string = filename
             .substring(filename.lastIndexOf('.') + 1, filename.length)
-            .toUpperCase();
+            .toLowerCase();
 
         const path = await this.userService.createPhotoFilename();
 

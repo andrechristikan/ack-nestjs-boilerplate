@@ -5,6 +5,7 @@ import { HelperEncryptionService } from 'src/common/helper/services/helper.encry
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { JwtService } from '@nestjs/jwt';
+import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 
 describe('AuthService', () => {
     let service: AuthService;
@@ -68,6 +69,7 @@ describe('AuthService', () => {
                 HelperEncryptionService,
                 HelperHashService,
                 HelperDateService,
+                HelperStringService,
                 { provide: JwtService, useValue: mockJwtService },
                 { provide: ConfigService, useValue: mockConfigService },
             ],
@@ -272,14 +274,10 @@ describe('AuthService', () => {
 
     describe('createPasswordRandom', () => {
         it('should create password random', async () => {
-            const today = new Date();
-            const month = `${today.getMonth() + 1}`.padStart(2, '0');
-            const date = `${today.getDate()}`.padStart(2, '0');
-            const todayString = `${today.getFullYear()}-${month}-${date}`;
             const password = await service.createPasswordRandom();
 
+            expect(password).toBeDefined();
             expect(typeof password).toEqual('string');
-            expect(password).toEqual(todayString);
         });
     });
 

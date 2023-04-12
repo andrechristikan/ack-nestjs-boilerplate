@@ -2,6 +2,7 @@ import {
     Body,
     ConflictException,
     Controller,
+    Delete,
     Get,
     InternalServerErrorException,
     Patch,
@@ -19,6 +20,7 @@ import {
 } from 'src/common/api-key/constants/api-key.list.constant';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
 import {
+    ApiKeyAdminDeleteGuard,
     ApiKeyAdminGetGuard,
     ApiKeyAdminUpdateActiveGuard,
     ApiKeyAdminUpdateGuard,
@@ -29,6 +31,7 @@ import { GetApiKey } from 'src/common/api-key/decorators/api-key.decorator';
 import {
     ApiKeyAdminActiveDoc,
     ApiKeyAdminCreateDoc,
+    ApiKeyAdminDeleteDoc,
     ApiKeyAdminGetDoc,
     ApiKeyAdminInactiveDoc,
     ApiKeyAdminListDoc,
@@ -141,7 +144,7 @@ export class ApiKeyAdminController {
     })
     @AuthJwtAdminAccessProtected()
     @RequestParamGuard(ApiKeyRequestDto)
-    @Get('get/:apiKey')
+    @Get('/get/:apiKey')
     async get(@GetApiKey(true) apiKey: ApiKeyEntity): Promise<IResponse> {
         return { data: apiKey };
     }
@@ -319,5 +322,29 @@ export class ApiKeyAdminController {
         }
 
         return { data: { _id: apiKey._id } };
+    }
+
+    @ApiKeyAdminDeleteDoc()
+    @Response('apiKey.delete')
+    @ApiKeyAdminDeleteGuard()
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.API_KEY,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
+    })
+    @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(ApiKeyRequestDto)
+    @Delete('/delete/:apiKey')
+    async delete(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
+        try {
+            await this.apiKeyService.delete(apiKey);
+
+            return;
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
     }
 }

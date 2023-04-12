@@ -4,6 +4,7 @@ import { Exclude, Type } from 'class-transformer';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import { RoleGetSerialization } from 'src/common/role/serializations/role.get.serialization';
+import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 
 export class UserGetSerialization extends ResponseIdSerialization {
     @ApiProperty({
@@ -14,8 +15,10 @@ export class UserGetSerialization extends ResponseIdSerialization {
 
     @ApiProperty({
         example: faker.internet.userName(),
+        nullable: true,
+        required: false,
     })
-    readonly username: string;
+    readonly username?: string;
 
     @ApiProperty({
         example: faker.internet.email(),
@@ -93,6 +96,11 @@ export class UserGetSerialization extends ResponseIdSerialization {
         example: faker.date.recent(),
     })
     readonly signUpDate: Date;
+
+    @ApiProperty({
+        example: ENUM_USER_SIGN_UP_FROM.LOCAL,
+    })
+    readonly signUpFrom: ENUM_USER_SIGN_UP_FROM;
 
     @Exclude()
     readonly salt: string;

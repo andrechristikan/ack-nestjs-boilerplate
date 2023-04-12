@@ -2,6 +2,7 @@ import {
     Body,
     ConflictException,
     Controller,
+    Delete,
     Get,
     InternalServerErrorException,
     Patch,
@@ -20,17 +21,19 @@ import {
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
 import { GetApiKey } from 'src/common/api-key/decorators/api-key.decorator';
 import {
+    ApiKeyUserDeleteGuard,
     ApiKeyUserGetGuard,
     ApiKeyUserUpdateGuard,
     ApiKeyUserUpdateResetGuard,
 } from 'src/common/api-key/decorators/api-key.user.decorator';
 import {
-    ApiKeyAdminCreateDoc,
-    ApiKeyAdminGetDoc,
-    ApiKeyAdminListDoc,
-    ApiKeyAdminResetDoc,
-    ApiKeyAdminUpdateDoc,
-} from 'src/common/api-key/docs/api-key.admin.doc';
+    ApiKeyUserCreateDoc,
+    ApiKeyUserDeleteDoc,
+    ApiKeyUserGetDoc,
+    ApiKeyUserListDoc,
+    ApiKeyUserResetDoc,
+    ApiKeyUserUpdateDoc,
+} from 'src/common/api-key/docs/api-key.user.doc';
 import { ApiKeyCreateByUserDto } from 'src/common/api-key/dtos/api-key.create.dto';
 import { ApiKeyRequestDto } from 'src/common/api-key/dtos/api-key.request.dto';
 import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
@@ -82,7 +85,7 @@ export class ApiKeyUserController {
         private readonly paginationService: PaginationService
     ) {}
 
-    @ApiKeyAdminListDoc()
+    @ApiKeyUserListDoc()
     @ResponsePaging('apiKey.list', {
         serialization: ApiKeyListSerialization,
     })
@@ -136,7 +139,7 @@ export class ApiKeyUserController {
         };
     }
 
-    @ApiKeyAdminGetDoc()
+    @ApiKeyUserGetDoc()
     @Response('apiKey.get', {
         serialization: ApiKeyGetSerialization,
     })
@@ -147,12 +150,12 @@ export class ApiKeyUserController {
     })
     @AuthJwtUserAccessProtected()
     @RequestParamGuard(ApiKeyRequestDto)
-    @Get('get/:apiKey')
+    @Get('/get/:apiKey')
     async get(@GetApiKey(true) apiKey: ApiKeyEntity): Promise<IResponse> {
         return { data: apiKey };
     }
 
-    @ApiKeyAdminCreateDoc()
+    @ApiKeyUserCreateDoc()
     @Response('apiKey.create', { serialization: ApiKeyCreateSerialization })
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
@@ -191,7 +194,34 @@ export class ApiKeyUserController {
         }
     }
 
-    @ApiKeyAdminResetDoc()
+    @ApiKeyUserUpdateDoc()
+    @Response('apiKey.update', { serialization: ResponseIdSerialization })
+    @ApiKeyUserUpdateGuard()
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.API_KEY,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+    })
+    @AuthJwtUserAccessProtected()
+    @RequestParamGuard(ApiKeyRequestDto)
+    @Put('/update/:apiKey')
+    async updateName(
+        @Body() body: ApiKeyUpdateDto,
+        @GetApiKey() apiKey: ApiKeyDoc
+    ): Promise<IResponse> {
+        try {
+            await this.apiKeyService.update(apiKey, body);
+        } catch (err: any) {
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
+
+        return { data: { _id: apiKey._id } };
+    }
+
+    @ApiKeyUserResetDoc()
     @Response('apiKey.reset', { serialization: ApiKeyResetSerialization })
     @ApiKeyUserUpdateResetGuard()
     @PolicyAbilityProtected({
@@ -224,22 +254,21 @@ export class ApiKeyUserController {
         }
     }
 
-    @ApiKeyAdminUpdateDoc()
-    @Response('apiKey.update', { serialization: ResponseIdSerialization })
-    @ApiKeyUserUpdateGuard()
+    @ApiKeyUserDeleteDoc()
+    @Response('apiKey.delete')
+    @ApiKeyUserDeleteGuard()
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
     })
     @AuthJwtUserAccessProtected()
     @RequestParamGuard(ApiKeyRequestDto)
-    @Put('/update/:apiKey')
-    async updateName(
-        @Body() body: ApiKeyUpdateDto,
-        @GetApiKey() apiKey: ApiKeyDoc
-    ): Promise<IResponse> {
+    @Delete('/delete/:apiKey')
+    async delete(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
         try {
-            await this.apiKeyService.update(apiKey, body);
+            await this.apiKeyService.delete(apiKey);
+
+            return;
         } catch (err: any) {
             throw new InternalServerErrorException({
                 statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
@@ -247,7 +276,5 @@ export class ApiKeyUserController {
                 _error: err.message,
             });
         }
-
-        return { data: { _id: apiKey._id } };
     }
 }

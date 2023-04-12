@@ -6,6 +6,7 @@ import {
 } from 'src/modules/user/constants/user.constant';
 import { UserActiveGuard } from 'src/modules/user/guards/user.active.guard';
 import { UserBlockedGuard } from 'src/modules/user/guards/user.blocked.guard';
+import { UserCanNotOurSelfGuard } from 'src/modules/user/guards/user.can-not-ourself.guard';
 import { UserInactivePermanentGuard } from 'src/modules/user/guards/user.inactive-permanent.guard';
 import { UserNotFoundGuard } from 'src/modules/user/guards/user.not-found.guard';
 import { UserPutToRequestGuard } from 'src/modules/user/guards/user.put-to-request.guard';
@@ -15,11 +16,23 @@ export function UserAdminGetGuard(): MethodDecorator {
 }
 
 export function UserAdminDeleteGuard(): MethodDecorator {
-    return applyDecorators(UseGuards(UserPutToRequestGuard, UserNotFoundGuard));
+    return applyDecorators(
+        UseGuards(
+            UserPutToRequestGuard,
+            UserNotFoundGuard,
+            UserCanNotOurSelfGuard
+        )
+    );
 }
 
 export function UserAdminUpdateGuard(): MethodDecorator {
-    return applyDecorators(UseGuards(UserPutToRequestGuard, UserNotFoundGuard));
+    return applyDecorators(
+        UseGuards(
+            UserPutToRequestGuard,
+            UserNotFoundGuard,
+            UserCanNotOurSelfGuard
+        )
+    );
 }
 
 export function UserAdminUpdateInactiveGuard(): MethodDecorator {
@@ -27,6 +40,7 @@ export function UserAdminUpdateInactiveGuard(): MethodDecorator {
         UseGuards(
             UserPutToRequestGuard,
             UserNotFoundGuard,
+            UserCanNotOurSelfGuard,
             UserBlockedGuard,
             UserInactivePermanentGuard,
             UserActiveGuard
@@ -42,6 +56,7 @@ export function UserAdminUpdateActiveGuard(): MethodDecorator {
         UseGuards(
             UserPutToRequestGuard,
             UserNotFoundGuard,
+            UserCanNotOurSelfGuard,
             UserBlockedGuard,
             UserInactivePermanentGuard,
             UserActiveGuard
@@ -54,7 +69,12 @@ export function UserAdminUpdateActiveGuard(): MethodDecorator {
 
 export function UserAdminUpdateBlockedGuard(): MethodDecorator {
     return applyDecorators(
-        UseGuards(UserPutToRequestGuard, UserNotFoundGuard, UserBlockedGuard),
+        UseGuards(
+            UserPutToRequestGuard,
+            UserNotFoundGuard,
+            UserCanNotOurSelfGuard,
+            UserBlockedGuard
+        ),
         SetMetadata(USER_BLOCKED_META_KEY, [false])
     );
 }

@@ -42,5 +42,12 @@ export default registerAs(
             saltLength: 6,
             expiredIn: seconds('182d'), // 182 days
         },
+
+        googleOAuth2: {
+            clientId: process.env.SSO_GOOGLE_CLIENT_ID,
+            clientSecret: process.env.SSO_GOOGLE_CLIENT_SECRET,
+            callbackUrlLogin: process.env.SSO_GOOGLE_CALLBACK_URL_LOGIN,
+            callbackUrlSignUp: process.env.SSO_GOOGLE_CALLBACK_URL_SIGN_UP,
+        },
     })
 );

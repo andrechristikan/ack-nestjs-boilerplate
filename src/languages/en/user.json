@@ -11,6 +11,13 @@
     "login": "Login success.",
     "refresh": "Refresh token success",
     "signUp": "Sign up Success",
+    "updateProfile": "Update profile Succeed",
+    "claimUsername": "Claim username Succeed",
+    "passwordExpired": "Your password expired, go reset",
+    "loginGoogle": "Request login with google succeed",
+    "loginGoogleRedirect": "Login with google succeed",
+    "signUpGoogle": "Request sign up with google succeed",
+    "signUpGoogleRedirect": "Sign up with google succeed",
     "error": {
         "notFound": "User not found.",
         "emailExist": "Email user used",

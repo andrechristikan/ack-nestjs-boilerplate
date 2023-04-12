@@ -17,8 +17,8 @@ export class MigrationApiKeySeed {
     })
     async seeds(): Promise<void> {
         try {
-            const user: UserDoc = await this.userService.findOneByUsername(
-                'superadmin'
+            const user: UserDoc = await this.userService.findOneByEmail(
+                'superadmin@mail.com'
             );
             await this.apiKeyService.createRaw({
                 user: user._id,

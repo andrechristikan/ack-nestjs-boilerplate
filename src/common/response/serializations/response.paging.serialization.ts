@@ -8,22 +8,22 @@ import {
     ResponseMetadataSerialization,
 } from 'src/common/response/serializations/response.default.serialization';
 
-export class ResponsePagingCursorMetadataSerialization {
+export class ResponsePaginationCursorSerialization {
     nextPage: string;
     previousPage: string;
     firstPage: string;
     lastPage: string;
 }
 
-export class ResponsePagingPaginationSerialization extends RequestPaginationSerialization {
+export class ResponsePaginationSerialization extends RequestPaginationSerialization {
     total: number;
     totalPage: number;
 }
 
 export interface ResponsePagingMetadataSerialization
     extends ResponseMetadataSerialization {
-    cursor?: ResponsePagingCursorMetadataSerialization;
-    pagination?: ResponsePagingPaginationSerialization;
+    cursor?: ResponsePaginationCursorSerialization;
+    pagination?: ResponsePaginationSerialization;
 }
 
 export class ResponsePagingSerialization<

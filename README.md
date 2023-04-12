@@ -49,7 +49,6 @@
     - [Response Structure](#response-structure)
       - [Response Default](#response-default)
       - [Response Paging](#response-paging)
-      - [Response Metadata](#response-metadata)
   - [Prerequisites](#prerequisites)
   - [Getting Started](#getting-started)
     - [Clone Repo](#clone-repo)
@@ -70,7 +69,8 @@
 ## Important
 
 * The features will replated with AWS for Cloud Computing
-* If you want to implement `database transactions`, you must run MongoDB as a `replication set`.
+* If you want to implement `database transactions`. You must run MongoDB as a `replication set`.
+* If you want to implement `Google SSO`. You must have google account, then set your app on `google console` to get the  `clientId` and `clientSecret`.
 * If you change the environment value of `APP_ENV` to `production`, that will trigger.
     1. CorsMiddleware will implement `src/configs/middleware.config.ts`.
     2. Documentation will `disable`.
@@ -88,7 +88,8 @@ Next development
     - remove permission token
 * [x] add policy for each endpoint
 * [x] Refactor Unit Testing for common module
-* [ ] Google SSO for login and sign up
+* [x] Google SSO for login and sign up
+* [ ] Update Documentation, add behaviors
 * [ ] Refactor Doc or Swagger 
 * [ ] Update Documentation, include an diagram for easier comprehension
 
@@ -132,6 +133,7 @@ Describes which version.
 * Swagger / OpenAPI 3 included
 * Authentication (`Access Token`, `Refresh Token`, `API Key`)
 * Authorization, Role and Permission Management
+* Google SSO for Login and Sign Up
 * Support multi-language `i18n` 🗣, can controllable with request header `x-custom-lang`
 * Request validation for all request params, query, dan body with `class-validation`
 * Serialization with `class-transformer`
@@ -168,6 +170,7 @@ Describes which version.
 
 ### Third Party Integration
 
+* SSO `Google`
 * Storage integration with `AwsS3`
 * Upload file `single` and `multipart` to AwsS3
 
@@ -179,6 +182,8 @@ Describes which version.
 * Linter with EsLint for Typescript
 
 ## Behaviors
+
+> ---
 
 
 ## Structure
@@ -207,11 +212,11 @@ Full structure of module
     ├── controllers // business logic for rest api
     ├── decorators // warper decorator, custom decorator, etc
     ├── dtos // request validation
-    ├── docs // swagger / OpenAPI 3
+    ├── docs // swagger or OpenAPI 3
     ├── errors // custom error
-    ├── factories
+    ├── factories // custom factory
     ├── filters // custom filter 
-    ├── guards // validate related with database
+    ├── guards // guard validate
     ├── indicators // custom health check indicator
     ├── interceptors // custom interceptors
     ├── interfaces
@@ -233,20 +238,9 @@ This section will describe the structure of the response.
 
 #### Response Default
 
+> _metadata useful when we need to give the frontend some information
+
 Default response for the response
-
-```ts
-export class ResponseDefaultSerialization {
-    statusCode: number;
-    message: string;
-    _metadata?: IResponseMetadata;
-    data: Record<string, any>;
-}
-```
-
-#### Response Paging
-
-Default response for pagination.
 
 ```ts
 export class ResponseMetadataSerialization {
@@ -260,18 +254,19 @@ export class ResponseMetadataSerialization {
     [key: string]: any;
 }
 
-export class ResponsePagingSerialization {
+export class ResponseDefaultSerialization {
     statusCode: number;
     message: string;
     _metadata?: ResponseMetadataSerialization;
-    data: Record<string, any>[];
+    data: Record<string, any>;
 }
-
 ```
 
-#### Response Metadata
+#### Response Paging
 
-This is useful when we need to give the frontend some information that is related / not related with the endpoint.
+> _metadata useful when we need to give the frontend some information
+
+Default response for pagination.
 
 ```ts
 export class RequestPaginationSerialization {
@@ -289,46 +284,33 @@ export class RequestPaginationSerialization {
     availableOrderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE[];
 }
 
-export class ResponsePagingCursorMetadataSerialization {
+export class ResponsePaginationSerialization extends RequestPaginationSerialization {
+    total: number;
+    totalPage: number;
+}
+
+export class ResponsePaginationCursorSerialization {
     nextPage: string;
     previousPage: string;
     firstPage: string;
     lastPage: string;
 }
 
-export class ResponsePagingPaginationSerialization extends RequestPaginationSerialization {
-    total: number;
-    totalPage: number;
+export interface ResponsePagingMetadataSerialization
+    extends ResponseMetadataSerialization {
+    cursor?: ResponsePaginationCursorSerialization;
+    pagination?: ResponsePaginationSerialization;
 }
 
-export interface ResponsePagingMetadataSerialization  {
-    languages: string[];
-    timestamp: number;
-    timezone: string;
-    requestId: string;
-    path: string;
-    version: string;
-    repoVersion: string;
-    cursor?: ResponsePagingCursorMetadataSerialization;
-    pagination?: ResponsePagingPaginationSerialization;
-    [key: string]: any;
+export class ResponsePagingSerialization {
+    statusCode: number;
+    message: string;
+    _metadata?: ResponsePagingMetadataSerialization;
+    data: Record<string, any>[];
 }
 
-export interface IResponseMetadata {
-    languages: ENUM_MESSAGE_LANGUAGE[];
-    timestamp: number;
-    timezone: string;
-    requestId: string;
-    path: string;
-    version: string;
-    repoVersion: string;
-    nextPage?: string;
-    previousPage?: string;
-    firstPage?: string;
-    lastPage?: string;
-    [key: string]: any;
-}
 ```
+
 
 ## Prerequisites
 

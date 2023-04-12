@@ -58,3 +58,9 @@ export function ApiKeyAdminUpdateInactiveGuard(): MethodDecorator {
         SetMetadata(API_KEY_ACTIVE_META_KEY, [true])
     );
 }
+
+export function ApiKeyAdminDeleteGuard(): MethodDecorator {
+    return applyDecorators(
+        UseGuards(ApiKeyPutToRequestGuard, ApiKeyNotFoundGuard)
+    );
+}

@@ -13,6 +13,7 @@ import {
 import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
+import { UserUpdateUsernameDto } from 'src/modules/user/dtos/user.update-username.dto';
 import {
     IUserDoc,
     IUserEntity,
@@ -37,19 +38,20 @@ export interface IUserService {
         username: string,
         options?: IDatabaseFindOneOptions
     ): Promise<T>;
+    findOneByEmail<T>(
+        email: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<T>;
+    findOneByMobileNumber<T>(
+        mobileNumber: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<T>;
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
     create(
-        {
-            username,
-            firstName,
-            lastName,
-            email,
-            mobileNumber,
-            role,
-        }: UserCreateDto,
+        { firstName, lastName, email, mobileNumber, role }: UserCreateDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc>;
@@ -72,6 +74,11 @@ export interface IUserService {
     updateName(
         repository: UserDoc,
         { firstName, lastName }: UserUpdateNameDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
+    updateUsername(
+        repository: UserDoc,
+        { username }: UserUpdateUsernameDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     updatePhoto(

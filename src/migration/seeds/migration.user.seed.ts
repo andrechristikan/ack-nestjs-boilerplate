@@ -5,6 +5,7 @@ import { UserService } from 'src/modules/user/services/user.service';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { RoleDoc } from 'src/common/role/repository/entities/role.entity';
 import { RoleService } from 'src/common/role/services/role.service';
+import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 
 @Injectable()
 export class MigrationUserSeed {
@@ -35,48 +36,45 @@ export class MigrationUserSeed {
         );
         const user1: Promise<UserDoc> = this.userService.create(
             {
-                username: 'superadmin',
                 firstName: 'superadmin',
                 lastName: 'test',
                 email: 'superadmin@mail.com',
                 password,
                 mobileNumber: '08111111222',
+                signUpFrom: ENUM_USER_SIGN_UP_FROM.LOCAL,
                 role: superadminRole._id,
             },
             passwordHash
         );
         const user2: Promise<UserDoc> = this.userService.create(
             {
-                username: 'admin',
                 firstName: 'admin',
                 lastName: 'test',
                 email: 'admin@mail.com',
                 password,
-                mobileNumber: '08111111111',
+                signUpFrom: ENUM_USER_SIGN_UP_FROM.LOCAL,
                 role: adminRole._id,
             },
             passwordHash
         );
         const user3: Promise<UserDoc> = this.userService.create(
             {
-                username: 'user',
                 firstName: 'user',
                 lastName: 'test',
                 email: 'user@mail.com',
                 password,
-                mobileNumber: '08111111333',
+                signUpFrom: ENUM_USER_SIGN_UP_FROM.LOCAL,
                 role: userRole._id,
             },
             passwordHash
         );
         const user4: Promise<UserDoc> = this.userService.create(
             {
-                username: 'member',
                 firstName: 'member',
                 lastName: 'test',
                 email: 'member@mail.com',
                 password,
-                mobileNumber: '08111111444',
+                signUpFrom: ENUM_USER_SIGN_UP_FROM.LOCAL,
                 role: memberRole._id,
             },
             passwordHash
