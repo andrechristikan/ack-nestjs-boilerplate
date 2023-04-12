@@ -23,7 +23,7 @@ import {
     IMessageOptionsProperties,
 } from 'src/common/message/interfaces/message.interface';
 import {
-    ResponsePagingCursorMetadataSerialization,
+    ResponsePaginationCursorSerialization,
     ResponsePagingMetadataSerialization,
     ResponsePagingSerialization,
 } from 'src/common/response/serializations/response.paging.serialization';
@@ -150,7 +150,7 @@ export class ResponsePagingInterceptor<T>
                         encode: false,
                     });
 
-                    const cursorPaginationMetadata: ResponsePagingCursorMetadataSerialization =
+                    const cursorPaginationMetadata: ResponsePaginationCursorSerialization =
                         {
                             nextPage:
                                 page < totalPage
