@@ -79,6 +79,7 @@
 
 Next development
 
+* [x] Resolve N+1 Problem
 * [x] Refactor apikey module, change `x-api-key` to `${key}:${secret}`. Free for user to create ApiKey by themself.
 * [x] Refactor Authorization, optimize
     - remove permission entity, make then static permission
