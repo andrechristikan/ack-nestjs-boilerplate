@@ -1,7 +1,6 @@
 import {
     DynamicModule,
     ForwardReference,
-    Global,
     Module,
     Provider,
     Type,
@@ -12,7 +11,6 @@ import { DebuggerMiddlewareModule } from 'src/common/debugger/middleware/debugge
 import { DebuggerOptionService } from 'src/common/debugger/services/debugger.options.service';
 import { DebuggerService } from 'src/common/debugger/services/debugger.service';
 
-@Global()
 @Module({})
 export class DebuggerModule {
     static forRoot(): DynamicModule {

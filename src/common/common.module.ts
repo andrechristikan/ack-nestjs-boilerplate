@@ -153,7 +153,7 @@ import { PolicyModule } from 'src/common/policy/policy.module';
         SettingModule,
         LoggerModule,
         ApiKeyModule,
-        AuthModule,
+        AuthModule.forRoot(),
     ],
 })
 export class CommonModule {}
