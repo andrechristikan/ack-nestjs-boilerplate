@@ -68,7 +68,7 @@
 
 ## Important
 
-* The features will replated with AWS for Cloud Computing
+* The features will be relate with AWS
 * If you want to implement `database transactions`. You must run MongoDB as a `replication set`.
 * If you want to implement `Google SSO`. 
     1. You must have google account, then set your app on `google console` to get the  `clientId` and `clientSecret`.
