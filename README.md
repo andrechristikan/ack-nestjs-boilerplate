@@ -54,10 +54,10 @@
     - [Clone Repo](#clone-repo)
     - [Install Dependencies](#install-dependencies)
     - [Create environment](#create-environment)
-    - [Database Migration](#database-migration)
     - [Test](#test)
-    - [Run Project](#run-project)
-    - [Run Project with Docker](#run-project-with-docker)
+  - [Run Project](#run-project)
+  - [Run Project with Docker](#run-project-with-docker)
+  - [Database Migration](#database-migration)
   - [API Reference](#api-reference)
   - [Documentation](#documentation)
   - [Adjust Mongoose Setting](#adjust-mongoose-setting)
@@ -70,7 +70,9 @@
 
 * The features will replated with AWS for Cloud Computing
 * If you want to implement `database transactions`. You must run MongoDB as a `replication set`.
-* If you want to implement `Google SSO`. You must have google account, then set your app on `google console` to get the  `clientId` and `clientSecret`.
+* If you want to implement `Google SSO`. 
+    1. You must have google account, then set your app on `google console` to get the  `clientId` and `clientSecret`.
+    2. MongoDB as replication set
 * If you change the environment value of `APP_ENV` to `production`, that will trigger.
     1. CorsMiddleware will implement `src/configs/middleware.config.ts`.
     2. Documentation will `disable`.
@@ -365,7 +367,76 @@ cp .env.example .env
 
 To know the details, you can read the documentation. [Jump to document section](#documentation)
 
-### Database Migration
+### Test
+
+The project only provide `unit testing`.
+
+```bash
+yarn test
+```
+
+## Run Project
+
+Finally, Cheers 🍻🍻 !!! you passed all steps.
+
+Now you can run the project.
+
+```bash
+yarn start:dev
+```
+
+## Run Project with Docker
+
+For docker installation, we need more tools to be installed in our instance.
+
+1. [Docker][ref-docker]
+2. [Docker-Compose][ref-dockercompose]
+
+Then run
+
+```bash
+docker-compose up -d
+```
+
+After all containers up, we need to configure mongodb as replication set
+In this case primary will be `mongo1`
+
+1. Enter the `mongo1` container
+   
+    ```bash
+    docker exec -it mongo1 mongosh
+    ```
+
+2. Tell the primary to be as replication set
+   
+    ```js
+    rs.initiate({_id:"rs0", members: [{_id:0, host:"54.254.170.145:30001", priority:3}, {_id:1, host:"54.254.170.145:30002", priority:2}, {_id:2, host:"54.254.170.145:30003", priority:1}]}, { force: true })
+    ```
+
+    will return response `{status: ok}`
+
+3. Adjust env file
+   
+    ```env
+    ...
+
+    DATABASE_HOST=mongodb://mongo1:27017,mongo2:27017,mongo3:27017
+    DATABASE_NAME=ack
+    DATABASE_USER=
+    DATABASE_PASSWORD=
+    DATABASE_DEBUG=false
+    DATABASE_OPTIONS=replicaSet=rs0&retryWrites=true&w=majority
+
+    ...
+    ```
+
+4. Restart `service container`
+
+    ```bash
+    docker restart service
+    ```
+
+## Database Migration
 
 > The migration will do data seeding to MongoDB. Make sure to check the value of the `DATABASE_` prefix in your`.env` file.
 
@@ -381,39 +452,6 @@ For remove all data do
 
 ```bash
 yarn rollback
-```
-
-### Test
-
-> The test is still not good net. I'm still lazy too do that.
-
-The project only provide `unit testing`.
-
-```bash
-yarn test
-```
-
-### Run Project
-
-Finally, Cheers 🍻🍻 !!! you passed all steps.
-
-Now you can run the project.
-
-```bash
-yarn start:dev
-```
-
-### Run Project with Docker
-
-For docker installation, we need more tools to be installed in our instance.
-
-1. [Docker][ref-docker]
-2. [Docker-Compose][ref-dockercompose]
-
-Then run
-
-```bash
-docker-compose up -d
 ```
 
 ## API Reference

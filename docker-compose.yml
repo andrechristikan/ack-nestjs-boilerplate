@@ -13,13 +13,13 @@ services:
       - .env/:/app/.env
     restart: unless-stopped
     depends_on: 
-      - ackDatabase
+      - mongo1
+      - mongo2
+      - mongo3
   mongo1:
     container_name: mongo1
     hostname: mongo1
     image: mongo
-    ports:
-      - 30001:27017 
     restart: always
     networks:
       - app-network
@@ -31,8 +31,6 @@ services:
     container_name: mongo2
     hostname: mongo2
     image: mongo
-    ports:
-      - 30002:27017
     networks:
       - app-network
     restart: always
@@ -44,8 +42,6 @@ services:
     container_name: mongo3
     hostname: mongo3
     image: mongo
-    ports:
-      - 30003:27017
     networks:
       - app-network
     restart: always
