@@ -13,9 +13,11 @@ export const UserDatabaseName = 'users';
 export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     @Prop({
         required: false,
+        sparse: true,
         index: true,
         trim: true,
         type: String,
+        unique: true,
         maxlength: 100,
     })
     username?: string;
