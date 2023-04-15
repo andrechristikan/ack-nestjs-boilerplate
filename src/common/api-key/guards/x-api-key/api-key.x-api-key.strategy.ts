@@ -79,18 +79,24 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
             );
 
             return;
-        } else if (
-            authApi.startDate &&
-            authApi.endDate &&
-            (authApi.startDate < today || authApi.endDate > today)
-        ) {
-            verified(
-                new Error(
-                    `${ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_EXPIRED_ERROR}`
-                ),
-                null,
-                null
-            );
+        } else if (authApi.startDate && authApi.endDate) {
+            if (today < authApi.startDate) {
+                verified(
+                    new Error(
+                        `${ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_ACTIVE_YET_ERROR}`
+                    ),
+                    null,
+                    null
+                );
+            } else if (today > authApi.endDate) {
+                verified(
+                    new Error(
+                        `${ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_EXPIRED_ERROR}`
+                    ),
+                    null,
+                    null
+                );
+            }
         }
 
         const hashed = await this.apiKeyService.createHashApiKey(key, secret);

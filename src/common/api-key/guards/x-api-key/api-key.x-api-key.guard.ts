@@ -57,19 +57,19 @@ export class ApiKeyXApiKeyGuard extends AuthGuard('api-key') {
                     });
                 } else if (
                     statusCode ===
+                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_ACTIVE_YET_ERROR
+                ) {
+                    throw new ForbiddenException({
+                        statusCode,
+                        message: 'apiKey.error.notActiveYet',
+                    });
+                } else if (
+                    statusCode ===
                     ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_EXPIRED_ERROR
                 ) {
                     throw new ForbiddenException({
                         statusCode,
                         message: 'apiKey.error.expired',
-                    });
-                } else if (
-                    statusCode ===
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_WRONG_ERROR
-                ) {
-                    throw new ForbiddenException({
-                        statusCode,
-                        message: 'apiKey.error.wrong',
                     });
                 }
             }

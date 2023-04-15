@@ -34,14 +34,6 @@ export class RequestTimestampInterceptor
             const request: IRequestApp = context.switchToHttp().getRequest();
             const timestamp: number = request.__timestamp;
 
-            if (!timestamp) {
-                throw new ForbiddenException({
-                    statusCode:
-                        ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
-                    message: 'auth.apiKey.error.timestampInvalid',
-                });
-            }
-
             const checkTimestamp =
                 this.helperDateService.checkTimestamp(timestamp);
 
