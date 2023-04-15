@@ -26,5 +26,12 @@
     "minDateGreaterThan": "{property} has less date than the {value}",
     "isPasswordStrong": "{property} must have strong pattern",
     "isPasswordMedium": "{property} must have medium pattern",
-    "isPasswordWeak": "{property} must have weak pattern"
+    "isPasswordWeak": "{property} must have weak pattern",
+    "error": {
+        "userAgentInvalid": "Request user agent not acceptable",
+        "userAgentOsInvalid": "Request user agent OS not acceptable",
+        "userAgentBrowserInvalid": "Request user agent Browser not acceptable",
+        "timestampInvalid": "Timestamp invalid",
+        "toleranceTimeInMs": "Timestamp out of tolerance"
+    }
 }

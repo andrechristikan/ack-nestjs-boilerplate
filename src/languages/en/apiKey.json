@@ -9,14 +9,11 @@
     "active":"Active api key succeed",
     "updateDate":"Update date api key succeed",
     "error": {
-        "timestampInvalid": "Request timestamp not acceptable",
-        "keyNeeded": "Need API Key",
-        "prefixInvalid": "Prefix API Key invalid",
-        "schemaInvalid": "API Key Schema invalid",
-        "timestampNotMatchWithRequest": "Timestamp not match with request",
-        "notFound": "Auth API not found",
-        "inactive": "Auth API Inactive",
+        "notActiveYet":"Api Key not active yet",
         "invalid": "Invalid API Key",
-        "exist": "API Key Exist"
+        "notFound": "API Key not found",
+        "keyNeeded": "Api Key is missing",
+        "exist": "API Key Exist",
+        "inactive": "Auth API Inactive"
     }
 }
