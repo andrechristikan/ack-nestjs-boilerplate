@@ -410,7 +410,7 @@ In this case primary will be `mongo1`
 2. Tell the primary to be as replication set
    
     ```js
-    rs.initiate({_id:"rs0", members: [{_id:0, host:"54.254.170.145:30001", priority:3}, {_id:1, host:"54.254.170.145:30002", priority:2}, {_id:2, host:"54.254.170.145:30003", priority:1}]}, { force: true })
+    rs.initiate({_id:"rs0", members: [{_id:0, host:"mongo1:27017", priority:3}, {_id:1, host:"mongo2:27017", priority:2}, {_id:2, host:"mongo3:27017", priority:1}]}, { force: true })
     ```
 
     will return response `{status: ok}`
