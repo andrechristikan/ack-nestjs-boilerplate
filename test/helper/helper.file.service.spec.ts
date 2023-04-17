@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { HelperFileService } from 'src/common/helper/services/helper.file.service';
+import { unlinkSync } from 'fs';
 
 describe('HelperFileService', () => {
     let service: HelperFileService;
@@ -10,6 +11,12 @@ describe('HelperFileService', () => {
         }).compile();
 
         service = moduleRef.get<HelperFileService>(HelperFileService);
+    });
+
+    afterEach(async () => {
+        try {
+            unlinkSync('data/__blabla.json');
+        } catch (err: any) {}
     });
 
     it('should be defined', () => {
@@ -57,6 +64,24 @@ describe('HelperFileService', () => {
             const megabytes = '1MB';
             const bytes = service.convertToBytes(megabytes);
             expect(bytes).toEqual(1048576);
+        });
+    });
+
+    describe('createJson', () => {
+        it('should return true and create json file base on path', () => {
+            const result = service.createJson('data/__blabla.json', []);
+
+            expect(result).toEqual(true);
+        });
+    });
+
+    describe('readJson', () => {
+        it('should return object of json', () => {
+            service.createJson('data/__blabla.json', []);
+            const result = service.readJson('data/__blabla.json');
+
+            expect(result).toBeDefined();
+            expect(Array.isArray(result)).toEqual(true);
         });
     });
 });

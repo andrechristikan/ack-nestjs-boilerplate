@@ -4,6 +4,7 @@
 node_modules/
 coverage/
 dist/
+data/
 .husky/
 .github/
 prod/
