@@ -395,6 +395,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         options?: IDatabaseCreateOptions<ClientSession>
     ): Promise<EntityDocument> {
         const dataCreate: Record<string, any> = data;
+
         if (options?._id) {
             dataCreate._id = options._id;
         }

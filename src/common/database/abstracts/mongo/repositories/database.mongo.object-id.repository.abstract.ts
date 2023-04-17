@@ -399,7 +399,10 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
         options?: IDatabaseCreateOptions<ClientSession>
     ): Promise<EntityDocument> {
         const dataCreate: Record<string, any> = data;
-        dataCreate._id = new Types.ObjectId(options?._id);
+
+        if (options?._id) {
+            dataCreate._id = new Types.ObjectId(options?._id);
+        }
 
         const created = await this._repository.create([dataCreate], {
             session: options ? options.session : undefined,

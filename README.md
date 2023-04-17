@@ -440,6 +440,12 @@ In this case primary will be `mongo1`
 
 > The migration will do data seeding to MongoDB. Make sure to check the value of the `DATABASE_` prefix in your`.env` file.
 
+We need to rebuild, because migration build in separate module
+
+``bash
+yarn build:migration
+```
+
 The Database migration used [NestJs-Command][ref-nestjscommand]
 
 For seeding

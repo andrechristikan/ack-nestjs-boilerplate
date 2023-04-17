@@ -13,7 +13,8 @@
         "weakpassword",
         "apikey",
         "requestid",
-        "dtos"
+        "dtos",
+        "blabla"
     ],
     "ignorePaths": [
         "node_modules/**", 

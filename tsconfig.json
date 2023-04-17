@@ -27,6 +27,6 @@
     "dist", 
     "*coverage",
     "logs",
-    "scripts",
+    "data"
   ]
 }

@@ -5,8 +5,8 @@
     "dist", 
     "*coverage",
     "logs",
-    "scripts",
-    "test"
+    "test",
+    "data"
   ],
   "include": [
     "src"

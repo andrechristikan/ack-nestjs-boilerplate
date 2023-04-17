@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { CommandModule, CommandService } from 'nestjs-command';
-import { MigrationModule } from './migration/migration.module';
+import { MigrationModule } from 'src/migration/migration.module';
 
 async function bootstrap() {
     const app = await NestFactory.createApplicationContext(MigrationModule, {
