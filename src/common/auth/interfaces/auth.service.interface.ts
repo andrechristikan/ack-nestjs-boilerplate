@@ -29,8 +29,7 @@ export interface IAuthService {
         passwordHash: string
     ): Promise<boolean>;
     createPayloadAccessToken(
-        data: Record<string, any>,
-        options?: IAuthPayloadOptions
+        data: Record<string, any>
     ): Promise<Record<string, any>>;
     createPayloadRefreshToken(
         _id: string,

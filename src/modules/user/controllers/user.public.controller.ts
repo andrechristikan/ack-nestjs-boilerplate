@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import { ClientSession, Connection } from 'mongoose';
+import { ENUM_AUTH_LOGIN_WITH } from 'src/common/auth/constants/auth.enum.constant';
 import {
     AuthGoogleOAuth2LoginProtected,
     AuthGoogleOAuth2SignUpProtected,
@@ -152,7 +153,7 @@ export class UserPublicController {
             await this.authService.createPayloadAccessToken(payload);
         const payloadRefreshToken: Record<string, any> =
             await this.authService.createPayloadRefreshToken(payload._id, {
-                loginDate: payloadAccessToken.loginDate,
+                loginWith: ENUM_AUTH_LOGIN_WITH.LOCAL,
             });
 
         const payloadEncryption = await this.authService.getPayloadEncryption();
@@ -339,7 +340,7 @@ export class UserPublicController {
             await this.authService.createPayloadAccessToken(payload);
         const payloadRefreshToken: Record<string, any> =
             await this.authService.createPayloadRefreshToken(payload._id, {
-                loginDate: payloadAccessToken.loginDate,
+                loginWith: ENUM_AUTH_LOGIN_WITH.GOOGLE,
             });
 
         const payloadEncryption = await this.authService.getPayloadEncryption();
