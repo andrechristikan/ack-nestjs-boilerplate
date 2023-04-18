@@ -62,6 +62,7 @@ import {
     USER_DEFAULT_AVAILABLE_ORDER_BY,
     USER_DEFAULT_AVAILABLE_SEARCH,
     USER_DEFAULT_BLOCKED,
+    USER_DEFAULT_INACTIVE_PERMANENT,
     USER_DEFAULT_IS_ACTIVE,
     USER_DEFAULT_ORDER_BY,
     USER_DEFAULT_ORDER_DIRECTION,
@@ -131,12 +132,18 @@ export class UserAdminController {
         @PaginationQueryFilterInBoolean('isActive', USER_DEFAULT_IS_ACTIVE)
         isActive: Record<string, any>,
         @PaginationQueryFilterInBoolean('blocked', USER_DEFAULT_BLOCKED)
-        blocked: Record<string, any>
+        blocked: Record<string, any>,
+        @PaginationQueryFilterInBoolean(
+            'inactivePermanent',
+            USER_DEFAULT_INACTIVE_PERMANENT
+        )
+        inactivePermanent: Record<string, any>
     ): Promise<IResponsePaging> {
         const find: Record<string, any> = {
             ..._search,
             ...isActive,
             ...blocked,
+            ...inactivePermanent,
         };
 
         const users: IUserEntity[] = await this.userService.findAll(find, {

@@ -78,8 +78,6 @@ export class UserAuthController {
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
     async refresh(
-        @AuthJwtPayload()
-        { loginDate }: Record<string, any>,
         @AuthJwtToken() refreshToken: string,
         @GetUser() user: UserDoc
     ): Promise<IResponse> {
@@ -110,9 +108,7 @@ export class UserAuthController {
         const expiresIn: number =
             await this.authService.getAccessTokenExpirationTime();
         const payloadAccessToken: Record<string, any> =
-            await this.authService.createPayloadAccessToken(payload, {
-                loginDate,
-            });
+            await this.authService.createPayloadAccessToken(payload);
 
         const payloadEncryption = await this.authService.getPayloadEncryption();
         let payloadHashedAccessToken: Record<string, any> | string =

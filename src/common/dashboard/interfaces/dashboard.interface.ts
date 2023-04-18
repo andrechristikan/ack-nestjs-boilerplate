@@ -3,16 +3,8 @@ export interface IDashboardStartAndEndDate {
     endDate: Date;
 }
 
-export interface IDashboardStartAndEndYear {
-    startYear: number;
-    endYear: number;
-}
-
-export interface IDashboardStartAndEnd {
+export interface IDashboardMonthAndYear {
     month: number;
     year: number;
-}
-
-export interface IDashboardMonthAndYear extends Partial<IDashboardStartAndEnd> {
     total: number;
 }

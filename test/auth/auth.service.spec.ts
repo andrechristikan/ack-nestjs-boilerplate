@@ -6,6 +6,7 @@ import { HelperHashService } from 'src/common/helper/services/helper.hash.servic
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { JwtService } from '@nestjs/jwt';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
+import { ENUM_AUTH_LOGIN_WITH } from 'src/common/auth/constants/auth.enum.constant';
 
 describe('AuthService', () => {
     let service: AuthService;
@@ -210,38 +211,27 @@ describe('AuthService', () => {
 
     describe('createPayloadAccessToken', () => {
         it('should create access token payload', async () => {
-            const options = { loginDate: new Date(2022, 0, 1) };
-            const expectedPayload = { userId: 1, loginDate: options.loginDate };
+            const expectedPayload = { userId: 1 };
             const data = { userId: 1 };
-            const payload = await service.createPayloadAccessToken(
-                data,
-                options
-            );
-            expect(payload).toEqual(expectedPayload);
-        });
-
-        it('should create access token payload without options', async () => {
-            const data = { userId: 1 };
-
             const payload = await service.createPayloadAccessToken(data);
-
-            expect(payload.loginDate).toBeDefined();
+            expect(payload).toEqual(expectedPayload);
         });
     });
 
     describe('createPayloadRefreshToken', () => {
         it('should create refresh token payload', async () => {
-            const options = { loginDate: new Date(2022, 0, 1) };
+            const options = { loginWith: ENUM_AUTH_LOGIN_WITH.LOCAL };
             const expectedPayload = {
                 _id: 'user-id',
-                loginDate: options.loginDate,
             };
             const _id = 'user-id';
             const payload = await service.createPayloadRefreshToken(
                 _id,
                 options
             );
-            expect(payload).toEqual(expectedPayload);
+            expect(payload._id).toEqual(expectedPayload._id);
+            expect(payload.loginDate instanceof Date).toBe(true);
+            expect(payload.loginWith).toEqual(options.loginWith);
         });
     });
 

@@ -201,13 +201,9 @@ export class AuthService implements IAuthService {
     }
 
     async createPayloadAccessToken(
-        data: Record<string, any>,
-        options?: IAuthPayloadOptions
+        data: Record<string, any>
     ): Promise<Record<string, any>> {
-        return {
-            ...data,
-            loginDate: options?.loginDate ?? this.helperDateService.create(),
-        };
+        return data;
     }
 
     async createPayloadRefreshToken(
@@ -216,7 +212,8 @@ export class AuthService implements IAuthService {
     ): Promise<Record<string, any>> {
         return {
             _id,
-            loginDate: options?.loginDate,
+            loginDate: this.helperDateService.create(),
+            loginWith: options.loginWith,
         };
     }
 
