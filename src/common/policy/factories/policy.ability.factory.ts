@@ -1,38 +1,75 @@
 import { AbilityBuilder, createMongoAbility } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
+import { ENUM_POLICY_REQUEST_ACTION } from 'src/common/policy/constants/policy.enum.constant';
 import { ENUM_POLICY_ACTION } from 'src/common/policy/constants/policy.enum.constant';
 import {
     IPolicyAbility,
+    IPolicyRequest,
     IPolicyRule,
     IPolicyRuleAbility,
     PolicyHandler,
 } from 'src/common/policy/interfaces/policy.interface';
 import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
-import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
+import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 
 @Injectable()
 export class PolicyAbilityFactory {
-    defineAbilityFromRole({ type, permissions }: RoleDoc) {
+    defineAbilityFromRole({ type, permissions }: IPolicyRequest) {
         const { can, build } = new AbilityBuilder<IPolicyAbility>(
             createMongoAbility
         );
 
         if (type === ENUM_ROLE_TYPE.SUPER_ADMIN) {
             can(ENUM_POLICY_ACTION.MANAGE, 'all');
-        }
+        } else {
+            for (const permission of permissions) {
+                const abilities = this.mappingAbility(permission);
 
-        for (const permission of permissions) {
-            const abilities = this.mappingAbility(permission);
-
-            for (const ability of abilities) {
-                can(ability.action, ability.subject);
+                for (const ability of abilities) {
+                    can(ability.action, ability.subject);
+                }
             }
         }
 
         return build();
     }
 
-    mappingRules(rules: IPolicyRule[]): PolicyHandler[] {
+    mappingAbility({
+        subject,
+        action,
+    }: UserPayloadPermissionSerialization): IPolicyRuleAbility[] {
+        return action
+            .split(',')
+            .map((val: string) => ({
+                action: this.mappingRequestRule(
+                    ENUM_POLICY_REQUEST_ACTION[val]
+                ),
+                subject,
+            }))
+            .flat(1);
+    }
+
+    mappingRequestRule(action: ENUM_POLICY_REQUEST_ACTION): ENUM_POLICY_ACTION {
+        switch (action) {
+            case ENUM_POLICY_REQUEST_ACTION.MANAGE:
+                return ENUM_POLICY_ACTION.MANAGE;
+            case ENUM_POLICY_REQUEST_ACTION.CREATE:
+                return ENUM_POLICY_ACTION.CREATE;
+            case ENUM_POLICY_REQUEST_ACTION.UPDATE:
+                return ENUM_POLICY_ACTION.UPDATE;
+            case ENUM_POLICY_REQUEST_ACTION.DELETE:
+                return ENUM_POLICY_ACTION.DELETE;
+            case ENUM_POLICY_REQUEST_ACTION.EXPORT:
+                return ENUM_POLICY_ACTION.EXPORT;
+            case ENUM_POLICY_REQUEST_ACTION.IMPORT:
+                return ENUM_POLICY_ACTION.IMPORT;
+            case ENUM_POLICY_REQUEST_ACTION.READ:
+            default:
+                return ENUM_POLICY_ACTION.READ;
+        }
+    }
+
+    handlerRules(rules: IPolicyRule[]): PolicyHandler[] {
         return rules
             .map(({ subject, action }) => {
                 return action
@@ -42,15 +79,6 @@ export class PolicyAbilityFactory {
                     )
                     .flat(1);
             })
-            .flat(1);
-    }
-
-    mappingAbility({ subject, action }: IPolicyRule): IPolicyRuleAbility[] {
-        return action
-            .map((val) => ({
-                action: val,
-                subject,
-            }))
             .flat(1);
     }
 }

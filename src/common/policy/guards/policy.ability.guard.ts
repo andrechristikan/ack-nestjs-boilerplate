@@ -13,15 +13,13 @@ import {
     IPolicyRule,
     PolicyHandler,
 } from 'src/common/policy/interfaces/policy.interface';
-import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
-import { RoleService } from 'src/modules/role/services/role.service';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
 export class PolicyGuard implements CanActivate {
     constructor(
         private readonly reflector: Reflector,
-        private readonly policyAbilityFactory: PolicyAbilityFactory,
-        private readonly roleService: RoleService
+        private readonly policyAbilityFactory: PolicyAbilityFactory
     ) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -31,12 +29,16 @@ export class PolicyGuard implements CanActivate {
                 context.getHandler()
             ) || [];
 
-        const { user } = context.switchToHttp().getRequest();
-        const role: RoleDoc = await this.roleService.findOneById(user.role);
-        const ability = this.policyAbilityFactory.defineAbilityFromRole(role);
+        const { user } = context.switchToHttp().getRequest<IRequestApp>();
+        const { type, permissions } = user;
+
+        const ability = this.policyAbilityFactory.defineAbilityFromRole({
+            type,
+            permissions,
+        });
 
         const policyHandler: PolicyHandler[] =
-            this.policyAbilityFactory.mappingRules(policyRule);
+            this.policyAbilityFactory.handlerRules(policyRule);
         const check: boolean = policyHandler.every((handler: PolicyHandler) => {
             return this.execPolicyHandler(handler, ability);
         });

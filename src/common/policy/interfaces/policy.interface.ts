@@ -3,20 +3,19 @@ import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_SUBJECT,
 } from 'src/common/policy/constants/policy.enum.constant';
-
-export type IPolicySubject = `${ENUM_POLICY_SUBJECT}`;
+import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
+import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 
 export interface IPolicyRule {
-    subject: IPolicySubject;
+    subject: ENUM_POLICY_SUBJECT;
     action: ENUM_POLICY_ACTION[];
 }
-
 export interface IPolicyRuleAbility {
-    subject: IPolicySubject;
+    subject: ENUM_POLICY_SUBJECT;
     action: ENUM_POLICY_ACTION;
 }
 
-export type IPolicySubjectAbility = InferSubjects<IPolicySubject> | 'all';
+export type IPolicySubjectAbility = InferSubjects<ENUM_POLICY_SUBJECT> | 'all';
 
 export type IPolicyAbility = MongoAbility<
     [ENUM_POLICY_ACTION, IPolicySubjectAbility]
@@ -29,3 +28,8 @@ interface IPolicyHandler {
 type IPolicyHandlerCallback = (ability: IPolicyAbility) => boolean;
 
 export type PolicyHandler = IPolicyHandler | IPolicyHandlerCallback;
+
+export interface IPolicyRequest {
+    type: ENUM_ROLE_TYPE;
+    permissions: UserPayloadPermissionSerialization[];
+}
