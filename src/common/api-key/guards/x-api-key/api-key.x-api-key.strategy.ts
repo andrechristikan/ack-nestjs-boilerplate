@@ -117,6 +117,7 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
         req.apiKey = {
             _id: `${authApi._id}`,
             key: authApi.key,
+            type: authApi.type,
             name: authApi.name,
         };
         verified(null, authApi);

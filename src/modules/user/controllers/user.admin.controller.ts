@@ -67,22 +67,24 @@ import {
     USER_DEFAULT_ORDER_BY,
     USER_DEFAULT_ORDER_DIRECTION,
     USER_DEFAULT_PER_PAGE,
+    USER_DEFAULT_ROLE_TYPE,
 } from 'src/modules/user/constants/user.list.constant';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import {
     PaginationQuery,
     PaginationQueryFilterInBoolean,
+    PaginationQueryFilterInEnum,
 } from 'src/common/pagination/decorators/pagination.decorator';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
-import { RoleService } from 'src/common/role/services/role.service';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/common/role/constants/role.status-code.constant';
+import { RoleService } from 'src/modules/role/services/role.service';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { PolicyAbilityProtected } from 'src/common/policy/decorators/policy.decorator';
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_SUBJECT,
 } from 'src/common/policy/constants/policy.enum.constant';
-import { RoleDoc } from 'src/common/role/repository/entities/role.entity';
+import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 import {
     UserAdminActiveDoc,
     UserAdminBlockedDoc,
@@ -96,6 +98,7 @@ import {
     UserAdminUpdateDoc,
 } from 'src/modules/user/docs/user.admin.doc';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
+import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -137,13 +140,21 @@ export class UserAdminController {
             'inactivePermanent',
             USER_DEFAULT_INACTIVE_PERMANENT
         )
-        inactivePermanent: Record<string, any>
+        inactivePermanent: Record<string, any>,
+        @PaginationQueryFilterInEnum(
+            'role.type',
+            USER_DEFAULT_ROLE_TYPE,
+            ENUM_ROLE_TYPE,
+            'role'
+        )
+        roleType: Record<string, any>
     ): Promise<IResponsePaging> {
         const find: Record<string, any> = {
             ..._search,
             ...isActive,
             ...blocked,
             ...inactivePermanent,
+            ...roleType,
         };
 
         const users: IUserEntity[] = await this.userService.findAll(find, {

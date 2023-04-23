@@ -3,7 +3,7 @@ import { CallbackWithoutResultAndOptionalError } from 'mongoose';
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import { Document } from 'mongoose';
-import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
+import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.constant';
 
 export const ApiKeyDatabaseName = 'apikeys';
 
@@ -11,10 +11,11 @@ export const ApiKeyDatabaseName = 'apikeys';
 export class ApiKeyEntity extends DatabaseMongoUUIDEntityAbstract {
     @Prop({
         required: true,
-        ref: UserEntity.name,
+        enum: ENUM_API_KEY_TYPE,
         index: true,
+        trim: true,
     })
-    user: string;
+    type: ENUM_API_KEY_TYPE;
 
     @Prop({
         required: true,
@@ -26,14 +27,6 @@ export class ApiKeyEntity extends DatabaseMongoUUIDEntityAbstract {
         trim: true,
     })
     name: string;
-
-    @Prop({
-        required: false,
-        type: String,
-        minlength: 1,
-        maxlength: 255,
-    })
-    description?: string;
 
     @Prop({
         required: true,

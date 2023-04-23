@@ -25,8 +25,8 @@ import { DatabaseConnection } from 'src/common/database/decorators/database.deco
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/common/role/constants/role.status-code.constant';
-import { RoleService } from 'src/common/role/services/role.service';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
+import { RoleService } from 'src/modules/role/services/role.service';
 import { SettingService } from 'src/common/setting/services/setting.service';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import {
@@ -181,17 +181,11 @@ export class UserPublicController {
             await this.authService.checkPasswordExpired(user.passwordExpired);
 
         if (checkPasswordExpired) {
-            return {
-                _metadata: {
-                    customProperty: {
-                        // override status code and message
-                        statusCode:
-                            ENUM_USER_STATUS_CODE_SUCCESS.USER_PASSWORD_EXPIRED_ERROR,
-                        message: 'user.passwordExpired',
-                    },
-                },
-                data: { tokenType, expiresIn, accessToken, refreshToken },
-            };
+            throw new ForbiddenException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_SUCCESS.USER_PASSWORD_EXPIRED_ERROR,
+                message: 'user.error.passwordExpired',
+            });
         }
 
         return {

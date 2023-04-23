@@ -7,8 +7,8 @@ import {
     IPolicyRuleAbility,
     PolicyHandler,
 } from 'src/common/policy/interfaces/policy.interface';
-import { ENUM_ROLE_TYPE } from 'src/common/role/constants/role.enum.constant';
-import { RoleDoc } from 'src/common/role/repository/entities/role.entity';
+import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
+import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 
 @Injectable()
 export class PolicyAbilityFactory {

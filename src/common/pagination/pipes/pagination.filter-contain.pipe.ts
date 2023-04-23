@@ -1,9 +1,5 @@
 import { Inject, Injectable, mixin, Type } from '@nestjs/common';
-import {
-    ArgumentMetadata,
-    PipeTransform,
-    Scope,
-} from '@nestjs/common/interfaces';
+import { PipeTransform, Scope } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
 import { ENUM_PAGINATION_FILTER_CASE_OPTIONS } from 'src/common/pagination/constants/pagination.enum.constant';
 import { IPaginationFilterStringContainOptions } from 'src/common/pagination/interfaces/pagination.interface';
@@ -11,6 +7,7 @@ import { PaginationService } from 'src/common/pagination/services/pagination.ser
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationFilterContainPipe(
+    field: string,
     options?: IPaginationFilterStringContainOptions
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
@@ -21,11 +18,10 @@ export function PaginationFilterContainPipe(
         ) {}
 
         async transform(
-            value: string,
-            { data: field }: ArgumentMetadata
+            value: string
         ): Promise<Record<string, { $regex: RegExp; $options: string }>> {
             if (!value) {
-                value = '';
+                return undefined;
             }
 
             if (

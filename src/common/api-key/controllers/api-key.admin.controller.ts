@@ -1,6 +1,5 @@
 import {
     Body,
-    ConflictException,
     Controller,
     Delete,
     Get,
@@ -10,6 +9,7 @@ import {
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.constant';
 import {
     API_KEY_DEFAULT_AVAILABLE_ORDER_BY,
     API_KEY_DEFAULT_AVAILABLE_SEARCH,
@@ -17,8 +17,8 @@ import {
     API_KEY_DEFAULT_ORDER_BY,
     API_KEY_DEFAULT_ORDER_DIRECTION,
     API_KEY_DEFAULT_PER_PAGE,
+    API_KEY_DEFAULT_TYPE,
 } from 'src/common/api-key/constants/api-key.list.constant';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
 import {
     ApiKeyAdminDeleteGuard,
     ApiKeyAdminGetGuard,
@@ -27,7 +27,10 @@ import {
     ApiKeyAdminUpdateInactiveGuard,
     ApiKeyAdminUpdateResetGuard,
 } from 'src/common/api-key/decorators/api-key.admin.decorator';
-import { GetApiKey } from 'src/common/api-key/decorators/api-key.decorator';
+import {
+    ApiKeyPublicProtected,
+    GetApiKey,
+} from 'src/common/api-key/decorators/api-key.decorator';
 import {
     ApiKeyAdminActiveDoc,
     ApiKeyAdminCreateDoc,
@@ -57,6 +60,7 @@ import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.s
 import {
     PaginationQuery,
     PaginationQueryFilterInBoolean,
+    PaginationQueryFilterInEnum,
 } from 'src/common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
@@ -96,6 +100,7 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @Get('/list')
     async list(
         @PaginationQuery(
@@ -107,11 +112,18 @@ export class ApiKeyAdminController {
         )
         { _search, _limit, _offset, _order }: PaginationListDto,
         @PaginationQueryFilterInBoolean('isActive', API_KEY_DEFAULT_IS_ACTIVE)
-        isActive: Record<string, any>
+        isActive: Record<string, any>,
+        @PaginationQueryFilterInEnum(
+            'type',
+            API_KEY_DEFAULT_TYPE,
+            ENUM_API_KEY_TYPE
+        )
+        type: Record<string, any>
     ): Promise<IResponsePaging> {
         const find: Record<string, any> = {
             ..._search,
             ...isActive,
+            ...type,
         };
 
         const apiKeys: ApiKeyEntity[] = await this.apiKeyService.findAll(find, {
@@ -143,6 +155,7 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(ApiKeyRequestDto)
     @Get('/get/:apiKey')
     async get(@GetApiKey(true) apiKey: ApiKeyEntity): Promise<IResponse> {
@@ -156,23 +169,13 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @Post('/create')
-    async create(
-        @Body() { user, ...body }: ApiKeyCreateDto
-    ): Promise<IResponse> {
-        const checkUser: boolean = await this.apiKeyService.existByUser(user);
-        if (checkUser) {
-            throw new ConflictException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_EXIST_ERROR,
-                message: 'apiKey.error.exist',
-            });
-        }
-
+    async create(@Body() body: ApiKeyCreateDto): Promise<IResponse> {
         try {
-            const created: IApiKeyCreated = await this.apiKeyService.create({
-                ...body,
-                user,
-            });
+            const created: IApiKeyCreated = await this.apiKeyService.create(
+                body
+            );
 
             return {
                 data: {
@@ -197,6 +200,7 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(ApiKeyRequestDto)
     @Patch('/update/:apiKey/reset')
     async reset(@GetApiKey() apiKey: ApiKeyDoc): Promise<IResponse> {
@@ -230,6 +234,7 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(ApiKeyRequestDto)
     @Put('/update/:apiKey')
     async updateName(
@@ -257,6 +262,7 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(ApiKeyRequestDto)
     @Patch('/update/:apiKey/inactive')
     async inactive(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
@@ -281,6 +287,7 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(ApiKeyRequestDto)
     @Patch('/update/:apiKey/active')
     async active(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
@@ -305,6 +312,7 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(ApiKeyRequestDto)
     @Put('/update/:apiKey/date')
     async updateDate(
@@ -332,6 +340,7 @@ export class ApiKeyAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(ApiKeyRequestDto)
     @Delete('/delete/:apiKey')
     async delete(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {

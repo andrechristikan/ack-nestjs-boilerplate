@@ -41,45 +41,60 @@ export function PaginationQuerySearch(
 
 export function PaginationQueryFilterInBoolean(
     field: string,
-    defaultValue: boolean[]
+    defaultValue: boolean[],
+    queryField?: string
 ): ParameterDecorator {
-    return Query(field, PaginationFilterInBooleanPipe(defaultValue));
+    return Query(
+        queryField ?? field,
+        PaginationFilterInBooleanPipe(field, defaultValue)
+    );
 }
 
 export function PaginationQueryFilterInEnum<T>(
     field: string,
     defaultValue: T,
-    defaultEnum: Record<string, any>
+    defaultEnum: Record<string, any>,
+    queryField?: string
 ): ParameterDecorator {
     return Query(
-        field,
-        PaginationFilterInEnumPipe<T>(defaultValue, defaultEnum)
+        queryField ?? field,
+        PaginationFilterInEnumPipe<T>(field, defaultValue, defaultEnum)
     );
 }
 
 export function PaginationQueryFilterEqual(
     field: string,
+    queryField?: string,
     options?: IPaginationFilterStringEqualOptions
 ): ParameterDecorator {
-    return Query(field, PaginationFilterEqualPipe(options));
+    return Query(
+        queryField ?? field,
+        PaginationFilterEqualPipe(field, options)
+    );
 }
 
 export function PaginationQueryFilterContain(
     field: string,
+    queryField?: string,
     options?: IPaginationFilterStringContainOptions
 ): ParameterDecorator {
-    return Query(field, PaginationFilterContainPipe(options));
+    return Query(
+        queryField ?? field,
+        PaginationFilterContainPipe(field, options)
+    );
 }
 
 export function PaginationQueryFilterDate(
     field: string,
+    queryField?: string,
     options?: IPaginationFilterDateOptions
 ): ParameterDecorator {
-    return Query(field, PaginationFilterDatePipe(options));
+    return Query(queryField ?? field, PaginationFilterDatePipe(field, options));
 }
 
 export function PaginationQueryFilterEqualObjectId(
-    field: string
+    field: string,
+    queryField?: string
 ): ParameterDecorator {
-    return Query(field, PaginationFilterEqualObjectIdPipe);
+    return Query(queryField ?? field, PaginationFilterEqualObjectIdPipe(field));
 }

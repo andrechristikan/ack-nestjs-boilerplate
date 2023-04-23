@@ -2,18 +2,21 @@
     "list":"Get list of api keys succeed",
     "get":"Get Detail of api key succeed",
     "create":"Create api key succeed",
-    "update":"Update api key succeed",
     "reset":"Reset api key succeed",
-    "delete":"Delete api key succeed",
+    "update":"Update api key succeed",
     "inactive":"Inactive api key succeed",
     "active":"Active api key succeed",
     "updateDate":"Update date api key succeed",
+    "delete":"Delete api key succeed",
     "error": {
-        "notActiveYet":"Api Key not active yet",
-        "invalid": "Invalid API Key",
+        "exist": "API Key Exist",
+        "isActiveInvalid": "API Key is active invalid",
+        "expired": "API Key expired",
         "notFound": "API Key not found",
         "keyNeeded": "Api Key is missing",
-        "exist": "API Key Exist",
-        "inactive": "Auth API Inactive"
+        "inactive": "Auth API Inactive",
+        "notActiveYet":"Api Key not active yet",
+        "invalid": "Invalid API Key",
+        "typeInvalid": "Api Key type invalid"
     }
 }

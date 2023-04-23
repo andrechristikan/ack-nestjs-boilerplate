@@ -28,10 +28,11 @@ import {
 } from 'src/modules/user/interfaces/user.interface';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { plainToInstance } from 'class-transformer';
-import { RoleEntity } from 'src/common/role/repository/entities/role.entity';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 import { UserUpdateUsernameDto } from 'src/modules/user/dtos/user.update-username.dto';
 import { UserUpdateGoogleSSODto } from 'src/modules/user/dtos/user.update-google-sso.dto';
+import { PopulateOptions } from 'mongoose';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -54,9 +55,23 @@ export class UserService implements IUserService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<IUserEntity[]> {
+        const join: PopulateOptions = {
+            path: 'role',
+            localField: 'role',
+            foreignField: '_id',
+            model: RoleEntity.name,
+        };
+
+        if (find['role.type']) {
+            join.match = {
+                type: find['role.type'],
+            };
+            delete find['role.type'];
+        }
+
         return this.userRepository.findAll<IUserEntity>(find, {
             ...options,
-            join: true,
+            join,
         });
     }
 
@@ -99,7 +114,21 @@ export class UserService implements IUserService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number> {
-        return this.userRepository.getTotal(find, options);
+        const join: PopulateOptions = {
+            path: 'role',
+            localField: 'role',
+            foreignField: '_id',
+            model: RoleEntity.name,
+        };
+
+        if (find['role.type']) {
+            join.match = {
+                type: find['role.type'],
+            };
+            delete find['role.type'];
+        }
+
+        return this.userRepository.getTotal(find, { ...options, join });
     }
 
     async create(

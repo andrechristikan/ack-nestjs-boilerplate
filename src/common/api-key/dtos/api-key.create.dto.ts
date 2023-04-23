@@ -1,24 +1,10 @@
 import { faker } from '@faker-js/faker';
-import {
-    ApiProperty,
-    IntersectionType,
-    OmitType,
-    PartialType,
-} from '@nestjs/swagger';
-import {
-    IsNotEmpty,
-    IsOptional,
-    IsString,
-    MaxLength,
-    MinLength,
-} from 'class-validator';
+import { ApiProperty, PartialType } from '@nestjs/swagger';
+import { IsEnum, IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.constant';
 import { ApiKeyUpdateDateDto } from 'src/common/api-key/dtos/api-key.update-date.dto';
-import { UserRequestDto } from 'src/modules/user/dtos/user.request.dto';
 
-export class ApiKeyCreateDto extends IntersectionType(
-    PartialType(ApiKeyUpdateDateDto),
-    UserRequestDto
-) {
+export class ApiKeyCreateDto extends PartialType(ApiKeyUpdateDateDto) {
     @ApiProperty({
         description: 'Api Key name',
         example: `testapiname`,
@@ -30,15 +16,14 @@ export class ApiKeyCreateDto extends IntersectionType(
     name: string;
 
     @ApiProperty({
-        description: 'Description of api key',
-        example: 'blabla description',
-        required: false,
+        description: 'Api Key name',
+        example: ENUM_API_KEY_TYPE.PUBLIC,
+        required: true,
+        enum: ENUM_API_KEY_TYPE,
     })
-    @IsOptional()
-    @IsString()
-    @MinLength(1)
-    @MaxLength(100)
-    description?: string;
+    @IsNotEmpty()
+    @IsEnum(ENUM_API_KEY_TYPE)
+    type: ENUM_API_KEY_TYPE;
 }
 
 export class ApiKeyCreateRawDto extends ApiKeyCreateDto {
@@ -64,7 +49,3 @@ export class ApiKeyCreateRawDto extends ApiKeyCreateDto {
     @MaxLength(100)
     secret: string;
 }
-
-export class ApiKeyCreateByUserDto extends OmitType(ApiKeyCreateDto, [
-    'user',
-] as const) {}

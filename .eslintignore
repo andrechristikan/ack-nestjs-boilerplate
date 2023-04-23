@@ -4,6 +4,6 @@ dist/*
 coverage/*
 node_modules/*
 logs/*
-prod/*
+data/*
 .husky/*
 .github/*

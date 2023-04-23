@@ -35,7 +35,7 @@ import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/req
 import { Skip } from 'src/common/request/validations/request.skip.validation';
 import { ResponseDefaultSerialization } from 'src/common/response/serializations/response.default.serialization';
 import { ResponsePagingSerialization } from 'src/common/response/serializations/response.paging.serialization';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/common/role/constants/role.status-code.constant';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 
 export function Doc<T>(
     messagePath: string,
@@ -136,11 +136,6 @@ export function Doc<T>(
                 statusCode:
                     ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR,
                 messagePath: 'apiKey.error.notFound',
-            },
-            {
-                statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INACTIVE_ERROR,
-                messagePath: 'apiKey.error.inactive',
             },
             {
                 statusCode:
@@ -290,11 +285,6 @@ export function DocPaging<T>(
                 statusCode:
                     ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR,
                 messagePath: 'apiKey.error.notFound',
-            },
-            {
-                statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INACTIVE_ERROR,
-                messagePath: 'apiKey.error.inactive',
             },
             {
                 statusCode:

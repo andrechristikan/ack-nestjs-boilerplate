@@ -3,7 +3,7 @@ import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
-import { RoleGetSerialization } from 'src/common/role/serializations/role.get.serialization';
+import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 
 export class UserGetSerialization extends ResponseIdSerialization {
