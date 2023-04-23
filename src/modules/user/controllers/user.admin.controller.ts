@@ -67,13 +67,12 @@ import {
     USER_DEFAULT_ORDER_BY,
     USER_DEFAULT_ORDER_DIRECTION,
     USER_DEFAULT_PER_PAGE,
-    USER_DEFAULT_ROLE_TYPE,
 } from 'src/modules/user/constants/user.list.constant';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import {
     PaginationQuery,
+    PaginationQueryFilterEqualObjectId,
     PaginationQueryFilterInBoolean,
-    PaginationQueryFilterInEnum,
 } from 'src/common/pagination/decorators/pagination.decorator';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
@@ -98,7 +97,6 @@ import {
     UserAdminUpdateDoc,
 } from 'src/modules/user/docs/user.admin.doc';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
-import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -141,20 +139,15 @@ export class UserAdminController {
             USER_DEFAULT_INACTIVE_PERMANENT
         )
         inactivePermanent: Record<string, any>,
-        @PaginationQueryFilterInEnum(
-            'role.type',
-            USER_DEFAULT_ROLE_TYPE,
-            ENUM_ROLE_TYPE,
-            'role'
-        )
-        roleType: Record<string, any>
+        @PaginationQueryFilterEqualObjectId('role')
+        role: Record<string, any>
     ): Promise<IResponsePaging> {
         const find: Record<string, any> = {
             ..._search,
             ...isActive,
             ...blocked,
             ...inactivePermanent,
-            ...roleType,
+            ...role,
         };
 
         const users: IUserEntity[] = await this.userService.findAll(find, {

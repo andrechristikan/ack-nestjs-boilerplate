@@ -32,7 +32,6 @@ import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 import { UserUpdateUsernameDto } from 'src/modules/user/dtos/user.update-username.dto';
 import { UserUpdateGoogleSSODto } from 'src/modules/user/dtos/user.update-google-sso.dto';
-import { PopulateOptions } from 'mongoose';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -55,23 +54,9 @@ export class UserService implements IUserService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<IUserEntity[]> {
-        const join: PopulateOptions = {
-            path: 'role',
-            localField: 'role',
-            foreignField: '_id',
-            model: RoleEntity.name,
-        };
-
-        if (find['role.type']) {
-            join.match = {
-                type: find['role.type'],
-            };
-            delete find['role.type'];
-        }
-
         return this.userRepository.findAll<IUserEntity>(find, {
             ...options,
-            join,
+            join: true,
         });
     }
 
@@ -114,21 +99,7 @@ export class UserService implements IUserService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number> {
-        const join: PopulateOptions = {
-            path: 'role',
-            localField: 'role',
-            foreignField: '_id',
-            model: RoleEntity.name,
-        };
-
-        if (find['role.type']) {
-            join.match = {
-                type: find['role.type'],
-            };
-            delete find['role.type'];
-        }
-
-        return this.userRepository.getTotal(find, { ...options, join });
+        return this.userRepository.getTotal(find, { ...options, join: true });
     }
 
     async create(
