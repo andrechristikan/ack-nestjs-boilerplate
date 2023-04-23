@@ -3,7 +3,7 @@ import { CallbackWithoutResultAndOptionalError, Document } from 'mongoose';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
-import { RoleEntity } from 'src/common/role/repository/entities/role.entity';
+import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import { IUserGoogleEntity } from 'src/modules/user/interfaces/user.interface';
 

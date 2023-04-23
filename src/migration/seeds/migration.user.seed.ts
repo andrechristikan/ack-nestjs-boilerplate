@@ -3,8 +3,8 @@ import { Injectable } from '@nestjs/common';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { UserService } from 'src/modules/user/services/user.service';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { RoleDoc } from 'src/common/role/repository/entities/role.entity';
-import { RoleService } from 'src/common/role/services/role.service';
+import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
+import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 
 @Injectable()

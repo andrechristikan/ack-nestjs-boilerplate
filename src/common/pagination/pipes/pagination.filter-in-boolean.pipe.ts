@@ -1,15 +1,12 @@
 import { Inject, Injectable, mixin, Type } from '@nestjs/common';
-import {
-    ArgumentMetadata,
-    PipeTransform,
-    Scope,
-} from '@nestjs/common/interfaces';
+import { PipeTransform, Scope } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationFilterInBooleanPipe(
+    field: string,
     defaultValue: boolean[]
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
@@ -21,8 +18,7 @@ export function PaginationFilterInBooleanPipe(
         ) {}
 
         async transform(
-            value: string,
-            { data: field }: ArgumentMetadata
+            value: string
         ): Promise<Record<string, { $in: boolean[] }>> {
             let finalValue: boolean[] = defaultValue as boolean[];
 

@@ -71,18 +71,19 @@ import {
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import {
     PaginationQuery,
+    PaginationQueryFilterEqualObjectId,
     PaginationQueryFilterInBoolean,
 } from 'src/common/pagination/decorators/pagination.decorator';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
-import { RoleService } from 'src/common/role/services/role.service';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/common/role/constants/role.status-code.constant';
+import { RoleService } from 'src/modules/role/services/role.service';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { PolicyAbilityProtected } from 'src/common/policy/decorators/policy.decorator';
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_SUBJECT,
 } from 'src/common/policy/constants/policy.enum.constant';
-import { RoleDoc } from 'src/common/role/repository/entities/role.entity';
+import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 import {
     UserAdminActiveDoc,
     UserAdminBlockedDoc,
@@ -137,13 +138,16 @@ export class UserAdminController {
             'inactivePermanent',
             USER_DEFAULT_INACTIVE_PERMANENT
         )
-        inactivePermanent: Record<string, any>
+        inactivePermanent: Record<string, any>,
+        @PaginationQueryFilterEqualObjectId('role')
+        role: Record<string, any>
     ): Promise<IResponsePaging> {
         const find: Record<string, any> = {
             ..._search,
             ...isActive,
             ...blocked,
             ...inactivePermanent,
+            ...role,
         };
 
         const users: IUserEntity[] = await this.userService.findAll(find, {

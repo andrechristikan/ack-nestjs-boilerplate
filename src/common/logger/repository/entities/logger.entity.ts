@@ -8,7 +8,7 @@ import {
 } from 'src/common/logger/constants/logger.enum.constant';
 import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
 import { Document } from 'mongoose';
-import { ENUM_ROLE_TYPE } from 'src/common/role/constants/role.enum.constant';
+import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
 
 export const LoggerDatabaseName = 'loggers';
 

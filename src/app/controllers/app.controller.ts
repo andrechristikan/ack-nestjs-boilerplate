@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
 import { AppHelloApiKeyDoc, AppHelloDoc } from 'src/app/docs/app.doc';
 import { AppHelloSerialization } from 'src/app/serializations/app.hello.serialization';
-import { ApiKeyProtected } from 'src/common/api-key/decorators/api-key.decorator';
+import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { ENUM_LOGGER_ACTION } from 'src/common/logger/constants/logger.enum.constant';
 import { Logger } from 'src/common/logger/decorators/logger.decorator';
@@ -54,7 +54,7 @@ export class AppController {
     @AppHelloApiKeyDoc()
     @Response('app.hello', { serialization: AppHelloSerialization })
     @Logger(ENUM_LOGGER_ACTION.TEST, { tags: ['test'] })
-    @ApiKeyProtected()
+    @ApiKeyPublicProtected()
     @Get('/hello/api-key')
     async helloApiKey(
         @RequestUserAgent() userAgent: IResult

@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
+import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.constant';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 
 export class ApiKeyGetSerialization extends ResponseIdSerialization {
@@ -12,11 +13,11 @@ export class ApiKeyGetSerialization extends ResponseIdSerialization {
     name: string;
 
     @ApiProperty({
-        description: 'Description of api key',
-        example: 'blabla description',
-        required: false,
+        description: 'Type of api key',
+        example: ENUM_API_KEY_TYPE.PUBLIC,
+        required: true,
     })
-    description?: string;
+    type: ENUM_API_KEY_TYPE;
 
     @ApiProperty({
         description: 'Unique key of api key',

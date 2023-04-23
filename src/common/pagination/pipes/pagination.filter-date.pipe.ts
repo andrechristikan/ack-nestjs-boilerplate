@@ -1,9 +1,5 @@
 import { Inject, Injectable, mixin, Type } from '@nestjs/common';
-import {
-    ArgumentMetadata,
-    PipeTransform,
-    Scope,
-} from '@nestjs/common/interfaces';
+import { PipeTransform, Scope } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { ENUM_PAGINATION_FILTER_DATE_TIME_OPTIONS } from 'src/common/pagination/constants/pagination.enum.constant';
@@ -12,6 +8,7 @@ import { PaginationService } from 'src/common/pagination/services/pagination.ser
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationFilterDatePipe(
+    field: string,
     options?: IPaginationFilterDateOptions
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
@@ -22,10 +19,11 @@ export function PaginationFilterDatePipe(
             private readonly helperDateService: HelperDateService
         ) {}
 
-        async transform(
-            value: string,
-            { data: field }: ArgumentMetadata
-        ): Promise<Record<string, Date>> {
+        async transform(value: string): Promise<Record<string, Date>> {
+            if (!value) {
+                return undefined;
+            }
+
             let date: Date = this.helperDateService.create(value);
 
             if (

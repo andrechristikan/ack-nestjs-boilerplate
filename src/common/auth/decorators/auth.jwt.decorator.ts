@@ -4,9 +4,9 @@ import { AuthJwtRefreshGuard } from 'src/common/auth/guards/jwt-refresh/auth.jwt
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { RolePayloadTypeGuard } from 'src/common/role/guards/payload/role.payload.type.guard';
-import { ROLE_TYPE_META_KEY } from 'src/common/role/constants/role.constant';
-import { ENUM_ROLE_TYPE } from 'src/common/role/constants/role.enum.constant';
+import { RolePayloadTypeGuard } from 'src/modules/role/guards/payload/role.payload.type.guard';
+import { ROLE_TYPE_META_KEY } from 'src/modules/role/constants/role.constant';
+import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
 
 export const AuthJwtPayload = createParamDecorator(
     (data: string, ctx: ExecutionContext): Record<string, any> => {

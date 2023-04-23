@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { ApiProperty, OmitType } from '@nestjs/swagger';
 import { Exclude, Expose, Transform } from 'class-transformer';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
-import { ENUM_ROLE_TYPE } from 'src/common/role/constants/role.enum.constant';
+import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 

@@ -1,15 +1,11 @@
 import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
-import { UserService } from 'src/modules/user/services/user.service';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.constant';
 
 @Injectable()
 export class MigrationApiKeySeed {
-    constructor(
-        private readonly userService: UserService,
-        private readonly apiKeyService: ApiKeyService
-    ) {}
+    constructor(private readonly apiKeyService: ApiKeyService) {}
 
     @Command({
         command: 'seed:apikey',
@@ -17,15 +13,18 @@ export class MigrationApiKeySeed {
     })
     async seeds(): Promise<void> {
         try {
-            const user: UserDoc = await this.userService.findOneByEmail(
-                'superadmin@mail.com'
-            );
             await this.apiKeyService.createRaw({
-                user: user._id,
                 name: 'Api Key Migration',
-                description: 'From migration',
-                key: 'qwertyuiop12345zxcvbnmkjh',
-                secret: '5124512412412asdasdasdasdasdASDASDASD',
+                type: ENUM_API_KEY_TYPE.PUBLIC,
+                key: '2ihKDneb9jQGgidAOqfO',
+                secret: 'ZLCtDd2rh3TAyVhfAeo3JOPvWfAsTp0Oq6rHl69D',
+            });
+
+            await this.apiKeyService.createRaw({
+                name: 'Api Key Migration',
+                type: ENUM_API_KEY_TYPE.PUBLIC,
+                key: 'XL6kCmBw0ice0FszxVPc',
+                secret: '6WhgBRZytEYcmFWmRQxxOMr8NRJnnmcHQUkSAHMn',
             });
         } catch (err: any) {
             throw new Error(err.message);

@@ -6,7 +6,7 @@ import {
 import { LoggerRepository } from 'src/common/logger/repository/repositories/logger.repository';
 import { LoggerService } from 'src/common/logger/services/logger.service';
 import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
-import { ENUM_ROLE_TYPE } from 'src/common/role/constants/role.enum.constant';
+import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
 
 describe('LoggerService', () => {
     let service: LoggerService;

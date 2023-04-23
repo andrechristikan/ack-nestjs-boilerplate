@@ -7,7 +7,7 @@ import { MessagePublicController } from 'src/common/message/controllers/message.
 import { SettingPublicController } from 'src/common/setting/controllers/setting.public.controller';
 import { UserPublicController } from 'src/modules/user/controllers/user.public.controller';
 import { UserModule } from 'src/modules/user/user.module';
-import { RoleModule } from 'src/common/role/role.module';
+import { RoleModule } from 'src/modules/role/role.module';
 
 @Module({
     controllers: [

@@ -4,14 +4,10 @@ import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.seriali
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 
 export class UserListSerialization extends OmitType(UserProfileSerialization, [
-    'role',
     'photo',
     'signUpDate',
     'signUpFrom',
 ] as const) {
-    @Exclude()
-    readonly role: string;
-
     @Exclude()
     readonly photo?: AwsS3Serialization;
 

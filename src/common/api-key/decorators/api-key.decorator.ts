@@ -2,8 +2,12 @@ import {
     applyDecorators,
     createParamDecorator,
     ExecutionContext,
+    SetMetadata,
     UseGuards,
 } from '@nestjs/common';
+import { API_KEY_TYPE_META_KEY } from 'src/common/api-key/constants/api-key.constant';
+import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.constant';
+import { ApiKeyPayloadTypeGuard } from 'src/common/api-key/guards/payload/api-key.payload.type.guard';
 import { ApiKeyXApiKeyGuard } from 'src/common/api-key/guards/x-api-key/api-key.x-api-key.guard';
 import { IApiKeyPayload } from 'src/common/api-key/interfaces/api-key.interface';
 import {
@@ -21,8 +25,18 @@ export const ApiKeyPayload: () => ParameterDecorator = createParamDecorator(
     }
 );
 
-export function ApiKeyProtected(): MethodDecorator {
-    return applyDecorators(UseGuards(ApiKeyXApiKeyGuard));
+export function ApiKeyServiceProtected(): MethodDecorator {
+    return applyDecorators(
+        UseGuards(ApiKeyXApiKeyGuard, ApiKeyPayloadTypeGuard),
+        SetMetadata(API_KEY_TYPE_META_KEY, [ENUM_API_KEY_TYPE.SERVICE])
+    );
+}
+
+export function ApiKeyPublicProtected(): MethodDecorator {
+    return applyDecorators(
+        UseGuards(ApiKeyXApiKeyGuard, ApiKeyPayloadTypeGuard),
+        SetMetadata(API_KEY_TYPE_META_KEY, [ENUM_API_KEY_TYPE.PUBLIC])
+    );
 }
 
 export const GetApiKey = createParamDecorator(

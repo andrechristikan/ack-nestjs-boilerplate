@@ -13,8 +13,8 @@ import {
     IPolicyRule,
     PolicyHandler,
 } from 'src/common/policy/interfaces/policy.interface';
-import { RoleDoc } from 'src/common/role/repository/entities/role.entity';
-import { RoleService } from 'src/common/role/services/role.service';
+import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
+import { RoleService } from 'src/modules/role/services/role.service';
 
 @Injectable()
 export class PolicyGuard implements CanActivate {

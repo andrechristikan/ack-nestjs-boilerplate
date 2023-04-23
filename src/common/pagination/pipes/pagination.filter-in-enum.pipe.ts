@@ -1,14 +1,11 @@
 import { Inject, Injectable, mixin, Type } from '@nestjs/common';
-import {
-    ArgumentMetadata,
-    PipeTransform,
-    Scope,
-} from '@nestjs/common/interfaces';
+import { PipeTransform, Scope } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationFilterInEnumPipe<T>(
+    field: string,
     defaultValue: T,
     defaultEnum: Record<string, any>
 ): Type<PipeTransform> {
@@ -19,10 +16,7 @@ export function PaginationFilterInEnumPipe<T>(
             private readonly paginationService: PaginationService
         ) {}
 
-        async transform(
-            value: string,
-            { data: field }: ArgumentMetadata
-        ): Promise<Record<string, { $in: T[] }>> {
+        async transform(value: string): Promise<Record<string, { $in: T[] }>> {
             let finalValue: T[] = defaultValue as T[];
 
             if (value) {
