@@ -70,7 +70,7 @@
     "class-validator": "^0.14.0",
     "crypto-js": "^4.1.1",
     "helmet": "^6.1.5",
-    "joi": "^17.9.1",
+    "joi": "^17.9.2",
     "moment": "^2.29.4",
     "mongoose": "^7.0.4",
     "morgan": "^1.10.0",
