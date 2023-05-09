@@ -68,6 +68,8 @@
 
 ## Important
 
+> Very limited documentation
+
 * The features will be relate with AWS
 * If you want to implement `database transactions`. You must run MongoDB as a `replication set`.
 * If you want to implement `Google SSO`. 
@@ -261,7 +263,7 @@ export class ResponseDefaultSerialization {
     statusCode: number;
     message: string;
     _metadata?: ResponseMetadataSerialization;
-    data: Record<string, any>;
+    data?: Record<string, any>;
 }
 ```
 
@@ -301,14 +303,14 @@ export class ResponsePaginationCursorSerialization {
 
 export interface ResponsePagingMetadataSerialization
     extends ResponseMetadataSerialization {
-    cursor?: ResponsePaginationCursorSerialization;
-    pagination?: ResponsePaginationSerialization;
+    cursor: ResponsePaginationCursorSerialization;
+    pagination: ResponsePaginationSerialization;
 }
 
 export class ResponsePagingSerialization {
     statusCode: number;
     message: string;
-    _metadata?: ResponsePagingMetadataSerialization;
+    _metadata: ResponsePagingMetadataSerialization;
     data: Record<string, any>[];
 }
 

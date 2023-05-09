@@ -14,15 +14,15 @@ export class MigrationApiKeySeed {
     async seeds(): Promise<void> {
         try {
             await this.apiKeyService.createRaw({
-                name: 'Api Key Migration',
+                name: 'Api Key Public Migration',
                 type: ENUM_API_KEY_TYPE.PUBLIC,
                 key: '2ihKDneb9jQGgidAOqfO',
                 secret: 'ZLCtDd2rh3TAyVhfAeo3JOPvWfAsTp0Oq6rHl69D',
             });
 
             await this.apiKeyService.createRaw({
-                name: 'Api Key Migration',
-                type: ENUM_API_KEY_TYPE.PUBLIC,
+                name: 'Api Key Service Migration',
+                type: ENUM_API_KEY_TYPE.SERVICE,
                 key: 'XL6kCmBw0ice0FszxVPc',
                 secret: '6WhgBRZytEYcmFWmRQxxOMr8NRJnnmcHQUkSAHMn',
             });
