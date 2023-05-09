@@ -47,7 +47,9 @@ export class UserPayloadSerialization extends OmitType(
     })
     @Transform(({ obj }) => {
         return obj.role.permissions.map(({ action, subject }: IPolicyRule) => {
-            const ac = action.map((l) => ENUM_POLICY_REQUEST_ACTION[l]);
+            const ac = action.map(
+                (l) => ENUM_POLICY_REQUEST_ACTION[l.toUpperCase()]
+            );
             return {
                 subject,
                 action: ac.join(','),
