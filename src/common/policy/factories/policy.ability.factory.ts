@@ -1,5 +1,6 @@
 import { AbilityBuilder, createMongoAbility } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
+import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
 import { ENUM_POLICY_REQUEST_ACTION } from 'src/common/policy/constants/policy.enum.constant';
 import { ENUM_POLICY_ACTION } from 'src/common/policy/constants/policy.enum.constant';
 import {
@@ -14,6 +15,8 @@ import { UserPayloadPermissionSerialization } from 'src/modules/user/serializati
 
 @Injectable()
 export class PolicyAbilityFactory {
+    constructor(private readonly helperNumberService: HelperNumberService) {}
+
     defineAbilityFromRole({ type, permissions }: IPolicyRequest) {
         const { can, build } = new AbilityBuilder<IPolicyAbility>(
             createMongoAbility
@@ -42,17 +45,19 @@ export class PolicyAbilityFactory {
             .split(',')
             .map((val: string) => ({
                 action: this.mappingRequestRule(
-                    ENUM_POLICY_REQUEST_ACTION[val]
+                    this.helperNumberService.create(val)
                 ),
                 subject,
             }))
             .flat(1);
     }
 
-    mappingRequestRule(action: ENUM_POLICY_REQUEST_ACTION): ENUM_POLICY_ACTION {
+    mappingRequestRule(action: number): ENUM_POLICY_ACTION {
         switch (action) {
             case ENUM_POLICY_REQUEST_ACTION.MANAGE:
                 return ENUM_POLICY_ACTION.MANAGE;
+            case ENUM_POLICY_REQUEST_ACTION.READ:
+                return ENUM_POLICY_ACTION.READ;
             case ENUM_POLICY_REQUEST_ACTION.CREATE:
                 return ENUM_POLICY_ACTION.CREATE;
             case ENUM_POLICY_REQUEST_ACTION.UPDATE:
@@ -63,9 +68,8 @@ export class PolicyAbilityFactory {
                 return ENUM_POLICY_ACTION.EXPORT;
             case ENUM_POLICY_REQUEST_ACTION.IMPORT:
                 return ENUM_POLICY_ACTION.IMPORT;
-            case ENUM_POLICY_REQUEST_ACTION.READ:
             default:
-                return ENUM_POLICY_ACTION.READ;
+                return null;
         }
     }
 
