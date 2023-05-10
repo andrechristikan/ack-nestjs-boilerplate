@@ -74,7 +74,6 @@
 * If you want to implement `database transactions`. You must run MongoDB as a `replication set`.
 * If you want to implement `Google SSO`. 
     1. You must have google account, then set your app on `google console` to get the  `clientId` and `clientSecret`.
-    2. MongoDB as replication set
 * If you change the environment value of `APP_ENV` to `production`, that will trigger.
     1. CorsMiddleware will implement `src/configs/middleware.config.ts`.
     2. Documentation will `disable`.
