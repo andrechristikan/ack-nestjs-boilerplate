@@ -23,7 +23,7 @@
 
 ## Other Repo
 
-* [Kafka Integration][ack-kafka] : Microservice (Apache Kafka Integration)
+* [Kafka Integration][ack-kafka] : Microservice (Apache Kafka Integration) **OUTDATED**
 
 ## Table of contents
 
@@ -82,7 +82,7 @@
 
 Next development
 
-* [x] Resolve N+1 Problem
+* [x] Resolve N+1 Problem in `v5.0.0++`
 * [x] Refactor apikey module, change `x-api-key` to `${key}:${secret}`. Free for user to create ApiKey by themself.
 * [x] Refactor Authorization, optimize
     - remove permission entity, make then static permission
@@ -187,8 +187,7 @@ Describes which version.
 
 ## Behaviors
 
-> ---
-
+> Ongoing update
 
 ## Structure
 
@@ -399,24 +398,30 @@ Then run
 docker-compose up -d
 ```
 
-After all containers up, we need to configure mongodb as replication set
+After all containers up, we not finish yet. We need to manual configure mongodb as replication set.
 In this case primary will be `mongo1`
 
-1. Enter the `mongo1` container
+1. In root dir, Enter the `mongo1` container
    
     ```bash
     docker exec -it mongo1 mongosh
     ```
 
-2. Tell the primary to be as replication set
+2. In mongo1 container, tell the primary to be as replication set
    
     ```js
     rs.initiate({_id:"rs0", members: [{_id:0, host:"mongo1:27017", priority:3}, {_id:1, host:"mongo2:27017", priority:2}, {_id:2, host:"mongo3:27017", priority:1}]}, { force: true })
     ```
 
     will return response `{status: ok}`
+    
+    then exit the container
+    
+    ```bash
+    exit
+    ```
 
-3. Adjust env file
+3. In root dir, adjust env file
    
     ```env
     ...
@@ -431,7 +436,7 @@ In this case primary will be `mongo1`
     ...
     ```
 
-4. Restart `service container`
+4. In root dir, Restart the service container
 
     ```bash
     docker restart service
@@ -440,12 +445,6 @@ In this case primary will be `mongo1`
 ## Database Migration
 
 > The migration will do data seeding to MongoDB. Make sure to check the value of the `DATABASE_` prefix in your`.env` file.
-
-We need to rebuild, because migration build in separate module
-
-``bash
-yarn build:migration
-```
 
 The Database migration used [NestJs-Command][ref-nestjscommand]
 
