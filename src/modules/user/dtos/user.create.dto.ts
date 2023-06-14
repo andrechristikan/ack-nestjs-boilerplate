@@ -72,8 +72,8 @@ export class UserCreateDto {
 
     @ApiProperty({
         description: 'string password',
-        example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.random
-            .alphaNumeric(5)
+        example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.string
+            .alphanumeric(5)
             .toUpperCase()}@@!123`,
         required: true,
     })

@@ -1,13 +1,6 @@
-import {
-    BadRequestException,
-    Body,
-    Controller,
-    InternalServerErrorException,
-    Put,
-} from '@nestjs/common';
+import { BadRequestException, Body, Controller, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
-import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_SUBJECT,
@@ -63,15 +56,7 @@ export class SettingAdminController {
             });
         }
 
-        try {
-            await this.settingService.updateValue(setting, body);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.settingService.updateValue(setting, body);
 
         return {
             data: { _id: setting._id },

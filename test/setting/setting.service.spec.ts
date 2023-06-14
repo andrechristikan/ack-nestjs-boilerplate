@@ -19,7 +19,7 @@ describe('SettingService', () => {
     let service: SettingService;
     let configService: ConfigService;
     let repository: SettingRepository;
-    const settingId = faker.datatype.uuid();
+    const settingId = faker.string.uuid();
     const settingEntityDoc = new mongoose.Mongoose().model(
         SettingDatabaseName,
         SettingSchema

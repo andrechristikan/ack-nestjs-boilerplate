@@ -24,8 +24,18 @@ export class HelperStringService implements IHelperStringService {
 
     random(length: number, options?: IHelperStringRandomOptions): string {
         const rString = options?.safe
-            ? faker.internet.password(length, true, /[A-Z]/, options?.prefix)
-            : faker.internet.password(length, false, /\w/, options?.prefix);
+            ? faker.internet.password({
+                  length,
+                  memorable: true,
+                  pattern: /[A-Z]/,
+                  prefix: options?.prefix,
+              })
+            : faker.internet.password({
+                  length,
+                  memorable: false,
+                  pattern: /\w/,
+                  prefix: options?.prefix,
+              });
 
         return options?.upperCase ? rString.toUpperCase() : rString;
     }

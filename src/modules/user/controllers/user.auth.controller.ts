@@ -7,7 +7,6 @@ import {
     Get,
     HttpCode,
     HttpStatus,
-    InternalServerErrorException,
     Patch,
     Post,
     UploadedFile,
@@ -23,7 +22,6 @@ import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { AwsS3Service } from 'src/common/aws/services/aws.s3.service';
-import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { UploadFileSingle } from 'src/common/file/decorators/file.decorator';
 import { IFile } from 'src/common/file/interfaces/file.interface';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
@@ -159,15 +157,7 @@ export class UserAuthController {
             user.password
         );
         if (!matchPassword) {
-            try {
-                await this.userService.increasePasswordAttempt(user);
-            } catch (err: any) {
-                throw new InternalServerErrorException({
-                    statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                    message: 'http.serverError.internalServerError',
-                    _error: err.message,
-                });
-            }
+            await this.userService.increasePasswordAttempt(user);
 
             throw new BadRequestException({
                 statusCode:
@@ -188,28 +178,13 @@ export class UserAuthController {
             });
         }
 
-        try {
-            await this.userService.resetPasswordAttempt(user);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.userService.resetPasswordAttempt(user);
 
-        try {
-            const password: IAuthPassword =
-                await this.authService.createPassword(body.newPassword);
+        const password: IAuthPassword = await this.authService.createPassword(
+            body.newPassword
+        );
 
-            await this.userService.updatePassword(user, password);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.userService.updatePassword(user, password);
 
         return;
     }
@@ -248,15 +223,7 @@ export class UserAuthController {
         @GetUser() user: UserDoc,
         @Body() body: UserUpdateNameDto
     ): Promise<void> {
-        try {
-            await this.userService.updateName(user, body);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.userService.updateName(user, body);
 
         return;
     }
@@ -282,15 +249,7 @@ export class UserAuthController {
             });
         }
 
-        try {
-            await this.userService.updateUsername(user, { username });
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.userService.updateUsername(user, { username });
 
         return;
     }
@@ -315,23 +274,14 @@ export class UserAuthController {
 
         const path = await this.userService.createPhotoFilename();
 
-        try {
-            const aws: AwsS3Serialization =
-                await this.awsS3Service.putItemInBucket(
-                    `${path.filename}.${mime}`,
-                    content,
-                    {
-                        path: `${path.path}/${user._id}`,
-                    }
-                );
-            await this.userService.updatePhoto(user, aws);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        const aws: AwsS3Serialization = await this.awsS3Service.putItemInBucket(
+            `${path.filename}.${mime}`,
+            content,
+            {
+                path: `${path.path}/${user._id}`,
+            }
+        );
+        await this.userService.updatePhoto(user, aws);
 
         return;
     }

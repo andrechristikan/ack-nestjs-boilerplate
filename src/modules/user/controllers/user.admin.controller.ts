@@ -5,7 +5,6 @@ import {
     Body,
     Delete,
     Put,
-    InternalServerErrorException,
     NotFoundException,
     UploadedFile,
     ConflictException,
@@ -15,7 +14,6 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { UploadFileSingle } from 'src/common/file/decorators/file.decorator';
 import { IFileExtract } from 'src/common/file/interfaces/file.interface';
 import { FileExtractPipe } from 'src/common/file/pipes/file.extract.pipe';
@@ -233,31 +231,24 @@ export class UserAdminController {
             });
         }
 
-        try {
-            const password: IAuthPassword =
-                await this.authService.createPassword(body.password);
+        const password: IAuthPassword = await this.authService.createPassword(
+            body.password
+        );
 
-            const created: UserDoc = await this.userService.create(
-                {
-                    email,
-                    mobileNumber,
-                    signUpFrom: ENUM_USER_SIGN_UP_FROM.LOCAL,
-                    role,
-                    ...body,
-                },
-                password
-            );
+        const created: UserDoc = await this.userService.create(
+            {
+                email,
+                mobileNumber,
+                signUpFrom: ENUM_USER_SIGN_UP_FROM.LOCAL,
+                role,
+                ...body,
+            },
+            password
+        );
 
-            return {
-                data: { _id: created._id },
-            };
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        return {
+            data: { _id: created._id },
+        };
     }
 
     @UserAdminDeleteDoc()
@@ -271,15 +262,7 @@ export class UserAdminController {
     @RequestParamGuard(UserRequestDto)
     @Delete('/delete/:user')
     async delete(@GetUser() user: UserDoc): Promise<void> {
-        try {
-            await this.userService.delete(user);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.userService.delete(user);
 
         return;
     }
@@ -301,15 +284,7 @@ export class UserAdminController {
         @Body()
         body: UserUpdateNameDto
     ): Promise<IResponse> {
-        try {
-            await this.userService.updateName(user, body);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.userService.updateName(user, body);
 
         return {
             data: { _id: user._id },
@@ -327,15 +302,7 @@ export class UserAdminController {
     @RequestParamGuard(UserRequestDto)
     @Patch('/update/:user/inactive')
     async inactive(@GetUser() user: UserDoc): Promise<void> {
-        try {
-            await this.userService.inactive(user);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.userService.inactive(user);
 
         return;
     }
@@ -351,15 +318,7 @@ export class UserAdminController {
     @RequestParamGuard(UserRequestDto)
     @Patch('/update/:user/active')
     async active(@GetUser() user: UserDoc): Promise<void> {
-        try {
-            await this.userService.active(user);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.userService.active(user);
 
         return;
     }
@@ -395,15 +354,7 @@ export class UserAdminController {
             passwordString
         );
 
-        try {
-            await this.userService.import(file.dto, role._id, password);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.userService.import(file.dto, role._id, password);
 
         return;
     }
@@ -437,15 +388,7 @@ export class UserAdminController {
     @RequestParamGuard(UserRequestDto)
     @Patch('/update/:user/blocked')
     async blocked(@GetUser() user: UserDoc): Promise<void> {
-        try {
-            await this.userService.blocked(user);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.userService.blocked(user);
 
         return;
     }

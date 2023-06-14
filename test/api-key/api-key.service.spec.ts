@@ -23,7 +23,7 @@ import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.con
 describe('ApiKeyService', () => {
     let service: ApiKeyService;
     let repository: ApiKeyRepository;
-    const apiKeyId = faker.datatype.uuid();
+    const apiKeyId = faker.string.uuid();
     const apiKeyEntityDoc = new mongoose.Mongoose().model(
         ApiKeyDatabaseName,
         ApiKeySchema

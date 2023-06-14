@@ -91,15 +91,7 @@ export class UserPublicController {
             user.password
         );
         if (!validate) {
-            try {
-                await this.userService.increasePasswordAttempt(user);
-            } catch (err: any) {
-                throw new InternalServerErrorException({
-                    statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                    message: 'http.serverError.internalServerError',
-                    _error: err.message,
-                });
-            }
+            await this.userService.increasePasswordAttempt(user);
 
             throw new BadRequestException({
                 statusCode:
@@ -134,15 +126,7 @@ export class UserPublicController {
             });
         }
 
-        try {
-            await this.userService.resetPasswordAttempt(user);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.userService.resetPasswordAttempt(user);
 
         const payload: UserPayloadSerialization =
             await this.userService.payloadSerialization(userWithRole);
@@ -231,30 +215,20 @@ export class UserPublicController {
             });
         }
 
-        try {
-            const password = await this.authService.createPassword(
-                body.password
-            );
+        const password = await this.authService.createPassword(body.password);
 
-            await this.userService.create(
-                {
-                    email,
-                    mobileNumber,
-                    signUpFrom: ENUM_USER_SIGN_UP_FROM.LOCAL,
-                    role: role._id,
-                    ...body,
-                },
-                password
-            );
+        await this.userService.create(
+            {
+                email,
+                mobileNumber,
+                signUpFrom: ENUM_USER_SIGN_UP_FROM.LOCAL,
+                role: role._id,
+                ...body,
+            },
+            password
+        );
 
-            return;
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        return;
     }
 
     @ApiExcludeEndpoint()
@@ -312,18 +286,10 @@ export class UserPublicController {
             });
         }
 
-        try {
-            await this.userService.updateGoogleSSO(user, {
-                accessToken: googleAccessToken,
-                refreshToken: googleRefreshToken,
-            });
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.userService.updateGoogleSSO(user, {
+            accessToken: googleAccessToken,
+            refreshToken: googleRefreshToken,
+        });
 
         const payload: UserPayloadSerialization =
             await this.userService.payloadSerialization(userWithRole);
