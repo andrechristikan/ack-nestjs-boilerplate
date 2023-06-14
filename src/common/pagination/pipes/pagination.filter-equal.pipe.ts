@@ -9,6 +9,7 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationFilterEqualPipe(
     field: string,
+    raw: boolean,
     options?: IPaginationFilterStringEqualOptions
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
@@ -47,10 +48,11 @@ export function PaginationFilterEqualPipe(
                     : value;
             }
 
-            this.request.__filters = {
-                ...this.request.__filters,
-                [field]: finalValue,
-            };
+            if (raw) {
+                return {
+                    [field]: finalValue,
+                };
+            }
 
             return this.paginationService.filterEqual<string | number>(
                 field,

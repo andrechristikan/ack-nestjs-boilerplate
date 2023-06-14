@@ -4,7 +4,7 @@ import { IsNotEmpty, IsString } from 'class-validator';
 
 export class UserUpdateGoogleSSODto {
     @ApiProperty({
-        example: faker.random.alphaNumeric(30),
+        example: faker.string.alphanumeric(30),
         description: 'Will be valid SSO Token Encode string from google API',
         required: true,
     })
@@ -13,7 +13,7 @@ export class UserUpdateGoogleSSODto {
     readonly accessToken: string;
 
     @ApiProperty({
-        example: faker.random.alphaNumeric(30),
+        example: faker.string.alphanumeric(30),
         description:
             'Will be valid SSO Secret Token Encode string from google API',
         required: true,

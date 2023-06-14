@@ -7,7 +7,7 @@ import { ResponseIdSerialization } from 'src/common/response/serializations/resp
 export class ApiKeyGetSerialization extends ResponseIdSerialization {
     @ApiProperty({
         description: 'Alias name of api key',
-        example: faker.name.jobTitle(),
+        example: faker.person.jobTitle(),
         required: true,
     })
     name: string;
@@ -21,7 +21,7 @@ export class ApiKeyGetSerialization extends ResponseIdSerialization {
 
     @ApiProperty({
         description: 'Unique key of api key',
-        example: faker.random.alpha(115),
+        example: faker.string.alpha(115),
         required: true,
     })
     key: string;

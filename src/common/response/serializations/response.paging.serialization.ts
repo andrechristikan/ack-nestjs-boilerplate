@@ -47,7 +47,7 @@ export class ResponsePagingSerialization<
             version: '1',
             repoVersion: '1.0.0',
             pagination: {
-                search: faker.name.firstName(),
+                search: faker.person.firstName(),
                 page: 1,
                 perPage: 20,
                 orderBy: 'createdAt',

@@ -29,6 +29,6 @@ export const RoleDocParamsGet = [
         allowEmptyValue: false,
         required: true,
         type: 'string',
-        example: faker.datatype.uuid(),
+        example: faker.string.uuid(),
     },
 ];

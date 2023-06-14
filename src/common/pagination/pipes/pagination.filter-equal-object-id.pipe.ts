@@ -6,7 +6,8 @@ import { PaginationService } from 'src/common/pagination/services/pagination.ser
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationFilterEqualObjectIdPipe(
-    field: string
+    field: string,
+    raw: boolean
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
     class MixinPaginationFilterEqualObjectIdPipe implements PipeTransform {
@@ -27,10 +28,11 @@ export function PaginationFilterEqualObjectIdPipe(
                 ? new Types.ObjectId(value)
                 : value;
 
-            this.request.__filters = {
-                ...this.request.__filters,
-                [field]: value,
-            };
+            if (raw) {
+                return {
+                    [field]: value,
+                };
+            }
 
             return this.paginationService.filterEqual<Types.ObjectId | string>(
                 field,

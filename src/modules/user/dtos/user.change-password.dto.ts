@@ -7,7 +7,7 @@ export class UserChangePasswordDto {
     @ApiProperty({
         description:
             "new string password, newPassword can't same with oldPassword",
-        example: `${faker.random.alphaNumeric(5).toLowerCase()}${faker.random
+        example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.random
             .alphaNumeric(5)
             .toUpperCase()}@@!123`,
         required: true,
@@ -19,7 +19,7 @@ export class UserChangePasswordDto {
 
     @ApiProperty({
         description: 'old string password',
-        example: `${faker.random.alphaNumeric(5).toLowerCase()}${faker.random
+        example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.random
             .alphaNumeric(5)
             .toUpperCase()}@@!123`,
         required: true,

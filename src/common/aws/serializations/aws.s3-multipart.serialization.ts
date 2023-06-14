@@ -5,7 +5,7 @@ import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.seriali
 
 export class AwsS3MultipartPartsSerialization {
     @ApiProperty({
-        example: faker.random.alpha(10),
+        example: faker.string.alpha(10),
         description: 'ETag from aws after init multipart',
     })
     @Type(() => String)
@@ -20,7 +20,7 @@ export class AwsS3MultipartPartsSerialization {
 
 export class AwsS3MultipartSerialization extends AwsS3Serialization {
     @ApiProperty({
-        example: faker.random.alpha(20),
+        example: faker.string.alpha(20),
         description: 'Upload id from aws after init multipart',
     })
     @Type(() => String)

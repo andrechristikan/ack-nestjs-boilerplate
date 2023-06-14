@@ -16,14 +16,14 @@ export class UserLoginSerialization {
     readonly expiresIn: string;
 
     @ApiProperty({
-        example: faker.random.alphaNumeric(30),
+        example: faker.string.alphanumeric(30),
         description: 'Will be valid JWT Encode string',
         required: true,
     })
     readonly accessToken: string;
 
     @ApiProperty({
-        example: faker.random.alphaNumeric(30),
+        example: faker.string.alphanumeric(30),
         description: 'Will be valid JWT Encode string',
         required: true,
     })

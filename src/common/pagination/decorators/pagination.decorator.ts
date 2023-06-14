@@ -42,11 +42,12 @@ export function PaginationQuerySearch(
 export function PaginationQueryFilterInBoolean(
     field: string,
     defaultValue: boolean[],
-    queryField?: string
+    queryField?: string,
+    raw = false
 ): ParameterDecorator {
     return Query(
         queryField ?? field,
-        PaginationFilterInBooleanPipe(field, defaultValue)
+        PaginationFilterInBooleanPipe(field, defaultValue, raw)
     );
 }
 
@@ -54,47 +55,58 @@ export function PaginationQueryFilterInEnum<T>(
     field: string,
     defaultValue: T,
     defaultEnum: Record<string, any>,
-    queryField?: string
+    queryField?: string,
+    raw = false
 ): ParameterDecorator {
     return Query(
         queryField ?? field,
-        PaginationFilterInEnumPipe<T>(field, defaultValue, defaultEnum)
+        PaginationFilterInEnumPipe<T>(field, defaultValue, defaultEnum, raw)
     );
 }
 
 export function PaginationQueryFilterEqual(
     field: string,
     queryField?: string,
-    options?: IPaginationFilterStringEqualOptions
+    options?: IPaginationFilterStringEqualOptions,
+    raw = false
 ): ParameterDecorator {
     return Query(
         queryField ?? field,
-        PaginationFilterEqualPipe(field, options)
+        PaginationFilterEqualPipe(field, raw, options)
     );
 }
 
 export function PaginationQueryFilterContain(
     field: string,
     queryField?: string,
-    options?: IPaginationFilterStringContainOptions
+    options?: IPaginationFilterStringContainOptions,
+    raw = false
 ): ParameterDecorator {
     return Query(
         queryField ?? field,
-        PaginationFilterContainPipe(field, options)
+        PaginationFilterContainPipe(field, raw, options)
     );
 }
 
 export function PaginationQueryFilterDate(
     field: string,
     queryField?: string,
-    options?: IPaginationFilterDateOptions
+    options?: IPaginationFilterDateOptions,
+    raw = false
 ): ParameterDecorator {
-    return Query(queryField ?? field, PaginationFilterDatePipe(field, options));
+    return Query(
+        queryField ?? field,
+        PaginationFilterDatePipe(field, raw, options)
+    );
 }
 
 export function PaginationQueryFilterEqualObjectId(
     field: string,
-    queryField?: string
+    queryField?: string,
+    raw = false
 ): ParameterDecorator {
-    return Query(queryField ?? field, PaginationFilterEqualObjectIdPipe(field));
+    return Query(
+        queryField ?? field,
+        PaginationFilterEqualObjectIdPipe(field, raw)
+    );
 }

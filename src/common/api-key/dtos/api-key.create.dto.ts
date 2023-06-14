@@ -29,7 +29,7 @@ export class ApiKeyCreateDto extends PartialType(ApiKeyUpdateDateDto) {
 export class ApiKeyCreateRawDto extends ApiKeyCreateDto {
     @ApiProperty({
         name: 'key',
-        example: faker.random.alphaNumeric(10),
+        example: faker.string.alphanumeric(10),
         required: true,
         nullable: false,
     })
@@ -40,7 +40,7 @@ export class ApiKeyCreateRawDto extends ApiKeyCreateDto {
 
     @ApiProperty({
         name: 'secret',
-        example: faker.random.alphaNumeric(20),
+        example: faker.string.alphanumeric(20),
         required: true,
         nullable: false,
     })

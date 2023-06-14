@@ -29,7 +29,7 @@ export class RoleGetPermissionSerialization {
 export class RoleGetSerialization extends ResponseIdSerialization {
     @ApiProperty({
         description: 'Name of role',
-        example: faker.name.jobTitle(),
+        example: faker.person.jobTitle(),
         required: true,
     })
     readonly name: string;

@@ -60,12 +60,12 @@ export class UserGetSerialization extends ResponseIdSerialization {
     readonly blockedDate?: Date;
 
     @ApiProperty({
-        example: faker.name.firstName(),
+        example: faker.person.firstName(),
     })
     readonly firstName: string;
 
     @ApiProperty({
-        example: faker.name.lastName(),
+        example: faker.person.lastName(),
     })
     readonly lastName: string;
 
