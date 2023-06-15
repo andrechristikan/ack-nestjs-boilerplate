@@ -1,7 +1,9 @@
 import { applyDecorators } from '@nestjs/common';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
     Doc,
     DocAuth,
+    DocRequest,
     DocRequestFile,
     DocResponse,
 } from 'src/common/doc/decorators/doc.decorator';
@@ -11,7 +13,9 @@ import { UserRefreshSerialization } from 'src/modules/user/serializations/user.r
 
 export function UserAuthRefreshDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.auth.user',
+        }),
         DocAuth({
             jwtRefreshToken: true,
         }),
@@ -23,7 +27,9 @@ export function UserAuthRefreshDoc(): MethodDecorator {
 
 export function UserAuthProfileDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.auth.user',
+        }),
         DocAuth({
             jwtAccessToken: true,
         }),
@@ -35,7 +41,9 @@ export function UserAuthProfileDoc(): MethodDecorator {
 
 export function UserAuthUploadProfileDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.auth.user',
+        }),
         DocAuth({
             jwtAccessToken: true,
         }),
@@ -46,7 +54,9 @@ export function UserAuthUploadProfileDoc(): MethodDecorator {
 
 export function UserAuthInfoDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.auth.user',
+        }),
         DocAuth({
             jwtAccessToken: true,
         }),
@@ -58,10 +68,13 @@ export function UserAuthInfoDoc(): MethodDecorator {
 
 export function UserAuthChangePasswordDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.auth.user',
+        }),
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocRequest({ bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON }),
         DocResponse('user.changePassword')
     );
 }

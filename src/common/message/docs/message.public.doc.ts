@@ -4,7 +4,7 @@ import { MessageLanguageSerialization } from 'src/common/message/serializations/
 
 export function MessagePublicLanguageDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({ operation: 'common.public.message' }),
         DocResponse<MessageLanguageSerialization>('apiKey.languages', {
             serialization: MessageLanguageSerialization,
         })

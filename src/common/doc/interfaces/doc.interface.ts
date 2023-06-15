@@ -4,6 +4,12 @@ import { ClassConstructor } from 'class-transformer';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import { ENUM_FILE_EXCEL_MIME } from 'src/common/file/constants/file.enum.constant';
 
+export interface IDocOptions {
+    operation?: string;
+    deprecated?: boolean;
+    description?: string;
+}
+
 export interface IDocOfOptions {
     statusCode: number;
     messagePath: string;
@@ -30,7 +36,7 @@ export interface IDocRequestHeaderOptions {
 
 export interface IDocRequestHeaderFileOptions
     extends Omit<IDocRequestHeaderOptions, 'bodyType'> {
-    file?: {
+    file: {
         multiple: boolean;
     };
 }

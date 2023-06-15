@@ -9,6 +9,7 @@ export class SettingGetSerialization extends ResponseIdSerialization {
         description: 'Name of setting',
         example: 'MaintenanceOn',
         required: true,
+        nullable: false,
     })
     readonly name: string;
 
@@ -16,6 +17,7 @@ export class SettingGetSerialization extends ResponseIdSerialization {
         description: 'Description of setting',
         example: 'Maintenance Mode',
         required: false,
+        nullable: true,
     })
     readonly description?: string;
 
@@ -23,6 +25,7 @@ export class SettingGetSerialization extends ResponseIdSerialization {
         description: 'Data type of setting',
         example: 'BOOLEAN',
         required: true,
+        nullable: false,
         enum: ENUM_SETTING_DATA_TYPE,
     })
     readonly type: ENUM_SETTING_DATA_TYPE;
@@ -35,6 +38,7 @@ export class SettingGetSerialization extends ResponseIdSerialization {
             { type: 'boolean', readOnly: true, examples: [true, false] },
         ],
         required: true,
+        nullable: false,
     })
     @Transform(({ value, obj }) => {
         const regex = /^-?\d+$/;
@@ -58,14 +62,16 @@ export class SettingGetSerialization extends ResponseIdSerialization {
     @ApiProperty({
         description: 'Date created at',
         example: faker.date.recent(),
-        required: false,
+        required: true,
+        nullable: false,
     })
     readonly createdAt: Date;
 
     @ApiProperty({
         description: 'Date updated at',
         example: faker.date.recent(),
-        required: false,
+        required: true,
+        nullable: false,
     })
     readonly updatedAt: Date;
 

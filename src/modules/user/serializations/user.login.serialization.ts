@@ -5,6 +5,7 @@ export class UserLoginSerialization {
     @ApiProperty({
         example: 'Bearer',
         required: true,
+        nullable: false,
     })
     readonly tokenType: string;
 
@@ -12,6 +13,7 @@ export class UserLoginSerialization {
         example: 1660190937231,
         description: 'Expire in timestamp',
         required: true,
+        nullable: false,
     })
     readonly expiresIn: string;
 
@@ -19,6 +21,7 @@ export class UserLoginSerialization {
         example: faker.string.alphanumeric(30),
         description: 'Will be valid JWT Encode string',
         required: true,
+        nullable: false,
     })
     readonly accessToken: string;
 
@@ -26,7 +29,7 @@ export class UserLoginSerialization {
         example: faker.string.alphanumeric(30),
         description: 'Will be valid JWT Encode string',
         required: true,
+        nullable: false,
     })
-    @ApiProperty()
     readonly refreshToken: string;
 }

@@ -1,4 +1,5 @@
 import { applyDecorators, HttpStatus } from '@nestjs/common';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
     Doc,
     DocAuth,
@@ -17,7 +18,9 @@ import { RoleListSerialization } from 'src/modules/role/serializations/role.list
 
 export function RoleAdminListDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.admin.role',
+        }),
         DocRequest({
             queries: [...RoleDocQueryIsActive, ...RoleDocQueryType],
         }),
@@ -32,7 +35,9 @@ export function RoleAdminListDoc(): MethodDecorator {
 
 export function RoleAdminGetDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.admin.role',
+        }),
         DocRequest({
             params: RoleDocParamsId,
         }),
@@ -47,10 +52,13 @@ export function RoleAdminGetDoc(): MethodDecorator {
 
 export function RoleAdminCreateDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.admin.role',
+        }),
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocRequest({ bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON }),
         DocResponse<ResponseIdSerialization>('role.create', {
             httpStatus: HttpStatus.CREATED,
             serialization: ResponseIdSerialization,
@@ -60,7 +68,9 @@ export function RoleAdminCreateDoc(): MethodDecorator {
 
 export function RoleAdminActiveDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.admin.role',
+        }),
         DocRequest({
             params: RoleDocParamsId,
         }),
@@ -73,7 +83,9 @@ export function RoleAdminActiveDoc(): MethodDecorator {
 
 export function RoleAdminInactiveDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.admin.role',
+        }),
         DocRequest({
             params: RoleDocParamsId,
         }),
@@ -86,9 +98,12 @@ export function RoleAdminInactiveDoc(): MethodDecorator {
 
 export function RoleAdminUpdateDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.admin.role',
+        }),
         DocRequest({
             params: RoleDocParamsId,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
         }),
         DocAuth({
             jwtAccessToken: true,
@@ -101,7 +116,9 @@ export function RoleAdminUpdateDoc(): MethodDecorator {
 
 export function RoleAdminDeleteDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.admin.role',
+        }),
         DocRequest({
             params: RoleDocParamsId,
         }),

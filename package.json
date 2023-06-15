@@ -86,6 +86,7 @@
     "rimraf": "^5.0.1",
     "rotating-file-stream": "^3.1.0",
     "rxjs": "^7.8.1",
+    "swagger-themes": "^1.2.28",
     "ua-parser-js": "^1.0.35",
     "winston": "^3.9.0",
     "winston-daily-rotate-file": "^4.7.1",

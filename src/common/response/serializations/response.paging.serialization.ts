@@ -34,10 +34,10 @@ export class ResponsePagingSerialization<
 ] as const) {
     @ApiProperty({
         name: '_metadata',
+        required: true,
         nullable: false,
         description: 'Contain metadata about API',
         type: 'object',
-        required: true,
         example: {
             languages: ['en'],
             timestamp: 1660190937231,

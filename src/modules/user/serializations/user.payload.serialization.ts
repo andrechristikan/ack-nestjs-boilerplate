@@ -11,10 +11,18 @@ import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 export class UserPayloadPermissionSerialization {
-    @ApiProperty({ enum: ENUM_POLICY_SUBJECT })
+    @ApiProperty({
+        required: true,
+        nullable: false,
+        enum: ENUM_POLICY_SUBJECT,
+        example: ENUM_POLICY_SUBJECT.API_KEY,
+    })
     subject: ENUM_POLICY_SUBJECT;
 
-    @ApiProperty()
+    @ApiProperty({
+        required: true,
+        nullable: false,
+    })
     action: string;
 }
 
@@ -26,8 +34,11 @@ export class UserPayloadSerialization extends OmitType(
     readonly photo?: AwsS3Serialization;
 
     @ApiProperty({
-        example: faker.string.uuid(),
+        example: [faker.string.uuid()],
         type: 'string',
+        isArray: true,
+        required: true,
+        nullable: false,
     })
     @Transform(({ obj }) => `${obj.role._id}`)
     readonly role: string;
@@ -36,6 +47,8 @@ export class UserPayloadSerialization extends OmitType(
         example: ENUM_ROLE_TYPE.ADMIN,
         type: 'string',
         enum: ENUM_ROLE_TYPE,
+        required: true,
+        nullable: false,
     })
     @Expose()
     @Transform(({ obj }) => obj.role.type)
@@ -44,6 +57,8 @@ export class UserPayloadSerialization extends OmitType(
     @ApiProperty({
         type: () => UserPayloadPermissionSerialization,
         isArray: true,
+        required: true,
+        nullable: false,
     })
     @Transform(({ obj }) => {
         return obj.role.permissions.map(({ action, subject }: IPolicyRule) => {
@@ -65,6 +80,12 @@ export class UserPayloadSerialization extends OmitType(
     @Exclude()
     readonly signUpFrom: ENUM_USER_SIGN_UP_FROM;
 
+    @ApiProperty({
+        required: true,
+        nullable: false,
+        example: faker.date.recent(),
+    })
+    @Expose()
     readonly loginDate: Date;
 
     @Exclude()

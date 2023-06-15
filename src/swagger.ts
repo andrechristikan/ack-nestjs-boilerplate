@@ -10,6 +10,7 @@ import {
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { ResponseDefaultSerialization } from 'src/common/response/serializations/response.default.serialization';
 import { ResponsePagingSerialization } from 'src/common/response/serializations/response.paging.serialization';
+import { SwaggerTheme } from 'swagger-themes';
 
 export default async function (app: NestApplication) {
     const configService = app.get(ConfigService);
@@ -29,6 +30,7 @@ export default async function (app: NestApplication) {
             .addTag("API's")
             .addServer('/')
             .addServer('/staging')
+            .addServer('/prod')
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
                 'accessToken'
@@ -54,9 +56,25 @@ export default async function (app: NestApplication) {
             ],
         });
 
+        const theme = new SwaggerTheme('v3');
         SwaggerModule.setup(docPrefix, app, document, {
-            explorer: true,
+            explorer: false,
             customSiteTitle: docName,
+            customCss: theme.getBuffer('dark'),
+            swaggerOptions: {
+                docExpansion: 'none',
+                persistAuthorization: true,
+                displayOperationId: true,
+                operationsSorter: 'alpha',
+                tagsSorter: 'alpha',
+                tryItOutEnabled: true,
+                filter: true,
+                deepLinking: true,
+                syntaxHighlight: {
+                    activate: true,
+                    theme: 'tomorrow-night',
+                },
+            },
         });
 
         logger.log(

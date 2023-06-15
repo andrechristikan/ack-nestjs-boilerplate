@@ -16,6 +16,7 @@ export class ResponseDefaultSerialization<T = Record<string, any>> {
     @ApiProperty({
         name: 'statusCode',
         type: Number,
+        required: true,
         nullable: false,
         description: 'return specific status code for every endpoints',
         example: 200,
@@ -24,6 +25,7 @@ export class ResponseDefaultSerialization<T = Record<string, any>> {
 
     @ApiProperty({
         name: 'message',
+        required: true,
         nullable: false,
         description: 'Message base on language',
         oneOf: [
@@ -44,10 +46,10 @@ export class ResponseDefaultSerialization<T = Record<string, any>> {
 
     @ApiProperty({
         name: '_metadata',
-        nullable: true,
+        required: true,
+        nullable: false,
         description: 'Contain metadata about API',
         type: 'object',
-        required: true,
         example: {
             languages: ['en'],
             timestamp: 1660190937231,
@@ -58,7 +60,7 @@ export class ResponseDefaultSerialization<T = Record<string, any>> {
             repoVersion: '1.0.0',
         },
     })
-    _metadata?: ResponseMetadataSerialization;
+    _metadata: ResponseMetadataSerialization;
 
     data?: T;
 }

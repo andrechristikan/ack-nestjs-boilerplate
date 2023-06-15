@@ -96,8 +96,9 @@ Next development
 * [x] add policy for each endpoint
 * [x] Refactor Unit Testing for common module
 * [x] Google SSO for login and sign up
+* [x] Refactor Doc or Swagger 
+* [ ] Swagger add `swagger-ui-plugin-hierarchical-tags`
 * [ ] Update Documentation, add behaviors
-* [ ] Refactor Doc or Swagger 
 * [ ] Update Documentation, include an diagram for easier comprehension
 
 ## Build with

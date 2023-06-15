@@ -21,10 +21,11 @@ export class DashboardSerialization {
     year?: number;
 
     @ApiProperty({
-        name: 'total',
-        example: faker.random.numeric(4, { allowLeadingZeros: false }),
-        description: 'Total user',
+        required: true,
         nullable: false,
+        name: 'total',
+        example: faker.number.int({ min: 1000, max: 9999 }),
+        description: 'Total user',
     })
     total: number;
 
@@ -33,7 +34,7 @@ export class DashboardSerialization {
         description: 'Percent of target',
         required: true,
         nullable: false,
-        example: 15.4,
+        example: faker.number.float({ max: 100 }),
     })
     percent: number;
 }

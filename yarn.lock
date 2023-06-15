@@ -7630,6 +7630,11 @@ supports-preserve-symlinks-flag@^1.0.0:
   resolved "https://registry.yarnpkg.com/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz#6eda4bd344a3c94aea376d4cc31bc77311039e09"
   integrity sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==
 
+swagger-themes@^1.2.28:
+  version "1.2.28"
+  resolved "https://registry.yarnpkg.com/swagger-themes/-/swagger-themes-1.2.28.tgz#06b5eb1dcc64d7dc5da9683826c2f0963bfb4b34"
+  integrity sha512-CO+SMazfG0k6VmJ+Tr/BjuTs5GzIupnY9QHLVh2rqCbKI9iKB9Nyu2UnfJ160iD4N6kYKOOhiJrL2s5JHxw6rA==
+
 swagger-ui-dist@4.18.2:
   version "4.18.2"
   resolved "https://registry.yarnpkg.com/swagger-ui-dist/-/swagger-ui-dist-4.18.2.tgz#323308f1c1d87a7c22ce3e273c31835eb680a71b"

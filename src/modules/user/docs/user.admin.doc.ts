@@ -1,4 +1,5 @@
 import { applyDecorators, HttpStatus } from '@nestjs/common';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
     Doc,
     DocAuth,
@@ -19,7 +20,9 @@ import { UserListSerialization } from 'src/modules/user/serializations/user.list
 
 export function UserAdminListDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.admin.user',
+        }),
         DocRequest({
             queries: [...UserDocQueryIsActive, ...UserDocQueryBlocked],
         }),
@@ -34,7 +37,9 @@ export function UserAdminListDoc(): MethodDecorator {
 
 export function UserAdminGetDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.admin.user',
+        }),
         DocRequest({
             params: UserDocParamsId,
         }),
@@ -49,10 +54,13 @@ export function UserAdminGetDoc(): MethodDecorator {
 
 export function UserAdminCreateDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.admin.user',
+        }),
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocRequest({ bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON }),
         DocResponse<ResponseIdSerialization>('user.create', {
             httpStatus: HttpStatus.CREATED,
             serialization: ResponseIdSerialization,
@@ -62,7 +70,9 @@ export function UserAdminCreateDoc(): MethodDecorator {
 
 export function UserAdminActiveDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.admin.user',
+        }),
         DocRequest({
             params: UserDocParamsId,
         }),
@@ -75,7 +85,9 @@ export function UserAdminActiveDoc(): MethodDecorator {
 
 export function UserAdminInactiveDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.admin.user',
+        }),
         DocRequest({
             params: UserDocParamsId,
         }),
@@ -88,7 +100,9 @@ export function UserAdminInactiveDoc(): MethodDecorator {
 
 export function UserAdminBlockedDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.admin.user',
+        }),
         DocRequest({
             params: UserDocParamsId,
         }),
@@ -101,9 +115,12 @@ export function UserAdminBlockedDoc(): MethodDecorator {
 
 export function UserAdminUpdateDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.admin.user',
+        }),
         DocRequest({
             params: UserDocParamsId,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
         }),
         DocAuth({
             jwtAccessToken: true,
@@ -116,7 +133,9 @@ export function UserAdminUpdateDoc(): MethodDecorator {
 
 export function UserAdminDeleteDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.admin.user',
+        }),
         DocRequest({
             params: UserDocParamsId,
         }),
@@ -129,7 +148,9 @@ export function UserAdminDeleteDoc(): MethodDecorator {
 
 export function UserAdminImportDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.admin.user',
+        }),
         DocAuth({
             jwtAccessToken: true,
         }),
@@ -142,7 +163,9 @@ export function UserAdminImportDoc(): MethodDecorator {
 
 export function UserAdminExportDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.admin.user',
+        }),
         DocAuth({
             jwtAccessToken: true,
         }),

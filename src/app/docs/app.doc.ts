@@ -9,7 +9,9 @@ import {
 
 export function AppHelloDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'hello',
+        }),
         DocResponse<AppHelloSerialization>('app.hello', {
             serialization: AppHelloSerialization,
         })
@@ -18,7 +20,9 @@ export function AppHelloDoc(): MethodDecorator {
 
 export function AppHelloApiKeyDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'hello',
+        }),
         DocAuth({ apiKey: true }),
         DocRequest({ timestamp: true, userAgent: true }),
         DocResponse<AppHelloSerialization>('app.helloApiKey', {

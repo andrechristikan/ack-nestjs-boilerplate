@@ -5,8 +5,8 @@ import {
     ApiBody,
     ApiConsumes,
     ApiExtraModels,
-    ApiHeader,
     ApiHeaders,
+    ApiOperation,
     ApiParam,
     ApiProduces,
     ApiQuery,
@@ -19,6 +19,7 @@ import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
+    IDocOptions,
     IDocRequestHeaderFileOptions,
     IDocResponseFileOptions,
     IDocResponsePagingOptions,
@@ -213,11 +214,16 @@ export function DocAllOf<T>(
     );
 }
 
-export function Doc(): MethodDecorator {
+export function Doc(options?: IDocOptions): MethodDecorator {
     const currentTimestamp: number = new Date().valueOf();
     const userAgent: string = faker.internet.userAgent();
 
     return applyDecorators(
+        ApiOperation({
+            summary: options?.operation,
+            deprecated: options?.deprecated,
+            description: options?.description,
+        }),
         ApiHeaders([
             {
                 name: 'user-agent',
@@ -280,6 +286,17 @@ export function DocRequest(options?: IDocRequestHeaderOptions) {
         docs.push(ApiConsumes('application/json'));
     }
 
+    if (options?.bodyType) {
+        docs.push(
+            DocDefault({
+                httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
+                statusCode:
+                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR,
+                messagePath: 'request.validation',
+            })
+        );
+    }
+
     if (options?.params) {
         const params: MethodDecorator[] = options?.params?.map((param) =>
             ApiParam(param)
@@ -332,7 +349,7 @@ export function DocRequestFile(options?: IDocRequestHeaderFileOptions) {
     const docs: Array<ClassDecorator | MethodDecorator> = [];
     const oneOfForbidden: IDocOfOptions[] = [];
 
-    if (options?.file?.multiple) {
+    if (options?.file.multiple) {
         docs.push(
             ApiBody({
                 description: 'Multiple file',
@@ -478,7 +495,7 @@ export function DocResponse<T = void>(
     return applyDecorators(ApiProduces('application/json'), DocDefault(docs));
 }
 
-export function DocError(docs: MethodDecorator[]) {
+export function DocErrorGroup(docs: MethodDecorator[]) {
     return applyDecorators(...docs);
 }
 

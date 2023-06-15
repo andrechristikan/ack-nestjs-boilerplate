@@ -7,7 +7,9 @@ import {
 
 export function UserUserDeleteSelfDoc(): MethodDecorator {
     return applyDecorators(
-        Doc(),
+        Doc({
+            operation: 'modules.user.user',
+        }),
         DocAuth({
             jwtAccessToken: true,
         }),

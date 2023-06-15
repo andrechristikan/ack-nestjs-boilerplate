@@ -66,6 +66,7 @@ export class UserPublicController {
     @HttpCode(HttpStatus.OK)
     @Post('/login')
     async login(@Body() { email, password }: UserLoginDto): Promise<IResponse> {
+        console.log('aaa');
         const user: UserDoc = await this.userService.findOneByEmail(email);
         if (!user) {
             throw new NotFoundException({
@@ -74,6 +75,7 @@ export class UserPublicController {
             });
         }
 
+        console.log('bbb');
         const passwordAttempt: boolean =
             await this.settingService.getPasswordAttempt();
         const maxPasswordAttempt: number =
@@ -86,6 +88,7 @@ export class UserPublicController {
             });
         }
 
+        console.log('ccc');
         const validate: boolean = await this.authService.validateUser(
             password,
             user.password
@@ -116,6 +119,7 @@ export class UserPublicController {
             });
         }
 
+        console.log('ddd');
         const userWithRole: IUserDoc = await this.userService.joinWithRole(
             user
         );
@@ -126,6 +130,7 @@ export class UserPublicController {
             });
         }
 
+        console.log('eee');
         await this.userService.resetPasswordAttempt(user);
 
         const payload: UserPayloadSerialization =
@@ -140,6 +145,7 @@ export class UserPublicController {
                 loginWith: ENUM_AUTH_LOGIN_WITH.LOCAL,
             });
 
+        console.log('fff');
         const payloadEncryption = await this.authService.getPayloadEncryption();
         let payloadHashedAccessToken: Record<string, any> | string =
             payloadAccessToken;
