@@ -26,7 +26,7 @@ import { PaginationService } from 'src/common/pagination/services/pagination.ser
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
     Response,
-    ResponseExcel,
+    ResponseFile,
     ResponsePaging,
 } from 'src/common/response/decorators/response.decorator';
 import {
@@ -251,22 +251,6 @@ export class UserAdminController {
         };
     }
 
-    @UserAdminDeleteDoc()
-    @Response('user.delete')
-    @UserAdminDeleteGuard()
-    @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.USER,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
-    })
-    @AuthJwtAdminAccessProtected()
-    @RequestParamGuard(UserRequestDto)
-    @Delete('/delete/:user')
-    async delete(@GetUser() user: UserDoc): Promise<void> {
-        await this.userService.delete(user);
-
-        return;
-    }
-
     @UserAdminUpdateDoc()
     @Response('user.update', {
         serialization: ResponseIdSerialization,
@@ -323,6 +307,38 @@ export class UserAdminController {
         return;
     }
 
+    @UserAdminBlockedDoc()
+    @Response('user.blocked')
+    @UserAdminUpdateBlockedGuard()
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+    })
+    @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(UserRequestDto)
+    @Patch('/update/:user/blocked')
+    async blocked(@GetUser() user: UserDoc): Promise<void> {
+        await this.userService.blocked(user);
+
+        return;
+    }
+
+    @UserAdminDeleteDoc()
+    @Response('user.delete')
+    @UserAdminDeleteGuard()
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
+    })
+    @AuthJwtAdminAccessProtected()
+    @RequestParamGuard(UserRequestDto)
+    @Delete('/delete/:user')
+    async delete(@GetUser() user: UserDoc): Promise<void> {
+        await this.userService.delete(user);
+
+        return;
+    }
+
     @UserAdminImportDoc()
     @Response('user.import')
     @UploadFileSingle('file')
@@ -345,7 +361,7 @@ export class UserAdminController {
             new FileValidationPipe<UserImportDto>(UserImportDto)
         )
         file: IFileExtract<UserImportDto>
-    ): Promise<IResponse> {
+    ): Promise<void> {
         const role: RoleDoc = await this.roleService.findOneByName('user');
 
         const passwordString: string =
@@ -360,7 +376,7 @@ export class UserAdminController {
     }
 
     @UserAdminExportDoc()
-    @ResponseExcel({
+    @ResponseFile({
         serialization: UserListSerialization,
         fileType: ENUM_HELPER_FILE_TYPE.CSV,
     })
@@ -375,21 +391,5 @@ export class UserAdminController {
         const users: IUserEntity[] = await this.userService.findAll({});
 
         return { data: users };
-    }
-
-    @UserAdminBlockedDoc()
-    @Response('user.blocked')
-    @UserAdminUpdateBlockedGuard()
-    @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.USER,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
-    })
-    @AuthJwtAdminAccessProtected()
-    @RequestParamGuard(UserRequestDto)
-    @Patch('/update/:user/blocked')
-    async blocked(@GetUser() user: UserDoc): Promise<void> {
-        await this.userService.blocked(user);
-
-        return;
     }
 }

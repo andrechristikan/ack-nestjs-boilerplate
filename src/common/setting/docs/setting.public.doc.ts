@@ -1,32 +1,38 @@
 import { applyDecorators } from '@nestjs/common';
-import { Doc, DocPaging } from 'src/common/doc/decorators/doc.decorator';
-import { SettingDocParamsGet } from 'src/common/setting/constants/setting.doc.constant';
+import {
+    Doc,
+    DocAuth,
+    DocRequest,
+    DocResponse,
+    DocResponsePaging,
+} from 'src/common/doc/decorators/doc.decorator';
+import { SettingDocParamsId } from 'src/common/setting/constants/setting.doc.constant';
 import { SettingGetSerialization } from 'src/common/setting/serializations/setting.get.serialization';
 import { SettingListSerialization } from 'src/common/setting/serializations/setting.list.serialization';
 
 export function SettingPublicListDoc(): MethodDecorator {
     return applyDecorators(
-        DocPaging<SettingListSerialization>('setting.list', {
-            auth: {
-                jwtAccessToken: false,
-            },
-            response: {
-                serialization: SettingListSerialization,
-            },
+        Doc(),
+        DocAuth({
+            jwtAccessToken: true,
+        }),
+        DocResponsePaging<SettingListSerialization>('setting.list', {
+            serialization: SettingListSerialization,
         })
     );
 }
 
 export function SettingPublicGetDoc(): MethodDecorator {
     return applyDecorators(
-        Doc<SettingGetSerialization>('setting.get', {
-            auth: {
-                jwtAccessToken: false,
-            },
-            request: {
-                params: SettingDocParamsGet,
-            },
-            response: { serialization: SettingGetSerialization },
+        Doc(),
+        DocRequest({
+            params: SettingDocParamsId,
+        }),
+        DocAuth({
+            jwtAccessToken: true,
+        }),
+        DocResponse<SettingGetSerialization>('setting.get', {
+            serialization: SettingGetSerialization,
         })
     );
 }

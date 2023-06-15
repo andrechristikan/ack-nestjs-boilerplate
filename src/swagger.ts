@@ -27,8 +27,8 @@ export default async function (app: NestApplication) {
             .setDescription(docDesc)
             .setVersion(docVersion)
             .addTag("API's")
-            .addServer(`/`)
-            .addServer(`/staging`)
+            .addServer('/')
+            .addServer('/staging')
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
                 'accessToken'

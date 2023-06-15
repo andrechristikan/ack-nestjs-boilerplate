@@ -3,8 +3,8 @@ import { faker } from '@faker-js/faker';
 export const UserDocQueryIsActive = [
     {
         name: 'isActive',
-        allowEmptyValue: false,
-        required: true,
+        allowEmptyValue: true,
+        required: false,
         type: 'string',
         example: 'true,false',
         description: "boolean value with ',' delimiter",
@@ -14,15 +14,15 @@ export const UserDocQueryIsActive = [
 export const UserDocQueryBlocked = [
     {
         name: 'blocked',
-        allowEmptyValue: false,
-        required: true,
+        allowEmptyValue: true,
+        required: false,
         type: 'string',
         example: 'true,false',
         description: "boolean value with ',' delimiter",
     },
 ];
 
-export const UserDocParamsGet = [
+export const UserDocParamsId = [
     {
         name: 'user',
         allowEmptyValue: false,

@@ -3,15 +3,15 @@ import { faker } from '@faker-js/faker';
 export const ApiKeyDocQueryIsActive = [
     {
         name: 'isActive',
-        allowEmptyValue: false,
-        required: true,
+        allowEmptyValue: true,
+        required: false,
         type: 'string',
         example: 'true,false',
         description: "boolean value with ',' delimiter",
     },
 ];
 
-export const ApiKeyDocParamsGet = [
+export const ApiKeyDocParamsId = [
     {
         name: 'apiKey',
         allowEmptyValue: false,

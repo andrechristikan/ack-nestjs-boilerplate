@@ -1,12 +1,16 @@
 import { applyDecorators } from '@nestjs/common';
-import { Doc } from 'src/common/doc/decorators/doc.decorator';
+import {
+    Doc,
+    DocAuth,
+    DocResponse,
+} from 'src/common/doc/decorators/doc.decorator';
 
 export function UserUserDeleteSelfDoc(): MethodDecorator {
     return applyDecorators(
-        Doc<void>('user.deleteSelf', {
-            auth: {
-                jwtAccessToken: true,
-            },
-        })
+        Doc(),
+        DocAuth({
+            jwtAccessToken: true,
+        }),
+        DocResponse('user.deleteSelf')
     );
 }

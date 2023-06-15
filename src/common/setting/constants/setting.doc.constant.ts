@@ -1,4 +1,4 @@
-export const SettingDocParamsGet = [
+export const SettingDocParamsId = [
     {
         name: 'setting',
         allowEmptyValue: false,

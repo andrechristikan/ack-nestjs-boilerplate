@@ -22,7 +22,6 @@ import { MinGreaterThanEqualConstraint } from './validations/request.min-greater
 import { MinGreaterThanConstraint } from './validations/request.min-greater-than.validation';
 import { IsOnlyDigitsConstraint } from './validations/request.only-digits.validation';
 import { SafeStringConstraint } from './validations/request.safe-string.validation';
-import { SkipConstraint } from './validations/request.skip.validation';
 import { MaxBinaryFileConstraint } from 'src/common/request/validations/request.max-binary-file.validation';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -65,7 +64,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         MaxGreaterThanConstraint,
         MinGreaterThanEqualConstraint,
         MinGreaterThanConstraint,
-        SkipConstraint,
         SafeStringConstraint,
         IsOnlyDigitsConstraint,
         MinDateTodayConstraint,
