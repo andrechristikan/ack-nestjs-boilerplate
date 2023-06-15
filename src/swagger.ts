@@ -11,6 +11,7 @@ import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.seriali
 import { ResponseDefaultSerialization } from 'src/common/response/serializations/response.default.serialization';
 import { ResponsePagingSerialization } from 'src/common/response/serializations/response.paging.serialization';
 import { SwaggerTheme } from 'swagger-themes';
+import { writeFileSync } from 'fs';
 
 export default async function (app: NestApplication) {
     const configService = app.get(ConfigService);
@@ -56,8 +57,11 @@ export default async function (app: NestApplication) {
             ],
         });
 
+        writeFileSync('./data/swagger.json', JSON.stringify(document));
         const theme = new SwaggerTheme('v3');
         SwaggerModule.setup(docPrefix, app, document, {
+            jsonDocumentUrl: `${docPrefix}/json`,
+            yamlDocumentUrl: `${docPrefix}/yaml`,
             explorer: false,
             customSiteTitle: docName,
             customCss: theme.getBuffer('dark'),
