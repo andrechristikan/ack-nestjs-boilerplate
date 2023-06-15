@@ -59,6 +59,7 @@
   - [Run Project with Docker](#run-project-with-docker)
   - [Database Migration](#database-migration)
   - [API Reference](#api-reference)
+    - [User Test](#user-test)
   - [Documentation](#documentation)
   - [Adjust Mongoose Setting](#adjust-mongoose-setting)
   - [License](#license)
@@ -189,8 +190,7 @@ Describes which version.
 
 ## Behaviors
 
-> ---
-
+> Ongoing update
 
 ## Structure
 
@@ -466,6 +466,21 @@ yarn rollback
 ## API Reference
 
 You can check The ApiSpec after running this project. [here][api-reference-docs]
+
+### User Test
+
+1. Super Admin
+   - email: `superadmin@mail.com`
+   - password: `aaAA@@123444`
+2. Admin
+   - email: `admin@mail.com`
+   - password: `aaAA@@123444`
+3. Member
+   - email: `member@mail.com`
+   - password: `aaAA@@123444`
+4. User
+   - email: `user@mail.com`
+   - password: `aaAA@@123444`
 
 ## Documentation
 
