@@ -4,6 +4,7 @@ import {
     Doc,
     DocAuth,
     DocRequest,
+    DocGuard,
     DocResponse,
     DocResponsePaging,
 } from 'src/common/doc/decorators/doc.decorator';
@@ -27,6 +28,7 @@ export function RoleAdminListDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true, policy: true }),
         DocResponsePaging<RoleListSerialization>('role.list', {
             serialization: RoleListSerialization,
         })
@@ -44,6 +46,7 @@ export function RoleAdminGetDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true, policy: true }),
         DocResponse<RoleGetSerialization>('role.get', {
             serialization: RoleGetSerialization,
         })
@@ -59,6 +62,7 @@ export function RoleAdminCreateDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocRequest({ bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON }),
+        DocGuard({ role: true, policy: true }),
         DocResponse<ResponseIdSerialization>('role.create', {
             httpStatus: HttpStatus.CREATED,
             serialization: ResponseIdSerialization,
@@ -77,6 +81,7 @@ export function RoleAdminActiveDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true, policy: true }),
         DocResponse('role.active')
     );
 }
@@ -92,6 +97,7 @@ export function RoleAdminInactiveDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true, policy: true }),
         DocResponse('role.inactive')
     );
 }
@@ -108,6 +114,7 @@ export function RoleAdminUpdateDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true, policy: true }),
         DocResponse<ResponseIdSerialization>('role.update', {
             serialization: ResponseIdSerialization,
         })
@@ -125,6 +132,7 @@ export function RoleAdminDeleteDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true, policy: true }),
         DocResponse('role.delete')
     );
 }

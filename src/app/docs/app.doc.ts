@@ -3,7 +3,7 @@ import { AppHelloSerialization } from 'src/app/serializations/app.hello.serializ
 import {
     Doc,
     DocAuth,
-    DocRequest,
+    DocGuard,
     DocResponse,
 } from 'src/common/doc/decorators/doc.decorator';
 
@@ -24,7 +24,7 @@ export function AppHelloApiKeyDoc(): MethodDecorator {
             operation: 'hello',
         }),
         DocAuth({ apiKey: true }),
-        DocRequest({ timestamp: true, userAgent: true }),
+        DocGuard({ timestamp: true, userAgent: true }),
         DocResponse<AppHelloSerialization>('app.helloApiKey', {
             serialization: AppHelloSerialization,
         })

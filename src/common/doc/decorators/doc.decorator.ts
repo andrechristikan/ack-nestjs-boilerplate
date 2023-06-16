@@ -19,8 +19,10 @@ import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
+    IDocGuardOptions,
     IDocOptions,
-    IDocRequestHeaderFileOptions,
+    IDocRequestFileOptions,
+    IDocRequestOptions,
     IDocResponseFileOptions,
     IDocResponsePagingOptions,
 } from 'src/common/doc/interfaces/doc.interface';
@@ -28,7 +30,6 @@ import {
     IDocAuthOptions,
     IDocDefaultOptions,
     IDocOfOptions,
-    IDocRequestHeaderOptions,
     IDocResponseOptions,
 } from 'src/common/doc/interfaces/doc.interface';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
@@ -36,6 +37,7 @@ import { ENUM_FILE_EXCEL_MIME } from 'src/common/file/constants/file.enum.consta
 import { FileMultipleDto } from 'src/common/file/dtos/file.multiple.dto';
 import { FileSingleDto } from 'src/common/file/dtos/file.single.dto';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/common/policy/constants/policy.status-code.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ResponseDefaultSerialization } from 'src/common/response/serializations/response.default.serialization';
 import { ResponsePagingSerialization } from 'src/common/response/serializations/response.paging.serialization';
@@ -274,9 +276,8 @@ export function Doc(options?: IDocOptions): MethodDecorator {
     );
 }
 
-export function DocRequest(options?: IDocRequestHeaderOptions) {
+export function DocRequest(options?: IDocRequestOptions) {
     const docs: Array<ClassDecorator | MethodDecorator> = [];
-    const oneOfForbidden: IDocOfOptions[] = [];
 
     if (options?.bodyType === ENUM_DOC_REQUEST_BODY_TYPE.FORM_DATA) {
         docs.push(ApiConsumes('multipart/form-data'));
@@ -311,43 +312,11 @@ export function DocRequest(options?: IDocRequestHeaderOptions) {
         docs.push(...queries);
     }
 
-    if (options?.userAgent) {
-        oneOfForbidden.push(
-            {
-                statusCode:
-                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_INVALID_ERROR,
-                messagePath: 'request.error.userAgentInvalid',
-            },
-            {
-                statusCode:
-                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_BROWSER_INVALID_ERROR,
-                messagePath: 'request.error.userAgentBrowserInvalid',
-            },
-            {
-                statusCode:
-                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_OS_INVALID_ERROR,
-                messagePath: 'request.error.userAgentOsInvalid',
-            }
-        );
-    }
-
-    if (options?.timestamp) {
-        oneOfForbidden.push({
-            statusCode:
-                ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
-            messagePath: 'request.error.timestampInvalid',
-        });
-    }
-
-    return applyDecorators(
-        ...docs,
-        DocOneOf(HttpStatus.FORBIDDEN, ...oneOfForbidden)
-    );
+    return applyDecorators(...docs);
 }
 
-export function DocRequestFile(options?: IDocRequestHeaderFileOptions) {
+export function DocRequestFile(options?: IDocRequestFileOptions) {
     const docs: Array<ClassDecorator | MethodDecorator> = [];
-    const oneOfForbidden: IDocOfOptions[] = [];
 
     if (options?.file.multiple) {
         docs.push(
@@ -379,11 +348,16 @@ export function DocRequestFile(options?: IDocRequestHeaderFileOptions) {
         docs.push(...queries);
     }
 
+    return applyDecorators(ApiConsumes('multipart/form-data'), ...docs);
+}
+
+export function DocGuard(options?: IDocGuardOptions) {
+    const oneOfForbidden: IDocOfOptions[] = [];
     if (options?.userAgent) {
         oneOfForbidden.push(
             {
                 statusCode:
-                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_INVALID_ERROR,
+                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_OS_INVALID_ERROR,
                 messagePath: 'request.error.userAgentInvalid',
             },
             {
@@ -407,17 +381,28 @@ export function DocRequestFile(options?: IDocRequestHeaderFileOptions) {
         });
     }
 
-    return applyDecorators(
-        ApiConsumes('multipart/form-data'),
-        ...docs,
-        DocOneOf(HttpStatus.FORBIDDEN, ...oneOfForbidden)
-    );
+    if (options?.role) {
+        oneOfForbidden.push({
+            statusCode:
+                ENUM_ROLE_STATUS_CODE_ERROR.ROLE_PAYLOAD_TYPE_INVALID_ERROR,
+            messagePath: 'role.error.typeForbidden',
+        });
+    }
+
+    if (options?.policy) {
+        oneOfForbidden.push({
+            statusCode:
+                ENUM_POLICY_STATUS_CODE_ERROR.POLICY_ABILITY_FORBIDDEN_ERROR,
+            messagePath: 'policy.error.abilityForbidden',
+        });
+    }
+
+    return applyDecorators(DocOneOf(HttpStatus.FORBIDDEN, ...oneOfForbidden));
 }
 
 export function DocAuth(options?: IDocAuthOptions) {
     const docs: Array<ClassDecorator | MethodDecorator> = [];
     const oneOfUnauthorized: IDocOfOptions[] = [];
-    const oneOfForbidden: IDocOfOptions[] = [];
 
     if (options?.jwtRefreshToken) {
         docs.push(ApiBearerAuth('refreshToken'));
@@ -433,11 +418,6 @@ export function DocAuth(options?: IDocAuthOptions) {
         oneOfUnauthorized.push({
             messagePath: 'auth.error.accessTokenUnauthorized',
             statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_JWT_ACCESS_TOKEN_ERROR,
-        });
-        oneOfForbidden.push({
-            statusCode:
-                ENUM_ROLE_STATUS_CODE_ERROR.ROLE_PAYLOAD_TYPE_INVALID_ERROR,
-            messagePath: 'role.error.typeForbidden',
         });
     }
 
@@ -473,8 +453,7 @@ export function DocAuth(options?: IDocAuthOptions) {
 
     return applyDecorators(
         ...docs,
-        DocOneOf(HttpStatus.UNAUTHORIZED, ...oneOfUnauthorized),
-        DocOneOf(HttpStatus.FORBIDDEN, ...oneOfForbidden)
+        DocOneOf(HttpStatus.UNAUTHORIZED, ...oneOfUnauthorized)
     );
 }
 

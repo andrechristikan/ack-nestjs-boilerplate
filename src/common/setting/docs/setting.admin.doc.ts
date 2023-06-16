@@ -6,6 +6,7 @@ import {
     DocDefault,
     DocErrorGroup,
     DocRequest,
+    DocGuard,
     DocResponse,
 } from 'src/common/doc/decorators/doc.decorator';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
@@ -23,6 +24,7 @@ export function SettingAdminUpdateDoc(): MethodDecorator {
         DocResponse<ResponseIdSerialization>('setting.update', {
             serialization: ResponseIdSerialization,
         }),
+        DocGuard({ role: true, policy: true }),
         DocErrorGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,

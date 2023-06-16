@@ -5,6 +5,7 @@ import {
     DocAuth,
     DocRequest,
     DocRequestFile,
+    DocGuard,
     DocResponse,
     DocResponseFile,
     DocResponsePaging,
@@ -29,6 +30,7 @@ export function UserAdminListDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true, policy: true }),
         DocResponsePaging<UserListSerialization>('user.list', {
             serialization: UserListSerialization,
         })
@@ -46,6 +48,7 @@ export function UserAdminGetDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true, policy: true }),
         DocResponse<UserGetSerialization>('user.get', {
             serialization: UserGetSerialization,
         })
@@ -61,6 +64,7 @@ export function UserAdminCreateDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocRequest({ bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON }),
+        DocGuard({ role: true, policy: true }),
         DocResponse<ResponseIdSerialization>('user.create', {
             httpStatus: HttpStatus.CREATED,
             serialization: ResponseIdSerialization,
@@ -79,6 +83,7 @@ export function UserAdminActiveDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true, policy: true }),
         DocResponse('user.active')
     );
 }
@@ -94,6 +99,7 @@ export function UserAdminInactiveDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true, policy: true }),
         DocResponse('user.inactive')
     );
 }
@@ -109,6 +115,7 @@ export function UserAdminBlockedDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true, policy: true }),
         DocResponse('user.blocked')
     );
 }
@@ -125,6 +132,7 @@ export function UserAdminUpdateDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true, policy: true }),
         DocResponse<ResponseIdSerialization>('user.update', {
             serialization: ResponseIdSerialization,
         })
@@ -142,6 +150,7 @@ export function UserAdminDeleteDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true, policy: true }),
         DocResponse('user.delete')
     );
 }
@@ -155,6 +164,7 @@ export function UserAdminImportDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocRequestFile(),
+        DocGuard({ role: true, policy: true }),
         DocResponse('user.import', {
             httpStatus: HttpStatus.CREATED,
         })
@@ -169,6 +179,7 @@ export function UserAdminExportDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true, policy: true }),
         DocResponseFile()
     );
 }

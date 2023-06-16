@@ -50,7 +50,6 @@ import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
 import { UserUpdateUsernameDto } from 'src/modules/user/dtos/user.update-username.dto';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
