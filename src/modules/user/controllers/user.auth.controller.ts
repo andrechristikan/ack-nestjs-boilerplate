@@ -54,6 +54,7 @@ import { UserLoginSerialization } from 'src/modules/user/serializations/user.log
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
+import { UserRefreshSerialization } from 'src/modules/user/serializations/user.refresh.serialization';
 
 @ApiTags('modules.auth.user')
 @Controller({
@@ -69,7 +70,7 @@ export class UserAuthController {
     ) {}
 
     @UserAuthRefreshDoc()
-    @Response('user.refresh', { serialization: UserLoginSerialization })
+    @Response('user.refresh', { serialization: UserRefreshSerialization })
     @UserAuthProtected()
     @UserProtected()
     @AuthJwtRefreshProtected()
