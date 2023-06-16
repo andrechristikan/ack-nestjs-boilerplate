@@ -14,7 +14,9 @@ import { ResponseIdSerialization } from 'src/common/response/serializations/resp
 import {
     UserDocParamsId,
     UserDocQueryBlocked,
+    UserDocQueryInactivePermanent,
     UserDocQueryIsActive,
+    UserDocQueryRole,
 } from 'src/modules/user/constants/user.doc.constant';
 import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
 import { UserListSerialization } from 'src/modules/user/serializations/user.list.serialization';
@@ -25,7 +27,12 @@ export function UserAdminListDoc(): MethodDecorator {
             operation: 'modules.admin.user',
         }),
         DocRequest({
-            queries: [...UserDocQueryIsActive, ...UserDocQueryBlocked],
+            queries: [
+                ...UserDocQueryIsActive,
+                ...UserDocQueryBlocked,
+                ...UserDocQueryInactivePermanent,
+                ...UserDocQueryRole,
+            ],
         }),
         DocAuth({
             jwtAccessToken: true,
