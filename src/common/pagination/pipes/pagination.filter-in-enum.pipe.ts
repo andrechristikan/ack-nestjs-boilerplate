@@ -7,7 +7,8 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 export function PaginationFilterInEnumPipe<T>(
     field: string,
     defaultValue: T,
-    defaultEnum: Record<string, any>
+    defaultEnum: Record<string, any>,
+    raw: boolean
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
     class MixinPaginationFilterInEnumPipe implements PipeTransform {
@@ -16,7 +17,9 @@ export function PaginationFilterInEnumPipe<T>(
             private readonly paginationService: PaginationService
         ) {}
 
-        async transform(value: string): Promise<Record<string, { $in: T[] }>> {
+        async transform(
+            value: string
+        ): Promise<Record<string, { $in: T[] } | T[]>> {
             let finalValue: T[] = defaultValue as T[];
 
             if (value) {
@@ -26,10 +29,11 @@ export function PaginationFilterInEnumPipe<T>(
                     .filter((val: string) => val) as T[];
             }
 
-            this.request.__filters = {
-                ...this.request.__filters,
-                [field]: finalValue as string[],
-            };
+            if (raw) {
+                return {
+                    [field]: finalValue,
+                };
+            }
 
             return this.paginationService.filterIn<T>(field, finalValue);
         }

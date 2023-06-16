@@ -7,7 +7,8 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationFilterInBooleanPipe(
     field: string,
-    defaultValue: boolean[]
+    defaultValue: boolean[],
+    raw: boolean
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
     class MixinPaginationFilterInBooleanPipe implements PipeTransform {
@@ -19,7 +20,7 @@ export function PaginationFilterInBooleanPipe(
 
         async transform(
             value: string
-        ): Promise<Record<string, { $in: boolean[] }>> {
+        ): Promise<Record<string, { $in: boolean[] } | boolean[]>> {
             let finalValue: boolean[] = defaultValue as boolean[];
 
             if (value) {
@@ -28,10 +29,11 @@ export function PaginationFilterInBooleanPipe(
                 );
             }
 
-            this.request.__filters = {
-                ...this.request.__filters,
-                [field]: finalValue,
-            };
+            if (raw) {
+                return {
+                    [field]: finalValue,
+                };
+            }
 
             return this.paginationService.filterIn<boolean>(field, finalValue);
         }

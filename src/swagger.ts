@@ -10,6 +10,8 @@ import {
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { ResponseDefaultSerialization } from 'src/common/response/serializations/response.default.serialization';
 import { ResponsePagingSerialization } from 'src/common/response/serializations/response.paging.serialization';
+import { SwaggerTheme } from 'swagger-themes';
+import { writeFileSync } from 'fs';
 
 export default async function (app: NestApplication) {
     const configService = app.get(ConfigService);
@@ -27,8 +29,9 @@ export default async function (app: NestApplication) {
             .setDescription(docDesc)
             .setVersion(docVersion)
             .addTag("API's")
-            .addServer(`/`)
-            .addServer(`/staging`)
+            .addServer('/')
+            .addServer('/staging')
+            .addServer('/prod')
             .addBearerAuth(
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
                 'accessToken'
@@ -54,9 +57,28 @@ export default async function (app: NestApplication) {
             ],
         });
 
+        writeFileSync('./data/swagger.json', JSON.stringify(document));
+        const theme = new SwaggerTheme('v3');
         SwaggerModule.setup(docPrefix, app, document, {
-            explorer: true,
+            jsonDocumentUrl: `${docPrefix}/json`,
+            yamlDocumentUrl: `${docPrefix}/yaml`,
+            explorer: false,
             customSiteTitle: docName,
+            customCss: theme.getBuffer('dark'),
+            swaggerOptions: {
+                docExpansion: 'none',
+                persistAuthorization: true,
+                displayOperationId: true,
+                operationsSorter: 'alpha',
+                tagsSorter: 'alpha',
+                tryItOutEnabled: true,
+                filter: true,
+                deepLinking: true,
+                syntaxHighlight: {
+                    activate: true,
+                    theme: 'tomorrow-night',
+                },
+            },
         });
 
         logger.log(

@@ -34,10 +34,10 @@ export class ResponsePagingSerialization<
 ] as const) {
     @ApiProperty({
         name: '_metadata',
+        required: true,
         nullable: false,
         description: 'Contain metadata about API',
         type: 'object',
-        required: true,
         example: {
             languages: ['en'],
             timestamp: 1660190937231,
@@ -47,7 +47,7 @@ export class ResponsePagingSerialization<
             version: '1',
             repoVersion: '1.0.0',
             pagination: {
-                search: faker.name.firstName(),
+                search: faker.person.firstName(),
                 page: 1,
                 perPage: 20,
                 orderBy: 'createdAt',

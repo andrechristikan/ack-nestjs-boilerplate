@@ -24,9 +24,12 @@ export interface IResponseOptions<T> {
     messageProperties?: IMessageOptionsProperties;
 }
 
-export type IResponsePagingOptions<T> = IResponseOptions<T>;
+export interface IResponsePagingOptions<T>
+    extends Omit<IResponseOptions<T>, 'serialization'> {
+    serialization: ClassConstructor<T>;
+}
 
-export interface IResponseExcelOptions<T> extends IResponseOptions<T> {
+export interface IResponseFileOptions<T> extends IResponseOptions<T> {
     fileType?: ENUM_HELPER_FILE_TYPE;
 }
 
@@ -47,6 +50,6 @@ export interface IResponsePaging {
     data: Record<string, any>[];
 }
 
-export interface IResponseExcel {
+export interface IResponseFile {
     data: IHelperFileRows[];
 }

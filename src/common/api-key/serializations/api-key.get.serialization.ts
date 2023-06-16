@@ -7,8 +7,9 @@ import { ResponseIdSerialization } from 'src/common/response/serializations/resp
 export class ApiKeyGetSerialization extends ResponseIdSerialization {
     @ApiProperty({
         description: 'Alias name of api key',
-        example: faker.name.jobTitle(),
+        example: faker.person.jobTitle(),
         required: true,
+        nullable: false,
     })
     name: string;
 
@@ -16,13 +17,15 @@ export class ApiKeyGetSerialization extends ResponseIdSerialization {
         description: 'Type of api key',
         example: ENUM_API_KEY_TYPE.PUBLIC,
         required: true,
+        nullable: false,
     })
     type: ENUM_API_KEY_TYPE;
 
     @ApiProperty({
         description: 'Unique key of api key',
-        example: faker.random.alpha(115),
+        example: faker.string.alpha(15),
         required: true,
+        nullable: false,
     })
     key: string;
 
@@ -33,12 +36,13 @@ export class ApiKeyGetSerialization extends ResponseIdSerialization {
         description: 'Active flag of api key',
         example: true,
         required: true,
+        nullable: false,
     })
     isActive: boolean;
 
     @ApiProperty({
         description: 'Api Key start date',
-        example: faker.date.recent(),
+        example: faker.date.past(),
         required: false,
         nullable: true,
     })
@@ -46,7 +50,7 @@ export class ApiKeyGetSerialization extends ResponseIdSerialization {
 
     @ApiProperty({
         description: 'Api Key end date',
-        example: faker.date.recent(),
+        example: faker.date.future(),
         required: false,
         nullable: true,
     })
@@ -55,14 +59,16 @@ export class ApiKeyGetSerialization extends ResponseIdSerialization {
     @ApiProperty({
         description: 'Date created at',
         example: faker.date.recent(),
-        required: false,
+        required: true,
+        nullable: false,
     })
     readonly createdAt: Date;
 
     @ApiProperty({
         description: 'Date updated at',
         example: faker.date.recent(),
-        required: false,
+        required: true,
+        nullable: false,
     })
     readonly updatedAt: Date;
 

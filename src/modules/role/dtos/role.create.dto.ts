@@ -47,7 +47,7 @@ class RolePermissionsDto {
 export class RoleCreateDto extends PartialType(RoleUpdateDto) {
     @ApiProperty({
         description: 'Name of role',
-        example: faker.name.jobTitle(),
+        example: faker.person.jobTitle(),
         required: true,
     })
     @IsString()

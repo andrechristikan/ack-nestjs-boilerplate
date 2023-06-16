@@ -16,9 +16,9 @@ import {
     plainToInstance,
 } from 'class-transformer';
 import { Reflector } from '@nestjs/core';
-import { IResponseExcel } from 'src/common/response/interfaces/response.interface';
+import { IResponseFile } from 'src/common/response/interfaces/response.interface';
 import {
-    RESPONSE_EXCEL_TYPE_META_KEY,
+    RESPONSE_FILE_TYPE_META_KEY,
     RESPONSE_SERIALIZATION_META_KEY,
     RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
 } from 'src/common/response/constants/response.constant';
@@ -28,7 +28,7 @@ import { ENUM_FILE_EXCEL_MIME } from 'src/common/file/constants/file.enum.consta
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 
 @Injectable()
-export class ResponseExcelInterceptor implements NestInterceptor<Promise<any>> {
+export class ResponseFileInterceptor implements NestInterceptor<Promise<any>> {
     constructor(
         private readonly reflector: Reflector,
         private readonly helperFileService: HelperFileService,
@@ -39,15 +39,15 @@ export class ResponseExcelInterceptor implements NestInterceptor<Promise<any>> {
         context: ExecutionContext,
         next: CallHandler
     ): Promise<Observable<Promise<Record<string, any>>>> {
-        const excelType: ENUM_HELPER_FILE_TYPE =
+        const fileType: ENUM_HELPER_FILE_TYPE =
             this.reflector.get<ENUM_HELPER_FILE_TYPE>(
-                RESPONSE_EXCEL_TYPE_META_KEY,
+                RESPONSE_FILE_TYPE_META_KEY,
                 context.getHandler()
             );
 
         if (context.getType() === 'http') {
             return next.handle().pipe(
-                map(async (res: Promise<IResponseExcel>) => {
+                map(async (res: Promise<IResponseFile>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
                     const response: Response = ctx.getResponse();
 
@@ -63,7 +63,7 @@ export class ResponseExcelInterceptor implements NestInterceptor<Promise<any>> {
                         );
 
                     // set default response
-                    const responseData = (await res) as IResponseExcel;
+                    const responseData = (await res) as IResponseFile;
                     let data: Record<string, any>[] = responseData.data;
                     if (classSerialization) {
                         data = plainToInstance(
@@ -73,12 +73,12 @@ export class ResponseExcelInterceptor implements NestInterceptor<Promise<any>> {
                         );
                     }
 
-                    // create excel
+                    // create file
                     const workbook: WorkBook =
                         this.helperFileService.createExcelWorkbook(data);
-                    const excel: Buffer =
+                    const file: Buffer =
                         this.helperFileService.writeExcelToBuffer(workbook, {
-                            type: excelType,
+                            type: fileType,
                         });
 
                     // set headers
@@ -86,15 +86,15 @@ export class ResponseExcelInterceptor implements NestInterceptor<Promise<any>> {
                     response
                         .setHeader(
                             'Content-Type',
-                            ENUM_FILE_EXCEL_MIME[excelType.toUpperCase()]
+                            ENUM_FILE_EXCEL_MIME[fileType.toUpperCase()]
                         )
                         .setHeader(
                             'Content-Disposition',
-                            `attachment; filename=export-${timestamp}.${excelType}`
+                            `attachment; filename=export-${timestamp}.${fileType}`
                         )
-                        .setHeader('Content-Length', excel.length);
+                        .setHeader('Content-Length', file.length);
 
-                    return new StreamableFile(excel);
+                    return new StreamableFile(file);
                 })
             );
         }

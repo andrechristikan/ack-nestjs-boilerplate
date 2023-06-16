@@ -8,6 +8,7 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationFilterContainPipe(
     field: string,
+    raw: boolean,
     options?: IPaginationFilterStringContainOptions
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
@@ -19,7 +20,9 @@ export function PaginationFilterContainPipe(
 
         async transform(
             value: string
-        ): Promise<Record<string, { $regex: RegExp; $options: string }>> {
+        ): Promise<
+            Record<string, { $regex: RegExp; $options: string } | string>
+        > {
             if (!value) {
                 return undefined;
             }
@@ -45,10 +48,11 @@ export function PaginationFilterContainPipe(
                 );
             }
 
-            this.request.__filters = {
-                ...this.request.__filters,
-                [field]: value,
-            };
+            if (raw) {
+                return {
+                    [field]: value,
+                };
+            }
 
             return this.paginationService.filterContain(field, value);
         }

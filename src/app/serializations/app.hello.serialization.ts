@@ -5,8 +5,10 @@ import { IResult } from 'ua-parser-js';
 
 export class AppHelloSerialization {
     @ApiProperty({
+        required: true,
+        nullable: false,
         example: {
-            ua: 'PostmanRuntime/7.29.0',
+            ua: faker.internet.userAgent(),
             browser: {},
             engine: {},
             os: {},
@@ -16,14 +18,24 @@ export class AppHelloSerialization {
     })
     readonly userAgent: IResult;
 
-    @ApiProperty({ example: faker.date.recent() })
+    @ApiProperty({
+        required: true,
+        nullable: false,
+        example: faker.date.recent(),
+    })
     @Type(() => String)
     readonly date: Date;
 
-    @ApiProperty({ example: faker.date.recent() })
+    @ApiProperty({
+        required: true,
+        nullable: false,
+        example: faker.date.recent(),
+    })
     readonly format: string;
 
     @ApiProperty({
+        required: true,
+        nullable: false,
         example: 1660190937231,
     })
     readonly timestamp: number;

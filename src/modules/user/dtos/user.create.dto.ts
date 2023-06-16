@@ -28,7 +28,7 @@ export class UserCreateDto {
     readonly email: string;
 
     @ApiProperty({
-        example: faker.name.firstName(),
+        example: faker.person.firstName(),
         required: true,
     })
     @IsString()
@@ -39,7 +39,7 @@ export class UserCreateDto {
     readonly firstName: string;
 
     @ApiProperty({
-        example: faker.name.lastName(),
+        example: faker.person.lastName(),
         required: true,
     })
     @IsString()
@@ -63,7 +63,7 @@ export class UserCreateDto {
     readonly mobileNumber?: string;
 
     @ApiProperty({
-        example: faker.datatype.uuid(),
+        example: faker.string.uuid(),
         required: true,
     })
     @IsNotEmpty()
@@ -72,8 +72,8 @@ export class UserCreateDto {
 
     @ApiProperty({
         description: 'string password',
-        example: `${faker.random.alphaNumeric(5).toLowerCase()}${faker.random
-            .alphaNumeric(5)
+        example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.string
+            .alphanumeric(5)
             .toUpperCase()}@@!123`,
         required: true,
     })

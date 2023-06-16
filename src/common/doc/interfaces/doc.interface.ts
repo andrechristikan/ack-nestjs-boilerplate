@@ -1,47 +1,23 @@
 import { HttpStatus } from '@nestjs/common';
 import { ApiParamOptions, ApiQueryOptions } from '@nestjs/swagger';
 import { ClassConstructor } from 'class-transformer';
-import {
-    ENUM_DOC_REQUEST_BODY_TYPE,
-    ENUM_DOC_RESPONSE_BODY_TYPE,
-} from 'src/common/doc/constants/doc.enum.constant';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
+import { ENUM_FILE_EXCEL_MIME } from 'src/common/file/constants/file.enum.constant';
+
+export interface IDocOptions {
+    operation?: string;
+    deprecated?: boolean;
+    description?: string;
+}
 
 export interface IDocOfOptions {
-    messagePath: string;
     statusCode: number;
+    messagePath: string;
     serialization?: ClassConstructor<any>;
 }
 
-export interface IDocDefaultOptions {
+export interface IDocDefaultOptions extends IDocOfOptions {
     httpStatus: HttpStatus;
-    messagePath: string;
-    statusCode: number;
-    serialization?: ClassConstructor<any>;
-}
-
-export interface IDocOptions<T> {
-    auth?: IDocAuthOptions;
-    requestHeader?: IDocRequestHeaderOptions;
-    response?: IDocResponseOptions<T>;
-    request?: IDocRequestOptions;
-}
-
-export interface IDocPagingOptions<T>
-    extends Omit<IDocOptions<T>, 'response' | 'request'> {
-    response: IDocPagingResponseOptions<T>;
-    request?: Omit<IDocRequestOptions, 'bodyType' | 'file'>;
-}
-
-export interface IDocResponseOptions<T> {
-    statusCode?: number;
-    httpStatus?: HttpStatus;
-    bodyType?: ENUM_DOC_RESPONSE_BODY_TYPE;
-    serialization?: ClassConstructor<T>;
-}
-
-export interface IDocPagingResponseOptions<T>
-    extends Pick<IDocResponseOptions<T>, 'statusCode'> {
-    serialization: ClassConstructor<T>;
 }
 
 export interface IDocAuthOptions {
@@ -53,13 +29,35 @@ export interface IDocAuthOptions {
 export interface IDocRequestHeaderOptions {
     userAgent?: boolean;
     timestamp?: boolean;
-}
-
-export interface IDocRequestOptions {
     params?: ApiParamOptions[];
     queries?: ApiQueryOptions[];
     bodyType?: ENUM_DOC_REQUEST_BODY_TYPE;
-    file?: {
+}
+
+export interface IDocRequestHeaderFileOptions
+    extends Omit<IDocRequestHeaderOptions, 'bodyType'> {
+    file: {
         multiple: boolean;
     };
+}
+
+export interface IDocResponseOptions<T> {
+    statusCode?: number;
+    httpStatus?: HttpStatus;
+    serialization?: ClassConstructor<T>;
+}
+
+export interface IDocResponsePagingOptions<T>
+    extends Omit<IDocResponseOptions<T>, 'serialization'> {
+    serialization: ClassConstructor<T>;
+}
+
+export interface IDocResponseFileOptions
+    extends Omit<IDocResponseOptions<any>, 'serialization' | 'statusCode'> {
+    fileType?: ENUM_FILE_EXCEL_MIME;
+}
+
+export interface IDocErrorOptions<T> {
+    messagePath: string;
+    options?: IDocResponseOptions<T>;
 }

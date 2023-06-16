@@ -4,14 +4,12 @@ import {
     Controller,
     Delete,
     Get,
-    InternalServerErrorException,
     Patch,
     Post,
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
-import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import {
     PaginationQuery,
     PaginationQueryFilterInBoolean,
@@ -176,24 +174,16 @@ export class RoleAdminController {
             });
         }
 
-        try {
-            const create = await this.roleService.create({
-                name,
-                description,
-                type,
-                permissions,
-            });
+        const create = await this.roleService.create({
+            name,
+            description,
+            type,
+            permissions,
+        });
 
-            return {
-                data: { _id: create._id },
-            };
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        return {
+            data: { _id: create._id },
+        };
     }
 
     @RoleAdminUpdateDoc()
@@ -213,15 +203,7 @@ export class RoleAdminController {
         @Body()
         { description }: RoleUpdateDto
     ): Promise<IResponse> {
-        try {
-            await this.roleService.update(role, { description });
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.roleService.update(role, { description });
 
         return {
             data: { _id: role._id },
@@ -245,18 +227,10 @@ export class RoleAdminController {
         @Body()
         { permissions, type }: RoleUpdatePermissionDto
     ): Promise<IResponse> {
-        try {
-            await this.roleService.updatePermissions(role, {
-                permissions,
-                type,
-            });
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.roleService.updatePermissions(role, {
+            permissions,
+            type,
+        });
 
         return {
             data: { _id: role._id },
@@ -284,15 +258,7 @@ export class RoleAdminController {
             });
         }
 
-        try {
-            await this.roleService.delete(role);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.roleService.delete(role);
 
         return;
     }
@@ -304,15 +270,7 @@ export class RoleAdminController {
     @RequestParamGuard(RoleRequestDto)
     @Patch('/update/:role/inactive')
     async inactive(@GetRole() role: RoleDoc): Promise<void> {
-        try {
-            await this.roleService.inactive(role);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.roleService.inactive(role);
 
         return;
     }
@@ -324,15 +282,7 @@ export class RoleAdminController {
     @RequestParamGuard(RoleRequestDto)
     @Patch('/update/:role/active')
     async active(@GetRole() role: RoleDoc): Promise<void> {
-        try {
-            await this.roleService.active(role);
-        } catch (err: any) {
-            throw new InternalServerErrorException({
-                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
+        await this.roleService.active(role);
 
         return;
     }

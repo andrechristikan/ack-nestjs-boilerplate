@@ -5,13 +5,17 @@ import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.seriali
 
 export class AwsS3MultipartPartsSerialization {
     @ApiProperty({
-        example: faker.random.alpha(10),
+        required: true,
+        nullable: false,
+        example: faker.string.alpha({ length: 10, casing: 'upper' }),
         description: 'ETag from aws after init multipart',
     })
     @Type(() => String)
     ETag: string;
 
     @ApiProperty({
+        required: true,
+        nullable: false,
         example: 1,
     })
     @Type(() => Number)
@@ -20,13 +24,17 @@ export class AwsS3MultipartPartsSerialization {
 
 export class AwsS3MultipartSerialization extends AwsS3Serialization {
     @ApiProperty({
-        example: faker.random.alpha(20),
+        required: true,
+        nullable: false,
+        example: faker.string.alpha({ length: 20, casing: 'upper' }),
         description: 'Upload id from aws after init multipart',
     })
     @Type(() => String)
     uploadId: string;
 
     @ApiProperty({
+        required: false,
+        nullable: true,
         example: 1,
         description: 'Last part number uploaded',
     })
@@ -34,6 +42,8 @@ export class AwsS3MultipartSerialization extends AwsS3Serialization {
     partNumber?: number;
 
     @ApiProperty({
+        required: false,
+        nullable: true,
         example: 200,
         description: 'Max part number, or length of the chunk',
     })
@@ -41,6 +51,8 @@ export class AwsS3MultipartSerialization extends AwsS3Serialization {
     maxPartNumber?: number;
 
     @ApiProperty({
+        required: false,
+        nullable: true,
         oneOf: [
             {
                 $ref: getSchemaPath(AwsS3MultipartPartsSerialization),

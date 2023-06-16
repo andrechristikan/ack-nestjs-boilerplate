@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { Exclude } from 'class-transformer';
+import { Exclude, Type } from 'class-transformer';
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_SUBJECT,
@@ -11,6 +11,7 @@ import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
 export class RoleGetPermissionSerialization {
     @ApiProperty({
         required: true,
+        nullable: false,
         description: 'Permission subject',
         enum: ENUM_POLICY_SUBJECT,
     })
@@ -18,10 +19,11 @@ export class RoleGetPermissionSerialization {
 
     @ApiProperty({
         required: true,
+        nullable: false,
         description: 'Permission action base on subject',
         isArray: true,
         enum: ENUM_POLICY_ACTION,
-        default: [],
+        default: Object.values(ENUM_POLICY_ACTION),
     })
     action: ENUM_POLICY_ACTION[];
 }
@@ -29,8 +31,9 @@ export class RoleGetPermissionSerialization {
 export class RoleGetSerialization extends ResponseIdSerialization {
     @ApiProperty({
         description: 'Name of role',
-        example: faker.name.jobTitle(),
+        example: faker.person.jobTitle(),
         required: true,
+        nullable: false,
     })
     readonly name: string;
 
@@ -46,6 +49,7 @@ export class RoleGetSerialization extends ResponseIdSerialization {
         description: 'Active flag of role',
         example: true,
         required: true,
+        nullable: false,
     })
     readonly isActive: boolean;
 
@@ -53,27 +57,32 @@ export class RoleGetSerialization extends ResponseIdSerialization {
         description: 'Representative for role type',
         example: ENUM_ROLE_TYPE.ADMIN,
         required: true,
+        nullable: false,
     })
     readonly type: ENUM_ROLE_TYPE;
 
     @ApiProperty({
-        type: RoleGetPermissionSerialization,
+        type: () => RoleGetPermissionSerialization,
         required: true,
+        nullable: false,
         default: [],
     })
+    @Type(() => RoleGetPermissionSerialization)
     readonly permissions: RoleGetPermissionSerialization;
 
     @ApiProperty({
         description: 'Date created at',
         example: faker.date.recent(),
         required: true,
+        nullable: false,
     })
     readonly createdAt: Date;
 
     @ApiProperty({
         description: 'Date updated at',
         example: faker.date.recent(),
-        required: false,
+        required: true,
+        nullable: false,
     })
     readonly updatedAt: Date;
 

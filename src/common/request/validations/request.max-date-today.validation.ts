@@ -14,7 +14,9 @@ export class MaxDateTodayConstraint implements ValidatorConstraintInterface {
 
     validate(value: string): boolean {
         const todayDate = this.helperDateService.endOfDay();
-        const valueDate = this.helperDateService.create(value);
+        const valueDate = this.helperDateService.startOfDay(
+            this.helperDateService.create(value)
+        );
         return valueDate <= todayDate;
     }
 }

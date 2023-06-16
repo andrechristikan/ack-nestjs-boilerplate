@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
@@ -8,6 +8,8 @@ import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.con
 
 export class UserGetSerialization extends ResponseIdSerialization {
     @ApiProperty({
+        required: true,
+        nullable: false,
         type: () => RoleGetSerialization,
     })
     @Type(() => RoleGetSerialization)
@@ -21,83 +23,110 @@ export class UserGetSerialization extends ResponseIdSerialization {
     readonly username?: string;
 
     @ApiProperty({
+        required: true,
+        nullable: false,
         example: faker.internet.email(),
     })
     readonly email: string;
 
     @ApiProperty({
+        nullable: true,
+        required: false,
         example: faker.internet.email(),
     })
     readonly mobileNumber?: string;
 
     @ApiProperty({
+        required: true,
+        nullable: false,
         example: true,
     })
     readonly isActive: boolean;
 
     @ApiProperty({
+        required: true,
+        nullable: false,
         example: true,
     })
     readonly inactivePermanent: boolean;
 
     @ApiProperty({
-        required: false,
         nullable: true,
+        required: false,
         example: faker.date.recent(),
     })
     readonly inactiveDate?: Date;
 
     @ApiProperty({
+        required: true,
+        nullable: false,
         example: false,
     })
     readonly blocked: boolean;
 
     @ApiProperty({
-        required: false,
         nullable: true,
+        required: false,
         example: faker.date.recent(),
     })
     readonly blockedDate?: Date;
 
     @ApiProperty({
-        example: faker.name.firstName(),
+        required: true,
+        nullable: false,
+        example: faker.person.firstName(),
     })
     readonly firstName: string;
 
     @ApiProperty({
-        example: faker.name.lastName(),
+        required: true,
+        nullable: false,
+        example: faker.person.lastName(),
     })
     readonly lastName: string;
 
     @ApiProperty({
-        allOf: [{ $ref: getSchemaPath(AwsS3Serialization) }],
+        nullable: true,
+        required: false,
+        type: () => AwsS3Serialization,
     })
+    @Type(() => AwsS3Serialization)
     readonly photo?: AwsS3Serialization;
 
     @Exclude()
     readonly password: string;
 
     @ApiProperty({
+        required: true,
+        nullable: false,
         example: faker.date.future(),
     })
     readonly passwordExpired: Date;
 
     @ApiProperty({
+        required: true,
+        nullable: false,
         example: faker.date.past(),
     })
     readonly passwordCreated: Date;
 
     @ApiProperty({
+        required: true,
+        nullable: false,
         example: [1, 0],
     })
     readonly passwordAttempt: number;
 
     @ApiProperty({
+        required: true,
+        nullable: false,
         example: faker.date.recent(),
     })
     readonly signUpDate: Date;
 
     @ApiProperty({
+        required: true,
+        nullable: false,
         example: ENUM_USER_SIGN_UP_FROM.LOCAL,
     })
     readonly signUpFrom: ENUM_USER_SIGN_UP_FROM;
@@ -109,13 +138,15 @@ export class UserGetSerialization extends ResponseIdSerialization {
         description: 'Date created at',
         example: faker.date.recent(),
         required: true,
+        nullable: false,
     })
     readonly createdAt: Date;
 
     @ApiProperty({
         description: 'Date updated at',
         example: faker.date.recent(),
-        required: false,
+        required: true,
+        nullable: false,
     })
     readonly updatedAt: Date;
 

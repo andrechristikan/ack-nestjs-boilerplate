@@ -13,16 +13,18 @@ export class MinDateTodayConstraint implements ValidatorConstraintInterface {
     constructor(private readonly helperDateService: HelperDateService) {}
 
     validate(value: string): boolean {
-        const todayDate = this.helperDateService.startOfDay();
-        const valueDate = this.helperDateService.create(value);
+        const todayDate = this.helperDateService.endOfDay();
+        const valueDate = this.helperDateService.startOfDay(
+            this.helperDateService.create(value)
+        );
         return valueDate >= todayDate;
     }
 }
 
 export function MinDateToday(validationOptions?: ValidationOptions) {
-    return function (object: Record<string, any>, propertyName: string): void {
+    return function (object: Record<string, any>, propertyName: string): any {
         registerDecorator({
-            name: 'MinDateTodayEqual',
+            name: 'MinDateToday',
             target: object.constructor,
             propertyName: propertyName,
             options: validationOptions,

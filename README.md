@@ -59,6 +59,7 @@
   - [Run Project with Docker](#run-project-with-docker)
   - [Database Migration](#database-migration)
   - [API Reference](#api-reference)
+    - [User Test](#user-test)
   - [Documentation](#documentation)
   - [Adjust Mongoose Setting](#adjust-mongoose-setting)
   - [License](#license)
@@ -71,6 +72,7 @@
 > Very limited documentation
 
 * The features will be relate with AWS
+* Stateless Authorization
 * If you want to implement `database transactions`. You must run MongoDB as a `replication set`.
 * If you want to implement `Google SSO`. 
     1. You must have google account, then set your app on `google console` to get the  `clientId` and `clientSecret`.
@@ -93,8 +95,8 @@ Next development
 * [x] add policy for each endpoint
 * [x] Refactor Unit Testing for common module
 * [x] Google SSO for login and sign up
+* [x] Refactor Doc or Swagger 
 * [ ] Update Documentation, add behaviors
-* [ ] Refactor Doc or Swagger 
 * [ ] Update Documentation, include an diagram for easier comprehension
 
 ## Build with
@@ -463,6 +465,21 @@ yarn rollback
 ## API Reference
 
 You can check The ApiSpec after running this project. [here][api-reference-docs]
+
+### User Test
+
+1. Super Admin
+   - email: `superadmin@mail.com`
+   - password: `aaAA@@123444`
+2. Admin
+   - email: `admin@mail.com`
+   - password: `aaAA@@123444`
+3. Member
+   - email: `member@mail.com`
+   - password: `aaAA@@123444`
+4. User
+   - email: `user@mail.com`
+   - password: `aaAA@@123444`
 
 ## Documentation
 
