@@ -40,9 +40,11 @@ import {
 } from 'src/modules/user/decorators/user.decorator';
 import {
     UserAuthChangePasswordDoc,
+    UserAuthClaimUsernameDoc,
     UserAuthInfoDoc,
     UserAuthProfileDoc,
     UserAuthRefreshDoc,
+    UserAuthUpdateProfileDoc,
     UserAuthUploadProfileDoc,
 } from 'src/modules/user/docs/user.auth.doc';
 import { UserChangePasswordDto } from 'src/modules/user/dtos/user.change-password.dto';
@@ -213,9 +215,8 @@ export class UserAuthController {
         return { data: userWithRole.toObject() };
     }
 
-    @Response('user.updateProfile', {
-        serialization: ResponseIdSerialization,
-    })
+    @UserAuthUpdateProfileDoc()
+    @Response('user.updateProfile')
     @UserProtected()
     @AuthJwtAccessProtected()
     @Patch('/profile/update')
@@ -228,9 +229,8 @@ export class UserAuthController {
         return;
     }
 
-    @Response('user.claimUsername', {
-        serialization: ResponseIdSerialization,
-    })
+    @UserAuthClaimUsernameDoc()
+    @Response('user.claimUsername')
     @UserProtected()
     @AuthJwtAccessProtected()
     @Patch('/profile/claim-username')
