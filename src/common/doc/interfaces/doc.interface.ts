@@ -26,19 +26,24 @@ export interface IDocAuthOptions {
     apiKey?: boolean;
 }
 
-export interface IDocRequestHeaderOptions {
-    userAgent?: boolean;
-    timestamp?: boolean;
+export interface IDocRequestOptions {
     params?: ApiParamOptions[];
     queries?: ApiQueryOptions[];
     bodyType?: ENUM_DOC_REQUEST_BODY_TYPE;
 }
 
-export interface IDocRequestHeaderFileOptions
-    extends Omit<IDocRequestHeaderOptions, 'bodyType'> {
+export interface IDocRequestFileOptions
+    extends Omit<IDocRequestOptions, 'bodyType'> {
     file: {
         multiple: boolean;
     };
+}
+
+export interface IDocGuardOptions {
+    userAgent?: boolean;
+    timestamp?: boolean;
+    role?: boolean;
+    policy?: boolean;
 }
 
 export interface IDocResponseOptions<T> {

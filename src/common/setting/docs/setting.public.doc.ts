@@ -2,7 +2,6 @@ import { HttpStatus, applyDecorators } from '@nestjs/common';
 import { DocDefault } from 'src/common/doc/decorators/doc.decorator';
 import {
     Doc,
-    DocAuth,
     DocErrorGroup,
     DocRequest,
     DocResponse,
@@ -18,9 +17,6 @@ export function SettingPublicListDoc(): MethodDecorator {
         Doc({
             operation: 'common.public.setting',
         }),
-        DocAuth({
-            jwtAccessToken: true,
-        }),
         DocResponsePaging<SettingListSerialization>('setting.list', {
             serialization: SettingListSerialization,
         })
@@ -32,9 +28,6 @@ export function SettingPublicGetDoc(): MethodDecorator {
         Doc({ operation: 'common.public.setting' }),
         DocRequest({
             params: SettingDocParamsId,
-        }),
-        DocAuth({
-            jwtAccessToken: true,
         }),
         DocResponse<SettingGetSerialization>('setting.get', {
             serialization: SettingGetSerialization,

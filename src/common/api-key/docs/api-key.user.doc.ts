@@ -11,6 +11,7 @@ import {
     Doc,
     DocAuth,
     DocRequest,
+    DocGuard,
     DocResponse,
     DocResponsePaging,
 } from 'src/common/doc/decorators/doc.decorator';
@@ -25,6 +26,7 @@ export function ApiKeyUserListDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true }),
         DocResponsePaging<ApiKeyListSerialization>('apiKey.list', {
             serialization: ApiKeyListSerialization,
         })
@@ -40,6 +42,7 @@ export function ApiKeyUserGetDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true }),
         DocResponse<ApiKeyGetSerialization>('apiKey.get', {
             serialization: ApiKeyGetSerialization,
         })
@@ -52,6 +55,7 @@ export function ApiKeyUserCreateDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true }),
         DocResponse<ApiKeyCreateSerialization>('apiKey.create', {
             httpStatus: HttpStatus.CREATED,
             serialization: ApiKeyCreateSerialization,
@@ -68,6 +72,7 @@ export function ApiKeyUserActiveDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true }),
         DocResponse('apiKey.active')
     );
 }
@@ -81,6 +86,7 @@ export function ApiKeyUserInactiveDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true }),
         DocResponse('apiKey.inactive')
     );
 }
@@ -94,6 +100,7 @@ export function ApiKeyUserResetDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true }),
         DocResponse<ApiKeyResetSerialization>('apiKey.reset', {
             serialization: ApiKeyResetSerialization,
         })
@@ -109,6 +116,7 @@ export function ApiKeyUserUpdateDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true }),
         DocResponse<ResponseIdSerialization>('apiKey.update', {
             serialization: ResponseIdSerialization,
         })
@@ -124,6 +132,7 @@ export function ApiKeyUserDeleteDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
+        DocGuard({ role: true }),
         DocResponse('apiKey.delete')
     );
 }

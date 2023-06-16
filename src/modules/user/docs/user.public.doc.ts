@@ -2,7 +2,6 @@ import { applyDecorators, HttpStatus } from '@nestjs/common';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
     Doc,
-    DocAuth,
     DocRequest,
     DocResponse,
 } from 'src/common/doc/decorators/doc.decorator';
@@ -12,9 +11,6 @@ export function UserPublicLoginDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             operation: 'modules.public.user',
-        }),
-        DocAuth({
-            jwtAccessToken: true,
         }),
         DocRequest({ bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON }),
         DocResponse<UserLoginSerialization>('user.login', {
@@ -27,9 +23,6 @@ export function UserPublicSignUpDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             operation: 'modules.public.user',
-        }),
-        DocAuth({
-            jwtAccessToken: true,
         }),
         DocRequest({ bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON }),
         DocResponse('user.signUp', {
