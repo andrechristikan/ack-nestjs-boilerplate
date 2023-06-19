@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.constant';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
@@ -29,6 +29,7 @@ export class ApiKeyGetSerialization extends ResponseIdSerialization {
     })
     key: string;
 
+    @ApiHideProperty()
     @Exclude()
     hash: string;
 
@@ -72,6 +73,7 @@ export class ApiKeyGetSerialization extends ResponseIdSerialization {
     })
     readonly updatedAt: Date;
 
+    @ApiHideProperty()
     @Exclude()
     readonly deletedAt?: Date;
 }

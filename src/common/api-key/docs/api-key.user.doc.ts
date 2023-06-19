@@ -2,7 +2,7 @@ import { applyDecorators, HttpStatus } from '@nestjs/common';
 import {
     ApiKeyDocParamsId,
     ApiKeyDocQueryIsActive,
-} from 'src/common/api-key/constants/api-key.doc';
+} from 'src/common/api-key/constants/api-key.doc.constant';
 import { ApiKeyCreateSerialization } from 'src/common/api-key/serializations/api-key.create.serialization';
 import { ApiKeyGetSerialization } from 'src/common/api-key/serializations/api-key.get.serialization';
 import { ApiKeyListSerialization } from 'src/common/api-key/serializations/api-key.list.serialization';

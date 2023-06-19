@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
@@ -93,6 +93,7 @@ export class UserGetSerialization extends ResponseIdSerialization {
     @Type(() => AwsS3Serialization)
     readonly photo?: AwsS3Serialization;
 
+    @ApiHideProperty()
     @Exclude()
     readonly password: string;
 
@@ -131,6 +132,7 @@ export class UserGetSerialization extends ResponseIdSerialization {
     })
     readonly signUpFrom: ENUM_USER_SIGN_UP_FROM;
 
+    @ApiHideProperty()
     @Exclude()
     readonly salt: string;
 
@@ -150,6 +152,7 @@ export class UserGetSerialization extends ResponseIdSerialization {
     })
     readonly updatedAt: Date;
 
+    @ApiHideProperty()
     @Exclude()
     readonly deletedAt?: Date;
 }

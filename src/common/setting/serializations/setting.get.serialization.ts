@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude, Transform } from 'class-transformer';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import { ENUM_SETTING_DATA_TYPE } from 'src/common/setting/constants/setting.enum.constant';
@@ -75,6 +75,7 @@ export class SettingGetSerialization extends ResponseIdSerialization {
     })
     readonly updatedAt: Date;
 
+    @ApiHideProperty()
     @Exclude()
     readonly deletedAt?: Date;
 }

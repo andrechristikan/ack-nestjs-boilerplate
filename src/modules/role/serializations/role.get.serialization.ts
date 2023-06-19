@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
 import {
     ENUM_POLICY_ACTION,
@@ -86,6 +86,7 @@ export class RoleGetSerialization extends ResponseIdSerialization {
     })
     readonly updatedAt: Date;
 
+    @ApiHideProperty()
     @Exclude()
     readonly deletedAt?: Date;
 }
