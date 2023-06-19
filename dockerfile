@@ -7,6 +7,7 @@ EXPOSE 3000
 COPY package.json yarn.lock ./
 RUN touch .env
 
+RUN mkrid data
 RUN set -x && yarn
 
 COPY . .
