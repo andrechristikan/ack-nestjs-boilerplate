@@ -1,5 +1,4 @@
 import { HttpStatus, applyDecorators } from '@nestjs/common';
-import { ApiKeyDocParamsId } from 'src/common/api-key/constants/api-key.doc';
 import {
     Doc,
     DocAuth,
@@ -10,13 +9,14 @@ import {
     DocResponse,
 } from 'src/common/doc/decorators/doc.decorator';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
+import { SettingDocParamsId } from 'src/common/setting/constants/setting.doc.constant';
 import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/common/setting/constants/setting.status-code.constant';
 
 export function SettingAdminUpdateDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ operation: 'common.admin.setting' }),
         DocRequest({
-            params: ApiKeyDocParamsId,
+            params: SettingDocParamsId,
         }),
         DocAuth({
             jwtAccessToken: true,
