@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty, OmitType } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty, OmitType } from '@nestjs/swagger';
 import { Exclude, Expose, Transform } from 'class-transformer';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import {
@@ -30,6 +30,7 @@ export class UserPayloadSerialization extends OmitType(
     UserProfileSerialization,
     ['photo', 'role', 'signUpDate', 'createdAt', 'updatedAt'] as const
 ) {
+    @ApiHideProperty()
     @Exclude()
     readonly photo?: AwsS3Serialization;
 
@@ -74,9 +75,11 @@ export class UserPayloadSerialization extends OmitType(
     @Expose()
     readonly permissions: UserPayloadPermissionSerialization[];
 
+    @ApiHideProperty()
     @Exclude()
     readonly signUpDate: Date;
 
+    @ApiHideProperty()
     @Exclude()
     readonly signUpFrom: ENUM_USER_SIGN_UP_FROM;
 
@@ -88,9 +91,11 @@ export class UserPayloadSerialization extends OmitType(
     @Expose()
     readonly loginDate: Date;
 
+    @ApiHideProperty()
     @Exclude()
     readonly createdAt: number;
 
+    @ApiHideProperty()
     @Exclude()
     readonly updatedAt: number;
 }
