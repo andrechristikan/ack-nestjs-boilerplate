@@ -6483,10 +6483,10 @@ neo-async@^2.6.2:
   resolved "https://registry.yarnpkg.com/neo-async/-/neo-async-2.6.2.tgz#b4aafb93e3aeb2d8174ca53cf163ab7d7308305f"
   integrity sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==
 
-nest-winston@^1.9.2:
-  version "1.9.2"
-  resolved "https://registry.yarnpkg.com/nest-winston/-/nest-winston-1.9.2.tgz#b6726b9cfc40c2e5f0833079dd1b1fbe95fd7ff8"
-  integrity sha512-vOgQRFzmQ9+pMZfue2JdhtxDho3OYJZSSUgcL5jCpsxxCJu1QuGtZWo3S+mUCFvu7AN1hVgHugGk60STP5nSCQ==
+nest-winston@^1.9.3:
+  version "1.9.3"
+  resolved "https://registry.yarnpkg.com/nest-winston/-/nest-winston-1.9.3.tgz#5008a415036e03ab0a02495f196ca982fffa09fe"
+  integrity sha512-BLDGvbKCeliQNNrNjFRKSbO9hu/a39YL3y+4aU0eTGHh5TgzNMqx5ZscbecKR0fM3/KumMznZdEWmAJBINHl6Q==
   dependencies:
     fast-safe-stringify "^2.1.1"
 
