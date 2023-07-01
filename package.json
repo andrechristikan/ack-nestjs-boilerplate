@@ -62,7 +62,7 @@
     "@nestjs/schedule": "^2.2.3",
     "@nestjs/swagger": "^6.3.0",
     "@nestjs/terminus": "^9.2.2",
-    "@nestjs/throttler": "^4.0.0",
+    "@nestjs/throttler": "^4.1.0",
     "@types/response-time": "^2.3.5",
     "axios": "^1.4.0",
     "bcryptjs": "^2.4.3",

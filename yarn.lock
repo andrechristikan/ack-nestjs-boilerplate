@@ -2200,10 +2200,10 @@
   dependencies:
     tslib "2.5.3"
 
-"@nestjs/throttler@^4.0.0":
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/@nestjs/throttler/-/throttler-4.0.0.tgz#9f9c66df62da6ec1b1ad4305e6a3865676e3812f"
-  integrity sha512-2T2S/hFhxROa/PZRZhHWFkrukxg3T8Db32Y04m6U6j6N2XqFGSKXhjfIbORO8kk/S2jswa9oTX/K12E120tgaQ==
+"@nestjs/throttler@^4.1.0":
+  version "4.1.0"
+  resolved "https://registry.yarnpkg.com/@nestjs/throttler/-/throttler-4.1.0.tgz#abb3c3b6231f97cf80cf6316111a5dcf001accd0"
+  integrity sha512-W6F+ckalmJuJKOGdWkOynvXg8UJnpjWSdeTV0usvvma0W6ZYHbC2mLXAbUsNau5oRo8EnvXFTHtyyzMQVf56eQ==
   dependencies:
     md5 "^2.2.1"
 
