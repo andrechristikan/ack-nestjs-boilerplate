@@ -47,6 +47,7 @@ export class RoleEntity extends DatabaseMongoUUIDEntityAbstract {
     @Prop({
         required: true,
         default: [],
+        _id: false,
         type: [
             {
                 subject: {

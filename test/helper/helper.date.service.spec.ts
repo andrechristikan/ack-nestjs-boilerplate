@@ -83,7 +83,24 @@ describe('HelperDateService', () => {
         });
     });
 
-    describe('check', () => {
+    describe('checkDateTime', () => {
+        it('should check date if a given date is valid', () => {
+            const validDate = '2021-01-01';
+            expect(service.checkDateTime(validDate)).toEqual(true);
+        });
+
+        it('should check date time if a given date is valid', () => {
+            const validDate = '2021-01-01T01:01:01.000Z';
+            expect(service.checkDateTime(validDate)).toEqual(true);
+        });
+
+        it('should check date as invalid', () => {
+            const invalidDate = 'abcd';
+            expect(service.checkDateTime(invalidDate)).toEqual(false);
+        });
+    });
+
+    describe('checkTimestamp', () => {
         it('should check if a given timestamp is valid', () => {
             const validTimestamp = new Date().getTime();
             expect(service.checkTimestamp(validTimestamp)).toEqual(true);
@@ -93,14 +110,30 @@ describe('HelperDateService', () => {
     describe('create', () => {
         it('should create a current date', () => {
             const createdDate = service.create();
+
             expect(createdDate).toEqual(new Date(createdDate));
         });
 
-        it('should create a date with given options', () => {
+        it('should create a current date with options startOfDay', () => {
+            const startOfDay = true;
+            const createdDate = service.create(undefined, { startOfDay });
+
+            expect(createdDate).toEqual(new Date(createdDate));
+        });
+
+        it('should create a date with given value and options', () => {
             const date = '2021-01-01';
             const startOfDay = true;
             const createdDate = service.create(date, { startOfDay });
+
             expect(createdDate).toEqual(new Date(`2021-01-01T00:00:00.000Z`));
+        });
+
+        it('should create a date time with given value', () => {
+            const date = '2021-01-01T01:01:01.000Z';
+            const createdDate = service.create(date);
+
+            expect(createdDate).toEqual(new Date(`2021-01-01T01:01:01.000Z`));
         });
     });
 

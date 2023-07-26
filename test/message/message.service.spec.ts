@@ -16,6 +16,7 @@ describe('MessageService', () => {
     let validationError: ValidationError[];
     let validationError2: ValidationError[];
     let validationError3: ValidationError[];
+    let validationError4: ValidationError[];
     let validationErrorImport: IValidationErrorImport[];
 
     beforeEach(async () => {
@@ -127,6 +128,33 @@ describe('MessageService', () => {
                                 children: [],
                             },
                         ],
+                    },
+                ],
+            },
+        ];
+
+        validationError4 = [
+            {
+                target: {
+                    email: 'admin-mail.com',
+                    password: 'aaAA@@123444',
+                    rememberMe: true,
+                },
+                value: 'admin-mail.com',
+                property: 'email',
+                children: [
+                    {
+                        target: {
+                            email: 'admin-mail.com',
+                            password: 'aaAA@@123444',
+                            rememberMe: true,
+                        },
+                        value: 'admin-mail.com',
+                        property: 'email',
+                        constraints: {
+                            isEmail: 'email must be an email',
+                        },
+                        children: [],
                     },
                 ],
             },
@@ -370,6 +398,17 @@ describe('MessageService', () => {
                 {
                     message: 'Localized Message',
                     property: 'email.email.email',
+                },
+            ]);
+        });
+
+        it('should return an array of error messages corresponding to the validation without constraints field', () => {
+            const message = service.getRequestErrorsMessage(validationError4);
+
+            expect(message).toEqual([
+                {
+                    message: 'Localized Message',
+                    property: 'email.email',
                 },
             ]);
         });

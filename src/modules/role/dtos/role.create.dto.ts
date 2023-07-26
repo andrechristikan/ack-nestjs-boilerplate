@@ -10,6 +10,7 @@ import {
     IsArray,
     ArrayNotEmpty,
     ValidateIf,
+    ValidateNested,
 } from 'class-validator';
 import {
     ENUM_POLICY_ACTION,
@@ -76,6 +77,7 @@ export class RoleCreateDto extends PartialType(RoleUpdateDto) {
     @Type(() => RolePermissionsDto)
     @IsNotEmpty()
     @IsArray()
+    @ValidateNested()
     @ValidateIf((e) => e.type === ENUM_ROLE_TYPE.ADMIN)
     @Transform(({ value, obj }) =>
         obj.type !== ENUM_ROLE_TYPE.ADMIN ? [] : value

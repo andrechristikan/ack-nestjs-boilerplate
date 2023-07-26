@@ -55,8 +55,6 @@ describe('DatabaseOptionsService', () => {
 
             expect(options).toMatchObject({
                 uri: 'mongodb://localhost:27017/test-db?retryWrites=true&w=majority',
-                useNewUrlParser: true,
-                useUnifiedTopology: true,
                 serverSelectionTimeoutMS: 5000,
                 autoCreate: true,
             });
@@ -92,8 +90,6 @@ describe('DatabaseOptionsService', () => {
 
             expect(options).toMatchObject({
                 uri: 'mongodb://localhost:27017/test-db',
-                useNewUrlParser: true,
-                useUnifiedTopology: true,
                 serverSelectionTimeoutMS: 5000,
                 autoCreate: true,
             });
