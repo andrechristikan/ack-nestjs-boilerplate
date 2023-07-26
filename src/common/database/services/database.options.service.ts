@@ -33,11 +33,8 @@ export class DatabaseOptionsService implements IDatabaseOptionsService {
 
         const mongooseOptions: MongooseModuleOptions = {
             uri,
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
             serverSelectionTimeoutMS: 5000,
             autoCreate: true,
-            // useMongoClient: true,
         };
 
         if (user && password) {

@@ -192,7 +192,7 @@ export class UserAuthController {
     }
 
     @UserAuthInfoDoc()
-    @SerializeOptions({ ignoreDecorators: true })
+    @SerializeOptions({})
     @Response('user.info', { serialization: UserPayloadSerialization })
     @AuthJwtAccessProtected()
     @Get('/info')

@@ -84,18 +84,6 @@
 
 Next development
 
-* [x] Resolve N+1 Problem in `v5.0.0++`
-* [x] Refactor apikey module, change `x-api-key` to `${key}:${secret}`. Free for user to create ApiKey by themself.
-* [x] Refactor Authorization, optimize
-    - remove permission entity, make then static permission
-    - implement acl policy guard
-    - remember me remove
-    - role access for to type
-    - remove permission token
-* [x] add policy for each endpoint
-* [x] Refactor Unit Testing for common module
-* [x] Google SSO for login and sign up
-* [x] Refactor Doc or Swagger 
 * [ ] Update Documentation, add behaviors
 * [ ] Update Documentation, include an diagram for easier comprehension
 
@@ -105,16 +93,16 @@ Describes which version.
 
 | Name       | Version  |
 | ---------- | -------- |
-| NestJs     | v9.4.x     |
-| NodeJs     | v18.12.x    |
-| Typescript | v5.0.x     |
-| Mongoose   | v7.0.x     |
-| MongoDB    | v6.0.x     |
-| Yarn       | v1.22.x     |
-| NPM        | v8.19.x     |
-| Docker     | v20.10.x    |
-| Docker Compose | v2.6.x |
-| Swagger | v6.3.x |
+| NestJs     | v10.x     |
+| Nestjs Swagger | v7.x |
+| NodeJs     | v18.x    |
+| Typescript | v5.x     |
+| Mongoose   | v7.x     |
+| MongoDB    | v6.x     |
+| Yarn       | v1.x     |
+| NPM        | v8.x     |
+| Docker     | v20.x    |
+| Docker Compose | v2.x |
 
 ## Objective
 
@@ -132,7 +120,7 @@ Describes which version.
 
 ### Main Features
 
-* NestJs v9.x 🥳
+* NestJs vq0.x 🥳
 * Typescript 🚀
 * Production ready 🔥
 * Repository Design Pattern (Multi Repository, can mix with other orm)
