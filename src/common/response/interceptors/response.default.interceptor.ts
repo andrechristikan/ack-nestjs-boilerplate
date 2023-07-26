@@ -99,10 +99,6 @@ export class ResponseDefaultInterceptor<T>
 
                     // response
                     const responseData = (await res) as IResponse;
-                    console.log('aaaa',);
-                    console.log('classSerializationOptions',classSerializationOptions);
-                    console.log('bbbb');
-
 
                     if (responseData) {
                         const { _metadata } = responseData;
