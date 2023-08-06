@@ -120,7 +120,7 @@ Describes which version.
 
 ### Main Features
 
-* NestJs vq0.x 🥳
+* NestJs 10.x 🥳
 * Typescript 🚀
 * Production ready 🔥
 * Repository Design Pattern (Multi Repository, can mix with other orm)
