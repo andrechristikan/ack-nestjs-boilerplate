@@ -17,7 +17,7 @@
 
 > This repo will representative of authentication service and authorization service
 
-[ACK NestJs][ack] is a [Http NestJs v9.x][ref-nestjs] boilerplate. Best uses for backend service.
+[ACK NestJs][ack] is a [Http NestJs v10.x][ref-nestjs] boilerplate. Best uses for backend service.
 
 *You can [request feature][ack-issues] or [report bug][ack-issues] with following this link*
 
