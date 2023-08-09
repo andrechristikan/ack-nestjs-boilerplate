@@ -37,13 +37,13 @@ import {
     UserPublicLoginDoc,
     UserPublicSignUpDoc,
 } from 'src/modules/user/docs/user.public.doc';
-import { UserLoginDto } from 'src/modules/user/dtos/user.login.dto';
 import { UserSignUpDto } from 'src/modules/user/dtos/user.sign-up.dto';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
+import {UserLoginInput} from "../dtos/user.login.dto";
 
 @ApiTags('modules.public.user')
 @Controller({
@@ -65,7 +65,7 @@ export class UserPublicController {
     })
     @HttpCode(HttpStatus.OK)
     @Post('/login')
-    async login(@Body() { email, password }: UserLoginDto): Promise<IResponse> {
+    async login(@Body() { email, password }: UserLoginInput): Promise<IResponse> {
         const user: UserDoc = await this.userService.findOneByEmail(email);
         if (!user) {
             throw new NotFoundException({

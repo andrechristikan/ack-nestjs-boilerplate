@@ -6,10 +6,10 @@ import {
     ENUM_POLICY_REQUEST_ACTION,
     ENUM_POLICY_SUBJECT,
 } from 'src/common/policy/constants/policy.enum.constant';
-import { IPolicyRule } from 'src/common/policy/interfaces/policy.interface';
 import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
+import {PolicyRule} from "../../../common/policy/models/ploicy-rule.model";
 export class UserPayloadPermissionSerialization {
     @ApiProperty({
         required: true,
@@ -62,7 +62,7 @@ export class UserPayloadSerialization extends OmitType(
         nullable: false,
     })
     @Transform(({ obj }) => {
-        return obj.role.permissions.map(({ action, subject }: IPolicyRule) => {
+        return obj.role.permissions.map(({ action, subject }: PolicyRule) => {
             const ac = action.map(
                 (l) => ENUM_POLICY_REQUEST_ACTION[l.toUpperCase()]
             );

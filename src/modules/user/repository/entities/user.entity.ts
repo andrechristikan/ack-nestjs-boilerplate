@@ -5,7 +5,7 @@ import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/m
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
-import { IUserGoogleEntity } from 'src/modules/user/interfaces/user.interface';
+import {UserGoogleEntity} from "../../model/user-google-entity.model";
 
 export const UserDatabaseName = 'users';
 
@@ -171,7 +171,7 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
             refreshToken: String,
         },
     })
-    google?: IUserGoogleEntity;
+    google?: UserGoogleEntity;
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserEntity);

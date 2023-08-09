@@ -1,10 +1,10 @@
 import { SetMetadata, UseGuards, applyDecorators } from '@nestjs/common';
 import { POLICY_RULE_META_KEY } from 'src/common/policy/constants/policy.constant';
 import { PolicyGuard } from 'src/common/policy/guards/policy.ability.guard';
-import { IPolicyRule } from 'src/common/policy/interfaces/policy.interface';
+import {PolicyRule} from "../models/ploicy-rule.model";
 
 export function PolicyAbilityProtected(
-    ...handlers: IPolicyRule[]
+    ...handlers: PolicyRule[]
 ): MethodDecorator {
     return applyDecorators(
         UseGuards(PolicyGuard),

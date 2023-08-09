@@ -1,5 +1,6 @@
 import {
-    HttpStatus,
+    ExecutionContext,
+    HttpStatus, Injectable,
     Module,
     UnprocessableEntityException,
     ValidationError,
@@ -25,6 +26,21 @@ import { SafeStringConstraint } from './validations/request.safe-string.validati
 import { MaxBinaryFileConstraint } from 'src/common/request/validations/request.max-binary-file.validation';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import {GqlExecutionContext, GraphQLModule} from "@nestjs/graphql";
+import {GqlThrottlerGuard} from "./guards/grpahql.throttler.guard";
+import {ApolloDriver, ApolloDriverConfig} from "@nestjs/apollo";
+import {GqlConfigService} from "../graphql/config/gql-config.service";
+import {RequestHelmetMiddleware} from "./middleware/helmet/request.helmet.middleware";
+import {RequestIdMiddleware} from "./middleware/id/request.id.middleware";
+import {
+    RequestJsonBodyParserMiddleware, RequestRawBodyParserMiddleware,
+    RequestTextBodyParserMiddleware, RequestUrlencodedBodyParserMiddleware
+} from "./middleware/body-parser/request.body-parser.middleware";
+import {RequestCorsMiddleware} from "./middleware/cors/request.cors.middleware";
+import {RequestVersionMiddleware} from "./middleware/version/request.version.middleware";
+import {RequestUserAgentMiddleware} from "./middleware/user-agent/request.user-agent.middleware";
+import {RequestTimestampMiddleware} from "./middleware/timestamp/request.timestamp.middleware";
+import {RequestTimezoneMiddleware} from "./middleware/timezone/request.timezone.middleware";
 
 @Module({
     controllers: [],
@@ -54,7 +70,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         },
         {
             provide: APP_GUARD,
-            useClass: ThrottlerGuard,
+            useClass: GqlThrottlerGuard,
         },
         IsPasswordStrongConstraint,
         IsPasswordMediumConstraint,
@@ -73,6 +89,15 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     ],
     imports: [
         RequestMiddlewareModule,
+
+        GraphQLModule.forRootAsync<ApolloDriverConfig>({
+
+            imports: [],
+            driver: ApolloDriver,
+            useClass: GqlConfigService,
+
+        }),
+        // GqlThrottlerGuard,
         ThrottlerModule.forRootAsync({
             imports: [ConfigModule],
             inject: [ConfigService],
@@ -83,4 +108,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         }),
     ],
 })
+
+
+
 export class RequestModule {}

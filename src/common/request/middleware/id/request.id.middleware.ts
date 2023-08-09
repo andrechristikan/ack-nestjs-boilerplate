@@ -10,6 +10,7 @@ export class RequestIdMiddleware implements NestMiddleware {
         res: Response,
         next: NextFunction
     ): Promise<void> {
+
         const uuid: string = DatabaseDefaultUUID();
 
         req.__id = uuid;

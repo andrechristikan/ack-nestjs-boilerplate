@@ -1,0 +1,115 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type AwsS3Serialization {
+  baseUrl: String!
+  completedUrl: String!
+  filename: String!
+  mime: String!
+  path: String!
+  pathWithFilename: String!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+enum ENUM_POLICY_ACTION {
+  CREATE
+  DELETE
+  EXPORT
+  IMPORT
+  MANAGE
+  READ
+  UPDATE
+}
+
+enum ENUM_POLICY_SUBJECT {
+  API_KEY
+  ROLE
+  SETTING
+  USER
+}
+
+enum ENUM_ROLE_TYPE {
+  ADMIN
+  SUPER_ADMIN
+  USER
+}
+
+enum ENUM_USER_SIGN_UP_FROM {
+  GOOGLE
+  LOCAL
+}
+
+"""
+A field whose value is a JSON Web Token (JWT): https://jwt.io/introduction.
+"""
+scalar JWT
+
+type Mutation {
+  login(data: UserLoginInput!): UserLoginSerializationGql!
+}
+
+type PolicyRule {
+  action: [ENUM_POLICY_ACTION!]!
+  subject: ENUM_POLICY_SUBJECT!
+}
+
+type Query {
+  sayHello: users!
+}
+
+type UserGoogleEntity {
+  accessToken: String!
+  refreshToken: String!
+}
+
+input UserLoginInput {
+  email: String!
+  password: String!
+}
+
+type UserLoginSerialization {
+  """JWT access token"""
+  accessToken: JWT!
+  expiresIn: String!
+
+  """JWT access token"""
+  refreshToken: JWT!
+  tokenType: String
+}
+
+type UserLoginSerializationGql {
+  data: UserLoginSerialization!
+}
+
+type roles {
+  description: String
+  isActive: Boolean!
+  name: String!
+  permissions: [PolicyRule!]!
+  type: ENUM_ROLE_TYPE!
+}
+
+type users {
+  blocked: Boolean!
+  blockedDate: DateTime
+  email: String!
+  firstName: String!
+  google: UserGoogleEntity
+  inactiveDate: DateTime
+  inactivePermanent: Boolean!
+  isActive: Boolean!
+  lastName: String!
+  mobileNumber: String
+  passwordCreated: DateTime
+  passwordExpired: DateTime
+  photo: AwsS3Serialization
+  role: roles!
+  signUpDate: DateTime!
+  signUpFrom: ENUM_USER_SIGN_UP_FROM!
+  username: String
+}

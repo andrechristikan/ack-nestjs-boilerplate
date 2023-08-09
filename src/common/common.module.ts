@@ -21,11 +21,17 @@ import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database
 import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 import { APP_LANGUAGE } from 'src/app/constants/app.constant';
 import { PolicyModule } from 'src/common/policy/policy.module';
+import {GraphQLModule} from "@nestjs/graphql";
+import {ApolloDriver, ApolloDriverConfig} from "@nestjs/apollo";
+import {GqlConfigService} from "./graphql/config/gql-config.service";
+
 
 @Module({
     controllers: [],
     providers: [],
     imports: [
+
+
         ConfigModule.forRoot({
             load: configs,
             isGlobal: true,
@@ -142,6 +148,10 @@ import { PolicyModule } from 'src/common/policy/policy.module';
                     .allow(null, '')
                     .uri()
                     .optional(),
+                ENABLE_DEBUG:Joi.boolean(),
+                SORT_SCHEMA:Joi.boolean(),
+                SCHEMA_DESTINATION:Joi.string().allow(null, '').optional(),
+
             }),
             validationOptions: {
                 allowUnknown: true,
@@ -155,10 +165,11 @@ import { PolicyModule } from 'src/common/policy/policy.module';
             useFactory: (databaseOptionsService: DatabaseOptionsService) =>
                 databaseOptionsService.createOptions(),
         }),
+
         MessageModule,
         HelperModule,
         PaginationModule,
-        ErrorModule,
+        // ErrorModule,
         DebuggerModule.forRoot(),
         ResponseModule,
         RequestModule,

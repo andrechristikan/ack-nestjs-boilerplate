@@ -1,4 +1,4 @@
-import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import {Module, NestModule, MiddlewareConsumer, RequestMethod} from '@nestjs/common';
 import {
     RequestJsonBodyParserMiddleware,
     RequestRawBodyParserMiddleware,
