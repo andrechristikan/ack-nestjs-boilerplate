@@ -6,10 +6,7 @@ import {
 import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
 import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 
-export interface IPolicyRule {
-    subject: ENUM_POLICY_SUBJECT;
-    action: ENUM_POLICY_ACTION[];
-}
+
 export interface IPolicyRuleAbility {
     subject: ENUM_POLICY_SUBJECT;
     action: ENUM_POLICY_ACTION;

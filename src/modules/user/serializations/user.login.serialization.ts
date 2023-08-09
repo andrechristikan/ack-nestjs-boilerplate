@@ -1,35 +1,32 @@
-import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
 
+import {Field, ObjectType} from "@nestjs/graphql";
+import { GraphQLJWT } from 'graphql-scalars';
+import {IResponseGqlMetadata} from "../../../common/response/interfaces/response.gql.interface";
+
+@ObjectType()
 export class UserLoginSerialization {
-    @ApiProperty({
-        example: 'Bearer',
-        required: true,
-        nullable: false,
-    })
+
+    @Field({nullable:true})
     readonly tokenType: string;
 
-    @ApiProperty({
-        example: 1660190937231,
-        description: 'Expire in timestamp',
-        required: true,
-        nullable: false,
-    })
+    @Field()
+
     readonly expiresIn: string;
 
-    @ApiProperty({
-        example: faker.string.alphanumeric(30),
-        description: 'Will be valid JWT Encode string',
-        required: true,
-        nullable: false,
-    })
-    readonly accessToken: string;
+    @Field(() => GraphQLJWT, { description: 'JWT access token' })
 
-    @ApiProperty({
-        example: faker.string.alphanumeric(30),
-        description: 'Will be valid JWT Encode string',
-        required: true,
-        nullable: false,
-    })
+    readonly accessToken: string;
+    @Field(() => GraphQLJWT, { description: 'JWT access token' })
+
     readonly refreshToken: string;
+}
+
+@ObjectType()
+export class UserLoginSerializationGql {
+    @Field(() => UserLoginSerialization)
+    readonly data: UserLoginSerialization;
+
+    _metadata?: IResponseGqlMetadata;
+
+
 }

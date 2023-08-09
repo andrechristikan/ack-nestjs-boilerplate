@@ -4,7 +4,7 @@ import {
     ArgumentsHost,
     HttpException,
     HttpStatus,
-    Optional,
+    Optional, ExecutionContext,
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
@@ -27,6 +27,7 @@ import {
 } from 'src/common/message/interfaces/message.interface';
 import { MessageService } from 'src/common/message/services/message.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+import {GqlContextType, GqlExecutionContext} from "@nestjs/graphql";
 
 // If we throw error with HttpException, there will always return object
 // The exception filter only catch HttpException
@@ -39,11 +40,28 @@ export class ErrorHttpFilter implements ExceptionFilter {
         private readonly helperDateService: HelperDateService
     ) {}
 
-    async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
-        const ctx: HttpArgumentsHost = host.switchToHttp();
-        const response: Response = ctx.getResponse<Response>();
-        const request: IRequestApp = ctx.getRequest<IRequestApp>();
+    async catch(exception: unknown, host: ExecutionContext): Promise<void> {
+        console.log("111 Exception is"+exception)
 
+        // const ctx: HttpArgumentsHost = host.switchToHttp();
+        // declare the variables that will hold the request and response objects
+        let request: IRequestApp;
+        let response: Response;
+        // check the type of the host argument
+        if (host.getType() === 'http') {
+            // if it is HTTP, switch to the HTTP context
+            const ctx: HttpArgumentsHost = host.switchToHttp();
+            response = ctx.getResponse<Response>();
+            request = ctx.getRequest<IRequestApp>();
+        } else if (host.getType<GqlContextType>() === 'graphql') {
+            // if it is GraphQL, switch to the GraphQL context
+            const ctx: GqlExecutionContext = GqlExecutionContext.create(host as ExecutionContext);
+            response = ctx.getContext().res;
+            request = ctx.getContext().req;
+        } else {
+            // if it is neither, throw an error or return
+            throw new Error('Unsupported host type');
+        }
         // get request headers
         const __customLang: string[] = request.__customLang ?? [
             this.messageService.getLanguage(),
@@ -65,7 +83,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
         const __repoVersion =
             request.__repoVersion ??
             this.configService.get<string>('app.repoVersion');
-
+console.log("__class is " + __class)
         // Debugger
         try {
             this.debuggerService.error(
@@ -100,6 +118,8 @@ export class ErrorHttpFilter implements ExceptionFilter {
             version: __version,
             repoVersion: __repoVersion,
         };
+        console.log("Exception is"+exception)
+
         if (exception instanceof HttpException) {
             // Restructure
             const responseException = exception.getResponse();
@@ -161,15 +181,16 @@ export class ErrorHttpFilter implements ExceptionFilter {
             data,
         };
 
-        response
-            .setHeader('x-custom-lang', __customLang)
-            .setHeader('x-timestamp', __timestamp)
-            .setHeader('x-timezone', __timezone)
-            .setHeader('x-request-id', __requestId)
-            .setHeader('x-version', __version)
-            .setHeader('x-repo-version', __repoVersion)
-            .status(statusHttp)
-            .json(responseBody);
+
+        // response
+        //     .setHeader('x-custom-lang', __customLang)
+        //     .setHeader('x-timestamp', __timestamp)
+        //     .setHeader('x-timezone', __timezone)
+        //     .setHeader('x-request-id', __requestId)
+        //     .setHeader('x-version', __version)
+        //     .setHeader('x-repo-version', __repoVersion)
+        //     .status(statusHttp)
+        //     .json(responseBody);
 
         return;
     }

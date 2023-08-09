@@ -6,12 +6,12 @@ import { ENUM_POLICY_ACTION } from 'src/common/policy/constants/policy.enum.cons
 import {
     IPolicyAbility,
     IPolicyRequest,
-    IPolicyRule,
     IPolicyRuleAbility,
     PolicyHandler,
 } from 'src/common/policy/interfaces/policy.interface';
 import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
 import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload.serialization';
+import {PolicyRule} from "../models/ploicy-rule.model";
 
 @Injectable()
 export class PolicyAbilityFactory {
@@ -73,7 +73,7 @@ export class PolicyAbilityFactory {
         }
     }
 
-    handlerRules(rules: IPolicyRule[]): PolicyHandler[] {
+    handlerRules(rules: PolicyRule[]): PolicyHandler[] {
         return rules
             .map(({ subject, action }) => {
                 return action

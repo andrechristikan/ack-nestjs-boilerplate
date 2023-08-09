@@ -10,10 +10,10 @@ import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/common/policy/constants/polic
 import { PolicyAbilityFactory } from 'src/common/policy/factories/policy.ability.factory';
 import {
     IPolicyAbility,
-    IPolicyRule,
     PolicyHandler,
 } from 'src/common/policy/interfaces/policy.interface';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+import {PolicyRule} from "../models/ploicy-rule.model";
 
 @Injectable()
 export class PolicyGuard implements CanActivate {
@@ -24,7 +24,7 @@ export class PolicyGuard implements CanActivate {
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const policyRule =
-            this.reflector.get<IPolicyRule[]>(
+            this.reflector.get<PolicyRule[]>(
                 POLICY_RULE_META_KEY,
                 context.getHandler()
             ) || [];

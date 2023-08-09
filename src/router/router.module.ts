@@ -8,6 +8,7 @@ import { RoutesAuthModule } from 'src/router/routes/routes.auth.module';
 
 @Module({})
 export class RouterModule {
+
     static forRoot(): DynamicModule {
         const imports: (
             | DynamicModule

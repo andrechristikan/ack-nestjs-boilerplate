@@ -1,8 +1,12 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import {GraphqlSchema} from "../../graphql/decorators/graphql.decorator";
+import {Field} from "@nestjs/graphql";
 
+@GraphqlSchema('AwsS3Serialization')
 export class AwsS3Serialization {
+    @Field()
     @ApiProperty({
         required: true,
         nullable: false,
@@ -11,6 +15,7 @@ export class AwsS3Serialization {
     @Type(() => String)
     path: string;
 
+    @Field()
     @ApiProperty({
         required: true,
         nullable: false,
@@ -19,6 +24,8 @@ export class AwsS3Serialization {
     @Type(() => String)
     pathWithFilename: string;
 
+
+    @Field()
     @ApiProperty({
         required: true,
         nullable: false,
@@ -27,6 +34,7 @@ export class AwsS3Serialization {
     @Type(() => String)
     filename: string;
 
+    @Field()
     @ApiProperty({
         required: true,
         nullable: false,
@@ -35,6 +43,7 @@ export class AwsS3Serialization {
     @Type(() => String)
     completedUrl: string;
 
+    @Field()
     @ApiProperty({
         required: true,
         nullable: false,
@@ -43,6 +52,7 @@ export class AwsS3Serialization {
     @Type(() => String)
     baseUrl: string;
 
+    @Field()
     @ApiProperty({
         required: true,
         nullable: false,

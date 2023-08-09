@@ -1,5 +1,4 @@
-import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
+
 import { Type } from 'class-transformer';
 import {
     IsString,
@@ -15,22 +14,20 @@ import {
 import { IsPasswordStrong } from 'src/common/request/validations/request.is-password-strong.validation';
 import { MobileNumberAllowed } from 'src/common/request/validations/request.mobile-number-allowed.validation';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
+import {Field, InputType} from "@nestjs/graphql";
 
+@InputType()
 export class UserCreateDto {
-    @ApiProperty({
-        example: faker.internet.email(),
-        required: true,
-    })
+
+    @Field()
     @IsEmail()
     @IsNotEmpty()
     @MaxLength(100)
     @Type(() => String)
     readonly email: string;
 
-    @ApiProperty({
-        example: faker.person.firstName(),
-        required: true,
-    })
+
+    @Field()
     @IsString()
     @IsNotEmpty()
     @MinLength(1)
@@ -38,10 +35,8 @@ export class UserCreateDto {
     @Type(() => String)
     readonly firstName: string;
 
-    @ApiProperty({
-        example: faker.person.lastName(),
-        required: true,
-    })
+
+    @Field()
     @IsString()
     @IsNotEmpty()
     @MinLength(1)
@@ -49,10 +44,7 @@ export class UserCreateDto {
     @Type(() => String)
     readonly lastName: string;
 
-    @ApiProperty({
-        example: faker.phone.number('62812#########'),
-        required: true,
-    })
+    @Field()
     @IsString()
     @IsOptional()
     @MinLength(10)
@@ -62,26 +54,18 @@ export class UserCreateDto {
     @MobileNumberAllowed()
     readonly mobileNumber?: string;
 
-    @ApiProperty({
-        example: faker.string.uuid(),
-        required: true,
-    })
+    @Field()
     @IsNotEmpty()
     @IsUUID('4')
     readonly role: string;
 
-    @ApiProperty({
-        description: 'string password',
-        example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.string
-            .alphanumeric(5)
-            .toUpperCase()}@@!123`,
-        required: true,
-    })
+    @Field()
     @IsNotEmpty()
     @IsPasswordStrong()
     @MaxLength(50)
     readonly password: string;
 
+    @Field()
     @IsEnum(ENUM_USER_SIGN_UP_FROM)
     @IsString()
     @IsNotEmpty()

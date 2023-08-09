@@ -4,6 +4,7 @@ import { ENUM_HELPER_FILE_TYPE } from 'src/common/helper/constants/helper.enum.c
 import { IHelperFileRows } from 'src/common/helper/interfaces/helper.interface';
 import { IMessageOptionsProperties } from 'src/common/message/interfaces/message.interface';
 
+
 export interface IResponseCustomPropertyMetadata {
     statusCode?: number;
     message?: string;
@@ -18,6 +19,7 @@ export interface IResponseMetadata {
 }
 
 // decorator options
+
 
 export interface IResponseOptions<T> {
     serialization?: ClassConstructor<T>;

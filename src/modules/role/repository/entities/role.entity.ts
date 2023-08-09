@@ -3,8 +3,8 @@ import { CallbackWithoutResultAndOptionalError, Document } from 'mongoose';
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import { ENUM_POLICY_SUBJECT } from 'src/common/policy/constants/policy.enum.constant';
-import { IPolicyRule } from 'src/common/policy/interfaces/policy.interface';
 import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
+import {PolicyRule} from "../../../../common/policy/models/ploicy-rule.model";
 
 export const RoleDatabaseName = 'roles';
 
@@ -63,7 +63,7 @@ export class RoleEntity extends DatabaseMongoUUIDEntityAbstract {
             },
         ],
     })
-    permissions: IPolicyRule[];
+    permissions: PolicyRule[];
 }
 
 export const RoleSchema = SchemaFactory.createForClass(RoleEntity);
