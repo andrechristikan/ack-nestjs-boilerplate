@@ -53,7 +53,7 @@ export class HelperFileService implements IHelperFileService {
     readExcelFromBuffer(
         file: Buffer,
         options?: IHelperFileReadExcelOptions
-    ): IHelperFileRows[] {
+    ): IHelperFileRows[][] {
         // workbook
         const workbook = read(file, {
             type: 'buffer',
@@ -62,13 +62,17 @@ export class HelperFileService implements IHelperFileService {
         });
 
         // worksheet
-        const worksheetName = workbook.SheetNames;
-        const worksheet = workbook.Sheets[worksheetName[0]];
+        const worksheetsName: string[] = workbook.SheetNames;
+        const sheets: IHelperFileRows[][] = [];
+        for (const worksheetName of worksheetsName) {
+            const worksheet = workbook.Sheets[worksheetName];
 
-        // rows
-        const rows: IHelperFileRows[] = utils.sheet_to_json(worksheet);
+            // rows
+            const rows: IHelperFileRows[] = utils.sheet_to_json(worksheet);
+            sheets.push(rows);
+        }
 
-        return rows;
+        return sheets;
     }
 
     convertToBytes(megabytes: string): number {

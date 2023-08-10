@@ -13,6 +13,7 @@ export interface IErrors {
 export interface IErrorsImport {
     row: number;
     file?: string;
+    sheet?: number;
     errors: IErrors[];
 }
 

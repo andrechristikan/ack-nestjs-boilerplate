@@ -18,7 +18,7 @@ export interface IHelperFileService {
     readExcelFromBuffer(
         file: Buffer,
         options?: IHelperFileReadExcelOptions
-    ): IHelperFileRows[];
+    ): IHelperFileRows[][];
     convertToBytes(megabytes: string): number;
     createJson(path: string, data: Record<string, any>[]): boolean;
     readJson(path: string): Record<string, any>[];
