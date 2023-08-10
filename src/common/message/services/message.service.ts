@@ -71,7 +71,7 @@ export class MessageService implements IMessageService {
             let property: string = requestError.property;
             let propertyValue: string = requestError.value;
 
-            while (children.length > 0) {
+            while (children?.length > 0) {
                 property = `${property}.${children[0].property}`;
 
                 if (children[0].children?.length > 0) {
@@ -110,6 +110,7 @@ export class MessageService implements IMessageService {
         return errors.map((val) => ({
             row: val.row,
             file: val.file,
+            sheet: val.sheet,
             errors: this.getRequestErrorsMessage(val.errors, options),
         }));
     }

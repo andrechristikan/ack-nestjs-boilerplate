@@ -55,7 +55,7 @@ describe('HelperFileService', () => {
             const workbook = service.createExcelWorkbook(rows);
             const buffer = service.writeExcelToBuffer(workbook);
             const newRows = service.readExcelFromBuffer(buffer);
-            expect(newRows).toEqual(rows);
+            expect(newRows).toEqual([rows]);
         });
     });
 

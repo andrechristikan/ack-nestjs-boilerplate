@@ -13,10 +13,11 @@ export class MinDateTodayConstraint implements ValidatorConstraintInterface {
     constructor(private readonly helperDateService: HelperDateService) {}
 
     validate(value: string): boolean {
-        const todayDate = this.helperDateService.endOfDay();
+        const todayDate = this.helperDateService.startOfDay();
         const valueDate = this.helperDateService.startOfDay(
             this.helperDateService.create(value)
         );
+
         return valueDate >= todayDate;
     }
 }
