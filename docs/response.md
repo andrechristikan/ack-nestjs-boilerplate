@@ -1,17 +1,18 @@
 # Response
 
 ## Prerequisites
-Before start you can read for better understanding
+Before start, you can read some docs for better understanding
 1. [structure_response][doc-structure-response] 
+
+
+## Purpose
+Centralize response and force response to be structured
 
 ## Description
 
+> By default, `statusCode` will be the same as `httpStatus`.
+
 `Response decorator` / `@Response` is one of the main modules of this boilerplate and has rich features behind it.
-
-The main purpose of this decorator is to `centralize response and force response to be structured`. 
-
-By default, `statusCode` will be the same as `httpStatus`.
-
 
 ## Params and Options
 
@@ -32,9 +33,9 @@ export function Response<T>(
 Represents the path of a message based on our languages files in `/src/languages/`. Otherwise, it will return `messagePath`.
 If the past is have child, you can put messagePath like this `parentPath.childPath`
 
-### Options
+### options
 
-Is optional and has an interface as `IResponseOptions`.
+Has an interface as `IResponseOptions`.
    
 ```ts
 export type IMessageOptionsProperties = Record<string, string | number>;
@@ -71,7 +72,7 @@ export class Controller {
 
 ## Scenario
 
-In this section, will describe how to use `@Response` with 5 scenario
+In this section, will describe how to use `@Response` with 5 scenarios
 
 ### Language File
 Imagine if you have language file like this. In `src/languages` there has only one file `test.json`
@@ -105,11 +106,23 @@ export class Controller {
 }
 ```
 
-The response will be
+The response statusCode will change to 308 from 200, and message will convert base on language file
+
 ```json
 {
     "statusCode": 308,
-    "message": "Success return null value" // <---- this will convert base on language file
+    "message": "Success return null value",
+    "_metadata": {
+        "languages": [
+            "en"
+        ],
+        "timestamp": 1692031787997,
+        "timezone": "Asia/Jakarta",
+        "requestId": "165b5484-4287-4812-94cd-33a79c67a0fa",
+        "path": "/api/v1/test/null-return",
+        "version": "1",
+        "repoVersion": "1.0.0"
+    }
 }
 ```
 
@@ -133,8 +146,8 @@ export class Controller {
     @Response('test.returnSomeData',{
         serialization: SomeDataSerialization
     }) // <---- here
-    @Get('/test/null-return')
-    async test(): Promise<IResponse> { // <---- for helper, you can put IResponse interface
+    @Get('/test/null-some-data')
+    async test(): Promise<IResponse> { // <---- for help inconsistency, you can put IResponse interface
         
         const testNumber = "2";
         
@@ -146,14 +159,26 @@ export class Controller {
 }
 ```
 
-The response will be
+The response data will convert testNumber into number, and add addValue automatically.
+
 ```json
 {
     "statusCode": 200,
     "message": "Success return some data with serialization",
+    "_metadata": {
+        "languages": [
+            "en"
+        ],
+        "timestamp": 1692031787997,
+        "timezone": "Asia/Jakarta",
+        "requestId": "165b5484-4287-4812-94cd-33a79c67a0fa",
+        "path": "/api/v1/test/null-some-data",
+        "version": "1",
+        "repoVersion": "1.0.0"
+    },
     "data": {
-        "testNumber": 2, // <---- this will be convert into number
-        "addValue": "addValue" // <---- this will added automatically
+        "testNumber": 2,
+        "addValue": "addValue"
     }
 }
 ```
@@ -175,11 +200,23 @@ export class Controller {
 
 ```
 
-The response will be
+The response will return messagePath
+
 ```json
 {
     "statusCode": 200,
-    "message": "test.notFound" // <---- will return messagePath
+    "message": "test.notFound",
+    "_metadata": {
+        "languages": [
+            "en"
+        ],
+        "timestamp": 1692031787997,
+        "timezone": "Asia/Jakarta",
+        "requestId": "165b5484-4287-4812-94cd-33a79c67a0fa",
+        "path": "/api/v1/test/not-found",
+        "version": "1",
+        "repoVersion": "1.0.0"
+    }
 }
 ```
 
@@ -216,19 +253,43 @@ export class Controller {
 
 ```
 
-The response will be
+The response test1 will be. {customProp} replace with custom message property
+
 ```json
-// response test1
 {
     "statusCode": 200,
-    "message": "Success return deep message with custom property custom message property" // <---- {customProp} replace with custom message property
+    "message": "Success return deep message with custom property custom message property",
+    "_metadata": {
+        "languages": [
+            "en"
+        ],
+        "timestamp": 1692031787997,
+        "timezone": "Asia/Jakarta",
+        "requestId": "165b5484-4287-4812-94cd-33a79c67a0fa",
+        "path": "/api/v1/test/custom-message-property1",
+        "version": "1",
+        "repoVersion": "1.0.0"
+    }
 }
+```
 
+The response test2 will be. {customProp} replace with custom message property
 
-// response test2
+```json
 {
     "statusCode": 200,
-    "message": "Success return deep message with custom property deep message" // <---- {customProp} replace with custom message property
+    "message": "Success return deep message with custom property deep message",
+    "_metadata": {
+        "languages": [
+            "en"
+        ],
+        "timestamp": 1692031787997,
+        "timezone": "Asia/Jakarta",
+        "requestId": "165b5484-4287-4812-94cd-33a79c67a0fa",
+        "path": "/api/v1/test/custom-message-property2",
+        "version": "1",
+        "repoVersion": "1.0.0"
+    }
 }
 ```
 
@@ -262,19 +323,44 @@ export class Controller {
 
 ```
 
-The response will be
+The response custom1 will be. httpStatus will 200
+
 ```json
-// response custom1, httpStatus will 200
+// response custom1
 {
     "statusCode": 200,
-    "message": "Success custom 1" 
+    "message": "Success custom 1",
+    "_metadata": {
+        "languages": [
+            "en"
+        ],
+        "timestamp": 1692031787997,
+        "timezone": "Asia/Jakarta",
+        "requestId": "165b5484-4287-4812-94cd-33a79c67a0fa",
+        "path": "/api/v1/test/custom1",
+        "version": "1",
+        "repoVersion": "1.0.0"
+    }
 }
+```
 
+The response custom2 will be. httpStatus will 308, and statusCode will 1001.
 
-// response custom2, httpStatus will 308
+```json
 {
     "statusCode": 1001,
-    "message": "Success custom 2"
+    "message": "Success custom 2",
+    "_metadata": {
+        "languages": [
+            "en"
+        ],
+        "timestamp": 1692031787997,
+        "timezone": "Asia/Jakarta",
+        "requestId": "165b5484-4287-4812-94cd-33a79c67a0fa",
+        "path": "/api/v1/test/custom2",
+        "version": "1",
+        "repoVersion": "1.0.0"
+    }
 }
 ```
 
