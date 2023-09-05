@@ -1,6 +1,6 @@
 # Documentation
 
-> `👋 Disclaimer:` I'm not good in english, but i will try to explain what i wrote.
+> `👋 Disclaimer:` Hope you guys will understand what i wrote, cause i'm not good in english
 
 Documentation of ack-nestjs-boilerplate
 

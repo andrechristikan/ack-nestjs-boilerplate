@@ -51,9 +51,10 @@ describe('DashboardService', () => {
             expect(result.endDate).toEqual(expectedEndDate);
         });
 
-        it('should return start date as current day start if not provided', async () => {
+        it('should return start date as current day of year if not provided', async () => {
+            const today = new Date();
             const endDate = new Date(2022, 5, 15);
-            const startDate = new Date();
+            const startDate = new Date(today.getFullYear(), 0, 1);
             const expectedStartDate = new Date(startDate.setHours(0, 0, 0, 0));
             const expectedEndDate = new Date(endDate.setHours(23, 59, 59, 999));
 
@@ -63,9 +64,10 @@ describe('DashboardService', () => {
             expect(result.endDate).toEqual(expectedEndDate);
         });
 
-        it('should return end date as current day end if not provided', async () => {
+        it('should return end date as current day of year if not provided', async () => {
+            const today = new Date();
             const startDate = new Date(2022, 5, 15);
-            const endDate = new Date();
+            const endDate = new Date(today.getFullYear(), 11, 31);
             const expectedStartDate = new Date(startDate.setHours(0, 0, 0, 0));
             const expectedEndDate = new Date(endDate.setHours(23, 59, 59, 999));
 
