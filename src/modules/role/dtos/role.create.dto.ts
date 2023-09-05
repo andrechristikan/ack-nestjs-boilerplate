@@ -72,6 +72,12 @@ export class RoleCreateDto extends PartialType(RoleUpdateDto) {
         description: 'Permission list of role',
         isArray: true,
         default: [],
+        example: [
+            {
+                subject: ENUM_POLICY_SUBJECT.API_KEY,
+                action: [ENUM_POLICY_ACTION.MANAGE],
+            },
+        ],
         type: () => RolePermissionsDto,
     })
     @Type(() => RolePermissionsDto)

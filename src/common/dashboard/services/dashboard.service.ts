@@ -22,13 +22,13 @@ export class DashboardService implements IDashboardService {
             endDate = this.helperDateService.endOfYear(today);
         } else {
             if (!startDate) {
-                startDate = this.helperDateService.startOfDay();
+                startDate = this.helperDateService.startOfYear();
             } else {
                 startDate = this.helperDateService.startOfDay(startDate);
             }
 
             if (!endDate) {
-                endDate = this.helperDateService.endOfDay();
+                endDate = this.helperDateService.endOfYear();
             } else {
                 endDate = this.helperDateService.endOfDay(endDate);
             }
