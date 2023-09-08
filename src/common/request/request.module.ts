@@ -8,18 +8,12 @@ import {
 import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { RequestTimeoutInterceptor } from 'src/common/request/interceptors/request.timeout.interceptor';
 import { RequestMiddlewareModule } from 'src/common/request/middleware/request.middleware.module';
-import { MaxDateTodayConstraint } from 'src/common/request/validations/request.max-date-today.validation';
-import { MinDateTodayConstraint } from 'src/common/request/validations/request.min-date-today.validation';
 import { MobileNumberAllowedConstraint } from 'src/common/request/validations/request.mobile-number-allowed.validation';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from './constants/request.status-code.constant';
 import { IsPasswordMediumConstraint } from './validations/request.is-password-medium.validation';
 import { IsPasswordStrongConstraint } from './validations/request.is-password-strong.validation';
 import { IsPasswordWeakConstraint } from './validations/request.is-password-weak.validation';
 import { IsStartWithConstraint } from './validations/request.is-start-with.validation';
-import { MaxGreaterThanEqualConstraint } from './validations/request.max-greater-than-equal.validation';
-import { MaxGreaterThanConstraint } from './validations/request.max-greater-than.validation';
-import { MinGreaterThanEqualConstraint } from './validations/request.min-greater-than-equal.validation';
-import { MinGreaterThanConstraint } from './validations/request.min-greater-than.validation';
 import { IsOnlyDigitsConstraint } from './validations/request.only-digits.validation';
 import { SafeStringConstraint } from './validations/request.safe-string.validation';
 import { MaxBinaryFileConstraint } from 'src/common/request/validations/request.max-binary-file.validation';
@@ -29,6 +23,12 @@ import {
     ThrottlerModuleOptions,
 } from '@nestjs/throttler';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { DateLessThanEqualTodayConstraint } from 'src/common/request/validations/request.date-less-than-equal-today.validation';
+import { DateGreaterThanEqualTodayConstraint } from 'src/common/request/validations/request.date-greater-than-equal-today.validation';
+import { GreaterThanEqualConstraint } from 'src/common/request/validations/request.greater-than-equal.validation';
+import { GreaterThanConstraint } from 'src/common/request/validations/request.greater-than.validation';
+import { LessThanEqualConstraint } from 'src/common/request/validations/request.less-than-equal.validation';
+import { LessThanConstraint } from 'src/common/request/validations/request.less-than.validation';
 
 @Module({
     controllers: [],
@@ -60,20 +60,20 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
             provide: APP_GUARD,
             useClass: ThrottlerGuard,
         },
+        DateGreaterThanEqualTodayConstraint,
+        DateLessThanEqualTodayConstraint,
+        GreaterThanEqualConstraint,
+        GreaterThanConstraint,
         IsPasswordStrongConstraint,
         IsPasswordMediumConstraint,
         IsPasswordWeakConstraint,
         IsStartWithConstraint,
-        MaxGreaterThanEqualConstraint,
-        MaxGreaterThanConstraint,
-        MinGreaterThanEqualConstraint,
-        MinGreaterThanConstraint,
-        SafeStringConstraint,
-        IsOnlyDigitsConstraint,
-        MinDateTodayConstraint,
-        MobileNumberAllowedConstraint,
-        MaxDateTodayConstraint,
+        LessThanEqualConstraint,
+        LessThanConstraint,
         MaxBinaryFileConstraint,
+        MobileNumberAllowedConstraint,
+        IsOnlyDigitsConstraint,
+        SafeStringConstraint,
     ],
     imports: [
         RequestMiddlewareModule,
