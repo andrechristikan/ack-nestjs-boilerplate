@@ -23,6 +23,7 @@
         ".husky/**",
         ".github/**",
         "dist/**",
-        "logs/**"
+        "logs/**",
+        "**/**/*.json"
     ]
 }
