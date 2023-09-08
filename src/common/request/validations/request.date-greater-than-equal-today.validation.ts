@@ -9,7 +9,9 @@ import { HelperDateService } from 'src/common/helper/services/helper.date.servic
 
 @ValidatorConstraint({ async: true })
 @Injectable()
-export class MinDateTodayConstraint implements ValidatorConstraintInterface {
+export class DateGreaterThanEqualTodayConstraint
+    implements ValidatorConstraintInterface
+{
     constructor(private readonly helperDateService: HelperDateService) {}
 
     validate(value: string): boolean {
@@ -22,15 +24,17 @@ export class MinDateTodayConstraint implements ValidatorConstraintInterface {
     }
 }
 
-export function MinDateToday(validationOptions?: ValidationOptions) {
+export function DateGreaterThanEqualToday(
+    validationOptions?: ValidationOptions
+) {
     return function (object: Record<string, any>, propertyName: string): any {
         registerDecorator({
-            name: 'MinDateToday',
+            name: 'DateGreaterThanEqualToday',
             target: object.constructor,
             propertyName: propertyName,
             options: validationOptions,
             constraints: [],
-            validator: MinDateTodayConstraint,
+            validator: DateGreaterThanEqualTodayConstraint,
         });
     };
 }
