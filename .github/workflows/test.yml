@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Git checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup node version ${{ matrix.node-version }}
         uses: actions/setup-node@v3
