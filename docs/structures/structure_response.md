@@ -19,7 +19,7 @@ export class ResponseMetadataSerialization {
 export class ResponseDefaultSerialization {
     statusCode: number;
     message: string;
-    _metadata?: ResponseMetadataSerialization;
+    _metadata: ResponseMetadataSerialization;
     data?: Record<string, any>;
 }
 ```

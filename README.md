@@ -30,7 +30,6 @@
 - [Documentation](#documentation)
   - [License](#license)
   - [Contribute](#contribute)
-    - [Rule](#rule)
   - [Contact](#contact)
 
 ## Important
@@ -88,16 +87,6 @@ How to contribute in this repo
 6. Back to browser, goto your fork repo github. Then, click `Compare & pull request`
 
 If your code behind commit with the original, please update your code and resolve the conflict. Then, repeat from number 6.
-
-### Rule
-
-* Avoid Circular Dependency
-* Consume component based / modular folder structure, and repository design pattern
-* Always make `service` for every module is independently.
-* Do not put `controller` into modules, cause this will break the dependency. Only put the controller into `router` and then inject the dependency.
-* Put the config in `/configs` folder, and for dynamic config put as `environment variable`
-* `CommonModule` only for main package, and put the module that related of project into `/src/modules`.
-* If there a new service in CommonModule. Make sure to create the unit test in `/unit`.
 
 ## Contact
 
