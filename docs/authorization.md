@@ -1,8 +1,5 @@
 # Authorization
 
-<<<<<<< HEAD
-> Ongoing update
-=======
 > Ongoing update
 
 ## Prerequisites
@@ -16,4 +13,3 @@
 ## How to use
 
 ## Scenario
->>>>>>> 97927494c55a093ecaa3d2c732fb6cf959ef269e
