@@ -83,4 +83,15 @@ export class HelperStringService implements IHelperStringService {
         const regex = new RegExp('^[A-Za-z0-9_-]+$');
         return regex.test(text);
     }
+
+    formatCurrency(num: number): string {
+        const curr = new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+        });
+
+        return curr.format(num);
+    }
 }

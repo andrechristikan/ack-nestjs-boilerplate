@@ -50,7 +50,10 @@ export class UserCreateDto {
     readonly lastName: string;
 
     @ApiProperty({
-        example: faker.phone.number('62812#########'),
+        example: `628${faker.string.fromCharacters('1234567890', {
+            min: 7,
+            max: 11,
+        })}`,
         required: true,
     })
     @IsString()

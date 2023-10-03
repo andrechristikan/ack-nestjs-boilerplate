@@ -1,4 +1,3 @@
-
 # Behaviors
 
 > Ongoing update

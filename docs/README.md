@@ -1,7 +1,5 @@
 # Documentation
 
-> `👋 Disclaimer:` Hope you guys will understand what i wrote, cause i'm not good in english
-
 Documentation of ack-nestjs-boilerplate
 
 ## Prerequisites
@@ -222,12 +220,23 @@ In this case primary will be `mongo1`
     docker restart service
     ```
 
-## API Reference
+## API Spec
 
-You can check The ApiSpec after running this project. [here][api-reference-docs]
+You can check The API Spec after running this project. [here][api-spec-docs]
+
+## Database Migration
+
+This project need to do migration to running. [Read this][ack-database-migration-doc]
+
+## More Docs
+
+You can find more docs about this project in [here][ack-doc]
 
 <!-- API Reference -->
-[api-reference-docs]: http://localhost:3000/docs
+[api-spec-docs]: http://localhost:3000/docs
+
+[ack-database-migration-doc]: ./docs/database/database_migration.md
+[ack-doc]: ./docs
 
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com

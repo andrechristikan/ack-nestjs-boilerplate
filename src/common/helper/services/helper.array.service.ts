@@ -5,6 +5,24 @@ import { IHelperArrayRemove } from 'src/common/helper/interfaces/helper.interfac
 
 @Injectable()
 export class HelperArrayService implements IHelperArrayService {
+    getCombinations<T>(
+        list: T[][],
+        start = 0,
+        result: T[][] = [],
+        current: T[] = []
+    ): T[][] {
+        if (start === list.length) result.push(current);
+        else
+            list[start].forEach((item) =>
+                this.getCombinations(list, start + 1, result, [
+                    ...current,
+                    item,
+                ])
+            );
+
+        return result;
+    }
+
     getLeftByIndex<T>(array: T[], index: number): T {
         return _.nth(array, index);
     }

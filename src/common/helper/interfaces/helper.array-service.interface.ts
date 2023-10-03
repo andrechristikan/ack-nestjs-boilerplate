@@ -1,6 +1,12 @@
 import { IHelperArrayRemove } from 'src/common/helper/interfaces/helper.interface';
 
 export interface IHelperArrayService {
+    getCombinations<T>(
+        list: T[][],
+        start: number,
+        result: T[][],
+        current: T[]
+    ): T[][];
     getLeftByIndex<T>(array: T[], index: number): T;
     getRightByIndex<T>(array: T[], index: number): T;
     getLeftByLength<T>(array: T[], length: number): T[];

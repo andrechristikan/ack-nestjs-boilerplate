@@ -18,6 +18,24 @@ describe('HelperArrayService', () => {
         expect(service).toBeDefined();
     });
 
+    describe('getCombinations', () => {
+        it('should return correct value', () => {
+            const testArray = [
+                ['a', 'b', 'c'],
+                [1, 2],
+            ];
+            const result = service.getCombinations<string | number>(testArray);
+            expect(result).toEqual([
+                ['a', 1],
+                ['a', 2],
+                ['b', 1],
+                ['b', 2],
+                ['c', 1],
+                ['c', 2],
+            ]);
+        });
+    });
+
     describe('getLeftByIndex', () => {
         it('should return correct value', () => {
             const testArray = ['a', 'b', 'c', 'd'];
