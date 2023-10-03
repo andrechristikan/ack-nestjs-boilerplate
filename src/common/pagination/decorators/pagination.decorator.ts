@@ -34,12 +34,6 @@ export function PaginationQuery(
     );
 }
 
-export function PaginationQuerySearch(
-    availableSearch: string[]
-): ParameterDecorator {
-    return Query(PaginationSearchPipe(availableSearch));
-}
-
 export function PaginationQueryFilterInBoolean(
     field: string,
     defaultValue: boolean[],

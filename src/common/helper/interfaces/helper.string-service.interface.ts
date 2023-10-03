@@ -9,4 +9,5 @@ export interface IHelperStringService {
     checkPasswordMedium(password: string, length?: number): boolean;
     checkPasswordStrong(password: string, length?: number): boolean;
     checkSafeString(text: string): boolean;
+    formatCurrency(num: number): string;
 }

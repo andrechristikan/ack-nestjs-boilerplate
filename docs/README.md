@@ -1,7 +1,5 @@
 # Documentation
 
-> `👋 Disclaimer:` Hope you guys will understand what i wrote, cause i'm not good in english
-
 Documentation of ack-nestjs-boilerplate
 
 ## Prerequisites
@@ -108,126 +106,30 @@ Describes which version.
 * Linter with EsLint for Typescript
 
 
-## Getting Started
+## Installation
 
-Before start, we need to install some packages and tools.
-The recommended version is the LTS version for every tool and package.
+Installation will describe in difference doc. [here][doc-installation].
 
-> Make sure to check that the tools have been installed successfully.
+## API Spec
 
-1. [NodeJs][ref-nodejs]
-2. [MongoDB][ref-mongodb]
-3. [Yarn][ref-yarn]
-4. [Git][ref-git]
+You can check The API Spec after running this project. [here][api-spec-docs]
 
-### Clone Repo
+## Database Migration
 
-Clone the project with git.
+This project need to do migration to running. [Read this][ack-database-migration-doc]
 
-```bash
-git clone https://github.com/andrechristikan/ack-nestjs-boilerplate.git
-```
+## More Docs
 
-### Install Dependencies
+You can find more docs about this project in [here][ack-doc]
 
-This project needs some dependencies. Let's go install it.
 
-```bash
-yarn install
-```
-
-### Create environment
-
-Make your own environment file with a copy of `env.example` and adjust values to suit your own environment.
-
-```bash
-cp .env.example .env
-```
-
-### Test
-
-> Next development will add e2e test
-
-The project only provide `unit testing`.
-
-```bash
-yarn test
-```
-
-## Run Project
-
-Finally, Cheers 🍻🍻 !!! you passed all steps.
-
-Now you can run the project.
-
-```bash
-yarn start:dev
-```
-
-## Run Project with Docker
-
-For docker installation, we need more tools to be installed.
-
-1. [Docker][ref-docker]
-2. [Docker-Compose][ref-dockercompose]
-
-After you installation, then run
-
-```bash
-docker-compose up -d
-```
-
-`After all containers up, we not finish yet`. We need to manual configure mongodb as replication set.
-In this case primary will be `mongo1`
-
-1. Enter the `mongo1 container`
-   
-    ```bash
-    docker exec -it mongo1 mongosh
-    ```
-
-2. In mongo1 container, tell the primary to be as replication set
-   
-    ```js
-    rs.initiate({_id:"rs0", members: [{_id:0, host:"mongo1:27017", priority:3}, {_id:1, host:"mongo2:27017", priority:2}, {_id:2, host:"mongo3:27017", priority:1}]}, { force: true })
-    ```
-
-    will return response `{status: ok}`
-    
-    then exit the container
-    
-    ```bash
-    exit
-    ```
-
-3. Adjust env file
-   > Adjust with your own environment
-   
-    ```env
-    ...
-
-    DATABASE_HOST=mongodb://mongo1:27017,mongo2:27017,mongo3:27017
-    DATABASE_NAME=ack
-    DATABASE_USER=
-    DATABASE_PASSWORD=
-    DATABASE_DEBUG=false
-    DATABASE_OPTIONS=replicaSet=rs0&retryWrites=true&w=majority
-
-    ...
-    ```
-
-4. Restart the service container
-
-    ```bash
-    docker restart service
-    ```
-
-## API Reference
-
-You can check The ApiSpec after running this project. [here][api-reference-docs]
+[doc-installation]: /docs/installation.md
 
 <!-- API Reference -->
-[api-reference-docs]: http://localhost:3000/docs
+[api-spec-docs]: http://localhost:3000/docs
+
+[ack-database-migration-doc]: ./docs/database/database_migration.md
+[ack-doc]: ./docs
 
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com
