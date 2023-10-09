@@ -83,14 +83,6 @@ export class UserPayloadSerialization extends OmitType(
     @Exclude()
     readonly signUpFrom: ENUM_USER_SIGN_UP_FROM;
 
-    @ApiProperty({
-        required: true,
-        nullable: false,
-        example: faker.date.recent(),
-    })
-    @Expose()
-    readonly loginDate: Date;
-
     @ApiHideProperty()
     @Exclude()
     readonly createdAt: number;

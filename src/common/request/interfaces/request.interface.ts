@@ -20,9 +20,5 @@ export interface IRequestApp extends Request {
     __class?: string;
     __function?: string;
 
-    __filters?: Record<
-        string,
-        string | number | boolean | Array<string | number | boolean>
-    >;
     __pagination?: RequestPaginationSerialization;
 }

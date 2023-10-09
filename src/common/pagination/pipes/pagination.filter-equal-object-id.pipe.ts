@@ -28,16 +28,28 @@ export function PaginationFilterEqualObjectIdPipe(
                 ? new Types.ObjectId(value)
                 : value;
 
+            let res: Record<string, any>;
             if (raw) {
-                return {
+                res = {
                     [field]: value,
                 };
+            } else {
+                res = this.paginationService.filterEqual<
+                    Types.ObjectId | string
+                >(field, finalValue);
             }
 
-            return this.paginationService.filterEqual<Types.ObjectId | string>(
-                field,
-                finalValue
-            );
+            this.request.__pagination = {
+                ...this.request.__pagination,
+                filters: this.request.__pagination?.filters
+                    ? {
+                          ...this.request.__pagination?.filters,
+                          ...res,
+                      }
+                    : res,
+            };
+
+            return res;
         }
     }
 

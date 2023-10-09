@@ -3,7 +3,7 @@ import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Profile } from 'passport';
-import { IAuthGooglePayload } from 'src/common/auth/interfaces/auth.interface';
+import { AuthGooglePayloadSerialization } from 'src/common/auth/serializations/auth.google-payload.serialization';
 
 @Injectable()
 export class AuthGoogleOAuth2LoginStrategy extends PassportStrategy(
@@ -30,10 +30,9 @@ export class AuthGoogleOAuth2LoginStrategy extends PassportStrategy(
         done: VerifyCallback
     ): Promise<any> {
         const { name, emails } = profile;
-        const user: IAuthGooglePayload = {
+        const user: AuthGooglePayloadSerialization = {
             email: emails[0].value,
-            firstName: name.givenName,
-            lastName: name.familyName,
+            name: `${name.givenName} ${name.familyName}`,
             accessToken,
             refreshToken,
         };

@@ -6,10 +6,16 @@ import { HelperHashService } from 'src/common/helper/services/helper.hash.servic
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { JwtService } from '@nestjs/jwt';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
-import { ENUM_AUTH_LOGIN_WITH } from 'src/common/auth/constants/auth.enum.constant';
+import {
+    ENUM_AUTH_LOGIN_FROM,
+    ENUM_AUTH_LOGIN_WITH,
+} from 'src/common/auth/constants/auth.enum.constant';
+import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
+import { AuthRefreshPayloadSerialization } from 'src/common/auth/serializations/auth.refresh-payload.serialization';
 
 describe('AuthService', () => {
     let service: AuthService;
+    let helperDateService: HelperDateService;
 
     const mockJwtService = {
         sign: jest.fn().mockReturnValue('mockedToken'),
@@ -78,6 +84,7 @@ describe('AuthService', () => {
         }).compile();
 
         service = moduleRef.get<AuthService>(AuthService);
+        helperDateService = moduleRef.get<HelperDateService>(HelperDateService);
     });
 
     it('should be defined', () => {
@@ -86,12 +93,22 @@ describe('AuthService', () => {
 
     describe('decryptAccessToken', () => {
         it('should encrypt and decrypt access token', async () => {
-            const payload = { userId: 1 };
+            const payload: AuthAccessPayloadSerialization = {
+                user: {
+                    _id: '123456',
+                },
+                loginDate: helperDateService.create(),
+                loginFrom: ENUM_AUTH_LOGIN_FROM.PASSWORD,
+                loginWith: ENUM_AUTH_LOGIN_WITH.EMAIL,
+            };
             const encryptedToken = await service.encryptAccessToken(payload);
             const decryptedPayload = await service.decryptAccessToken({
                 data: encryptedToken,
             });
-            expect(decryptedPayload).toEqual(payload);
+            expect(decryptedPayload.user._id).toEqual('123456');
+            expect(decryptedPayload.loginDate).toBeDefined();
+            expect(decryptedPayload.loginFrom).toBeDefined();
+            expect(decryptedPayload.loginWith).toBeDefined();
         });
     });
 
@@ -135,12 +152,20 @@ describe('AuthService', () => {
 
     describe('encryptRefreshToken', () => {
         it('should encrypt and decrypt refresh token', async () => {
-            const payload = { userId: 1 };
+            const payload: AuthRefreshPayloadSerialization = {
+                _id: '123',
+                loginDate: helperDateService.create(),
+                loginFrom: ENUM_AUTH_LOGIN_FROM.PASSWORD,
+                loginWith: ENUM_AUTH_LOGIN_WITH.EMAIL,
+            };
             const encryptedToken = await service.encryptRefreshToken(payload);
             const decryptedPayload = await service.decryptRefreshToken({
                 data: encryptedToken,
             });
-            expect(decryptedPayload).toEqual(payload);
+            expect(decryptedPayload._id).toEqual('123');
+            expect(decryptedPayload.loginDate).toBeDefined();
+            expect(decryptedPayload.loginFrom).toBeDefined();
+            expect(decryptedPayload.loginWith).toBeDefined();
         });
     });
 
@@ -152,9 +177,8 @@ describe('AuthService', () => {
                 'jwtEncrypt'
             ).mockReturnValueOnce(expectedToken);
             const payloadHashed = 'test-payload-hash';
-            const refreshToken = await service.createRefreshToken(
-                payloadHashed
-            );
+            const refreshToken =
+                await service.createRefreshToken(payloadHashed);
             expect(refreshToken).toEqual(expectedToken);
         });
     });
@@ -211,23 +235,41 @@ describe('AuthService', () => {
 
     describe('createPayloadAccessToken', () => {
         it('should create access token payload', async () => {
-            const expectedPayload = { userId: 1 };
             const data = { userId: 1 };
-            const payload = await service.createPayloadAccessToken(data);
-            expect(payload).toEqual(expectedPayload);
+            const payload = await service.createPayloadAccessToken(data, {
+                loginDate: helperDateService.create(),
+                loginFrom: ENUM_AUTH_LOGIN_FROM.PASSWORD,
+                loginWith: ENUM_AUTH_LOGIN_WITH.EMAIL,
+            });
+            expect(payload.user.userId).toEqual(1);
+            expect(payload.loginDate).toBeDefined();
+            expect(payload.loginFrom).toBeDefined();
+            expect(payload.loginWith).toBeDefined();
         });
     });
 
     describe('createPayloadRefreshToken', () => {
         it('should create refresh token payload', async () => {
-            const options = { loginWith: ENUM_AUTH_LOGIN_WITH.LOCAL };
+            const options = {
+                loginDate: helperDateService.create(),
+                loginFrom: ENUM_AUTH_LOGIN_FROM.PASSWORD,
+                loginWith: ENUM_AUTH_LOGIN_WITH.EMAIL,
+            };
             const expectedPayload = {
                 _id: 'user-id',
             };
+            const accessPayload = await service.createPayloadAccessToken(
+                expectedPayload,
+                {
+                    loginDate: helperDateService.create(),
+                    loginFrom: ENUM_AUTH_LOGIN_FROM.PASSWORD,
+                    loginWith: ENUM_AUTH_LOGIN_WITH.EMAIL,
+                }
+            );
             const _id = 'user-id';
             const payload = await service.createPayloadRefreshToken(
                 _id,
-                options
+                accessPayload
             );
             expect(payload._id).toEqual(expectedPayload._id);
             expect(payload.loginDate instanceof Date).toBe(true);
@@ -278,6 +320,13 @@ describe('AuthService', () => {
             const passExpired = new Date(Date.now() + passwordExpiredIn * 1000);
             const isValid = await service.checkPasswordExpired(passExpired);
             expect(isValid).toEqual(passwordExpiredDiff >= 0);
+        });
+    });
+
+    describe('getLoginDate', () => {
+        it('should get login date', async () => {
+            const loginDate = await service.getLoginDate();
+            expect(loginDate.valueOf()).toEqual(loginDate.valueOf());
         });
     });
 
