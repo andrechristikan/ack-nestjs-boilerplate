@@ -54,7 +54,7 @@ export class UserCreateDto {
             min: 7,
             max: 11,
         })}`,
-        required: true,
+        required: false,
     })
     @IsString()
     @IsOptional()

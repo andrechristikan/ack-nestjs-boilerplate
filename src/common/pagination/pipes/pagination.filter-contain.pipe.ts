@@ -41,20 +41,31 @@ export function PaginationFilterContainPipe(
                 value = value.trim();
             }
 
-            if (options?.fullMatch) {
-                return this.paginationService.filterContainFullMatch(
-                    field,
-                    value
-                );
-            }
-
+            let res: Record<string, any>;
             if (raw) {
                 return {
                     [field]: value,
                 };
+            } else if (options?.fullMatch) {
+                res = this.paginationService.filterContainFullMatch(
+                    field,
+                    value
+                );
+            } else {
+                res = this.paginationService.filterContain(field, value);
             }
 
-            return this.paginationService.filterContain(field, value);
+            this.request.__pagination = {
+                ...this.request.__pagination,
+                filters: this.request.__pagination?.filters
+                    ? {
+                          ...this.request.__pagination?.filters,
+                          ...res,
+                      }
+                    : res,
+            };
+
+            return res;
         }
     }
 

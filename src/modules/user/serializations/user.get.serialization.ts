@@ -32,7 +32,7 @@ export class UserGetSerialization extends ResponseIdSerialization {
     @ApiProperty({
         nullable: true,
         required: false,
-        example: faker.internet.email(),
+        example: faker.phone.number(),
     })
     readonly mobileNumber?: string;
 
@@ -128,7 +128,7 @@ export class UserGetSerialization extends ResponseIdSerialization {
     @ApiProperty({
         required: true,
         nullable: false,
-        example: ENUM_USER_SIGN_UP_FROM.LOCAL,
+        example: ENUM_USER_SIGN_UP_FROM.ADMIN,
     })
     readonly signUpFrom: ENUM_USER_SIGN_UP_FROM;
 

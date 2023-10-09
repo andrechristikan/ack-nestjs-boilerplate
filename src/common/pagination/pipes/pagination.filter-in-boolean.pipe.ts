@@ -29,13 +29,29 @@ export function PaginationFilterInBooleanPipe(
                 );
             }
 
+            let res: Record<string, any>;
             if (raw) {
-                return {
+                res = {
                     [field]: finalValue,
                 };
+            } else {
+                res = this.paginationService.filterIn<boolean>(
+                    field,
+                    finalValue
+                );
             }
 
-            return this.paginationService.filterIn<boolean>(field, finalValue);
+            this.request.__pagination = {
+                ...this.request.__pagination,
+                filters: this.request.__pagination?.filters
+                    ? {
+                          ...this.request.__pagination?.filters,
+                          ...res,
+                      }
+                    : res,
+            };
+
+            return res;
         }
     }
 

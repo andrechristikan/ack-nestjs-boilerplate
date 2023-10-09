@@ -7,12 +7,12 @@ import {
     Get,
     HttpCode,
     HttpStatus,
+    NotFoundException,
     Patch,
     Post,
-    SerializeOptions,
     UploadedFile,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
@@ -42,6 +42,7 @@ import {
     UserAuthChangePasswordDoc,
     UserAuthClaimUsernameDoc,
     UserAuthInfoDoc,
+    UserAuthLoginDoc,
     UserAuthProfileDoc,
     UserAuthRefreshDoc,
     UserAuthUpdateProfileDoc,
@@ -56,6 +57,16 @@ import { UserPayloadSerialization } from 'src/modules/user/serializations/user.p
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 import { UserService } from 'src/modules/user/services/user.service';
 import { UserRefreshSerialization } from 'src/modules/user/serializations/user.refresh.serialization';
+import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
+import { UserLoginDto } from 'src/modules/user/dtos/user.login.dto';
+import {
+    ENUM_AUTH_LOGIN_FROM,
+    ENUM_AUTH_LOGIN_WITH,
+} from 'src/common/auth/constants/auth.enum.constant';
+import { AuthRefreshPayloadSerialization } from 'src/common/auth/serializations/auth.refresh-payload.serialization';
+import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
+import { AuthGoogleOAuth2LoginProtected } from 'src/common/auth/decorators/auth.google.decorator';
+import { AuthGooglePayloadSerialization } from 'src/common/auth/serializations/auth.google-payload.serialization';
 
 @ApiTags('modules.auth.user')
 @Controller({
@@ -70,6 +81,244 @@ export class UserAuthController {
         private readonly awsS3Service: AwsS3Service
     ) {}
 
+    @UserAuthLoginDoc()
+    @Response('user.login', {
+        serialization: UserLoginSerialization,
+    })
+    @HttpCode(HttpStatus.OK)
+    @Post('/login')
+    async login(@Body() { email, password }: UserLoginDto): Promise<IResponse> {
+        const user: UserDoc = await this.userService.findOneByEmail(email);
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
+                message: 'user.error.notFound',
+            });
+        }
+
+        const passwordAttempt: boolean =
+            await this.settingService.getPasswordAttempt();
+        const maxPasswordAttempt: number =
+            await this.settingService.getMaxPasswordAttempt();
+        if (passwordAttempt && user.passwordAttempt >= maxPasswordAttempt) {
+            throw new ForbiddenException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_ATTEMPT_MAX_ERROR,
+                message: 'user.error.passwordAttemptMax',
+            });
+        }
+
+        const validate: boolean = await this.authService.validateUser(
+            password,
+            user.password
+        );
+        if (!validate) {
+            await this.userService.increasePasswordAttempt(user);
+
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_NOT_MATCH_ERROR,
+                message: 'user.error.passwordNotMatch',
+            });
+        } else if (user.blocked) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_BLOCKED_ERROR,
+                message: 'user.error.blocked',
+            });
+        } else if (user.inactivePermanent) {
+            throw new ForbiddenException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_PERMANENT_ERROR,
+                message: 'user.error.inactivePermanent',
+            });
+        } else if (!user.isActive) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_ERROR,
+                message: 'user.error.inactive',
+            });
+        }
+
+        const userWithRole: IUserDoc =
+            await this.userService.joinWithRole(user);
+        if (!userWithRole.role.isActive) {
+            throw new ForbiddenException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_INACTIVE_ERROR,
+                message: 'role.error.inactive',
+            });
+        }
+
+        await this.userService.resetPasswordAttempt(user);
+
+        const payload: UserPayloadSerialization =
+            await this.userService.payloadSerialization(userWithRole);
+        const tokenType: string = await this.authService.getTokenType();
+        const expiresIn: number =
+            await this.authService.getAccessTokenExpirationTime();
+        const loginDate: Date = await this.authService.getLoginDate();
+        const payloadAccessToken: AuthAccessPayloadSerialization =
+            await this.authService.createPayloadAccessToken(payload, {
+                loginWith: ENUM_AUTH_LOGIN_WITH.EMAIL,
+                loginFrom: ENUM_AUTH_LOGIN_FROM.PASSWORD,
+                loginDate,
+            });
+        const payloadRefreshToken: AuthRefreshPayloadSerialization =
+            await this.authService.createPayloadRefreshToken(
+                payload._id,
+                payloadAccessToken
+            );
+
+        const payloadEncryption = await this.authService.getPayloadEncryption();
+        let payloadHashedAccessToken: AuthAccessPayloadSerialization | string =
+            payloadAccessToken;
+        let payloadHashedRefreshToken:
+            | AuthRefreshPayloadSerialization
+            | string = payloadRefreshToken;
+
+        if (payloadEncryption) {
+            payloadHashedAccessToken =
+                await this.authService.encryptAccessToken(payloadAccessToken);
+            payloadHashedRefreshToken =
+                await this.authService.encryptRefreshToken(payloadRefreshToken);
+        }
+
+        const accessToken: string = await this.authService.createAccessToken(
+            payloadHashedAccessToken
+        );
+
+        const refreshToken: string = await this.authService.createRefreshToken(
+            payloadHashedRefreshToken
+        );
+
+        const checkPasswordExpired: boolean =
+            await this.authService.checkPasswordExpired(user.passwordExpired);
+
+        if (checkPasswordExpired) {
+            throw new ForbiddenException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_PASSWORD_EXPIRED_ERROR,
+                message: 'user.error.passwordExpired',
+            });
+        }
+
+        return {
+            data: {
+                tokenType,
+                expiresIn,
+                accessToken,
+                refreshToken,
+            },
+        };
+    }
+
+    @ApiExcludeEndpoint()
+    @Response('user.loginGoogle')
+    @AuthGoogleOAuth2LoginProtected()
+    @Get('/login/google')
+    async loginGoogle(): Promise<void> {
+        return;
+    }
+
+    @ApiExcludeEndpoint()
+    @Response('user.loginGoogleCallback')
+    @AuthGoogleOAuth2LoginProtected()
+    @Get('/login/google/callback')
+    async loginGoogleCallback(
+        @AuthJwtPayload<AuthGooglePayloadSerialization>()
+        {
+            email,
+            accessToken: googleAccessToken,
+            refreshToken: googleRefreshToken,
+        }: AuthGooglePayloadSerialization
+    ): Promise<IResponse> {
+        const user: UserDoc = await this.userService.findOneByEmail(email);
+
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
+                message: 'user.error.notFound',
+            });
+        } else if (user.blocked) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_BLOCKED_ERROR,
+                message: 'user.error.blocked',
+            });
+        } else if (user.inactivePermanent) {
+            throw new ForbiddenException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_PERMANENT_ERROR,
+                message: 'user.error.inactivePermanent',
+            });
+        } else if (!user.isActive) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_ERROR,
+                message: 'user.error.inactive',
+            });
+        }
+
+        const userWithRole: IUserDoc =
+            await this.userService.joinWithRole(user);
+        if (!userWithRole.role.isActive) {
+            throw new ForbiddenException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_INACTIVE_ERROR,
+                message: 'role.error.inactive',
+            });
+        }
+
+        await this.userService.updateGoogleSSO(user, {
+            accessToken: googleAccessToken,
+            refreshToken: googleRefreshToken,
+        });
+
+        const payload: UserPayloadSerialization =
+            await this.userService.payloadSerialization(userWithRole);
+        const tokenType: string = await this.authService.getTokenType();
+        const loginDate: Date = await this.authService.getLoginDate();
+        const expiresIn: number =
+            await this.authService.getAccessTokenExpirationTime();
+        const payloadAccessToken: AuthAccessPayloadSerialization =
+            await this.authService.createPayloadAccessToken(payload, {
+                loginWith: ENUM_AUTH_LOGIN_WITH.EMAIL,
+                loginFrom: ENUM_AUTH_LOGIN_FROM.PASSWORD,
+                loginDate,
+            });
+        const payloadRefreshToken: AuthRefreshPayloadSerialization =
+            await this.authService.createPayloadRefreshToken(
+                payload._id,
+                payloadAccessToken
+            );
+
+        const payloadEncryption = await this.authService.getPayloadEncryption();
+        let payloadHashedAccessToken: AuthAccessPayloadSerialization | string =
+            payloadAccessToken;
+        let payloadHashedRefreshToken:
+            | AuthRefreshPayloadSerialization
+            | string = payloadRefreshToken;
+
+        if (payloadEncryption) {
+            payloadHashedAccessToken =
+                await this.authService.encryptAccessToken(payloadAccessToken);
+            payloadHashedRefreshToken =
+                await this.authService.encryptRefreshToken(payloadRefreshToken);
+        }
+
+        const accessToken: string = await this.authService.createAccessToken(
+            payloadHashedAccessToken
+        );
+
+        const refreshToken: string = await this.authService.createRefreshToken(
+            payloadHashedRefreshToken
+        );
+
+        return {
+            data: {
+                tokenType,
+                expiresIn,
+                accessToken,
+                refreshToken,
+            },
+        };
+    }
+
     @UserAuthRefreshDoc()
     @Response('user.refresh', { serialization: UserRefreshSerialization })
     @UserAuthProtected()
@@ -79,11 +328,12 @@ export class UserAuthController {
     @Post('/refresh')
     async refresh(
         @AuthJwtToken() refreshToken: string,
+        @AuthJwtPayload<AuthRefreshPayloadSerialization>()
+        refreshPayload: AuthRefreshPayloadSerialization,
         @GetUser() user: UserDoc
     ): Promise<IResponse> {
-        const userWithRole: IUserDoc = await this.userService.joinWithRole(
-            user
-        );
+        const userWithRole: IUserDoc =
+            await this.userService.joinWithRole(user);
         if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_INACTIVE_ERROR,
@@ -107,11 +357,15 @@ export class UserAuthController {
         const tokenType: string = await this.authService.getTokenType();
         const expiresIn: number =
             await this.authService.getAccessTokenExpirationTime();
-        const payloadAccessToken: Record<string, any> =
-            await this.authService.createPayloadAccessToken(payload);
+        const payloadAccessToken: AuthAccessPayloadSerialization =
+            await this.authService.createPayloadAccessToken(payload, {
+                loginDate: refreshPayload.loginDate,
+                loginFrom: refreshPayload.loginFrom,
+                loginWith: refreshPayload.loginWith,
+            });
 
         const payloadEncryption = await this.authService.getPayloadEncryption();
-        let payloadHashedAccessToken: Record<string, any> | string =
+        let payloadHashedAccessToken: AuthAccessPayloadSerialization | string =
             payloadAccessToken;
 
         if (payloadEncryption) {
@@ -192,12 +446,12 @@ export class UserAuthController {
     }
 
     @UserAuthInfoDoc()
-    @SerializeOptions({})
-    @Response('user.info')
+    @Response('user.info', { serialization: AuthAccessPayloadSerialization })
     @AuthJwtAccessProtected()
     @Get('/info')
     async info(
-        @AuthJwtPayload() payload: UserPayloadSerialization
+        @AuthJwtPayload<AuthAccessPayloadSerialization>()
+        payload: AuthAccessPayloadSerialization
     ): Promise<IResponse> {
         return { data: payload };
     }
@@ -210,9 +464,8 @@ export class UserAuthController {
     @AuthJwtAccessProtected()
     @Get('/profile')
     async profile(@GetUser() user: UserDoc): Promise<IResponse> {
-        const userWithRole: IUserDoc = await this.userService.joinWithRole(
-            user
-        );
+        const userWithRole: IUserDoc =
+            await this.userService.joinWithRole(user);
         return { data: userWithRole.toObject() };
     }
 
@@ -239,9 +492,8 @@ export class UserAuthController {
         @GetUser() user: UserDoc,
         @Body() { username }: UserUpdateUsernameDto
     ): Promise<void> {
-        const checkUsername: boolean = await this.userService.existByUsername(
-            username
-        );
+        const checkUsername: boolean =
+            await this.userService.existByUsername(username);
         if (checkUsername) {
             throw new ConflictException({
                 statusCode:

@@ -9,7 +9,7 @@ import { ROLE_TYPE_META_KEY } from 'src/modules/role/constants/role.constant';
 import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
 
 export const AuthJwtPayload = createParamDecorator(
-    (data: string, ctx: ExecutionContext): Record<string, any> => {
+    <T>(data: string, ctx: ExecutionContext): T => {
         const { user } = ctx
             .switchToHttp()
             .getRequest<IRequestApp & { user: UserPayloadSerialization }>();

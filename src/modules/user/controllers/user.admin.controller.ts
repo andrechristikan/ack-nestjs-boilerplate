@@ -180,9 +180,8 @@ export class UserAdminController {
     @RequestParamGuard(UserRequestDto)
     @Get('/get/:user')
     async get(@GetUser() user: UserDoc): Promise<IResponse> {
-        const userWithRole: IUserDoc = await this.userService.joinWithRole(
-            user
-        );
+        const userWithRole: IUserDoc =
+            await this.userService.joinWithRole(user);
         return { data: userWithRole.toObject() };
     }
 
@@ -209,9 +208,8 @@ export class UserAdminController {
             promises.push(this.userService.existByMobileNumber(mobileNumber));
         }
 
-        const [checkRole, emailExist, mobileNumberExist] = await Promise.all(
-            promises
-        );
+        const [checkRole, emailExist, mobileNumberExist] =
+            await Promise.all(promises);
 
         if (!checkRole) {
             throw new NotFoundException({
@@ -239,7 +237,7 @@ export class UserAdminController {
             {
                 email,
                 mobileNumber,
-                signUpFrom: ENUM_USER_SIGN_UP_FROM.LOCAL,
+                signUpFrom: ENUM_USER_SIGN_UP_FROM.ADMIN,
                 role,
                 ...body,
             },
@@ -366,9 +364,8 @@ export class UserAdminController {
 
         const passwordString: string =
             await this.authService.createPasswordRandom();
-        const password: IAuthPassword = await this.authService.createPassword(
-            passwordString
-        );
+        const password: IAuthPassword =
+            await this.authService.createPassword(passwordString);
 
         await this.userService.import(file.dto, role._id, password);
 
