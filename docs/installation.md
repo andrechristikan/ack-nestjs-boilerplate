@@ -63,7 +63,7 @@ For docker installation, we need more tools to be installed.
 1. [Docker][ref-docker]
 2. [Docker-Compose][ref-dockercompose]
 
-After you installation, then run
+then run
 
 ```bash
 docker-compose up -d
@@ -78,7 +78,7 @@ In this case primary will be `mongo1`
     docker exec -it mongo1 mongosh
     ```
 
-2. In mongo1 container, tell the primary to be as replication set
+2. In mongo1 container, tell mongo1 to be primary and run as replication set
    
     ```js
     rs.initiate({_id:"rs0", members: [{_id:0, host:"mongo1:27017", priority:3}, {_id:1, host:"mongo2:27017", priority:2}, {_id:2, host:"mongo3:27017", priority:1}]}, { force: true })
@@ -113,6 +113,10 @@ In this case primary will be `mongo1`
     ```bash
     docker restart service
     ```
+
+## Database Migration
+
+This project need to do migration for running. [Read this][ack-database-migration-doc]
 
 ## API Reference
 

@@ -1,13 +1,14 @@
 name: Release
 
+permissions:
+  contents: write
+
 on:
-  # workflow_run:
-  #   workflows: ['CI']
-  #   types:
-  #     - completed
-  push:
-    branches: 
-    - main
+  
+  # push:
+  #   branches: 
+  #   - main
+  workflow_dispatch:
 
 jobs:
   release:
