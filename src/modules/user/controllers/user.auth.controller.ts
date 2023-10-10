@@ -181,10 +181,10 @@ export class UserAuthController {
                 await this.authService.encryptRefreshToken(payloadRefreshToken);
         }
 
+        const roleType = userWithRole.role.type;
         const accessToken: string = await this.authService.createAccessToken(
             payloadHashedAccessToken
         );
-
         const refreshToken: string = await this.authService.createRefreshToken(
             payloadHashedRefreshToken
         );
@@ -203,6 +203,7 @@ export class UserAuthController {
         return {
             data: {
                 tokenType,
+                roleType,
                 expiresIn,
                 accessToken,
                 refreshToken,
@@ -301,10 +302,10 @@ export class UserAuthController {
                 await this.authService.encryptRefreshToken(payloadRefreshToken);
         }
 
+        const roleType = userWithRole.role.type;
         const accessToken: string = await this.authService.createAccessToken(
             payloadHashedAccessToken
         );
-
         const refreshToken: string = await this.authService.createRefreshToken(
             payloadHashedRefreshToken
         );
@@ -312,6 +313,7 @@ export class UserAuthController {
         return {
             data: {
                 tokenType,
+                roleType,
                 expiresIn,
                 accessToken,
                 refreshToken,
@@ -373,6 +375,7 @@ export class UserAuthController {
                 await this.authService.encryptAccessToken(payloadAccessToken);
         }
 
+        const roleType = userWithRole.role.type;
         const accessToken: string = await this.authService.createAccessToken(
             payloadHashedAccessToken
         );
@@ -380,6 +383,7 @@ export class UserAuthController {
         return {
             data: {
                 tokenType,
+                roleType,
                 expiresIn,
                 accessToken,
                 refreshToken,
