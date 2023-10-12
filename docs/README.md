@@ -114,10 +114,6 @@ Installation will describe in difference doc. [here][doc-installation].
 
 You can check The API Spec after running this project. [here][api-spec-docs]
 
-## Database Migration
-
-This project need to do migration to running. [Read this][ack-database-migration-doc]
-
 ## More Docs
 
 You can find more docs about this project in [here][ack-doc]
@@ -128,7 +124,6 @@ You can find more docs about this project in [here][ack-doc]
 <!-- API Reference -->
 [api-spec-docs]: http://localhost:3000/docs
 
-[ack-database-migration-doc]: ./docs/database/database_migration.md
 [ack-doc]: ./docs
 
 <!-- Reference -->

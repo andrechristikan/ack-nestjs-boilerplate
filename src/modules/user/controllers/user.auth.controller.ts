@@ -12,7 +12,7 @@ import {
     Post,
     UploadedFile,
 } from '@nestjs/common';
-import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
@@ -41,6 +41,7 @@ import {
 import {
     UserAuthChangePasswordDoc,
     UserAuthClaimUsernameDoc,
+    UserAuthLoginGoogleDoc,
     UserAuthInfoDoc,
     UserAuthLoginDoc,
     UserAuthProfileDoc,
@@ -65,8 +66,8 @@ import {
 } from 'src/common/auth/constants/auth.enum.constant';
 import { AuthRefreshPayloadSerialization } from 'src/common/auth/serializations/auth.refresh-payload.serialization';
 import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
-import { AuthGoogleOAuth2LoginProtected } from 'src/common/auth/decorators/auth.google.decorator';
 import { AuthGooglePayloadSerialization } from 'src/common/auth/serializations/auth.google-payload.serialization';
+import { AuthGoogleOAuth2Protected } from 'src/common/auth/decorators/auth.google.decorator';
 
 @ApiTags('modules.auth.user')
 @Controller({
@@ -181,10 +182,10 @@ export class UserAuthController {
                 await this.authService.encryptRefreshToken(payloadRefreshToken);
         }
 
+        const roleType = userWithRole.role.type;
         const accessToken: string = await this.authService.createAccessToken(
             payloadHashedAccessToken
         );
-
         const refreshToken: string = await this.authService.createRefreshToken(
             payloadHashedRefreshToken
         );
@@ -203,6 +204,7 @@ export class UserAuthController {
         return {
             data: {
                 tokenType,
+                roleType,
                 expiresIn,
                 accessToken,
                 refreshToken,
@@ -210,24 +212,16 @@ export class UserAuthController {
         };
     }
 
-    @ApiExcludeEndpoint()
+    @UserAuthLoginGoogleDoc()
     @Response('user.loginGoogle')
-    @AuthGoogleOAuth2LoginProtected()
+    @AuthGoogleOAuth2Protected()
     @Get('/login/google')
-    async loginGoogle(): Promise<void> {
-        return;
-    }
-
-    @ApiExcludeEndpoint()
-    @Response('user.loginGoogleCallback')
-    @AuthGoogleOAuth2LoginProtected()
-    @Get('/login/google/callback')
-    async loginGoogleCallback(
+    async loginGoogle(
         @AuthJwtPayload<AuthGooglePayloadSerialization>()
         {
             email,
-            accessToken: googleAccessToken,
-            refreshToken: googleRefreshToken,
+            accessToken: googleSSOAccessToken,
+            refreshToken: googleSSORefreshToken,
         }: AuthGooglePayloadSerialization
     ): Promise<IResponse> {
         const user: UserDoc = await this.userService.findOneByEmail(email);
@@ -265,8 +259,8 @@ export class UserAuthController {
         }
 
         await this.userService.updateGoogleSSO(user, {
-            accessToken: googleAccessToken,
-            refreshToken: googleRefreshToken,
+            accessToken: googleSSOAccessToken,
+            refreshToken: googleSSORefreshToken,
         });
 
         const payload: UserPayloadSerialization =
@@ -301,10 +295,10 @@ export class UserAuthController {
                 await this.authService.encryptRefreshToken(payloadRefreshToken);
         }
 
+        const roleType = userWithRole.role.type;
         const accessToken: string = await this.authService.createAccessToken(
             payloadHashedAccessToken
         );
-
         const refreshToken: string = await this.authService.createRefreshToken(
             payloadHashedRefreshToken
         );
@@ -312,6 +306,7 @@ export class UserAuthController {
         return {
             data: {
                 tokenType,
+                roleType,
                 expiresIn,
                 accessToken,
                 refreshToken,
@@ -373,6 +368,7 @@ export class UserAuthController {
                 await this.authService.encryptAccessToken(payloadAccessToken);
         }
 
+        const roleType = userWithRole.role.type;
         const accessToken: string = await this.authService.createAccessToken(
             payloadHashedAccessToken
         );
@@ -380,6 +376,7 @@ export class UserAuthController {
         return {
             data: {
                 tokenType,
+                roleType,
                 expiresIn,
                 accessToken,
                 refreshToken,

@@ -12,6 +12,7 @@ import {
 } from 'src/common/auth/constants/auth.enum.constant';
 import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
 import { AuthRefreshPayloadSerialization } from 'src/common/auth/serializations/auth.refresh-payload.serialization';
+import { HelperGoogleService } from 'src/common/helper/services/helper.google.service';
 
 describe('AuthService', () => {
     let service: AuthService;
@@ -68,15 +69,28 @@ describe('AuthService', () => {
         }),
     };
 
+    const mockGoogleService = {
+        getTokenInfo: jest.fn().mockImplementation(async () => {
+            return {
+                email: 'mail@mail.com',
+            };
+        }),
+        refreshToken: jest.fn().mockImplementation(async () => {
+            return {
+                accessToken: 'mockedData',
+            };
+        }),
+    };
+
     beforeEach(async () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AuthService,
-                ConfigService,
                 HelperEncryptionService,
                 HelperHashService,
                 HelperDateService,
                 HelperStringService,
+                { provide: HelperGoogleService, useValue: mockGoogleService },
                 { provide: JwtService, useValue: mockJwtService },
                 { provide: ConfigService, useValue: mockConfigService },
             ],
@@ -384,6 +398,26 @@ describe('AuthService', () => {
             const expectedPayloadEncryption = true;
             const payloadEncryption = await service.getPayloadEncryption();
             expect(payloadEncryption).toEqual(expectedPayloadEncryption);
+        });
+    });
+
+    describe('googleGetTokenInfo', () => {
+        it('should get info of token from google api', async () => {
+            const result = {
+                email: 'mail@mail.com',
+            };
+            const tokenInfo = await service.googleGetTokenInfo('mockedData');
+            expect(tokenInfo).toEqual(result);
+        });
+    });
+
+    describe('googleRefreshToken', () => {
+        it('should refresh access token of google api', async () => {
+            const result = {
+                accessToken: 'mockedData',
+            };
+            const accessToken = await service.googleRefreshToken('mockedData');
+            expect(accessToken).toEqual(result);
         });
     });
 });

@@ -89,3 +89,13 @@ export interface IHelperFileReadExcelOptions {
     sheet?: string | number;
     password?: string;
 }
+
+// helper google
+
+export interface IGooglePayload {
+    email: string;
+}
+
+export interface IGoogleRefresh {
+    accessToken: string;
+}

@@ -11,17 +11,11 @@ export class AuthGooglePayloadSerialization {
         required: true,
         nullable: false,
     })
-    name: string;
-
-    @ApiProperty({
-        required: true,
-        nullable: false,
-    })
     accessToken: string;
 
     @ApiProperty({
-        required: true,
-        nullable: false,
+        required: false,
+        nullable: true,
     })
-    refreshToken: string;
+    refreshToken?: string;
 }

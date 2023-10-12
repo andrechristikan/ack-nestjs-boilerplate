@@ -5,6 +5,10 @@ import {
 } from 'src/common/auth/interfaces/auth.interface';
 import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
 import { AuthRefreshPayloadSerialization } from 'src/common/auth/serializations/auth.refresh-payload.serialization';
+import {
+    IGooglePayload,
+    IGoogleRefresh,
+} from 'src/common/helper/interfaces/helper.interface';
 
 export interface IAuthService {
     encryptAccessToken(payload: Record<string, any>): Promise<string>;
@@ -50,4 +54,6 @@ export interface IAuthService {
     getAudience(): Promise<string>;
     getSubject(): Promise<string>;
     getPayloadEncryption(): Promise<boolean>;
+    googleGetTokenInfo(accessToken: string): Promise<IGooglePayload>;
+    googleRefreshToken(refreshToken: string): Promise<IGoogleRefresh>;
 }
