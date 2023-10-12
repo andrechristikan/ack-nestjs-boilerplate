@@ -19,8 +19,6 @@
     "signUp": "Sign up Success",
     "loginGoogle": "Request login with google succeed",
     "loginGoogleCallback": "Login with google succeed",
-    "signUpGoogle": "Request sign up with google succeed",
-    "signUpGoogleCallback": "Sign up with google succeed",
     "error": {
         "notFound": "User not found.",
         "emailExist": "Email user used",

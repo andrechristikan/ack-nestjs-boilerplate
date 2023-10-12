@@ -24,6 +24,16 @@ export function UserAuthLoginDoc(): MethodDecorator {
     );
 }
 
+export function UserAuthLoginGoogleDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            operation: 'modules.auth.user',
+        }),
+        DocAuth({ apiKey: true, jwtRefreshToken: true }),
+        DocResponse('user.loginGoogle')
+    );
+}
+
 export function UserAuthRefreshDoc(): MethodDecorator {
     return applyDecorators(
         Doc({

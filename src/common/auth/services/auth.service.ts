@@ -8,8 +8,13 @@ import {
 import { IAuthService } from 'src/common/auth/interfaces/auth.service.interface';
 import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
 import { AuthRefreshPayloadSerialization } from 'src/common/auth/serializations/auth.refresh-payload.serialization';
+import {
+    IGooglePayload,
+    IGoogleRefresh,
+} from 'src/common/helper/interfaces/helper.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
+import { HelperGoogleService } from 'src/common/helper/services/helper.google.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 
@@ -41,6 +46,7 @@ export class AuthService implements IAuthService {
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
         private readonly helperEncryptionService: HelperEncryptionService,
+        private readonly helperGoogleService: HelperGoogleService,
         private readonly configService: ConfigService
     ) {
         this.accessTokenSecretKey = this.configService.get<string>(
@@ -300,5 +306,13 @@ export class AuthService implements IAuthService {
 
     async getPayloadEncryption(): Promise<boolean> {
         return this.payloadEncryption;
+    }
+
+    async googleGetTokenInfo(accessToken: string): Promise<IGooglePayload> {
+        return this.helperGoogleService.getTokenInfo(accessToken);
+    }
+
+    async googleRefreshToken(refreshToken: string): Promise<IGoogleRefresh> {
+        return this.helperGoogleService.refreshToken(refreshToken);
     }
 }
