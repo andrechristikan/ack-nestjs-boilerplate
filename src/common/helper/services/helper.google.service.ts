@@ -7,8 +7,8 @@ import {
 } from 'google-auth-library/build/src/auth/oauth2client';
 import { IHelperGoogleService } from 'src/common/helper/interfaces/helper.google-service.interface';
 import {
-    IGooglePayload,
-    IGoogleRefresh,
+    IHelperGooglePayload,
+    IHelperGoogleRefresh,
 } from 'src/common/helper/interfaces/helper.interface';
 
 @Injectable()
@@ -22,14 +22,14 @@ export class HelperGoogleService implements IHelperGoogleService {
         );
     }
 
-    async getTokenInfo(accessToken: string): Promise<IGooglePayload> {
+    async getTokenInfo(accessToken: string): Promise<IHelperGooglePayload> {
         const payload: TokenInfo =
             await this.googleClient.getTokenInfo(accessToken);
 
         return { email: payload.email };
     }
 
-    async refreshToken(refreshToken: string): Promise<IGoogleRefresh> {
+    async refreshToken(refreshToken: string): Promise<IHelperGoogleRefresh> {
         this.googleClient.setCredentials({
             refresh_token: refreshToken,
             scope: 'profile email openid',
