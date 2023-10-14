@@ -6,4 +6,5 @@ export enum ENUM_AUTH_LOGIN_WITH {
 export enum ENUM_AUTH_LOGIN_FROM {
     PASSWORD = 'PASSWORD',
     GOOGLE = 'GOOGLE',
+    WHATSAPP = 'WHATSAPP',
 }

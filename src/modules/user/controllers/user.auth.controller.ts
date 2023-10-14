@@ -218,11 +218,7 @@ export class UserAuthController {
     @Get('/login/google')
     async loginGoogle(
         @AuthJwtPayload<AuthGooglePayloadSerialization>()
-        {
-            email,
-            accessToken: googleSSOAccessToken,
-            refreshToken: googleSSORefreshToken,
-        }: AuthGooglePayloadSerialization
+        { email }: AuthGooglePayloadSerialization
     ): Promise<IResponse> {
         const user: UserDoc = await this.userService.findOneByEmail(email);
 
@@ -257,11 +253,6 @@ export class UserAuthController {
                 message: 'role.error.inactive',
             });
         }
-
-        await this.userService.updateGoogleSSO(user, {
-            accessToken: googleSSOAccessToken,
-            refreshToken: googleSSORefreshToken,
-        });
 
         const payload: UserPayloadSerialization =
             await this.userService.payloadSerialization(userWithRole);

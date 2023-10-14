@@ -410,14 +410,4 @@ describe('AuthService', () => {
             expect(tokenInfo).toEqual(result);
         });
     });
-
-    describe('googleRefreshToken', () => {
-        it('should refresh access token of google api', async () => {
-            const result = {
-                accessToken: 'mockedData',
-            };
-            const accessToken = await service.googleRefreshToken('mockedData');
-            expect(accessToken).toEqual(result);
-        });
-    });
 });

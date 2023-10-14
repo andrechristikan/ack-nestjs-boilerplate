@@ -7,10 +7,7 @@ import {
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
 import { AuthGooglePayloadSerialization } from 'src/common/auth/serializations/auth.google-payload.serialization';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import {
-    IGooglePayload,
-    IGoogleRefresh,
-} from 'src/common/helper/interfaces/helper.interface';
+import { IHelperGooglePayload } from 'src/common/helper/interfaces/helper.interface';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
@@ -32,20 +29,14 @@ export class AuthGoogleOauth2Guard implements CanActivate {
             });
         }
 
-        const refreshToken: string = acArr[1];
+        const accessToken: string = acArr[1];
 
         try {
-            const accessToken: IGoogleRefresh =
-                await this.authService.googleRefreshToken(refreshToken);
-            const payload: IGooglePayload =
-                await this.authService.googleGetTokenInfo(
-                    accessToken.accessToken
-                );
+            const payload: IHelperGooglePayload =
+                await this.authService.googleGetTokenInfo(accessToken);
 
             request.user = {
                 email: payload.email,
-                accessToken: accessToken.accessToken,
-                refreshToken: refreshToken,
             };
 
             return true;

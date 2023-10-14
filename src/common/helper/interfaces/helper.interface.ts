@@ -92,10 +92,10 @@ export interface IHelperFileReadExcelOptions {
 
 // helper google
 
-export interface IGooglePayload {
+export interface IHelperGooglePayload {
     email: string;
 }
 
-export interface IGoogleRefresh {
+export interface IHelperGoogleRefresh {
     accessToken: string;
 }
