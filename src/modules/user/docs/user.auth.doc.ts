@@ -8,6 +8,10 @@ import {
     DocRequestFile,
     DocResponse,
 } from 'src/common/doc/decorators/doc.decorator';
+import { UserChangePasswordDto } from 'src/modules/user/dtos/user.change-password.dto';
+import { UserLoginDto } from 'src/modules/user/dtos/user.login.dto';
+import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
+import { UserUpdateUsernameDto } from 'src/modules/user/dtos/user.update-username.dto';
 import { UserLoginSerialization } from 'src/modules/user/serializations/user.login.serialization';
 import { UserProfileSerialization } from 'src/modules/user/serializations/user.profile.serialization';
 import { UserRefreshSerialization } from 'src/modules/user/serializations/user.refresh.serialization';
@@ -17,7 +21,10 @@ export function UserAuthLoginDoc(): MethodDecorator {
         Doc({
             operation: 'modules.public.user',
         }),
-        DocRequest({ bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON }),
+        DocRequest({
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            body: UserLoginDto,
+        }),
         DocResponse<UserLoginSerialization>('user.login', {
             serialization: UserLoginSerialization,
         })
@@ -83,7 +90,10 @@ export function UserAuthUpdateProfileDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
-        DocRequest({ bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON }),
+        DocRequest({
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            body: UserUpdateNameDto,
+        }),
         DocResponse('user.updateProfile')
     );
 }
@@ -110,7 +120,10 @@ export function UserAuthChangePasswordDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
-        DocRequest({ bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON }),
+        DocRequest({
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            body: UserChangePasswordDto,
+        }),
         DocResponse('user.changePassword')
     );
 }
@@ -123,7 +136,10 @@ export function UserAuthClaimUsernameDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
-        DocRequest({ bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON }),
+        DocRequest({
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            body: UserUpdateUsernameDto,
+        }),
         DocResponse('user.claimUsername')
     );
 }

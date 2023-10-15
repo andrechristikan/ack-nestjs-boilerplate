@@ -3,7 +3,6 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
 
 @Injectable()
 export class AuthJwtAccessStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -30,12 +29,14 @@ export class AuthJwtAccessStrategy extends PassportStrategy(Strategy, 'jwt') {
 
     async validate({
         data,
-    }: Record<string, any>): Promise<AuthAccessPayloadSerialization> {
+    }: Record<string, any>): Promise<Record<string, any>> {
         const payloadEncryption: boolean =
             await this.authService.getPayloadEncryption();
 
         return payloadEncryption
-            ? this.authService.decryptAccessToken({ data })
-            : data;
+            ? this.authService.payloadUserAccessToken(
+                  await this.authService.decryptAccessToken({ data })
+              )
+            : this.authService.payloadUserAccessToken(data);
     }
 }

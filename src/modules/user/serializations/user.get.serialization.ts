@@ -10,7 +10,7 @@ export class UserGetSerialization extends ResponseIdSerialization {
     @ApiProperty({
         required: true,
         nullable: false,
-        type: () => RoleGetSerialization,
+        type: RoleGetSerialization,
     })
     @Type(() => RoleGetSerialization)
     readonly role: RoleGetSerialization;
@@ -88,7 +88,7 @@ export class UserGetSerialization extends ResponseIdSerialization {
     @ApiProperty({
         nullable: true,
         required: false,
-        type: () => AwsS3Serialization,
+        type: AwsS3Serialization,
     })
     @Type(() => AwsS3Serialization)
     readonly photo?: AwsS3Serialization;

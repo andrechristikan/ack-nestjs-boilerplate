@@ -18,6 +18,8 @@ import {
     UserDocQueryIsActive,
     UserDocQueryRole,
 } from 'src/modules/user/constants/user.doc.constant';
+import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
+import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
 import { UserGetSerialization } from 'src/modules/user/serializations/user.get.serialization';
 import { UserListSerialization } from 'src/modules/user/serializations/user.list.serialization';
 
@@ -70,7 +72,10 @@ export function UserAdminCreateDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
-        DocRequest({ bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON }),
+        DocRequest({
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            body: UserCreateDto,
+        }),
         DocGuard({ role: true, policy: true }),
         DocResponse<ResponseIdSerialization>('user.create', {
             httpStatus: HttpStatus.CREATED,
@@ -135,6 +140,7 @@ export function UserAdminUpdateDoc(): MethodDecorator {
         DocRequest({
             params: UserDocParamsId,
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            body: UserUpdateNameDto,
         }),
         DocAuth({
             jwtAccessToken: true,

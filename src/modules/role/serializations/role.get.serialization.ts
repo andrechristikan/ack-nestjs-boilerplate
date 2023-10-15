@@ -62,7 +62,7 @@ export class RoleGetSerialization extends ResponseIdSerialization {
     readonly type: ENUM_ROLE_TYPE;
 
     @ApiProperty({
-        type: () => RoleGetPermissionSerialization,
+        type: RoleGetPermissionSerialization,
         required: true,
         nullable: false,
         default: [],

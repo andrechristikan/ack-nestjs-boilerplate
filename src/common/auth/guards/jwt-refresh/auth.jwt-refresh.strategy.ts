@@ -3,7 +3,6 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { AuthRefreshPayloadSerialization } from 'src/common/auth/serializations/auth.refresh-payload.serialization';
 
 @Injectable()
 export class AuthJwtRefreshStrategy extends PassportStrategy(
@@ -33,12 +32,14 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
 
     async validate({
         data,
-    }: Record<string, any>): Promise<AuthRefreshPayloadSerialization> {
+    }: Record<string, any>): Promise<Record<string, any>> {
         const payloadEncryption: boolean =
             await this.authService.getPayloadEncryption();
 
         return payloadEncryption
-            ? this.authService.decryptRefreshToken({ data })
-            : data;
+            ? this.authService.payloadUserRefreshToken(
+                  await this.authService.decryptRefreshToken({ data })
+              )
+            : this.authService.payloadUserRefreshToken(data);
     }
 }

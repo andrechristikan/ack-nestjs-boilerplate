@@ -1,6 +1,10 @@
 import { faker } from '@faker-js/faker';
 import { ApiHideProperty, ApiProperty, OmitType } from '@nestjs/swagger';
 import { Exclude, Expose, Transform } from 'class-transformer';
+import {
+    ENUM_AUTH_LOGIN_FROM,
+    ENUM_AUTH_LOGIN_WITH,
+} from 'src/common/auth/constants/auth.enum.constant';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import {
     ENUM_POLICY_REQUEST_ACTION,
@@ -56,7 +60,7 @@ export class UserPayloadSerialization extends OmitType(
     readonly type: ENUM_ROLE_TYPE;
 
     @ApiProperty({
-        type: () => UserPayloadPermissionSerialization,
+        type: UserPayloadPermissionSerialization,
         isArray: true,
         required: true,
         nullable: false,
@@ -74,6 +78,34 @@ export class UserPayloadSerialization extends OmitType(
     })
     @Expose()
     readonly permissions: UserPayloadPermissionSerialization[];
+
+    @ApiProperty({
+        required: true,
+        nullable: false,
+        enum: ENUM_AUTH_LOGIN_FROM,
+    })
+    readonly loginFrom: ENUM_AUTH_LOGIN_FROM;
+
+    @ApiProperty({
+        required: true,
+        nullable: false,
+        enum: ENUM_AUTH_LOGIN_WITH,
+    })
+    readonly loginWith: ENUM_AUTH_LOGIN_WITH;
+
+    @ApiProperty({
+        required: true,
+        nullable: false,
+    })
+    readonly loginDate: Date;
+
+    @ApiHideProperty()
+    @Exclude()
+    readonly passwordExpired: Date;
+
+    @ApiHideProperty()
+    @Exclude()
+    readonly passwordCreated: Date;
 
     @ApiHideProperty()
     @Exclude()

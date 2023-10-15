@@ -78,7 +78,7 @@ export class RoleCreateDto extends PartialType(RoleUpdateDto) {
                 action: [ENUM_POLICY_ACTION.MANAGE],
             },
         ],
-        type: () => RolePermissionsDto,
+        type: RolePermissionsDto,
     })
     @Type(() => RolePermissionsDto)
     @IsNotEmpty()

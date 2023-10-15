@@ -11,7 +11,7 @@ export class UserListSerialization extends OmitType(UserProfileSerialization, [
     'role',
 ] as const) {
     @ApiProperty({
-        type: () => RoleListSerialization,
+        type: RoleListSerialization,
         required: true,
         nullable: false,
     })

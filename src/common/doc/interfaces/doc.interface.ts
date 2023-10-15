@@ -30,6 +30,7 @@ export interface IDocRequestOptions {
     params?: ApiParamOptions[];
     queries?: ApiQueryOptions[];
     bodyType?: ENUM_DOC_REQUEST_BODY_TYPE;
+    body?: ClassConstructor<any>;
 }
 
 export interface IDocRequestFileOptions
