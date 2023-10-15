@@ -7,6 +7,7 @@ import {
     Get,
     HttpCode,
     HttpStatus,
+    InternalServerErrorException,
     NotFoundException,
     Patch,
     Post,
@@ -68,6 +69,9 @@ import { AuthRefreshPayloadSerialization } from 'src/common/auth/serializations/
 import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
 import { AuthGooglePayloadSerialization } from 'src/common/auth/serializations/auth.google-payload.serialization';
 import { AuthGoogleOAuth2Protected } from 'src/common/auth/decorators/auth.google.decorator';
+import { ClientSession, Connection } from 'mongoose';
+import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 
 @ApiTags('modules.auth.user')
 @Controller({
@@ -76,6 +80,7 @@ import { AuthGoogleOAuth2Protected } from 'src/common/auth/decorators/auth.googl
 })
 export class UserAuthController {
     constructor(
+        @DatabaseConnection() private readonly databaseConnection: Connection,
         private readonly userService: UserService,
         private readonly authService: AuthService,
         private readonly settingService: SettingService,
@@ -422,13 +427,30 @@ export class UserAuthController {
             });
         }
 
-        await this.userService.resetPasswordAttempt(user);
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
 
-        const password: IAuthPassword = await this.authService.createPassword(
-            body.newPassword
-        );
+        try {
+            await this.userService.resetPasswordAttempt(user, { session });
 
-        await this.userService.updatePassword(user, password);
+            const password: IAuthPassword =
+                await this.authService.createPassword(body.newPassword);
+
+            await this.userService.updatePassword(user, password, { session });
+
+            await session.commitTransaction();
+            await session.endSession();
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
 
         return;
     }

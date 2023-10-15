@@ -312,6 +312,10 @@ export function DocRequest(options?: IDocRequestOptions) {
         docs.push(...queries);
     }
 
+    if (options?.body) {
+        docs.push(ApiBody({ type: options?.body }));
+    }
+
     return applyDecorators(...docs);
 }
 

@@ -164,10 +164,24 @@ describe('AuthService', () => {
         });
     });
 
+    describe('payloadUserAccessToken', () => {
+        it('should payload access token', async () => {
+            const data: AuthAccessPayloadSerialization = {
+                user: { _id: '1' },
+                loginDate: new Date(),
+                loginFrom: ENUM_AUTH_LOGIN_FROM.PASSWORD,
+                loginWith: ENUM_AUTH_LOGIN_WITH.EMAIL,
+            };
+            const expectedPayload = { _id: '1' };
+            const payload = await service.payloadUserAccessToken(data);
+            expect(payload).toEqual(expectedPayload);
+        });
+    });
+
     describe('encryptRefreshToken', () => {
         it('should encrypt and decrypt refresh token', async () => {
             const payload: AuthRefreshPayloadSerialization = {
-                _id: '123',
+                user: { _id: '123' },
                 loginDate: helperDateService.create(),
                 loginFrom: ENUM_AUTH_LOGIN_FROM.PASSWORD,
                 loginWith: ENUM_AUTH_LOGIN_WITH.EMAIL,
@@ -176,7 +190,7 @@ describe('AuthService', () => {
             const decryptedPayload = await service.decryptRefreshToken({
                 data: encryptedToken,
             });
-            expect(decryptedPayload._id).toEqual('123');
+            expect(decryptedPayload.user._id).toEqual('123');
             expect(decryptedPayload.loginDate).toBeDefined();
             expect(decryptedPayload.loginFrom).toBeDefined();
             expect(decryptedPayload.loginWith).toBeDefined();
@@ -218,6 +232,20 @@ describe('AuthService', () => {
                 'jwtDecrypt'
             ).mockReturnValueOnce(expectedPayload);
             const payload = await service.payloadRefreshToken(refreshToken);
+            expect(payload).toEqual(expectedPayload);
+        });
+    });
+
+    describe('payloadUserRefreshToken', () => {
+        it('should payload refresh token', async () => {
+            const data: AuthRefreshPayloadSerialization = {
+                user: { _id: '1' },
+                loginDate: new Date(),
+                loginFrom: ENUM_AUTH_LOGIN_FROM.PASSWORD,
+                loginWith: ENUM_AUTH_LOGIN_WITH.EMAIL,
+            };
+            const expectedPayload = { _id: '1' };
+            const payload = await service.payloadUserRefreshToken(data);
             expect(payload).toEqual(expectedPayload);
         });
     });
@@ -285,7 +313,7 @@ describe('AuthService', () => {
                 _id,
                 accessPayload
             );
-            expect(payload._id).toEqual(expectedPayload._id);
+            expect(payload.user._id).toEqual(expectedPayload._id);
             expect(payload.loginDate instanceof Date).toBe(true);
             expect(payload.loginWith).toEqual(options.loginWith);
         });

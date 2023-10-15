@@ -13,9 +13,7 @@ export class UserPayloadPutToRequestGuard implements CanActivate {
             .getRequest<IRequestApp & { __user: UserDoc }>();
         const { user } = request;
 
-        const check: UserDoc = await this.userService.findOneById(user._id, {
-            join: true,
-        });
+        const check: UserDoc = await this.userService.findOneById(user._id);
         request.__user = check;
 
         return true;

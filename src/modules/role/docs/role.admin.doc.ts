@@ -14,6 +14,8 @@ import {
     RoleDocQueryIsActive,
     RoleDocQueryType,
 } from 'src/modules/role/constants/role.doc.constant';
+import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
+import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
 import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
 import { RoleListSerialization } from 'src/modules/role/serializations/role.list.serialization';
 
@@ -61,7 +63,10 @@ export function RoleAdminCreateDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
-        DocRequest({ bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON }),
+        DocRequest({
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            body: RoleCreateDto,
+        }),
         DocGuard({ role: true, policy: true }),
         DocResponse<ResponseIdSerialization>('role.create', {
             httpStatus: HttpStatus.CREATED,
@@ -110,6 +115,7 @@ export function RoleAdminUpdateDoc(): MethodDecorator {
         DocRequest({
             params: RoleDocParamsId,
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            body: RoleUpdateDto,
         }),
         DocAuth({
             jwtAccessToken: true,
