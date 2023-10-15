@@ -26,7 +26,7 @@ export class MessageCustomLanguageMiddleware implements NestMiddleware {
             const splitLanguage: string[] = reqLanguages
                 .split(',')
                 .map((val) => val.toLowerCase());
-            const languages: string[] = this.helperArrayService.mergeUnique(
+            const languages: string[] = this.helperArrayService.intersection(
                 availableLanguages,
                 splitLanguage
             );

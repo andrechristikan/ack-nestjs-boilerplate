@@ -41,7 +41,7 @@ export class MessageService implements IMessageService {
     }
 
     filterLanguage(customLanguages: string[]): string[] {
-        return this.helperArrayService.mergeUnique(
+        return this.helperArrayService.intersection(
             customLanguages,
             this.appDefaultAvailableLanguage
         );

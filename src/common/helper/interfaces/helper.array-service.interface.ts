@@ -27,6 +27,7 @@ export interface IHelperArrayService {
     notEquals<T>(a: T[], b: T[]): boolean;
     in<T>(a: T[], b: T[]): boolean;
     notIn<T>(a: T[], b: T[]): boolean;
+    intersection<T>(a: T[], b: T[]): T[];
     difference<T>(a: T[], b: T[]): T[];
     includes<T>(a: T[], b: T): boolean;
     chunk<T>(a: T[], size: number): T[][];

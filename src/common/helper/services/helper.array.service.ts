@@ -112,6 +112,10 @@ export class HelperArrayService implements IHelperArrayService {
         return _.intersection(a, b).length === 0;
     }
 
+    intersection<T>(a: T[], b: T[]): T[] {
+        return _.intersection(a, b);
+    }
+
     difference<T>(a: T[], b: T[]): T[] {
         return _.difference(a, b);
     }

@@ -247,6 +247,14 @@ describe('HelperArrayService', () => {
             expect(result).toEqual(false);
         });
     });
+    describe('intersection', () => {
+        it('should return intersection between array', () => {
+            const a = [1, 2, 3];
+            const b = [4, 3, 6];
+            const result = service.intersection(a, b);
+            expect(result).toEqual([3]);
+        });
+    });
 
     describe('difference', () => {
         it('should return difference between array', () => {
