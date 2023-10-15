@@ -154,23 +154,35 @@ export class ResponsePagingInterceptor<T>
                         {
                             nextPage:
                                 page < totalPage
-                                    ? `${__path}?perPage=${perPage}&page=${
-                                          page + 1
-                                      }&${queryString}`
+                                    ? queryString
+                                        ? `${__path}?perPage=${perPage}&page=${
+                                              page + 1
+                                          }&${queryString}`
+                                        : `${__path}?perPage=${perPage}&page=${
+                                              page + 1
+                                          }`
                                     : undefined,
                             previousPage:
                                 page > 1
-                                    ? `${__path}?perPage=${perPage}&page=${
-                                          page - 1
-                                      }&${queryString}`
+                                    ? queryString
+                                        ? `${__path}?perPage=${perPage}&page=${
+                                              page - 1
+                                          }&${queryString}`
+                                        : `${__path}?perPage=${perPage}&page=${
+                                              page - 1
+                                          }`
                                     : undefined,
                             firstPage:
                                 totalPage > 1
-                                    ? `${__path}?perPage=${perPage}&page=${1}&${queryString}`
+                                    ? queryString
+                                        ? `${__path}?perPage=${perPage}&page=${1}&${queryString}`
+                                        : `${__path}?perPage=${perPage}&page=${1}`
                                     : undefined,
                             lastPage:
                                 totalPage > 1
-                                    ? `${__path}?perPage=${perPage}&page=${totalPage}&${queryString}`
+                                    ? queryString
+                                        ? `${__path}?perPage=${perPage}&page=${totalPage}&${queryString}`
+                                        : `${__path}?perPage=${perPage}&page=${totalPage}`
                                     : undefined,
                         };
 
@@ -181,12 +193,12 @@ export class ResponsePagingInterceptor<T>
                             ...__pagination,
                             ...metadata._pagination,
                             total,
-                            totalPage,
+                            totalPage: data.length > 0 ? totalPage : 0,
                         },
                     };
 
                     if (
-                        !this.helperArrayService.includes(
+                        !this.helperArrayService.notIn(
                             Object.values(cursorPaginationMetadata),
                             undefined
                         )
