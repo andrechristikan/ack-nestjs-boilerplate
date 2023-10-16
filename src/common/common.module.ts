@@ -134,6 +134,18 @@ import { PolicyModule } from 'src/common/policy/policy.module';
                 SSO_GOOGLE_CLIENT_SECRET: Joi.string()
                     .allow(null, '')
                     .optional(),
+
+                EMAIL_KEY: Joi.string().allow(null, '').optional(),
+
+                WHATAPPS_CLIENT_ID: Joi.string().allow(null, '').optional(),
+                WHATAPPS_CLIENT_SECRET: Joi.string().allow(null, '').optional(),
+
+                PUSH_NOTIFICATION_APP_ID: Joi.string()
+                    .allow(null, '')
+                    .optional(),
+                PUSH_NOTIFICATION_API_KEY: Joi.string()
+                    .allow(null, '')
+                    .optional(),
             }),
             validationOptions: {
                 allowUnknown: true,

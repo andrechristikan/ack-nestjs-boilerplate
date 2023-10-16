@@ -34,7 +34,24 @@ export function AuthJwtAccessProtected(): MethodDecorator {
 export function AuthJwtUserAccessProtected(): MethodDecorator {
     return applyDecorators(
         UseGuards(AuthJwtAccessGuard, RolePayloadTypeGuard),
-        SetMetadata(ROLE_TYPE_META_KEY, [ENUM_ROLE_TYPE.USER])
+        SetMetadata(ROLE_TYPE_META_KEY, [
+            ENUM_ROLE_TYPE.CLIENT,
+            ENUM_ROLE_TYPE.LAWYER,
+        ])
+    );
+}
+
+export function AuthJwtClientAccessProtected(): MethodDecorator {
+    return applyDecorators(
+        UseGuards(AuthJwtAccessGuard, RolePayloadTypeGuard),
+        SetMetadata(ROLE_TYPE_META_KEY, [ENUM_ROLE_TYPE.CLIENT])
+    );
+}
+
+export function AuthJwtLawyerAccessProtected(): MethodDecorator {
+    return applyDecorators(
+        UseGuards(AuthJwtAccessGuard, RolePayloadTypeGuard),
+        SetMetadata(ROLE_TYPE_META_KEY, [ENUM_ROLE_TYPE.LAWYER])
     );
 }
 

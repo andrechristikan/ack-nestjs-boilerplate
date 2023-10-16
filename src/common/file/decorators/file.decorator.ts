@@ -14,12 +14,12 @@ import { FileCustomMaxFilesInterceptor } from 'src/common/file/interceptors/file
 import { FileCustomMaxSizeInterceptor } from 'src/common/file/interceptors/file.custom-max-size.interceptor';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
-export function UploadFileSingle(field: string): MethodDecorator {
-    return applyDecorators(UseInterceptors(FileInterceptor(field)));
+export function FileUploadSingle(field?: string): MethodDecorator {
+    return applyDecorators(UseInterceptors(FileInterceptor(field ?? 'file')));
 }
 
-export function UploadFileMultiple(field: string): MethodDecorator {
-    return applyDecorators(UseInterceptors(FilesInterceptor(field)));
+export function FileUploadMultiple(field?: string): MethodDecorator {
+    return applyDecorators(UseInterceptors(FilesInterceptor(field ?? 'files')));
 }
 
 export function FileCustomMaxFile(customMaxFiles: number): MethodDecorator {

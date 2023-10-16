@@ -34,11 +34,7 @@ export interface IDocRequestOptions {
 }
 
 export interface IDocRequestFileOptions
-    extends Omit<IDocRequestOptions, 'bodyType'> {
-    file: {
-        multiple: boolean;
-    };
-}
+    extends Omit<IDocRequestOptions, 'bodyType'> {}
 
 export interface IDocGuardOptions {
     userAgent?: boolean;

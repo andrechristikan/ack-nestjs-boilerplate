@@ -8,6 +8,7 @@ import {
     DocRequestFile,
     DocResponse,
 } from 'src/common/doc/decorators/doc.decorator';
+import { FileSingleDto } from 'src/common/file/dtos/file.single.dto';
 import { UserChangePasswordDto } from 'src/modules/user/dtos/user.change-password.dto';
 import { UserLoginDto } from 'src/modules/user/dtos/user.login.dto';
 import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
@@ -77,7 +78,9 @@ export function UserAuthUploadProfileDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
-        DocRequestFile(),
+        DocRequestFile({
+            body: FileSingleDto,
+        }),
         DocResponse('user.upload')
     );
 }

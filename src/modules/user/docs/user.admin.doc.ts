@@ -10,6 +10,7 @@ import {
     DocResponseFile,
     DocResponsePaging,
 } from 'src/common/doc/decorators/doc.decorator';
+import { FileSingleDto } from 'src/common/file/dtos/file.single.dto';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import {
     UserDocParamsId,
@@ -176,7 +177,9 @@ export function UserAdminImportDoc(): MethodDecorator {
         DocAuth({
             jwtAccessToken: true,
         }),
-        DocRequestFile(),
+        DocRequestFile({
+            body: FileSingleDto,
+        }),
         DocGuard({ role: true, policy: true }),
         DocResponse('user.import', {
             httpStatus: HttpStatus.CREATED,
