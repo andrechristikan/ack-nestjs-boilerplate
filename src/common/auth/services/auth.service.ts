@@ -151,12 +151,6 @@ export class AuthService implements IAuthService {
         ) as AuthAccessPayloadSerialization;
     }
 
-    async payloadUserAccessToken(
-        data: AuthAccessPayloadSerialization
-    ): Promise<Record<string, any>> {
-        return data.user;
-    }
-
     async encryptRefreshToken(
         payload: AuthRefreshPayloadSerialization
     ): Promise<string> {
@@ -211,12 +205,6 @@ export class AuthService implements IAuthService {
         return this.helperEncryptionService.jwtDecrypt(
             token
         ) as AuthRefreshPayloadSerialization;
-    }
-
-    async payloadUserRefreshToken(
-        data: AuthRefreshPayloadSerialization
-    ): Promise<Record<string, any>> {
-        return data.user;
     }
 
     async validateUser(

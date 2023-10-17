@@ -14,7 +14,6 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { UploadFileSingle } from 'src/common/file/decorators/file.decorator';
 import { IFileExtract } from 'src/common/file/interfaces/file.interface';
 import { FileExtractPipe } from 'src/common/file/pipes/file.extract.pipe';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
@@ -95,6 +94,7 @@ import {
     UserAdminUpdateDoc,
 } from 'src/modules/user/docs/user.admin.doc';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
+import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -339,7 +339,7 @@ export class UserAdminController {
 
     @UserAdminImportDoc()
     @Response('user.import')
-    @UploadFileSingle('file')
+    @FileUploadSingle()
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [

@@ -24,7 +24,6 @@ import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { AwsS3Service } from 'src/common/aws/services/aws.s3.service';
-import { UploadFileSingle } from 'src/common/file/decorators/file.decorator';
 import { IFile } from 'src/common/file/interfaces/file.interface';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
 import { FileSizeImagePipe } from 'src/common/file/pipes/file.size.pipe';
@@ -72,6 +71,7 @@ import { AuthGoogleOAuth2Protected } from 'src/common/auth/decorators/auth.googl
 import { ClientSession, Connection } from 'mongoose';
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
+import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
 
 @ApiTags('modules.auth.user')
 @Controller({
@@ -223,9 +223,11 @@ export class UserAuthController {
     @Get('/login/google')
     async loginGoogle(
         @AuthJwtPayload<AuthGooglePayloadSerialization>()
-        { email }: AuthGooglePayloadSerialization
+        { user: userPayload }: AuthGooglePayloadSerialization
     ): Promise<IResponse> {
-        const user: UserDoc = await this.userService.findOneByEmail(email);
+        const user: UserDoc = await this.userService.findOneByEmail(
+            userPayload.email
+        );
 
         if (!user) {
             throw new NotFoundException({
@@ -521,7 +523,7 @@ export class UserAuthController {
     @Response('user.upload')
     @UserProtected()
     @AuthJwtAccessProtected()
-    @UploadFileSingle('file')
+    @FileUploadSingle()
     @HttpCode(HttpStatus.OK)
     @Post('/profile/upload')
     async upload(

@@ -1,11 +1,13 @@
 import { Request } from 'express';
 import { IApiKeyPayload } from 'src/common/api-key/interfaces/api-key.interface';
+import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
 import { RequestPaginationSerialization } from 'src/common/request/serializations/request.pagination.serialization';
 import { IResult } from 'ua-parser-js';
 
-export interface IRequestApp extends Request {
+export interface IRequestApp<T = AuthAccessPayloadSerialization>
+    extends Request {
     apiKey?: IApiKeyPayload;
-    user?: Record<string, any>;
+    user?: T;
 
     __id: string;
     __xTimestamp?: number;
