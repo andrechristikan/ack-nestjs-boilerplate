@@ -223,9 +223,11 @@ export class UserAuthController {
     @Get('/login/google')
     async loginGoogle(
         @AuthJwtPayload<AuthGooglePayloadSerialization>()
-        { email }: AuthGooglePayloadSerialization
+        { user: userPayload }: AuthGooglePayloadSerialization
     ): Promise<IResponse> {
-        const user: UserDoc = await this.userService.findOneByEmail(email);
+        const user: UserDoc = await this.userService.findOneByEmail(
+            userPayload.email
+        );
 
         if (!user) {
             throw new NotFoundException({

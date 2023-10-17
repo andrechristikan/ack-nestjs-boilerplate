@@ -37,9 +37,7 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
             await this.authService.getPayloadEncryption();
 
         return payloadEncryption
-            ? this.authService.payloadUserRefreshToken(
-                  await this.authService.decryptRefreshToken({ data })
-              )
-            : this.authService.payloadUserRefreshToken(data);
+            ? this.authService.decryptRefreshToken({ data })
+            : data;
     }
 }

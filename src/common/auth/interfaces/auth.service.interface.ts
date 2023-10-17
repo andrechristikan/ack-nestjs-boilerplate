@@ -17,9 +17,6 @@ export interface IAuthService {
     ): Promise<string>;
     validateAccessToken(token: string): Promise<boolean>;
     payloadAccessToken(token: string): Promise<Record<string, any>>;
-    payloadUserAccessToken(
-        data: AuthAccessPayloadSerialization
-    ): Promise<Record<string, any>>;
     encryptRefreshToken(payload: Record<string, any>): Promise<string>;
     decryptRefreshToken(
         payload: Record<string, any>
@@ -30,9 +27,6 @@ export interface IAuthService {
     ): Promise<string>;
     validateRefreshToken(token: string): Promise<boolean>;
     payloadRefreshToken(token: string): Promise<Record<string, any>>;
-    payloadUserRefreshToken(
-        data: AuthRefreshPayloadSerialization
-    ): Promise<Record<string, any>>;
     validateUser(
         passwordString: string,
         passwordHash: string

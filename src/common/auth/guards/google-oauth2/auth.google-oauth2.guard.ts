@@ -17,9 +17,7 @@ export class AuthGoogleOauth2Guard implements CanActivate {
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context
             .switchToHttp()
-            .getRequest<
-                IRequestApp & { user: AuthGooglePayloadSerialization }
-            >();
+            .getRequest<IRequestApp<AuthGooglePayloadSerialization>>();
         const { authorization } = request.headers;
         const acArr = authorization.split('Bearer ');
         if (acArr.length !== 2) {
@@ -36,7 +34,9 @@ export class AuthGoogleOauth2Guard implements CanActivate {
                 await this.authService.googleGetTokenInfo(accessToken);
 
             request.user = {
-                email: payload.email,
+                user: {
+                    email: payload.email,
+                },
             };
 
             return true;

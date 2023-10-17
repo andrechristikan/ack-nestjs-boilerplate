@@ -164,20 +164,6 @@ describe('AuthService', () => {
         });
     });
 
-    describe('payloadUserAccessToken', () => {
-        it('should payload access token', async () => {
-            const data: AuthAccessPayloadSerialization = {
-                user: { _id: '1' },
-                loginDate: new Date(),
-                loginFrom: ENUM_AUTH_LOGIN_FROM.PASSWORD,
-                loginWith: ENUM_AUTH_LOGIN_WITH.EMAIL,
-            };
-            const expectedPayload = { _id: '1' };
-            const payload = await service.payloadUserAccessToken(data);
-            expect(payload).toEqual(expectedPayload);
-        });
-    });
-
     describe('encryptRefreshToken', () => {
         it('should encrypt and decrypt refresh token', async () => {
             const payload: AuthRefreshPayloadSerialization = {
@@ -232,20 +218,6 @@ describe('AuthService', () => {
                 'jwtDecrypt'
             ).mockReturnValueOnce(expectedPayload);
             const payload = await service.payloadRefreshToken(refreshToken);
-            expect(payload).toEqual(expectedPayload);
-        });
-    });
-
-    describe('payloadUserRefreshToken', () => {
-        it('should payload refresh token', async () => {
-            const data: AuthRefreshPayloadSerialization = {
-                user: { _id: '1' },
-                loginDate: new Date(),
-                loginFrom: ENUM_AUTH_LOGIN_FROM.PASSWORD,
-                loginWith: ENUM_AUTH_LOGIN_WITH.EMAIL,
-            };
-            const expectedPayload = { _id: '1' };
-            const payload = await service.payloadUserRefreshToken(data);
             expect(payload).toEqual(expectedPayload);
         });
     });

@@ -23,6 +23,4 @@ export enum ENUM_POLICY_SUBJECT {
     SETTING = 'SETTING',
     ROLE = 'ROLE',
     USER = 'USER',
-    TNC = 'TNC',
-    PRIVACY_POLICY = 'PRIVACY_POLICY',
 }

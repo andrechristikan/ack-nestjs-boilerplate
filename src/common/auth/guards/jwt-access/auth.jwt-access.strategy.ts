@@ -34,9 +34,7 @@ export class AuthJwtAccessStrategy extends PassportStrategy(Strategy, 'jwt') {
             await this.authService.getPayloadEncryption();
 
         return payloadEncryption
-            ? this.authService.payloadUserAccessToken(
-                  await this.authService.decryptAccessToken({ data })
-              )
-            : this.authService.payloadUserAccessToken(data);
+            ? this.authService.decryptAccessToken({ data })
+            : data;
     }
 }

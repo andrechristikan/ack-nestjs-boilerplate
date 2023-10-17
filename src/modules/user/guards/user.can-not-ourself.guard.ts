@@ -15,7 +15,7 @@ export class UserCanNotOurSelfGuard implements CanActivate {
             .switchToHttp()
             .getRequest<IRequestApp & { __user: UserDoc }>();
 
-        if (__user._id === user._id) {
+        if (__user._id === user.user._id) {
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
                 message: 'user.error.notFound',
