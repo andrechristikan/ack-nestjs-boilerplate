@@ -220,9 +220,10 @@ export function Doc(options?: IDocOptions): MethodDecorator {
 
     return applyDecorators(
         ApiOperation({
-            summary: options?.operation,
+            summary: options?.summary,
             deprecated: options?.deprecated,
             description: options?.description,
+            operationId: options?.operation,
         }),
         ApiHeaders([
             {

@@ -5,6 +5,7 @@ import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.co
 import { ENUM_FILE_EXCEL_MIME } from 'src/common/file/constants/file.enum.constant';
 
 export interface IDocOptions {
+    summary?: string;
     operation?: string;
     deprecated?: boolean;
     description?: string;

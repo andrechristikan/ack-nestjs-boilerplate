@@ -9,9 +9,10 @@ import {
 export function UserUserDeleteSelfDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.user.user',
+            operation: 'user delete their account',
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true }),

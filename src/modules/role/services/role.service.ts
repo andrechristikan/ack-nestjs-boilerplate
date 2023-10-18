@@ -127,7 +127,7 @@ export class RoleService implements IRoleService {
         repository: RoleDoc,
         options?: IDatabaseSaveOptions
     ): Promise<RoleDoc> {
-        return this.roleRepository.softDelete(repository, options);
+        return this.roleRepository.delete(repository, options);
     }
 
     async deleteMany(

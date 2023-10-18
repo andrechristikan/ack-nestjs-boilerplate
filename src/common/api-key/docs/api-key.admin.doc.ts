@@ -27,7 +27,7 @@ import { ResponseIdSerialization } from 'src/common/response/serializations/resp
 
 export function ApiKeyAdminListDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.admin.apiKey' }),
+        Doc({ summary: 'get list of api keys' }),
         DocRequest({
             queries: ApiKeyDocQueryIsActive,
         }),
@@ -43,7 +43,7 @@ export function ApiKeyAdminListDoc(): MethodDecorator {
 
 export function ApiKeyAdminGetDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.admin.apiKey' }),
+        Doc({ summary: 'get detail an api key' }),
         DocRequest({
             params: ApiKeyDocParamsId,
         }),
@@ -67,7 +67,7 @@ export function ApiKeyAdminGetDoc(): MethodDecorator {
 
 export function ApiKeyAdminCreateDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.admin.apiKey' }),
+        Doc({ summary: 'create an api key' }),
         DocAuth({
             jwtAccessToken: true,
         }),
@@ -85,7 +85,7 @@ export function ApiKeyAdminCreateDoc(): MethodDecorator {
 
 export function ApiKeyAdminActiveDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.admin.apiKey' }),
+        Doc({ summary: 'make api key be active' }),
         DocRequest({
             params: ApiKeyDocParamsId,
         }),
@@ -120,7 +120,7 @@ export function ApiKeyAdminActiveDoc(): MethodDecorator {
 
 export function ApiKeyAdminInactiveDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.admin.apiKey' }),
+        Doc({ summary: 'make api key be inactive' }),
         DocRequest({
             params: ApiKeyDocParamsId,
         }),
@@ -155,7 +155,7 @@ export function ApiKeyAdminInactiveDoc(): MethodDecorator {
 
 export function ApiKeyAdminResetDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.admin.apiKey' }),
+        Doc({ summary: 'reset secret an api key' }),
         DocRequest({
             params: ApiKeyDocParamsId,
         }),
@@ -192,7 +192,7 @@ export function ApiKeyAdminResetDoc(): MethodDecorator {
 
 export function ApiKeyAdminUpdateDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.admin.apiKey' }),
+        Doc({ summary: 'update data an api key' }),
         DocRequest({
             params: ApiKeyDocParamsId,
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
@@ -231,7 +231,7 @@ export function ApiKeyAdminUpdateDoc(): MethodDecorator {
 
 export function ApiKeyAdminUpdateDateDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.admin.apiKey' }),
+        Doc({ summary: 'update date of api key' }),
         DocRequest({
             params: ApiKeyDocParamsId,
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
@@ -270,7 +270,7 @@ export function ApiKeyAdminUpdateDateDoc(): MethodDecorator {
 
 export function ApiKeyAdminDeleteDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.admin.apiKey' }),
+        Doc({ summary: 'delete an api key' }),
         DocRequest({
             params: ApiKeyDocParamsId,
         }),

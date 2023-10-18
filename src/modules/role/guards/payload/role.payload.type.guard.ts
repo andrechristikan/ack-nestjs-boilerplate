@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ROLE_TYPE_META_KEY } from 'src/modules/role/constants/role.constant';
 import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
@@ -22,8 +23,8 @@ export class RolePayloadTypeGuard implements CanActivate {
             ENUM_ROLE_TYPE[]
         >(ROLE_TYPE_META_KEY, [context.getHandler(), context.getClass()]);
 
-        const { user } = context.switchToHttp().getRequest();
-        const { type } = user;
+        const { user } = context.switchToHttp().getRequest<IRequestApp>();
+        const { type } = user.user;
 
         if (!requiredFor || type === ENUM_ROLE_TYPE.SUPER_ADMIN) {
             return true;

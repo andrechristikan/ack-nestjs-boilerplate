@@ -9,6 +9,7 @@ import {
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import {
     PaginationQuery,
@@ -95,6 +96,7 @@ export class RoleAdminController {
         action: [ENUM_POLICY_ACTION.READ],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @Get('/list')
     async list(
         @PaginationQuery(
@@ -146,6 +148,7 @@ export class RoleAdminController {
         action: [ENUM_POLICY_ACTION.READ],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(RoleRequestDto)
     @Get('get/:role')
     async get(@GetRole(true) role: RoleEntity): Promise<IResponse> {
@@ -161,6 +164,7 @@ export class RoleAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @Post('/create')
     async create(
         @Body()
@@ -196,6 +200,7 @@ export class RoleAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(RoleRequestDto)
     @Put('/update/:role')
     async update(
@@ -220,6 +225,7 @@ export class RoleAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(RoleRequestDto)
     @Put('/update/:role/permission')
     async updatePermission(
@@ -245,6 +251,7 @@ export class RoleAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(RoleRequestDto)
     @Delete('/delete/:role')
     async delete(@GetRole() role: RoleDoc): Promise<void> {
@@ -267,6 +274,7 @@ export class RoleAdminController {
     @Response('role.inactive')
     @RoleAdminUpdateInactiveGuard()
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(RoleRequestDto)
     @Patch('/update/:role/inactive')
     async inactive(@GetRole() role: RoleDoc): Promise<void> {
@@ -279,6 +287,7 @@ export class RoleAdminController {
     @Response('role.active')
     @RoleAdminUpdateActiveGuard()
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(RoleRequestDto)
     @Patch('/update/:role/active')
     async active(@GetRole() role: RoleDoc): Promise<void> {

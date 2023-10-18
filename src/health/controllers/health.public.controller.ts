@@ -8,6 +8,7 @@ import {
     MongooseHealthIndicator,
 } from '@nestjs/terminus';
 import { Connection } from 'mongoose';
+import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
@@ -33,6 +34,7 @@ export class HealthPublicController {
     @HealthCheckDoc()
     @Response('health.check', { serialization: HealthSerialization })
     @HealthCheck()
+    @ApiKeyPublicProtected()
     @Get('/aws')
     async checkAws(): Promise<IResponse> {
         const data = await this.health.check([
@@ -47,6 +49,7 @@ export class HealthPublicController {
     @HealthCheckDoc()
     @Response('health.check', { serialization: HealthSerialization })
     @HealthCheck()
+    @ApiKeyPublicProtected()
     @Get('/database')
     async checkDatabase(): Promise<IResponse> {
         const data = await this.health.check([
@@ -64,6 +67,7 @@ export class HealthPublicController {
     @HealthCheckDoc()
     @Response('health.check', { serialization: HealthSerialization })
     @HealthCheck()
+    @ApiKeyPublicProtected()
     @Get('/memory-heap')
     async checkMemoryHeap(): Promise<IResponse> {
         const data = await this.health.check([
@@ -82,6 +86,7 @@ export class HealthPublicController {
     @HealthCheckDoc()
     @Response('health.check', { serialization: HealthSerialization })
     @HealthCheck()
+    @ApiKeyPublicProtected()
     @Get('/memory-rss')
     async checkMemoryRss(): Promise<IResponse> {
         const data = await this.health.check([
@@ -100,6 +105,7 @@ export class HealthPublicController {
     @HealthCheckDoc()
     @Response('health.check', { serialization: HealthSerialization })
     @HealthCheck()
+    @ApiKeyPublicProtected()
     @Get('/storage')
     async checkStorage(): Promise<IResponse> {
         const data = await this.health.check([

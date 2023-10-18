@@ -20,7 +20,7 @@ import { UserRefreshSerialization } from 'src/modules/user/serializations/user.r
 export function UserAuthLoginDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.public.user',
+            operation: 'login with email and password',
         }),
         DocRequest({
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
@@ -35,7 +35,7 @@ export function UserAuthLoginDoc(): MethodDecorator {
 export function UserAuthLoginGoogleDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.auth.user',
+            summary: 'login with access token google',
         }),
         DocAuth({ google: true }),
         DocResponse('user.loginGoogle')
@@ -45,7 +45,7 @@ export function UserAuthLoginGoogleDoc(): MethodDecorator {
 export function UserAuthRefreshDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.auth.user',
+            summary: 'refresh a token',
         }),
         DocAuth({
             jwtRefreshToken: true,
@@ -59,9 +59,10 @@ export function UserAuthRefreshDoc(): MethodDecorator {
 export function UserAuthProfileDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.auth.user',
+            summary: 'get profile',
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocResponse<UserProfileSerialization>('user.profile', {
@@ -73,9 +74,10 @@ export function UserAuthProfileDoc(): MethodDecorator {
 export function UserAuthUploadProfileDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.auth.user',
+            summary: 'update profile photo',
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocRequestFile({
@@ -88,9 +90,10 @@ export function UserAuthUploadProfileDoc(): MethodDecorator {
 export function UserAuthUpdateProfileDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.auth.user',
+            summary: 'update profile',
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocRequest({
@@ -104,9 +107,10 @@ export function UserAuthUpdateProfileDoc(): MethodDecorator {
 export function UserAuthInfoDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.auth.user',
+            operation: 'get info of access token',
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocResponse<AuthAccessPayloadSerialization>('user.info', {
@@ -118,9 +122,10 @@ export function UserAuthInfoDoc(): MethodDecorator {
 export function UserAuthChangePasswordDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.auth.user',
+            summary: 'change password',
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocRequest({
@@ -134,9 +139,10 @@ export function UserAuthChangePasswordDoc(): MethodDecorator {
 export function UserAuthClaimUsernameDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.auth.user',
+            operation: 'claim username',
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocRequest({

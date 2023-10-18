@@ -95,6 +95,7 @@ import {
 } from 'src/modules/user/docs/user.admin.doc';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
+import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -118,6 +119,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @Get('/list')
     async list(
         @PaginationQuery(
@@ -177,6 +179,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(UserRequestDto)
     @Get('/get/:user')
     async get(@GetUser() user: UserDoc): Promise<IResponse> {
@@ -194,6 +197,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @Post('/create')
     async create(
         @Body()
@@ -259,6 +263,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(UserRequestDto)
     @Put('/update/:user')
     async update(
@@ -281,6 +286,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(UserRequestDto)
     @Patch('/update/:user/inactive')
     async inactive(@GetUser() user: UserDoc): Promise<void> {
@@ -297,6 +303,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(UserRequestDto)
     @Patch('/update/:user/active')
     async active(@GetUser() user: UserDoc): Promise<void> {
@@ -313,6 +320,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(UserRequestDto)
     @Patch('/update/:user/blocked')
     async blocked(@GetUser() user: UserDoc): Promise<void> {
@@ -329,6 +337,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(UserRequestDto)
     @Delete('/delete/:user')
     async delete(@GetUser() user: UserDoc): Promise<void> {
@@ -349,6 +358,7 @@ export class UserAdminController {
         ],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @Post('/import')
     async import(
         @UploadedFile(
@@ -382,6 +392,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.EXPORT],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/export')
     async export(): Promise<IResponse> {

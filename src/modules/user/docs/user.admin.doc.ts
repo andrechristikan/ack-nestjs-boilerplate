@@ -27,7 +27,7 @@ import { UserListSerialization } from 'src/modules/user/serializations/user.list
 export function UserAdminListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.admin.user',
+            summary: 'get all of users',
         }),
         DocRequest({
             queries: [
@@ -38,6 +38,7 @@ export function UserAdminListDoc(): MethodDecorator {
             ],
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
@@ -50,12 +51,13 @@ export function UserAdminListDoc(): MethodDecorator {
 export function UserAdminGetDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.admin.user',
+            summary: 'get detail an user',
         }),
         DocRequest({
             params: UserDocParamsId,
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
@@ -65,12 +67,64 @@ export function UserAdminGetDoc(): MethodDecorator {
     );
 }
 
+export function UserAdminActiveDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'make user be active',
+        }),
+        DocRequest({
+            params: UserDocParamsId,
+        }),
+        DocAuth({
+            apiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true }),
+        DocResponse('user.active')
+    );
+}
+
+export function UserAdminInactiveDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'make user be inactive',
+        }),
+        DocRequest({
+            params: UserDocParamsId,
+        }),
+        DocAuth({
+            apiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true }),
+        DocResponse('user.inactive')
+    );
+}
+
+export function UserAdminBlockedDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'block a user',
+        }),
+        DocRequest({
+            params: UserDocParamsId,
+        }),
+        DocAuth({
+            apiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true }),
+        DocResponse('user.blocked')
+    );
+}
+
 export function UserAdminCreateDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.admin.user',
+            summary: 'create a user',
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocRequest({
@@ -85,58 +139,10 @@ export function UserAdminCreateDoc(): MethodDecorator {
     );
 }
 
-export function UserAdminActiveDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            operation: 'modules.admin.user',
-        }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
-        DocAuth({
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse('user.active')
-    );
-}
-
-export function UserAdminInactiveDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            operation: 'modules.admin.user',
-        }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
-        DocAuth({
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse('user.inactive')
-    );
-}
-
-export function UserAdminBlockedDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            operation: 'modules.admin.user',
-        }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
-        DocAuth({
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse('user.blocked')
-    );
-}
-
 export function UserAdminUpdateDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.admin.user',
+            summary: 'update data a user',
         }),
         DocRequest({
             params: UserDocParamsId,
@@ -144,6 +150,7 @@ export function UserAdminUpdateDoc(): MethodDecorator {
             body: UserUpdateNameDto,
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
@@ -156,12 +163,13 @@ export function UserAdminUpdateDoc(): MethodDecorator {
 export function UserAdminDeleteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.admin.user',
+            summary: 'delete a user',
         }),
         DocRequest({
             params: UserDocParamsId,
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
@@ -172,9 +180,10 @@ export function UserAdminDeleteDoc(): MethodDecorator {
 export function UserAdminImportDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.admin.user',
+            summary: 'import users with excel',
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocRequestFile({
@@ -190,9 +199,10 @@ export function UserAdminImportDoc(): MethodDecorator {
 export function UserAdminExportDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.admin.user',
+            summary: 'export user into excel',
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),

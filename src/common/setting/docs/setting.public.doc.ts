@@ -15,7 +15,7 @@ import { SettingListSerialization } from 'src/common/setting/serializations/sett
 export function SettingPublicListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'common.public.setting',
+            summary: 'get list of settings',
         }),
         DocResponsePaging<SettingListSerialization>('setting.list', {
             serialization: SettingListSerialization,
@@ -25,7 +25,7 @@ export function SettingPublicListDoc(): MethodDecorator {
 
 export function SettingPublicGetDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.public.setting' }),
+        Doc({ summary: 'get detail a setting' }),
         DocRequest({
             params: SettingDocParamsId,
         }),
