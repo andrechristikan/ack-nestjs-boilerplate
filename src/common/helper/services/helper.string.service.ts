@@ -41,16 +41,14 @@ export class HelperStringService implements IHelperStringService {
     }
 
     censor(value: string): string {
-        value = value.replaceAll(' ', '');
-        const length = value.length;
-        if (length <= 3) {
+        const stringCensor = '*'.repeat(8);
+        if (value.length <= 5) {
             return value;
+        } else if (value.length <= 10) {
+            return `${stringCensor}${value.slice(-5)}`;
         }
 
-        const end = Math.ceil(length * 0.7);
-        const censorString = '*'.repeat(end > 10 ? 10 : end);
-        const visibleString = value.substring(end, length);
-        return `${censorString}${visibleString}`;
+        return `${value.slice(0, 3)}${stringCensor}${value.slice(-5)}`;
     }
 
     checkPasswordWeak(password: string, length?: number): boolean {

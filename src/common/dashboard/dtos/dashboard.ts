@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsDate, IsOptional, ValidateIf } from 'class-validator';
+import { IsISO8601, IsOptional, ValidateIf } from 'class-validator';
 import { GreaterThanEqual } from 'src/common/request/validations/request.greater-than-equal.validation';
 
 export class DashboardDto {
@@ -9,9 +8,8 @@ export class DashboardDto {
         required: false,
         nullable: true,
     })
-    @IsDate()
+    @IsISO8601()
     @IsOptional()
-    @Type(() => Date)
     @ValidateIf((e) => e.startDate !== '' || e.endDate !== '')
     startDate?: Date;
 
@@ -20,10 +18,9 @@ export class DashboardDto {
         required: false,
         nullable: true,
     })
-    @IsDate()
+    @IsISO8601()
     @IsOptional()
     @GreaterThanEqual('startDate')
-    @Type(() => Date)
     @ValidateIf((e) => e.startDate !== '' || e.endDate !== '')
     endDate?: Date;
 }
