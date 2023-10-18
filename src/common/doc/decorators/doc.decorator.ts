@@ -411,6 +411,14 @@ export function DocAuth(options?: IDocAuthOptions) {
         });
     }
 
+    if (options?.google) {
+        docs.push(ApiBearerAuth('google'));
+        oneOfUnauthorized.push({
+            messagePath: 'auth.error.googleSSO',
+            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GOOGLE_SSO_ERROR,
+        });
+    }
+
     if (options?.apiKey) {
         docs.push(ApiSecurity('apiKey'));
         oneOfUnauthorized.push(

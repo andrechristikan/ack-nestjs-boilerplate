@@ -37,7 +37,7 @@ export function UserAuthLoginGoogleDoc(): MethodDecorator {
         Doc({
             operation: 'modules.auth.user',
         }),
-        DocAuth({ apiKey: true, jwtRefreshToken: true }),
+        DocAuth({ google: true }),
         DocResponse('user.loginGoogle')
     );
 }

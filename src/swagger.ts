@@ -40,6 +40,10 @@ export default async function (app: NestApplication) {
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
                 'refreshToken'
             )
+            .addBearerAuth(
+                { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+                'google'
+            )
             .addApiKey(
                 { type: 'apiKey', in: 'header', name: 'x-api-key' },
                 'apiKey'
@@ -62,14 +66,14 @@ export default async function (app: NestApplication) {
         SwaggerModule.setup(docPrefix, app, document, {
             jsonDocumentUrl: `${docPrefix}/json`,
             yamlDocumentUrl: `${docPrefix}/yaml`,
-            explorer: false,
+            explorer: true,
             customSiteTitle: docName,
             customCss: theme.getBuffer('dark'),
             swaggerOptions: {
-                docExpansion: 'none',
+                docExpansion: 'list',
                 persistAuthorization: true,
                 displayOperationId: true,
-                operationsSorter: 'alpha',
+                operationsSorter: 'method',
                 tagsSorter: 'alpha',
                 tryItOutEnabled: true,
                 filter: true,
