@@ -72,6 +72,7 @@ import { ClientSession, Connection } from 'mongoose';
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
+import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 
 @ApiTags('modules.auth.user')
 @Controller({
@@ -91,6 +92,7 @@ export class UserAuthController {
     @Response('user.login', {
         serialization: UserLoginSerialization,
     })
+    @ApiKeyPublicProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/login')
     async login(@Body() { email, password }: UserLoginDto): Promise<IResponse> {
@@ -220,6 +222,7 @@ export class UserAuthController {
     @UserAuthLoginGoogleDoc()
     @Response('user.loginGoogle')
     @AuthGoogleOAuth2Protected()
+    @ApiKeyPublicProtected()
     @Get('/login/google')
     async loginGoogle(
         @AuthJwtPayload<AuthGooglePayloadSerialization>()
@@ -317,6 +320,7 @@ export class UserAuthController {
     @UserAuthProtected()
     @UserProtected()
     @AuthJwtRefreshProtected()
+    @ApiKeyPublicProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/refresh')
     async refresh(
@@ -386,6 +390,7 @@ export class UserAuthController {
     @Response('user.changePassword')
     @UserProtected()
     @AuthJwtAccessProtected()
+    @ApiKeyPublicProtected()
     @Patch('/change-password')
     async changePassword(
         @Body() body: UserChangePasswordDto,
@@ -460,6 +465,7 @@ export class UserAuthController {
     @UserAuthInfoDoc()
     @Response('user.info', { serialization: AuthAccessPayloadSerialization })
     @AuthJwtAccessProtected()
+    @ApiKeyPublicProtected()
     @Get('/info')
     async info(
         @AuthJwtPayload<AuthAccessPayloadSerialization>()
@@ -474,6 +480,7 @@ export class UserAuthController {
     })
     @UserProtected()
     @AuthJwtAccessProtected()
+    @ApiKeyPublicProtected()
     @Get('/profile')
     async profile(@GetUser() user: UserDoc): Promise<IResponse> {
         const userWithRole: IUserDoc =
@@ -485,6 +492,7 @@ export class UserAuthController {
     @Response('user.updateProfile')
     @UserProtected()
     @AuthJwtAccessProtected()
+    @ApiKeyPublicProtected()
     @Patch('/profile/update')
     async updateProfile(
         @GetUser() user: UserDoc,
@@ -499,6 +507,7 @@ export class UserAuthController {
     @Response('user.claimUsername')
     @UserProtected()
     @AuthJwtAccessProtected()
+    @ApiKeyPublicProtected()
     @Patch('/profile/claim-username')
     async claimUsername(
         @GetUser() user: UserDoc,
@@ -524,6 +533,7 @@ export class UserAuthController {
     @UserProtected()
     @AuthJwtAccessProtected()
     @FileUploadSingle()
+    @ApiKeyPublicProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/profile/upload')
     async upload(

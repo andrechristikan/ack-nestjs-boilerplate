@@ -220,9 +220,10 @@ export function Doc(options?: IDocOptions): MethodDecorator {
 
     return applyDecorators(
         ApiOperation({
-            summary: options?.operation,
+            summary: options?.summary,
             deprecated: options?.deprecated,
             description: options?.description,
+            operationId: options?.operation,
         }),
         ApiHeaders([
             {
@@ -408,6 +409,14 @@ export function DocAuth(options?: IDocAuthOptions) {
         oneOfUnauthorized.push({
             messagePath: 'auth.error.accessTokenUnauthorized',
             statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_JWT_ACCESS_TOKEN_ERROR,
+        });
+    }
+
+    if (options?.google) {
+        docs.push(ApiBearerAuth('google'));
+        oneOfUnauthorized.push({
+            messagePath: 'auth.error.googleSSO',
+            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GOOGLE_SSO_ERROR,
         });
     }
 

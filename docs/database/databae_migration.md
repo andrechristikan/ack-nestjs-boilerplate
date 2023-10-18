@@ -17,6 +17,10 @@ For remove all data do
 yarn rollback
 ```
 
+# API Key Test
+api key: `2ihKDneb9jQGgidAOqfO`
+api key secret: `ZLCtDd2rh3TAyVhfAeo3JOPvWfAsTp0Oq6rHl69D`
+
 # User Test
 
 1. Super Admin

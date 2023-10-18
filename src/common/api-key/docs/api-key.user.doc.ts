@@ -19,7 +19,7 @@ import { ResponseIdSerialization } from 'src/common/response/serializations/resp
 
 export function ApiKeyUserListDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.user.apiKey' }),
+        Doc({ summary: 'get list of api keys' }),
         DocRequest({
             queries: ApiKeyDocQueryIsActive,
         }),
@@ -35,7 +35,7 @@ export function ApiKeyUserListDoc(): MethodDecorator {
 
 export function ApiKeyUserGetDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.user.apiKey' }),
+        Doc({ summary: 'get detail an api key' }),
         DocRequest({
             params: ApiKeyDocParamsId,
         }),
@@ -51,7 +51,7 @@ export function ApiKeyUserGetDoc(): MethodDecorator {
 
 export function ApiKeyUserCreateDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.user.apiKey' }),
+        Doc({ summary: 'create an api key' }),
         DocAuth({
             jwtAccessToken: true,
         }),
@@ -65,7 +65,7 @@ export function ApiKeyUserCreateDoc(): MethodDecorator {
 
 export function ApiKeyUserActiveDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.user.apiKey' }),
+        Doc({ summary: 'make api key be active' }),
         DocRequest({
             params: ApiKeyDocParamsId,
         }),
@@ -79,7 +79,7 @@ export function ApiKeyUserActiveDoc(): MethodDecorator {
 
 export function ApiKeyUserInactiveDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.user.apiKey' }),
+        Doc({ summary: 'make api key be inactive' }),
         DocRequest({
             params: ApiKeyDocParamsId,
         }),
@@ -93,7 +93,7 @@ export function ApiKeyUserInactiveDoc(): MethodDecorator {
 
 export function ApiKeyUserResetDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.user.apiKey' }),
+        Doc({ summary: 'reset secret an api key' }),
         DocRequest({
             params: ApiKeyDocParamsId,
         }),
@@ -109,7 +109,7 @@ export function ApiKeyUserResetDoc(): MethodDecorator {
 
 export function ApiKeyUserUpdateDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.user.apiKey' }),
+        Doc({ summary: 'update data an api key' }),
         DocRequest({
             params: ApiKeyDocParamsId,
         }),
@@ -125,7 +125,7 @@ export function ApiKeyUserUpdateDoc(): MethodDecorator {
 
 export function ApiKeyUserDeleteDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.user.apiKey' }),
+        Doc({ summary: 'delete an api key' }),
         DocRequest({
             params: ApiKeyDocParamsId,
         }),

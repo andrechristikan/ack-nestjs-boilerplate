@@ -1,5 +1,6 @@
 import { Body, ConflictException, Controller, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { RoleService } from 'src/modules/role/services/role.service';
@@ -23,6 +24,7 @@ export class UserPublicController {
 
     @UserPublicSignUpDoc()
     @Response('user.signUp')
+    @ApiKeyPublicProtected()
     @Post('/sign-up')
     async signUp(
         @Body()

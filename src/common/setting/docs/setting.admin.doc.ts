@@ -14,7 +14,7 @@ import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/common/setting/constants/set
 
 export function SettingAdminUpdateDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ operation: 'common.admin.setting' }),
+        Doc({ summary: 'update a setting' }),
         DocRequest({
             params: SettingDocParamsId,
         }),
