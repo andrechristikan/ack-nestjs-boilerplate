@@ -32,6 +32,7 @@ export function ApiKeyAdminListDoc(): MethodDecorator {
             queries: ApiKeyDocQueryIsActive,
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
@@ -48,6 +49,7 @@ export function ApiKeyAdminGetDoc(): MethodDecorator {
             params: ApiKeyDocParamsId,
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocResponse<ApiKeyGetSerialization>('apiKey.get', {
@@ -69,6 +71,7 @@ export function ApiKeyAdminCreateDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'create an api key' }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocRequest({
@@ -90,6 +93,7 @@ export function ApiKeyAdminActiveDoc(): MethodDecorator {
             params: ApiKeyDocParamsId,
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocResponse('apiKey.active'),
@@ -125,6 +129,7 @@ export function ApiKeyAdminInactiveDoc(): MethodDecorator {
             params: ApiKeyDocParamsId,
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocResponse('apiKey.inactive'),
@@ -160,6 +165,7 @@ export function ApiKeyAdminResetDoc(): MethodDecorator {
             params: ApiKeyDocParamsId,
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
@@ -199,6 +205,7 @@ export function ApiKeyAdminUpdateDoc(): MethodDecorator {
             body: ApiKeyUpdateDto,
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
@@ -238,6 +245,7 @@ export function ApiKeyAdminUpdateDateDoc(): MethodDecorator {
             body: ApiKeyUpdateDateDto,
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
@@ -275,6 +283,7 @@ export function ApiKeyAdminDeleteDoc(): MethodDecorator {
             params: ApiKeyDocParamsId,
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),

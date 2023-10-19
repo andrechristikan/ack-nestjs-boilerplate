@@ -26,7 +26,7 @@
 - [ACK NestJs Boilerplate  🔥 🚀](#ack-nestjs-boilerplate---)
   - [Table of contents](#table-of-contents)
   - [Important](#important)
-  - [Next Todo](#next-todo)
+  - [Todo](#todo)
 - [Documentation](#documentation)
   - [License](#license)
   - [Contribute](#contribute)
@@ -45,12 +45,12 @@
     1. CorsMiddleware will implement `src/configs/middleware.config.ts`.
     2. Documentation will `disable`.
 
-## Next Todo
-
-Next development
+## Todo
 
 * [ ] Update Documentation, add behaviors
-* [ ] Update Documentation, include an diagram for easier comprehension
+* [ ] Update Documentation, and include an diagram for easier comprehension
+* [ ] Add Redis
+* [ ] Implement GraphQL
 
 # Documentation
 
