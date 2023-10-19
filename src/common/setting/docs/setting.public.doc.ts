@@ -1,5 +1,5 @@
 import { HttpStatus, applyDecorators } from '@nestjs/common';
-import { DocDefault } from 'src/common/doc/decorators/doc.decorator';
+import { DocAuth, DocDefault } from 'src/common/doc/decorators/doc.decorator';
 import {
     Doc,
     DocErrorGroup,
@@ -17,6 +17,7 @@ export function SettingPublicListDoc(): MethodDecorator {
         Doc({
             summary: 'get list of settings',
         }),
+        DocAuth({ apiKey: true }),
         DocResponsePaging<SettingListSerialization>('setting.list', {
             serialization: SettingListSerialization,
         })
@@ -32,6 +33,7 @@ export function SettingPublicGetDoc(): MethodDecorator {
         DocResponse<SettingGetSerialization>('setting.get', {
             serialization: SettingGetSerialization,
         }),
+        DocAuth({ apiKey: true }),
         DocErrorGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,

@@ -9,7 +9,7 @@
     "import": "Import user Succeed",
     "blocked": "Success blocked user",
     "refresh": "Refresh token success",
-    "changePassword": "Active Succeed",
+    "changePassword": "Change password Succeed",
     "info": "Get info payload Succeed",
     "profile": "Profile Success",
     "updateProfile": "Update profile Succeed",

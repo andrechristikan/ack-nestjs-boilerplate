@@ -1,5 +1,6 @@
 import { BadRequestException, Body, Controller, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import {
     ENUM_POLICY_ACTION,
@@ -37,6 +38,7 @@ export class SettingAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(SettingRequestDto)
     @Put('/update/:setting')
     async update(

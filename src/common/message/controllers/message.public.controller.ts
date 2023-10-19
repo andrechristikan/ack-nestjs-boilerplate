@@ -1,5 +1,6 @@
 import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { MessagePublicLanguageDoc } from 'src/common/message/docs/message.public.doc';
 import { MessageLanguageSerialization } from 'src/common/message/serializations/message.language.serialization';
 import { MessageService } from 'src/common/message/services/message.service';
@@ -18,6 +19,7 @@ export class MessagePublicController {
     @Response('message.languages', {
         serialization: MessageLanguageSerialization,
     })
+    @ApiKeyPublicProtected()
     @Get('/languages')
     async languages(): Promise<IResponse> {
         const languages: string[] = this.messageService.getAvailableLanguages();

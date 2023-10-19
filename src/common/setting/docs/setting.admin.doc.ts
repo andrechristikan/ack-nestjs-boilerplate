@@ -20,6 +20,7 @@ export function SettingAdminUpdateDoc(): MethodDecorator {
         }),
         DocAuth({
             jwtAccessToken: true,
+            apiKey: true,
         }),
         DocResponse<ResponseIdSerialization>('setting.update', {
             serialization: ResponseIdSerialization,
