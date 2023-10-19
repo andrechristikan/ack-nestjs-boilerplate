@@ -20,12 +20,13 @@ import { UserRefreshSerialization } from 'src/modules/user/serializations/user.r
 export function UserAuthLoginDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'login with email and password',
+            summary: 'login with email and password',
         }),
         DocRequest({
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
             body: UserLoginDto,
         }),
+        DocAuth({ apiKey: true }),
         DocResponse<UserLoginSerialization>('user.login', {
             serialization: UserLoginSerialization,
         })
@@ -37,7 +38,7 @@ export function UserAuthLoginGoogleDoc(): MethodDecorator {
         Doc({
             summary: 'login with access token google',
         }),
-        DocAuth({ google: true }),
+        DocAuth({ google: true, apiKey: true }),
         DocResponse('user.loginGoogle')
     );
 }
@@ -47,9 +48,7 @@ export function UserAuthRefreshDoc(): MethodDecorator {
         Doc({
             summary: 'refresh a token',
         }),
-        DocAuth({
-            jwtRefreshToken: true,
-        }),
+        DocAuth({ apiKey: true, jwtRefreshToken: true }),
         DocResponse<UserRefreshSerialization>('user.refresh', {
             serialization: UserRefreshSerialization,
         })
@@ -107,7 +106,7 @@ export function UserAuthUpdateProfileDoc(): MethodDecorator {
 export function UserAuthInfoDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'get info of access token',
+            summary: 'get info of access token',
         }),
         DocAuth({
             apiKey: true,
@@ -139,7 +138,7 @@ export function UserAuthChangePasswordDoc(): MethodDecorator {
 export function UserAuthClaimUsernameDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'claim username',
+            summary: 'claim username',
         }),
         DocAuth({
             apiKey: true,
