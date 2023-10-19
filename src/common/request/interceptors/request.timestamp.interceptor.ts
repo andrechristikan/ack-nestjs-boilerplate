@@ -31,7 +31,9 @@ export class RequestTimestampInterceptor
         next: CallHandler
     ): Promise<Observable<Promise<any> | string>> {
         if (context.getType() === 'http') {
-            const request: IRequestApp = context.switchToHttp().getRequest();
+            const request: IRequestApp = context
+                .switchToHttp()
+                .getRequest<IRequestApp>();
             const timestamp: number = request.__timestamp;
 
             const checkTimestamp =
