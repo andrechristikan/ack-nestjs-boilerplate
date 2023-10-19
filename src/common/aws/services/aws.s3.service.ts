@@ -51,6 +51,7 @@ import {
     AbortMultipartUploadCommandOutput,
     Bucket,
     _Object,
+    ObjectCannedACL,
 } from '@aws-sdk/client-s3';
 
 @Injectable()
@@ -183,7 +184,9 @@ export class AwsS3Service implements IAwsS3Service {
         options?: IAwsS3PutItemOptions
     ): Promise<AwsS3Serialization> {
         let path: string = options?.path;
-        const acl: string = options?.acl ? options.acl : 'public-read';
+        const acl: ObjectCannedACL = options?.acl
+            ? (options.acl as ObjectCannedACL)
+            : ObjectCannedACL.public_read;
 
         if (path)
             path = path.startsWith('/') ? path.replace('/', '') : `${path}`;
@@ -304,7 +307,9 @@ export class AwsS3Service implements IAwsS3Service {
         options?: IAwsS3PutItemOptions
     ): Promise<AwsS3MultipartSerialization> {
         let path: string = options?.path;
-        const acl: string = options?.acl ? options.acl : 'public-read';
+        const acl: ObjectCannedACL = options?.acl
+            ? (options.acl as ObjectCannedACL)
+            : ObjectCannedACL.public_read;
 
         if (path)
             path = path.startsWith('/') ? path.replace('/', '') : `${path}`;
