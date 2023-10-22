@@ -10,10 +10,7 @@ import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.con
 import { ApiKeyPayloadTypeGuard } from 'src/common/api-key/guards/payload/api-key.payload.type.guard';
 import { ApiKeyXApiKeyGuard } from 'src/common/api-key/guards/x-api-key/api-key.x-api-key.guard';
 import { IApiKeyPayload } from 'src/common/api-key/interfaces/api-key.interface';
-import {
-    ApiKeyDoc,
-    ApiKeyEntity,
-} from 'src/common/api-key/repository/entities/api-key.entity';
+import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export const ApiKeyPayload: () => ParameterDecorator = createParamDecorator(
@@ -40,10 +37,10 @@ export function ApiKeyPublicProtected(): MethodDecorator {
 }
 
 export const GetApiKey = createParamDecorator(
-    (returnPlain: boolean, ctx: ExecutionContext): ApiKeyDoc | ApiKeyEntity => {
+    <T>(returnPlain: boolean, ctx: ExecutionContext): T => {
         const { __apiKey } = ctx
             .switchToHttp()
             .getRequest<IRequestApp & { __apiKey: ApiKeyDoc }>();
-        return returnPlain ? __apiKey.toObject() : __apiKey;
+        return (returnPlain ? __apiKey.toObject() : __apiKey) as T;
     }
 );

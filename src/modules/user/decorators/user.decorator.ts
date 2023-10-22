@@ -16,17 +16,14 @@ import { UserActiveGuard } from 'src/modules/user/guards/user.active.guard';
 import { UserBlockedGuard } from 'src/modules/user/guards/user.blocked.guard';
 import { UserInactivePermanentGuard } from 'src/modules/user/guards/user.inactive-permanent.guard';
 import { UserNotFoundGuard } from 'src/modules/user/guards/user.not-found.guard';
-import {
-    UserDoc,
-    UserEntity,
-} from 'src/modules/user/repository/entities/user.entity';
+import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 
 export const GetUser = createParamDecorator(
-    (returnPlain: boolean, ctx: ExecutionContext): UserDoc | UserEntity => {
+    <T>(returnPlain: boolean, ctx: ExecutionContext): T => {
         const { __user } = ctx
             .switchToHttp()
             .getRequest<IRequestApp & { __user: UserDoc }>();
-        return returnPlain ? __user.toObject() : __user;
+        return (returnPlain ? __user.toObject() : __user) as T;
     }
 );
 

@@ -1,4 +1,5 @@
 import { HttpStatus, applyDecorators } from '@nestjs/common';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
     Doc,
     DocAuth,
@@ -11,12 +12,15 @@ import {
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import { SettingDocParamsId } from 'src/common/setting/constants/setting.doc.constant';
 import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/common/setting/constants/setting.status-code.constant';
+import { SettingUpdateValueDto } from 'src/common/setting/dtos/setting.update-value.dto';
 
 export function SettingAdminUpdateDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'update a setting' }),
         DocRequest({
             params: SettingDocParamsId,
+            body: SettingUpdateValueDto,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
         }),
         DocAuth({
             jwtAccessToken: true,

@@ -11,7 +11,7 @@ import { UserSignUpDto } from 'src/modules/user/dtos/user.sign-up.dto';
 export function UserPublicSignUpDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'sign up a user',
+            summary: 'sign up a user',
         }),
         DocRequest({
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,

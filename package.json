@@ -1,6 +1,6 @@
 {
   "name": "ack-nestjs-boilerplate",
-  "version": "5.6.0",
+  "version": "5.6.1",
   "description": "Ack NestJs Boilerplate",
   "repository": {
     "type": "git",
@@ -47,7 +47,7 @@
     "rollback": "yarn rollback:setting && yarn rollback:apikey && yarn rollback:user && yarn rollback:role"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.431.0",
+    "@aws-sdk/client-s3": "^3.433.0",
     "@casl/ability": "^6.5.0",
     "@faker-js/faker": "^8.2.0",
     "@joi/date": "^2.1.0",
@@ -116,7 +116,7 @@
     "@typescript-eslint/eslint-plugin": "^6.8.0",
     "@typescript-eslint/parser": "^6.8.0",
     "cspell": "^7.3.8",
-    "eslint": "^8.51.0",
+    "eslint": "^8.52.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-import": "^2.28.1",
     "husky": "^8.0.3",
