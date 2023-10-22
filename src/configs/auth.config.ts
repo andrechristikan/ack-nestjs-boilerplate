@@ -19,11 +19,11 @@ export default registerAs(
             secretKey:
                 process.env.AUTH_JWT_REFRESH_TOKEN_SECRET_KEY ?? '123456000',
             expirationTime: seconds(
-                process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED ?? '14d'
-            ), // 14 days
+                process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED ?? '182d'
+            ), // 182 days
             notBeforeExpirationTime: seconds(
-                process.env.AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION ?? '1h'
-            ), // 1 hours
+                process.env.AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION ?? '0'
+            ),
 
             encryptKey: process.env.AUTH_JWT_PAYLOAD_REFRESH_TOKEN_ENCRYPT_KEY,
             encryptIv: process.env.AUTH_JWT_PAYLOAD_REFRESH_TOKEN_ENCRYPT_IV,
@@ -37,17 +37,10 @@ export default registerAs(
             process.env.AUTH_JWT_PAYLOAD_ENCRYPT === 'true' ? true : false,
 
         password: {
-            attempt: true,
+            attempt: false,
             maxAttempt: 5,
             saltLength: 8,
             expiredIn: seconds('182d'), // 182 days
-        },
-
-        googleOAuth2: {
-            clientId: process.env.SSO_GOOGLE_CLIENT_ID,
-            clientSecret: process.env.SSO_GOOGLE_CLIENT_SECRET,
-            callbackUrlLogin: process.env.SSO_GOOGLE_CALLBACK_URL_LOGIN,
-            callbackUrlSignUp: process.env.SSO_GOOGLE_CALLBACK_URL_SIGN_UP,
         },
     })
 );
