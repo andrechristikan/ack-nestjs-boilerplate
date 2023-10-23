@@ -24,16 +24,17 @@
 ## Table of contents
 
 - [ACK NestJs Boilerplate  🔥 🚀](#ack-nestjs-boilerplate---)
+  - [Table of contents](#table-of-contents)
   - [Important](#important)
   - [Todo](#todo)
-- [Documentation](#documentation)
+  - [Documentation](#documentation)
   - [License](#license)
   - [Contribute](#contribute)
   - [Contact](#contact)
 
 ## Important
 
-> Very limited documentation
+> Very limited documentation, and will move to stateful authorization
 
 * The features will be relate with AWS
 * Stateless Authorization
@@ -48,10 +49,10 @@
 
 * [ ] Update Documentation, add behaviors
 * [ ] Update Documentation, and include an diagram for easier comprehension
-* [ ] Add Redis / Move to stateful for manage a token (security and ux reason)
+* [ ] Add Redis / Move to stateful Authorization Token (security and ux reason)
 * [ ] Implement GraphQL
 
-# Documentation
+## Documentation
 
 Documentation of ack-nestjs-boilerplate in [/docs][documentation]
 
