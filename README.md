@@ -24,7 +24,6 @@
 ## Table of contents
 
 - [ACK NestJs Boilerplate  🔥 🚀](#ack-nestjs-boilerplate---)
-  - [Table of contents](#table-of-contents)
   - [Important](#important)
   - [Todo](#todo)
 - [Documentation](#documentation)
@@ -49,7 +48,7 @@
 
 * [ ] Update Documentation, add behaviors
 * [ ] Update Documentation, and include an diagram for easier comprehension
-* [ ] Add Redis
+* [ ] Add Redis / Move to stateful for manage a token (security and ux reason)
 * [ ] Implement GraphQL
 
 # Documentation
