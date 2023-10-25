@@ -14,18 +14,21 @@ import {
     RoleDocQueryIsActive,
     RoleDocQueryType,
 } from 'src/modules/role/constants/role.doc.constant';
+import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
+import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
 import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
 import { RoleListSerialization } from 'src/modules/role/serializations/role.list.serialization';
 
 export function RoleAdminListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.admin.role',
+            summary: 'get all of roles',
         }),
         DocRequest({
             queries: [...RoleDocQueryIsActive, ...RoleDocQueryType],
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
@@ -38,12 +41,13 @@ export function RoleAdminListDoc(): MethodDecorator {
 export function RoleAdminGetDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.admin.role',
+            summary: 'get detail a role',
         }),
         DocRequest({
             params: RoleDocParamsId,
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
@@ -56,12 +60,16 @@ export function RoleAdminGetDoc(): MethodDecorator {
 export function RoleAdminCreateDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.admin.role',
+            summary: 'create a role',
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
-        DocRequest({ bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON }),
+        DocRequest({
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            body: RoleCreateDto,
+        }),
         DocGuard({ role: true, policy: true }),
         DocResponse<ResponseIdSerialization>('role.create', {
             httpStatus: HttpStatus.CREATED,
@@ -73,12 +81,13 @@ export function RoleAdminCreateDoc(): MethodDecorator {
 export function RoleAdminActiveDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.admin.role',
+            summary: 'make role be active',
         }),
         DocRequest({
             params: RoleDocParamsId,
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
@@ -89,12 +98,13 @@ export function RoleAdminActiveDoc(): MethodDecorator {
 export function RoleAdminInactiveDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.admin.role',
+            summary: 'make role be inactive',
         }),
         DocRequest({
             params: RoleDocParamsId,
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
@@ -105,13 +115,15 @@ export function RoleAdminInactiveDoc(): MethodDecorator {
 export function RoleAdminUpdateDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.admin.role',
+            summary: 'update data a role',
         }),
         DocRequest({
             params: RoleDocParamsId,
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            body: RoleUpdateDto,
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
@@ -124,12 +136,13 @@ export function RoleAdminUpdateDoc(): MethodDecorator {
 export function RoleAdminDeleteDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'modules.admin.role',
+            summary: 'delete a role',
         }),
         DocRequest({
             params: RoleDocParamsId,
         }),
         DocAuth({
+            apiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),

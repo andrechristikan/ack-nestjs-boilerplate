@@ -30,7 +30,7 @@ export class PolicyGuard implements CanActivate {
             ) || [];
 
         const { user } = context.switchToHttp().getRequest<IRequestApp>();
-        const { type, permissions } = user;
+        const { type, permissions } = user.user;
 
         const ability = this.policyAbilityFactory.defineAbilityFromRole({
             type,

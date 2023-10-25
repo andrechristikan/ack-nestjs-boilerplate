@@ -1,18 +1,6 @@
 
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "monthly"
-      day: tuesday
-      time: "01:00"
-    open-pull-requests-limit: 3
-    target-branch: "development"
-    commit-message:
-      prefix: "npm"
-    labels:
-      - dependabot
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

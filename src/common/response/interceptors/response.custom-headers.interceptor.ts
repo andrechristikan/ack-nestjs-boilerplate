@@ -21,7 +21,7 @@ export class ResponseCustomHeadersInterceptor
         if (context.getType() === 'http') {
             const ctx: HttpArgumentsHost = context.switchToHttp();
             const responseExpress: Response = ctx.getResponse();
-            const request: IRequestApp = ctx.getRequest();
+            const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
             responseExpress.setHeader('x-custom-lang', request.__xCustomLang);
             responseExpress.setHeader(

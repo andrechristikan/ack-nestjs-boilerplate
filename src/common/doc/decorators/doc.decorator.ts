@@ -34,8 +34,6 @@ import {
 } from 'src/common/doc/interfaces/doc.interface';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { ENUM_FILE_EXCEL_MIME } from 'src/common/file/constants/file.enum.constant';
-import { FileMultipleDto } from 'src/common/file/dtos/file.multiple.dto';
-import { FileSingleDto } from 'src/common/file/dtos/file.single.dto';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/common/policy/constants/policy.status-code.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
@@ -222,9 +220,10 @@ export function Doc(options?: IDocOptions): MethodDecorator {
 
     return applyDecorators(
         ApiOperation({
-            summary: options?.operation,
+            summary: options?.summary,
             deprecated: options?.deprecated,
             description: options?.description,
+            operationId: options?.operation,
         }),
         ApiHeaders([
             {
@@ -312,27 +311,15 @@ export function DocRequest(options?: IDocRequestOptions) {
         docs.push(...queries);
     }
 
+    if (options?.body) {
+        docs.push(ApiBody({ type: options?.body }));
+    }
+
     return applyDecorators(...docs);
 }
 
 export function DocRequestFile(options?: IDocRequestFileOptions) {
     const docs: Array<ClassDecorator | MethodDecorator> = [];
-
-    if (options?.file.multiple) {
-        docs.push(
-            ApiBody({
-                description: 'Multiple file',
-                type: FileMultipleDto,
-            })
-        );
-    } else {
-        docs.push(
-            ApiBody({
-                description: 'Single file',
-                type: FileSingleDto,
-            })
-        );
-    }
 
     if (options?.params) {
         const params: MethodDecorator[] = options?.params.map((param) =>
@@ -346,6 +333,10 @@ export function DocRequestFile(options?: IDocRequestFileOptions) {
             ApiQuery(query)
         );
         docs.push(...queries);
+    }
+
+    if (options?.body) {
+        docs.push(ApiBody({ type: options?.body }));
     }
 
     return applyDecorators(ApiConsumes('multipart/form-data'), ...docs);
@@ -418,6 +409,14 @@ export function DocAuth(options?: IDocAuthOptions) {
         oneOfUnauthorized.push({
             messagePath: 'auth.error.accessTokenUnauthorized',
             statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_JWT_ACCESS_TOKEN_ERROR,
+        });
+    }
+
+    if (options?.google) {
+        docs.push(ApiBearerAuth('google'));
+        oneOfUnauthorized.push({
+            messagePath: 'auth.error.googleSSO',
+            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GOOGLE_SSO_ERROR,
         });
     }
 

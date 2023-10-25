@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { PaginationQuery } from 'src/common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
@@ -46,6 +47,7 @@ export class SettingPublicController {
     @ResponsePaging('setting.list', {
         serialization: SettingListSerialization,
     })
+    @ApiKeyPublicProtected()
     @Get('/list')
     async list(
         @PaginationQuery(
@@ -88,6 +90,7 @@ export class SettingPublicController {
         serialization: SettingGetSerialization,
     })
     @SettingPublicGetGuard()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(SettingRequestDto)
     @Get('get/:setting')
     async get(@GetSetting(true) setting: SettingEntity): Promise<IResponse> {

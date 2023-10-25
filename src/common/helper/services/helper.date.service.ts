@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import moment from 'moment';
+import moment, { ISO_8601 } from 'moment';
 import {
     ENUM_HELPER_DATE_DIFF,
     ENUM_HELPER_DATE_FORMAT,
@@ -52,7 +52,11 @@ export class HelperDateService implements IHelperDateService {
     }
 
     check(date: string | Date | number): boolean {
-        return moment(date, true).isValid();
+        return moment(date, 'YYYY-MM-DD', true).isValid();
+    }
+
+    checkDateTime(date: string | Date | number): boolean {
+        return moment(date, ISO_8601, true).isValid();
     }
 
     checkTimestamp(timestamp: number): boolean {

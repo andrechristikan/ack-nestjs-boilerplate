@@ -1,3 +1,4 @@
+import { UpdateQuery, UpdateWithAggregationPipeline } from 'mongoose';
 import {
     IDatabaseCreateOptions,
     IDatabaseExistOptions,
@@ -117,6 +118,12 @@ export abstract class DatabaseBaseRepositoryAbstract<Entity> {
     abstract updateMany<Dto>(
         find: Record<string, any>,
         data: Dto,
+        options?: IDatabaseManyOptions<any>
+    ): Promise<boolean>;
+
+    abstract updateManyRaw(
+        find: Record<string, any>,
+        data: UpdateWithAggregationPipeline | UpdateQuery<any>,
         options?: IDatabaseManyOptions<any>
     ): Promise<boolean>;
 

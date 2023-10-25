@@ -9,13 +9,14 @@ import { ClassConstructor, plainToInstance } from 'class-transformer';
 import { validate, ValidationError } from 'class-validator';
 import { REQUEST_PARAM_CLASS_DTOS_META_KEY } from 'src/common/request/constants/request.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
 export class RequestParamRawGuard implements CanActivate {
     constructor(private readonly reflector: Reflector) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const { params } = context.switchToHttp().getRequest();
+        const { params } = context.switchToHttp().getRequest<IRequestApp>();
         const classDtos: ClassConstructor<any>[] = this.reflector.get<
             ClassConstructor<any>[]
         >(REQUEST_PARAM_CLASS_DTOS_META_KEY, context.getHandler());

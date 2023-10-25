@@ -38,6 +38,7 @@ import {
     ApiKeyAdminInactiveDoc,
     ApiKeyAdminListDoc,
     ApiKeyAdminResetDoc,
+    ApiKeyAdminUpdateDateDoc,
     ApiKeyAdminUpdateDoc,
 } from 'src/common/api-key/docs/api-key.admin.doc';
 import { ApiKeyCreateDto } from 'src/common/api-key/dtos/api-key.create.dto';
@@ -260,7 +261,7 @@ export class ApiKeyAdminController {
         return;
     }
 
-    @ApiKeyAdminUpdateDoc()
+    @ApiKeyAdminUpdateDateDoc()
     @Response('apiKey.updateDate', { serialization: ResponseIdSerialization })
     @ApiKeyAdminUpdateGuard()
     @PolicyAbilityProtected({

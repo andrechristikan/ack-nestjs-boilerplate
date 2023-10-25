@@ -5,11 +5,15 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
+import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
 export class ApiKeyNotFoundGuard implements CanActivate {
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const { __apiKey } = context.switchToHttp().getRequest();
+        const { __apiKey } = context
+            .switchToHttp()
+            .getRequest<IRequestApp & { __apiKey: ApiKeyDoc }>();
 
         if (!__apiKey) {
             throw new NotFoundException({

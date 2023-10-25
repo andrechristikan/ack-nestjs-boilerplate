@@ -1,5 +1,7 @@
 name: Test
 on:
+
+  workflow_dispatch:
   pull_request:
     branches: 
     - main
@@ -73,11 +75,18 @@ jobs:
           echo AWS_CREDENTIAL_SECRET="$AWS_CREDENTIAL_SECRET" >> .env
           echo AWS_S3_BUCKET="$AWS_S3_BUCKET" >> .env
           echo AWS_S3_REGION="$AWS_S3_REGION" >> .env
+
+          echo SSO_GOOGLE_CLIENT_ID="$SSO_GOOGLE_CLIENT_ID" >> .env
+          echo SSO_GOOGLE_CLIENT_SECRET="$SSO_GOOGLE_CLIENT_SECRET" >> .env
+          echo SSO_GOOGLE_CALLBACK_URL_LOGIN="localhost:3000/api/callback" >> .env
+          echo SSO_GOOGLE_CALLBACK_URL_SIGN_UP="localhost:3000/api/callback" >> .env
         env:
           AWS_CREDENTIAL_KEY: ${{ secrets.AWS_CREDENTIAL_KEY }}
           AWS_CREDENTIAL_SECRET: ${{ secrets.AWS_CREDENTIAL_SECRET }}
           AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
           AWS_S3_REGION: ${{ secrets.AWS_S3_REGION }}
+          SSO_GOOGLE_CLIENT_ID: ${{ secrets.SSO_GOOGLE_CLIENT_ID }}
+          SSO_GOOGLE_CLIENT_SECRET: ${{ secrets.SSO_GOOGLE_CLIENT_SECRET }}
 
       - name: Unit Test
         run: yarn test

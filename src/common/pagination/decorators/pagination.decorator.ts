@@ -7,6 +7,7 @@ import {
 } from 'src/common/pagination/interfaces/pagination.interface';
 import { PaginationFilterContainPipe } from 'src/common/pagination/pipes/pagination.filter-contain.pipe';
 import { PaginationFilterDatePipe } from 'src/common/pagination/pipes/pagination.filter-date.pipe';
+import { PaginationFilterEqualEnumPipe } from 'src/common/pagination/pipes/pagination.filter-equal-enum.pipe';
 import { PaginationFilterEqualObjectIdPipe } from 'src/common/pagination/pipes/pagination.filter-equal-object-id.pipe';
 import { PaginationFilterEqualPipe } from 'src/common/pagination/pipes/pagination.filter-equal.pipe';
 import { PaginationFilterInBooleanPipe } from 'src/common/pagination/pipes/pagination.filter-in-boolean.pipe';
@@ -33,12 +34,6 @@ export function PaginationQuery(
     );
 }
 
-export function PaginationQuerySearch(
-    availableSearch: string[]
-): ParameterDecorator {
-    return Query(PaginationSearchPipe(availableSearch));
-}
-
 export function PaginationQueryFilterInBoolean(
     field: string,
     defaultValue: boolean[],
@@ -61,6 +56,19 @@ export function PaginationQueryFilterInEnum<T>(
     return Query(
         queryField ?? field,
         PaginationFilterInEnumPipe<T>(field, defaultValue, defaultEnum, raw)
+    );
+}
+
+export function PaginationQueryFilterEqualEnum<T>(
+    field: string,
+    defaultValue: T,
+    defaultEnum: Record<string, any>,
+    queryField?: string,
+    raw = false
+): ParameterDecorator {
+    return Query(
+        queryField ?? field,
+        PaginationFilterEqualEnumPipe<T>(field, defaultValue, defaultEnum, raw)
     );
 }
 

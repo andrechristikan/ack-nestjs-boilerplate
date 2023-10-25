@@ -69,28 +69,22 @@ describe('HelperStringService', () => {
     });
 
     describe('censor', () => {
-        it('should not censor strings less than 4 characters in length', () => {
+        it('should not censor strings less than equals 5 characters in length', () => {
             const value = 'her';
             const censoredValue = service.censor(value);
             expect(censoredValue).toBe('her');
         });
 
-        it('should censor 0.7 string length from start ', () => {
+        it('should censor string from start, because string length is less than equals 10', () => {
             const value = 'censor me';
             const censoredValue = service.censor(value);
-            expect(censoredValue).toBe('******me');
+            expect(censoredValue).toBe('********or me');
         });
 
-        it('should censor only 7 characters from 10 length strings', () => {
-            const value = 'censor me gogo';
+        it('should censor in the middle of string, because string length more than 10', () => {
+            const value = 'censor me gogoo';
             const censoredValue = service.censor(value);
-            expect(censoredValue).toBe('*********ogo');
-        });
-
-        it('should censor only the last 10 characters for long strings', () => {
-            const value = 'censor me long length';
-            const censoredValue = service.censor(value);
-            expect(censoredValue).toBe('**********ength');
+            expect(censoredValue).toBe('cen********gogoo');
         });
     });
 
@@ -139,6 +133,21 @@ describe('HelperStringService', () => {
         it('should return false if the string is not safe', () => {
             const text = 'Unsafe!@#';
             expect(service.checkSafeString(text)).toBe(false);
+        });
+    });
+
+    describe('formatCurrency', () => {
+        it('should return string that formatted as currency', () => {
+            const num = 1000;
+            const intl = new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+            });
+            const curr = intl.format(num);
+
+            expect(service.formatCurrency(num)).toBe(curr);
         });
     });
 });

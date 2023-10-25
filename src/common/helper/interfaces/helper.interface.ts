@@ -4,12 +4,6 @@ import {
     ENUM_HELPER_FILE_TYPE,
 } from 'src/common/helper/constants/helper.enum.constant';
 
-// Helper Array
-export interface IHelperArrayRemove<T> {
-    removed: T[];
-    arrays: T[];
-}
-
 // Helper Encryption
 export interface IHelperJwtVerifyOptions {
     audience: string;
@@ -88,4 +82,14 @@ export interface IHelperFileCreateExcelWorkbookOptions {
 export interface IHelperFileReadExcelOptions {
     sheet?: string | number;
     password?: string;
+}
+
+// helper google
+
+export interface IHelperGooglePayload {
+    email: string;
+}
+
+export interface IHelperGoogleRefresh {
+    accessToken: string;
 }

@@ -27,7 +27,7 @@ export interface ResponsePagingMetadataSerialization
 }
 
 export class ResponsePagingSerialization<
-    T = Record<string, any>
+    T = Record<string, any>,
 > extends PickType(ResponseDefaultSerialization, [
     'statusCode',
     'message',
@@ -47,7 +47,7 @@ export class ResponsePagingSerialization<
             version: '1',
             repoVersion: '1.0.0',
             pagination: {
-                search: faker.person.firstName(),
+                search: faker.person.fullName(),
                 page: 1,
                 perPage: 20,
                 orderBy: 'createdAt',

@@ -17,6 +17,7 @@ export interface IHelperDateService {
         options?: IHelperDateOptionsDiff
     ): number;
     check(date: string | Date | number): boolean;
+    checkDateTime(date: string | Date | number): boolean;
     checkTimestamp(timestamp: number): boolean;
     create(
         date?: string | number | Date,

@@ -25,27 +25,40 @@ export function PaginationFilterDatePipe(
                 return undefined;
             }
 
-            let date: Date = this.helperDateService.create(value);
+            let finalValue: Date = this.helperDateService.create(value);
 
             if (
                 options?.time ===
                 ENUM_PAGINATION_FILTER_DATE_TIME_OPTIONS.END_OF_DAY
             ) {
-                date = this.helperDateService.endOfDay(date);
+                finalValue = this.helperDateService.endOfDay(finalValue);
             } else if (
                 options?.time ===
                 ENUM_PAGINATION_FILTER_DATE_TIME_OPTIONS.START_OF_DAY
             ) {
-                date = this.helperDateService.startOfDay(date);
+                finalValue = this.helperDateService.startOfDay(finalValue);
             }
 
+            let res: Record<string, any>;
             if (raw) {
-                return {
+                res = {
                     [field]: value,
                 };
+            } else {
+                res = this.paginationService.filterDate(field, finalValue);
             }
 
-            return this.paginationService.filterDate(field, date);
+            this.request.__pagination = {
+                ...this.request.__pagination,
+                filters: this.request.__pagination?.filters
+                    ? {
+                          ...this.request.__pagination?.filters,
+                          ...res,
+                      }
+                    : res,
+            };
+
+            return res;
         }
     }
 

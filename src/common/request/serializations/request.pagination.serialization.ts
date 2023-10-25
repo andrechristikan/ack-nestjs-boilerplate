@@ -6,7 +6,7 @@ export class RequestPaginationSerialization {
     @ApiProperty({
         required: true,
         nullable: false,
-        example: faker.person.firstName(),
+        example: faker.person.fullName(),
     })
     search: string;
 

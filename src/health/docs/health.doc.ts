@@ -9,7 +9,7 @@ import { HealthSerialization } from 'src/health/serializations/health.serializat
 export function HealthCheckDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            operation: 'health',
+            summary: 'health check api',
         }),
         DocAuth({
             jwtAccessToken: true,

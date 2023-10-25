@@ -8,6 +8,7 @@ import { HelperHashService } from './services/helper.hash.service';
 import { HelperNumberService } from './services/helper.number.service';
 import { HelperStringService } from './services/helper.string.service';
 import { HelperFileService } from './services/helper.file.service';
+import { HelperGoogleService } from 'src/common/helper/services/helper.google.service';
 
 @Global()
 @Module({
@@ -19,6 +20,7 @@ import { HelperFileService } from './services/helper.file.service';
         HelperNumberService,
         HelperStringService,
         HelperFileService,
+        HelperGoogleService,
     ],
     exports: [
         HelperArrayService,
@@ -28,6 +30,7 @@ import { HelperFileService } from './services/helper.file.service';
         HelperNumberService,
         HelperStringService,
         HelperFileService,
+        HelperGoogleService,
     ],
     controllers: [],
     imports: [

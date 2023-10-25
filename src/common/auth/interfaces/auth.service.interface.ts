@@ -3,6 +3,9 @@ import {
     IAuthPayloadOptions,
     IAuthRefreshTokenOptions,
 } from 'src/common/auth/interfaces/auth.interface';
+import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
+import { AuthRefreshPayloadSerialization } from 'src/common/auth/serializations/auth.refresh-payload.serialization';
+import { IHelperGooglePayload } from 'src/common/helper/interfaces/helper.interface';
 
 export interface IAuthService {
     encryptAccessToken(payload: Record<string, any>): Promise<string>;
@@ -29,16 +32,18 @@ export interface IAuthService {
         passwordHash: string
     ): Promise<boolean>;
     createPayloadAccessToken(
-        data: Record<string, any>
-    ): Promise<Record<string, any>>;
+        user: Record<string, any>,
+        { loginFrom, loginWith, loginDate }: IAuthPayloadOptions
+    ): Promise<AuthAccessPayloadSerialization>;
     createPayloadRefreshToken(
         _id: string,
-        options: IAuthPayloadOptions
-    ): Promise<Record<string, any>>;
+        { loginFrom, loginWith, loginDate }: AuthAccessPayloadSerialization
+    ): Promise<AuthRefreshPayloadSerialization>;
     createSalt(length: number): Promise<string>;
     createPassword(password: string): Promise<IAuthPassword>;
     createPasswordRandom(): Promise<string>;
     checkPasswordExpired(passwordExpired: Date): Promise<boolean>;
+    getLoginDate(): Promise<Date>;
     getTokenType(): Promise<string>;
     getAccessTokenExpirationTime(): Promise<number>;
     getRefreshTokenExpirationTime(): Promise<number>;
@@ -46,4 +51,5 @@ export interface IAuthService {
     getAudience(): Promise<string>;
     getSubject(): Promise<string>;
     getPayloadEncryption(): Promise<boolean>;
+    googleGetTokenInfo(accessToken: string): Promise<IHelperGooglePayload>;
 }

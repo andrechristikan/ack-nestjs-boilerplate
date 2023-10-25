@@ -14,7 +14,6 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { UploadFileSingle } from 'src/common/file/decorators/file.decorator';
 import { IFileExtract } from 'src/common/file/interfaces/file.interface';
 import { FileExtractPipe } from 'src/common/file/pipes/file.extract.pipe';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
@@ -95,6 +94,8 @@ import {
     UserAdminUpdateDoc,
 } from 'src/modules/user/docs/user.admin.doc';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
+import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
+import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -118,6 +119,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @Get('/list')
     async list(
         @PaginationQuery(
@@ -177,12 +179,12 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(UserRequestDto)
     @Get('/get/:user')
     async get(@GetUser() user: UserDoc): Promise<IResponse> {
-        const userWithRole: IUserDoc = await this.userService.joinWithRole(
-            user
-        );
+        const userWithRole: IUserDoc =
+            await this.userService.joinWithRole(user);
         return { data: userWithRole.toObject() };
     }
 
@@ -195,6 +197,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @Post('/create')
     async create(
         @Body()
@@ -209,9 +212,8 @@ export class UserAdminController {
             promises.push(this.userService.existByMobileNumber(mobileNumber));
         }
 
-        const [checkRole, emailExist, mobileNumberExist] = await Promise.all(
-            promises
-        );
+        const [checkRole, emailExist, mobileNumberExist] =
+            await Promise.all(promises);
 
         if (!checkRole) {
             throw new NotFoundException({
@@ -239,7 +241,7 @@ export class UserAdminController {
             {
                 email,
                 mobileNumber,
-                signUpFrom: ENUM_USER_SIGN_UP_FROM.LOCAL,
+                signUpFrom: ENUM_USER_SIGN_UP_FROM.ADMIN,
                 role,
                 ...body,
             },
@@ -261,6 +263,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(UserRequestDto)
     @Put('/update/:user')
     async update(
@@ -283,6 +286,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(UserRequestDto)
     @Patch('/update/:user/inactive')
     async inactive(@GetUser() user: UserDoc): Promise<void> {
@@ -299,6 +303,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(UserRequestDto)
     @Patch('/update/:user/active')
     async active(@GetUser() user: UserDoc): Promise<void> {
@@ -315,6 +320,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(UserRequestDto)
     @Patch('/update/:user/blocked')
     async blocked(@GetUser() user: UserDoc): Promise<void> {
@@ -331,6 +337,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @RequestParamGuard(UserRequestDto)
     @Delete('/delete/:user')
     async delete(@GetUser() user: UserDoc): Promise<void> {
@@ -341,7 +348,7 @@ export class UserAdminController {
 
     @UserAdminImportDoc()
     @Response('user.import')
-    @UploadFileSingle('file')
+    @FileUploadSingle()
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [
@@ -351,6 +358,7 @@ export class UserAdminController {
         ],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @Post('/import')
     async import(
         @UploadedFile(
@@ -366,9 +374,8 @@ export class UserAdminController {
 
         const passwordString: string =
             await this.authService.createPasswordRandom();
-        const password: IAuthPassword = await this.authService.createPassword(
-            passwordString
-        );
+        const password: IAuthPassword =
+            await this.authService.createPassword(passwordString);
 
         await this.userService.import(file.dto, role._id, password);
 
@@ -385,6 +392,7 @@ export class UserAdminController {
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.EXPORT],
     })
     @AuthJwtAdminAccessProtected()
+    @ApiKeyPublicProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/export')
     async export(): Promise<IResponse> {

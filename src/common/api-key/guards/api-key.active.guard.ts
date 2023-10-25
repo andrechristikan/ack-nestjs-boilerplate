@@ -7,6 +7,8 @@ import {
 import { Reflector } from '@nestjs/core';
 import { API_KEY_ACTIVE_META_KEY } from 'src/common/api-key/constants/api-key.constant';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
+import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
 export class ApiKeyActiveGuard implements CanActivate {
@@ -22,7 +24,9 @@ export class ApiKeyActiveGuard implements CanActivate {
             return true;
         }
 
-        const { __apiKey } = context.switchToHttp().getRequest();
+        const { __apiKey } = context
+            .switchToHttp()
+            .getRequest<IRequestApp & { __apiKey: ApiKeyDoc }>();
 
         if (!required.includes(__apiKey.isActive)) {
             throw new BadRequestException({

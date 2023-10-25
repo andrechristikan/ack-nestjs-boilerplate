@@ -5,6 +5,7 @@ import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.co
 import { ENUM_FILE_EXCEL_MIME } from 'src/common/file/constants/file.enum.constant';
 
 export interface IDocOptions {
+    summary?: string;
     operation?: string;
     deprecated?: boolean;
     description?: string;
@@ -24,20 +25,18 @@ export interface IDocAuthOptions {
     jwtAccessToken?: boolean;
     jwtRefreshToken?: boolean;
     apiKey?: boolean;
+    google?: boolean;
 }
 
 export interface IDocRequestOptions {
     params?: ApiParamOptions[];
     queries?: ApiQueryOptions[];
     bodyType?: ENUM_DOC_REQUEST_BODY_TYPE;
+    body?: ClassConstructor<any>;
 }
 
 export interface IDocRequestFileOptions
-    extends Omit<IDocRequestOptions, 'bodyType'> {
-    file: {
-        multiple: boolean;
-    };
-}
+    extends Omit<IDocRequestOptions, 'bodyType'> {}
 
 export interface IDocGuardOptions {
     userAgent?: boolean;

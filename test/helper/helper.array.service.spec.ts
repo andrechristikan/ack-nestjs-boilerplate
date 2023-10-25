@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { IHelperArrayRemove } from 'src/common/helper/interfaces/helper.interface';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
 import _ from 'lodash';
 
@@ -18,40 +17,26 @@ describe('HelperArrayService', () => {
         expect(service).toBeDefined();
     });
 
-    describe('getLeftByIndex', () => {
+    describe('getCombinations', () => {
         it('should return correct value', () => {
-            const testArray = ['a', 'b', 'c', 'd'];
-            const result = service.getLeftByIndex(testArray, 2);
-            expect(result).toEqual('c');
-        });
-    });
-
-    describe('getRightByIndex', () => {
-        it('should return correct value', () => {
-            const testArray = ['a', 'b', 'c', 'd'];
-            const result = service.getRightByIndex(testArray, 2);
-            expect(result).toEqual('c');
-        });
-    });
-
-    describe('getLeftByLength', () => {
-        it('should return correct value', () => {
-            const testArray = ['a', 'b', 'c', 'd'];
-            const result = service.getLeftByLength(testArray, 2);
-            expect(result).toEqual(['a', 'b']);
-        });
-    });
-
-    describe('getRightByLength', () => {
-        it('should return correct value', () => {
-            const testArray = ['a', 'b', 'c', 'd'];
-            const result = service.getRightByLength(testArray, 2);
-            expect(result).toEqual(['c', 'd']);
+            const testArray = [
+                ['a', 'b', 'c'],
+                [1, 2],
+            ];
+            const result = service.getCombinations<string | number>(testArray);
+            expect(result).toEqual([
+                ['a', 1],
+                ['a', 2],
+                ['b', 1],
+                ['b', 2],
+                ['c', 1],
+                ['c', 2],
+            ]);
         });
     });
 
     describe('getLast', () => {
-        it('should return correct value', () => {
+        it('should return value of last array', () => {
             const testArray = ['a', 'b', 'c', 'd'];
             const result = service.getLast(testArray);
             expect(result).toEqual('d');
@@ -59,63 +44,100 @@ describe('HelperArrayService', () => {
     });
 
     describe('getFirst', () => {
-        it('should return correct value', () => {
+        it('should return value of first array', () => {
             const testArray = ['a', 'b', 'c', 'd'];
             const result = service.getFirst(testArray);
             expect(result).toEqual('a');
         });
     });
 
-    describe('getFirstIndexByValue', () => {
-        it('should return correct value', () => {
-            const testArray = ['a', 'b', 'c', 'd', 'c'];
-            const result = service.getFirstIndexByValue(testArray, 'c');
-            expect(result).toEqual(2);
-        });
-    });
-
-    describe('getLastIndexByValue', () => {
-        it('should return correct value', () => {
-            const testArray = ['a', 'b', 'c', 'd', 'c'];
-            const result = service.getLastIndexByValue(testArray, 'c');
-            expect(result).toEqual(4);
-        });
-    });
-
-    describe('removeByValue', () => {
-        it('should return removed and modified array', () => {
+    describe('getFirstByIndex', () => {
+        it('should return value of array by index, from first', () => {
             const testArray = ['a', 'b', 'c', 'd'];
-            const result: IHelperArrayRemove<string> = service.removeByValue(
-                testArray,
-                'c'
-            );
-            expect(result.removed).toEqual(['c']);
-            expect(result.arrays).toEqual(['a', 'b', 'd']);
+            const result = service.getFirstByIndex(testArray, 2);
+            expect(result).toEqual('c');
         });
     });
 
-    describe('removeLeftByLength', () => {
-        it('should return correct value', () => {
+    describe('getLastByIndex', () => {
+        it('should return value of array by index, from last', () => {
             const testArray = ['a', 'b', 'c', 'd'];
-            const result = service.removeLeftByLength(testArray, 2);
-            expect(result).toEqual(['c', 'd']);
+            const result = service.getLastByIndex(testArray, 2);
+            expect(result).toEqual('c');
         });
     });
 
-    describe('removeRightByLength', () => {
-        it('should return correct value', () => {
+    describe('takeFirst', () => {
+        it('should return array, get from first', () => {
             const testArray = ['a', 'b', 'c', 'd'];
-            const result = service.removeRightByLength(testArray, 2);
+            const result = service.takeFirst(testArray, 2);
             expect(result).toEqual(['a', 'b']);
         });
     });
 
-    describe('joinToString', () => {
-        it('should return correct value', () => {
+    describe('takeLast', () => {
+        it('should return array, get from last', () => {
+            const testArray = ['a', 'b', 'c', 'd'];
+            const result = service.takeLast(testArray, 2);
+            expect(result).toEqual(['c', 'd']);
+        });
+    });
+
+    describe('indexOf', () => {
+        it('should return index of variable', () => {
+            const testArray = ['a', 'b', 'c', 'd', 'c'];
+            const result = service.indexOf(testArray, 'c');
+            expect(result).toEqual(2);
+        });
+    });
+
+    describe('lastIndexOf', () => {
+        it('should return last index of variable', () => {
+            const testArray = ['a', 'b', 'c', 'd', 'c'];
+            const result = service.lastIndexOf(testArray, 'c');
+            expect(result).toEqual(4);
+        });
+    });
+
+    describe('remove', () => {
+        it('should return removed array', () => {
+            const testArray = ['a', 'b', 'c', 'd'];
+            const result: string[] = service.remove(testArray, 'c');
+            expect(result).toEqual(['c']);
+        });
+    });
+
+    describe('removeFromLeft', () => {
+        it('should remove array element from left', () => {
+            const testArray = ['a', 'b', 'c', 'd'];
+            const result = service.removeFromLeft(testArray, 2);
+            expect(result).toEqual(['c', 'd']);
+        });
+    });
+
+    describe('removeFromRight', () => {
+        it('should remove array element from right', () => {
+            const testArray = ['a', 'b', 'c', 'd'];
+            const result = service.removeFromRight(testArray, 2);
+            expect(result).toEqual(['a', 'b']);
+        });
+    });
+
+    describe('join', () => {
+        it('should return string value of array', () => {
             const testArray = ['a', 'b', 'c', 'd'];
             const delimiter = ',';
-            const result = service.joinToString(testArray, delimiter);
+            const result = service.join(testArray, delimiter);
             expect(result).toEqual('a,b,c,d');
+        });
+    });
+
+    describe('split', () => {
+        it('should return array value from string', () => {
+            const testArray = 'a,b,c,d';
+            const delimiter = ',';
+            const result = service.split(testArray, delimiter);
+            expect(result).toEqual(['a', 'b', 'c', 'd']);
         });
     });
 
@@ -159,42 +181,6 @@ describe('HelperArrayService', () => {
             const b = [3, 4, 5];
             const result = service.mergeUnique(a, b);
             expect(result).toEqual([1, 2, 3, 4, 5]);
-        });
-    });
-
-    describe('filterIncludeByValue', () => {
-        it('should only include values equal to given value in array', () => {
-            const a = [1, 2, 3];
-            const value = 3;
-            const result = service.filterIncludeByValue(a, value);
-            expect(result).toEqual([3]);
-        });
-    });
-
-    describe('filterNotIncludeByValue', () => {
-        it('should remove values equal to given value from array', () => {
-            const a = [1, 2, 3, 3];
-            const value = 3;
-            const result = service.filterNotIncludeByValue(a, value);
-            expect(result).toEqual([1, 2]);
-        });
-    });
-
-    describe('filterNotIncludeUniqueByArray', () => {
-        it('should filter out common values from two arrays', () => {
-            const a = [1, 2, 3, 3];
-            const b = [3, 4, 5];
-            const result = service.filterNotIncludeUniqueByArray(a, b);
-            expect(result).toEqual([1, 2, 4, 5]);
-        });
-    });
-
-    describe('filterIncludeUniqueByArray', () => {
-        it('should filter unique common values from two arrays', () => {
-            const a = [1, 2, 3, 3];
-            const b = [3, 4, 5];
-            const result = service.filterIncludeUniqueByArray(a, b);
-            expect(result).toEqual([3]);
         });
     });
 
@@ -259,6 +245,23 @@ describe('HelperArrayService', () => {
             const b = [3, 4, 5];
             const result = service.notIn(a, b);
             expect(result).toEqual(false);
+        });
+    });
+    describe('intersection', () => {
+        it('should return intersection between array', () => {
+            const a = [1, 2, 3];
+            const b = [4, 3, 6];
+            const result = service.intersection(a, b);
+            expect(result).toEqual([3]);
+        });
+    });
+
+    describe('difference', () => {
+        it('should return difference between array', () => {
+            const a = [1, 2, 3];
+            const b = [4, 5, 6];
+            const result = service.difference(a, b);
+            expect(result).toEqual([1, 2, 3]);
         });
     });
 

@@ -6,8 +6,12 @@ import {
     IAuthRefreshTokenOptions,
 } from 'src/common/auth/interfaces/auth.interface';
 import { IAuthService } from 'src/common/auth/interfaces/auth.service.interface';
+import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
+import { AuthRefreshPayloadSerialization } from 'src/common/auth/serializations/auth.refresh-payload.serialization';
+import { IHelperGooglePayload } from 'src/common/helper/interfaces/helper.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
+import { HelperGoogleService } from 'src/common/helper/services/helper.google.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 
@@ -39,6 +43,7 @@ export class AuthService implements IAuthService {
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
         private readonly helperEncryptionService: HelperEncryptionService,
+        private readonly helperGoogleService: HelperGoogleService,
         private readonly configService: ConfigService
     ) {
         this.accessTokenSecretKey = this.configService.get<string>(
@@ -93,7 +98,9 @@ export class AuthService implements IAuthService {
         );
     }
 
-    async encryptAccessToken(payload: Record<string, any>): Promise<string> {
+    async encryptAccessToken(
+        payload: AuthAccessPayloadSerialization
+    ): Promise<string> {
         return this.helperEncryptionService.aes256Encrypt(
             payload,
             this.accessTokenEncryptKey,
@@ -103,16 +110,16 @@ export class AuthService implements IAuthService {
 
     async decryptAccessToken({
         data,
-    }: Record<string, any>): Promise<Record<string, any>> {
+    }: Record<string, any>): Promise<AuthAccessPayloadSerialization> {
         return this.helperEncryptionService.aes256Decrypt(
             data,
             this.accessTokenEncryptKey,
             this.accessTokenEncryptIv
-        ) as Record<string, any>;
+        ) as AuthAccessPayloadSerialization;
     }
 
     async createAccessToken(
-        payloadHashed: string | Record<string, any>
+        payloadHashed: string | AuthAccessPayloadSerialization
     ): Promise<string> {
         return this.helperEncryptionService.jwtEncrypt(
             { data: payloadHashed },
@@ -136,11 +143,17 @@ export class AuthService implements IAuthService {
         });
     }
 
-    async payloadAccessToken(token: string): Promise<Record<string, any>> {
-        return this.helperEncryptionService.jwtDecrypt(token);
+    async payloadAccessToken(
+        token: string
+    ): Promise<AuthAccessPayloadSerialization> {
+        return this.helperEncryptionService.jwtDecrypt(
+            token
+        ) as AuthAccessPayloadSerialization;
     }
 
-    async encryptRefreshToken(payload: Record<string, any>): Promise<string> {
+    async encryptRefreshToken(
+        payload: AuthRefreshPayloadSerialization
+    ): Promise<string> {
         return this.helperEncryptionService.aes256Encrypt(
             payload,
             this.refreshTokenEncryptKey,
@@ -150,16 +163,16 @@ export class AuthService implements IAuthService {
 
     async decryptRefreshToken({
         data,
-    }: Record<string, any>): Promise<Record<string, any>> {
+    }: Record<string, any>): Promise<AuthRefreshPayloadSerialization> {
         return this.helperEncryptionService.aes256Decrypt(
             data,
             this.refreshTokenEncryptKey,
             this.refreshTokenEncryptIv
-        ) as Record<string, any>;
+        ) as AuthRefreshPayloadSerialization;
     }
 
     async createRefreshToken(
-        payloadHashed: string | Record<string, any>,
+        payloadHashed: string | AuthRefreshPayloadSerialization,
         options?: IAuthRefreshTokenOptions
     ): Promise<string> {
         return this.helperEncryptionService.jwtEncrypt(
@@ -186,8 +199,12 @@ export class AuthService implements IAuthService {
         });
     }
 
-    async payloadRefreshToken(token: string): Promise<Record<string, any>> {
-        return this.helperEncryptionService.jwtDecrypt(token);
+    async payloadRefreshToken(
+        token: string
+    ): Promise<AuthRefreshPayloadSerialization> {
+        return this.helperEncryptionService.jwtDecrypt(
+            token
+        ) as AuthRefreshPayloadSerialization;
     }
 
     async validateUser(
@@ -201,19 +218,26 @@ export class AuthService implements IAuthService {
     }
 
     async createPayloadAccessToken(
-        data: Record<string, any>
-    ): Promise<Record<string, any>> {
-        return data;
+        user: Record<string, any>,
+        { loginFrom, loginWith, loginDate }: IAuthPayloadOptions
+    ): Promise<AuthAccessPayloadSerialization> {
+        return {
+            user,
+            loginFrom,
+            loginWith,
+            loginDate,
+        };
     }
 
     async createPayloadRefreshToken(
         _id: string,
-        options: IAuthPayloadOptions
-    ): Promise<Record<string, any>> {
+        { loginFrom, loginWith, loginDate }: AuthAccessPayloadSerialization
+    ): Promise<AuthRefreshPayloadSerialization> {
         return {
-            _id,
-            loginDate: this.helperDateService.create(),
-            loginWith: options.loginWith,
+            user: { _id },
+            loginFrom,
+            loginWith,
+            loginDate,
         };
     }
 
@@ -249,6 +273,10 @@ export class AuthService implements IAuthService {
         return today > passwordExpiredConvert;
     }
 
+    async getLoginDate(): Promise<Date> {
+        return this.helperDateService.create();
+    }
+
     async getTokenType(): Promise<string> {
         return this.prefixAuthorization;
     }
@@ -275,5 +303,11 @@ export class AuthService implements IAuthService {
 
     async getPayloadEncryption(): Promise<boolean> {
         return this.payloadEncryption;
+    }
+
+    async googleGetTokenInfo(
+        accessToken: string
+    ): Promise<IHelperGooglePayload> {
+        return this.helperGoogleService.getTokenInfo(accessToken);
     }
 }
