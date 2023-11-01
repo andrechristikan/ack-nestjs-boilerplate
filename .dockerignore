@@ -13,7 +13,6 @@ prod/
 logs/
 
 # Environment (contains sensitive data)
-.env*
 
 # Versioning and metadata
 .git
