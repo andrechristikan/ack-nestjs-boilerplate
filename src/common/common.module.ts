@@ -21,7 +21,6 @@ import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database
 import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 import { APP_LANGUAGE } from 'src/app/constants/app.constant';
 import { PolicyModule } from 'src/common/policy/policy.module';
-import { GraphQLModule } from '@nestjs/graphql';
 
 @Module({
     controllers: [],
@@ -135,6 +134,12 @@ import { GraphQLModule } from '@nestjs/graphql';
                 SSO_GOOGLE_CLIENT_SECRET: Joi.string()
                     .allow(null, '')
                     .optional(),
+                SSO_GOOGLE_CALLBACK_URL_SIGN_UP: Joi.string()
+                    .allow(null, '')
+                    .optional(),
+                SSO_GOOGLE_CALLBACK_URL_LOGIN: Joi.string()
+                    .allow(null, '')
+                    .optional(),
             }),
             validationOptions: {
                 allowUnknown: true,
@@ -147,14 +152,6 @@ import { GraphQLModule } from '@nestjs/graphql';
             inject: [DatabaseOptionsService],
             useFactory: (databaseOptionsService: DatabaseOptionsService) =>
                 databaseOptionsService.createOptions(),
-        }),
-        GraphQLModule.forRoot({
-            typePaths: ['./**/*.graphql'],
-            context: ({ req }) => ({ req }),
-            playground: true,
-            resolverValidationOptions: {
-                requireResolversForResolveType: 'warn',
-            },
         }),
         MessageModule,
         HelperModule,

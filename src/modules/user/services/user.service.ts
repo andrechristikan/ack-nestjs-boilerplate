@@ -31,6 +31,7 @@ import { plainToInstance } from 'class-transformer';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 import { UserUpdateUsernameDto } from 'src/modules/user/dtos/user.update-username.dto';
+import { UserUpdateGoogleSSODto } from '../dtos/user.update-google-sso.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -372,4 +373,19 @@ export class UserService implements IUserService {
     ): Promise<boolean> {
         return this.userRepository.deleteMany(find, options);
     }
+
+    async updateGoogleSSO(
+        repository: UserDoc,
+        { accessToken, refreshToken }: UserUpdateGoogleSSODto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        repository.google = {
+            accessToken,
+            refreshToken,
+        };
+
+        return this.userRepository.save(repository, options);
+    }
+
+
 }
