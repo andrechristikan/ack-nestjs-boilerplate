@@ -17,6 +17,7 @@
     "upload": "Upload Success",
     "login": "Login success.",
     "signUp": "Sign up Success",
+    "signUpGoogleCallback": "Sign up success",
     "loginGoogle": "Login with google succeed",
     "error": {
         "notFound": "User not found.",

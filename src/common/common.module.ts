@@ -134,6 +134,12 @@ import { PolicyModule } from 'src/common/policy/policy.module';
                 SSO_GOOGLE_CLIENT_SECRET: Joi.string()
                     .allow(null, '')
                     .optional(),
+                SSO_GOOGLE_CALLBACK_URL_SIGN_UP: Joi.string()
+                    .allow(null, '')
+                    .optional(),
+                SSO_GOOGLE_CALLBACK_URL_LOGIN: Joi.string()
+                    .allow(null, '')
+                    .optional(),
             }),
             validationOptions: {
                 allowUnknown: true,

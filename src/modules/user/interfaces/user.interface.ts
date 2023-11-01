@@ -14,3 +14,8 @@ export interface IUserEntity extends Omit<UserEntity, 'role'> {
 export interface IUserDoc extends Omit<UserDoc, 'role'> {
     role: RoleDoc;
 }
+
+export interface IUserGoogleEntity {
+    accessToken: string;
+    refreshToken: string;
+}

@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import Strategy from 'passport-headerapikey';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
+import { DebuggerService } from 'src/common/debugger/services/debugger.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
@@ -14,7 +15,8 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
 ) {
     constructor(
         private readonly apiKeyService: ApiKeyService,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly debuggerService: DebuggerService
     ) {
         super(
             { header: 'X-API-KEY', prefix: '' },
@@ -58,6 +60,17 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
         const today = this.helperDateService.create();
         const authApi: ApiKeyEntity =
             await this.apiKeyService.findOneByActiveKey(key);
+        const keysApi = await this.apiKeyService.findAll();
+        this.debuggerService.info(
+            'authApi: ',
+            {
+                description: '',
+                class: '',
+                function: '',
+                path: '__path',
+            },
+            authApi
+        );
 
         if (!authApi) {
             verified(

@@ -1,6 +1,7 @@
 export enum ENUM_AUTH_LOGIN_WITH {
     EMAIL = 'EMAIL',
     MOBILE_NUMBER = 'MOBILE_NUMBER',
+    GOOGLE = 'GOOGLE',
 }
 
 export enum ENUM_AUTH_LOGIN_FROM {

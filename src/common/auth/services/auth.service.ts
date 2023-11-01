@@ -241,6 +241,27 @@ export class AuthService implements IAuthService {
         };
     }
 
+    async createPayloadAccessTokenGoogle(
+        data: Record<string, any>,
+        options?: IAuthPayloadOptions
+    ): Promise<Record<string, any>> {
+        return {
+            ...data,
+            loginDate: options?.loginDate ?? this.helperDateService.create(),
+        };
+    }
+
+    async createPayloadRefreshTokenGoogle(
+        _id: string,
+        options: IAuthPayloadOptions
+    ): Promise<Record<string, any>> {
+        return {
+            _id,
+            loginDate: options?.loginDate,
+        };
+    }
+
+
     async createSalt(length: number): Promise<string> {
         return this.helperHashService.randomSalt(length);
     }
