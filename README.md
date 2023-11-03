@@ -50,7 +50,8 @@
 * [ ] Update Documentation, add behaviors
 * [ ] Update Documentation, and include an diagram for easier comprehension
 * [ ] Add Redis / Move to stateful Authorization Token (security and ux reason)
-* [ ] Implement GraphQL
+* [ ] Add Monitoring Tools and will replace Log module
+* [ ] Implement GraphQL, just an options for running ?
 
 ## Documentation
 

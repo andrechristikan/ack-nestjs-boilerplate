@@ -10,7 +10,6 @@ import {
     FILE_CUSTOM_MAX_FILES_META_KEY,
     FILE_CUSTOM_MAX_SIZE_META_KEY,
 } from 'src/common/file/constants/file.constant';
-import { FileCustomMaxFilesInterceptor } from 'src/common/file/interceptors/file.custom-max-files.interceptor';
 import { FileCustomMaxSizeInterceptor } from 'src/common/file/interceptors/file.custom-max-size.interceptor';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
@@ -24,7 +23,6 @@ export function FileUploadMultiple(field?: string): MethodDecorator {
 
 export function FileCustomMaxFile(customMaxFiles: number): MethodDecorator {
     return applyDecorators(
-        UseInterceptors(FileCustomMaxFilesInterceptor),
         SetMetadata(FILE_CUSTOM_MAX_FILES_META_KEY, customMaxFiles)
     );
 }

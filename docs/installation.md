@@ -120,10 +120,9 @@ This project need to do migration for running. [Read this][ack-database-migratio
 
 ## API Reference
 
-You can check The ApiSpec after running this project. [here][api-reference-docs]
+You can check The API Spec after running this project. in `localhost:3000/docs`.
 
-<!-- API Reference -->
-[api-reference-docs]: http://localhost:3000/docs
+[ack-database-migration-doc]: ./database/database_migration.md
 
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com

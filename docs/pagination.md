@@ -42,15 +42,11 @@ Server-Side Pagination that contains 2 main features
 
 # PaginationQuery
 
-> Next development will use repository for convert the `@Query` so it will support all repository
-
 `@PaginationQuery` is a helper for converting a `@Query` into a `query database`. 
 This decorator consumes `pipe` from `nestjs` with some manipulation. 
 Now there are 7 Types that have different purpose.
 
 List of `@Query` that used by `@PaginationQuery`
-
-> If you want to know what is this, you can jump to scenario section of PaginationQuestion
 
 - `search`: text searching
 - `perPage`: set limit

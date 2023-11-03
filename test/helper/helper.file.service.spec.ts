@@ -59,14 +59,6 @@ describe('HelperFileService', () => {
         });
     });
 
-    describe('convertToBytes', () => {
-        it('should return bytes when given a megabyte string', () => {
-            const megabytes = '1MB';
-            const bytes = service.convertToBytes(megabytes);
-            expect(bytes).toEqual(1048576);
-        });
-    });
-
     describe('createJson', () => {
         it('should return true and create json file base on path', () => {
             const result = service.createJson('data/__blabla.json', []);

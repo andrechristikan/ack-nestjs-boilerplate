@@ -112,19 +112,10 @@ Installation will describe in difference doc. [here][doc-installation].
 
 ## API Spec
 
-You can check The API Spec after running this project. [here][api-spec-docs]
-
-## More Docs
-
-You can find more docs about this project in [here][ack-doc]
+You can check The API Spec after running this project. in `localhost:3000/docs`.
 
 
 [doc-installation]: /docs/installation.md
-
-<!-- API Reference -->
-[api-spec-docs]: http://localhost:3000/docs
-
-[ack-doc]: ./docs
 
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com

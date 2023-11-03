@@ -3,6 +3,7 @@ import { SettingMiddlewareModule } from 'src/common/setting/middleware/setting.m
 import { SettingRepositoryModule } from 'src/common/setting/repository/setting.repository.module';
 import { SettingService } from './services/setting.service';
 
+// TODO: MIGRATE TO REDIS
 @Global()
 @Module({
     imports: [SettingRepositoryModule, SettingMiddlewareModule],

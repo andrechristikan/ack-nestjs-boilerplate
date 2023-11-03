@@ -7,7 +7,6 @@ import { ResponseModule } from 'src/common/response/response.module';
 import { RequestModule } from 'src/common/request/request.module';
 import { AuthModule } from 'src/common/auth/auth.module';
 import { MessageModule } from 'src/common/message/message.module';
-import { LoggerModule } from 'src/common/logger/logger.module';
 import { PaginationModule } from 'src/common/pagination/pagination.module';
 import Joi from 'joi';
 import { ENUM_MESSAGE_LANGUAGE } from './message/constants/message.enum.constant';
@@ -156,7 +155,6 @@ import { PolicyModule } from 'src/common/policy/policy.module';
         RequestModule,
         PolicyModule,
         SettingModule,
-        LoggerModule,
         ApiKeyModule,
         AuthModule.forRoot(),
     ],
