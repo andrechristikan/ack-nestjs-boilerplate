@@ -14,7 +14,6 @@ import {
     ApiKeyEntity,
 } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyRepository } from 'src/common/api-key/repository/repositories/api-key.repository';
-import { ApiKeyActiveDto } from 'src/common/api-key/dtos/api-key.active.dto';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { ConfigService } from '@nestjs/config';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
@@ -22,8 +21,10 @@ import {
     ApiKeyCreateDto,
     ApiKeyCreateRawDto,
 } from 'src/common/api-key/dtos/api-key.create.dto';
-import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
-import { ApiKeyUpdateDateDto } from 'src/common/api-key/dtos/api-key.update-date.dto';
+import {
+    ApiKeyUpdateDateDto,
+    ApiKeyUpdateDto,
+} from 'src/common/api-key/dtos/api-key.update.dto';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 
 @Injectable()
@@ -43,8 +44,8 @@ export class ApiKeyService implements IApiKeyService {
     async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<ApiKeyEntity[]> {
-        return this.apiKeyRepository.findAll<ApiKeyEntity>(find, options);
+    ): Promise<ApiKeyDoc[]> {
+        return this.apiKeyRepository.findAll<ApiKeyDoc>(find, options);
     }
 
     async findOneById(
@@ -235,7 +236,7 @@ export class ApiKeyService implements IApiKeyService {
     async inactiveManyByEndDate(
         options?: IDatabaseManyOptions
     ): Promise<boolean> {
-        return this.apiKeyRepository.updateMany<ApiKeyActiveDto>(
+        return this.apiKeyRepository.updateMany(
             {
                 endDate: {
                     $lte: this.helperDateService.create(),

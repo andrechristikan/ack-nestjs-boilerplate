@@ -62,6 +62,8 @@ describe('AuthService', () => {
                     return 'jwt_issuer';
                 case 'auth.password.expiredIn':
                     return 60;
+                case 'auth.password.maxAttempt':
+                    return 5;
                 case 'auth.password.saltLength':
                 default:
                     return 8;
@@ -360,15 +362,6 @@ describe('AuthService', () => {
         });
     });
 
-    describe('getRefreshTokenExpirationTime', () => {
-        it('should get refresh token expiration time', async () => {
-            const expectedExpirationTime = 60;
-            const expirationTime =
-                await service.getRefreshTokenExpirationTime();
-            expect(expirationTime).toEqual(expectedExpirationTime);
-        });
-    });
-
     describe('getIssuer', () => {
         it('should get issuer', async () => {
             const expectedIssuer = 'jwt_issuer';
@@ -408,6 +401,20 @@ describe('AuthService', () => {
             };
             const tokenInfo = await service.googleGetTokenInfo('mockedData');
             expect(tokenInfo).toEqual(result);
+        });
+    });
+
+    describe('getPasswordAttempt', () => {
+        it('should return setting password attempt', async () => {
+            const tokenInfo = await service.getPasswordAttempt();
+            expect(tokenInfo).toEqual(8);
+        });
+    });
+
+    describe('getMaxPasswordAttempt', () => {
+        it('should return max setting password attempt', async () => {
+            const tokenInfo = await service.getMaxPasswordAttempt();
+            expect(tokenInfo).toEqual(5);
         });
     });
 });

@@ -8,10 +8,10 @@ import {
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
+import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { ValidationError } from 'class-validator';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { DatabaseDefaultUUID } from 'src/common/database/constants/database.function.constant';
-import { DebuggerService } from 'src/common/debugger/services/debugger.service';
 import { ERROR_TYPE } from 'src/common/error/constants/error.enum.constant';
 import {
     IErrorException,
@@ -33,19 +33,20 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 @Catch()
 export class ErrorHttpFilter implements ExceptionFilter {
     constructor(
-        @Optional() private readonly debuggerService: DebuggerService,
+        @Optional()
+        @InjectSentry()
+        private readonly sentryService: SentryService,
         private readonly configService: ConfigService,
         private readonly messageService: MessageService,
         private readonly helperDateService: HelperDateService
     ) {}
 
     async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
-        console.log('bbb');
         const ctx: HttpArgumentsHost = host.switchToHttp();
         const response: Response = ctx.getResponse<Response>();
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
-        this.debugger(request, exception);
+        this.sendToSentry(exception);
 
         // get request headers
         const __customLang: string[] = request.__customLang ?? [
@@ -164,28 +165,12 @@ export class ErrorHttpFilter implements ExceptionFilter {
             : false;
     }
 
-    debugger(request: IRequestApp, exception: unknown): void {
-        // get request headers
-        const __class = request.__class ?? ErrorHttpFilter.name;
-        const __function = request.__function ?? this.catch.name;
-        const __path = request.path;
-
-        // Debugger
-        try {
-            this.debuggerService.error(
-                request?.__id ? request.__id : ErrorHttpFilter.name,
-                {
-                    description:
-                        exception instanceof Error
-                            ? exception.message
-                            : exception.toString(),
-                    class: __class ?? ErrorHttpFilter.name,
-                    function: __function ?? this.catch.name,
-                    path: __path,
-                },
-                exception
-            );
-        } catch (err: unknown) {}
+    sendToSentry(exception: unknown): void {
+        if (exception! instanceof HttpException) {
+            try {
+                this.sentryService.instance().captureException(exception);
+            } catch (err: unknown) {}
+        }
 
         return;
     }

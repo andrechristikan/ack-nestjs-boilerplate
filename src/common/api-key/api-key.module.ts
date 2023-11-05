@@ -3,7 +3,6 @@ import { ApiKeyXApiKeyStrategy } from 'src/common/api-key/guards/x-api-key/api-k
 import { ApiKeyRepositoryModule } from 'src/common/api-key/repository/api-key.repository.module';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 
-// TODO: ADD TO REDIS
 @Module({
     providers: [ApiKeyService, ApiKeyXApiKeyStrategy],
     exports: [ApiKeyService],

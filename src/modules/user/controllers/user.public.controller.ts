@@ -3,11 +3,13 @@ import { ApiTags } from '@nestjs/swagger';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { Response } from 'src/common/response/decorators/response.decorator';
+import { EmailService } from 'src/modules/email/services/email.service';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { UserPublicSignUpDoc } from 'src/modules/user/docs/user.public.doc';
 import { UserSignUpDto } from 'src/modules/user/dtos/user.sign-up.dto';
+import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserService } from 'src/modules/user/services/user.service';
 
 @ApiTags('modules.public.user')
@@ -19,7 +21,8 @@ export class UserPublicController {
     constructor(
         private readonly userService: UserService,
         private readonly authService: AuthService,
-        private readonly roleService: RoleService
+        private readonly roleService: RoleService,
+        private readonly emailService: EmailService
     ) {}
 
     @UserPublicSignUpDoc()
@@ -57,7 +60,7 @@ export class UserPublicController {
 
         const password = await this.authService.createPassword(body.password);
 
-        await this.userService.create(
+        const user: UserDoc = await this.userService.create(
             {
                 email,
                 mobileNumber,
@@ -67,6 +70,8 @@ export class UserPublicController {
             },
             password
         );
+
+        await this.emailService.sendSignUp(user);
 
         return;
     }

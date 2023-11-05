@@ -1,6 +1,5 @@
 import { Test } from '@nestjs/testing';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { IDebuggerLog } from 'src/common/debugger/interfaces/debugger.interface';
 import { DebuggerService } from 'src/common/debugger/services/debugger.service';
 import { Logger } from 'winston';
 
@@ -30,93 +29,41 @@ describe('DebuggerService', () => {
 
     describe('info', () => {
         it('should call logger.info', () => {
-            const requestId = '123';
-            const log: IDebuggerLog = {
-                description: 'test info log',
-                class: 'TestClass',
-                function: 'testFunction',
-                path: '/test/path',
-            };
-            const data = { testKey: 'testValue' };
+            const err: Error = new Error();
 
-            service.info(requestId, log, data);
+            service.info(err);
 
-            expect(logger.info).toHaveBeenCalledWith(log.description, {
-                _id: requestId,
-                class: log.class,
-                function: log.function,
-                path: log.path,
-                data,
-            });
+            expect(logger.info).toHaveBeenCalledWith(err);
         });
     });
 
     describe('debug', () => {
         it('should call logger.debug', () => {
-            const requestId = '123';
-            const log: IDebuggerLog = {
-                description: 'test debug log',
-                class: 'TestClass',
-                function: 'testFunction',
-                path: '/test/path',
-            };
-            const data = { testKey: 'testValue' };
+            const err: Error = new Error();
 
-            service.debug(requestId, log, data);
+            service.debug(err);
 
-            expect(logger.debug).toHaveBeenCalledWith(log.description, {
-                _id: requestId,
-                class: log.class,
-                function: log.function,
-                path: log.path,
-                data,
-            });
+            expect(logger.debug).toHaveBeenCalledWith(err);
         });
     });
 
     describe('warn', () => {
         it('should call logger.warn', () => {
-            const requestId = '123';
-            const log: IDebuggerLog = {
-                description: 'test warn log',
-                class: 'TestClass',
-                function: 'testFunction',
-                path: '/test/path',
-            };
-            const data = { testKey: 'testValue' };
+            const err: Error = new Error();
 
-            service.warn(requestId, log, data);
+            service.warn(err);
 
-            expect(logger.warn).toHaveBeenCalledWith(log.description, {
-                _id: requestId,
-                class: log.class,
-                function: log.function,
-                path: log.path,
-                data,
-            });
+            expect(logger.warn).toHaveBeenCalledWith(err);
         });
     });
 
     describe('error', () => {
         it('should call logger.error', () => {
-            const requestId = '123';
-            const log: IDebuggerLog = {
-                description: 'test error log',
-                class: 'TestClass',
-                function: 'testFunction',
-                path: '/test/path',
-            };
-            const data = { testKey: 'testValue' };
+            const err: Error = new Error();
 
-            service.error(requestId, log, data);
+            service.error(err);
 
-            expect(logger.error).toHaveBeenCalledWith(log.description, {
-                _id: requestId,
-                class: log.class,
-                function: log.function,
-                path: log.path,
-                data,
-            });
+            expect(logger.error).toHaveBeenCalledWith(err);
         });
     });
 });

@@ -10,7 +10,7 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 @Injectable()
 export class ApiKeyXApiKeyStrategy extends PassportStrategy(
     Strategy,
-    'api-key'
+    'x-api-key'
 ) {
     constructor(
         private readonly apiKeyService: ApiKeyService,

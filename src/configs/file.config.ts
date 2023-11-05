@@ -11,15 +11,15 @@ export default registerAs(
             maxFiles: 3, // 3 files
         },
         excel: {
-            maxFileSize: bytes('5.5mb'), // 5.5mb
+            maxFileSize: bytes('5mb'), // 5.5mb
             maxFiles: 1, // 1 files
         },
         audio: {
-            maxFileSize: bytes('5.5mb'), // 5.5mb
+            maxFileSize: bytes('5mb'), // 5.5mb
             maxFiles: 1, // 1 files
         },
         video: {
-            maxFileSize: bytes('5.5mb'), // 5.5mb
+            maxFileSize: bytes('5mb'), // 5.5mb
             maxFiles: 1, // 1 files
         },
     })

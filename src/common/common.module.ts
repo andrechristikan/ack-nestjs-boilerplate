@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { DebuggerModule } from 'src/common/debugger/debugger.module';
 import { HelperModule } from 'src/common/helper/helper.module';
 import { ErrorModule } from 'src/common/error/error.module';
 import { ResponseModule } from 'src/common/response/response.module';
@@ -11,7 +10,6 @@ import { PaginationModule } from 'src/common/pagination/pagination.module';
 import Joi from 'joi';
 import { ENUM_MESSAGE_LANGUAGE } from './message/constants/message.enum.constant';
 import configs from 'src/configs';
-import { SettingModule } from 'src/common/setting/setting.module';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
@@ -41,6 +39,7 @@ import { PolicyModule } from 'src/common/policy/policy.module';
                     .valid(...Object.values(ENUM_MESSAGE_LANGUAGE))
                     .default(APP_LANGUAGE)
                     .required(),
+                APP_MAINTENANCE: Joi.boolean().default(false).required(),
 
                 HTTP_ENABLE: Joi.boolean().default(true).required(),
                 HTTP_HOST: [
@@ -51,16 +50,7 @@ import { PolicyModule } from 'src/common/policy/policy.module';
                 HTTP_VERSIONING_ENABLE: Joi.boolean().default(true).required(),
                 HTTP_VERSION: Joi.number().required(),
 
-                DEBUGGER_HTTP_WRITE_INTO_FILE: Joi.boolean()
-                    .default(false)
-                    .required(),
-                DEBUGGER_HTTP_WRITE_INTO_CONSOLE: Joi.boolean()
-                    .default(false)
-                    .required(),
-                DEBUGGER_SYSTEM_WRITE_INTO_FILE: Joi.boolean()
-                    .default(false)
-                    .required(),
-                DEBUGGER_SYSTEM_WRITE_INTO_CONSOLE: Joi.boolean()
+                DEBUGGER_WRITE_INTO_FILE: Joi.boolean()
                     .default(false)
                     .required(),
 
@@ -87,17 +77,10 @@ import { PolicyModule } from 'src/common/policy/policy.module';
                 AUTH_JWT_ACCESS_TOKEN_EXPIRED: Joi.string()
                     .default('15m')
                     .required(),
-
                 AUTH_JWT_REFRESH_TOKEN_SECRET_KEY: Joi.string()
                     .alphanum()
                     .min(5)
                     .max(50)
-                    .required(),
-                AUTH_JWT_REFRESH_TOKEN_EXPIRED: Joi.string()
-                    .default('7d')
-                    .required(),
-                AUTH_JWT_REFRESH_TOKEN_NOT_BEFORE_EXPIRATION: Joi.string()
-                    .default('15m')
                     .required(),
 
                 AUTH_JWT_PAYLOAD_ENCRYPT: Joi.boolean()
@@ -128,11 +111,19 @@ import { PolicyModule } from 'src/common/policy/policy.module';
                 AWS_CREDENTIAL_SECRET: Joi.string().allow(null, '').optional(),
                 AWS_S3_REGION: Joi.string().allow(null, '').optional(),
                 AWS_S3_BUCKET: Joi.string().allow(null, '').optional(),
+                AWS_SES_CREDENTIAL_KEY: Joi.string().allow(null, '').optional(),
+                AWS_SES_CREDENTIAL_SECRET: Joi.string()
+                    .allow(null, '')
+                    .optional(),
+                AWS_SES_REGION: Joi.string().allow(null, '').optional(),
+                AWS_SES_FROM_EMAIL: Joi.string().allow(null, '').optional(),
 
                 SSO_GOOGLE_CLIENT_ID: Joi.string().allow(null, '').optional(),
                 SSO_GOOGLE_CLIENT_SECRET: Joi.string()
                     .allow(null, '')
                     .optional(),
+
+                SENTRY_DSN: Joi.string().allow(null, '').optional(),
             }),
             validationOptions: {
                 allowUnknown: true,
@@ -150,11 +141,9 @@ import { PolicyModule } from 'src/common/policy/policy.module';
         HelperModule,
         PaginationModule,
         ErrorModule,
-        DebuggerModule.forRoot(),
         ResponseModule,
         RequestModule,
         PolicyModule,
-        SettingModule,
         ApiKeyModule,
         AuthModule.forRoot(),
     ],

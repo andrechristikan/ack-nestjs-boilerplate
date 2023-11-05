@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { LoggerOptions } from 'winston';
-import winston from 'winston';
+import winston, { LoggerOptions } from 'winston';
+import * as Transport from 'winston-transport';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import { DEBUGGER_NAME } from 'src/common/debugger/constants/debugger.constant';
 import { IDebuggerOptionService } from 'src/common/debugger/interfaces/debugger.options-service.interface';
@@ -12,19 +12,14 @@ export class DebuggerOptionService implements IDebuggerOptionService {
 
     createLogger(): LoggerOptions {
         const writeIntoFile = this.configService.get<boolean>(
-            'debugger.system.writeIntoFile'
+            'debugger.writeIntoFile'
         );
-        const writeIntoConsole = this.configService.get<boolean>(
-            'debugger.system.writeIntoConsole'
-        );
-        const maxSize = this.configService.get<string>(
-            'debugger.system.maxSize'
-        );
-        const maxFiles = this.configService.get<string>(
-            'debugger.system.maxFiles'
-        );
+        const maxSize = this.configService.get<string>('debugger.maxSize');
+        const maxFiles = this.configService.get<string>('debugger.maxFiles');
 
-        const transports = [];
+        const transports: Transport[] | Transport = [
+            new winston.transports.Console(),
+        ];
 
         if (writeIntoFile) {
             transports.push(
@@ -60,10 +55,6 @@ export class DebuggerOptionService implements IDebuggerOptionService {
                     level: 'debug',
                 })
             );
-        }
-
-        if (writeIntoConsole) {
-            transports.push(new winston.transports.Console());
         }
 
         const loggerOptions: LoggerOptions = {

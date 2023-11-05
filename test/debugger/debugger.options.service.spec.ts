@@ -15,13 +15,11 @@ describe('DebuggerOptionService', () => {
                     useValue: {
                         get: jest.fn().mockImplementation((key: string) => {
                             switch (key) {
-                                case 'debugger.system.writeIntoFile':
+                                case 'debugger.writeIntoFile':
                                     return true;
-                                case 'debugger.system.writeIntoConsole':
-                                    return true;
-                                case 'debugger.system.maxSize':
+                                case 'debugger.maxSize':
                                     return '7d';
-                                case 'debugger.system.maxFiles':
+                                case 'debugger.maxFiles':
                                 default:
                                     return '2m';
                             }
@@ -47,20 +45,18 @@ describe('DebuggerOptionService', () => {
             expect(loggerOptions.format).toBeDefined;
 
             expect(loggerOptions).toHaveProperty('transports');
-            expect(loggerOptions.transports.length).toBeGreaterThan(0);
+            expect(loggerOptions.transports.length).toEqual(4);
         });
 
-        it('should return an object containing necessary options for winston logger, no write into console and file', () => {
+        it('should return an object containing necessary options for winston logger, can into console', () => {
             jest.spyOn(service['configService'], 'get').mockImplementation(
                 (key: string) => {
                     switch (key) {
-                        case 'debugger.system.writeIntoFile':
+                        case 'debugger.writeIntoFile':
                             return false;
-                        case 'debugger.system.writeIntoConsole':
-                            return false;
-                        case 'debugger.system.maxSize':
+                        case 'debugger.maxSize':
                             return '7d';
-                        case 'debugger.system.maxFiles':
+                        case 'debugger.maxFiles':
                         default:
                             return '2m';
                     }
@@ -74,7 +70,7 @@ describe('DebuggerOptionService', () => {
             expect(loggerOptions.format).toBeDefined;
 
             expect(loggerOptions).toHaveProperty('transports');
-            expect(loggerOptions.transports.length).toEqual(0);
+            expect(loggerOptions.transports.length).toEqual(1);
         });
     });
 });

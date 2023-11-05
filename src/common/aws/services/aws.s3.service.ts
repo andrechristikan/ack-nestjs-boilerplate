@@ -63,10 +63,11 @@ export class AwsS3Service implements IAwsS3Service {
     constructor(private readonly configService: ConfigService) {
         this.s3Client = new S3Client({
             credentials: {
-                accessKeyId:
-                    this.configService.get<string>('aws.credential.key'),
+                accessKeyId: this.configService.get<string>(
+                    'aws.s3.credential.key'
+                ),
                 secretAccessKey: this.configService.get<string>(
-                    'aws.credential.secret'
+                    'aws.s3.credential.secret'
                 ),
             },
             region: this.configService.get<string>('aws.s3.region'),

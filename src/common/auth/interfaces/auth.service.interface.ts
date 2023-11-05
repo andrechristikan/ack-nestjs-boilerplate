@@ -1,7 +1,6 @@
 import {
     IAuthPassword,
     IAuthPayloadOptions,
-    IAuthRefreshTokenOptions,
 } from 'src/common/auth/interfaces/auth.interface';
 import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
 import { AuthRefreshPayloadSerialization } from 'src/common/auth/serializations/auth.refresh-payload.serialization';
@@ -22,8 +21,7 @@ export interface IAuthService {
         payload: Record<string, any>
     ): Promise<Record<string, any>>;
     createRefreshToken(
-        payloadHashed: string | Record<string, any>,
-        options?: IAuthRefreshTokenOptions
+        payloadHashed: string | Record<string, any>
     ): Promise<string>;
     validateRefreshToken(token: string): Promise<boolean>;
     payloadRefreshToken(token: string): Promise<Record<string, any>>;
@@ -46,7 +44,6 @@ export interface IAuthService {
     getLoginDate(): Promise<Date>;
     getTokenType(): Promise<string>;
     getAccessTokenExpirationTime(): Promise<number>;
-    getRefreshTokenExpirationTime(): Promise<number>;
     getIssuer(): Promise<string>;
     getAudience(): Promise<string>;
     getSubject(): Promise<string>;

@@ -1,5 +1,5 @@
 import { Prop } from '@nestjs/mongoose';
-import { DatabaseBaseEntityAbstract } from 'src/common/database/abstracts/database.base-entity.abstract';
+import { DatabaseBaseEntityAbstract } from 'src/common/database/abstracts/base/database.base-entity.abstract';
 import {
     DATABASE_CREATED_AT_FIELD_NAME,
     DATABASE_DELETED_AT_FIELD_NAME,
