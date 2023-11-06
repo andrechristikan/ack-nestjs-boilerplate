@@ -55,15 +55,16 @@ Describes which version.
 * Production ready 🔥
 * Repository Design Pattern (Multi Repository, can mix with other orm)
 * Swagger / OpenAPI 3 included
-* Authentication (`Access Token`, `Refresh Token`, `API Key`)
-* Authorization, Role and Permission Management
-* Google SSO for Login and Sign Up
+* Authentication (`Access Token`, `Refresh Token`, `API Key`, `Google SSO`)
+* Authorization, Role Management.
 * Support multi-language `i18n` 🗣, can controllable with request header `x-custom-lang`
 * Request validation for all request params, query, dan body with `class-validation`
 * Serialization with `class-transformer`
 * Url Versioning, default version is `1`
 * Server Side Pagination
 * Import and export data with CSV or Excel by using `decorator`
+* Sentry.io for Monitoring Tools
+* Debugger with `Winston` 📝
 
 ### Database
 
@@ -73,10 +74,6 @@ Describes which version.
 * Database Soft Delete
 * Database Migration
 
-### Logger and Debugger
-
-* Logger with `Morgan`
-* Debugger with `Winston` 📝
 
 ### Security
 
@@ -92,19 +89,22 @@ Describes which version.
 * Centralize exception filter
 * Setting from database 🗿
 
-### Third Party Integration
-
-* SSO `Google`
-* Storage integration with `AwsS3`
-* Upload file `single` and `multipart` to AwsS3
-
 ### Others
 
 * Support Docker installation
-* Support CI/CD (Eg: Github Action, Jenkins) 
+* Support CI/CD (Eg: Github Action) 
 * Husky GitHook for run linter before commit 🐶
 * Linter with EsLint for Typescript
 
+
+## Third Party Integration
+
+* AWS S3
+* AWS SES
+* AWS EC2
+* AWC ECS
+* Sentry.io
+* Google
 
 ## Installation
 
