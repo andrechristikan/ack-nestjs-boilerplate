@@ -12,7 +12,7 @@ export default registerAs(
                 maxFileSize: bytes('100kb'), // 100kb
             },
             raw: {
-                maxFileSize: bytes('5.5mb'), // 5.5mb
+                maxFileSize: bytes('100kb'), // 100kb
             },
             text: {
                 maxFileSize: bytes('100kb'), // 100kb
@@ -20,9 +20,6 @@ export default registerAs(
             urlencoded: {
                 maxFileSize: bytes('100kb'), // 100kb
             },
-        },
-        timestamp: {
-            toleranceTimeInMs: ms('5m'), // 5 mins
         },
         timeout: ms('30s'), // 30s based on ms module
         userAgent: {

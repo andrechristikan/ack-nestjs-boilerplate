@@ -96,6 +96,7 @@ import {
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
+import { EmailService } from 'src/modules/email/services/email.service';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -107,7 +108,8 @@ export class UserAdminController {
         private readonly authService: AuthService,
         private readonly paginationService: PaginationService,
         private readonly userService: UserService,
-        private readonly roleService: RoleService
+        private readonly roleService: RoleService,
+        private readonly emailService: EmailService
     ) {}
 
     @UserAdminListDoc()
@@ -185,7 +187,7 @@ export class UserAdminController {
     async get(@GetUser() user: UserDoc): Promise<IResponse> {
         const userWithRole: IUserDoc =
             await this.userService.joinWithRole(user);
-        return { data: userWithRole.toObject() };
+        return { data: userWithRole };
     }
 
     @UserAdminCreateDoc()
@@ -247,6 +249,8 @@ export class UserAdminController {
             },
             password
         );
+
+        await this.emailService.sendSignUp(created);
 
         return {
             data: { _id: created._id },

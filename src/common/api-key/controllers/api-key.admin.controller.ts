@@ -43,8 +43,10 @@ import {
 } from 'src/common/api-key/docs/api-key.admin.doc';
 import { ApiKeyCreateDto } from 'src/common/api-key/dtos/api-key.create.dto';
 import { ApiKeyRequestDto } from 'src/common/api-key/dtos/api-key.request.dto';
-import { ApiKeyUpdateDateDto } from 'src/common/api-key/dtos/api-key.update-date.dto';
-import { ApiKeyUpdateDto } from 'src/common/api-key/dtos/api-key.update.dto';
+import {
+    ApiKeyUpdateDateDto,
+    ApiKeyUpdateDto,
+} from 'src/common/api-key/dtos/api-key.update.dto';
 import { IApiKeyCreated } from 'src/common/api-key/interfaces/api-key.interface';
 import {
     ApiKeyDoc,
@@ -125,7 +127,7 @@ export class ApiKeyAdminController {
             ...type,
         };
 
-        const apiKeys: ApiKeyEntity[] = await this.apiKeyService.findAll(find, {
+        const apiKeys: ApiKeyDoc[] = await this.apiKeyService.findAll(find, {
             paging: {
                 limit: _limit,
                 offset: _offset,

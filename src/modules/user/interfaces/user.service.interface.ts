@@ -13,6 +13,7 @@ import {
 import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
+import { UserUpdatePasswordAttemptDto } from 'src/modules/user/dtos/user.update-password-attempt.dto';
 import { UserUpdateUsernameDto } from 'src/modules/user/dtos/user.update-username.dto';
 import {
     IUserDoc,
@@ -111,8 +112,9 @@ export interface IUserService {
         repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
-    maxPasswordAttempt(
+    updatePasswordAttempt(
         repository: UserDoc,
+        { passwordAttempt }: UserUpdatePasswordAttemptDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     increasePasswordAttempt(

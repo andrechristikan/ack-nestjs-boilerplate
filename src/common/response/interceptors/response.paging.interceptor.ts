@@ -108,7 +108,9 @@ export class ResponsePagingInterceptor<T>
                     }
 
                     const { _metadata } = responseData;
-                    data = responseData.data;
+                    data = responseData.data
+                        ? JSON.parse(JSON.stringify(responseData.data ?? {}))
+                        : undefined;
 
                     if (classSerialization) {
                         data = plainToInstance(

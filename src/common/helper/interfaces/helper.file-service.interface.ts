@@ -19,7 +19,6 @@ export interface IHelperFileService {
         file: Buffer,
         options?: IHelperFileReadExcelOptions
     ): IHelperFileRows[][];
-    convertToBytes(megabytes: string): number;
     createJson(path: string, data: Record<string, any>[]): boolean;
     readJson(path: string): Record<string, any>[];
 }

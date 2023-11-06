@@ -10,7 +10,7 @@ import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api
 import { BadRequestError } from 'passport-headerapikey';
 
 @Injectable()
-export class ApiKeyXApiKeyGuard extends AuthGuard('api-key') {
+export class ApiKeyXApiKeyGuard extends AuthGuard('x-api-key') {
     constructor(private readonly helperNumberService: HelperNumberService) {
         super();
     }

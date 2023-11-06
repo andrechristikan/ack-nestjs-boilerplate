@@ -47,10 +47,18 @@
 
 ## Todo
 
+* [x] Remove Debugger HTTP
+* [x] Setting Move to Modules
+* [x] Debugger env change
+* [x] Add exception filter to Sentry.io
+* [x] Add Email Module with AWS SES
+* [ ] Push docker image to AWS ECR
+* [ ] CI/CD Using AWS ECS and deploy to AWS EC2
+* [ ] Update Package, and remove unused package
 * [ ] Update Documentation, add behaviors
 * [ ] Update Documentation, and include an diagram for easier comprehension
 * [ ] Add Redis / Move to stateful Authorization Token (security and ux reason)
-* [ ] Implement GraphQL
+* [ ] Implement GraphQL, just an options for running ?
 
 ## Documentation
 

@@ -31,11 +31,13 @@ import { plainToInstance } from 'class-transformer';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 import { UserUpdateUsernameDto } from 'src/modules/user/dtos/user.update-username.dto';
+import { UserUpdatePasswordAttemptDto } from 'src/modules/user/dtos/user.update-password-attempt.dto';
 
 @Injectable()
 export class UserService implements IUserService {
     private readonly uploadPath: string;
-    private readonly authMaxPasswordAttempt: number;
+
+    private readonly mobileNumberCountryCodeAllowed: string[];
 
     constructor(
         private readonly userRepository: UserRepository,
@@ -44,8 +46,9 @@ export class UserService implements IUserService {
         private readonly configService: ConfigService
     ) {
         this.uploadPath = this.configService.get<string>('user.uploadPath');
-        this.authMaxPasswordAttempt = this.configService.get<number>(
-            'auth.password.maxAttempt'
+
+        this.mobileNumberCountryCodeAllowed = this.configService.get<string[]>(
+            'user.mobileNumberCountryCodeAllowed'
         );
     }
 
@@ -272,11 +275,12 @@ export class UserService implements IUserService {
         return this.userRepository.save(repository, options);
     }
 
-    async maxPasswordAttempt(
+    async updatePasswordAttempt(
         repository: UserDoc,
+        { passwordAttempt }: UserUpdatePasswordAttemptDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
-        repository.passwordAttempt = this.authMaxPasswordAttempt;
+        repository.passwordAttempt = passwordAttempt;
 
         return this.userRepository.save(repository, options);
     }
@@ -371,5 +375,9 @@ export class UserService implements IUserService {
         options?: IDatabaseManyOptions
     ): Promise<boolean> {
         return this.userRepository.deleteMany(find, options);
+    }
+
+    async getMobileNumberCountryCodeAllowed(): Promise<string[]> {
+        return this.mobileNumberCountryCodeAllowed;
     }
 }

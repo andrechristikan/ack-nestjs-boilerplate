@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import {
     IAuthPassword,
     IAuthPayloadOptions,
-    IAuthRefreshTokenOptions,
 } from 'src/common/auth/interfaces/auth.interface';
 import { IAuthService } from 'src/common/auth/interfaces/auth.service.interface';
 import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
@@ -19,13 +18,10 @@ import { HelperStringService } from 'src/common/helper/services/helper.string.se
 export class AuthService implements IAuthService {
     private readonly accessTokenSecretKey: string;
     private readonly accessTokenExpirationTime: number;
-    private readonly accessTokenNotBeforeExpirationTime: number;
     private readonly accessTokenEncryptKey: string;
     private readonly accessTokenEncryptIv: string;
 
     private readonly refreshTokenSecretKey: string;
-    private readonly refreshTokenExpirationTime: number;
-    private readonly refreshTokenNotBeforeExpirationTime: number;
     private readonly refreshTokenEncryptKey: string;
     private readonly refreshTokenEncryptIv: string;
 
@@ -37,6 +33,9 @@ export class AuthService implements IAuthService {
 
     private readonly passwordExpiredIn: number;
     private readonly passwordSaltLength: number;
+
+    private readonly passwordAttempt: boolean;
+    private readonly maxPasswordAttempt: number;
 
     constructor(
         private readonly helperHashService: HelperHashService,
@@ -52,10 +51,6 @@ export class AuthService implements IAuthService {
         this.accessTokenExpirationTime = this.configService.get<number>(
             'auth.accessToken.expirationTime'
         );
-        this.accessTokenNotBeforeExpirationTime =
-            this.configService.get<number>(
-                'auth.accessToken.notBeforeExpirationTime'
-            );
         this.accessTokenEncryptKey = this.configService.get<string>(
             'auth.accessToken.encryptKey'
         );
@@ -66,13 +61,6 @@ export class AuthService implements IAuthService {
         this.refreshTokenSecretKey = this.configService.get<string>(
             'auth.refreshToken.secretKey'
         );
-        this.refreshTokenExpirationTime = this.configService.get<number>(
-            'auth.refreshToken.expirationTime'
-        );
-        this.refreshTokenNotBeforeExpirationTime =
-            this.configService.get<number>(
-                'auth.refreshToken.notBeforeExpirationTime'
-            );
         this.refreshTokenEncryptKey = this.configService.get<string>(
             'auth.refreshToken.encryptKey'
         );
@@ -95,6 +83,13 @@ export class AuthService implements IAuthService {
         );
         this.passwordSaltLength = this.configService.get<number>(
             'auth.password.saltLength'
+        );
+
+        this.passwordAttempt = this.configService.get<boolean>(
+            'auth.password.attempt'
+        );
+        this.maxPasswordAttempt = this.configService.get<number>(
+            'auth.password.maxAttempt'
         );
     }
 
@@ -126,7 +121,6 @@ export class AuthService implements IAuthService {
             {
                 secretKey: this.accessTokenSecretKey,
                 expiredIn: this.accessTokenExpirationTime,
-                notBefore: this.accessTokenNotBeforeExpirationTime,
                 audience: this.audience,
                 issuer: this.issuer,
                 subject: this.subject,
@@ -172,17 +166,13 @@ export class AuthService implements IAuthService {
     }
 
     async createRefreshToken(
-        payloadHashed: string | AuthRefreshPayloadSerialization,
-        options?: IAuthRefreshTokenOptions
+        payloadHashed: string | AuthRefreshPayloadSerialization
     ): Promise<string> {
         return this.helperEncryptionService.jwtEncrypt(
             { data: payloadHashed },
             {
                 secretKey: this.refreshTokenSecretKey,
-                expiredIn: this.refreshTokenExpirationTime,
-                notBefore:
-                    options?.notBeforeExpirationTime ??
-                    this.refreshTokenNotBeforeExpirationTime,
+                expiredIn: '0',
                 audience: this.audience,
                 issuer: this.issuer,
                 subject: this.subject,
@@ -285,10 +275,6 @@ export class AuthService implements IAuthService {
         return this.accessTokenExpirationTime;
     }
 
-    async getRefreshTokenExpirationTime(): Promise<number> {
-        return this.refreshTokenExpirationTime;
-    }
-
     async getIssuer(): Promise<string> {
         return this.issuer;
     }
@@ -309,5 +295,13 @@ export class AuthService implements IAuthService {
         accessToken: string
     ): Promise<IHelperGooglePayload> {
         return this.helperGoogleService.getTokenInfo(accessToken);
+    }
+
+    async getPasswordAttempt(): Promise<boolean> {
+        return this.passwordAttempt;
+    }
+
+    async getMaxPasswordAttempt(): Promise<number> {
+        return this.maxPasswordAttempt;
     }
 }

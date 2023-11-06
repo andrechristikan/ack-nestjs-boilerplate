@@ -11,5 +11,10 @@ export default registerAs(
         password: process?.env.DATABASE_PASSWORD,
         debug: process.env.DATABASE_DEBUG === 'true',
         options: process.env?.DATABASE_OPTIONS,
+        timeoutOptions: {
+            serverSelectionTimeoutMS: 10000,
+            socketTimeoutMS: 10000,
+            heartbeatFrequencyMS: 30000,
+        },
     })
 );

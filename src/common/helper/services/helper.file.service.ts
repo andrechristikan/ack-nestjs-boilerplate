@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import bytes from 'bytes';
 import { ENUM_HELPER_FILE_TYPE } from 'src/common/helper/constants/helper.enum.constant';
 import { IHelperFileService } from 'src/common/helper/interfaces/helper.file-service.interface';
 import {
@@ -73,10 +72,6 @@ export class HelperFileService implements IHelperFileService {
         }
 
         return sheets;
-    }
-
-    convertToBytes(megabytes: string): number {
-        return bytes(megabytes);
     }
 
     createJson(path: string, data: Record<string, any>[]): boolean {

@@ -8,7 +8,14 @@ export interface IDatabaseFindOneOptions<T = any>
     join?: boolean | PopulateOptions | PopulateOptions[];
     session?: T;
     withDeleted?: boolean;
+    plainObject?: boolean;
 }
+
+// find one lock
+export type IDatabaseFindOneLockOptions<T = any> = Omit<
+    IDatabaseFindOneOptions<T>,
+    'plainObject'
+>;
 
 export type IDatabaseGetTotalOptions<T = any> = Pick<
     IDatabaseFindOneOptions<T>,

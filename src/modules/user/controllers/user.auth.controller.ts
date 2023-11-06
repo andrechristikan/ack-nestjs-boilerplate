@@ -31,7 +31,7 @@ import { FileTypeImagePipe } from 'src/common/file/pipes/file.type.pipe';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { SettingService } from 'src/common/setting/services/setting.service';
+import { SettingService } from 'src/modules/setting/services/setting.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import {
     GetUser,
@@ -105,9 +105,9 @@ export class UserAuthController {
         }
 
         const passwordAttempt: boolean =
-            await this.settingService.getPasswordAttempt();
+            await this.authService.getPasswordAttempt();
         const maxPasswordAttempt: number =
-            await this.settingService.getMaxPasswordAttempt();
+            await this.authService.getMaxPasswordAttempt();
         if (passwordAttempt && user.passwordAttempt >= maxPasswordAttempt) {
             throw new ForbiddenException({
                 statusCode:
@@ -397,9 +397,9 @@ export class UserAuthController {
         @GetUser() user: UserDoc
     ): Promise<void> {
         const passwordAttempt: boolean =
-            await this.settingService.getPasswordAttempt();
+            await this.authService.getPasswordAttempt();
         const maxPasswordAttempt: number =
-            await this.settingService.getMaxPasswordAttempt();
+            await this.authService.getMaxPasswordAttempt();
         if (passwordAttempt && user.passwordAttempt >= maxPasswordAttempt) {
             throw new ForbiddenException({
                 statusCode:
@@ -485,7 +485,7 @@ export class UserAuthController {
     async profile(@GetUser() user: UserDoc): Promise<IResponse> {
         const userWithRole: IUserDoc =
             await this.userService.joinWithRole(user);
-        return { data: userWithRole.toObject() };
+        return { data: userWithRole };
     }
 
     @UserAuthUpdateProfileDoc()

@@ -15,7 +15,6 @@ import {
 import { RequestParamRawGuard } from 'src/common/request/guards/request.param.guard';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { IResult } from 'ua-parser-js';
-import { RequestTimestampInterceptor } from 'src/common/request/interceptors/request.timestamp.interceptor';
 import { RequestUserAgentInterceptor } from 'src/common/request/interceptors/request.user-agent.interceptor';
 
 export const RequestUserAgent: () => ParameterDecorator = createParamDecorator(
@@ -64,10 +63,6 @@ export function RequestParamGuard(
 
 export function RequestValidateUserAgent(): MethodDecorator {
     return applyDecorators(UseInterceptors(RequestUserAgentInterceptor));
-}
-
-export function RequestValidateTimestamp(): MethodDecorator {
-    return applyDecorators(UseInterceptors(RequestTimestampInterceptor));
 }
 
 export function RequestTimeout(seconds: string): MethodDecorator {

@@ -1,22 +1,23 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
     registerDecorator,
     ValidationOptions,
     ValidatorConstraint,
     ValidatorConstraintInterface,
 } from 'class-validator';
-import { SettingService } from 'src/common/setting/services/setting.service';
 
 @ValidatorConstraint({ async: true })
 @Injectable()
 export class MobileNumberAllowedConstraint
     implements ValidatorConstraintInterface
 {
-    constructor(private readonly settingService: SettingService) {}
+    constructor(private readonly configService: ConfigService) {}
 
     async validate(value: string): Promise<boolean> {
-        const mobileNumbersSetting: string[] =
-            await this.settingService.getMobileNumberCountryCodeAllowed();
+        const mobileNumbersSetting: string[] = this.configService.get<string[]>(
+            'user.mobileNumberCountryCodeAllowed'
+        );
         mobileNumbersSetting;
         const check = mobileNumbersSetting.find((val) => value.startsWith(val));
 

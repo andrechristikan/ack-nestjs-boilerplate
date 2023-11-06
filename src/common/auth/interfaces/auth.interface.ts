@@ -16,8 +16,3 @@ export interface IAuthPayloadOptions {
     loginFrom: ENUM_AUTH_LOGIN_FROM;
     loginDate: Date;
 }
-
-export interface IAuthRefreshTokenOptions {
-    // in milis
-    notBeforeExpirationTime?: number | string;
-}

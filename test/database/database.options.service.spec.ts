@@ -28,6 +28,12 @@ describe('DatabaseOptionsService', () => {
                                     return 'test-password';
                                 case 'database.debug':
                                     return false;
+                                case 'database.timeoutOptions':
+                                    return {
+                                        serverSelectionTimeoutMS: 10000,
+                                        socketTimeoutMS: 10000,
+                                        heartbeatFrequencyMS: 30000,
+                                    };
                                 case 'database.options':
                                 default:
                                     return 'retryWrites=true&w=majority';
@@ -55,8 +61,10 @@ describe('DatabaseOptionsService', () => {
 
             expect(options).toMatchObject({
                 uri: 'mongodb://localhost:27017/test-db?retryWrites=true&w=majority',
-                serverSelectionTimeoutMS: 5000,
                 autoCreate: true,
+                serverSelectionTimeoutMS: 10000,
+                socketTimeoutMS: 10000,
+                heartbeatFrequencyMS: 30000,
             });
 
             expect(options.auth).toEqual({
@@ -79,6 +87,12 @@ describe('DatabaseOptionsService', () => {
                             return 'test-db';
                         case 'database.debug':
                             return true;
+                        case 'database.timeoutOptions':
+                            return {
+                                serverSelectionTimeoutMS: 10000,
+                                socketTimeoutMS: 10000,
+                                heartbeatFrequencyMS: 30000,
+                            };
                         case 'database.options':
                         default:
                             return undefined;
@@ -90,8 +104,10 @@ describe('DatabaseOptionsService', () => {
 
             expect(options).toMatchObject({
                 uri: 'mongodb://localhost:27017/test-db',
-                serverSelectionTimeoutMS: 5000,
                 autoCreate: true,
+                serverSelectionTimeoutMS: 10000,
+                socketTimeoutMS: 10000,
+                heartbeatFrequencyMS: 30000,
             });
 
             expect(mongoose.get('debug')).toBe(true);

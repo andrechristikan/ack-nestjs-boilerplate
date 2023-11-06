@@ -42,9 +42,9 @@ import { LessThanConstraint } from 'src/common/request/validations/request.less-
             useFactory: () =>
                 new ValidationPipe({
                     transform: true,
-                    skipNullProperties: false,
+                    skipNullProperties: true,
                     skipUndefinedProperties: false,
-                    skipMissingProperties: false,
+                    skipMissingProperties: true,
                     forbidUnknownValues: false,
                     errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
                     exceptionFactory: async (errors: ValidationError[]) =>

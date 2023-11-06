@@ -21,6 +21,10 @@ export class DatabaseOptionsService implements IDatabaseOptionsService {
             ? `?${this.configService.get<string>('database.options')}`
             : '';
 
+        const timeoutOptions = this.configService.get<Record<string, number>>(
+            'database.timeoutOptions'
+        );
+
         let uri = `${host}`;
 
         if (database) {
@@ -33,8 +37,8 @@ export class DatabaseOptionsService implements IDatabaseOptionsService {
 
         const mongooseOptions: MongooseModuleOptions = {
             uri,
-            serverSelectionTimeoutMS: 5000,
             autoCreate: true,
+            ...timeoutOptions,
         };
 
         if (user && password) {

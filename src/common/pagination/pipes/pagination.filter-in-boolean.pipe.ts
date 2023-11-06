@@ -46,9 +46,9 @@ export function PaginationFilterInBooleanPipe(
                 filters: this.request.__pagination?.filters
                     ? {
                           ...this.request.__pagination?.filters,
-                          ...res,
+                          [field]: value,
                       }
-                    : res,
+                    : { [field]: value },
             };
 
             return res;
