@@ -82,9 +82,9 @@ describe('HelperStringService', () => {
         });
 
         it('should censor in the middle of string, because string length more than 10', () => {
-            const value = 'censor me gogoo';
+            const value = 'censor me gogo';
             const censoredValue = service.censor(value);
-            expect(censoredValue).toBe('cen********gogoo');
+            expect(censoredValue).toBe('cen******** gogo');
         });
     });
 
