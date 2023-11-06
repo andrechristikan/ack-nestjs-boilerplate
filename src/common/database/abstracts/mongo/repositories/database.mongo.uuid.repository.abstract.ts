@@ -20,6 +20,7 @@ import {
     IDatabaseRestoreManyOptions,
     IDatabaseRawOptions,
     IDatabaseSaveOptions,
+    IDatabaseFindOneLockOptions,
 } from 'src/common/database/interfaces/database.interface';
 
 export abstract class DatabaseMongoUUIDRepositoryAbstract<
@@ -82,7 +83,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             findAll.session(options.session);
         }
 
-        return findAll.exec();
+        return options?.plainObject ? findAll.lean() : findAll.exec();
     }
 
     async findAllDistinct<T = EntityDocument>(
@@ -90,7 +91,10 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions<ClientSession>
     ): Promise<T[]> {
-        const findAll = this._repository.distinct<T>(fieldDistinct, find);
+        const findAll = this._repository.distinct<string, T>(
+            fieldDistinct,
+            find
+        );
 
         if (options?.withDeleted) {
             findAll.or([
@@ -129,7 +133,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             findAll.session(options.session);
         }
 
-        return findAll.exec();
+        return (options?.plainObject ? findAll.lean() : findAll.exec()) as any;
     }
     async findOne<T = EntityDocument>(
         find: Record<string, any>,
@@ -170,7 +174,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             findOne.sort(options.order);
         }
 
-        return findOne.exec();
+        return options?.plainObject ? findOne.lean() : findOne.exec();
     }
 
     async findOneById<T = EntityDocument>(
@@ -212,12 +216,12 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             findOne.sort(options.order);
         }
 
-        return findOne.exec();
+        return options?.plainObject ? findOne.lean() : findOne.exec();
     }
 
     async findOneAndLock<T = EntityDocument>(
         find: Record<string, any>,
-        options?: IDatabaseFindOneOptions<ClientSession>
+        options?: IDatabaseFindOneLockOptions<ClientSession>
     ): Promise<T> {
         const findOne = this._repository.findOneAndUpdate<T>(find, {
             new: true,
@@ -262,7 +266,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
 
     async findOneByIdAndLock<T = EntityDocument>(
         _id: string,
-        options?: IDatabaseFindOneOptions<ClientSession>
+        options?: IDatabaseFindOneLockOptions<ClientSession>
     ): Promise<T> {
         const findOne = this._repository.findByIdAndUpdate<T>(_id, {
             new: true,

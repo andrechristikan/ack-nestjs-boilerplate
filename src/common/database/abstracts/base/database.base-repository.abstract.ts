@@ -11,6 +11,7 @@ import {
     IDatabaseRawOptions,
     IDatabaseGetTotalOptions,
     IDatabaseSaveOptions,
+    IDatabaseFindOneLockOptions,
 } from 'src/common/database/interfaces/database.interface';
 
 export abstract class DatabaseBaseRepositoryAbstract<Entity = any> {
@@ -37,12 +38,12 @@ export abstract class DatabaseBaseRepositoryAbstract<Entity = any> {
 
     abstract findOneAndLock<T = Entity>(
         find: Record<string, any>,
-        options?: IDatabaseFindOneOptions<any>
+        options?: IDatabaseFindOneLockOptions<any>
     ): Promise<T>;
 
     abstract findOneByIdAndLock<T = Entity>(
         _id: string,
-        options?: IDatabaseFindOneOptions<any>
+        options?: IDatabaseFindOneLockOptions<any>
     ): Promise<T>;
 
     abstract getTotal(

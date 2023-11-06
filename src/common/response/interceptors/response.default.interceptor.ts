@@ -102,7 +102,11 @@ export class ResponseDefaultInterceptor<T>
 
                     if (responseData) {
                         const { _metadata } = responseData;
-                        data = responseData.data;
+                        data = responseData.data
+                            ? JSON.parse(
+                                  JSON.stringify(responseData.data ?? {})
+                              )
+                            : undefined;
 
                         if (data && classSerialization) {
                             data = plainToInstance(
