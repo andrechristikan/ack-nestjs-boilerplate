@@ -36,7 +36,6 @@ import { IAwsSESService } from 'src/common/aws/interfaces/aws.ses-service.interf
 @Injectable()
 export class AwsSESService implements IAwsSESService {
     private readonly sesClient: SESClient;
-    private readonly fromEmail: string;
 
     constructor(private readonly configService: ConfigService) {
         this.sesClient = new SESClient({
@@ -50,8 +49,6 @@ export class AwsSESService implements IAwsSESService {
             },
             region: this.configService.get<string>('aws.ses.region'),
         });
-
-        this.fromEmail = this.configService.get<string>('aws.ses.fromEmail');
     }
 
     async listTemplates(
@@ -186,7 +183,6 @@ export class AwsSESService implements IAwsSESService {
         templateName,
         templateData,
     }: AwsSESSendDto<T>): Promise<SendTemplatedEmailCommandOutput> {
-        const sdr = sender ?? this.fromEmail;
         const command: SendTemplatedEmailCommand =
             new SendTemplatedEmailCommand({
                 Template: templateName,
@@ -195,9 +191,9 @@ export class AwsSESService implements IAwsSESService {
                     BccAddresses: bcc ?? [],
                     CcAddresses: cc ?? [],
                 },
-                Source: sdr,
+                Source: sender,
                 TemplateData: JSON.stringify(templateData ?? ''),
-                ReplyToAddresses: [replyTo ?? sdr],
+                ReplyToAddresses: [replyTo ?? sender],
             });
 
         try {
@@ -221,7 +217,6 @@ export class AwsSESService implements IAwsSESService {
         cc,
         templateName,
     }: AwsSESSendBulkDto): Promise<SendBulkTemplatedEmailCommandOutput> {
-        const sdr = sender ?? this.fromEmail;
         const command: SendBulkTemplatedEmailCommand =
             new SendBulkTemplatedEmailCommand({
                 Template: templateName,
@@ -235,8 +230,8 @@ export class AwsSESService implements IAwsSESService {
                         e.templateData ?? ''
                     ),
                 })),
-                Source: sdr,
-                ReplyToAddresses: [replyTo ?? sdr],
+                Source: sender,
+                ReplyToAddresses: [replyTo ?? sender],
             });
 
         try {

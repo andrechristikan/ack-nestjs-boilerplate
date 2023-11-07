@@ -23,9 +23,16 @@ export class MigrationEmailSeed {
                 'aws.ses.credential.secret'
             );
             if (clientId && clientSecret) {
-                const check: boolean = await this.emailService.getSignUp();
-                if (!check) {
+                const checkSignUp: boolean =
+                    await this.emailService.getSignUp();
+                if (!checkSignUp) {
                     await this.emailService.createSignUp();
+                }
+
+                const checkChangePassword: boolean =
+                    await this.emailService.getChangePassword();
+                if (!checkChangePassword) {
+                    await this.emailService.createChangePassword();
                 }
             }
         } catch (err: any) {
@@ -42,6 +49,7 @@ export class MigrationEmailSeed {
     async remove(): Promise<void> {
         try {
             await this.emailService.deleteSignUp();
+            await this.emailService.deleteChangePassword();
         } catch (err: any) {
             throw new Error(err.message);
         }
