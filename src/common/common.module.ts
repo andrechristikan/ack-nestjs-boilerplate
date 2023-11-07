@@ -116,7 +116,6 @@ import { PolicyModule } from 'src/common/policy/policy.module';
                     .allow(null, '')
                     .optional(),
                 AWS_SES_REGION: Joi.string().allow(null, '').optional(),
-                AWS_SES_FROM_EMAIL: Joi.string().allow(null, '').optional(),
 
                 SSO_GOOGLE_CLIENT_ID: Joi.string().allow(null, '').optional(),
                 SSO_GOOGLE_CLIENT_SECRET: Joi.string()

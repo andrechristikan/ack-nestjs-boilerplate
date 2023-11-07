@@ -18,7 +18,6 @@ export default registerAs(
                 secret: process.env.AWS_SES_CREDENTIAL_SECRET,
             },
             region: process.env.AWS_SES_REGION,
-            fromEmail: process.env.AWS_SES_FROM_EMAIL,
         },
     })
 );

@@ -69,12 +69,12 @@ export class AwsSESSendDto<T> {
     templateData?: T;
 
     @ApiProperty({
-        required: false,
+        required: true,
     })
     @IsEmail()
     @IsString()
-    @IsOptional()
-    sender?: string;
+    @IsNotEmpty()
+    sender: string;
 
     @ApiProperty({
         required: false,

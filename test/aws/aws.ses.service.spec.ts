@@ -267,6 +267,7 @@ describe('AwsSESService', () => {
             const result: SendTemplatedEmailCommandOutput = await service.send({
                 recipients: ['mail@mail.com'],
                 templateName: 'template',
+                sender: 'sender@mail.com',
             });
             expect(service['sesClient'].send).toHaveBeenCalled();
             expect(result).toEqual(data);
@@ -281,6 +282,7 @@ describe('AwsSESService', () => {
             const result = service.send({
                 recipients: ['mail@mail.com'],
                 templateName: 'template',
+                sender: 'sender@mail.com',
             });
 
             try {
@@ -310,6 +312,7 @@ describe('AwsSESService', () => {
                         },
                     ],
                     templateName: 'template',
+                    sender: 'sender@mail.com',
                 });
             expect(service['sesClient'].send).toHaveBeenCalled();
             expect(result).toEqual(data);
@@ -328,6 +331,7 @@ describe('AwsSESService', () => {
                     },
                 ],
                 templateName: 'template',
+                sender: 'sender@mail.com',
             });
 
             try {
