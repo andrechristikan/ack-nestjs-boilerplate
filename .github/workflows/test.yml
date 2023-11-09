@@ -10,7 +10,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    environment: baibay
+    environment: staging
 
     strategy:
       matrix:
@@ -78,6 +78,14 @@ jobs:
           echo SSO_GOOGLE_CLIENT_SECRET="$SSO_GOOGLE_CLIENT_SECRET" >> .env
           echo SSO_GOOGLE_CALLBACK_URL_LOGIN="localhost:3000/api/callback" >> .env
           echo SSO_GOOGLE_CALLBACK_URL_SIGN_UP="localhost:3000/api/callback" >> .env
+
+          echo EMAIL_KEY="$EMAIL_KEY" >> .env
+
+          echo WHATAPPS_CLIENT_ID="$WHATAPPS_CLIENT_ID" >> .env
+          echo WHATAPPS_CLIENT_SECRET="$WHATAPPS_CLIENT_SECRET" >> .env
+
+          echo PUSH_NOTIFICATION_APP_ID="$PUSH_NOTIFICATION_APP_ID" >> .env
+          echo PUSH_NOTIFICATION_API_KEY="$PUSH_NOTIFICATION_API_KEY" >> .env
         env:
           AWS_CREDENTIAL_KEY: ${{ secrets.AWS_CREDENTIAL_KEY }}
           AWS_CREDENTIAL_SECRET: ${{ secrets.AWS_CREDENTIAL_SECRET }}
@@ -85,6 +93,11 @@ jobs:
           AWS_S3_REGION: ${{ secrets.AWS_S3_REGION }}
           SSO_GOOGLE_CLIENT_ID: ${{ secrets.SSO_GOOGLE_CLIENT_ID }}
           SSO_GOOGLE_CLIENT_SECRET: ${{ secrets.SSO_GOOGLE_CLIENT_SECRET }}
+          EMAIL_KEY: ${{ secrets.EMAIL_KEY }}
+          WHATAPPS_CLIENT_ID: ${{ secrets.WHATAPPS_CLIENT_ID }}
+          WHATAPPS_CLIENT_SECRET: ${{ secrets.WHATAPPS_CLIENT_SECRET }}
+          PUSH_NOTIFICATION_APP_ID: ${{ secrets.PUSH_NOTIFICATION_APP_ID }}
+          PUSH_NOTIFICATION_API_KEY: ${{ secrets.PUSH_NOTIFICATION_API_KEY }}
 
       - name: Unit Test
         run: yarn test

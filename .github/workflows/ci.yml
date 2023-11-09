@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: baibay
+    environment: staging
 
     env:
       APP_NAME: ${{ github.event.repository.name }}
