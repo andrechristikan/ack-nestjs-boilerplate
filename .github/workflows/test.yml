@@ -5,6 +5,7 @@ on:
   pull_request:
     branches: 
     - main
+    # - staging
     
 jobs:
   test:
@@ -16,9 +17,6 @@ jobs:
         node-version: ['18.x']
 
     steps:
-      - name: Git checkout
-        uses: actions/checkout@v3
-
       - name: Setup node version ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:

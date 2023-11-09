@@ -19,14 +19,10 @@ jobs:
       APP_NETWORK: app-network
 
     steps:
-
-      - name: Git checkout
-        uses: actions/checkout@v3
-
-      - name: Get commit
+      - name: Get short sha commit
         id: git
         run: |
-          echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
+          echo "$(git rev-parse --short "$GITHUB_SHA")"
       
       - name: Get latest version
         id: version

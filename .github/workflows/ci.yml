@@ -3,6 +3,7 @@ on:
   # push:
   #   branches: 
   #   - main
+  #   - staging
   workflow_dispatch:
 
 jobs:
@@ -12,17 +13,14 @@ jobs:
 
     env:
       APP_NAME: ${{ github.event.repository.name }}
-      DOCKERFILE: dockerfile.prod
+      DOCKERFILE: .github/dockerfile
     
     steps:
-      - name: Git checkout
-        uses: actions/checkout@v3
-
-      - name: Get commit
+      - name: Get short sha commit
         id: git
         run: |
-          echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
-      
+          echo "$(git rev-parse --short "$GITHUB_SHA")"
+
       - name: Get latest version
         id: version
         uses: martinbeentjes/npm-get-version-action@main
@@ -75,9 +73,9 @@ jobs:
           file: ${{ env.DOCKERFILE }}
           target: main
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}:v${{ steps.version.outputs.current-version}}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}:v${{ steps.version.outputs.current-version}}_sha-${{ steps.git.outputs.short_sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}_${{ github.ref_name }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}_${{ github.ref_name }}:v${{ steps.version.outputs.current-version}}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}_${{ github.ref_name }}:v${{ steps.version.outputs.current-version}}_sha-${{ steps.git.outputs.short_sha }}
           push: true
 
 
