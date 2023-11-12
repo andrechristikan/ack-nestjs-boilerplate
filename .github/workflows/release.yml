@@ -17,11 +17,11 @@ jobs:
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
-
-      - name: Get commit
+        
+      - name: Get short sha commit
         id: git
         run: |
-          echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
+          echo "short_sha=$(git rev-parse --short $GITHUB_SHA)" >> "$GITHUB_OUTPUT"
       
       - name: Get latest version
         id: version
@@ -30,16 +30,16 @@ jobs:
       - name: Git
         run: |
           echo Branch name is: ${{ github.ref_name }}
-          echo Short sha: ${{ steps.git.outputs.short_sha}}
-          echo Version is: ${{ steps.version.outputs.current-version}}
+          echo Short sha: ${{ steps.git.outputs.short_sha }}
+          echo Version is: ${{ steps.version.outputs.current-version }}
 
       - name: Release
         uses: softprops/action-gh-release@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ steps.version.outputs.current-version}}
-          name: v${{ steps.version.outputs.current-version}}
+          tag_name: v${{ steps.version.outputs.current-version }}
+          name: v${{ steps.version.outputs.current-version }}
           generate_release_notes: true
           draft: false
           prerelease: false
