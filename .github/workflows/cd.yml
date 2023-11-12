@@ -1,10 +1,10 @@
 name: CD
 
 on:
-  # workflow_run:
-  #   workflows: ['CI']
-  #   types:
-  #     - completed
+  # push:
+  #   branches: 
+  #   - main
+  #   - staging
   workflow_dispatch:
 
 jobs:
@@ -14,15 +14,25 @@ jobs:
     environment: production
 
     env: 
-      APP_NAME: ${{ github.event.repository.name }}
+      DOCKER_HUB:  ${{ secrets.DOCKER_HUB }}
+      APP_NAME: ${{ github.repository }}
       APP_PORT: 3000
+      APP_PORT_EXPOSE: ${{ secrets.APP_PORT }}
       APP_NETWORK: app-network
 
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_PORT: ${{ secrets.SSH_PORT }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY}}
+
     steps:
+      - name: Git checkout
+        uses: actions/checkout@v3
+        
       - name: Get short sha commit
         id: git
         run: |
-          echo "$(git rev-parse --short "$GITHUB_SHA")"
+          echo "short_sha=$(git rev-parse --short $GITHUB_SHA)" >> "$GITHUB_OUTPUT"
       
       - name: Get latest version
         id: version
@@ -31,14 +41,15 @@ jobs:
       - name: Git
         run: |
           echo Branch name is: ${{ github.ref_name }}
-          echo Short sha: ${{ steps.git.outputs.short_sha}}
-          echo Version is: ${{ steps.version.outputs.current-version}}
+          echo Short sha: ${{ steps.git.outputs.short_sha }}
+          echo Version is: ${{ steps.version.outputs.current-version }}
 
       - name: Environment
         run: |
-          echo APP_NAME is: ${{ env.APP_NAME}}
-          echo APP_PORT is: ${{ env.APP_PORT}}
-          echo APP_NETWORK is: ${{ env.APP_NETWORK}}
+          echo DOCKER_HUB is: ${{ env.DOCKER_HUB }}
+          echo APP_NAME is: ${{ env.APP_NAME }}
+          echo APP_PORT is: ${{ env.APP_PORT }}
+          echo APP_NETWORK is: ${{ env.APP_NETWORK }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -50,21 +61,21 @@ jobs:
         uses: fifsky/ssh-action@master
         with:
           command: |
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME}}_${{ github.ref_name }}:${{ steps.git.outputs.short_sha }}
-            docker stop ${{ env.APP_NAME}} && docker rm ${{ env.APP_NAME}}
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+            docker stop ${{ env.APP_NAME }} && docker rm ${{ env.APP_NAME }}
             docker network create ${{ env.APP_NETWORK }} --driver=bridge
             docker run -itd \
-              --hostname ${{ env.APP_NAME}} \
+              --hostname ${{ env.APP_NAME }} \
               --publish ${{ secrets.APP_PORT }}:${{ env.APP_PORT }} \
               --network ${{ env.APP_NETWORK }} \
-              --volume /app/${{ env.APP_NAME}}/logs/:/app/logs/ \
-              --volume /app/${{ env.APP_NAME}}/.env:/app/.env \
+              --volume /app/${{ env.APP_NAME }}/logs/:/app/logs/ \
+              --volume /app/${{ env.APP_NAME }}/.env:/app/.env \
               --restart unless-stopped \
-              --name ${{ env.APP_NAME}} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}_${{ github.ref_name }}:v${{ steps.version.outputs.current-version}}_sha-${{ steps.git.outputs.short_sha }}
+              --name ${{ env.APP_NAME }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
           user: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY}}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Clean
         uses: fifsky/ssh-action@master
@@ -73,11 +84,11 @@ jobs:
           command: |
             docker container prune --force
             docker image prune --force
-            docker rmi $(docker images **/${{ secrets.APP_NAME }} -q) --force
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT }}
-          user: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY}}
+            docker rmi $(docker images **/${{ env.DOCKER_HUB }} -q) --force
+          host: ${{ env.SSH_HOST }}
+          port: ${{ env.SSH_PORT }}
+          user: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
 
 
   deploy_staging:
@@ -86,15 +97,25 @@ jobs:
     environment: staging
 
     env: 
-      APP_NAME: ${{ github.event.repository.name }}
+      DOCKER_HUB:  ${{ secrets.DOCKER_HUB }}
+      APP_NAME: ${{ github.repository }}
       APP_PORT: 3000
+      APP_PORT_EXPOSE: ${{ secrets.APP_PORT }}
       APP_NETWORK: app-network
 
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_PORT: ${{ secrets.SSH_PORT }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
     steps:
+      - name: Git checkout
+        uses: actions/checkout@v3
+        
       - name: Get short sha commit
         id: git
         run: |
-          echo "$(git rev-parse --short "$GITHUB_SHA")"
+          echo "short_sha=$(git rev-parse --short $GITHUB_SHA)" >> "$GITHUB_OUTPUT"
       
       - name: Get latest version
         id: version
@@ -103,14 +124,15 @@ jobs:
       - name: Git
         run: |
           echo Branch name is: ${{ github.ref_name }}
-          echo Short sha: ${{ steps.git.outputs.short_sha}}
-          echo Version is: ${{ steps.version.outputs.current-version}}
+          echo Short sha: ${{ steps.git.outputs.short_sha }}
+          echo Version is: ${{ steps.version.outputs.current-version }}
 
       - name: Environment
         run: |
-          echo APP_NAME is: ${{ env.APP_NAME}}
-          echo APP_PORT is: ${{ env.APP_PORT}}
-          echo APP_NETWORK is: ${{ env.APP_NETWORK}}
+          echo DOCKER_HUB is: ${{ env.DOCKER_HUB }}
+          echo APP_NAME is: ${{ env.APP_NAME }}
+          echo APP_PORT is: ${{ env.APP_PORT }}
+          echo APP_NETWORK is: ${{ env.APP_NETWORK }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -122,21 +144,21 @@ jobs:
         uses: fifsky/ssh-action@master
         with:
           command: |
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME}}_${{ github.ref_name }}:${{ steps.git.outputs.short_sha }}
-            docker stop ${{ env.APP_NAME}} && docker rm ${{ env.APP_NAME}}
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+            docker stop ${{ env.APP_NAME }} && docker rm ${{ env.APP_NAME }}
             docker network create ${{ env.APP_NETWORK }} --driver=bridge
             docker run -itd \
-              --hostname ${{ env.APP_NAME}} \
-              --publish ${{ secrets.APP_PORT }}:${{ env.APP_PORT }} \
+              --hostname ${{ env.APP_NAME }} \
+              --publish ${{ env.APP_PORT_EXPOSE }}:${{ env.APP_PORT }} \
               --network ${{ env.APP_NETWORK }} \
-              --volume /app/${{ env.APP_NAME}}/logs/:/app/logs/ \
-              --volume /app/${{ env.APP_NAME}}/.env:/app/.env \
+              --volume /app/${{ env.APP_NAME }}/logs/:/app/logs/ \
+              --volume /app/${{ env.APP_NAME }}/.env:/app/.env \
               --restart unless-stopped \
-              --name ${{ env.APP_NAME}} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}_${{ github.ref_name }}:v${{ steps.version.outputs.current-version}}_sha-${{ steps.git.outputs.short_sha }}
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT }}
-          user: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY}}
+              --name ${{ env.APP_NAME }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+          host: ${{ env.SSH_HOST }}
+          port: ${{ env.SSH_PORT }}
+          user: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
 
       - name: Clean
         uses: fifsky/ssh-action@master
@@ -145,8 +167,8 @@ jobs:
           command: |
             docker container prune --force
             docker image prune --force
-            docker rmi $(docker images **/${{ secrets.APP_NAME }} -q) --force
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT }}
-          user: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY}}
+            docker rmi $(docker images **/${{ env.DOCKER_HUB }} -q) --force
+          host: ${{ env.SSH_HOST }}
+          port: ${{ env.SSH_PORT }}
+          user: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_PRIVATE_KEY }}

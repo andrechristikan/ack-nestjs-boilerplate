@@ -1,40 +1,41 @@
 name: CI
 on:
-  # push:
+  # pull_request:
   #   branches: 
   #   - main
   #   - staging
   workflow_dispatch:
 
 jobs:
-  build:
+  build_image:
     runs-on: ubuntu-latest
-    environment: staging
 
     env:
-      APP_NAME: ${{ github.event.repository.name }}
+      DOCKER_HUB:  ${{ secrets.DOCKER_HUB }}
       DOCKERFILE: .github/dockerfile
     
     steps:
-      - name: Get short sha commit
+      - name: Git checkout
+        uses: actions/checkout@v3
+        
+      - name: Get git short sha
         id: git
         run: |
-          echo "$(git rev-parse --short "$GITHUB_SHA")"
+          echo "short_sha=$(git rev-parse --short $GITHUB_SHA)" >> "$GITHUB_OUTPUT"
 
-      - name: Get latest version
+      - name: Get latest version of package json
         id: version
         uses: martinbeentjes/npm-get-version-action@main
 
       - name: Git
         run: |
-          echo Branch name is: ${{ github.ref_name }}
-          echo Short sha: ${{ steps.git.outputs.short_sha}}
-          echo Version is: ${{ steps.version.outputs.current-version}}
+          echo Short sha: ${{ steps.git.outputs.short_sha }}
+          echo Version is: ${{ steps.version.outputs.current-version }}
 
       - name: Environment
         run: |
-          echo APP_NAME is: ${{ env.APP_NAME}}
-          echo DOCKERFILE is: ${{ env.DOCKERFILE}}
+          echo DOCKER_HUB is: ${{ env.DOCKER_HUB }}
+          echo DOCKERFILE is: ${{ env.DOCKERFILE }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -66,16 +67,29 @@ jobs:
           file: ${{ env.DOCKERFILE }}
           target: builder
 
-      - name: Build against main and push
+      - name: Build main and push
         uses: docker/build-push-action@v4
+        if: ${{ github.ref_name == 'main' }}
         with:
           builder: ${{ steps.main.outputs.name }}
           file: ${{ env.DOCKERFILE }}
           target: main
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}_${{ github.ref_name }}:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}_${{ github.ref_name }}:v${{ steps.version.outputs.current-version}}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.APP_NAME }}_${{ github.ref_name }}:v${{ steps.version.outputs.current-version}}_sha-${{ steps.git.outputs.short_sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:main_v${{ steps.version.outputs.current-version }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+          push: true
+
+      - name: Build main and push 
+        uses: docker/build-push-action@v4
+        if: ${{ github.ref_name == 'staging' }}
+        with:
+          builder: ${{ steps.main.outputs.name }}
+          file: ${{ env.DOCKERFILE }}
+          target: main
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:staging_v${{ steps.version.outputs.current-version }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
           push: true
 
 
