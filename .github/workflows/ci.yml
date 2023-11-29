@@ -12,7 +12,7 @@ jobs:
 
     env:
       DOCKER_HUB:  ${{ secrets.DOCKER_HUB }}
-      DOCKERFILE: .github/dockerfile
+      DOCKERFILE: ./ci/dockerfile
     
     steps:
       - name: Git checkout

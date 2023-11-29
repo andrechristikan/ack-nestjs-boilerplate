@@ -36,14 +36,14 @@
 
 > Very limited documentation, and will move to stateful authorization
 
-* The features will be relate with AWS
+* The features will be relate with AWS / Amazon web service
 * Stateless Authorization
 * If you want to implement `database transactions`. You must run MongoDB as a `replication set`.
-* If you want to implement `Google SSO`. 
-    1. You must have google account, then set your app on `google console` to get the  `clientId` and `clientSecret`.
+* If you want to implement `Google SSO`. You must have google cloud console account, then create your own SSO / Credential API to get the  `clientId` and `clientSecret`.
 * If you change the environment value of `APP_ENV` to `production`, that will trigger.
     1. CorsMiddleware will implement `src/configs/middleware.config.ts`.
     2. Documentation will `disable`.
+* For monitoring, this project will use sentry.io, and only send `500` or `internal server error`.
 
 ## Todo
 
@@ -52,8 +52,8 @@
 * [x] Debugger env change
 * [x] Add exception filter to Sentry.io
 * [x] Add Email Module with AWS SES
-* [ ] Push docker image to AWS ECR
-* [ ] CI/CD Using AWS ECS and deploy to AWS EC2
+* [ ] CI Push docker image to AWS ECR
+* [ ] CD Using AWS ECS and deploy to AWS EC2
 * [ ] Update Package, and remove unused package
 * [ ] Update Documentation, add behaviors
 * [ ] Update Documentation, and include an diagram for easier comprehension

@@ -25,16 +25,16 @@ api key secret: `ZLCtDd2rh3TAyVhfAeo3JOPvWfAsTp0Oq6rHl69D`
 
 1. Super Admin
    - email: `superadmin@mail.com`
-   - password: `aaAA@@123444`
+   - password: `aaAA@123`
 2. Admin
    - email: `admin@mail.com`
-   - password: `aaAA@@123444`
+   - password: `aaAA@123`
 3. Member
    - email: `member@mail.com`
-   - password: `aaAA@@123444`
+   - password: `aaAA@123`
 4. User
    - email: `user@mail.com`
-   - password: `aaAA@@123444`
+   - password: `aaAA@123`
 
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com

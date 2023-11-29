@@ -63,13 +63,35 @@ For docker installation, we need more tools to be installed.
 1. [Docker][ref-docker]
 2. [Docker-Compose][ref-dockercompose]
 
+### Create environment
+
+Make your own environment file with a copy of `env.example` and adjust values to suit your own environment.
+
+```bash
+cp .env.example .env
+```
+
 then run
 
 ```bash
 docker-compose up -d
 ```
 
-`After all containers up, we not finish yet`. We need to manual configure mongodb as replication set.
+## Database Migration
+
+This project need to do migration for running. [Read this][ack-database-migration-doc]
+
+
+## Database Mongo Replication locally
+
+> Optional
+
+If we want run mongo replication locally, i already provide docker compose.
+
+1. Go to `./ci`
+2. then run `docker-compose -f docker-compose.mongo-replica.yml up -d`
+
+After that, we need manual configure mongodb.
 In this case primary will be `mongo1`
 
 1. Enter the `mongo1 container`
@@ -113,14 +135,6 @@ In this case primary will be `mongo1`
     ```bash
     docker restart service
     ```
-
-## Database Migration
-
-This project need to do migration for running. [Read this][ack-database-migration-doc]
-
-## API Reference
-
-You can check The API Spec after running this project. in `localhost:3000/docs`.
 
 [ack-database-migration-doc]: ./database/database_migration.md
 
