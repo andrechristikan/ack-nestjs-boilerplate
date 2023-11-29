@@ -1,22 +1,34 @@
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { HelperFileService } from 'src/common/helper/services/helper.file.service';
-import { unlinkSync } from 'fs';
 
 describe('HelperFileService', () => {
     let service: HelperFileService;
 
     beforeEach(async () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
-            providers: [HelperFileService],
+            providers: [
+                {
+                    provide: ConfigService,
+                    useValue: {
+                        get: jest.fn().mockImplementation((key: string) => {
+                            switch (key) {
+                                case 'file.pdf.chromeBin':
+                                    return process.env.DOCKER_INSTALLATION ===
+                                        'true'
+                                        ? '/usr/bin/chromium-browser'
+                                        : null;
+                                default:
+                                    return undefined;
+                            }
+                        }),
+                    },
+                },
+                HelperFileService,
+            ],
         }).compile();
 
         service = moduleRef.get<HelperFileService>(HelperFileService);
-    });
-
-    afterEach(async () => {
-        try {
-            unlinkSync('data/__blabla.json');
-        } catch (err: any) {}
     });
 
     it('should be defined', () => {
@@ -59,21 +71,11 @@ describe('HelperFileService', () => {
         });
     });
 
-    describe('createJson', () => {
-        it('should return true and create json file base on path', () => {
-            const result = service.createJson('data/__blabla.json', []);
-
-            expect(result).toEqual(true);
-        });
-    });
-
-    describe('readJson', () => {
-        it('should return object of json', () => {
-            service.createJson('data/__blabla.json', []);
-            const result = service.readJson('data/__blabla.json');
-
-            expect(result).toBeDefined();
-            expect(Array.isArray(result)).toEqual(true);
+    describe('convertToBytes', () => {
+        it('should return bytes when given a megabyte string', () => {
+            const megabytes = '1MB';
+            const bytes = service.convertToBytes(megabytes);
+            expect(bytes).toEqual(1048576);
         });
     });
 });

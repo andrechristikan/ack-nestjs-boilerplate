@@ -1,0 +1,42 @@
+version: '3.8'
+services:
+  mongo1:
+    container_name: mongo1
+    hostname: mongo1
+    image: mongo
+    restart: always
+    networks:
+      - app-network
+    volumes:
+      - dbdata1:/data/db
+    command: mongod --bind_ip_all --replSet rs0
+
+  mongo2:
+    container_name: mongo2
+    hostname: mongo2
+    image: mongo
+    networks:
+      - app-network
+    restart: always
+    volumes:
+      - dbdata2:/data/db
+    command: mongod --bind_ip_all --replSet rs0
+
+  mongo3:
+    container_name: mongo3
+    hostname: mongo3
+    image: mongo
+    networks:
+      - app-network
+    restart: always
+    volumes:
+      - dbdata3:/data/db
+    command: mongod --bind_ip_all --replSet rs0
+networks:
+  app-network:
+    name: app-network
+    driver: bridge
+volumes:
+  dbdata1:
+  dbdata2:
+  dbdata3:

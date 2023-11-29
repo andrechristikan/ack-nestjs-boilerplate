@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import bytes from 'bytes';
 import { ENUM_HELPER_FILE_TYPE } from 'src/common/helper/constants/helper.enum.constant';
 import { IHelperFileService } from 'src/common/helper/interfaces/helper.file-service.interface';
 import {
@@ -8,10 +9,16 @@ import {
     IHelperFileCreateExcelWorkbookOptions,
 } from 'src/common/helper/interfaces/helper.interface';
 import { utils, write, read, WorkBook } from 'xlsx';
-import { writeFileSync, readFileSync } from 'fs';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class HelperFileService implements IHelperFileService {
+    private readonly chromeBin: string;
+
+    constructor(private readonly configService: ConfigService) {
+        this.chromeBin = this.configService.get<string>('file.pdf.chromeBin');
+    }
+
     createExcelWorkbook(
         rows: IHelperFileRows[],
         options?: IHelperFileCreateExcelWorkbookOptions
@@ -74,14 +81,7 @@ export class HelperFileService implements IHelperFileService {
         return sheets;
     }
 
-    createJson(path: string, data: Record<string, any>[]): boolean {
-        const sData = JSON.stringify(data);
-        writeFileSync(path, sData);
-
-        return true;
-    }
-    readJson(path: string): Record<string, any>[] {
-        const data: string = readFileSync(path, 'utf8');
-        return JSON.parse(data);
+    convertToBytes(megabytes: string): number {
+        return bytes(megabytes);
     }
 }

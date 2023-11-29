@@ -2,6 +2,8 @@
 FROM node:lts-alpine as builder
 LABEL maintainer "ack@baibay.id"
 
+ENV NODE_ENV=test
+
 WORKDIR /app
 COPY package.json yarn.lock ./
 
@@ -16,7 +18,6 @@ RUN yarn build
 FROM node:lts-alpine as main
 LABEL maintainer "ack@baibay.id"
 
-ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV}
 
 WORKDIR /app

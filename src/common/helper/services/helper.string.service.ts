@@ -83,13 +83,14 @@ export class HelperStringService implements IHelperStringService {
     }
 
     formatCurrency(num: number): string {
-        const curr = new Intl.NumberFormat('id-ID', {
+        return new Intl.NumberFormat('id-ID', {
             style: 'currency',
             currency: 'IDR',
             minimumFractionDigits: 0,
             maximumFractionDigits: 0,
-        });
-
-        return curr.format(num);
+        })
+            .format(num)
+            .replace('Rp', '')
+            .trim();
     }
 }
