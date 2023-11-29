@@ -9,8 +9,8 @@ import {
 } from 'src/common/doc/decorators/doc.decorator';
 import { SettingDocParamsId } from 'src/modules/setting/constants/setting.doc.constant';
 import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/modules/setting/constants/setting.status-code.constant';
+import { SettingCoreSerialization } from 'src/modules/setting/serializations/setting.core.serialization';
 import { SettingGetSerialization } from 'src/modules/setting/serializations/setting.get.serialization';
-import { SettingLanguageSerialization } from 'src/modules/setting/serializations/setting.language.serialization';
 import { SettingListSerialization } from 'src/modules/setting/serializations/setting.list.serialization';
 
 export function SettingPublicListDoc(): MethodDecorator {
@@ -46,12 +46,12 @@ export function SettingPublicGetDoc(): MethodDecorator {
     );
 }
 
-export function SettingPublicLanguageDoc(): MethodDecorator {
+export function SettingPublicCoreDoc(): MethodDecorator {
     return applyDecorators(
-        Doc({ summary: 'get all language of app' }),
-        DocAuth({ apiKey: true }),
-        DocResponse<SettingLanguageSerialization>('setting.languages', {
-            serialization: SettingLanguageSerialization,
-        })
+        Doc({ summary: 'get core' }),
+        DocResponse<SettingCoreSerialization>('setting.core', {
+            serialization: SettingCoreSerialization,
+        }),
+        DocAuth({ apiKey: true })
     );
 }

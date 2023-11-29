@@ -2,35 +2,97 @@ import {
     applyDecorators,
     createParamDecorator,
     ExecutionContext,
-    SetMetadata,
     UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
-    FILE_CUSTOM_MAX_FILES_META_KEY,
-    FILE_CUSTOM_MAX_SIZE_META_KEY,
+    FILE_SIZE_IN_BYTES,
+    FILE_SIZE_LARGE_IN_BYTES,
+    FILE_SIZE_MEDIUM_IN_BYTES,
 } from 'src/common/file/constants/file.constant';
-import { FileCustomMaxSizeInterceptor } from 'src/common/file/interceptors/file.custom-max-size.interceptor';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function FileUploadSingle(field?: string): MethodDecorator {
-    return applyDecorators(UseInterceptors(FileInterceptor(field ?? 'file')));
-}
-
-export function FileUploadMultiple(field?: string): MethodDecorator {
-    return applyDecorators(UseInterceptors(FilesInterceptor(field ?? 'files')));
-}
-
-export function FileCustomMaxFile(customMaxFiles: number): MethodDecorator {
     return applyDecorators(
-        SetMetadata(FILE_CUSTOM_MAX_FILES_META_KEY, customMaxFiles)
+        UseInterceptors(
+            FileInterceptor(field ?? 'file', {
+                limits: {
+                    fileSize: FILE_SIZE_IN_BYTES,
+                    files: 1,
+                },
+            })
+        )
     );
 }
 
-export function FileCustomMaxSize(customMaxSize: string): MethodDecorator {
+export function FileUploadSingleMedium(field?: string): MethodDecorator {
     return applyDecorators(
-        UseInterceptors(FileCustomMaxSizeInterceptor),
-        SetMetadata(FILE_CUSTOM_MAX_SIZE_META_KEY, customMaxSize)
+        UseInterceptors(
+            FileInterceptor(field ?? 'file', {
+                limits: {
+                    fileSize: FILE_SIZE_MEDIUM_IN_BYTES,
+                    files: 1,
+                },
+            })
+        )
+    );
+}
+
+export function FileUploadSingleLarge(field?: string): MethodDecorator {
+    return applyDecorators(
+        UseInterceptors(
+            FileInterceptor(field ?? 'file', {
+                limits: {
+                    fileSize: FILE_SIZE_LARGE_IN_BYTES,
+                    files: 1,
+                },
+            })
+        )
+    );
+}
+
+export function FileUploadMultiple(
+    field?: string,
+    maxFiles?: number
+): MethodDecorator {
+    return applyDecorators(
+        UseInterceptors(
+            FilesInterceptor(field ?? 'files', maxFiles ?? 2, {
+                limits: {
+                    fileSize: FILE_SIZE_IN_BYTES,
+                },
+            })
+        )
+    );
+}
+
+export function FileUploadMultipleMedium(
+    field?: string,
+    maxFiles?: number
+): MethodDecorator {
+    return applyDecorators(
+        UseInterceptors(
+            FilesInterceptor(field ?? 'files', maxFiles ?? 2, {
+                limits: {
+                    fileSize: FILE_SIZE_MEDIUM_IN_BYTES,
+                },
+            })
+        )
+    );
+}
+
+export function FileUploadMultipleLarge(
+    field?: string,
+    maxFiles?: number
+): MethodDecorator {
+    return applyDecorators(
+        UseInterceptors(
+            FilesInterceptor(field ?? 'files', maxFiles ?? 2, {
+                limits: {
+                    fileSize: FILE_SIZE_LARGE_IN_BYTES,
+                },
+            })
+        )
     );
 }
 

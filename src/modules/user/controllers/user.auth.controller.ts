@@ -26,12 +26,10 @@ import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.seriali
 import { AwsS3Service } from 'src/common/aws/services/aws.s3.service';
 import { IFile } from 'src/common/file/interfaces/file.interface';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
-import { FileSizeImagePipe } from 'src/common/file/pipes/file.size.pipe';
 import { FileTypeImagePipe } from 'src/common/file/pipes/file.type.pipe';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { SettingService } from 'src/modules/setting/services/setting.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import {
     GetUser,
@@ -71,8 +69,8 @@ import { AuthGoogleOAuth2Protected } from 'src/common/auth/decorators/auth.googl
 import { ClientSession, Connection } from 'mongoose';
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
-import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
+import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
 
 @ApiTags('modules.auth.user')
 @Controller({
@@ -84,7 +82,6 @@ export class UserAuthController {
         @DatabaseConnection() private readonly databaseConnection: Connection,
         private readonly userService: UserService,
         private readonly authService: AuthService,
-        private readonly settingService: SettingService,
         private readonly awsS3Service: AwsS3Service
     ) {}
 
@@ -538,7 +535,7 @@ export class UserAuthController {
     @Post('/profile/upload')
     async upload(
         @GetUser() user: UserDoc,
-        @UploadedFile(FileRequiredPipe, FileSizeImagePipe, FileTypeImagePipe)
+        @UploadedFile(FileRequiredPipe, FileTypeImagePipe)
         file: IFile
     ): Promise<void> {
         const filename: string = file.originalname;
