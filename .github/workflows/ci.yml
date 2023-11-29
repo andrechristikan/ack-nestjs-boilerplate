@@ -73,6 +73,8 @@ jobs:
         with:
           builder: ${{ steps.main.outputs.name }}
           file: ${{ env.DOCKERFILE }}
+          args: |
+            NODE_ENV=production
           target: main
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:latest
@@ -86,6 +88,8 @@ jobs:
         with:
           builder: ${{ steps.main.outputs.name }}
           file: ${{ env.DOCKERFILE }}
+          args: |
+            NODE_ENV=staging
           target: main
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:staging_v${{ steps.version.outputs.current-version }}

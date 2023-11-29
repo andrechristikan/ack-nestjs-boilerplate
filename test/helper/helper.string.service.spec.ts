@@ -139,15 +139,8 @@ describe('HelperStringService', () => {
     describe('formatCurrency', () => {
         it('should return string that formatted as currency', () => {
             const num = 1000;
-            const intl = new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-            });
-            const curr = intl.format(num);
 
-            expect(service.formatCurrency(num)).toBe(curr);
+            expect(service.formatCurrency(num)).toBe('1.000');
         });
     });
 });
