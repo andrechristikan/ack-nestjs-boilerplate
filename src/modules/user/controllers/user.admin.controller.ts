@@ -17,7 +17,6 @@ import { AuthService } from 'src/common/auth/services/auth.service';
 import { IFileExtract } from 'src/common/file/interfaces/file.interface';
 import { FileExtractPipe } from 'src/common/file/pipes/file.extract.pipe';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
-import { FileSizeExcelPipe } from 'src/common/file/pipes/file.size.pipe';
 import { FileTypeExcelPipe } from 'src/common/file/pipes/file.type.pipe';
 import { FileValidationPipe } from 'src/common/file/pipes/file.validation.pipe';
 import { ENUM_HELPER_FILE_TYPE } from 'src/common/helper/constants/helper.enum.constant';
@@ -94,9 +93,9 @@ import {
     UserAdminUpdateDoc,
 } from 'src/modules/user/docs/user.admin.doc';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
-import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { EmailService } from 'src/modules/email/services/email.service';
+import { FileUploadSingleMedium } from 'src/common/file/decorators/file.decorator';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -352,7 +351,7 @@ export class UserAdminController {
 
     @UserAdminImportDoc()
     @Response('user.import')
-    @FileUploadSingle()
+    @FileUploadSingleMedium()
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [
@@ -367,7 +366,6 @@ export class UserAdminController {
     async import(
         @UploadedFile(
             FileRequiredPipe,
-            FileSizeExcelPipe,
             FileTypeExcelPipe,
             FileExtractPipe,
             new FileValidationPipe<UserImportDto>(UserImportDto)

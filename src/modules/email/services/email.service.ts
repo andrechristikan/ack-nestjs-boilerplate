@@ -7,14 +7,15 @@ import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { EmailSendSignUpDto } from 'src/modules/email/dtos/email.send-sign-up.dto';
 import { IEmailService } from 'src/modules/email/interfaces/email.service.interface';
 import { EmailSendChangePasswordDto } from 'src/modules/email/dtos/email.send-change-password.dto';
+import {
+    EMAIL_CHANGE_PASSWORD_HTML_BODY,
+    EMAIL_SIGN_UP_HTML_BODY,
+} from 'src/modules/email/constants/email.constant';
 
 @Injectable()
 export class EmailService implements IEmailService {
     private readonly appName: string;
     private readonly fromEmail: string;
-
-    private readonly signUpPlainBody: string;
-    private readonly changePasswordPlainBody: string;
 
     constructor(
         private readonly awsSESService: AwsSESService,
@@ -22,13 +23,6 @@ export class EmailService implements IEmailService {
     ) {
         this.appName = this.configService.get<string>('app.name');
         this.fromEmail = this.configService.get<string>('email.fromEmail');
-
-        this.signUpPlainBody = this.configService.get<string>(
-            'email.signUpPlainBody'
-        );
-        this.changePasswordPlainBody = this.configService.get<string>(
-            'email.changePasswordPlainBody'
-        );
     }
 
     async createSignUp(): Promise<boolean> {
@@ -36,7 +30,7 @@ export class EmailService implements IEmailService {
             await this.awsSESService.createTemplate({
                 name: ENUM_EMAIL.SIGN_UP,
                 subject: `${this.appName} ${capital(ENUM_EMAIL.SIGN_UP)}`,
-                plainTextBody: this.signUpPlainBody,
+                plainTextBody: EMAIL_SIGN_UP_HTML_BODY,
             });
 
             return true;
@@ -94,7 +88,7 @@ export class EmailService implements IEmailService {
                 subject: `${this.appName} ${capital(
                     ENUM_EMAIL.CHANGE_PASSWORD
                 )}`,
-                plainTextBody: this.changePasswordPlainBody,
+                plainTextBody: EMAIL_CHANGE_PASSWORD_HTML_BODY,
             });
 
             return true;

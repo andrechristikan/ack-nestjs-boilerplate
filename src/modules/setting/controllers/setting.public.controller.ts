@@ -1,6 +1,11 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
+import {
+    FILE_SIZE_IN_BYTES,
+    FILE_SIZE_LARGE_IN_BYTES,
+    FILE_SIZE_MEDIUM_IN_BYTES,
+} from 'src/common/file/constants/file.constant';
 import { MessageService } from 'src/common/message/services/message.service';
 import { PaginationQuery } from 'src/common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
@@ -24,14 +29,15 @@ import {
 import { GetSetting } from 'src/modules/setting/decorators/setting.decorator';
 import { SettingPublicGetGuard } from 'src/modules/setting/decorators/setting.public.decorator';
 import {
+    SettingPublicCoreDoc,
     SettingPublicGetDoc,
-    SettingPublicLanguageDoc,
     SettingPublicListDoc,
 } from 'src/modules/setting/docs/setting.public.doc';
 import { SettingRequestDto } from 'src/modules/setting/dtos/setting.request.dto';
 import { SettingEntity } from 'src/modules/setting/repository/entities/setting.entity';
+import { SettingCoreSerialization } from 'src/modules/setting/serializations/setting.core.serialization';
+import { SettingFileSerialization } from 'src/modules/setting/serializations/setting.file.serialization';
 import { SettingGetSerialization } from 'src/modules/setting/serializations/setting.get.serialization';
-import { SettingLanguageSerialization } from 'src/modules/setting/serializations/setting.language.serialization';
 import { SettingListSerialization } from 'src/modules/setting/serializations/setting.list.serialization';
 import { SettingService } from 'src/modules/setting/services/setting.service';
 
@@ -101,24 +107,26 @@ export class SettingPublicController {
         return { data: setting };
     }
 
-    @SettingPublicLanguageDoc()
-    @Response('setting.languages', {
-        serialization: SettingLanguageSerialization,
+    @SettingPublicCoreDoc()
+    @Response('setting.core', {
+        serialization: SettingCoreSerialization,
     })
     @ApiKeyPublicProtected()
-    @Get('/languages')
-    async languages(): Promise<IResponse> {
+    @Get('/core')
+    async getUserMaxCertificate(): Promise<IResponse> {
         const languages: string[] = this.messageService.getAvailableLanguages();
 
+        const file: SettingFileSerialization = {
+            sizeInBytes: FILE_SIZE_IN_BYTES,
+            sizeMediumInBytes: FILE_SIZE_MEDIUM_IN_BYTES,
+            sizeLargeInBytes: FILE_SIZE_LARGE_IN_BYTES,
+        };
+
         return {
-            data: { languages },
+            data: {
+                languages,
+                file,
+            },
         };
     }
-
-    // TODO: GET SETTING MOBILE ALLOWED
-    // TODO: GET SETTING MAX PASSWORD ATTEMPT
-    // TODO: GET SETTING MAX FILE IMAGE
-    // TODO: GET SETTING MAX FILE EXCEL
-    // TODO: GET SETTING MAX FILE VIDEO
-    // TODO: GET SETTING MAX FILE AUDIO
 }
