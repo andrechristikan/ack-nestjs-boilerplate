@@ -11,8 +11,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DOCKER_HUB:  ${{ secrets.DOCKER_HUB }}
-      DOCKERFILE: ./ci/dockerfile
+      DOCKER_HUB: ${{ secrets.DOCKER_HUB }}
+      DOCKERFILE: ci/dockerfile
     
     steps:
       - name: Git checkout

@@ -9,16 +9,9 @@ import {
     IHelperFileCreateExcelWorkbookOptions,
 } from 'src/common/helper/interfaces/helper.interface';
 import { utils, write, read, WorkBook } from 'xlsx';
-import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class HelperFileService implements IHelperFileService {
-    private readonly chromeBin: string;
-
-    constructor(private readonly configService: ConfigService) {
-        this.chromeBin = this.configService.get<string>('file.pdf.chromeBin');
-    }
-
     createExcelWorkbook(
         rows: IHelperFileRows[],
         options?: IHelperFileCreateExcelWorkbookOptions
