@@ -65,7 +65,7 @@ jobs:
             docker stop ${{ env.APP_NAME }} && docker rm ${{ env.APP_NAME }}
             docker network create ${{ env.APP_NETWORK }} --driver=bridge
             docker run -itd \
-              --build-arg NODE_ENV=production \
+              --env 'NODE_ENV=production' \
               --hostname ${{ env.APP_NAME }} \
               --publish ${{ secrets.APP_PORT }}:${{ env.APP_PORT }} \
               --network ${{ env.APP_NETWORK }} \
@@ -149,7 +149,7 @@ jobs:
             docker stop ${{ env.APP_NAME }} && docker rm ${{ env.APP_NAME }}
             docker network create ${{ env.APP_NETWORK }} --driver=bridge
             docker run -itd \
-              --build-arg NODE_ENV=staging \
+              --env 'NODE_ENV=staging' \
               --hostname ${{ env.APP_NAME }} \
               --publish ${{ env.APP_PORT_EXPOSE }}:${{ env.APP_PORT }} \
               --network ${{ env.APP_NETWORK }} \
