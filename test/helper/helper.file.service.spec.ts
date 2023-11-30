@@ -7,25 +7,7 @@ describe('HelperFileService', () => {
 
     beforeEach(async () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
-            providers: [
-                {
-                    provide: ConfigService,
-                    useValue: {
-                        get: jest.fn().mockImplementation((key: string) => {
-                            switch (key) {
-                                case 'file.pdf.chromeBin':
-                                    return process.env.DOCKER_INSTALLATION ===
-                                        'true'
-                                        ? '/usr/bin/chromium-browser'
-                                        : null;
-                                default:
-                                    return undefined;
-                            }
-                        }),
-                    },
-                },
-                HelperFileService,
-            ],
+            providers: [ConfigService, HelperFileService],
         }).compile();
 
         service = moduleRef.get<HelperFileService>(HelperFileService);
