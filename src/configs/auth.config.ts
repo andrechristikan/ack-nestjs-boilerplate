@@ -17,6 +17,9 @@ export default registerAs(
         refreshToken: {
             secretKey:
                 process.env.AUTH_JWT_REFRESH_TOKEN_SECRET_KEY ?? '123456000',
+            expirationTime: seconds(
+                process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED ?? '182d'
+            ), // 1 hours
 
             encryptKey: process.env.AUTH_JWT_PAYLOAD_REFRESH_TOKEN_ENCRYPT_KEY,
             encryptIv: process.env.AUTH_JWT_PAYLOAD_REFRESH_TOKEN_ENCRYPT_IV,

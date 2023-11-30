@@ -22,6 +22,7 @@ export class AuthService implements IAuthService {
     private readonly accessTokenEncryptIv: string;
 
     private readonly refreshTokenSecretKey: string;
+    private readonly refreshTokenExpirationTime: number;
     private readonly refreshTokenEncryptKey: string;
     private readonly refreshTokenEncryptIv: string;
 
@@ -60,6 +61,9 @@ export class AuthService implements IAuthService {
 
         this.refreshTokenSecretKey = this.configService.get<string>(
             'auth.refreshToken.secretKey'
+        );
+        this.refreshTokenExpirationTime = this.configService.get<number>(
+            'auth.refreshToken.expirationTime'
         );
         this.refreshTokenEncryptKey = this.configService.get<string>(
             'auth.refreshToken.encryptKey'
@@ -172,7 +176,7 @@ export class AuthService implements IAuthService {
             { data: payloadHashed },
             {
                 secretKey: this.refreshTokenSecretKey,
-                expiredIn: '0',
+                expiredIn: this.refreshTokenExpirationTime,
                 audience: this.audience,
                 issuer: this.issuer,
                 subject: this.subject,

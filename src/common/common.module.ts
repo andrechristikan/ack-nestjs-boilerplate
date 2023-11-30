@@ -69,13 +69,16 @@ import { PolicyModule } from 'src/common/policy/policy.module';
                 AUTH_JWT_AUDIENCE: Joi.string().required(),
                 AUTH_JWT_ISSUER: Joi.string().required(),
 
+                AUTH_JWT_ACCESS_TOKEN_EXPIRED: Joi.string()
+                    .default('15m')
+                    .required(),
                 AUTH_JWT_ACCESS_TOKEN_SECRET_KEY: Joi.string()
                     .alphanum()
                     .min(5)
                     .max(50)
                     .required(),
-                AUTH_JWT_ACCESS_TOKEN_EXPIRED: Joi.string()
-                    .default('15m')
+                AUTH_JWT_REFRESH_TOKEN_EXPIRED: Joi.string()
+                    .default('182d')
                     .required(),
                 AUTH_JWT_REFRESH_TOKEN_SECRET_KEY: Joi.string()
                     .alphanum()

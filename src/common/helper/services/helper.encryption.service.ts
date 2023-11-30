@@ -80,6 +80,7 @@ export class HelperEncryptionService implements IHelperEncryptionService {
                 audience: options.audience,
                 issuer: options.issuer,
                 subject: options.subject,
+                ignoreExpiration: options.ignoreExpiration ?? false,
             });
 
             return true;
