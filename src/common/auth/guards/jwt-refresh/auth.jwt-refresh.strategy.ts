@@ -17,7 +17,7 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
             jwtFromRequest: ExtractJwt.fromAuthHeaderWithScheme(
                 configService.get<string>('auth.prefixAuthorization')
             ),
-            ignoreExpiration: true,
+            ignoreExpiration: false,
             jsonWebTokenOptions: {
                 ignoreNotBefore: true,
                 audience: configService.get<string>('auth.audience'),

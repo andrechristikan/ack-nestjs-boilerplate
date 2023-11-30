@@ -10,9 +10,11 @@ export interface IHelperJwtVerifyOptions {
     issuer: string;
     subject: string;
     secretKey: string;
+    ignoreExpiration?: boolean;
 }
 
-export interface IHelperJwtOptions extends IHelperJwtVerifyOptions {
+export interface IHelperJwtOptions
+    extends Omit<IHelperJwtVerifyOptions, 'ignoreExpiration'> {
     expiredIn: number | string;
     notBefore?: number | string;
 }
