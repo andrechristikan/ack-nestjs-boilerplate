@@ -5,6 +5,7 @@ import {
     HttpException,
     HttpStatus,
     Optional,
+    InternalServerErrorException,
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
@@ -166,11 +167,16 @@ export class ErrorHttpFilter implements ExceptionFilter {
     }
 
     sendToSentry(exception: unknown): void {
-        if (exception! instanceof HttpException) {
-            try {
-                this.sentryService.instance().captureException(exception);
-            } catch (err: unknown) {}
+        if (
+            exception instanceof HttpException &&
+            !(exception instanceof InternalServerErrorException)
+        ) {
+            return;
         }
+
+        try {
+            this.sentryService.instance().captureException(exception);
+        } catch (err: unknown) {}
 
         return;
     }
