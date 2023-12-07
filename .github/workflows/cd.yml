@@ -14,16 +14,16 @@ jobs:
     environment: production
 
     env: 
-      DOCKER_HUB:  ${{ secrets.DOCKER_HUB }}
-      APP_NAME: ${{ github.repository }}
+      DOCKER_HUB: ${{ secrets.DOCKER_HUB }}
+      APP_NAME: ${{ vars.APP_NAME_PRODUCTION }}
       APP_PORT: 3000
-      APP_PORT_EXPOSE: ${{ secrets.APP_PORT }}
+      APP_PORT_EXPOSE: ${{ secrets.APP_PORT_PRODUCTION }}
       APP_NETWORK: app-network
 
-      SSH_HOST: ${{ secrets.SSH_HOST }}
-      SSH_PORT: ${{ secrets.SSH_PORT }}
-      SSH_USER: ${{ secrets.SSH_USER }}
-      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY}}
+      SSH_HOST: ${{ secrets.SSH_HOST_PRODUCTION }}
+      SSH_PORT: ${{ secrets.SSH_PORT_PRODUCTION }}
+      SSH_USER: ${{ secrets.SSH_USER_PRODUCTION }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_PRODUCTION}}
 
     steps:
       - name: Git checkout
@@ -32,7 +32,7 @@ jobs:
       - name: Get short sha commit
         id: git
         run: |
-          echo "short_sha=$(git rev-parse --short $GITHUB_SHA)" >> "$GITHUB_OUTPUT"
+          echo "$(git rev-parse --short "$GITHUB_SHA")" >> "$GITHUB_OUTPUT"
       
       - name: Get latest version
         id: version
@@ -40,7 +40,6 @@ jobs:
 
       - name: Git
         run: |
-          echo Branch name is: ${{ github.ref_name }}
           echo Short sha: ${{ steps.git.outputs.short_sha }}
           echo Version is: ${{ steps.version.outputs.current-version }}
 
@@ -49,6 +48,7 @@ jobs:
           echo DOCKER_HUB is: ${{ env.DOCKER_HUB }}
           echo APP_NAME is: ${{ env.APP_NAME }}
           echo APP_PORT is: ${{ env.APP_PORT }}
+          echo APP_PORT_EXPOSE is: ${{ env.APP_PORT_EXPOSE }}
           echo APP_NETWORK is: ${{ env.APP_NETWORK }}
 
       - name: Set up QEMU
@@ -67,12 +67,12 @@ jobs:
             docker run -itd \
               --env NODE_ENV=production \
               --hostname ${{ env.APP_NAME }} \
-              --publish ${{ secrets.APP_PORT }}:${{ env.APP_PORT }} \
+              --publish ${{ secrets.APP_PORT_EXPOSE }}:${{ env.APP_PORT }} \
               --network ${{ env.APP_NETWORK }} \
               --volume /app/${{ env.APP_NAME }}/logs/:/app/logs/ \
               --volume /app/${{ env.APP_NAME }}/.env:/app/.env \
               --restart unless-stopped \
-              --name ${{ env.APP_NAME }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+              --name ${{ env.APP_NAME }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB  }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
           user: ${{ secrets.SSH_USER }}
@@ -98,16 +98,16 @@ jobs:
     environment: staging
 
     env: 
-      DOCKER_HUB:  ${{ secrets.DOCKER_HUB }}
-      APP_NAME: ${{ github.repository }}
+      DOCKER_HUB: ${{ secrets.DOCKER_HUB }}
+      APP_NAME: ${{ vars.APP_NAME_STAGING }}
       APP_PORT: 3000
-      APP_PORT_EXPOSE: ${{ secrets.APP_PORT }}
+      APP_PORT_EXPOSE: ${{ secrets.APP_PORT_STAGING }}
       APP_NETWORK: app-network
 
-      SSH_HOST: ${{ secrets.SSH_HOST }}
-      SSH_PORT: ${{ secrets.SSH_PORT }}
-      SSH_USER: ${{ secrets.SSH_USER }}
-      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_HOST: ${{ secrets.SSH_HOST_STAGING }}
+      SSH_PORT: ${{ secrets.SSH_PORT_STAGING }}
+      SSH_USER: ${{ secrets.SSH_USER_STAGING }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_STAGING }}
 
     steps:
       - name: Git checkout
@@ -124,7 +124,6 @@ jobs:
 
       - name: Git
         run: |
-          echo Branch name is: ${{ github.ref_name }}
           echo Short sha: ${{ steps.git.outputs.short_sha }}
           echo Version is: ${{ steps.version.outputs.current-version }}
 
@@ -133,6 +132,7 @@ jobs:
           echo DOCKER_HUB is: ${{ env.DOCKER_HUB }}
           echo APP_NAME is: ${{ env.APP_NAME }}
           echo APP_PORT is: ${{ env.APP_PORT }}
+          echo APP_PORT_EXPOSE is: ${{ env.APP_PORT_EXPOSE }}
           echo APP_NETWORK is: ${{ env.APP_NETWORK }}
 
       - name: Set up QEMU
@@ -156,7 +156,7 @@ jobs:
               --volume /app/${{ env.APP_NAME }}/logs/:/app/logs/ \
               --volume /app/${{ env.APP_NAME }}/.env:/app/.env \
               --restart unless-stopped \
-              --name ${{ env.APP_NAME }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+              --name ${{ env.APP_NAME }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB  }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
           host: ${{ env.SSH_HOST }}
           port: ${{ env.SSH_PORT }}
           user: ${{ env.SSH_USER }}

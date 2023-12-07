@@ -60,7 +60,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build against builder
+      - name: Build builder
         uses: docker/build-push-action@v4
         with:
           builder: ${{ steps.builder.outputs.name }}
@@ -73,7 +73,7 @@ jobs:
         with:
           builder: ${{ steps.main.outputs.name }}
           file: ${{ env.DOCKERFILE }}
-          args: |
+          build-args: |
             NODE_ENV=production
           target: main
           tags: |
@@ -82,19 +82,16 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
           push: true
 
-      - name: Build main and push 
+      - name: Build staging and push 
         uses: docker/build-push-action@v4
         if: ${{ github.ref_name == 'staging' }}
         with:
           builder: ${{ steps.main.outputs.name }}
           file: ${{ env.DOCKERFILE }}
-          args: |
+          build-args: |
             NODE_ENV=staging
           target: main
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:staging_v${{ steps.version.outputs.current-version }}
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
           push: true
-
-
-
