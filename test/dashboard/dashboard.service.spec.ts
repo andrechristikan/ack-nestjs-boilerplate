@@ -24,57 +24,115 @@ describe('DashboardService', () => {
     });
 
     describe('getStartAndEndDate', () => {
-        it('should return current year start and end dates if no start and end dates are provided', async () => {
-            const startDate = new Date(new Date().setMonth(0, 1));
-            const endDate = new Date(new Date().setMonth(11, 31));
-            const expectedStartDate = new Date(startDate.setHours(0, 0, 0, 0));
-            const expectedEndDate = new Date(endDate.setHours(23, 59, 59, 999));
+        it('should return current month start and end dates if no start and end dates are provided', async () => {
+            const today = new Date();
+            const startDate = new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                1,
+                0,
+                0,
+                0,
+                0
+            );
+            const endDate = new Date(
+                today.getFullYear(),
+                today.getMonth() + 1,
+                0,
+                23,
+                59,
+                59,
+                999
+            );
 
-            const result = service.getStartAndEndDate({});
+            const result = service.getStartAndEndDate();
 
-            expect(result.startDate).toEqual(expectedStartDate);
-            expect(result.endDate).toEqual(expectedEndDate);
+            expect(result.startDate).toEqual(startDate);
+            expect(result.endDate).toEqual(endDate);
         });
 
         it('should return start and end dates as provided', async () => {
-            const startDate = new Date(2022, 5, 15);
-            const endDate = new Date(2022, 5, 20);
-            const expectedStartDate = new Date(startDate.setHours(0, 0, 0, 0));
-            const expectedEndDate = new Date(endDate.setHours(23, 59, 59, 999));
+            const today = new Date();
+            const startDate = new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                1,
+                0,
+                0,
+                0,
+                0
+            );
+            const endDate = new Date(
+                today.getFullYear(),
+                today.getMonth() + 1,
+                0,
+                23,
+                59,
+                59,
+                999
+            );
 
             const result = service.getStartAndEndDate({
                 startDate,
                 endDate,
             });
 
-            expect(result.startDate).toEqual(expectedStartDate);
-            expect(result.endDate).toEqual(expectedEndDate);
+            expect(result.startDate).toEqual(startDate);
+            expect(result.endDate).toEqual(endDate);
         });
 
-        it('should return start date as current day of year if not provided', async () => {
+        it('should return start date as current day of month if not provided', async () => {
             const today = new Date();
-            const endDate = new Date(2022, 5, 15);
-            const startDate = new Date(today.getFullYear(), 0, 1);
-            const expectedStartDate = new Date(startDate.setHours(0, 0, 0, 0));
-            const expectedEndDate = new Date(endDate.setHours(23, 59, 59, 999));
+            const startDate = new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                1,
+                0,
+                0,
+                0,
+                0
+            );
+            const endDate = new Date(
+                today.getFullYear(),
+                today.getMonth() + 1,
+                0,
+                23,
+                59,
+                59,
+                999
+            );
 
             const result = service.getStartAndEndDate({ endDate });
 
-            expect(result.startDate).toEqual(expectedStartDate);
-            expect(result.endDate).toEqual(expectedEndDate);
+            expect(result.startDate).toEqual(startDate);
+            expect(result.endDate).toEqual(endDate);
         });
 
-        it('should return end date as current day of year if not provided', async () => {
+        it('should return end date as current day of month if not provided', async () => {
             const today = new Date();
-            const startDate = new Date(2022, 5, 15);
-            const endDate = new Date(today.getFullYear(), 11, 31);
-            const expectedStartDate = new Date(startDate.setHours(0, 0, 0, 0));
-            const expectedEndDate = new Date(endDate.setHours(23, 59, 59, 999));
+            const startDate = new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                1,
+                0,
+                0,
+                0,
+                0
+            );
+            const endDate = new Date(
+                today.getFullYear(),
+                today.getMonth() + 1,
+                0,
+                23,
+                59,
+                59,
+                999
+            );
 
             const result = service.getStartAndEndDate({ startDate });
 
-            expect(result.startDate).toEqual(expectedStartDate);
-            expect(result.endDate).toEqual(expectedEndDate);
+            expect(result.startDate).toEqual(startDate);
+            expect(result.endDate).toEqual(endDate);
         });
     });
 

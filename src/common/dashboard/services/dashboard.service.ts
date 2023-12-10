@@ -15,23 +15,27 @@ export class DashboardService implements IDashboardService {
     getStartAndEndDate(date?: DashboardDto): IDashboardStartAndEndDate {
         const today = this.helperDateService.create();
 
+        if (!date) {
+            const startDate = this.helperDateService.startOfMonth(today);
+            const endDate = this.helperDateService.endOfMonth(today);
+
+            return {
+                startDate,
+                endDate,
+            };
+        }
         let { startDate, endDate } = date;
 
-        if (!startDate && !endDate) {
-            startDate = this.helperDateService.startOfYear(today);
-            endDate = this.helperDateService.endOfYear(today);
+        if (!startDate) {
+            startDate = this.helperDateService.startOfMonth();
         } else {
-            if (!startDate) {
-                startDate = this.helperDateService.startOfYear();
-            } else {
-                startDate = this.helperDateService.startOfDay(startDate);
-            }
+            startDate = this.helperDateService.startOfDay(startDate);
+        }
 
-            if (!endDate) {
-                endDate = this.helperDateService.endOfYear();
-            } else {
-                endDate = this.helperDateService.endOfDay(endDate);
-            }
+        if (!endDate) {
+            endDate = this.helperDateService.endOfMonth();
+        } else {
+            endDate = this.helperDateService.endOfDay(endDate);
         }
 
         return {

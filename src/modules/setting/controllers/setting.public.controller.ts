@@ -81,6 +81,7 @@ export class SettingPublicController {
                     offset: _offset,
                 },
                 order: _order,
+                plainObject: true,
             }
         );
         const total: number = await this.settingService.getTotal(find);

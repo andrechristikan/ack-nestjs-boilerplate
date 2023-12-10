@@ -6,7 +6,7 @@ export const DashboardDocQueryStartDate = [
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: faker.date.recent().toString(),
+        example: faker.date.past(),
     },
 ];
 
@@ -16,6 +16,6 @@ export const DashboardDocQueryEndDate = [
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: faker.date.recent().toString(),
+        example: faker.date.recent(),
     },
 ];

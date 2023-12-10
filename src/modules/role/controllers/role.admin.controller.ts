@@ -124,6 +124,7 @@ export class RoleAdminController {
                 offset: _offset,
             },
             order: _order,
+            plainObject: true,
         });
 
         const total: number = await this.roleService.getTotal(find);

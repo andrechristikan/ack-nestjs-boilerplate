@@ -133,6 +133,7 @@ export class ApiKeyAdminController {
                 offset: _offset,
             },
             order: _order,
+            plainObject: true,
         });
         const total: number = await this.apiKeyService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
