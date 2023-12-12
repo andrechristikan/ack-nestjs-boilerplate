@@ -482,7 +482,7 @@ export class UserAuthController {
     async profile(@GetUser() user: UserDoc): Promise<IResponse> {
         const userWithRole: IUserDoc =
             await this.userService.joinWithRole(user);
-        return { data: userWithRole };
+        return { data: userWithRole.toObject() };
     }
 
     @UserAuthUpdateProfileDoc()

@@ -1,5 +1,4 @@
-name: CD
-
+name: CI_CD
 on:
   # push:
   #   branches: 
@@ -8,7 +7,97 @@ on:
   workflow_dispatch:
 
 jobs:
+  build_image:
+    runs-on: ubuntu-latest
+
+    env:
+      DOCKER_HUB: ${{ secrets.DOCKER_HUB }}
+      DOCKERFILE: ci/dockerfile
+    
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v3
+        
+      - name: Get git short sha
+        id: git
+        run: |
+          echo "short_sha=$(git rev-parse --short $GITHUB_SHA)" >> "$GITHUB_OUTPUT"
+
+      - name: Get latest version of package json
+        id: version
+        uses: martinbeentjes/npm-get-version-action@main
+
+      - name: Git
+        run: |
+          echo Short sha: ${{ steps.git.outputs.short_sha }}
+          echo Version is: ${{ steps.version.outputs.current-version }}
+
+      - name: Environment
+        run: |
+          echo DOCKER_HUB is: ${{ env.DOCKER_HUB }}
+          echo DOCKERFILE is: ${{ env.DOCKERFILE }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx for Builder
+        uses: docker/setup-buildx-action@v3
+        id: builder
+
+      - name: Set up Docker Buildx for Main
+        uses: docker/setup-buildx-action@v3
+        id: main
+
+      - name: Builder name
+        run: echo ${{ steps.builder.outputs.name }}
+
+      - name: Main name
+        run: echo ${{ steps.main.outputs.name }}
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build builder
+        uses: docker/build-push-action@v4
+        with:
+          builder: ${{ steps.builder.outputs.name }}
+          file: ${{ env.DOCKERFILE }}
+          target: builder
+
+      - name: Build main and push
+        uses: docker/build-push-action@v4
+        if: ${{ github.ref_name == 'main' }}
+        with:
+          builder: ${{ steps.main.outputs.name }}
+          file: ${{ env.DOCKERFILE }}
+          build-args: |
+            NODE_ENV=production
+          target: main
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:main_v${{ steps.version.outputs.current-version }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+          push: true
+
+      - name: Build staging and push 
+        uses: docker/build-push-action@v4
+        if: ${{ github.ref_name == 'staging' }}
+        with:
+          builder: ${{ steps.main.outputs.name }}
+          file: ${{ env.DOCKERFILE }}
+          build-args: |
+            NODE_ENV=staging
+          target: main
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:staging_v${{ steps.version.outputs.current-version }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+          push: true
+
   deploy_production:
+    needs: [ build_image ]
     runs-on: ubuntu-latest
     if: ${{ github.ref_name == 'main' }}
     environment: production
@@ -91,8 +180,8 @@ jobs:
           user: ${{ env.SSH_USER }}
           key: ${{ env.SSH_PRIVATE_KEY }}
 
-
   deploy_staging:
+    needs: [ build_image ]
     runs-on: ubuntu-latest
     if: ${{ github.ref_name == 'staging' }}
     environment: staging

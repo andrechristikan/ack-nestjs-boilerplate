@@ -157,6 +157,7 @@ export class UserAdminController {
                 offset: _offset,
             },
             order: _order,
+            plainObject: true,
         });
         const total: number = await this.userService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
@@ -186,7 +187,7 @@ export class UserAdminController {
     async get(@GetUser() user: UserDoc): Promise<IResponse> {
         const userWithRole: IUserDoc =
             await this.userService.joinWithRole(user);
-        return { data: userWithRole };
+        return { data: userWithRole.toObject() };
     }
 
     @UserAdminCreateDoc()
@@ -398,7 +399,12 @@ export class UserAdminController {
     @HttpCode(HttpStatus.OK)
     @Post('/export')
     async export(): Promise<IResponse> {
-        const users: IUserEntity[] = await this.userService.findAll({});
+        const users: IUserEntity[] = await this.userService.findAll(
+            {},
+            {
+                plainObject: true,
+            }
+        );
 
         return { data: users };
     }
