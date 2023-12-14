@@ -1,6 +1,9 @@
 import { registerAs } from '@nestjs/config';
 import { version } from 'package.json';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
+import {
+    APP_TZ,
+    ENUM_APP_ENVIRONMENT,
+} from 'src/app/constants/app.enum.constant';
 
 export default registerAs(
     'app',
@@ -9,6 +12,7 @@ export default registerAs(
 
         name: process.env.APP_NAME ?? 'ack',
         env: process.env.APP_ENV ?? ENUM_APP_ENVIRONMENT.DEVELOPMENT,
+        tz: process.env.APP_TZ ?? APP_TZ,
 
         repoVersion: version,
         versioning: {

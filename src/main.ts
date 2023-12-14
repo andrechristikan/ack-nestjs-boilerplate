@@ -10,6 +10,7 @@ async function bootstrap() {
     const configService = app.get(ConfigService);
     const databaseUri: string = configService.get<string>('database.host');
     const env: string = configService.get<string>('app.env');
+    const tz: string = configService.get<string>('app.tz');
     const host: string = configService.get<string>('app.http.host');
     const port: number = configService.get<number>('app.http.port');
     const globalPrefix: string = configService.get<string>('app.globalPrefix');
@@ -27,6 +28,7 @@ async function bootstrap() {
 
     const logger = new Logger();
     process.env.NODE_ENV = env;
+    process.env.TZ = tz;
 
     // Global
     app.setGlobalPrefix(globalPrefix);

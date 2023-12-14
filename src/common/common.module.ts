@@ -39,6 +39,7 @@ import { PolicyModule } from 'src/common/policy/policy.module';
                     .valid(...Object.values(ENUM_MESSAGE_LANGUAGE))
                     .default(APP_LANGUAGE)
                     .required(),
+                APP_TZ: Joi.string().required(),
                 APP_MAINTENANCE: Joi.boolean().default(false).required(),
 
                 HTTP_ENABLE: Joi.boolean().default(true).required(),
