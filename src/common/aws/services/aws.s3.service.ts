@@ -422,4 +422,8 @@ export class AwsS3Service implements IAwsS3Service {
             throw err;
         }
     }
+
+    async getFilenameFromCompletedUrl(completedUrl: string): Promise<string> {
+        return completedUrl.replace(`${this.baseUrl}/`, '');
+    }
 }

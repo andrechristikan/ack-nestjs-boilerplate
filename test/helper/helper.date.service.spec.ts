@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
     ENUM_HELPER_DATE_DIFF,
@@ -10,7 +11,21 @@ describe('HelperDateService', () => {
 
     beforeEach(async () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
-            providers: [HelperDateService],
+            providers: [
+                HelperDateService,
+                {
+                    provide: ConfigService,
+                    useValue: {
+                        get: jest.fn().mockImplementation((key: string) => {
+                            switch (key) {
+                                case 'app.tz':
+                                default:
+                                    return 'UTC';
+                            }
+                        }),
+                    },
+                },
+            ],
         }).compile();
 
         process.env.TZ = 'UTC';

@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DashboardService } from 'src/common/dashboard/services/dashboard.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
@@ -12,6 +13,18 @@ describe('DashboardService', () => {
                 DashboardService,
                 HelperNumberService,
                 HelperDateService,
+                {
+                    provide: ConfigService,
+                    useValue: {
+                        get: jest.fn().mockImplementation((key: string) => {
+                            switch (key) {
+                                case 'app.tz':
+                                default:
+                                    return 'UTC';
+                            }
+                        }),
+                    },
+                },
             ],
             imports: [],
         }).compile();

@@ -30,6 +30,8 @@ describe('AuthService', () => {
     const mockConfigService = {
         get: jest.fn().mockImplementation((path: string) => {
             switch (path) {
+                case 'app.tz':
+                    return 'UTC';
                 case 'auth.accessToken.secretKey':
                     return 'secretKey_accessToken';
                 case 'auth.accessToken.expirationTime':

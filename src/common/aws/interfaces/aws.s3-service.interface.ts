@@ -49,4 +49,5 @@ export interface IAwsS3Service {
         parts: CompletedPart[]
     ): Promise<void>;
     abortMultipart(path: string, uploadId: string): Promise<void>;
+    getFilenameFromCompletedUrl(completedUrl: string): Promise<string>;
 }

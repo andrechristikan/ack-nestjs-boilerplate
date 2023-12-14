@@ -1,4 +1,4 @@
-import { DashboardDto } from 'src/common/dashboard/dtos/dashboard';
+import { DashboardDto } from 'src/common/dashboard/dtos/dashboard.dto';
 import { IDashboardStartAndEndDate } from 'src/common/dashboard/interfaces/dashboard.interface';
 
 export interface IDashboardService {

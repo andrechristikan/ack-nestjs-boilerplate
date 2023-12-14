@@ -40,7 +40,7 @@ describe('AwsS3Service', () => {
                                     return 'us-west-2';
                                 case 'aws.s3.bucket':
                                     return bucket;
-                                case 'aws.s3.baseUrl':
+                                case 'aws.s3.this.':
                                 default:
                                     return baseUrl;
                             }
@@ -688,6 +688,18 @@ describe('AwsS3Service', () => {
 
             expect(service['s3Client'].send).toHaveBeenCalled();
             expect(result).rejects.toThrow(error);
+        });
+    });
+
+    describe('getFilenameFromCompletedUrl', () => {
+        it('should return path and filename from completedUrl', async () => {
+            const filename: string = 'path/filename.txt';
+            const completedUrl: string = `${baseUrl}/${filename}`;
+
+            const result =
+                await service.getFilenameFromCompletedUrl(completedUrl);
+
+            expect(result).toBe(filename);
         });
     });
 });
