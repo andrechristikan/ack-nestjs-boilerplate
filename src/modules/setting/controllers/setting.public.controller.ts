@@ -121,10 +121,13 @@ export class SettingPublicController {
             sizeLargeInBytes: FILE_SIZE_LARGE_IN_BYTES,
         };
 
+        const timezone: string = await this.settingService.getTimezone();
+
         return {
             data: {
                 languages,
                 file,
+                timezone,
             },
         };
     }

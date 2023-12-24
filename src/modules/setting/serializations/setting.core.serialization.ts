@@ -11,4 +11,10 @@ export class SettingCoreSerialization extends SettingLanguageSerialization {
     })
     @Type(() => SettingFileSerialization)
     file: SettingFileSerialization;
+
+    @ApiProperty({
+        required: true,
+        nullable: false,
+    })
+    timezone: string;
 }

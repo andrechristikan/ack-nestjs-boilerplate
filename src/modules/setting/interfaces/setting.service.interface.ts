@@ -47,4 +47,5 @@ export interface ISettingService {
         find: Record<string, any>,
         options?: IDatabaseManyOptions
     ): Promise<boolean>;
+    getTimezone(): Promise<string>;
 }

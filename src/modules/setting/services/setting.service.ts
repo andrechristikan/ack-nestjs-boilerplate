@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
@@ -20,10 +21,15 @@ import { SettingRepository } from 'src/modules/setting/repository/repositories/s
 
 @Injectable()
 export class SettingService implements ISettingService {
+    private readonly timezone: string;
+
     constructor(
         private readonly settingRepository: SettingRepository,
-        private readonly helperNumberService: HelperNumberService
-    ) {}
+        private readonly helperNumberService: HelperNumberService,
+        private readonly configService: ConfigService
+    ) {
+        this.timezone = this.configService.get<string>('app.tz');
+    }
 
     async findAll<T = SettingDoc>(
         find?: Record<string, any>,
@@ -132,5 +138,9 @@ export class SettingService implements ISettingService {
         options?: IDatabaseManyOptions
     ): Promise<boolean> {
         return this.settingRepository.deleteMany(find, options);
+    }
+
+    async getTimezone(): Promise<string> {
+        return this.timezone;
     }
 }
