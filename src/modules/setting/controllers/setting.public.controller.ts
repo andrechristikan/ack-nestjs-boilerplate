@@ -73,17 +73,15 @@ export class SettingPublicController {
             ..._search,
         };
 
-        const settings: SettingEntity[] = await this.settingService.findAll(
-            find,
-            {
+        const settings: SettingEntity[] =
+            await this.settingService.findAll<SettingEntity>(find, {
                 paging: {
                     limit: _limit,
                     offset: _offset,
                 },
                 order: _order,
                 plainObject: true,
-            }
-        );
+            });
         const total: number = await this.settingService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
             total,

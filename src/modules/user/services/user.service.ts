@@ -22,10 +22,7 @@ import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
-import {
-    IUserDoc,
-    IUserEntity,
-} from 'src/modules/user/interfaces/user.interface';
+import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { plainToInstance } from 'class-transformer';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
@@ -52,11 +49,11 @@ export class UserService implements IUserService {
         );
     }
 
-    async findAll(
+    async findAll<T = IUserDoc>(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<IUserEntity[]> {
-        return this.userRepository.findAll<IUserEntity>(find, {
+    ): Promise<T[]> {
+        return this.userRepository.findAll<T>(find, {
             ...options,
             join: true,
         });

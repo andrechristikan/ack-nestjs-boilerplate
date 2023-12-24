@@ -151,14 +151,15 @@ export class UserAdminController {
             ...role,
         };
 
-        const users: IUserEntity[] = await this.userService.findAll(find, {
-            paging: {
-                limit: _limit,
-                offset: _offset,
-            },
-            order: _order,
-            plainObject: true,
-        });
+        const users: IUserEntity[] =
+            await this.userService.findAll<IUserEntity>(find, {
+                paging: {
+                    limit: _limit,
+                    offset: _offset,
+                },
+                order: _order,
+                plainObject: true,
+            });
         const total: number = await this.userService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
             total,
@@ -399,12 +400,13 @@ export class UserAdminController {
     @HttpCode(HttpStatus.OK)
     @Post('/export')
     async export(): Promise<IResponse> {
-        const users: IUserEntity[] = await this.userService.findAll(
-            {},
-            {
-                plainObject: true,
-            }
-        );
+        const users: IUserEntity[] =
+            await this.userService.findAll<IUserEntity>(
+                {},
+                {
+                    plainObject: true,
+                }
+            );
 
         return { data: users };
     }

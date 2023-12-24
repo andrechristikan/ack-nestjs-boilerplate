@@ -25,11 +25,11 @@ export class SettingService implements ISettingService {
         private readonly helperNumberService: HelperNumberService
     ) {}
 
-    async findAll(
+    async findAll<T = SettingDoc>(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<SettingEntity[]> {
-        return this.settingRepository.findAll<SettingEntity>(find, options);
+    ): Promise<T[]> {
+        return this.settingRepository.findAll<T>(find, options);
     }
 
     async findOneById(
