@@ -15,10 +15,7 @@ import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
 import { UserUpdatePasswordAttemptDto } from 'src/modules/user/dtos/user.update-password-attempt.dto';
 import { UserUpdateUsernameDto } from 'src/modules/user/dtos/user.update-username.dto';
-import {
-    IUserDoc,
-    IUserEntity,
-} from 'src/modules/user/interfaces/user.interface';
+import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import {
     UserDoc,
     UserEntity,
@@ -26,10 +23,10 @@ import {
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 
 export interface IUserService {
-    findAll(
+    findAll<T>(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<IUserEntity[]>;
+    ): Promise<T[]>;
     findOneById<T>(_id: string, options?: IDatabaseFindOneOptions): Promise<T>;
     findOne<T>(
         find: Record<string, any>,

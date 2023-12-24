@@ -9,16 +9,13 @@ import {
 import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/constants/setting.enum.constant';
 import { SettingCreateDto } from 'src/modules/setting/dtos/setting.create.dto';
 import { SettingUpdateValueDto } from 'src/modules/setting/dtos/setting.update-value.dto';
-import {
-    SettingDoc,
-    SettingEntity,
-} from 'src/modules/setting/repository/entities/setting.entity';
+import { SettingDoc } from 'src/modules/setting/repository/entities/setting.entity';
 
 export interface ISettingService {
-    findAll(
+    findAll<T>(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<SettingEntity[]>;
+    ): Promise<T[]>;
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions

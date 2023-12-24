@@ -7,10 +7,7 @@ import {
     ApiKeyUpdateDto,
 } from 'src/common/api-key/dtos/api-key.update.dto';
 import { IApiKeyCreated } from 'src/common/api-key/interfaces/api-key.interface';
-import {
-    ApiKeyDoc,
-    ApiKeyEntity,
-} from 'src/common/api-key/repository/entities/api-key.entity';
+import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
 import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
@@ -21,10 +18,10 @@ import {
 } from 'src/common/database/interfaces/database.interface';
 
 export interface IApiKeyService {
-    findAll(
+    findAll<T>(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<ApiKeyEntity[]>;
+    ): Promise<T[]>;
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
