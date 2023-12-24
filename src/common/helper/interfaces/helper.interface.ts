@@ -27,6 +27,12 @@ export interface IHelperStringRandomOptions {
 }
 
 // Helper Date
+export interface IHelperDateSetTimeOptions {
+    hour?: number;
+    minute?: number;
+    second?: number;
+}
+
 export interface IHelperDateStartAndEnd {
     month?: number;
     year?: number;

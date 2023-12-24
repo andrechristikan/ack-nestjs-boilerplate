@@ -343,6 +343,45 @@ describe('HelperDateService', () => {
         });
     });
 
+    describe('setTime', () => {
+        it('should return the date and time', () => {
+            const date = '2021-01-01T00:00:00.000Z';
+            const startDate = service.create(date);
+            const setTime = service.setTime(startDate, {
+                hour: 1,
+                minute: 59,
+                second: 59,
+            });
+            expect(setTime).toEqual(new Date('2021-01-01T01:59:59.000Z'));
+        });
+    });
+
+    describe('addTime', () => {
+        it('should return date adn time added', () => {
+            const date = '2021-01-01T00:00:00.000Z';
+            const startDate = service.create(date);
+            const setTime = service.addTime(startDate, {
+                hour: 0,
+                minute: 10,
+                second: 0,
+            });
+            expect(setTime).toEqual(new Date('2021-01-01T00:10:00.000Z'));
+        });
+    });
+
+    describe('minusTime', () => {
+        it('should return date adn time added', () => {
+            const date = '2021-01-01T00:00:00.000Z';
+            const startDate = service.create(date);
+            const setTime = service.minusTime(startDate, {
+                hour: 0,
+                minute: 10,
+                second: 0,
+            });
+            expect(setTime).toEqual(new Date('2020-12-31T23:50:00.000Z'));
+        });
+    });
+
     describe('extractDate', () => {
         it('should extract day, month, and year from a given date', () => {
             const date = new Date('2021-01-01');

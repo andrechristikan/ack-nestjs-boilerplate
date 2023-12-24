@@ -14,6 +14,7 @@ import {
     IHelperDateOptionsFormat,
     IHelperDateOptionsForward,
     IHelperDateOptionsRoundDown,
+    IHelperDateSetTimeOptions,
     IHelperDateStartAndEnd,
     IHelperDateStartAndEndDate,
 } from 'src/common/helper/interfaces/helper.interface';
@@ -229,6 +230,49 @@ export class HelperDateService implements IHelperDateService {
 
     startOfDay(date?: Date): Date {
         return moment(date).tz(this.defTz).startOf('day').toDate();
+    }
+
+    setTime(
+        date: Date,
+        { hour, minute, second }: IHelperDateSetTimeOptions
+    ): Date {
+        return moment(date)
+            .tz(this.defTz)
+            .set({
+                h: hour,
+                m: minute,
+                second: second,
+                ms: 0,
+            })
+            .toDate();
+    }
+
+    addTime(
+        date: Date,
+        { hour, minute, second }: IHelperDateSetTimeOptions
+    ): Date {
+        return moment(date)
+            .tz(this.defTz)
+            .add({
+                h: hour,
+                m: minute,
+                second: second,
+            })
+            .toDate();
+    }
+
+    minusTime(
+        date: Date,
+        { hour, minute, second }: IHelperDateSetTimeOptions
+    ): Date {
+        return moment(date)
+            .tz(this.defTz)
+            .subtract({
+                h: hour,
+                m: minute,
+                second: second,
+            })
+            .toDate();
     }
 
     extractDate(date: string | Date | number): IHelperDateExtractDate {

@@ -5,6 +5,7 @@ import {
     IHelperDateOptionsDiff,
     IHelperDateOptionsFormat,
     IHelperDateOptionsForward,
+    IHelperDateSetTimeOptions,
     IHelperDateStartAndEnd,
     IHelperDateStartAndEndDate,
 } from 'src/common/helper/interfaces/helper.interface';
@@ -67,6 +68,18 @@ export interface IHelperDateService {
     startOfYear(date?: Date): Date;
     endOfDay(date?: Date): Date;
     startOfDay(date?: Date): Date;
+    setTime(
+        date: Date,
+        { hour, minute, second }: IHelperDateSetTimeOptions
+    ): Date;
+    addTime(
+        date: Date,
+        { hour, minute, second }: IHelperDateSetTimeOptions
+    ): Date;
+    minusTime(
+        date: Date,
+        { hour, minute, second }: IHelperDateSetTimeOptions
+    ): Date;
     extractDate(date: string | Date | number): IHelperDateExtractDate;
     getStartAndEndDate(
         options?: IHelperDateStartAndEnd
