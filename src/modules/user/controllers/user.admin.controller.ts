@@ -95,7 +95,7 @@ import {
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { EmailService } from 'src/modules/email/services/email.service';
-import { FileUploadSingleMedium } from 'src/common/file/decorators/file.decorator';
+import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -353,7 +353,7 @@ export class UserAdminController {
 
     @UserAdminImportDoc()
     @Response('user.import')
-    @FileUploadSingleMedium()
+    @FileUploadSingle()
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [
