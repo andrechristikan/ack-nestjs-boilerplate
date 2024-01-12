@@ -548,13 +548,13 @@ export class UserAuthController {
             .substring(filename.lastIndexOf('.') + 1, filename.length)
             .toLowerCase();
 
-        const path = await this.userService.createPhotoFilename();
+        const path = await this.userService.createPhotoFilename(user._id);
 
         const aws: AwsS3Serialization = await this.awsS3Service.putItemInBucket(
             `${path.filename}.${mime}`,
             content,
             {
-                path: `${path.path}/${user._id}`,
+                path: path.path,
             }
         );
         await this.userService.updatePhoto(user, aws);

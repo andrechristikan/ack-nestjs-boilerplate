@@ -319,11 +319,11 @@ export class UserService implements IUserService {
         });
     }
 
-    async createPhotoFilename(): Promise<Record<string, any>> {
+    async createPhotoFilename(user: string): Promise<Record<string, any>> {
         const filename: string = this.helperStringService.random(20);
 
         return {
-            path: this.uploadPath,
+            path: this.uploadPath.replace('{user}', user),
             filename: filename,
         };
     }
