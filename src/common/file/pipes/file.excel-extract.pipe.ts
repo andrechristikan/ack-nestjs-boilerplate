@@ -12,7 +12,7 @@ import { HelperFileService } from 'src/common/helper/services/helper.file.servic
 
 // only for excel
 @Injectable()
-export class FileExtractPipe<T> implements PipeTransform {
+export class FileExcelExtractPipe<T> implements PipeTransform {
     constructor(private readonly helperFileService: HelperFileService) {}
 
     async transform(
@@ -71,7 +71,7 @@ export class FileExtractPipe<T> implements PipeTransform {
 
 // only for excel
 @Injectable()
-export class FileExtractAllSheetPipe<T> implements PipeTransform {
+export class FileExcelExtractAllSheetPipe<T> implements PipeTransform {
     constructor(private readonly helperFileService: HelperFileService) {}
 
     async transform(
@@ -87,9 +87,8 @@ export class FileExtractAllSheetPipe<T> implements PipeTransform {
             for (const val of value) {
                 await this.validate(val.mimetype);
 
-                const extract: IFileExtractAllSheets<T> = await this.extract(
-                    val
-                );
+                const extract: IFileExtractAllSheets<T> =
+                    await this.extract(val);
                 extracts.push(extract);
             }
 

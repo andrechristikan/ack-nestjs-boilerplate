@@ -10,10 +10,15 @@ export enum ENUM_FILE_EXCEL_MIME {
     CSV = 'text/csv',
 }
 
+export enum ENUM_FILE_PDF_MIME {
+    PDF = 'application/pdf',
+}
+
 export enum ENUM_FILE_AUDIO_MIME {
     MPEG = 'audio/mpeg',
     MP3 = 'audio/mp3',
     MP4 = 'audio/mp4',
+    M4A = 'audio/x-m4a',
 }
 
 export enum ENUM_FILE_VIDEO_MIME {

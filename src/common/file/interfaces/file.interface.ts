@@ -11,3 +11,8 @@ export type IFileExtractAllSheets<T> = IFile & {
     extracts: IHelperFileRows[][];
     dto?: T[][];
 };
+
+export interface IFileMultipleField {
+    field: string;
+    maxFiles: number;
+}

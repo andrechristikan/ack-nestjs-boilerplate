@@ -26,7 +26,6 @@ import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.seriali
 import { AwsS3Service } from 'src/common/aws/services/aws.s3.service';
 import { IFile } from 'src/common/file/interfaces/file.interface';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
-import { FileTypeImagePipe } from 'src/common/file/pipes/file.type.pipe';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
@@ -71,6 +70,8 @@ import { DatabaseConnection } from 'src/common/database/decorators/database.deco
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
+import { FileTypePipe } from 'src/common/file/pipes/file.type.pipe';
+import { ENUM_FILE_IMAGE_MIME } from 'src/common/file/constants/file.enum.constant';
 
 @ApiTags('modules.auth.user')
 @Controller({
@@ -535,7 +536,10 @@ export class UserAuthController {
     @Post('/profile/upload')
     async upload(
         @GetUser() user: UserDoc,
-        @UploadedFile(FileRequiredPipe, FileTypeImagePipe)
+        @UploadedFile(
+            new FileRequiredPipe(),
+            new FileTypePipe(ENUM_FILE_IMAGE_MIME)
+        )
         file: IFile
     ): Promise<void> {
         const filename: string = file.originalname;

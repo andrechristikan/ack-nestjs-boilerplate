@@ -19,7 +19,7 @@ import { ERROR_TYPE } from 'src/common/error/constants/error.enum.constant';
 // only for excel
 // must use after FileExtractPipe
 @Injectable()
-export class FileValidationPipe<T = any> implements PipeTransform {
+export class FileExcelValidationPipe<T = any> implements PipeTransform {
     constructor(private readonly dto: ClassConstructor<T>) {}
 
     async transform(
@@ -135,7 +135,9 @@ export class FileValidationPipe<T = any> implements PipeTransform {
 }
 
 @Injectable()
-export class FileValidationAllSheetPipe<T = any[]> implements PipeTransform {
+export class FileExcelValidationAllSheetPipe<T = any[]>
+    implements PipeTransform
+{
     constructor(private readonly dto: T) {}
 
     async transform(
