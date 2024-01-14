@@ -3,5 +3,3 @@ export enum ENUM_APP_ENVIRONMENT {
     STAGING = 'staging',
     DEVELOPMENT = 'development',
 }
-
-export const APP_TZ = 'Asia/Jakarta';

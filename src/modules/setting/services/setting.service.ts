@@ -8,6 +8,8 @@ import {
     IDatabaseManyOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { ENUM_HELPER_DATE_FORMAT } from 'src/common/helper/constants/helper.enum.constant';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
 import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/constants/setting.enum.constant';
 import { SettingCreateDto } from 'src/modules/setting/dtos/setting.create.dto';
@@ -22,13 +24,19 @@ import { SettingRepository } from 'src/modules/setting/repository/repositories/s
 @Injectable()
 export class SettingService implements ISettingService {
     private readonly timezone: string;
+    private readonly timezoneOffset: string;
 
     constructor(
         private readonly settingRepository: SettingRepository,
         private readonly helperNumberService: HelperNumberService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly helperDateService: HelperDateService
     ) {
         this.timezone = this.configService.get<string>('app.tz');
+        this.timezoneOffset = this.helperDateService.format(
+            this.helperDateService.create(),
+            { format: ENUM_HELPER_DATE_FORMAT.TIMEZONE }
+        );
     }
 
     async findAll<T = SettingDoc>(
@@ -142,5 +150,9 @@ export class SettingService implements ISettingService {
 
     async getTimezone(): Promise<string> {
         return this.timezone;
+    }
+
+    async getTimezoneOffset(): Promise<string> {
+        return this.timezoneOffset;
     }
 }

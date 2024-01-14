@@ -39,6 +39,7 @@ import { SettingCoreSerialization } from 'src/modules/setting/serializations/set
 import { SettingFileSerialization } from 'src/modules/setting/serializations/setting.file.serialization';
 import { SettingGetSerialization } from 'src/modules/setting/serializations/setting.get.serialization';
 import { SettingListSerialization } from 'src/modules/setting/serializations/setting.list.serialization';
+import { SettingTimezoneSerialization } from 'src/modules/setting/serializations/setting.timezone.serialization';
 import { SettingService } from 'src/modules/setting/services/setting.service';
 
 @ApiTags('modules.public.setting')
@@ -115,13 +116,20 @@ export class SettingPublicController {
     async getUserMaxCertificate(): Promise<IResponse> {
         const languages: string[] = this.messageService.getAvailableLanguages();
 
+        const tz: string = await this.settingService.getTimezone();
+        const timezoneOffset: string =
+            await this.settingService.getTimezoneOffset();
+
+        const timezone: SettingTimezoneSerialization = {
+            timezone: tz,
+            timezoneOffset: timezoneOffset,
+        };
+
         const file: SettingFileSerialization = {
             sizeInBytes: FILE_SIZE_IN_BYTES,
             sizeMediumInBytes: FILE_SIZE_MEDIUM_IN_BYTES,
             sizeLargeInBytes: FILE_SIZE_LARGE_IN_BYTES,
         };
-
-        const timezone: string = await this.settingService.getTimezone();
 
         return {
             data: {
