@@ -3,13 +3,14 @@ import {
     Injectable,
     UnsupportedMediaTypeException,
 } from '@nestjs/common';
+import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
 import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
 import { IFile } from 'src/common/file/interfaces/file.interface';
 
 @Injectable()
-export class FileTypePipe<T = any> implements PipeTransform {
+export class FileTypePipe implements PipeTransform {
     constructor(
-        readonly type: T,
+        readonly type: ENUM_FILE_MIME[],
         readonly field?: string
     ) {}
 
@@ -46,11 +47,7 @@ export class FileTypePipe<T = any> implements PipeTransform {
     }
 
     async validate(mimetype: string): Promise<void> {
-        if (
-            !Object.values(this.type).find(
-                (val) => val === mimetype.toLowerCase()
-            )
-        ) {
+        if (!this.type.find((val) => val === mimetype.toLowerCase())) {
             throw new UnsupportedMediaTypeException({
                 statusCode: ENUM_FILE_STATUS_CODE_ERROR.FILE_EXTENSION_ERROR,
                 message: 'file.error.mimeInvalid',

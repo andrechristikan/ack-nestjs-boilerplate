@@ -94,9 +94,9 @@ import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.dec
 import { EmailService } from 'src/modules/email/services/email.service';
 import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
 import { FileTypePipe } from 'src/common/file/pipes/file.type.pipe';
-import { ENUM_FILE_EXCEL_MIME } from 'src/common/file/constants/file.enum.constant';
 import { FileExcelExtractPipe } from 'src/common/file/pipes/file.excel-extract.pipe';
 import { FileExcelValidationPipe } from 'src/common/file/pipes/file.excel-validation.pipe';
+import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -369,7 +369,7 @@ export class UserAdminController {
     async import(
         @UploadedFile(
             new FileRequiredPipe(),
-            new FileTypePipe(ENUM_FILE_EXCEL_MIME),
+            new FileTypePipe([ENUM_FILE_MIME.CSV]),
             FileExcelExtractPipe,
             new FileExcelValidationPipe<UserImportDto>(UserImportDto)
         )

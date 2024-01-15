@@ -24,7 +24,6 @@ import {
 } from 'src/common/response/constants/response.constant';
 import { WorkBook } from 'xlsx';
 import { ENUM_HELPER_FILE_TYPE } from 'src/common/helper/constants/helper.enum.constant';
-import { ENUM_FILE_EXCEL_MIME } from 'src/common/file/constants/file.enum.constant';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 
 @Injectable()
@@ -84,10 +83,7 @@ export class ResponseFileInterceptor implements NestInterceptor<Promise<any>> {
                     // set headers
                     const timestamp = this.helperDateService.timestamp();
                     response
-                        .setHeader(
-                            'Content-Type',
-                            ENUM_FILE_EXCEL_MIME[fileType.toUpperCase()]
-                        )
+                        .setHeader('Content-Type', fileType.toUpperCase())
                         .setHeader(
                             'Content-Disposition',
                             `attachment; filename=export-${timestamp}.${fileType}`

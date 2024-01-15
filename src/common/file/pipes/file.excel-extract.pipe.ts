@@ -1,6 +1,6 @@
 import { Injectable, UnsupportedMediaTypeException } from '@nestjs/common';
 import { PipeTransform } from '@nestjs/common/interfaces';
-import { ENUM_FILE_EXCEL_MIME } from 'src/common/file/constants/file.enum.constant';
+import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
 import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
 import {
     IFile,
@@ -45,7 +45,7 @@ export class FileExcelExtractPipe<T> implements PipeTransform {
 
     async validate(mimetype: string): Promise<void> {
         if (
-            !Object.values(ENUM_FILE_EXCEL_MIME).find(
+            ![ENUM_FILE_MIME.CSV, ENUM_FILE_MIME.XLS, ENUM_FILE_MIME.XLSX].find(
                 (val) => val === mimetype.toLowerCase()
             )
         ) {
@@ -105,7 +105,7 @@ export class FileExcelExtractAllSheetPipe<T> implements PipeTransform {
 
     async validate(mimetype: string): Promise<void> {
         if (
-            !Object.values(ENUM_FILE_EXCEL_MIME).find(
+            ![ENUM_FILE_MIME.CSV, ENUM_FILE_MIME.XLS, ENUM_FILE_MIME.XLSX].find(
                 (val) => val === mimetype.toLowerCase()
             )
         ) {

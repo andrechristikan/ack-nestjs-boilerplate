@@ -12,9 +12,9 @@ import {
     IFileExtract,
     IFileExtractAllSheets,
 } from 'src/common/file/interfaces/file.interface';
-import { ENUM_FILE_EXCEL_MIME } from 'src/common/file/constants/file.enum.constant';
 import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
 import { ERROR_TYPE } from 'src/common/error/constants/error.enum.constant';
+import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
 
 // only for excel
 // must use after FileExtractPipe
@@ -81,7 +81,7 @@ export class FileExcelValidationPipe<T = any> implements PipeTransform {
 
     async validate(value: IFileExtract<T>): Promise<void> {
         if (
-            !Object.values(ENUM_FILE_EXCEL_MIME).find(
+            ![ENUM_FILE_MIME.CSV, ENUM_FILE_MIME.XLS, ENUM_FILE_MIME.XLSX].find(
                 (val) => val === value.mimetype.toLowerCase()
             )
         ) {
@@ -215,7 +215,7 @@ export class FileExcelValidationAllSheetPipe<T = any[]>
 
     async validate(value: IFileExtractAllSheets<T>): Promise<void> {
         if (
-            !Object.values(ENUM_FILE_EXCEL_MIME).find(
+            ![ENUM_FILE_MIME.CSV, ENUM_FILE_MIME.XLS, ENUM_FILE_MIME.XLSX].find(
                 (val) => val === value.mimetype.toLowerCase()
             )
         ) {
