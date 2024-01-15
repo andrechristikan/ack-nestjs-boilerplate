@@ -17,13 +17,11 @@ export enum ENUM_FILE_PDF_MIME {
 export enum ENUM_FILE_AUDIO_MIME {
     MPEG = 'audio/mpeg',
     MP3 = 'audio/mp3',
-    MP4 = 'audio/mp4',
     M4A = 'audio/x-m4a',
 }
 
 export enum ENUM_FILE_VIDEO_MIME {
     MP4 = 'video/mp4',
-    APPLICATION_MP4 = 'application/mp4',
 }
 
 export enum ENUM_FILE_TYPE {
