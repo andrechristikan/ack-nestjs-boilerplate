@@ -3,7 +3,6 @@ import { RouterModule as NestJsRouterModule } from '@nestjs/core';
 import { RoutesAdminModule } from './routes/routes.admin.module';
 import { RoutesUserModule } from 'src/router/routes/routes.user.module';
 import { RoutesPublicModule } from 'src/router/routes/routes.public.module';
-import { AppController } from 'src/app/controllers/app.controller';
 import { RoutesAuthModule } from 'src/router/routes/routes.auth.module';
 
 @Module({})
@@ -47,7 +46,7 @@ export class RouterModule {
             module: RouterModule,
             providers: [],
             exports: [],
-            controllers: [AppController],
+            controllers: [],
             imports,
         };
     }
