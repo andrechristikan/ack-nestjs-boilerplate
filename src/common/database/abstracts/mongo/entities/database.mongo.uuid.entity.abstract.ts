@@ -25,13 +25,15 @@ export abstract class DatabaseMongoUUIDEntityAbstract extends DatabaseBaseEntity
         required: false,
         index: 'asc',
         type: Date,
+        default: new Date(),
     })
     [DATABASE_CREATED_AT_FIELD_NAME]?: Date;
 
     @Prop({
         required: false,
-        index: 'desc',
+        index: 'asc',
         type: Date,
+        default: new Date(),
     })
     [DATABASE_UPDATED_AT_FIELD_NAME]?: Date;
 }
