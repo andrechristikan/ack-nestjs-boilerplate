@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+    IAwsS3PutItem,
     IAwsS3PutItemOptions,
     IAwsS3RandomFilename,
 } from 'src/common/aws/interfaces/aws.interface';
@@ -55,7 +56,6 @@ import {
     ObjectCannedACL,
     CompletedPart,
 } from '@aws-sdk/client-s3';
-import { IFile } from 'src/common/file/interfaces/file.interface';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 
 @Injectable()
@@ -179,7 +179,7 @@ export class AwsS3Service implements IAwsS3Service {
     }
 
     async putItemInBucket(
-        file: IFile,
+        file: IAwsS3PutItem,
         options?: IAwsS3PutItemOptions
     ): Promise<AwsS3Serialization> {
         let path: string = options?.path;
@@ -309,7 +309,7 @@ export class AwsS3Service implements IAwsS3Service {
     }
 
     async createMultiPart(
-        file: IFile,
+        file: IAwsS3PutItem,
         maxPartNumber: number,
         options?: IAwsS3PutItemOptions
     ): Promise<AwsS3MultipartSerialization> {

@@ -1,11 +1,13 @@
 import { HeadBucketCommandOutput, UploadPartRequest } from '@aws-sdk/client-s3';
-import { IAwsS3PutItemOptions } from 'src/common/aws/interfaces/aws.interface';
+import {
+    IAwsS3PutItem,
+    IAwsS3PutItemOptions,
+} from 'src/common/aws/interfaces/aws.interface';
 import {
     AwsS3MultipartPartsSerialization,
     AwsS3MultipartSerialization,
 } from 'src/common/aws/serializations/aws.s3-multipart.serialization';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
-import { IFile } from 'src/common/file/interfaces/file.interface';
 import { Readable } from 'stream';
 
 export interface IAwsS3Service {
@@ -16,14 +18,14 @@ export interface IAwsS3Service {
         pathWithFilename: string
     ): Promise<Readable | ReadableStream<any> | Blob>;
     putItemInBucket(
-        file: IFile,
+        file: IAwsS3PutItem,
         options?: IAwsS3PutItemOptions
     ): Promise<AwsS3Serialization>;
     deleteItemInBucket(pathWithFilename: string): Promise<void>;
     deleteItemsInBucket(pathWithFilename: string[]): Promise<void>;
     deleteFolder(dir: string): Promise<void>;
     createMultiPart(
-        file: IFile,
+        file: IAwsS3PutItem,
         maxPartNumber: number,
         options?: IAwsS3PutItemOptions
     ): Promise<AwsS3MultipartSerialization>;
