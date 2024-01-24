@@ -23,11 +23,11 @@ import { RoleRepository } from 'src/modules/role/repository/repositories/role.re
 export class RoleService implements IRoleService {
     constructor(private readonly roleRepository: RoleRepository) {}
 
-    async findAll(
+    async findAll<T = RoleDoc>(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<RoleEntity[]> {
-        return this.roleRepository.findAll<RoleEntity>(find, options);
+    ): Promise<T[]> {
+        return this.roleRepository.findAll<T>(find, options);
     }
 
     async findOneById(

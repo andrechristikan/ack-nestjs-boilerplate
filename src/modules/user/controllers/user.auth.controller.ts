@@ -24,9 +24,6 @@ import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { AwsS3Service } from 'src/common/aws/services/aws.s3.service';
-import { IFile } from 'src/common/file/interfaces/file.interface';
-import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
-import { FileTypeImagePipe } from 'src/common/file/pipes/file.type.pipe';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
@@ -71,6 +68,11 @@ import { DatabaseConnection } from 'src/common/database/decorators/database.deco
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
+import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
+import { FileTypePipe } from 'src/common/file/pipes/file.type.pipe';
+import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
+import { IFile } from 'src/common/file/interfaces/file.interface';
+import { IAwsS3RandomFilename } from 'src/common/aws/interfaces/aws.interface';
 
 @ApiTags('modules.auth.user')
 @Controller({
@@ -535,23 +537,25 @@ export class UserAuthController {
     @Post('/profile/upload')
     async upload(
         @GetUser() user: UserDoc,
-        @UploadedFile(FileRequiredPipe, FileTypeImagePipe)
+        @UploadedFile(
+            new FileRequiredPipe(),
+            new FileTypePipe([
+                ENUM_FILE_MIME.PNG,
+                ENUM_FILE_MIME.JPG,
+                ENUM_FILE_MIME.JPEG,
+            ])
+        )
         file: IFile
     ): Promise<void> {
-        const filename: string = file.originalname;
-        const content: Buffer = file.buffer;
-        const mime: string = filename
-            .substring(filename.lastIndexOf('.') + 1, filename.length)
-            .toLowerCase();
-
-        const path = await this.userService.createPhotoFilename();
+        const pathPrefix: string = await this.userService.getUploadPath(
+            user._id
+        );
+        const randomFilename: IAwsS3RandomFilename =
+            await this.awsS3Service.createRandomFilename(pathPrefix);
 
         const aws: AwsS3Serialization = await this.awsS3Service.putItemInBucket(
-            `${path.filename}.${mime}`,
-            content,
-            {
-                path: `${path.path}/${user._id}`,
-            }
+            file,
+            randomFilename
         );
         await this.userService.updatePhoto(user, aws);
 

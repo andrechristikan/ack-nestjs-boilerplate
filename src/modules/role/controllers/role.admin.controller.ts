@@ -118,14 +118,17 @@ export class RoleAdminController {
             ...type,
         };
 
-        const roles: RoleEntity[] = await this.roleService.findAll(find, {
-            paging: {
-                limit: _limit,
-                offset: _offset,
-            },
-            order: _order,
-            plainObject: true,
-        });
+        const roles: RoleEntity[] = await this.roleService.findAll<RoleEntity>(
+            find,
+            {
+                paging: {
+                    limit: _limit,
+                    offset: _offset,
+                },
+                order: _order,
+                plainObject: true,
+            }
+        );
 
         const total: number = await this.roleService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(

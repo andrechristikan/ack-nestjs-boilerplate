@@ -158,6 +158,11 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
             completedUrl: String,
             baseUrl: String,
             mime: String,
+            size: Number,
+            duration: {
+                required: false,
+                type: Number,
+            },
         },
     })
     photo?: AwsS3Serialization;

@@ -15,10 +15,7 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { IFileExtract } from 'src/common/file/interfaces/file.interface';
-import { FileExtractPipe } from 'src/common/file/pipes/file.extract.pipe';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
-import { FileTypeExcelPipe } from 'src/common/file/pipes/file.type.pipe';
-import { FileValidationPipe } from 'src/common/file/pipes/file.validation.pipe';
 import { ENUM_HELPER_FILE_TYPE } from 'src/common/helper/constants/helper.enum.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
@@ -95,7 +92,11 @@ import {
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { EmailService } from 'src/modules/email/services/email.service';
-import { FileUploadSingleMedium } from 'src/common/file/decorators/file.decorator';
+import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
+import { FileTypePipe } from 'src/common/file/pipes/file.type.pipe';
+import { FileExcelExtractPipe } from 'src/common/file/pipes/file.excel-extract.pipe';
+import { FileExcelValidationPipe } from 'src/common/file/pipes/file.excel-validation.pipe';
+import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -151,14 +152,15 @@ export class UserAdminController {
             ...role,
         };
 
-        const users: IUserEntity[] = await this.userService.findAll(find, {
-            paging: {
-                limit: _limit,
-                offset: _offset,
-            },
-            order: _order,
-            plainObject: true,
-        });
+        const users: IUserEntity[] =
+            await this.userService.findAll<IUserEntity>(find, {
+                paging: {
+                    limit: _limit,
+                    offset: _offset,
+                },
+                order: _order,
+                plainObject: true,
+            });
         const total: number = await this.userService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
             total,
@@ -352,7 +354,7 @@ export class UserAdminController {
 
     @UserAdminImportDoc()
     @Response('user.import')
-    @FileUploadSingleMedium()
+    @FileUploadSingle()
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [
@@ -366,10 +368,10 @@ export class UserAdminController {
     @Post('/import')
     async import(
         @UploadedFile(
-            FileRequiredPipe,
-            FileTypeExcelPipe,
-            FileExtractPipe,
-            new FileValidationPipe<UserImportDto>(UserImportDto)
+            new FileRequiredPipe(),
+            new FileTypePipe([ENUM_FILE_MIME.CSV]),
+            FileExcelExtractPipe,
+            new FileExcelValidationPipe<UserImportDto>(UserImportDto)
         )
         file: IFileExtract<UserImportDto>
     ): Promise<void> {
@@ -399,12 +401,13 @@ export class UserAdminController {
     @HttpCode(HttpStatus.OK)
     @Post('/export')
     async export(): Promise<IResponse> {
-        const users: IUserEntity[] = await this.userService.findAll(
-            {},
-            {
-                plainObject: true,
-            }
-        );
+        const users: IUserEntity[] =
+            await this.userService.findAll<IUserEntity>(
+                {},
+                {
+                    plainObject: true,
+                }
+            );
 
         return { data: users };
     }

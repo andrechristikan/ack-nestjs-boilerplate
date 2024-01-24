@@ -3,141 +3,51 @@ import {
     Injectable,
     UnsupportedMediaTypeException,
 } from '@nestjs/common';
-import {
-    ENUM_FILE_AUDIO_MIME,
-    ENUM_FILE_EXCEL_MIME,
-    ENUM_FILE_IMAGE_MIME,
-    ENUM_FILE_VIDEO_MIME,
-} from 'src/common/file/constants/file.enum.constant';
+import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
 import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
 import { IFile } from 'src/common/file/interfaces/file.interface';
 
 @Injectable()
-export class FileTypeImagePipe implements PipeTransform {
-    async transform(value: IFile | IFile[]): Promise<IFile | IFile[]> {
+export class FileTypePipe implements PipeTransform {
+    constructor(
+        readonly type: ENUM_FILE_MIME[],
+        readonly field?: string
+    ) {}
+
+    async transform(value: any): Promise<IFile | IFile[]> {
         if (!value) {
-            return;
+            return value;
         }
 
-        if (Array.isArray(value)) {
-            for (const val of value) {
+        let fieldValue = value;
+        if (this.field) {
+            fieldValue = value[this.field];
+        }
+
+        if (
+            !fieldValue ||
+            Object.keys(fieldValue).length === 0 ||
+            (Array.isArray(fieldValue) && fieldValue.length === 0)
+        ) {
+            return value;
+        }
+
+        if (Array.isArray(fieldValue)) {
+            for (const val of fieldValue) {
                 await this.validate(val.mimetype);
             }
 
             return value;
         }
 
-        const file = value as IFile;
+        const file: IFile = fieldValue as IFile;
         await this.validate(file.mimetype);
 
         return value;
     }
 
     async validate(mimetype: string): Promise<void> {
-        if (
-            !Object.values(ENUM_FILE_IMAGE_MIME).find(
-                (val) => val === mimetype.toLowerCase()
-            )
-        ) {
-            throw new UnsupportedMediaTypeException({
-                statusCode: ENUM_FILE_STATUS_CODE_ERROR.FILE_EXTENSION_ERROR,
-                message: 'file.error.mimeInvalid',
-            });
-        }
-
-        return;
-    }
-}
-
-@Injectable()
-export class FileTypeVideoPipe implements PipeTransform {
-    async transform(value: IFile | IFile[]): Promise<IFile | IFile[]> {
-        if (Array.isArray(value)) {
-            for (const val of value) {
-                await this.validate(val.mimetype);
-            }
-
-            return value;
-        }
-
-        const file = value as IFile;
-        await this.validate(file.mimetype);
-
-        return value;
-    }
-
-    async validate(mimetype: string): Promise<void> {
-        if (
-            !Object.values(ENUM_FILE_VIDEO_MIME).find(
-                (val) => val === mimetype.toLowerCase()
-            )
-        ) {
-            throw new UnsupportedMediaTypeException({
-                statusCode: ENUM_FILE_STATUS_CODE_ERROR.FILE_EXTENSION_ERROR,
-                message: 'file.error.mimeInvalid',
-            });
-        }
-
-        return;
-    }
-}
-
-@Injectable()
-export class FileTypeAudioPipe implements PipeTransform {
-    async transform(value: IFile | IFile[]): Promise<IFile | IFile[]> {
-        if (Array.isArray(value)) {
-            for (const val of value) {
-                await this.validate(val.mimetype);
-            }
-
-            return value;
-        }
-
-        const file = value as IFile;
-        await this.validate(file.mimetype);
-
-        return value;
-    }
-
-    async validate(mimetype: string): Promise<void> {
-        if (
-            !Object.values(ENUM_FILE_AUDIO_MIME).find(
-                (val) => val === mimetype.toLowerCase()
-            )
-        ) {
-            throw new UnsupportedMediaTypeException({
-                statusCode: ENUM_FILE_STATUS_CODE_ERROR.FILE_EXTENSION_ERROR,
-                message: 'file.error.mimeInvalid',
-            });
-        }
-
-        return;
-    }
-}
-
-@Injectable()
-export class FileTypeExcelPipe implements PipeTransform {
-    async transform(value: IFile | IFile[]): Promise<IFile | IFile[]> {
-        if (Array.isArray(value)) {
-            for (const val of value) {
-                await this.validate(val.mimetype);
-            }
-
-            return value;
-        }
-
-        const file: IFile = value as IFile;
-        await this.validate(file.mimetype);
-
-        return value;
-    }
-
-    async validate(mimetype: string): Promise<void> {
-        if (
-            !Object.values(ENUM_FILE_EXCEL_MIME).find(
-                (val) => val === mimetype.toLowerCase()
-            )
-        ) {
+        if (!this.type.find((val) => val === mimetype.toLowerCase())) {
             throw new UnsupportedMediaTypeException({
                 statusCode: ENUM_FILE_STATUS_CODE_ERROR.FILE_EXTENSION_ERROR,
                 message: 'file.error.mimeInvalid',

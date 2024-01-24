@@ -16,6 +16,7 @@ export enum ENUM_HELPER_DATE_FORMAT {
     MINUTE_SHORT = 'm',
     SECOND_LONG = 'ss',
     SECOND_SHORT = 's',
+    TIMEZONE = 'Z',
 }
 
 export enum ENUM_HELPER_DATE_DIFF {

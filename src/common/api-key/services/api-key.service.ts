@@ -41,11 +41,11 @@ export class ApiKeyService implements IApiKeyService {
         this.env = this.configService.get<string>('app.env');
     }
 
-    async findAll(
+    async findAll<T = ApiKeyDoc>(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<ApiKeyDoc[]> {
-        return this.apiKeyRepository.findAll<ApiKeyDoc>(find, options);
+    ): Promise<T[]> {
+        return this.apiKeyRepository.findAll<T>(find, options);
     }
 
     async findOneById(

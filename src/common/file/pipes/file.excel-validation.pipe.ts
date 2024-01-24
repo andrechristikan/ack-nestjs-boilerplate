@@ -12,14 +12,14 @@ import {
     IFileExtract,
     IFileExtractAllSheets,
 } from 'src/common/file/interfaces/file.interface';
-import { ENUM_FILE_EXCEL_MIME } from 'src/common/file/constants/file.enum.constant';
 import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
 import { ERROR_TYPE } from 'src/common/error/constants/error.enum.constant';
+import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
 
 // only for excel
 // must use after FileExtractPipe
 @Injectable()
-export class FileValidationPipe<T = any> implements PipeTransform {
+export class FileExcelValidationPipe<T = any> implements PipeTransform {
     constructor(private readonly dto: ClassConstructor<T>) {}
 
     async transform(
@@ -81,7 +81,7 @@ export class FileValidationPipe<T = any> implements PipeTransform {
 
     async validate(value: IFileExtract<T>): Promise<void> {
         if (
-            !Object.values(ENUM_FILE_EXCEL_MIME).find(
+            ![ENUM_FILE_MIME.CSV, ENUM_FILE_MIME.XLS, ENUM_FILE_MIME.XLSX].find(
                 (val) => val === value.mimetype.toLowerCase()
             )
         ) {
@@ -135,7 +135,9 @@ export class FileValidationPipe<T = any> implements PipeTransform {
 }
 
 @Injectable()
-export class FileValidationAllSheetPipe<T = any[]> implements PipeTransform {
+export class FileExcelValidationAllSheetPipe<T = any[]>
+    implements PipeTransform
+{
     constructor(private readonly dto: T) {}
 
     async transform(
@@ -213,7 +215,7 @@ export class FileValidationAllSheetPipe<T = any[]> implements PipeTransform {
 
     async validate(value: IFileExtractAllSheets<T>): Promise<void> {
         if (
-            !Object.values(ENUM_FILE_EXCEL_MIME).find(
+            ![ENUM_FILE_MIME.CSV, ENUM_FILE_MIME.XLS, ENUM_FILE_MIME.XLSX].find(
                 (val) => val === value.mimetype.toLowerCase()
             )
         ) {

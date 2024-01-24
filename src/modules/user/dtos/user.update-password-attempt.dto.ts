@@ -5,7 +5,7 @@ export class UserUpdatePasswordAttemptDto {
     @ApiProperty({
         required: true,
     })
-    @IsNumber()
+    @IsNumber({ allowNaN: false, allowInfinity: false })
     @IsNotEmpty()
     passwordAttempt: number;
 }

@@ -127,14 +127,15 @@ export class ApiKeyAdminController {
             ...type,
         };
 
-        const apiKeys: ApiKeyDoc[] = await this.apiKeyService.findAll(find, {
-            paging: {
-                limit: _limit,
-                offset: _offset,
-            },
-            order: _order,
-            plainObject: true,
-        });
+        const apiKeys: ApiKeyEntity[] =
+            await this.apiKeyService.findAll<ApiKeyEntity>(find, {
+                paging: {
+                    limit: _limit,
+                    offset: _offset,
+                },
+                order: _order,
+                plainObject: true,
+            });
         const total: number = await this.apiKeyService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
             total,

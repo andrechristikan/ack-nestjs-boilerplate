@@ -33,7 +33,7 @@ import {
     IDocResponseOptions,
 } from 'src/common/doc/interfaces/doc.interface';
 import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
-import { ENUM_FILE_EXCEL_MIME } from 'src/common/file/constants/file.enum.constant';
+import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/common/policy/constants/policy.status-code.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
@@ -570,7 +570,7 @@ export function DocResponseFile(
     const httpStatus: HttpStatus = options?.httpStatus ?? HttpStatus.OK;
 
     return applyDecorators(
-        ApiProduces(options?.fileType ?? ENUM_FILE_EXCEL_MIME.CSV),
+        ApiProduces(options?.fileType ?? ENUM_FILE_MIME.CSV),
         ApiResponse({
             status: httpStatus,
         })

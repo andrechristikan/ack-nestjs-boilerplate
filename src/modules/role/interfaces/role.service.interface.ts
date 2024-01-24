@@ -11,16 +11,13 @@ import {
 import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
 import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
 import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
-import {
-    RoleDoc,
-    RoleEntity,
-} from 'src/modules/role/repository/entities/role.entity';
+import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 
 export interface IRoleService {
-    findAll(
+    findAll<T>(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<RoleEntity[]>;
+    ): Promise<T[]>;
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions

@@ -6,6 +6,13 @@ export class AwsS3Serialization {
     @ApiProperty({
         required: true,
         nullable: false,
+    })
+    @Type(() => String)
+    bucket: string;
+
+    @ApiProperty({
+        required: true,
+        nullable: false,
         example: faker.system.directoryPath(),
     })
     @Type(() => String)
@@ -50,4 +57,16 @@ export class AwsS3Serialization {
     })
     @Type(() => String)
     mime: string;
+
+    @ApiProperty({
+        required: false,
+        nullable: true,
+    })
+    duration?: number;
+
+    @ApiProperty({
+        required: true,
+        nullable: false,
+    })
+    size: number;
 }

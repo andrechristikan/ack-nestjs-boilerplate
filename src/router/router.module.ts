@@ -3,8 +3,8 @@ import { RouterModule as NestJsRouterModule } from '@nestjs/core';
 import { RoutesAdminModule } from './routes/routes.admin.module';
 import { RoutesUserModule } from 'src/router/routes/routes.user.module';
 import { RoutesPublicModule } from 'src/router/routes/routes.public.module';
-import { AppController } from 'src/app/controllers/app.controller';
 import { RoutesAuthModule } from 'src/router/routes/routes.auth.module';
+import { RoutesServiceModule } from 'src/router/routes/routes.service.module';
 
 @Module({})
 export class RouterModule {
@@ -22,6 +22,7 @@ export class RouterModule {
                 RoutesUserModule,
                 RoutesAdminModule,
                 RoutesAuthModule,
+                RoutesServiceModule,
                 NestJsRouterModule.register([
                     {
                         path: '/public',
@@ -39,6 +40,10 @@ export class RouterModule {
                         path: '/auth',
                         module: RoutesAuthModule,
                     },
+                    {
+                        path: '/service',
+                        module: RoutesServiceModule,
+                    },
                 ])
             );
         }
@@ -47,7 +52,7 @@ export class RouterModule {
             module: RouterModule,
             providers: [],
             exports: [],
-            controllers: [AppController],
+            controllers: [],
             imports,
         };
     }

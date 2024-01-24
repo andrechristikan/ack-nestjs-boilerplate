@@ -11,7 +11,7 @@ export class AwsS3MultipartPartsSerialization {
         description: 'ETag from aws after init multipart',
     })
     @Type(() => String)
-    ETag: string;
+    eTag: string;
 
     @ApiProperty({
         required: true,
@@ -19,7 +19,15 @@ export class AwsS3MultipartPartsSerialization {
         example: 1,
     })
     @Type(() => Number)
-    PartNumber: number;
+    partNumber: number;
+
+    @ApiProperty({
+        required: true,
+        nullable: false,
+        example: 1,
+    })
+    @Type(() => Number)
+    size: number;
 }
 
 export class AwsS3MultipartSerialization extends AwsS3Serialization {
@@ -33,26 +41,26 @@ export class AwsS3MultipartSerialization extends AwsS3Serialization {
     uploadId: string;
 
     @ApiProperty({
-        required: false,
-        nullable: true,
+        required: true,
+        nullable: false,
         example: 1,
         description: 'Last part number uploaded',
     })
     @Type(() => Number)
-    partNumber?: number;
+    lastPartNumber: number;
 
     @ApiProperty({
-        required: false,
-        nullable: true,
+        required: true,
+        nullable: false,
         example: 200,
         description: 'Max part number, or length of the chunk',
     })
     @Type(() => Number)
-    maxPartNumber?: number;
+    maxPartNumber: number;
 
     @ApiProperty({
-        required: false,
-        nullable: true,
+        required: true,
+        nullable: false,
         oneOf: [
             {
                 $ref: getSchemaPath(AwsS3MultipartPartsSerialization),
@@ -61,5 +69,5 @@ export class AwsS3MultipartSerialization extends AwsS3Serialization {
         ],
     })
     @Type(() => AwsS3MultipartPartsSerialization)
-    parts?: AwsS3MultipartPartsSerialization[];
+    parts: AwsS3MultipartPartsSerialization[];
 }
