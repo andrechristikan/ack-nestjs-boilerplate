@@ -14,8 +14,12 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { IAwsS3PutItemOptions } from 'src/common/aws/interfaces/aws.interface';
+import { AwsS3MultipartSerialization } from 'src/common/aws/serializations/aws.s3-multipart.serialization';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { AwsS3Service } from 'src/common/aws/services/aws.s3.service';
+import { IFile } from 'src/common/file/interfaces/file.interface';
+import { HelperStringService } from 'src/common/helper/services/helper.string.service';
+import { Readable } from 'stream';
 
 describe('AwsS3Service', () => {
     const bucket = 'test-bucket';
@@ -27,6 +31,7 @@ describe('AwsS3Service', () => {
         const moduleRefRef: TestingModule = await Test.createTestingModule({
             providers: [
                 AwsS3Service,
+                HelperStringService,
                 {
                     provide: ConfigService,
                     useValue: {
@@ -149,7 +154,9 @@ describe('AwsS3Service', () => {
                     filename: 'file1.png',
                     completedUrl: 'https://test.com/file1.png',
                     baseUrl: 'https://test.com',
-                    mime: 'PNG',
+                    mime: 'png',
+                    bucket: 'test-bucket',
+                    size: undefined,
                 },
                 {
                     path: 'folder1',
@@ -157,7 +164,9 @@ describe('AwsS3Service', () => {
                     filename: 'file2.png',
                     completedUrl: 'https://test.com/folder1/file2.png',
                     baseUrl: 'https://test.com',
-                    mime: 'PNG',
+                    mime: 'png',
+                    bucket: 'test-bucket',
+                    size: undefined,
                 },
             ];
 
@@ -182,12 +191,14 @@ describe('AwsS3Service', () => {
 
             const expected = [
                 {
+                    bucket: 'test-bucket',
                     path: 'folder1',
                     pathWithFilename: 'folder1/file2.png',
                     filename: 'file2.png',
                     completedUrl: 'https://test.com/folder1/file2.png',
                     baseUrl: 'https://test.com',
-                    mime: 'PNG',
+                    mime: 'png',
+                    size: undefined,
                 },
             ];
 
@@ -242,10 +253,7 @@ describe('AwsS3Service', () => {
                 data as never
             );
 
-            const result = await service.getItemInBucket(
-                'file.png',
-                '/folder1'
-            );
+            const result = await service.getItemInBucket('/folder1/file.png');
 
             expect(service['s3Client'].send).toHaveBeenCalled();
             expect(result).toBe(file);
@@ -261,7 +269,7 @@ describe('AwsS3Service', () => {
                 data as never
             );
 
-            const result = await service.getItemInBucket('file.png', 'folder1');
+            const result = await service.getItemInBucket('folder1/file.png');
 
             expect(service['s3Client'].send).toHaveBeenCalled();
             expect(result).toBe(file);
@@ -298,19 +306,27 @@ describe('AwsS3Service', () => {
                 filename: 'file.png',
                 completedUrl: 'https://test.com/test/file.png',
                 baseUrl: 'https://test.com',
-                mime: 'PNG',
+                bucket: 'test-bucket',
+                mime: 'png',
+                size: 1,
             };
-            const content = 'test-content';
+            const file: IFile = {
+                buffer: Buffer.from('test-content'),
+                destination: '',
+                fieldname: '',
+                mimetype: 'mimetype',
+                originalname: 'file.png',
+                path: '',
+                size: 1,
+                encoding: 'true',
+                stream: new Readable(),
+            };
             const options: IAwsS3PutItemOptions = {
                 acl: 'public-read',
                 path: 'test',
             };
 
-            const result = await service.putItemInBucket(
-                'file.png',
-                content,
-                options
-            );
+            const result = await service.putItemInBucket(file, options);
 
             expect(service['s3Client'].send).toHaveBeenCalled();
             expect(result).toEqual(expected);
@@ -323,24 +339,71 @@ describe('AwsS3Service', () => {
             );
 
             const expected = {
+                bucket: 'test-bucket',
                 path: 'test',
                 pathWithFilename: 'test/file.png',
                 filename: 'file.png',
                 completedUrl: 'https://test.com/test/file.png',
                 baseUrl: 'https://test.com',
-                mime: 'PNG',
+                mime: 'png',
+                size: 1,
             };
-            const content = 'test-content';
+            const file: IFile = {
+                buffer: Buffer.from('test-content'),
+                destination: '',
+                fieldname: '',
+                mimetype: 'mimetype',
+                originalname: 'file.png',
+                path: '',
+                size: 1,
+                encoding: 'true',
+                stream: new Readable(),
+            };
             const options: IAwsS3PutItemOptions = {
                 acl: 'public-read',
                 path: '/test',
             };
 
-            const result = await service.putItemInBucket(
-                'file.png',
-                content,
-                options
+            const result = await service.putItemInBucket(file, options);
+
+            expect(service['s3Client'].send).toHaveBeenCalled();
+            expect(result).toEqual(expected);
+        });
+
+        it('should accept path, customFilename, and return correct result', async () => {
+            const data: PutObjectCommandOutput = { $metadata: {} };
+            jest.spyOn(service['s3Client'], 'send').mockResolvedValue(
+                data as never
             );
+
+            const expected = {
+                baseUrl: 'https://test.com',
+                bucket: 'test-bucket',
+                completedUrl: 'https://test.com/test/asdfgh.png',
+                filename: 'asdfgh.png',
+                mime: 'png',
+                pathWithFilename: 'test/asdfgh.png',
+                size: 1,
+                path: 'test',
+            };
+            const file: IFile = {
+                buffer: Buffer.from('test-content'),
+                destination: '',
+                fieldname: '',
+                mimetype: 'mimetype',
+                originalname: 'file.png',
+                path: '',
+                size: 1,
+                encoding: 'true',
+                stream: new Readable(),
+            };
+            const options: IAwsS3PutItemOptions = {
+                acl: 'public-read',
+                path: 'test',
+                customFilename: 'asdfgh',
+            };
+
+            const result = await service.putItemInBucket(file, options);
 
             expect(service['s3Client'].send).toHaveBeenCalled();
             expect(result).toEqual(expected);
@@ -352,7 +415,18 @@ describe('AwsS3Service', () => {
                 error as never
             );
 
-            const result = service.putItemInBucket('file.png', 'test-content');
+            const file: IFile = {
+                buffer: Buffer.from('test-content'),
+                destination: '',
+                fieldname: '',
+                mimetype: 'mimetype',
+                originalname: 'file.png',
+                path: '',
+                size: 1,
+                encoding: 'true',
+                stream: new Readable(),
+            };
+            const result = service.putItemInBucket(file);
 
             try {
                 await result;
@@ -501,19 +575,32 @@ describe('AwsS3Service', () => {
                 data as never
             );
 
-            const result = await service.createMultiPart(
-                'filename.txt',
-                options
-            );
+            const file: IFile = {
+                buffer: Buffer.from('test-content'),
+                destination: '',
+                fieldname: '',
+                mimetype: 'mimetype',
+                originalname: 'file.png',
+                path: '',
+                size: 1,
+                encoding: 'true',
+                stream: new Readable(),
+            };
+            const result = await service.createMultiPart(file, 2, options);
 
             const expected = {
-                uploadId: '12345',
+                bucket: 'test-bucket',
+                completedUrl: 'https://test.com/path/file.png',
+                filename: 'file.png',
+                lastPartNumber: 0,
+                maxPartNumber: 2,
+                mime: 'png',
+                parts: [],
+                pathWithFilename: 'path/file.png',
+                size: 0,
                 path: 'path',
-                pathWithFilename: 'path/filename.txt',
-                filename: 'filename.txt',
-                completedUrl: 'https://test.com/path/filename.txt',
+                uploadId: '12345',
                 baseUrl: 'https://test.com',
-                mime: 'TXT',
             };
 
             expect(service['s3Client'].send).toHaveBeenCalled();
@@ -533,19 +620,78 @@ describe('AwsS3Service', () => {
                 data as never
             );
 
-            const result = await service.createMultiPart(
-                'filename.txt',
-                options
-            );
+            const file: IFile = {
+                buffer: Buffer.from('test-content'),
+                destination: '',
+                fieldname: '',
+                mimetype: 'mimetype',
+                originalname: 'file.png',
+                path: '',
+                size: 1,
+                encoding: 'true',
+                stream: new Readable(),
+            };
+            const result = await service.createMultiPart(file, 2, options);
 
             const expected = {
-                uploadId: '12345',
+                bucket: 'test-bucket',
+                completedUrl: 'https://test.com/path/file.png',
+                filename: 'file.png',
+                lastPartNumber: 0,
+                maxPartNumber: 2,
+                mime: 'png',
+                parts: [],
+                pathWithFilename: 'path/file.png',
+                size: 0,
                 path: 'path',
-                pathWithFilename: 'path/filename.txt',
-                filename: 'filename.txt',
-                completedUrl: 'https://test.com/path/filename.txt',
+                uploadId: '12345',
                 baseUrl: 'https://test.com',
-                mime: 'TXT',
+            };
+
+            expect(service['s3Client'].send).toHaveBeenCalled();
+            expect(result).toEqual(expected);
+        });
+
+        it('should return object multipart upload with customFilename', async () => {
+            const options: IAwsS3PutItemOptions = {
+                path: 'path',
+                acl: 'private',
+                customFilename: '123456',
+            };
+            const data: CreateMultipartUploadCommandOutput = {
+                $metadata: {},
+                UploadId: '12345',
+            };
+            jest.spyOn(service['s3Client'], 'send').mockResolvedValue(
+                data as never
+            );
+
+            const file: IFile = {
+                buffer: Buffer.from('test-content'),
+                destination: '',
+                fieldname: '',
+                mimetype: 'mimetype',
+                originalname: 'file.png',
+                path: '',
+                size: 1,
+                encoding: 'true',
+                stream: new Readable(),
+            };
+            const result = await service.createMultiPart(file, 2, options);
+
+            const expected = {
+                baseUrl: 'https://test.com',
+                bucket: 'test-bucket',
+                completedUrl: 'https://test.com/path/123456.png',
+                filename: '123456.png',
+                lastPartNumber: 0,
+                maxPartNumber: 2,
+                mime: 'png',
+                path: 'path',
+                parts: [],
+                pathWithFilename: 'path/123456.png',
+                size: 0,
+                uploadId: '12345',
             };
 
             expect(service['s3Client'].send).toHaveBeenCalled();
@@ -558,7 +704,18 @@ describe('AwsS3Service', () => {
                 error as never
             );
 
-            const result = service.createMultiPart('filename.txt');
+            const file: IFile = {
+                buffer: Buffer.from('test-content'),
+                destination: '',
+                fieldname: '',
+                mimetype: 'mimetype',
+                originalname: 'file.png',
+                path: '',
+                size: 1,
+                encoding: 'true',
+                stream: new Readable(),
+            };
+            const result = service.createMultiPart(file, 2);
 
             try {
                 await result;
@@ -571,8 +728,6 @@ describe('AwsS3Service', () => {
 
     describe('uploadPart', () => {
         it('should return multipart parts object', async () => {
-            const content = new Blob(['My content']);
-
             const data: UploadPartCommandOutput = {
                 $metadata: {},
                 ETag: '1',
@@ -581,16 +736,27 @@ describe('AwsS3Service', () => {
                 data as never
             );
 
-            const result = await service.uploadPart(
-                'path/filename.txt',
-                content,
-                '12345',
-                1
-            );
+            const multipart: AwsS3MultipartSerialization = {
+                bucket: bucket,
+                lastPartNumber: 0,
+                maxPartNumber: 0,
+                parts: [],
+                size: 0,
+                uploadId: '12345',
+                path: 'path',
+                pathWithFilename: 'path/filename.txt',
+                filename: 'filename.txt',
+                completedUrl: 'https://test.com/path/filename.txt',
+                baseUrl: 'https://test.com',
+                mime: 'TXT',
+            };
+            const content = Buffer.from('12345');
+            const result = await service.uploadPart(multipart, 1, content);
 
             const expected = {
-                ETag: '1',
-                PartNumber: 1,
+                eTag: '1',
+                partNumber: 1,
+                size: 5,
             };
 
             expect(service['s3Client'].send).toHaveBeenCalled();
@@ -603,12 +769,22 @@ describe('AwsS3Service', () => {
                 error as never
             );
 
-            const result = service.uploadPart(
-                'path/filename.txt',
-                'My content',
-                '12345',
-                1
-            );
+            const multipart: AwsS3MultipartSerialization = {
+                bucket: bucket,
+                lastPartNumber: 0,
+                maxPartNumber: 0,
+                parts: [],
+                size: 0,
+                uploadId: '12345',
+                path: 'path',
+                pathWithFilename: 'path/filename.txt',
+                filename: 'filename.txt',
+                completedUrl: 'https://test.com/path/filename.txt',
+                baseUrl: 'https://test.com',
+                mime: 'TXT',
+            };
+            const content = Buffer.from('12345');
+            const result = service.uploadPart(multipart, 1, content);
 
             try {
                 await result;
@@ -628,10 +804,21 @@ describe('AwsS3Service', () => {
                 data as never
             );
 
-            await service.completeMultipart('path/filename.txt', '12345', [
-                { ETag: '1234', PartNumber: 1 },
-                { ETag: '5678', PartNumber: 2 },
-            ]);
+            const multipart: AwsS3MultipartSerialization = {
+                bucket: bucket,
+                lastPartNumber: 0,
+                maxPartNumber: 0,
+                parts: [],
+                size: 0,
+                uploadId: '12345',
+                path: 'path',
+                pathWithFilename: 'path/filename.txt',
+                filename: 'filename.txt',
+                completedUrl: 'https://test.com/path/filename.txt',
+                baseUrl: 'https://test.com',
+                mime: 'TXT',
+            };
+            await service.completeMultipart(multipart);
 
             expect(service['s3Client'].send).toHaveBeenCalled();
         });
@@ -642,14 +829,21 @@ describe('AwsS3Service', () => {
                 error as never
             );
 
-            const result = service.completeMultipart(
-                'path/filename.txt',
-                '12345',
-                [
-                    { ETag: '1234', PartNumber: 1 },
-                    { ETag: '5678', PartNumber: 2 },
-                ]
-            );
+            const multipart: AwsS3MultipartSerialization = {
+                bucket: bucket,
+                lastPartNumber: 0,
+                maxPartNumber: 0,
+                parts: [],
+                size: 0,
+                uploadId: '12345',
+                path: 'path',
+                pathWithFilename: 'path/filename.txt',
+                filename: 'filename.txt',
+                completedUrl: 'https://test.com/path/filename.txt',
+                baseUrl: 'https://test.com',
+                mime: 'TXT',
+            };
+            const result = service.completeMultipart(multipart);
 
             try {
                 await result;
@@ -669,7 +863,21 @@ describe('AwsS3Service', () => {
                 data as never
             );
 
-            await service.abortMultipart('path/filename.txt', '12345');
+            const multipart: AwsS3MultipartSerialization = {
+                bucket: bucket,
+                lastPartNumber: 0,
+                maxPartNumber: 0,
+                parts: [],
+                size: 0,
+                uploadId: '12345',
+                path: 'path',
+                pathWithFilename: 'path/filename.txt',
+                filename: 'filename.txt',
+                completedUrl: 'https://test.com/path/filename.txt',
+                baseUrl: 'https://test.com',
+                mime: 'TXT',
+            };
+            await service.abortMultipart(multipart);
 
             expect(service['s3Client'].send).toHaveBeenCalled();
         });
@@ -680,7 +888,21 @@ describe('AwsS3Service', () => {
                 error as never
             );
 
-            const result = service.abortMultipart('path/filename.txt', '12345');
+            const multipart: AwsS3MultipartSerialization = {
+                bucket: bucket,
+                lastPartNumber: 0,
+                maxPartNumber: 0,
+                parts: [],
+                size: 0,
+                uploadId: '12345',
+                path: 'path',
+                pathWithFilename: 'path/filename.txt',
+                filename: 'filename.txt',
+                completedUrl: 'https://test.com/path/filename.txt',
+                baseUrl: 'https://test.com',
+                mime: 'TXT',
+            };
+            const result = service.abortMultipart(multipart);
 
             try {
                 await result;
@@ -699,7 +921,50 @@ describe('AwsS3Service', () => {
             const result =
                 await service.getFilenameFromCompletedUrl(completedUrl);
 
-            expect(result).toBe(filename);
+            expect(result).toBe(`/${filename}`);
+        });
+    });
+
+    describe('createRandomFilename', () => {
+        it('should return random path and filename', async () => {
+            const result = await service.createRandomFilename();
+
+            expect(result).toBe(result);
+        });
+
+        it('should return random path and filename with prefix', async () => {
+            const path: string = 'path';
+
+            const result = await service.createRandomFilename(path);
+
+            expect(result).toBe(result);
+        });
+    });
+
+    describe('updateMultiPart', () => {
+        it('should return updated multipart object', async () => {
+            const multipart: AwsS3MultipartSerialization = {
+                bucket: bucket,
+                lastPartNumber: 0,
+                maxPartNumber: 0,
+                parts: [],
+                size: 0,
+                uploadId: '12345',
+                path: 'path',
+                pathWithFilename: 'path/filename.txt',
+                filename: 'filename.txt',
+                completedUrl: 'https://test.com/path/filename.txt',
+                baseUrl: 'https://test.com',
+                mime: 'TXT',
+            };
+            const part = {
+                eTag: '',
+                partNumber: 0,
+                size: 0,
+            };
+            const result = await service.updateMultiPart(multipart, part);
+
+            expect(result).toBe(result);
         });
     });
 });

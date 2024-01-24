@@ -17,10 +17,8 @@ import {
 import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { ConfigService } from '@nestjs/config';
-import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
-import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
@@ -29,6 +27,7 @@ import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 import { UserUpdateUsernameDto } from 'src/modules/user/dtos/user.update-username.dto';
 import { UserUpdatePasswordAttemptDto } from 'src/modules/user/dtos/user.update-password-attempt.dto';
+import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -39,7 +38,6 @@ export class UserService implements IUserService {
     constructor(
         private readonly userRepository: UserRepository,
         private readonly helperDateService: HelperDateService,
-        private readonly helperStringService: HelperStringService,
         private readonly configService: ConfigService
     ) {
         this.uploadPath = this.configService.get<string>('user.uploadPath');
@@ -319,13 +317,8 @@ export class UserService implements IUserService {
         });
     }
 
-    async createPhotoFilename(user: string): Promise<Record<string, any>> {
-        const filename: string = this.helperStringService.random(20);
-
-        return {
-            path: this.uploadPath.replace('{user}', user),
-            filename: filename,
-        };
+    async getUploadPath(user: string): Promise<string> {
+        return this.uploadPath.replace('{user}', user);
     }
 
     async payloadSerialization(

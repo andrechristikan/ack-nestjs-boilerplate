@@ -128,7 +128,7 @@ export interface IUserService {
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     joinWithRole(repository: UserDoc): Promise<IUserDoc>;
-    createPhotoFilename(user: string): Promise<Record<string, any>>;
+    getUploadPath(user: string): Promise<string>;
     payloadSerialization(data: IUserDoc): Promise<UserPayloadSerialization>;
     deleteMany(
         find: Record<string, any>,

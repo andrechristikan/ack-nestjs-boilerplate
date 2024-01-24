@@ -72,6 +72,7 @@ import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
 import { FileTypePipe } from 'src/common/file/pipes/file.type.pipe';
 import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
 import { IFile } from 'src/common/file/interfaces/file.interface';
+import { IAwsS3RandomFilename } from 'src/common/aws/interfaces/aws.interface';
 
 @ApiTags('modules.auth.user')
 @Controller({
@@ -546,20 +547,15 @@ export class UserAuthController {
         )
         file: IFile
     ): Promise<void> {
-        const filename: string = file.originalname;
-        const content: Buffer = file.buffer;
-        const mime: string = filename
-            .substring(filename.lastIndexOf('.') + 1, filename.length)
-            .toLowerCase();
-
-        const path = await this.userService.createPhotoFilename(user._id);
+        const pathPrefix: string = await this.userService.getUploadPath(
+            user._id
+        );
+        const randomFilename: IAwsS3RandomFilename =
+            await this.awsS3Service.createRandomFilename(pathPrefix);
 
         const aws: AwsS3Serialization = await this.awsS3Service.putItemInBucket(
-            `${path.filename}.${mime}`,
-            content,
-            {
-                path: path.path,
-            }
+            file,
+            randomFilename
         );
         await this.userService.updatePhoto(user, aws);
 
