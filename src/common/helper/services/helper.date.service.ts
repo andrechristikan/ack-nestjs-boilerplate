@@ -178,10 +178,7 @@ export class HelperDateService implements IHelperDateService {
     }
 
     forwardInDays(days: number, options?: IHelperDateOptionsForward): Date {
-        return moment(options?.fromDate)
-            .tz(this.defTz)
-            .add(days, 'd')
-            .toDate();
+        return moment(options?.fromDate).tz(this.defTz).add(days, 'd').toDate();
     }
 
     backwardInDays(days: number, options?: IHelperDateOptionsBackward): Date {
