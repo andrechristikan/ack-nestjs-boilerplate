@@ -111,8 +111,10 @@ import { PolicyModule } from 'src/common/policy/policy.module';
                     .max(50)
                     .optional(),
 
-                AWS_CREDENTIAL_KEY: Joi.string().allow(null, '').optional(),
-                AWS_CREDENTIAL_SECRET: Joi.string().allow(null, '').optional(),
+                AWS_S3_CREDENTIAL_KEY: Joi.string().allow(null, '').optional(),
+                AWS_S3_CREDENTIAL_SECRET: Joi.string()
+                    .allow(null, '')
+                    .optional(),
                 AWS_S3_REGION: Joi.string().allow(null, '').optional(),
                 AWS_S3_BUCKET: Joi.string().allow(null, '').optional(),
                 AWS_SES_CREDENTIAL_KEY: Joi.string().allow(null, '').optional(),
