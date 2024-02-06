@@ -33,16 +33,6 @@ export interface IHelperDateSetTimeOptions {
     second?: number;
 }
 
-export interface IHelperDateStartAndEnd {
-    month?: number;
-    year?: number;
-}
-
-export interface IHelperDateStartAndEndDate {
-    startDate: Date;
-    endDate: Date;
-}
-
 export interface IHelperDateExtractDate {
     date: Date;
     day: string;

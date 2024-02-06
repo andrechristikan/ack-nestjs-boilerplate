@@ -6,8 +6,6 @@ import {
     IHelperDateOptionsFormat,
     IHelperDateOptionsForward,
     IHelperDateSetTimeOptions,
-    IHelperDateStartAndEnd,
-    IHelperDateStartAndEndDate,
 } from 'src/common/helper/interfaces/helper.interface';
 
 export interface IHelperDateService {
@@ -29,6 +27,7 @@ export interface IHelperDateService {
         options?: IHelperDateOptionsCreate
     ): number;
     format(date: Date, options?: IHelperDateOptionsFormat): string;
+    formatIsoDuration(inMinutes: number): string;
     forwardInMilliseconds(
         milliseconds: number,
         options?: IHelperDateOptionsForward
@@ -81,7 +80,4 @@ export interface IHelperDateService {
         { hour, minute, second }: IHelperDateSetTimeOptions
     ): Date;
     extractDate(date: string | Date | number): IHelperDateExtractDate;
-    getStartAndEndDate(
-        options?: IHelperDateStartAndEnd
-    ): IHelperDateStartAndEndDate;
 }

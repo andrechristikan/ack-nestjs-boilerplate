@@ -13,13 +13,14 @@ import {
 } from '@aws-sdk/client-s3';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { IAwsS3PutItemOptions } from 'src/common/aws/interfaces/aws.interface';
+import {
+    IAwsS3PutItem,
+    IAwsS3PutItemOptions,
+} from 'src/common/aws/interfaces/aws.interface';
 import { AwsS3MultipartSerialization } from 'src/common/aws/serializations/aws.s3-multipart.serialization';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { AwsS3Service } from 'src/common/aws/services/aws.s3.service';
-import { IFile } from 'src/common/file/interfaces/file.interface';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
-import { Readable } from 'stream';
 
 describe('AwsS3Service', () => {
     const bucket = 'test-bucket';
@@ -310,16 +311,10 @@ describe('AwsS3Service', () => {
                 mime: 'png',
                 size: 1,
             };
-            const file: IFile = {
+            const file: IAwsS3PutItem = {
                 buffer: Buffer.from('test-content'),
-                destination: '',
-                fieldname: '',
-                mimetype: 'mimetype',
                 originalname: 'file.png',
-                path: '',
                 size: 1,
-                encoding: 'true',
-                stream: new Readable(),
             };
             const options: IAwsS3PutItemOptions = {
                 acl: 'public-read',
@@ -348,16 +343,10 @@ describe('AwsS3Service', () => {
                 mime: 'png',
                 size: 1,
             };
-            const file: IFile = {
+            const file: IAwsS3PutItem = {
                 buffer: Buffer.from('test-content'),
-                destination: '',
-                fieldname: '',
-                mimetype: 'mimetype',
                 originalname: 'file.png',
-                path: '',
                 size: 1,
-                encoding: 'true',
-                stream: new Readable(),
             };
             const options: IAwsS3PutItemOptions = {
                 acl: 'public-read',
@@ -386,16 +375,10 @@ describe('AwsS3Service', () => {
                 size: 1,
                 path: 'test',
             };
-            const file: IFile = {
+            const file: IAwsS3PutItem = {
                 buffer: Buffer.from('test-content'),
-                destination: '',
-                fieldname: '',
-                mimetype: 'mimetype',
                 originalname: 'file.png',
-                path: '',
                 size: 1,
-                encoding: 'true',
-                stream: new Readable(),
             };
             const options: IAwsS3PutItemOptions = {
                 acl: 'public-read',
@@ -415,16 +398,10 @@ describe('AwsS3Service', () => {
                 error as never
             );
 
-            const file: IFile = {
+            const file: IAwsS3PutItem = {
                 buffer: Buffer.from('test-content'),
-                destination: '',
-                fieldname: '',
-                mimetype: 'mimetype',
                 originalname: 'file.png',
-                path: '',
                 size: 1,
-                encoding: 'true',
-                stream: new Readable(),
             };
             const result = service.putItemInBucket(file);
 
@@ -575,16 +552,10 @@ describe('AwsS3Service', () => {
                 data as never
             );
 
-            const file: IFile = {
+            const file: IAwsS3PutItem = {
                 buffer: Buffer.from('test-content'),
-                destination: '',
-                fieldname: '',
-                mimetype: 'mimetype',
                 originalname: 'file.png',
-                path: '',
                 size: 1,
-                encoding: 'true',
-                stream: new Readable(),
             };
             const result = await service.createMultiPart(file, 2, options);
 
@@ -620,16 +591,10 @@ describe('AwsS3Service', () => {
                 data as never
             );
 
-            const file: IFile = {
+            const file: IAwsS3PutItem = {
                 buffer: Buffer.from('test-content'),
-                destination: '',
-                fieldname: '',
-                mimetype: 'mimetype',
                 originalname: 'file.png',
-                path: '',
                 size: 1,
-                encoding: 'true',
-                stream: new Readable(),
             };
             const result = await service.createMultiPart(file, 2, options);
 
@@ -666,16 +631,10 @@ describe('AwsS3Service', () => {
                 data as never
             );
 
-            const file: IFile = {
+            const file: IAwsS3PutItem = {
                 buffer: Buffer.from('test-content'),
-                destination: '',
-                fieldname: '',
-                mimetype: 'mimetype',
                 originalname: 'file.png',
-                path: '',
                 size: 1,
-                encoding: 'true',
-                stream: new Readable(),
             };
             const result = await service.createMultiPart(file, 2, options);
 
@@ -704,16 +663,10 @@ describe('AwsS3Service', () => {
                 error as never
             );
 
-            const file: IFile = {
+            const file: IAwsS3PutItem = {
                 buffer: Buffer.from('test-content'),
-                destination: '',
-                fieldname: '',
-                mimetype: 'mimetype',
                 originalname: 'file.png',
-                path: '',
                 size: 1,
-                encoding: 'true',
-                stream: new Readable(),
             };
             const result = service.createMultiPart(file, 2);
 

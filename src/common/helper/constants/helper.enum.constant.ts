@@ -1,7 +1,9 @@
 export enum ENUM_HELPER_DATE_FORMAT {
     DATE = 'YYYY-MM-DD',
-    FRIENDLY_DATE = 'MMM, DD YYYY',
-    FRIENDLY_DATE_TIME = 'MMM, DD YYYY HH:MM:SS',
+    FRIENDLY_DATE = 'DD MMM YYYY',
+    FRIENDLY_DATE_TIME = 'DD MMM YYYY HH:MM:SS',
+    FRIENDLY_DATE_WITH_DAY = 'dddd, DD MMM YYYY',
+    FRIENDLY_DATE_TIME_WITH_DAY = 'dddd, DD MMM YYYY HH:MM:SS',
     YEAR_MONTH = 'YYYY-MM',
     MONTH_DATE = 'MM-DD',
     ONLY_YEAR = 'YYYY',
@@ -22,9 +24,9 @@ export enum ENUM_HELPER_DATE_FORMAT {
 export enum ENUM_HELPER_DATE_DIFF {
     MILIS = 'milis',
     SECONDS = 'seconds',
+    MINUTES = 'minutes',
     HOURS = 'hours',
     DAYS = 'days',
-    MINUTES = 'minutes',
 }
 
 export enum ENUM_HELPER_FILE_TYPE {

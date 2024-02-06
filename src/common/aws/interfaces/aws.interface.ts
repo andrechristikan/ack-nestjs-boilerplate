@@ -10,3 +10,9 @@ export interface IAwsS3RandomFilename {
     path: string;
     customFilename: string;
 }
+
+export interface IAwsS3PutItem {
+    buffer: string | Uint8Array | Buffer;
+    originalname: string;
+    size: number;
+}

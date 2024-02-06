@@ -4,7 +4,7 @@ import { IPaginationOptions } from 'src/common/pagination/interfaces/pagination.
 // find one
 export interface IDatabaseFindOneOptions<T = any>
     extends Pick<IPaginationOptions, 'order'> {
-    select?: Record<string, boolean | number>;
+    select?: Record<string, boolean | number> | string;
     join?: boolean | PopulateOptions | PopulateOptions[];
     session?: T;
     withDeleted?: boolean;
@@ -64,7 +64,19 @@ export type IDatabaseSoftDeleteManyOptions<T = any> = IDatabaseManyOptions<T>;
 
 export type IDatabaseRestoreManyOptions<T = any> = IDatabaseManyOptions<T>;
 
+// Raw
+
 export type IDatabaseRawOptions<T = any> = Pick<
     IDatabaseFindOneOptions<T>,
+    'session' | 'withDeleted'
+>;
+
+export type IDatabaseRawFindAllOptions<T = any> = Pick<
+    IDatabaseFindAllOptions<T>,
+    'order' | 'paging' | 'session' | 'withDeleted'
+>;
+
+export type IDatabaseRawGetTotalOptions<T = any> = Pick<
+    IDatabaseRawFindAllOptions<T>,
     'session' | 'withDeleted'
 >;

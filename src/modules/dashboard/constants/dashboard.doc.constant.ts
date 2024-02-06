@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 
-export const DashboardDocQueryStartDate = [
+export const DashboardDocQueryDate = [
     {
         name: 'startDate',
         allowEmptyValue: true,
@@ -8,9 +8,6 @@ export const DashboardDocQueryStartDate = [
         type: 'string',
         example: faker.date.past(),
     },
-];
-
-export const DashboardDocQueryEndDate = [
     {
         name: 'endDate',
         allowEmptyValue: true,

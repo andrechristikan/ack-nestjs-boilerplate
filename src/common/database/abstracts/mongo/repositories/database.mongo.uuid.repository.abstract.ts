@@ -21,7 +21,10 @@ import {
     IDatabaseRawOptions,
     IDatabaseSaveOptions,
     IDatabaseFindOneLockOptions,
+    IDatabaseRawFindAllOptions,
+    IDatabaseRawGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 
 export abstract class DatabaseMongoUUIDRepositoryAbstract<
     Entity,
@@ -46,16 +49,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
     ): Promise<T[]> {
         const findAll = this._repository.find<T>(find);
 
-        if (options?.withDeleted) {
-            findAll.or([
-                {
-                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
-                },
-                {
-                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
-                },
-            ]);
-        } else {
+        if (!options?.withDeleted) {
             findAll.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
 
@@ -96,16 +90,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             find
         );
 
-        if (options?.withDeleted) {
-            findAll.or([
-                {
-                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
-                },
-                {
-                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
-                },
-            ]);
-        } else {
+        if (!options?.withDeleted) {
             findAll.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
 
@@ -141,16 +126,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
     ): Promise<T> {
         const findOne = this._repository.findOne<T>(find);
 
-        if (options?.withDeleted) {
-            findOne.or([
-                {
-                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
-                },
-                {
-                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
-                },
-            ]);
-        } else {
+        if (!options?.withDeleted) {
             findOne.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
 
@@ -183,16 +159,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
     ): Promise<T> {
         const findOne = this._repository.findById<T>(_id);
 
-        if (options?.withDeleted) {
-            findOne.or([
-                {
-                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
-                },
-                {
-                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
-                },
-            ]);
-        } else {
+        if (!options?.withDeleted) {
             findOne.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
 
@@ -228,16 +195,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             useFindAndModify: false,
         });
 
-        if (options?.withDeleted) {
-            findOne.or([
-                {
-                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
-                },
-                {
-                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
-                },
-            ]);
-        } else {
+        if (!options?.withDeleted) {
             findOne.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
 
@@ -273,16 +231,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             useFindAndModify: false,
         });
 
-        if (options?.withDeleted) {
-            findOne.or([
-                {
-                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
-                },
-                {
-                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
-                },
-            ]);
-        } else {
+        if (!options?.withDeleted) {
             findOne.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
 
@@ -315,16 +264,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
     ): Promise<number> {
         const count = this._repository.countDocuments(find);
 
-        if (options?.withDeleted) {
-            count.or([
-                {
-                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
-                },
-                {
-                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
-                },
-            ]);
-        } else {
+        if (!options?.withDeleted) {
             count.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
 
@@ -357,16 +297,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         }
 
         const exist = this._repository.exists(find);
-        if (options?.withDeleted) {
-            exist.or([
-                {
-                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
-                },
-                {
-                    [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
-                },
-            ]);
-        } else {
+        if (!options?.withDeleted) {
             exist.where(DATABASE_DELETED_AT_FIELD_NAME).exists(false);
         }
 
@@ -725,22 +656,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
 
         const pipeline: PipelineStage[] = rawOperation;
 
-        if (options?.withDeleted) {
-            pipeline.push({
-                $match: {
-                    $or: [
-                        {
-                            [DATABASE_DELETED_AT_FIELD_NAME]: {
-                                $exists: false,
-                            },
-                        },
-                        {
-                            [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: true },
-                        },
-                    ],
-                },
-            });
-        } else {
+        if (!options?.withDeleted) {
             pipeline.push({
                 $match: {
                     [DATABASE_DELETED_AT_FIELD_NAME]: { $exists: false },
@@ -755,6 +671,86 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         }
 
         return aggregate;
+    }
+
+    async rawFindAll<RawResponse, RawQuery = PipelineStage[]>(
+        rawOperation: RawQuery,
+        options?: IDatabaseRawFindAllOptions
+    ): Promise<RawResponse[]> {
+        if (!Array.isArray(rawOperation)) {
+            throw new Error('Must in array');
+        }
+
+        const pipeline: PipelineStage[] = rawOperation;
+        if (!options?.withDeleted) {
+            pipeline.push({
+                $match: {
+                    [DATABASE_DELETED_AT_FIELD_NAME]: {
+                        $exists: false,
+                    },
+                },
+            });
+        }
+
+        if (options?.order) {
+            const keysOrder = Object.keys(options?.order);
+            pipeline.push({
+                $sort: keysOrder.reduce(
+                    (a, b) => ({
+                        ...a,
+                        [b]:
+                            options?.order[b] ===
+                            ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC
+                                ? 1
+                                : -1,
+                    }),
+                    {}
+                ),
+            });
+        }
+
+        if (options?.paging) {
+            pipeline.push(
+                {
+                    $limit: options.paging.limit + options.paging.offset,
+                },
+                { $skip: options.paging.offset }
+            );
+        }
+
+        const aggregate = this._repository.aggregate<RawResponse>(pipeline);
+
+        if (options?.session) {
+            aggregate.session(options?.session);
+        }
+
+        return aggregate;
+    }
+
+    async rawGetTotal<RawQuery = PipelineStage[]>(
+        rawOperation: RawQuery,
+        options?: IDatabaseRawGetTotalOptions
+    ): Promise<number> {
+        if (!Array.isArray(rawOperation)) {
+            throw new Error('Must in array');
+        }
+
+        const pipeline: PipelineStage[] = rawOperation;
+        pipeline.push({
+            $group: {
+                _id: null,
+                count: { $sum: 1 },
+            },
+        });
+
+        const aggregate = this._repository.aggregate(pipeline);
+
+        if (options?.session) {
+            aggregate.session(options?.session);
+        }
+
+        const raw = await aggregate;
+        return raw && raw.length > 0 ? raw[0].count : 0;
     }
 
     async model(): Promise<Model<Entity>> {
