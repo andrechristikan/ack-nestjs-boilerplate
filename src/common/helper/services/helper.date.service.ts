@@ -15,8 +15,6 @@ import {
     IHelperDateOptionsForward,
     IHelperDateOptionsRoundDown,
     IHelperDateSetTimeOptions,
-    IHelperDateStartAndEnd,
-    IHelperDateStartAndEndDate,
 } from 'src/common/helper/interfaces/helper.interface';
 
 @Injectable()
@@ -101,6 +99,10 @@ export class HelperDateService implements IHelperDateService {
         return moment(date)
             .tz(this.defTz)
             .format(options?.format ?? ENUM_HELPER_DATE_FORMAT.DATE);
+    }
+
+    formatIsoDuration(inMinutes: number): string {
+        return moment.duration(inMinutes, 'minutes').toISOString();
     }
 
     forwardInMilliseconds(
@@ -236,8 +238,8 @@ export class HelperDateService implements IHelperDateService {
         return moment(date)
             .tz(this.defTz)
             .set({
-                h: hour,
-                m: minute,
+                hour: hour,
+                minute: minute,
                 second: second,
                 ms: 0,
             })
@@ -251,8 +253,8 @@ export class HelperDateService implements IHelperDateService {
         return moment(date)
             .tz(this.defTz)
             .add({
-                h: hour,
-                m: minute,
+                hour: hour,
+                minute: minute,
                 second: second,
             })
             .toDate();
@@ -265,8 +267,8 @@ export class HelperDateService implements IHelperDateService {
         return moment(date)
             .tz(this.defTz)
             .subtract({
-                h: hour,
-                m: minute,
+                hour: hour,
+                minute: minute,
                 second: second,
             })
             .toDate();
@@ -308,33 +310,5 @@ export class HelperDateService implements IHelperDateService {
         }
 
         return mDate.toDate();
-    }
-
-    getStartAndEndDate(
-        options?: IHelperDateStartAndEnd
-    ): IHelperDateStartAndEndDate {
-        const today = moment().tz(this.defTz);
-        const todayMonth = today.format(ENUM_HELPER_DATE_FORMAT.ONLY_MONTH);
-        const todayYear = today.format(ENUM_HELPER_DATE_FORMAT.ONLY_YEAR);
-        // set month and year
-        const year = options?.year ?? todayYear;
-        const month = options?.month ?? todayMonth;
-
-        const date = moment(`${year}-${month}-02`, 'YYYY-MM-DD').tz(this.defTz);
-        let startDate: Date = date.startOf('month').toDate();
-        let endDate: Date = date.endOf('month').toDate();
-
-        if (options?.month) {
-            const date = moment(`${year}-${month}-02`, 'YYYY-MM-DD').tz(
-                this.defTz
-            );
-            startDate = date.startOf('month').toDate();
-            endDate = date.endOf('month').toDate();
-        }
-
-        return {
-            startDate,
-            endDate,
-        };
     }
 }

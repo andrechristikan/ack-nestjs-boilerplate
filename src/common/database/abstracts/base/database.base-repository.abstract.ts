@@ -12,6 +12,8 @@ import {
     IDatabaseGetTotalOptions,
     IDatabaseSaveOptions,
     IDatabaseFindOneLockOptions,
+    IDatabaseRawFindAllOptions,
+    IDatabaseRawGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
 
 export abstract class DatabaseBaseRepositoryAbstract<Entity = any> {
@@ -132,6 +134,16 @@ export abstract class DatabaseBaseRepositoryAbstract<Entity = any> {
         rawOperation: RawQuery,
         options?: IDatabaseRawOptions
     ): Promise<RawResponse[]>;
+
+    abstract rawFindAll<RawResponse, RawQuery = any>(
+        rawOperation: RawQuery,
+        options?: IDatabaseRawFindAllOptions
+    ): Promise<RawResponse[]>;
+
+    abstract rawGetTotal<RawQuery = any>(
+        rawOperation: RawQuery,
+        options?: IDatabaseRawGetTotalOptions
+    ): Promise<number>;
 
     abstract model(): Promise<any>;
 }

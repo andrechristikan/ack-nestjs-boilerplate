@@ -1,18 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { DashboardDto } from 'src/common/dashboard/dtos/dashboard.dto';
-import { IDashboardStartAndEndDate } from 'src/common/dashboard/interfaces/dashboard.interface';
-import { IDashboardService } from 'src/common/dashboard/interfaces/dashboard.service.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
+import { DashboardDto } from 'src/modules/dashboard/dtos/dashboard.dto';
+import { IDashboardService } from 'src/modules/dashboard/interfaces/dashboard.service.interface';
+import { DashboardSerialization } from 'src/modules/dashboard/serializations/dashboard.serialization';
 
 @Injectable()
 export class DashboardService implements IDashboardService {
-    constructor(
-        private readonly helperDateService: HelperDateService,
-        private readonly helperNumberService: HelperNumberService
-    ) {}
+    constructor(private readonly helperDateService: HelperDateService) {}
 
-    getStartAndEndDate(date?: DashboardDto): IDashboardStartAndEndDate {
+    getStartAndEndDate(date?: DashboardDto): DashboardSerialization {
         const today = this.helperDateService.create();
 
         if (!date) {
@@ -42,9 +38,5 @@ export class DashboardService implements IDashboardService {
             startDate,
             endDate,
         };
-    }
-
-    getPercentage(value: number, total: number): number {
-        return this.helperNumberService.percent(value, total);
     }
 }

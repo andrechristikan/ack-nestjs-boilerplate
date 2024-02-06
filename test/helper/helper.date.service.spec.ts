@@ -183,6 +183,14 @@ describe('HelperDateService', () => {
         });
     });
 
+    describe('formatIsoDuration', () => {
+        it('should return the duration as iso date string', () => {
+            const inMinutes = 5;
+            const duration = service.formatIsoDuration(inMinutes);
+            expect(duration).toEqual('PT5M');
+        });
+    });
+
     describe('forwardInMilliseconds', () => {
         it('should add milliseconds to a date', () => {
             const fromDate = new Date('2021-01-01');
@@ -404,33 +412,6 @@ describe('HelperDateService', () => {
                 second: true,
             });
             expect(roundedDate).toEqual(new Date('2021-01-01T00:00:00.000Z'));
-        });
-    });
-
-    describe('getStartAndEndDate', () => {
-        it('should return the start and end date for current month', () => {
-            const startDate = new Date(
-                new Date(new Date().setDate(1)).setHours(0, 0, 0, 0)
-            );
-            const endDate = new Date(
-                new Date(
-                    startDate.getFullYear(),
-                    startDate.getMonth() + 1,
-                    0
-                ).setHours(23, 59, 59, 999)
-            );
-            const startAndEndDate = service.getStartAndEndDate();
-            expect(startAndEndDate).toEqual({ startDate, endDate });
-        });
-
-        it('should return the start and end date of a given month and year', () => {
-            const startDate = new Date('2021-01-01T00:00:00.000Z');
-            const endDate = new Date('2021-01-31T23:59:59.999Z');
-            const startAndEndDate = service.getStartAndEndDate({
-                year: 2021,
-                month: 1,
-            });
-            expect(startAndEndDate).toEqual({ startDate, endDate });
         });
     });
 });
