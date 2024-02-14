@@ -1,23 +1,17 @@
 import {
-    IHelperFileWriteExcelOptions,
-    IHelperFileReadExcelOptions,
+    IHelperFileReadOptions,
     IHelperFileRows,
-    IHelperFileCreateExcelWorkbookOptions,
 } from 'src/common/helper/interfaces/helper.interface';
-import { WorkBook } from 'xlsx';
 
 export interface IHelperFileService {
-    createExcelWorkbook(
-        rows: IHelperFileRows[],
-        options?: IHelperFileCreateExcelWorkbookOptions
-    ): WorkBook;
-    writeExcelToBuffer(
-        workbook: WorkBook,
-        options?: IHelperFileWriteExcelOptions
+    writeCsv<T = any>(rows: IHelperFileRows<T>): Buffer;
+    writeExcel<T = any>(
+        rows: IHelperFileRows<T>[],
+        options?: IHelperFileReadOptions
     ): Buffer;
-    readExcelFromBuffer(
+    readCsv(file: Buffer): IHelperFileRows;
+    readExcel(
         file: Buffer,
-        options?: IHelperFileReadExcelOptions
-    ): IHelperFileRows[][];
-    convertToBytes(megabytes: string): number;
+        options?: IHelperFileReadOptions
+    ): IHelperFileRows[];
 }

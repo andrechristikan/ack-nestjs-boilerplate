@@ -2,53 +2,38 @@ import { Injectable, UnsupportedMediaTypeException } from '@nestjs/common';
 import { PipeTransform } from '@nestjs/common/interfaces';
 import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
 import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
-import {
-    IFile,
-    IFileExtract,
-    IFileExtractAllSheets,
-} from 'src/common/file/interfaces/file.interface';
+import { IFile, IFileExtract } from 'src/common/file/interfaces/file.interface';
 import { IHelperFileRows } from 'src/common/helper/interfaces/helper.interface';
 import { HelperFileService } from 'src/common/helper/services/helper.file.service';
 
-// only for excel
+// Support excel and csv
 @Injectable()
 export class FileExcelExtractPipe<T> implements PipeTransform {
     constructor(private readonly helperFileService: HelperFileService) {}
 
-    async transform(
-        value: IFile | IFile[]
-    ): Promise<IFileExtract<T> | IFileExtract<T>[]> {
+    async transform(value: IFile): Promise<IFileExtract<T>> {
         if (!value) {
             return;
         }
 
-        if (Array.isArray(value)) {
-            const extracts: IFileExtract<T>[] = [];
+        await this.validate(value);
 
-            for (const val of value) {
-                await this.validate(val.mimetype);
+        const extracts: IHelperFileRows<T>[] = this.extracts(value);
 
-                const extract: IFileExtract<T> = await this.extract(val);
-                extracts.push(extract);
-            }
-
-            return extracts;
-        }
-
-        const file: IFile = value as IFile;
-        await this.validate(file.mimetype);
-
-        const extract: IFileExtract<T> = await this.extract(file);
-
-        return extract;
+        return {
+            ...value,
+            extracts,
+        };
     }
 
-    async validate(mimetype: string): Promise<void> {
-        if (
-            ![ENUM_FILE_MIME.CSV, ENUM_FILE_MIME.XLS, ENUM_FILE_MIME.XLSX].find(
-                (val) => val === mimetype.toLowerCase()
-            )
-        ) {
+    async validate(value: IFile): Promise<void> {
+        const mimetype = value.mimetype.toLowerCase();
+        const supportedFiles: string[] = [
+            ENUM_FILE_MIME.CSV,
+            ENUM_FILE_MIME.XLSX,
+        ];
+
+        if (!supportedFiles.includes(mimetype)) {
             throw new UnsupportedMediaTypeException({
                 statusCode: ENUM_FILE_STATUS_CODE_ERROR.FILE_EXTENSION_ERROR,
                 message: 'file.error.mimeInvalid',
@@ -56,73 +41,30 @@ export class FileExcelExtractPipe<T> implements PipeTransform {
         }
     }
 
-    async extract(value: IFile): Promise<IFileExtract<T>> {
-        const extracts: IHelperFileRows[][] =
-            this.helperFileService.readExcelFromBuffer(value.buffer, {
-                sheet: 0,
-            });
-
-        return {
-            ...value,
-            extract: extracts[0],
-        };
-    }
-}
-
-// only for excel
-@Injectable()
-export class FileExcelExtractAllSheetPipe<T> implements PipeTransform {
-    constructor(private readonly helperFileService: HelperFileService) {}
-
-    async transform(
-        value: IFile | IFile[]
-    ): Promise<IFileExtractAllSheets<T> | IFileExtractAllSheets<T>[]> {
-        if (!value) {
-            return;
+    extracts(value: IFile): IHelperFileRows<T>[] {
+        if (value.mimetype === ENUM_FILE_MIME.CSV) {
+            return this.extractsCsv(value);
         }
 
-        if (Array.isArray(value)) {
-            const extracts: IFileExtractAllSheets<T>[] = [];
+        return this.extractsExcel(value);
+    }
 
-            for (const val of value) {
-                await this.validate(val.mimetype);
+    extractsCsv(value: IFile): IHelperFileRows<T>[] {
+        const extracts: IHelperFileRows = this.helperFileService.readCsv(
+            value.buffer
+        );
 
-                const extract: IFileExtractAllSheets<T> =
-                    await this.extract(val);
-                extracts.push(extract);
+        return [extracts];
+    }
+
+    extractsExcel(value: IFile): IHelperFileRows<T>[] {
+        const extracts: IHelperFileRows[] = this.helperFileService.readExcel(
+            value.buffer,
+            {
+                password: value?.password,
             }
+        );
 
-            return extracts;
-        }
-
-        const file: IFile = value as IFile;
-        await this.validate(file.mimetype);
-
-        const extract: IFileExtractAllSheets<T> = await this.extract(file);
-
-        return extract;
-    }
-
-    async validate(mimetype: string): Promise<void> {
-        if (
-            ![ENUM_FILE_MIME.CSV, ENUM_FILE_MIME.XLS, ENUM_FILE_MIME.XLSX].find(
-                (val) => val === mimetype.toLowerCase()
-            )
-        ) {
-            throw new UnsupportedMediaTypeException({
-                statusCode: ENUM_FILE_STATUS_CODE_ERROR.FILE_EXTENSION_ERROR,
-                message: 'file.error.mimeInvalid',
-            });
-        }
-    }
-
-    async extract(value: IFile): Promise<IFileExtractAllSheets<T>> {
-        const extracts: IHelperFileRows[][] =
-            this.helperFileService.readExcelFromBuffer(value.buffer);
-
-        return {
-            ...value,
-            extracts: extracts,
-        };
+        return extracts;
     }
 }

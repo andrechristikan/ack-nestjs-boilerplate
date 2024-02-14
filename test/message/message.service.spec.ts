@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { I18nService } from 'nestjs-i18n';
 import { ValidationError } from 'class-validator';
 import { MessageService } from 'src/common/message/services/message.service';
-import { IValidationErrorImport } from 'src/common/error/interfaces/error.interface';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
+import { IErrorValidationImport } from 'src/common/error/interfaces/error.interface';
 
 describe('MessageService', () => {
     let service: MessageService;
@@ -17,7 +17,7 @@ describe('MessageService', () => {
     let validationError2: ValidationError[];
     let validationError3: ValidationError[];
     let validationError4: ValidationError[];
-    let validationErrorImport: IValidationErrorImport[];
+    let validationErrorImport: IErrorValidationImport[];
 
     beforeEach(async () => {
         const moduleRefRef = await Test.createTestingModule({
@@ -163,7 +163,6 @@ describe('MessageService', () => {
         validationErrorImport = [
             {
                 row: 0,
-                file: 'error.xlsx',
                 errors: [
                     {
                         target: {
@@ -185,7 +184,6 @@ describe('MessageService', () => {
             },
             {
                 row: 1,
-                file: 'error.xlsx',
                 errors: [
                     {
                         target: {
@@ -205,7 +203,6 @@ describe('MessageService', () => {
             },
             {
                 row: 2,
-                file: 'error.xlsx',
                 errors: [
                     {
                         target: {
@@ -243,7 +240,6 @@ describe('MessageService', () => {
             },
             {
                 row: 3,
-                file: 'error.xlsx',
                 errors: [
                     {
                         target: {
@@ -264,7 +260,6 @@ describe('MessageService', () => {
             },
             {
                 row: 4,
-                file: 'error.xlsx',
                 errors: [
                     {
                         target: {
@@ -300,7 +295,6 @@ describe('MessageService', () => {
             },
             {
                 row: 5,
-                file: 'error.xlsx',
                 errors: [
                     {
                         target: {
@@ -438,7 +432,6 @@ describe('MessageService', () => {
 
             expect(message.length).toEqual(validationErrorImport.length);
             expect(message[0].errors.length).toEqual(2);
-            expect(message[0].file).toBeDefined();
             expect(message[0].row).toBeDefined();
         });
     });

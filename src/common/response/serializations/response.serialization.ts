@@ -12,7 +12,7 @@ export class ResponseMetadataSerialization {
     [key: string]: any;
 }
 
-export class ResponseDefaultSerialization<T = Record<string, any>> {
+export class ResponseSerialization<T = Record<string, any>> {
     @ApiProperty({
         name: 'statusCode',
         type: Number,

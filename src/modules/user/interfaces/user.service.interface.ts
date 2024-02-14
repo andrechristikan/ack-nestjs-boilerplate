@@ -140,4 +140,12 @@ export interface IUserService {
         { passwordCreated, passwordHash, salt }: IAuthPassword,
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean>;
+    existByEmails(
+        emails: string[],
+        options?: IDatabaseExistOptions
+    ): Promise<boolean>;
+    existByMobileNumbers(
+        mobileNumbers: string[],
+        options?: IDatabaseExistOptions
+    ): Promise<boolean>;
 }

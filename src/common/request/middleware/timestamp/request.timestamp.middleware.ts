@@ -17,9 +17,9 @@ export class RequestTimestampMiddleware implements NestMiddleware {
         next: NextFunction
     ): Promise<void> {
         req.__xTimestamp = req['x-timestamp']
-            ? this.helperNumberService.create(req['x-timestamp'])
+            ? Number.parseInt(req['x-timestamp'])
             : undefined;
-        req.__timestamp = this.helperDateService.timestamp();
+        req.__timestamp = this.helperDateService.createTimestamp();
         next();
     }
 }

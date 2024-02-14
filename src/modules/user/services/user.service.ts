@@ -28,6 +28,7 @@ import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
 import { UserUpdateUsernameDto } from 'src/modules/user/dtos/user.update-username.dto';
 import { UserUpdatePasswordAttemptDto } from 'src/modules/user/dtos/user.update-password-attempt.dto';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
+import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -51,10 +52,7 @@ export class UserService implements IUserService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<T[]> {
-        return this.userRepository.findAll<T>(find, {
-            ...options,
-            join: true,
-        });
+        return this.userRepository.findAll<T>(find, options);
     }
 
     async findOneById<T>(
@@ -335,7 +333,7 @@ export class UserService implements IUserService {
     ): Promise<boolean> {
         const passwordExpired: Date = this.helperDateService.backwardInDays(1);
         const users: UserEntity[] = data.map(
-            ({ email, firstName, lastName, mobileNumber, signUpFrom }) => {
+            ({ email, firstName, lastName, mobileNumber }) => {
                 const create: UserEntity = new UserEntity();
                 create.firstName = firstName;
                 create.email = email;
@@ -351,7 +349,7 @@ export class UserService implements IUserService {
                 create.signUpDate = this.helperDateService.create();
                 create.passwordAttempt = 0;
                 create.mobileNumber = mobileNumber ?? undefined;
-                create.signUpFrom = signUpFrom;
+                create.signUpFrom = ENUM_USER_SIGN_UP_FROM.ADMIN;
 
                 return create;
             }
@@ -369,5 +367,34 @@ export class UserService implements IUserService {
 
     async getMobileNumberCountryCodeAllowed(): Promise<string[]> {
         return this.mobileNumberCountryCodeAllowed;
+    }
+
+    async existByEmails(
+        emails: string[],
+        options?: IDatabaseExistOptions
+    ): Promise<boolean> {
+        return this.userRepository.exists(
+            {
+                email: {
+                    $regex: new RegExp(`\\b${emails.join('|')}\\b`),
+                    $options: 'i',
+                },
+            },
+            { ...options, withDeleted: true }
+        );
+    }
+
+    async existByMobileNumbers(
+        mobileNumbers: string[],
+        options?: IDatabaseExistOptions
+    ): Promise<boolean> {
+        return this.userRepository.exists(
+            {
+                mobileNumber: {
+                    $in: mobileNumbers,
+                },
+            },
+            { ...options, withDeleted: true }
+        );
     }
 }

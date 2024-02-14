@@ -14,7 +14,9 @@
         "apikey",
         "requestid",
         "dtos",
-        "blabla"
+        "blabla",
+        "randexp",
+        "mediumpassword"
     ],
     "ignorePaths": [
         "node_modules/**", 

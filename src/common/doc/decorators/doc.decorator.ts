@@ -37,14 +37,14 @@ import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/common/policy/constants/policy.status-code.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
-import { ResponseDefaultSerialization } from 'src/common/response/serializations/response.default.serialization';
+import { ResponseSerialization } from 'src/common/response/serializations/response.serialization';
 import { ResponsePagingSerialization } from 'src/common/response/serializations/response.paging.serialization';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 
 export function DocDefault<T>(options: IDocDefaultOptions): MethodDecorator {
     const docs = [];
     const schema: Record<string, any> = {
-        allOf: [{ $ref: getSchemaPath(ResponseDefaultSerialization<T>) }],
+        allOf: [{ $ref: getSchemaPath(ResponseSerialization<T>) }],
         properties: {
             message: {
                 example: options.messagePath,
@@ -67,7 +67,7 @@ export function DocDefault<T>(options: IDocDefaultOptions): MethodDecorator {
     }
 
     return applyDecorators(
-        ApiExtraModels(ResponseDefaultSerialization<T>),
+        ApiExtraModels(ResponseSerialization<T>),
         ApiResponse({
             status: options.httpStatus,
             schema,
@@ -85,7 +85,7 @@ export function DocOneOf<T>(
 
     for (const doc of documents) {
         const oneOfSchema: Record<string, any> = {
-            allOf: [{ $ref: getSchemaPath(ResponseDefaultSerialization<T>) }],
+            allOf: [{ $ref: getSchemaPath(ResponseSerialization<T>) }],
             properties: {
                 message: {
                     example: doc.messagePath,
@@ -111,7 +111,7 @@ export function DocOneOf<T>(
     }
 
     return applyDecorators(
-        ApiExtraModels(ResponseDefaultSerialization<T>),
+        ApiExtraModels(ResponseSerialization<T>),
         ApiResponse({
             status: httpStatus,
             schema: {
@@ -131,7 +131,7 @@ export function DocAnyOf<T>(
 
     for (const doc of documents) {
         const anyOfSchema: Record<string, any> = {
-            allOf: [{ $ref: getSchemaPath(ResponseDefaultSerialization<T>) }],
+            allOf: [{ $ref: getSchemaPath(ResponseSerialization<T>) }],
             properties: {
                 message: {
                     example: doc.messagePath,
@@ -157,7 +157,7 @@ export function DocAnyOf<T>(
     }
 
     return applyDecorators(
-        ApiExtraModels(ResponseDefaultSerialization<T>),
+        ApiExtraModels(ResponseSerialization<T>),
         ApiResponse({
             status: httpStatus,
             schema: {
@@ -177,7 +177,7 @@ export function DocAllOf<T>(
 
     for (const doc of documents) {
         const allOfSchema: Record<string, any> = {
-            allOf: [{ $ref: getSchemaPath(ResponseDefaultSerialization<T>) }],
+            allOf: [{ $ref: getSchemaPath(ResponseSerialization<T>) }],
             properties: {
                 message: {
                     example: doc.messagePath,
@@ -203,7 +203,7 @@ export function DocAllOf<T>(
     }
 
     return applyDecorators(
-        ApiExtraModels(ResponseDefaultSerialization<T>),
+        ApiExtraModels(ResponseSerialization<T>),
         ApiResponse({
             status: httpStatus,
             schema: {

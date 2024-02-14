@@ -18,7 +18,7 @@ export class IsPasswordStrongConstraint
     validate(value: string, args: ValidationArguments): boolean {
         const [length] = args.constraints;
         return value
-            ? this.helperStringService.checkPasswordStrong(value, length)
+            ? this.helperStringService.checkPasswordStrong(value, { length })
             : false;
     }
 }

@@ -2,7 +2,7 @@ import { ValidationError } from '@nestjs/common';
 import {
     IErrors,
     IErrorsImport,
-    IValidationErrorImport,
+    IErrorValidationImport,
 } from 'src/common/error/interfaces/error.interface';
 import {
     IMessageErrorOptions,
@@ -20,7 +20,7 @@ export interface IMessageService {
         options?: IMessageErrorOptions
     ): IErrors[];
     getImportErrorsMessage(
-        errors: IValidationErrorImport[],
+        errors: IErrorValidationImport[],
         options?: IMessageErrorOptions
     ): IErrorsImport[];
     get<T = string>(key: string, options?: IMessageOptions): T;

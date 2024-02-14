@@ -21,8 +21,8 @@ export class HelperEncryptionService implements IHelperEncryptionService {
         return buff.toString('utf8');
     }
 
-    base64Compare(clientBasicToken: string, ourBasicToken: string): boolean {
-        return ourBasicToken === clientBasicToken;
+    base64Compare(basicToken1: string, basicToken2: string): boolean {
+        return basicToken1 === basicToken2;
     }
 
     aes256Encrypt(
@@ -53,6 +53,10 @@ export class HelperEncryptionService implements IHelperEncryptionService {
         });
 
         return JSON.parse(cipher.toString(enc.Utf8));
+    }
+
+    aes256Compare(aes1: string, aes2: string): boolean {
+        return aes1 === aes2;
     }
 
     jwtEncrypt(

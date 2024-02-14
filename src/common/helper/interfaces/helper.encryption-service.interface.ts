@@ -6,7 +6,7 @@ import {
 export interface IHelperEncryptionService {
     base64Encrypt(data: string): string;
     base64Decrypt(data: string): string;
-    base64Compare(clientBasicToken: string, ourBasicToken: string): boolean;
+    base64Compare(basicToken1: string, basicToken2: string): boolean;
     aes256Encrypt(
         data: string | Record<string, any> | Record<string, any>[],
         key: string,
@@ -17,6 +17,7 @@ export interface IHelperEncryptionService {
         key: string,
         iv: string
     ): string | Record<string, any> | Record<string, any>[];
+    aes256Compare(aes1: string, aes2: string): boolean;
     jwtEncrypt(
         payload: Record<string, any>,
         options: IHelperJwtOptions

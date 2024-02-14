@@ -11,7 +11,7 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 // only for response success and error in controller
 @Injectable()
-export class ResponseCustomHeadersInterceptor
+export class ResponseHeadersInterceptor
     implements NestInterceptor<Promise<any>>
 {
     async intercept(

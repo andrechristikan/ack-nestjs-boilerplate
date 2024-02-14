@@ -4,9 +4,9 @@ import { PAGINATION_AVAILABLE_ORDER_DIRECTION } from 'src/common/pagination/cons
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { RequestPaginationSerialization } from 'src/common/request/serializations/request.pagination.serialization';
 import {
-    ResponseDefaultSerialization,
+    ResponseSerialization,
     ResponseMetadataSerialization,
-} from 'src/common/response/serializations/response.default.serialization';
+} from 'src/common/response/serializations/response.serialization';
 
 export class ResponsePaginationCursorSerialization {
     nextPage: string;
@@ -28,10 +28,7 @@ export interface ResponsePagingMetadataSerialization
 
 export class ResponsePagingSerialization<
     T = Record<string, any>,
-> extends PickType(ResponseDefaultSerialization, [
-    'statusCode',
-    'message',
-] as const) {
+> extends PickType(ResponseSerialization, ['statusCode', 'message'] as const) {
     @ApiProperty({
         name: '_metadata',
         required: true,

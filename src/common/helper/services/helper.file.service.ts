@@ -1,80 +1,96 @@
 import { Injectable } from '@nestjs/common';
-import bytes from 'bytes';
-import { ENUM_HELPER_FILE_TYPE } from 'src/common/helper/constants/helper.enum.constant';
+import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/constants/helper.enum.constant';
 import { IHelperFileService } from 'src/common/helper/interfaces/helper.file-service.interface';
 import {
-    IHelperFileWriteExcelOptions,
-    IHelperFileReadExcelOptions,
     IHelperFileRows,
-    IHelperFileCreateExcelWorkbookOptions,
+    IHelperFileReadOptions,
 } from 'src/common/helper/interfaces/helper.interface';
-import { utils, write, read, WorkBook } from 'xlsx';
+import { utils, write, read } from 'xlsx';
 
 @Injectable()
 export class HelperFileService implements IHelperFileService {
-    createExcelWorkbook(
-        rows: IHelperFileRows[],
-        options?: IHelperFileCreateExcelWorkbookOptions
-    ): WorkBook {
-        // headers
-        const headers = Object.keys(rows[0]);
+    writeCsv<T = any>(rows: IHelperFileRows<T>): Buffer {
+        const worksheet = utils.json_to_sheet(rows.data);
+        const csv = utils.sheet_to_csv(worksheet, { FS: ';' });
 
-        // worksheet
-        const worksheet = utils.json_to_sheet(rows);
+        // create buffer
+        const buff: Buffer = Buffer.from(csv, 'utf8');
 
+        return buff;
+    }
+
+    writeExcel<T = any>(
+        rows: IHelperFileRows<T>[],
+        options?: IHelperFileReadOptions
+    ): Buffer {
         // workbook
         const workbook = utils.book_new();
 
-        utils.sheet_add_aoa(worksheet, [headers], { origin: 'A1' });
-        utils.book_append_sheet(
-            workbook,
-            worksheet,
-            options?.sheetName ?? 'Sheet 1'
-        );
+        for (const [index, row] of rows.entries()) {
+            // worksheet
+            const worksheet = utils.json_to_sheet(row.data);
+            utils.book_append_sheet(
+                workbook,
+                worksheet,
+                row.sheetName ?? `Sheet${index + 1}`
+            );
+        }
 
-        return workbook;
-    }
-
-    writeExcelToBuffer(
-        workbook: WorkBook,
-        options?: IHelperFileWriteExcelOptions
-    ): Buffer {
         // create buffer
         const buff: Buffer = write(workbook, {
             type: 'buffer',
-            bookType: options?.type ?? ENUM_HELPER_FILE_TYPE.CSV,
+            bookType: ENUM_HELPER_FILE_EXCEL_TYPE.XLSX,
             password: options?.password,
         });
 
         return buff;
     }
 
-    readExcelFromBuffer(
+    readCsv(file: Buffer): IHelperFileRows {
+        // workbook
+        const workbook = read(file, {
+            type: 'buffer',
+        });
+
+        // worksheet
+        const worksheetsName: string = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[worksheetsName];
+        const rows: Record<string, string | number | Date>[] =
+            utils.sheet_to_json(worksheet);
+
+        return {
+            data: rows,
+            sheetName: worksheetsName,
+        };
+    }
+
+    readExcel(
         file: Buffer,
-        options?: IHelperFileReadExcelOptions
-    ): IHelperFileRows[][] {
+        options?: IHelperFileReadOptions
+    ): IHelperFileRows[] {
         // workbook
         const workbook = read(file, {
             type: 'buffer',
             password: options?.password,
-            sheets: options?.sheet,
         });
 
         // worksheet
         const worksheetsName: string[] = workbook.SheetNames;
-        const sheets: IHelperFileRows[][] = [];
-        for (const worksheetName of worksheetsName) {
-            const worksheet = workbook.Sheets[worksheetName];
+        const sheets: IHelperFileRows[] = [];
+
+        for (let i = 0; i < worksheetsName.length; i++) {
+            const worksheet = workbook.Sheets[worksheetsName[i]];
 
             // rows
-            const rows: IHelperFileRows[] = utils.sheet_to_json(worksheet);
-            sheets.push(rows);
+            const rows: Record<string, string | number | Date>[] =
+                utils.sheet_to_json(worksheet);
+
+            sheets.push({
+                data: rows,
+                sheetName: worksheetsName[i],
+            });
         }
 
         return sheets;
-    }
-
-    convertToBytes(megabytes: string): number {
-        return bytes(megabytes);
     }
 }

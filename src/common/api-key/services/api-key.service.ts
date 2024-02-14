@@ -208,11 +208,11 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     async createKey(): Promise<string> {
-        return this.helperStringService.random(25, {
+        const random: string = this.helperStringService.random(25, {
             safe: false,
             upperCase: true,
-            prefix: `${this.env}_`,
         });
+        return `${this.env}_${random}`;
     }
 
     async createSecret(): Promise<string> {

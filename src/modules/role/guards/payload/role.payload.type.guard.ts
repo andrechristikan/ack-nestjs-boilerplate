@@ -5,7 +5,6 @@ import {
     ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ROLE_TYPE_META_KEY } from 'src/modules/role/constants/role.constant';
 import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
@@ -13,10 +12,7 @@ import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.sta
 
 @Injectable()
 export class RolePayloadTypeGuard implements CanActivate {
-    constructor(
-        private readonly reflector: Reflector,
-        private readonly helperArrayService: HelperArrayService
-    ) {}
+    constructor(private readonly reflector: Reflector) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const requiredFor: ENUM_ROLE_TYPE[] = this.reflector.getAllAndOverride<
@@ -30,11 +26,7 @@ export class RolePayloadTypeGuard implements CanActivate {
             return true;
         }
 
-        const hasFor: boolean = this.helperArrayService.includes(
-            requiredFor,
-            type
-        );
-
+        const hasFor: boolean = requiredFor.includes(type);
         if (!hasFor) {
             throw new ForbiddenException({
                 statusCode:

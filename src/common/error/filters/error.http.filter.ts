@@ -16,9 +16,9 @@ import { DatabaseDefaultUUID } from 'src/common/database/constants/database.func
 import { ERROR_TYPE } from 'src/common/error/constants/error.enum.constant';
 import {
     IErrorException,
+    IErrorValidationImport,
     IErrors,
     IErrorsImport,
-    IValidationErrorImport,
 } from 'src/common/error/interfaces/error.interface';
 import { ErrorMetadataSerialization } from 'src/common/error/serializations/error.serialization';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
@@ -58,7 +58,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
         const __timestamp =
             request.__xTimestamp ??
             request.__timestamp ??
-            this.helperDateService.timestamp();
+            this.helperDateService.createTimestamp();
         const __timezone =
             request.__timezone ??
             Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -112,7 +112,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
                     errors =
                         responseException._errorType === ERROR_TYPE.IMPORT
                             ? this.messageService.getImportErrorsMessage(
-                                  responseException.errors as IValidationErrorImport[],
+                                  responseException.errors as IErrorValidationImport[],
                                   { customLanguages: __customLang }
                               )
                             : this.messageService.getRequestErrorsMessage(
