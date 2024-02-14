@@ -18,6 +18,7 @@ import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database
 import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 import { APP_LANGUAGE } from 'src/app/constants/app.constant';
 import { PolicyModule } from 'src/common/policy/policy.module';
+import { DebuggerLoggerModule } from 'src/common/debugger/debugger.logger.module';
 
 @Module({
     controllers: [],
@@ -149,6 +150,7 @@ import { PolicyModule } from 'src/common/policy/policy.module';
         ResponseModule,
         RequestModule,
         PolicyModule,
+        DebuggerLoggerModule,
         ApiKeyModule,
         AuthModule.forRoot(),
     ],

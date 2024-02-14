@@ -17,9 +17,7 @@ export class DebuggerOptionService implements IDebuggerOptionService {
         const maxSize = this.configService.get<string>('debugger.maxSize');
         const maxFiles = this.configService.get<string>('debugger.maxFiles');
 
-        const transports: Transport[] | Transport = [
-            new winston.transports.Console(),
-        ];
+        const transports: Transport[] | Transport = [];
 
         if (writeIntoFile) {
             transports.push(
@@ -42,17 +40,6 @@ export class DebuggerOptionService implements IDebuggerOptionService {
                     maxSize: maxSize,
                     maxFiles: maxFiles,
                     level: 'info',
-                })
-            );
-            transports.push(
-                new DailyRotateFile({
-                    filename: `%DATE%.log`,
-                    dirname: `logs/${DEBUGGER_NAME}/debug`,
-                    datePattern: 'YYYY-MM-DD',
-                    zippedArchive: true,
-                    maxSize: maxSize,
-                    maxFiles: maxFiles,
-                    level: 'debug',
                 })
             );
         }

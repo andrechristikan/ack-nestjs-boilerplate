@@ -45,7 +45,7 @@ describe('DebuggerOptionService', () => {
             expect(loggerOptions.format).toBeDefined;
 
             expect(loggerOptions).toHaveProperty('transports');
-            expect(loggerOptions.transports.length).toEqual(4);
+            expect(loggerOptions.transports.length).toEqual(2);
         });
 
         it('should return an object containing necessary options for winston logger, can into console', () => {
@@ -70,7 +70,7 @@ describe('DebuggerOptionService', () => {
             expect(loggerOptions.format).toBeDefined;
 
             expect(loggerOptions).toHaveProperty('transports');
-            expect(loggerOptions.transports.length).toEqual(1);
+            expect(loggerOptions.transports.length).toEqual(0);
         });
     });
 });
