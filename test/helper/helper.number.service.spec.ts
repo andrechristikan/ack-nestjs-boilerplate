@@ -27,12 +27,6 @@ describe('HelperNumberService', () => {
         });
     });
 
-    describe('create', () => {
-        it('should return a number when given a string number', () => {
-            expect(service.create(mockNumber)).toBe(1234);
-        });
-    });
-
     describe('random', () => {
         it('should return a random number of the given length', () => {
             expect(service.random(4)).toBeGreaterThanOrEqual(1000);

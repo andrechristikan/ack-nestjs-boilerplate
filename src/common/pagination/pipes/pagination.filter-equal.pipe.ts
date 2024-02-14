@@ -44,7 +44,7 @@ export function PaginationFilterEqualPipe(
             let finalValue: string | number = value;
             if (options?.isNumber) {
                 finalValue = this.helperNumberService.check(value)
-                    ? this.helperNumberService.create(value)
+                    ? Number.parseInt(value)
                     : value;
             }
 

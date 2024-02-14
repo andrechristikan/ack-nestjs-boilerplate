@@ -1,7 +1,6 @@
 import {
     ENUM_HELPER_DATE_DIFF,
     ENUM_HELPER_DATE_FORMAT,
-    ENUM_HELPER_FILE_TYPE,
 } from 'src/common/helper/constants/helper.enum.constant';
 
 // Helper Encryption
@@ -23,7 +22,14 @@ export interface IHelperJwtOptions
 export interface IHelperStringRandomOptions {
     upperCase?: boolean;
     safe?: boolean;
-    prefix?: string;
+}
+
+export interface IHelperStringCurrencyOptions {
+    locale?: string;
+}
+
+export interface IHelperStringPasswordOptions {
+    length: number;
 }
 
 // Helper Date
@@ -31,58 +37,46 @@ export interface IHelperDateSetTimeOptions {
     hour?: number;
     minute?: number;
     second?: number;
+    millisecond?: number;
 }
 
-export interface IHelperDateExtractDate {
-    date: Date;
-    day: string;
-    month: string;
-    year: string;
-}
-
-export interface IHelperDateOptionsDiff {
+export interface IHelperDateDiffOptions {
     format?: ENUM_HELPER_DATE_DIFF;
 }
 
-export interface IHelperDateOptionsCreate {
+export interface IHelperDateCreateOptions {
     startOfDay?: boolean;
 }
 
-export interface IHelperDateOptionsFormat {
+export interface IHelperDateFormatOptions {
     format?: ENUM_HELPER_DATE_FORMAT | string;
 }
 
-export interface IHelperDateOptionsForward {
+export interface IHelperDateForwardOptions {
     fromDate?: Date;
 }
 
-export type IHelperDateOptionsBackward = IHelperDateOptionsForward;
+export type IHelperDateBackwardOptions = IHelperDateForwardOptions;
 
-export interface IHelperDateOptionsRoundDown {
+export interface IHelperDateRoundDownOptions {
     hour: boolean;
     minute: boolean;
     second: boolean;
+    millisecond: boolean;
 }
 
 // Helper File
 
-export type IHelperFileRows = Record<string, string | number | Date>;
-
-export interface IHelperFileWriteExcelOptions {
-    password?: string;
-    type?: ENUM_HELPER_FILE_TYPE;
-}
-
-export interface IHelperFileCreateExcelWorkbookOptions {
+export interface IHelperFileRows<T = any> {
+    data: T[];
     sheetName?: string;
 }
 
-export interface IHelperFileReadExcelOptions {
-    sheet?: string | number;
+export interface IHelperFileReadOptions {
     password?: string;
 }
 
-// helper google
+// Helper google
 
 export interface IHelperGooglePayload {
     email: string;

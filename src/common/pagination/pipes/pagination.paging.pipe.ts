@@ -20,12 +20,10 @@ export function PaginationPagingPipe(
             value: Record<string, any>
         ): Promise<Record<string, any>> {
             const page: number = this.paginationService.page(
-                this.helperNumberService.create(value?.page ?? 1)
+                Number.parseInt(value?.page ?? 1)
             );
             const perPage: number = this.paginationService.perPage(
-                this.helperNumberService.create(
-                    value?.perPage ?? defaultPerPage
-                )
+                Number.parseInt(value?.perPage ?? defaultPerPage)
             );
             const offset: number = this.paginationService.offset(page, perPage);
 

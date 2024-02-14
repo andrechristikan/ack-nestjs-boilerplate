@@ -1,3 +1,3 @@
-import { ResponseMetadataSerialization } from 'src/common/response/serializations/response.default.serialization';
+import { ResponseMetadataSerialization } from 'src/common/response/serializations/response.serialization';
 
 export class ErrorMetadataSerialization extends ResponseMetadataSerialization {}

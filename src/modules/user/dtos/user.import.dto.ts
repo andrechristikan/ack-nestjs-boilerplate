@@ -4,4 +4,6 @@ import { UserCreateDto } from './user.create.dto';
 export class UserImportDto extends OmitType(UserCreateDto, [
     'role',
     'password',
+    'signUpFrom',
+    'role',
 ] as const) {}

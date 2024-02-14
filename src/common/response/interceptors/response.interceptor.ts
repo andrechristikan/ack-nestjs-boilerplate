@@ -22,9 +22,9 @@ import {
     IMessageOptionsProperties,
 } from 'src/common/message/interfaces/message.interface';
 import {
-    ResponseDefaultSerialization,
+    ResponseSerialization,
     ResponseMetadataSerialization,
-} from 'src/common/response/serializations/response.default.serialization';
+} from 'src/common/response/serializations/response.serialization';
 import {
     RESPONSE_MESSAGE_PATH_META_KEY,
     RESPONSE_MESSAGE_PROPERTIES_META_KEY,
@@ -34,9 +34,7 @@ import {
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 
 @Injectable()
-export class ResponseDefaultInterceptor<T>
-    implements NestInterceptor<Promise<T>>
-{
+export class ResponseInterceptor<T> implements NestInterceptor<Promise<T>> {
     constructor(
         private readonly reflector: Reflector,
         private readonly messageService: MessageService
@@ -45,7 +43,7 @@ export class ResponseDefaultInterceptor<T>
     async intercept(
         context: ExecutionContext,
         next: CallHandler
-    ): Promise<Observable<Promise<ResponseDefaultSerialization>>> {
+    ): Promise<Observable<Promise<ResponseSerialization>>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
                 map(async (res: Promise<Record<string, any>>) => {

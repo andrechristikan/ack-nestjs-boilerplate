@@ -17,28 +17,8 @@ describe('HelperStringService', () => {
         expect(service).toBeDefined();
     });
 
-    describe('checkEmail', () => {
-        it('should return true for a valid email', () => {
-            const email = 'test@example.com';
-            expect(service.checkEmail(email)).toBe(true);
-        });
-
-        it('should return false for an invalid email', () => {
-            const email = 'invalid-email';
-            expect(service.checkEmail(email)).toBe(false);
-        });
-    });
-
     describe('randomReference', () => {
-        it('should return a random reference with a timestamp prefix', () => {
-            const length = 8;
-            const prefix = 'order';
-            const reference = service.randomReference(length, prefix);
-            const regex = new RegExp(`^${prefix}-\\d{13}\\w{${length}}$`);
-            expect(regex.test(reference)).toBe(true);
-        });
-
-        it('should return a random reference with only a timestamp', () => {
+        it('should return a random reference', () => {
             const length = 8;
             const reference = service.randomReference(length);
             const regex = new RegExp(`^\\d{13}\\w{${length}}$`);
@@ -59,32 +39,49 @@ describe('HelperStringService', () => {
             const options: IHelperStringRandomOptions = {
                 safe: true,
                 upperCase: true,
-                prefix: 'AB',
             };
             const randomString = service.random(length, options);
-            const regex = new RegExp(`^AB[A-Z]{6}$`);
+            const regex = new RegExp(`^[A-Z]{8}$`);
 
             expect(regex.test(randomString)).toBe(true);
         });
     });
 
     describe('censor', () => {
-        it('should not censor strings less than equals 5 characters in length', () => {
+        it('should not censor strings less than equals 3 characters in length', () => {
             const value = 'her';
             const censoredValue = service.censor(value);
-            expect(censoredValue).toBe('her');
+            expect(censoredValue).toBe('**r');
         });
 
-        it('should censor string from start, because string length is less than equals 10', () => {
-            const value = 'censor me';
+        it('should not censor strings less than equals 10 characters in length', () => {
+            const value = 'ensorMe';
             const censoredValue = service.censor(value);
-            expect(censoredValue).toBe('********or me');
+            expect(censoredValue).toBe('*******rMe');
+        });
+
+        it('should censor string from start, because string length is less than equals 25', () => {
+            const value = 'censorMeGogoNow';
+            const censoredValue = service.censor(value);
+            expect(censoredValue).toBe('********goNow');
         });
 
         it('should censor in the middle of string, because string length more than 10', () => {
-            const value = 'censor me gogo';
+            const value = 'censorMeGogoNowLongestMoreThan25';
             const censoredValue = service.censor(value);
-            expect(censoredValue).toBe('cen******** gogo');
+            expect(censoredValue).toBe('cen**********MoreThan25');
+        });
+    });
+
+    describe('checkEmail', () => {
+        it('should return true for a valid email', () => {
+            const email = 'test@example.com';
+            expect(service.checkEmail(email)).toBe(true);
+        });
+
+        it('should return false for an invalid email', () => {
+            const email = 'invalid-email';
+            expect(service.checkEmail(email)).toBe(false);
         });
     });
 
@@ -95,7 +92,7 @@ describe('HelperStringService', () => {
         });
 
         it('should return false if the password is not weak pattern', () => {
-            const password = 'strongpassword1';
+            const password = 'weakpassword';
             expect(service.checkPasswordWeak(password)).toBe(false);
         });
     });
@@ -107,7 +104,7 @@ describe('HelperStringService', () => {
         });
 
         it('should return false if the password is not medium strength pattern', () => {
-            const password = 'STRONGPassword';
+            const password = 'mediumpassword';
             expect(service.checkPasswordMedium(password)).toBe(false);
         });
     });
@@ -119,7 +116,7 @@ describe('HelperStringService', () => {
         });
 
         it('should return false if the password is not strong pattern', () => {
-            const password = 'weakpassword';
+            const password = 'strongpassword';
             expect(service.checkPasswordStrong(password)).toBe(false);
         });
     });
@@ -140,7 +137,15 @@ describe('HelperStringService', () => {
         it('should return string that formatted as currency', () => {
             const num = 1000;
 
-            expect(service.formatCurrency(num)).toBe('1.000');
+            expect(service.formatCurrency(num)).toBe('1,000');
+        });
+
+        it('should return string that formatted as currency with locale id-ID', () => {
+            const num = 1000;
+
+            expect(service.formatCurrency(num, { locale: 'id-ID' })).toBe(
+                '1.000'
+            );
         });
     });
 });

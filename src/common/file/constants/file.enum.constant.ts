@@ -2,7 +2,6 @@ export enum ENUM_FILE_MIME {
     JPG = 'image/jpg',
     JPEG = 'image/jpeg',
     PNG = 'image/png',
-    XLS = 'application/vnd.ms-excel',
     XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     CSV = 'text/csv',
     PDF = 'application/pdf',

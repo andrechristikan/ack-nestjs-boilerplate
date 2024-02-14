@@ -86,6 +86,20 @@ describe('HelperEncryptionService', () => {
         });
     });
 
+    describe('aes256Compare', () => {
+        it('should return true when given two identical base64 strings', () => {
+            expect(
+                service.aes256Compare('SGVsbG8gV29ybGQh', 'SGVsbG8gV29ybGQh')
+            ).toBe(true);
+        });
+
+        it('should return false when given two different base64 strings', () => {
+            expect(
+                service.aes256Compare('SGVsbG8gV29ybGQh', 'SGVsbG8gV29ybw==')
+            ).toBe(false);
+        });
+    });
+
     describe('jwtEncrypt', () => {
         it('should return JWT token when given payload and options', () => {
             const payload = { name: 'Jane Doe' };

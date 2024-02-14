@@ -98,20 +98,20 @@ describe('HelperDateService', () => {
         });
     });
 
-    describe('checkDateTime', () => {
+    describe('checkIso', () => {
         it('should check date if a given date is valid', () => {
             const validDate = '2021-01-01';
-            expect(service.checkDateTime(validDate)).toEqual(true);
+            expect(service.checkIso(validDate)).toEqual(true);
         });
 
         it('should check date time if a given date is valid', () => {
             const validDate = '2021-01-01T01:01:01.000Z';
-            expect(service.checkDateTime(validDate)).toEqual(true);
+            expect(service.checkIso(validDate)).toEqual(true);
         });
 
         it('should check date as invalid', () => {
             const invalidDate = 'abcd';
-            expect(service.checkDateTime(invalidDate)).toEqual(false);
+            expect(service.checkIso(invalidDate)).toEqual(false);
         });
     });
 
@@ -152,9 +152,9 @@ describe('HelperDateService', () => {
         });
     });
 
-    describe('timestamp', () => {
+    describe('createTimestamp', () => {
         it('should return a current timestamp', () => {
-            const createdTimestamp = service.timestamp();
+            const createdTimestamp = service.createTimestamp();
             expect(createdTimestamp).toEqual(
                 new Date(createdTimestamp).getTime()
             );
@@ -163,7 +163,9 @@ describe('HelperDateService', () => {
         it('should return a timestamp with given options', () => {
             const date = '2021-01-01T00:00:00.000Z';
             const startOfDay = true;
-            const createdTimestamp = service.timestamp(date, { startOfDay });
+            const createdTimestamp = service.createTimestamp(date, {
+                startOfDay,
+            });
             expect(createdTimestamp).toEqual(new Date(date).getTime());
         });
     });
@@ -183,33 +185,27 @@ describe('HelperDateService', () => {
         });
     });
 
-    describe('formatIsoDuration', () => {
+    describe('formatIsoDurationFromMinutes', () => {
         it('should return the duration as iso date string', () => {
             const inMinutes = 5;
-            const duration = service.formatIsoDuration(inMinutes);
+            const duration = service.formatIsoDurationFromMinutes(inMinutes);
             expect(duration).toEqual('PT5M');
         });
     });
 
-    describe('forwardInMilliseconds', () => {
-        it('should add milliseconds to a date', () => {
-            const fromDate = new Date('2021-01-01');
-            const milliseconds = 10000;
-            const resultDate = service.forwardInMilliseconds(milliseconds, {
-                fromDate,
-            });
-            expect(resultDate).toEqual(new Date('2021-01-01T00:00:10.000Z'));
+    describe('formatIsoDurationFromHours', () => {
+        it('should return the duration as iso date string', () => {
+            const inHours = 5;
+            const duration = service.formatIsoDurationFromHours(inHours);
+            expect(duration).toEqual('PT5H');
         });
     });
 
-    describe('backwardInMilliseconds', () => {
-        it('should subtract milliseconds from a date', () => {
-            const fromDate = new Date('2021-01-01T00:00:10.000Z');
-            const milliseconds = 10000;
-            const resultDate = service.backwardInMilliseconds(milliseconds, {
-                fromDate,
-            });
-            expect(resultDate).toEqual(new Date('2021-01-01T00:00:00.000Z'));
+    describe('formatIsoDurationFromDays', () => {
+        it('should return the duration as iso date string', () => {
+            const inDays = 5;
+            const duration = service.formatIsoDurationFromDays(inDays);
+            expect(duration).toEqual('P5D');
         });
     });
 
@@ -303,6 +299,24 @@ describe('HelperDateService', () => {
         });
     });
 
+    describe('forwardInYears', () => {
+        it('should add years to a date', () => {
+            const fromDate = new Date('2021-01-01');
+            const years = 1;
+            const resultDate = service.forwardInYears(years, { fromDate });
+            expect(resultDate).toEqual(new Date('2022-01-01T00:00:00.000Z'));
+        });
+    });
+
+    describe('backwardInYears', () => {
+        it('should subtract years from a date', () => {
+            const fromDate = new Date('2021-02-01T00:00:00.000Z');
+            const years = 1;
+            const resultDate = service.backwardInYears(years, { fromDate });
+            expect(resultDate).toEqual(new Date('2020-02-01T00:00:00.000Z'));
+        });
+    });
+
     describe('endOfMonth', () => {
         it('should return the end of the month for a given date if no date is provided', () => {
             const date = '2021-01-31T23:59:59.999Z';
@@ -377,29 +391,16 @@ describe('HelperDateService', () => {
         });
     });
 
-    describe('minusTime', () => {
+    describe('subtractTime', () => {
         it('should return date adn time added', () => {
             const date = '2021-01-01T00:00:00.000Z';
             const startDate = service.create(date);
-            const setTime = service.minusTime(startDate, {
+            const setTime = service.subtractTime(startDate, {
                 hour: 0,
                 minute: 10,
                 second: 0,
             });
             expect(setTime).toEqual(new Date('2020-12-31T23:50:00.000Z'));
-        });
-    });
-
-    describe('extractDate', () => {
-        it('should extract day, month, and year from a given date', () => {
-            const date = new Date('2021-01-01');
-            const extractedDate = service.extractDate(date);
-            expect(extractedDate).toEqual({
-                date,
-                day: '01',
-                month: '01',
-                year: '2021',
-            });
         });
     });
 
@@ -410,6 +411,7 @@ describe('HelperDateService', () => {
                 hour: true,
                 minute: true,
                 second: true,
+                millisecond: true,
             });
             expect(roundedDate).toEqual(new Date('2021-01-01T00:00:00.000Z'));
         });

@@ -16,16 +16,16 @@ import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { IFileExtract } from 'src/common/file/interfaces/file.interface';
 import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
-import { ENUM_HELPER_FILE_TYPE } from 'src/common/helper/constants/helper.enum.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
 import {
     Response,
-    ResponseFile,
+    ResponseFileExcel,
     ResponsePaging,
 } from 'src/common/response/decorators/response.decorator';
 import {
     IResponse,
+    IResponseFileExcel,
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
 import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
@@ -76,7 +76,6 @@ import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_SUBJECT,
 } from 'src/common/policy/constants/policy.enum.constant';
-import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 import {
     UserAdminActiveDoc,
     UserAdminBlockedDoc,
@@ -97,6 +96,7 @@ import { FileTypePipe } from 'src/common/file/pipes/file.type.pipe';
 import { FileExcelExtractPipe } from 'src/common/file/pipes/file.excel-extract.pipe';
 import { FileExcelValidationPipe } from 'src/common/file/pipes/file.excel-validation.pipe';
 import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
+import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/constants/helper.enum.constant';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -375,22 +375,60 @@ export class UserAdminController {
         )
         file: IFileExtract<UserImportDto>
     ): Promise<void> {
-        const role: RoleDoc = await this.roleService.findOneByName('user');
+        const checkRole = await this.roleService.findOneByName('user');
+        if (!checkRole) {
+            throw new NotFoundException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_NOT_FOUND_ERROR,
+                message: 'role.error.notFound',
+            });
+        }
+
+        const mobileNumbers =
+            file.extracts[0].data.map((e) => e.mobileNumber).filter((e) => e) ??
+            [];
+        const emails = file.extracts[0].data.map((e) => e.email) ?? [];
+
+        const promises: Promise<any>[] = [
+            this.userService.existByEmails(emails),
+        ];
+
+        if (mobileNumbers && mobileNumbers.length > 0) {
+            promises.push(this.userService.existByMobileNumbers(mobileNumbers));
+        }
+
+        const [emailExist, mobileNumberExist] = await Promise.all(promises);
+
+        if (emailExist) {
+            throw new ConflictException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
+                message: 'user.error.emailExist',
+            });
+        } else if (mobileNumberExist) {
+            throw new ConflictException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
+                message: 'user.error.mobileNumberExist',
+            });
+        }
 
         const passwordString: string =
             await this.authService.createPasswordRandom();
         const password: IAuthPassword =
             await this.authService.createPassword(passwordString);
 
-        await this.userService.import(file.dto, role._id, password);
+        await this.userService.import(
+            file.extracts[0].data,
+            checkRole._id,
+            password
+        );
 
         return;
     }
 
     @UserAdminExportDoc()
-    @ResponseFile({
-        serialization: UserListSerialization,
-        fileType: ENUM_HELPER_FILE_TYPE.CSV,
+    @ResponseFileExcel({
+        serialization: [UserListSerialization],
+        type: ENUM_HELPER_FILE_EXCEL_TYPE.CSV,
     })
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
@@ -400,7 +438,7 @@ export class UserAdminController {
     @ApiKeyPublicProtected()
     @HttpCode(HttpStatus.OK)
     @Post('/export')
-    async export(): Promise<IResponse> {
+    async export(): Promise<IResponseFileExcel> {
         const users: IUserEntity[] =
             await this.userService.findAll<IUserEntity>(
                 {},
@@ -409,6 +447,6 @@ export class UserAdminController {
                 }
             );
 
-        return { data: users };
+        return { data: [{ data: users }] };
     }
 }

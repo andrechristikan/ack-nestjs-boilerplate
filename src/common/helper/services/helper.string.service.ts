@@ -1,77 +1,85 @@
 import { Injectable } from '@nestjs/common';
-import { faker } from '@faker-js/faker';
-import { IHelperStringRandomOptions } from 'src/common/helper/interfaces/helper.interface';
+import RandExp from 'randexp';
+import {
+    IHelperStringCurrencyOptions,
+    IHelperStringPasswordOptions,
+    IHelperStringRandomOptions,
+} from 'src/common/helper/interfaces/helper.interface';
 import { IHelperStringService } from 'src/common/helper/interfaces/helper.string-service.interface';
 
 @Injectable()
 export class HelperStringService implements IHelperStringService {
-    checkEmail(email: string): boolean {
-        const regex = /\S+@\S+\.\S+/;
-        return regex.test(email);
-    }
-
-    randomReference(length: number, prefix?: string): string {
+    randomReference(length: number): string {
         const timestamp = `${new Date().getTime()}`;
         const randomString: string = this.random(length, {
             safe: true,
             upperCase: true,
         });
 
-        return prefix
-            ? `${prefix}-${timestamp}${randomString}`
-            : `${timestamp}${randomString}`;
+        return `${timestamp}${randomString}`;
     }
 
     random(length: number, options?: IHelperStringRandomOptions): string {
         const rString = options?.safe
-            ? faker.internet.password({
-                  length,
-                  memorable: true,
-                  pattern: /[A-Z]/,
-                  prefix: options?.prefix,
-              })
-            : faker.internet.password({
-                  length,
-                  memorable: false,
-                  pattern: /\w/,
-                  prefix: options?.prefix,
-              });
+            ? new RandExp(`[A-Z]{${length},${length}}`)
+            : new RandExp(`\\w{${length},${length}}`);
 
-        return options?.upperCase ? rString.toUpperCase() : rString;
+        return options?.upperCase ? rString.gen().toUpperCase() : rString.gen();
     }
 
-    censor(value: string): string {
-        const stringCensor = '*'.repeat(8);
-        if (value.length <= 5) {
-            return value;
-        } else if (value.length <= 10) {
-            return `${stringCensor}${value.slice(-5)}`;
+    censor(text: string): string {
+        if (text.length <= 3) {
+            const stringCensor = '*'.repeat(2);
+            return `${stringCensor}${text.slice(-1)}`;
+        } else if (text.length <= 10) {
+            const stringCensor = '*'.repeat(7);
+            return `${stringCensor}${text.slice(-3)}`;
+        } else if (text.length <= 25) {
+            const lengthExplicit = Math.ceil((text.length / 100) * 30);
+            const lengthCensor = Math.ceil((text.length / 100) * 50);
+            const stringCensor = '*'.repeat(lengthCensor);
+            return `${stringCensor}${text.slice(-lengthExplicit)}`;
         }
 
-        return `${value.slice(0, 3)}${stringCensor}${value.slice(-5)}`;
+        const stringCensor = '*'.repeat(10);
+        const lengthExplicit = Math.ceil((text.length / 100) * 30);
+        return `${text.slice(0, 3)}${stringCensor}${text.slice(-lengthExplicit)}`;
     }
 
-    checkPasswordWeak(password: string, length?: number): boolean {
+    checkEmail(email: string): boolean {
+        const regex = new RegExp(/\S+@\S+\.\S+/);
+        return regex.test(email);
+    }
+
+    checkPasswordWeak(
+        password: string,
+        options?: IHelperStringPasswordOptions
+    ): boolean {
+        const length = options?.length ?? 6;
+        const regex = new RegExp(`^(?=.*?[A-Z])(?=.*?[a-z]).{${length},}$`);
+
+        return regex.test(password);
+    }
+
+    checkPasswordMedium(
+        password: string,
+        options?: IHelperStringPasswordOptions
+    ): boolean {
+        const length = options?.length ?? 6;
         const regex = new RegExp(
-            `^(?=.*?[A-Z])(?=.*?[a-z]).{${length ?? 8},}$`
+            `^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9]).{${length},}$`
         );
 
         return regex.test(password);
     }
 
-    checkPasswordMedium(password: string, length?: number): boolean {
+    checkPasswordStrong(
+        password: string,
+        options?: IHelperStringPasswordOptions
+    ): boolean {
+        const length = options?.length ?? 6;
         const regex = new RegExp(
-            `^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9]).{${length ?? 8},}$`
-        );
-
-        return regex.test(password);
-    }
-
-    checkPasswordStrong(password: string, length?: number): boolean {
-        const regex = new RegExp(
-            `^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{${
-                length ?? 8
-            },}$`
+            `^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{${length},}$`
         );
 
         return regex.test(password);
@@ -82,15 +90,10 @@ export class HelperStringService implements IHelperStringService {
         return regex.test(text);
     }
 
-    formatCurrency(num: number): string {
-        return new Intl.NumberFormat('id-ID', {
-            style: 'currency',
-            currency: 'IDR',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        })
-            .format(num)
-            .replace('Rp', '')
-            .trim();
+    formatCurrency(
+        num: number,
+        options?: IHelperStringCurrencyOptions
+    ): string {
+        return num.toLocaleString(options?.locale);
     }
 }

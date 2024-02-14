@@ -29,8 +29,7 @@ export enum ENUM_HELPER_DATE_DIFF {
     DAYS = 'days',
 }
 
-export enum ENUM_HELPER_FILE_TYPE {
+export enum ENUM_HELPER_FILE_EXCEL_TYPE {
     XLSX = 'xlsx',
-    XLS = 'xls',
     CSV = 'csv',
 }

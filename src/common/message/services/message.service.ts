@@ -5,7 +5,7 @@ import { I18nService } from 'nestjs-i18n';
 import {
     IErrors,
     IErrorsImport,
-    IValidationErrorImport,
+    IErrorValidationImport,
 } from 'src/common/error/interfaces/error.interface';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
 import {
@@ -41,7 +41,7 @@ export class MessageService implements IMessageService {
     }
 
     filterLanguage(customLanguages: string[]): string[] {
-        return this.helperArrayService.intersection(
+        return this.helperArrayService.getIntersection(
             customLanguages,
             this.appDefaultAvailableLanguage
         );
@@ -104,13 +104,12 @@ export class MessageService implements IMessageService {
     }
 
     getImportErrorsMessage(
-        errors: IValidationErrorImport[],
+        errors: IErrorValidationImport[],
         options?: IMessageErrorOptions
     ): IErrorsImport[] {
         return errors.map((val) => ({
             row: val.row,
-            file: val.file,
-            sheet: val.sheet,
+            sheetName: val.sheetName,
             errors: this.getRequestErrorsMessage(val.errors, options),
         }));
     }

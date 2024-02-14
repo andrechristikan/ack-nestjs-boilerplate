@@ -18,7 +18,7 @@ export class IsPasswordMediumConstraint
     validate(value: string, args: ValidationArguments): boolean {
         const [length] = args.constraints;
         return value
-            ? this.helperStringService.checkPasswordMedium(value, length)
+            ? this.helperStringService.checkPasswordMedium(value, { length })
             : false;
     }
 }

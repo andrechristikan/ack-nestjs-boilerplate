@@ -104,7 +104,16 @@ export class ResponsePagingInterceptor<T>
                     // response
                     const responseData = (await res) as IResponsePaging;
                     if (!responseData) {
-                        throw new Error('Paging must have response');
+                        throw new Error(
+                            'ResponsePaging must instanceof IResponsePaging'
+                        );
+                    } else if (
+                        !responseData.data ||
+                        !Array.isArray(responseData.data)
+                    ) {
+                        throw new Error(
+                            'Field data must in array and can not be empty'
+                        );
                     }
 
                     const { _metadata } = responseData;

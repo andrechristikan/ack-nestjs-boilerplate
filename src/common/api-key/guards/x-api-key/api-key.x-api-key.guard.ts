@@ -5,16 +5,11 @@ import {
     Injectable,
     UnauthorizedException,
 } from '@nestjs/common';
-import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
 import { BadRequestError } from 'passport-headerapikey';
 
 @Injectable()
 export class ApiKeyXApiKeyGuard extends AuthGuard('x-api-key') {
-    constructor(private readonly helperNumberService: HelperNumberService) {
-        super();
-    }
-
     canActivate(context: ExecutionContext) {
         return super.canActivate(context);
     }
@@ -35,7 +30,7 @@ export class ApiKeyXApiKeyGuard extends AuthGuard('x-api-key') {
                     message: 'apiKey.error.keyNeeded',
                 });
             } else if (err) {
-                const statusCode: number = this.helperNumberService.create(
+                const statusCode: number = Number.parseInt(
                     err.message as string
                 );
 

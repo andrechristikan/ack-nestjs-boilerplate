@@ -1,5 +1,6 @@
 import { ValidationError } from 'class-validator';
 import { ERROR_TYPE } from 'src/common/error/constants/error.enum.constant';
+import { IHelperFileRows } from 'src/common/helper/interfaces/helper.interface';
 import { IMessage } from 'src/common/message/interfaces/message.interface';
 import { IResponseCustomPropertyMetadata } from 'src/common/response/interfaces/response.interface';
 
@@ -10,14 +11,12 @@ export interface IErrors {
 }
 
 // error import
-export interface IErrorsImport {
+export interface IErrorsImport extends Pick<IHelperFileRows, 'sheetName'> {
     row: number;
-    file?: string;
-    sheet?: number;
     errors: IErrors[];
 }
 
-export interface IValidationErrorImport extends Omit<IErrorsImport, 'errors'> {
+export interface IErrorValidationImport extends Omit<IErrorsImport, 'errors'> {
     errors: ValidationError[];
 }
 
@@ -36,7 +35,7 @@ export interface IErrorMetadata {
 export interface IErrorException {
     statusCode: number;
     message: string;
-    errors?: ValidationError[] | IValidationErrorImport[];
+    errors?: ValidationError[] | IErrorValidationImport[];
     data?: Record<string, any>;
     _error?: string;
     _errorType?: ERROR_TYPE;

@@ -44,9 +44,7 @@ export class PolicyAbilityFactory {
         return action
             .split(',')
             .map((val: string) => ({
-                action: this.mappingRequestRule(
-                    this.helperNumberService.create(val)
-                ),
+                action: this.mappingRequestRule(Number.parseInt(val)),
                 subject,
             }))
             .flat(1);

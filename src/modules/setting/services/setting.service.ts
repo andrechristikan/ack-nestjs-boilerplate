@@ -108,7 +108,7 @@ export class SettingService implements ISettingService {
             setting.type === ENUM_SETTING_DATA_TYPE.NUMBER &&
             this.helperNumberService.check(setting.value)
         ) {
-            return this.helperNumberService.create(setting.value) as any;
+            return Number.parseInt(setting.value) as any;
         } else if (setting.type === ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING) {
             return setting.value.split(',') as any;
         }

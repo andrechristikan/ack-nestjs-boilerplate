@@ -1,6 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { ClassConstructor } from 'class-transformer';
-import { ENUM_HELPER_FILE_TYPE } from 'src/common/helper/constants/helper.enum.constant';
+import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/constants/helper.enum.constant';
 import { IHelperFileRows } from 'src/common/helper/interfaces/helper.interface';
 import { IMessageOptionsProperties } from 'src/common/message/interfaces/message.interface';
 
@@ -29,16 +29,20 @@ export interface IResponsePagingOptions<T>
     serialization: ClassConstructor<T>;
 }
 
-export interface IResponseFileOptions<T> extends IResponseOptions<T> {
-    fileType?: ENUM_HELPER_FILE_TYPE;
+export interface IResponseFileExcelOptions<T>
+    extends Pick<IResponseOptions<T>, 'messageProperties'> {
+    serialization?: ClassConstructor<T>[];
+    type?: ENUM_HELPER_FILE_EXCEL_TYPE;
+    password?: string;
 }
 
-// type
+// response
 export interface IResponse {
     _metadata?: IResponseMetadata;
     data?: Record<string, any>;
 }
 
+// response pagination
 export interface IResponsePagingPagination {
     totalPage: number;
     total: number;
@@ -50,6 +54,6 @@ export interface IResponsePaging {
     data: Record<string, any>[];
 }
 
-export interface IResponseFile {
+export interface IResponseFileExcel {
     data: IHelperFileRows[];
 }
