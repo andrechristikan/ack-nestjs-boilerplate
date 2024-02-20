@@ -13,7 +13,7 @@ jobs:
     
     strategy:
       matrix:
-        node-version: ['18.x']
+        node-version: ['lts/*']
 
     steps:
       - name: Git checkout
