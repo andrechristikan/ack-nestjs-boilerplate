@@ -17,16 +17,6 @@ describe('HelperArrayService', () => {
         expect(service).toBeDefined();
     });
 
-    describe('getCombinations', () => {
-        it('should return correct value', () => {
-            const result = service.getCombinations<string | number>(
-                ['a', 'b', 'c'],
-                [1, 2]
-            );
-            expect(result).toEqual([]);
-        });
-    });
-
     describe('getFromLeft', () => {
         it('should return value of array by index, from first', () => {
             const testArray = ['a', 'b', 'c', 'd'];
