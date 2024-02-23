@@ -5,7 +5,7 @@ export default registerAs(
     'user',
     (): Record<string, any> => ({
         uploadPath:
-            process.env.NODE_ENV === ENUM_APP_ENVIRONMENT.PRODUCTION
+            process.env.APP_ENV === ENUM_APP_ENVIRONMENT.PRODUCTION
                 ? '/user/{user}'
                 : '/test/user/{user}',
         mobileNumberCountryCodeAllowed: ['628'],
