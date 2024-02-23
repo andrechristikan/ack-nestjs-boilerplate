@@ -149,10 +149,6 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
             findOne.session(options.session);
         }
 
-        if (options?.order) {
-            findOne.sort(options.order);
-        }
-
         return options?.plainObject ? findOne.lean() : findOne.exec();
     }
 
@@ -180,10 +176,6 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
 
         if (options?.session) {
             findOne.session(options.session);
-        }
-
-        if (options?.order) {
-            findOne.sort(options.order);
         }
 
         return options?.plainObject ? findOne.lean() : findOne.exec();
@@ -216,10 +208,6 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
 
         if (options?.session) {
             findOne.session(options.session);
-        }
-
-        if (options?.order) {
-            findOne.sort(options.order);
         }
 
         return findOne.exec();
@@ -255,10 +243,6 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
 
         if (options?.session) {
             findOne.session(options.session);
-        }
-
-        if (options?.order) {
-            findOne.sort(options.order);
         }
 
         return findOne.exec();

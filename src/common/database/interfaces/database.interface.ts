@@ -2,8 +2,7 @@ import { PopulateOptions } from 'mongoose';
 import { IPaginationOptions } from 'src/common/pagination/interfaces/pagination.interface';
 
 // find one
-export interface IDatabaseFindOneOptions<T = any>
-    extends Pick<IPaginationOptions, 'order'> {
+export interface IDatabaseFindOneOptions<T = any> {
     select?: Record<string, boolean | number> | string;
     join?: boolean | PopulateOptions | PopulateOptions[];
     session?: T;
@@ -30,7 +29,7 @@ export type IDatabaseSaveOptions<T = any> = Pick<
 // find
 export interface IDatabaseFindAllOptions<T = any>
     extends IPaginationOptions,
-        Omit<IDatabaseFindOneOptions<T>, 'order'> {}
+        IDatabaseFindOneOptions<T> {}
 
 // create
 

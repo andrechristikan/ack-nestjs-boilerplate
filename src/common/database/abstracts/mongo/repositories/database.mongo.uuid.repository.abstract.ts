@@ -146,10 +146,6 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             findOne.session(options.session);
         }
 
-        if (options?.order) {
-            findOne.sort(options.order);
-        }
-
         return options?.plainObject ? findOne.lean() : findOne.exec();
     }
 
@@ -177,10 +173,6 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
 
         if (options?.session) {
             findOne.session(options.session);
-        }
-
-        if (options?.order) {
-            findOne.sort(options.order);
         }
 
         return options?.plainObject ? findOne.lean() : findOne.exec();
@@ -215,10 +207,6 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             findOne.session(options.session);
         }
 
-        if (options?.order) {
-            findOne.sort(options.order);
-        }
-
         return findOne.exec();
     }
 
@@ -249,10 +237,6 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
 
         if (options?.session) {
             findOne.session(options.session);
-        }
-
-        if (options?.order) {
-            findOne.sort(options.order);
         }
 
         return findOne.exec();
