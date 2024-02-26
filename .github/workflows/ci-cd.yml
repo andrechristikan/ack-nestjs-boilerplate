@@ -180,6 +180,10 @@ jobs:
           user: ${{ env.SSH_USER }}
           key: ${{ env.SSH_PRIVATE_KEY }}
 
+      - name: Deploy on ECS PROD
+        run: |
+          aws ecs update-service --cluster ${{ env.AWS_ECR_CLUSTER_NAME }} --service ${{ env.AWS_ECR_CLUSTER_SERVICE_NAME_PROD }} --force-new-deployment
+
   deploy_staging:
     needs: [ build_image ]
     runs-on: ubuntu-latest
@@ -263,3 +267,7 @@ jobs:
           port: ${{ env.SSH_PORT }}
           user: ${{ env.SSH_USER }}
           key: ${{ env.SSH_PRIVATE_KEY }}
+
+      - name: Deploy on ECS STAGE
+        run: |
+          aws ecs update-service --cluster ${{ env.AWS_ECR_CLUSTER_NAME }} --service ${{ env.AWS_ECR_CLUSTER_SERVICE_NAME_STAGE }} --force-new-deployment
