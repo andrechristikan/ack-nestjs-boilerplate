@@ -224,6 +224,10 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           user: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          
+      - name: Deploy on ECS PROD
+        run: |
+          aws ecs update-service --cluster ${{ env.AWS_ECR_CLUSTER_NAME }} --service ${{ env.AWS_ECR_CLUSTER_SERVICE_NAME_PROD }} --force-new-deployment
 
       - name: Clean
         uses: fifsky/ssh-action@master
@@ -308,6 +312,10 @@ jobs:
           port: ${{ env.SSH_PORT }}
           user: ${{ env.SSH_USER }}
           key: ${{ env.SSH_PRIVATE_KEY }}
+          
+      - name: Deploy on ECS STAGE
+        run: |
+          aws ecs update-service --cluster ${{ env.AWS_ECR_CLUSTER_NAME }} --service ${{ env.AWS_ECR_CLUSTER_SERVICE_NAME_STAGE }} --force-new-deployment
 
       - name: Clean
         uses: fifsky/ssh-action@master
