@@ -54,11 +54,12 @@ jobs:
       - name: Main name
         run: echo ${{ steps.main.outputs.name }}
 
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Login to AWS ECR for main repo
+        run: aws ecr-public get-login-password --region {env.env.AWS_ECR_REGION} | docker login --username AWS --password-stdin {env.AWS_ECR_URI}_main
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_ECR_REGION }}  
 
       - name: Build builder
         uses: docker/build-push-action@v4
@@ -77,10 +78,17 @@ jobs:
             NODE_ENV=production
           target: main
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:main_v${{ steps.version.outputs.current-version }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+            :latest
+            :main_v${{ steps.version.outputs.current-version }}
+            :main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
           push: true
+
+      - name: Login to AWS ECR for stage repo
+        run: aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin {env.AWS_ECR_URI}_main
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_ECR_REGION }}  
 
       - name: Build staging and push 
         uses: docker/build-push-action@v4
@@ -94,6 +102,56 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:staging_v${{ steps.version.outputs.current-version }}
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+          push: true
+
+      - name: Login to AWS ECR for main repo
+        run: aws ecr-public get-login-password --region ${{ env.env.AWS_ECR_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_ECR_URI }}_main
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_ECR_REGION }}  
+
+      - name: Build builder
+        uses: docker/build-push-action@v4
+        with:
+          builder: ${{ steps.builder.outputs.name }}
+          file: ${{ env.DOCKERFILE }}
+          target: builder
+
+      - name: Build main and push
+        uses: docker/build-push-action@v4
+        if: ${{ github.ref_name == 'main' }}
+        with:
+          builder: ${{ steps.main.outputs.name }}
+          file: ${{ env.DOCKERFILE }}
+          build-args: |
+            NODE_ENV=production
+          target: main
+          tags: |
+            ${{ env.AWS_ECR_URI }}_main:latest
+            ${{ env.AWS_ECR_URI }}_main:main_v${{ steps.version.outputs.current-version }}
+            ${{ env.AWS_ECR_URI }}_main:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+          push: true
+
+      - name: Login to AWS ECR for stage repo
+        run: aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin {env.AWS_ECR_URI}_main
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_ECR_REGION }}  
+
+      - name: Build staging and push 
+        uses: docker/build-push-action@v4
+        if: ${{ github.ref_name == 'staging' }}
+        with:
+          builder: ${{ steps.main.outputs.name }}
+          file: ${{ env.DOCKERFILE }}
+          build-args: |
+            NODE_ENV=staging
+          target: main
+          tags: |
+            ${{ env.AWS_ECR_URI }}_stage:staging_v${{ steps.version.outputs.current-version }}
+            ${{ env.AWS_ECR_URI }}_stage:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
           push: true
 
   deploy_production:
