@@ -78,9 +78,9 @@ jobs:
             NODE_ENV=production
           target: main
           tags: |
-            :latest
-            :main_v${{ steps.version.outputs.current-version }}
-            :main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:main_v${{ steps.version.outputs.current-version }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
           push: true
 
       - name: Login to AWS ECR for stage repo
