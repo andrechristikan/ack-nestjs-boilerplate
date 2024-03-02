@@ -64,7 +64,7 @@ jobs:
 
       - name: Login to AWS ECR Private Repo
         if: ${{ env.AWS_ECR_PRIVATE == 'true' }} || ${{ env.AWS_ECR_PRIVATE == true }}
-        run: aws ecr get-login-password --region {env.AWS_ECR_REGION} | docker login --username AWS --password-stdin {env.AWS_ECR_URI}
+        run: aws ecr get-login-password --region ${{ env.AWS_ECR_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_ECR_URI }}
         env:
           AWS_ACCESS_KEY_ID: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ env.AWS_ECR_SECRET_ACCESS_KEY }}
@@ -73,7 +73,7 @@ jobs:
 
       - name: Login to AWS ECR Public Repo
         if: ${{ env.AWS_ECR_PRIVATE == 'false' }} || ${{ env.AWS_ECR_PRIVATE == false }} || ${{ env.AWS_ECR_PRIVATE == null }}
-        run: aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin {env.AWS_ECR_URI}
+        run: aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ env.AWS_ECR_URI }}
         env:
           AWS_ACCESS_KEY_ID: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ env.AWS_ECR_SECRET_ACCESS_KEY }}
@@ -275,7 +275,7 @@ jobs:
 
       - name: Login to AWS ECR Private Repo
         if: ${{ env.AWS_ECR_PRIVATE == 'true' }} || ${{ env.AWS_ECR_PRIVATE == true }}
-        run: aws ecr get-login-password --region {env.AWS_ECR_REGION} | docker login --username AWS --password-stdin {env.AWS_ECR_URI}
+        run: aws ecr get-login-password --region ${{ env.AWS_ECR_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_ECR_URI }}
         env:
           AWS_ACCESS_KEY_ID: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ env.AWS_ECR_SECRET_ACCESS_KEY }}
