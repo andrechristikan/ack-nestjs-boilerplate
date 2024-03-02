@@ -11,8 +11,14 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DOCKER_HUB: ${{ secrets.DOCKER_HUB }}
       DOCKERFILE: ci/dockerfile
+
+      AWS_ECR_ACCESS_KEY_ID: ${{ secrets.AWS_ECR_ACCESS_KEY_ID }}
+      AWS_ECR_SECRET_ACCESS_KEY: ${{ secrets.AWS_ECR_SECRET_ACCESS_KEY }}
+      AWS_ECR_URI: ${{ secrets.AWS_ECR_URI }}
+      AWS_ECR_REGION: ${{ secrets.AWS_ECR_REGION }}
+
+      AWS_ECR_PRIVATE: ${{ vars.AWS_ECR_PRIVATE }}
     
     steps:
       - name: Git checkout
@@ -34,8 +40,10 @@ jobs:
 
       - name: Environment
         run: |
-          echo DOCKER_HUB is: ${{ env.DOCKER_HUB }}
           echo DOCKERFILE is: ${{ env.DOCKERFILE }}
+          echo AWS_ECR_URI is: ${{ env.AWS_ECR_URI }}
+          echo AWS_ECR_REGION is: ${{ env.AWS_ECR_REGION }}
+          echo AWS_ECR_PRIVATE is: ${{ env.AWS_ECR_PRIVATE }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -54,12 +62,22 @@ jobs:
       - name: Main name
         run: echo ${{ steps.main.outputs.name }}
 
-      - name: Login to AWS ECR for main repo
-        run: aws ecr-public get-login-password --region {env.AWS_ECR_REGION} | docker login --username AWS --password-stdin {env.AWS_ECR_URI}_main
+      - name: Login to AWS ECR Private Repo
+        if: ${{ env.AWS_ECR_PRIVATE == 'true' }} || ${{ env.AWS_ECR_PRIVATE == true }}
+        run: aws ecr get-login-password --region {env.AWS_ECR_REGION} | docker login --username AWS --password-stdin {env.AWS_ECR_URI}
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_ECR_REGION }}  
+          AWS_ACCESS_KEY_ID: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ env.AWS_ECR_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ env.AWS_ECR_REGION }}  
+          AWS_ECR_URI: ${{ env.AWS_ECR_URI }}
+
+      - name: Login to AWS ECR Public Repo
+        if: ${{ env.AWS_ECR_PRIVATE == 'false' }} || ${{ env.AWS_ECR_PRIVATE == false }} || ${{ env.AWS_ECR_PRIVATE == null }}
+        run: aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin {env.AWS_ECR_URI}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ env.AWS_ECR_SECRET_ACCESS_KEY }}
+          AWS_ECR_URI: ${{ env.AWS_ECR_URI }}
 
       - name: Build builder
         uses: docker/build-push-action@v4
@@ -78,17 +96,10 @@ jobs:
             NODE_ENV=production
           target: main
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:main_v${{ steps.version.outputs.current-version }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+            ${{ env.AWS_ECR_URI }}:latest
+            ${{ env.AWS_ECR_URI }}:main_v${{ steps.version.outputs.current-version }}
+            ${{ env.AWS_ECR_URI }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
           push: true
-
-      - name: Login to AWS ECR for stage repo
-        run: aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin {env.AWS_ECR_URI}_main
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_ECR_REGION }}  
 
       - name: Build staging and push 
         uses: docker/build-push-action@v4
@@ -100,58 +111,8 @@ jobs:
             NODE_ENV=staging
           target: main
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:staging_v${{ steps.version.outputs.current-version }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
-          push: true
-
-      - name: Login to AWS ECR for main repo
-        run: aws ecr-public get-login-password --region ${{ env.env.AWS_ECR_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_ECR_URI }}_main
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_ECR_REGION }}  
-
-      - name: Build builder
-        uses: docker/build-push-action@v4
-        with:
-          builder: ${{ steps.builder.outputs.name }}
-          file: ${{ env.DOCKERFILE }}
-          target: builder
-
-      - name: Build main and push
-        uses: docker/build-push-action@v4
-        if: ${{ github.ref_name == 'main' }}
-        with:
-          builder: ${{ steps.main.outputs.name }}
-          file: ${{ env.DOCKERFILE }}
-          build-args: |
-            NODE_ENV=production
-          target: main
-          tags: |
-            ${{ env.AWS_ECR_URI }}_main:latest
-            ${{ env.AWS_ECR_URI }}_main:main_v${{ steps.version.outputs.current-version }}
-            ${{ env.AWS_ECR_URI }}_main:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
-          push: true
-
-      - name: Login to AWS ECR for stage repo
-        run: aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin {env.AWS_ECR_URI}_main
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_ECR_REGION }}  
-
-      - name: Build staging and push 
-        uses: docker/build-push-action@v4
-        if: ${{ github.ref_name == 'staging' }}
-        with:
-          builder: ${{ steps.main.outputs.name }}
-          file: ${{ env.DOCKERFILE }}
-          build-args: |
-            NODE_ENV=staging
-          target: main
-          tags: |
-            ${{ env.AWS_ECR_URI }}_stage:staging_v${{ steps.version.outputs.current-version }}
-            ${{ env.AWS_ECR_URI }}_stage:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+            ${{ env.AWS_ECR_URI }}:staging_v${{ steps.version.outputs.current-version }}
+            ${{ env.AWS_ECR_URI }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
           push: true
 
   deploy_production:
@@ -160,17 +121,23 @@ jobs:
     if: ${{ github.ref_name == 'main' }}
     environment: production
 
-    env: 
-      DOCKER_HUB: ${{ secrets.DOCKER_HUB }}
-      APP_NAME: ${{ vars.APP_NAME_PRODUCTION }}
+    env:
+      AWS_ECR_ACCESS_KEY_ID: ${{ secrets.AWS_ECR_ACCESS_KEY_ID }}
+      AWS_ECR_SECRET_ACCESS_KEY: ${{ secrets.AWS_ECR_SECRET_ACCESS_KEY }}
+      AWS_ECR_URI: ${{ secrets.AWS_ECR_URI }}
+      AWS_ECR_REGION: ${{ secrets.AWS_ECR_REGION }}
+
+      AWS_ECR_PRIVATE: ${{ vars.AWS_ECR_PRIVATE }}
+
+      APP_NAME: ${{ vars.APP_NAME }}
       APP_PORT: 3000
-      APP_PORT_EXPOSE: ${{ secrets.APP_PORT_PRODUCTION }}
+      APP_PORT_EXPOSE: ${{ secrets.APP_PORT }}
       APP_NETWORK: app-network
 
-      SSH_HOST: ${{ secrets.SSH_HOST_PRODUCTION }}
-      SSH_PORT: ${{ secrets.SSH_PORT_PRODUCTION }}
-      SSH_USER: ${{ secrets.SSH_USER_PRODUCTION }}
-      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_PRODUCTION}}
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_PORT: ${{ secrets.SSH_PORT }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY}}
 
     steps:
       - name: Git checkout
@@ -192,11 +159,17 @@ jobs:
 
       - name: Environment
         run: |
-          echo DOCKER_HUB is: ${{ env.DOCKER_HUB }}
+          echo AWS_ECR_ACCESS_KEY_ID is: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
+          echo AWS_ECR_SECRET_ACCESS_KEY is: ${{ env.AWS_ECR_SECRET_ACCESS_KEY }}
+          echo AWS_ECR_URI is: ${{ env.AWS_ECR_URI }}
+          echo AWS_ECR_REGION is: ${{ env.AWS_ECR_REGION }}
+          echo AWS_ECR_PRIVATE is: ${{ env.AWS_ECR_PRIVATE }}
           echo APP_NAME is: ${{ env.APP_NAME }}
           echo APP_PORT is: ${{ env.APP_PORT }}
           echo APP_PORT_EXPOSE is: ${{ env.APP_PORT_EXPOSE }}
           echo APP_NETWORK is: ${{ env.APP_NETWORK }}
+          echo SSH_HOST is: ${{ env.SSH_HOST }}
+          echo SSH_PORT is: ${{ env.SSH_PORT }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -208,22 +181,22 @@ jobs:
         uses: fifsky/ssh-action@master
         with:
           command: |
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+            docker pull ${{ env.AWS_ECR_URI }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
             docker stop ${{ env.APP_NAME }} && docker rm ${{ env.APP_NAME }}
             docker network create ${{ env.APP_NETWORK }} --driver=bridge
             docker run -itd \
               --env NODE_ENV=production \
               --hostname ${{ env.APP_NAME }} \
-              --publish ${{ secrets.APP_PORT_EXPOSE }}:${{ env.APP_PORT }} \
+              --publish ${{ env.APP_PORT_EXPOSE }}:${{ env.APP_PORT }} \
               --network ${{ env.APP_NETWORK }} \
               --volume /app/${{ env.APP_NAME }}/logs/:/app/logs/ \
               --volume /app/${{ env.APP_NAME }}/.env:/app/.env \
               --restart unless-stopped \
-              --name ${{ env.APP_NAME }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB  }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT }}
-          user: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+              --name ${{ env.APP_NAME }} ${{ env.AWS_ECR_URI  }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+          host: ${{ env.SSH_HOST }}
+          port: ${{ env.SSH_PORT }}
+          user: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
 
       - name: Clean
         uses: fifsky/ssh-action@master
@@ -232,7 +205,7 @@ jobs:
           command: |
             docker container prune --force
             docker image prune --force
-            docker rmi $(docker images **/${{ env.DOCKER_HUB }} -q) --force
+            docker rmi $(docker images **/${{ env.AWS_ECR_URI }} -q) --force
           host: ${{ env.SSH_HOST }}
           port: ${{ env.SSH_PORT }}
           user: ${{ env.SSH_USER }}
@@ -242,19 +215,25 @@ jobs:
     needs: [ build_image ]
     runs-on: ubuntu-latest
     if: ${{ github.ref_name == 'staging' }}
-    environment: staging
+    environment: 'staging'
 
-    env: 
-      DOCKER_HUB: ${{ secrets.DOCKER_HUB }}
-      APP_NAME: ${{ vars.APP_NAME_STAGING }}
+    env:
+      AWS_ECR_ACCESS_KEY_ID: ${{ secrets.AWS_ECR_ACCESS_KEY_ID }}
+      AWS_ECR_SECRET_ACCESS_KEY: ${{ secrets.AWS_ECR_SECRET_ACCESS_KEY }}
+      AWS_ECR_URI: ${{ secrets.AWS_ECR_URI }}
+      AWS_ECR_REGION: ${{ secrets.AWS_ECR_REGION }}
+
+      AWS_ECR_PRIVATE: ${{ vars.AWS_ECR_PRIVATE }}
+
+      APP_NAME: ${{ vars.APP_NAME }}
       APP_PORT: 3000
-      APP_PORT_EXPOSE: ${{ secrets.APP_PORT_STAGING }}
+      APP_PORT_EXPOSE: ${{ secrets.APP_PORT }}
       APP_NETWORK: app-network
 
-      SSH_HOST: ${{ secrets.SSH_HOST_STAGING }}
-      SSH_PORT: ${{ secrets.SSH_PORT_STAGING }}
-      SSH_USER: ${{ secrets.SSH_USER_STAGING }}
-      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_STAGING }}
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_PORT: ${{ secrets.SSH_PORT }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY}}
 
     steps:
       - name: Git checkout
@@ -276,11 +255,17 @@ jobs:
 
       - name: Environment
         run: |
-          echo DOCKER_HUB is: ${{ env.DOCKER_HUB }}
+          echo AWS_ECR_ACCESS_KEY_ID is: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
+          echo AWS_ECR_SECRET_ACCESS_KEY is: ${{ env.AWS_ECR_SECRET_ACCESS_KEY }}
+          echo AWS_ECR_URI is: ${{ env.AWS_ECR_URI }}
+          echo AWS_ECR_REGION is: ${{ env.AWS_ECR_REGION }}
+          echo AWS_ECR_PRIVATE is: ${{ env.AWS_ECR_PRIVATE }}
           echo APP_NAME is: ${{ env.APP_NAME }}
           echo APP_PORT is: ${{ env.APP_PORT }}
           echo APP_PORT_EXPOSE is: ${{ env.APP_PORT_EXPOSE }}
           echo APP_NETWORK is: ${{ env.APP_NETWORK }}
+          echo SSH_HOST is: ${{ env.SSH_HOST }}
+          echo SSH_PORT is: ${{ env.SSH_PORT }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -288,11 +273,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Deploy
+      - name: Login to AWS ECR Private Repo
+        if: ${{ env.AWS_ECR_PRIVATE == 'true' }} || ${{ env.AWS_ECR_PRIVATE == true }}
+        run: aws ecr get-login-password --region {env.AWS_ECR_REGION} | docker login --username AWS --password-stdin {env.AWS_ECR_URI}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ env.AWS_ECR_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ env.AWS_ECR_REGION }}  
+          AWS_ECR_URI: ${{ env.AWS_ECR_URI }}
+
+      - name: Deploy from Private Repo
+        if: ${{ env.AWS_ECR_PRIVATE == 'true' }} || ${{ env.AWS_ECR_PRIVATE == true }}
         uses: fifsky/ssh-action@master
         with:
           command: |
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+            docker pull ${{ env.AWS_ECR_URI }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
             docker stop ${{ env.APP_NAME }} && docker rm ${{ env.APP_NAME }}
             docker network create ${{ env.APP_NETWORK }} --driver=bridge
             docker run -itd \
@@ -303,7 +298,29 @@ jobs:
               --volume /app/${{ env.APP_NAME }}/logs/:/app/logs/ \
               --volume /app/${{ env.APP_NAME }}/.env:/app/.env \
               --restart unless-stopped \
-              --name ${{ env.APP_NAME }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DOCKER_HUB  }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+              --name ${{ env.APP_NAME }} ${{ env.AWS_ECR_URI }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+          host: ${{ env.SSH_HOST }}
+          port: ${{ env.SSH_PORT }}
+          user: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
+
+      - name: Deploy from Public Repo
+        if: ${{ env.AWS_ECR_PRIVATE == 'false' }} || ${{ env.AWS_ECR_PRIVATE == false }} || ${{ env.AWS_ECR_PRIVATE == null }}
+        uses: fifsky/ssh-action@master
+        with:
+          command: |
+            docker pull ${{ env.AWS_ECR_URI }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+            docker stop ${{ env.APP_NAME }} && docker rm ${{ env.APP_NAME }}
+            docker network create ${{ env.APP_NETWORK }} --driver=bridge
+            docker run -itd \
+              --env NODE_ENV=staging \
+              --hostname ${{ env.APP_NAME }} \
+              --publish ${{ env.APP_PORT_EXPOSE }}:${{ env.APP_PORT }} \
+              --network ${{ env.APP_NETWORK }} \
+              --volume /app/${{ env.APP_NAME }}/logs/:/app/logs/ \
+              --volume /app/${{ env.APP_NAME }}/.env:/app/.env \
+              --restart unless-stopped \
+              --name ${{ env.APP_NAME }} ${{ env.AWS_ECR_URI }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
           host: ${{ env.SSH_HOST }}
           port: ${{ env.SSH_PORT }}
           user: ${{ env.SSH_USER }}
@@ -316,7 +333,7 @@ jobs:
           command: |
             docker container prune --force
             docker image prune --force
-            docker rmi $(docker images **/${{ env.DOCKER_HUB }} -q) --force
+            docker rmi $(docker images **/${{ env.AWS_ECR_URI }} -q) --force
           host: ${{ env.SSH_HOST }}
           port: ${{ env.SSH_PORT }}
           user: ${{ env.SSH_USER }}
