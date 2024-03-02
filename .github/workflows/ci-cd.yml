@@ -15,9 +15,9 @@ jobs:
 
       AWS_ECR_ACCESS_KEY_ID: ${{ secrets.AWS_ECR_ACCESS_KEY_ID }}
       AWS_ECR_SECRET_ACCESS_KEY: ${{ secrets.AWS_ECR_SECRET_ACCESS_KEY }}
-      AWS_ECR_URI: ${{ secrets.AWS_ECR_URI }}
-      AWS_ECR_REPO_NAME: ${{ secrets.AWS_ECR_REPO_NAME }}
-      AWS_ECR_REGION: ${{ secrets.AWS_ECR_REGION }}
+      AWS_ECR_URI: ${{ vars.AWS_ECR_URI }}
+      AWS_ECR_REPO_NAME: ${{ vars.AWS_ECR_REPO_NAME }}
+      AWS_ECR_REGION: ${{ vars.AWS_ECR_REGION }}
 
       AWS_ECR_PRIVATE: ${{ vars.AWS_ECR_PRIVATE }}
     
@@ -121,15 +121,15 @@ jobs:
     env:
       AWS_ECR_ACCESS_KEY_ID: ${{ secrets.AWS_ECR_ACCESS_KEY_ID }}
       AWS_ECR_SECRET_ACCESS_KEY: ${{ secrets.AWS_ECR_SECRET_ACCESS_KEY }}
-      AWS_ECR_URI: ${{ secrets.AWS_ECR_URI }}
-      AWS_ECR_REPO_NAME: ${{ secrets.AWS_ECR_REPO_NAME }}
-      AWS_ECR_REGION: ${{ secrets.AWS_ECR_REGION }}
+      AWS_ECR_URI: ${{ vars.AWS_ECR_URI }}
+      AWS_ECR_REPO_NAME: ${{ vars.AWS_ECR_REPO_NAME }}
+      AWS_ECR_REGION: ${{ vars.AWS_ECR_REGION }}
 
       AWS_ECR_PRIVATE: ${{ vars.AWS_ECR_PRIVATE }}
 
       APP_NAME: ${{ vars.APP_NAME }}
       APP_PORT: 3000
-      APP_PORT_EXPOSE: ${{ secrets.APP_PORT }}
+      APP_PORT_EXPOSE: ${{ vars.APP_PORT }}
       APP_NETWORK: app-network
 
       SSH_HOST: ${{ secrets.SSH_HOST }}
@@ -157,8 +157,6 @@ jobs:
 
       - name: Environment
         run: |
-          echo AWS_ECR_ACCESS_KEY_ID is: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
-          echo AWS_ECR_SECRET_ACCESS_KEY is: ${{ env.AWS_ECR_SECRET_ACCESS_KEY }}
           echo AWS_ECR_URI is: ${{ env.AWS_ECR_URI }}
           echo AWS_ECR_REGION is: ${{ env.AWS_ECR_REGION }}
           echo AWS_ECR_REPO_NAME is: ${{ env.AWS_ECR_REPO_NAME }}
@@ -167,8 +165,6 @@ jobs:
           echo APP_PORT is: ${{ env.APP_PORT }}
           echo APP_PORT_EXPOSE is: ${{ env.APP_PORT_EXPOSE }}
           echo APP_NETWORK is: ${{ env.APP_NETWORK }}
-          echo SSH_HOST is: ${{ env.SSH_HOST }}
-          echo SSH_PORT is: ${{ env.SSH_PORT }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -226,15 +222,15 @@ jobs:
     env:
       AWS_ECR_ACCESS_KEY_ID: ${{ secrets.AWS_ECR_ACCESS_KEY_ID }}
       AWS_ECR_SECRET_ACCESS_KEY: ${{ secrets.AWS_ECR_SECRET_ACCESS_KEY }}
-      AWS_ECR_URI: ${{ secrets.AWS_ECR_URI }}
-      AWS_ECR_REPO_NAME: ${{ secrets.AWS_ECR_REPO_NAME }}
-      AWS_ECR_REGION: ${{ secrets.AWS_ECR_REGION }}
+      AWS_ECR_URI: ${{ vars.AWS_ECR_URI }}
+      AWS_ECR_REPO_NAME: ${{ vars.AWS_ECR_REPO_NAME }}
+      AWS_ECR_REGION: ${{ vars.AWS_ECR_REGION }}
 
       AWS_ECR_PRIVATE: ${{ vars.AWS_ECR_PRIVATE }}
 
       APP_NAME: ${{ vars.APP_NAME }}
       APP_PORT: 3000
-      APP_PORT_EXPOSE: ${{ secrets.APP_PORT }}
+      APP_PORT_EXPOSE: ${{ vars.APP_PORT }}
       APP_NETWORK: app-network
 
       SSH_HOST: ${{ secrets.SSH_HOST }}
@@ -262,8 +258,6 @@ jobs:
 
       - name: Environment
         run: |
-          echo AWS_ECR_ACCESS_KEY_ID is: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
-          echo AWS_ECR_SECRET_ACCESS_KEY is: ${{ env.AWS_ECR_SECRET_ACCESS_KEY }}
           echo AWS_ECR_URI is: ${{ env.AWS_ECR_URI }}
           echo AWS_ECR_REGION is: ${{ env.AWS_ECR_REGION }}
           echo AWS_ECR_REPO_NAME is: ${{ env.AWS_ECR_REPO_NAME }}
@@ -272,8 +266,6 @@ jobs:
           echo APP_PORT is: ${{ env.APP_PORT }}
           echo APP_PORT_EXPOSE is: ${{ env.APP_PORT_EXPOSE }}
           echo APP_NETWORK is: ${{ env.APP_NETWORK }}
-          echo SSH_HOST is: ${{ env.SSH_HOST }}
-          echo SSH_PORT is: ${{ env.SSH_PORT }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
