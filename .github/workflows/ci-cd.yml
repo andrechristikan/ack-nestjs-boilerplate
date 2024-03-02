@@ -63,7 +63,7 @@ jobs:
         run: echo ${{ steps.main.outputs.name }}
 
       - name: Login to AWS ECR Private Repo
-        if: ${{ env.AWS_ECR_PRIVATE == 'true' }} || ${{ env.AWS_ECR_PRIVATE == true }}
+        if: ${{ env.AWS_ECR_PRIVATE == 'true' }}
         run: aws ecr get-login-password --region ${{ env.AWS_ECR_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_ECR_URI }}
         env:
           AWS_ACCESS_KEY_ID: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
@@ -72,7 +72,7 @@ jobs:
           AWS_ECR_URI: ${{ env.AWS_ECR_URI }}
 
       - name: Login to AWS ECR Public Repo
-        if: ${{ env.AWS_ECR_PRIVATE == 'false' }} || ${{ env.AWS_ECR_PRIVATE == false }} || ${{ env.AWS_ECR_PRIVATE == null }}
+        if: ${{ env.AWS_ECR_PRIVATE != 'true' }} 
         run: aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ env.AWS_ECR_URI }}
         env:
           AWS_ACCESS_KEY_ID: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
@@ -177,6 +177,15 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Login to AWS ECR Private Repo
+        if: ${{ env.AWS_ECR_PRIVATE == 'true' }}
+        run: aws ecr get-login-password --region ${{ env.AWS_ECR_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_ECR_URI }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ env.AWS_ECR_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ env.AWS_ECR_REGION }}  
+          AWS_ECR_URI: ${{ env.AWS_ECR_URI }}
+
       - name: Deploy
         uses: fifsky/ssh-action@master
         with:
@@ -274,7 +283,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Login to AWS ECR Private Repo
-        if: ${{ env.AWS_ECR_PRIVATE == 'true' }} || ${{ env.AWS_ECR_PRIVATE == true }}
+        if: ${{ env.AWS_ECR_PRIVATE == 'true' }}
         run: aws ecr get-login-password --region ${{ env.AWS_ECR_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_ECR_URI }}
         env:
           AWS_ACCESS_KEY_ID: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
@@ -282,30 +291,8 @@ jobs:
           AWS_REGION: ${{ env.AWS_ECR_REGION }}  
           AWS_ECR_URI: ${{ env.AWS_ECR_URI }}
 
-      - name: Deploy from Private Repo
-        if: ${{ env.AWS_ECR_PRIVATE == 'true' }} || ${{ env.AWS_ECR_PRIVATE == true }}
-        uses: fifsky/ssh-action@master
-        with:
-          command: |
-            docker pull ${{ env.AWS_ECR_URI }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
-            docker stop ${{ env.APP_NAME }} && docker rm ${{ env.APP_NAME }}
-            docker network create ${{ env.APP_NETWORK }} --driver=bridge
-            docker run -itd \
-              --env NODE_ENV=staging \
-              --hostname ${{ env.APP_NAME }} \
-              --publish ${{ env.APP_PORT_EXPOSE }}:${{ env.APP_PORT }} \
-              --network ${{ env.APP_NETWORK }} \
-              --volume /app/${{ env.APP_NAME }}/logs/:/app/logs/ \
-              --volume /app/${{ env.APP_NAME }}/.env:/app/.env \
-              --restart unless-stopped \
-              --name ${{ env.APP_NAME }} ${{ env.AWS_ECR_URI }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
-          host: ${{ env.SSH_HOST }}
-          port: ${{ env.SSH_PORT }}
-          user: ${{ env.SSH_USER }}
-          key: ${{ env.SSH_PRIVATE_KEY }}
-
-      - name: Deploy from Public Repo
-        if: ${{ env.AWS_ECR_PRIVATE == 'false' }} || ${{ env.AWS_ECR_PRIVATE == false }} || ${{ env.AWS_ECR_PRIVATE == null }}
+      - name: Deploy
+        if: ${{ env.AWS_ECR_PRIVATE != 'true' }}
         uses: fifsky/ssh-action@master
         with:
           command: |
