@@ -87,6 +87,7 @@ jobs:
 
       - name: Build main and push
         uses: docker/build-push-action@v4
+        if: ${{ github.ref_name == 'main' }}
         with:
           builder: ${{ steps.main.outputs.name }}
           file: ${{ env.DOCKERFILE }}
@@ -116,6 +117,7 @@ jobs:
   deploy_production:
     needs: [ build_image ]
     runs-on: ubuntu-latest
+    if: ${{ github.ref_name == 'main' }}
     environment: production
 
     env:
