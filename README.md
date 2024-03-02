@@ -52,7 +52,7 @@
 * [x] Debugger env change
 * [x] Add exception filter to Sentry.io
 * [x] Add Email Module with AWS SES
-* [ ] CI Push docker image to AWS ECR, `currently using Docker Hub`
+* [x] CI Push docker image to AWS ECR, `currently using Docker Hub`
 * [ ] CD Using AWS ECS and deploy to AWS EC2, `currently only using AWS EC2`
 * [x] Update Package, and remove unused package
 * [ ] Update Documentation, add behaviors
