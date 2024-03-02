@@ -16,6 +16,7 @@ jobs:
       AWS_ECR_ACCESS_KEY_ID: ${{ secrets.AWS_ECR_ACCESS_KEY_ID }}
       AWS_ECR_SECRET_ACCESS_KEY: ${{ secrets.AWS_ECR_SECRET_ACCESS_KEY }}
       AWS_ECR_URI: ${{ secrets.AWS_ECR_URI }}
+      AWS_ECR_REPO_NAME: ${{ secrets.AWS_ECR_REPO_NAME }}
       AWS_ECR_REGION: ${{ secrets.AWS_ECR_REGION }}
 
       AWS_ECR_PRIVATE: ${{ vars.AWS_ECR_PRIVATE }}
@@ -42,6 +43,7 @@ jobs:
         run: |
           echo DOCKERFILE is: ${{ env.DOCKERFILE }}
           echo AWS_ECR_URI is: ${{ env.AWS_ECR_URI }}
+          echo AWS_ECR_REPO_NAME is: ${{ env.AWS_ECR_REPO_NAME }}
           echo AWS_ECR_REGION is: ${{ env.AWS_ECR_REGION }}
           echo AWS_ECR_PRIVATE is: ${{ env.AWS_ECR_PRIVATE }}
 
@@ -68,8 +70,6 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ env.AWS_ECR_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ env.AWS_ECR_REGION }}  
-          AWS_ECR_URI: ${{ env.AWS_ECR_URI }}
 
       - name: Login to AWS ECR Public Repo
         if: ${{ env.AWS_ECR_PRIVATE != 'true' }} 
@@ -77,7 +77,6 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ env.AWS_ECR_SECRET_ACCESS_KEY }}
-          AWS_ECR_URI: ${{ env.AWS_ECR_URI }}
 
       - name: Build builder
         uses: docker/build-push-action@v4
@@ -95,9 +94,9 @@ jobs:
             NODE_ENV=production
           target: main
           tags: |
-            ${{ env.AWS_ECR_URI }}:latest
-            ${{ env.AWS_ECR_URI }}:main_v${{ steps.version.outputs.current-version }}
-            ${{ env.AWS_ECR_URI }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+            ${{ env.AWS_ECR_URI }}/${{ env.AWS_ECR_URI }}:latest
+            ${{ env.AWS_ECR_URI }}/${{ env.AWS_ECR_URI }}:main_v${{ steps.version.outputs.current-version }}
+            ${{ env.AWS_ECR_URI }}/${{ env.AWS_ECR_URI }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
           push: true
 
       - name: Build staging and push 
@@ -110,8 +109,8 @@ jobs:
             NODE_ENV=staging
           target: main
           tags: |
-            ${{ env.AWS_ECR_URI }}:staging_v${{ steps.version.outputs.current-version }}
-            ${{ env.AWS_ECR_URI }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+            ${{ env.AWS_ECR_URI }}/${{ env.AWS_ECR_URI }}:staging_v${{ steps.version.outputs.current-version }}
+            ${{ env.AWS_ECR_URI }}/${{ env.AWS_ECR_URI }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
           push: true
 
   deploy_production:
@@ -123,6 +122,7 @@ jobs:
       AWS_ECR_ACCESS_KEY_ID: ${{ secrets.AWS_ECR_ACCESS_KEY_ID }}
       AWS_ECR_SECRET_ACCESS_KEY: ${{ secrets.AWS_ECR_SECRET_ACCESS_KEY }}
       AWS_ECR_URI: ${{ secrets.AWS_ECR_URI }}
+      AWS_ECR_REPO_NAME: ${{ secrets.AWS_ECR_REPO_NAME }}
       AWS_ECR_REGION: ${{ secrets.AWS_ECR_REGION }}
 
       AWS_ECR_PRIVATE: ${{ vars.AWS_ECR_PRIVATE }}
@@ -161,6 +161,7 @@ jobs:
           echo AWS_ECR_SECRET_ACCESS_KEY is: ${{ env.AWS_ECR_SECRET_ACCESS_KEY }}
           echo AWS_ECR_URI is: ${{ env.AWS_ECR_URI }}
           echo AWS_ECR_REGION is: ${{ env.AWS_ECR_REGION }}
+          echo AWS_ECR_REPO_NAME is: ${{ env.AWS_ECR_REPO_NAME }}
           echo AWS_ECR_PRIVATE is: ${{ env.AWS_ECR_PRIVATE }}
           echo APP_NAME is: ${{ env.APP_NAME }}
           echo APP_PORT is: ${{ env.APP_PORT }}
@@ -181,14 +182,12 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ env.AWS_ECR_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ env.AWS_ECR_REGION }}  
-          AWS_ECR_URI: ${{ env.AWS_ECR_URI }}
 
       - name: Deploy
         uses: fifsky/ssh-action@master
         with:
           command: |
-            docker pull ${{ env.AWS_ECR_URI }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+            docker pull ${{ env.AWS_ECR_URI }}/${{ env.AWS_ECR_URI }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
             docker stop ${{ env.APP_NAME }} && docker rm ${{ env.APP_NAME }}
             docker network create ${{ env.APP_NETWORK }} --driver=bridge
             docker run -itd \
@@ -199,7 +198,7 @@ jobs:
               --volume /app/${{ env.APP_NAME }}/logs/:/app/logs/ \
               --volume /app/${{ env.APP_NAME }}/.env:/app/.env \
               --restart unless-stopped \
-              --name ${{ env.APP_NAME }} ${{ env.AWS_ECR_URI  }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+              --name ${{ env.APP_NAME }} ${{ env.AWS_ECR_URI }}/${{ env.AWS_ECR_URI }}:main_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
           host: ${{ env.SSH_HOST }}
           port: ${{ env.SSH_PORT }}
           user: ${{ env.SSH_USER }}
@@ -228,6 +227,7 @@ jobs:
       AWS_ECR_ACCESS_KEY_ID: ${{ secrets.AWS_ECR_ACCESS_KEY_ID }}
       AWS_ECR_SECRET_ACCESS_KEY: ${{ secrets.AWS_ECR_SECRET_ACCESS_KEY }}
       AWS_ECR_URI: ${{ secrets.AWS_ECR_URI }}
+      AWS_ECR_REPO_NAME: ${{ secrets.AWS_ECR_REPO_NAME }}
       AWS_ECR_REGION: ${{ secrets.AWS_ECR_REGION }}
 
       AWS_ECR_PRIVATE: ${{ vars.AWS_ECR_PRIVATE }}
@@ -266,6 +266,7 @@ jobs:
           echo AWS_ECR_SECRET_ACCESS_KEY is: ${{ env.AWS_ECR_SECRET_ACCESS_KEY }}
           echo AWS_ECR_URI is: ${{ env.AWS_ECR_URI }}
           echo AWS_ECR_REGION is: ${{ env.AWS_ECR_REGION }}
+          echo AWS_ECR_REPO_NAME is: ${{ env.AWS_ECR_REPO_NAME }}
           echo AWS_ECR_PRIVATE is: ${{ env.AWS_ECR_PRIVATE }}
           echo APP_NAME is: ${{ env.APP_NAME }}
           echo APP_PORT is: ${{ env.APP_PORT }}
@@ -286,15 +287,13 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ env.AWS_ECR_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ env.AWS_ECR_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ env.AWS_ECR_REGION }}  
-          AWS_ECR_URI: ${{ env.AWS_ECR_URI }}
 
       - name: Deploy
         if: ${{ env.AWS_ECR_PRIVATE != 'true' }}
         uses: fifsky/ssh-action@master
         with:
           command: |
-            docker pull ${{ env.AWS_ECR_URI }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+            docker pull ${{ env.AWS_ECR_URI }}/${{ env.AWS_ECR_URI }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
             docker stop ${{ env.APP_NAME }} && docker rm ${{ env.APP_NAME }}
             docker network create ${{ env.APP_NETWORK }} --driver=bridge
             docker run -itd \
@@ -305,7 +304,7 @@ jobs:
               --volume /app/${{ env.APP_NAME }}/logs/:/app/logs/ \
               --volume /app/${{ env.APP_NAME }}/.env:/app/.env \
               --restart unless-stopped \
-              --name ${{ env.APP_NAME }} ${{ env.AWS_ECR_URI }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
+              --name ${{ env.APP_NAME }} ${{ env.AWS_ECR_URI }}/${{ env.AWS_ECR_URI }}:staging_v${{ steps.version.outputs.current-version }}_sha-${{ steps.git.outputs.short_sha }}
           host: ${{ env.SSH_HOST }}
           port: ${{ env.SSH_PORT }}
           user: ${{ env.SSH_USER }}
