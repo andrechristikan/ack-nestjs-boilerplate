@@ -57,7 +57,8 @@
 * [x] Update Package, and remove unused package
 * [ ] Update Documentation, add behaviors
 * [ ] Update Documentation, and include an diagram for easier comprehension
-* [ ] Add Redis / Move to stateful Authorization Token (security and ux reason)
+* [ ] Add Redis
+* [ ] Move to stateful Authorization Token (security and ux reason)
 * [ ] Implement GraphQL, just an options for running ?
 
 ## Documentation
@@ -72,29 +73,13 @@ Distributed under [MIT licensed][license].
 
 How to contribute in this repo
 
-1. Fork the project with click `Fork` button of this repo.
-2. Clone the fork project
+1. Fork the repository
+2. Create your branch (git checkout -b my-branch)
+3. Commit any changes to your branch
+4. Push your changes to your remote branch
+5. Open a pull request
 
-    ```bash
-    git clone "url you just copied"
-    ```
-
-3. Make necessary changes and commit those changes
-4. Commit the changes
-
-    ```bash
-    git commit -m "your message"
-    ```
-
-5. Push changes to fork project
-
-    ```bash
-    git push origin -u main
-    ```
-
-6. Back to browser, goto your fork repo github. Then, click `Compare & pull request`
-
-If your code behind commit with the original, please update your code and resolve the conflict. Then, repeat from number 6.
+If your code behind commit with the original / main / master branch, please update your code and resolve the conflict.
 
 ## Contact
 

@@ -33,10 +33,7 @@ export class DebuggerInterceptor implements NestInterceptor<Promise<any>> {
                 .switchToHttp()
                 .getRequest<IRequestApp>();
 
-            console.log('aaa');
-
             if (this.writeIntoFile) {
-                console.log('bbb');
                 this.debuggerService.info({
                     type: 'request',
                     method: request.method,
@@ -54,13 +51,11 @@ export class DebuggerInterceptor implements NestInterceptor<Promise<any>> {
 
             return next.handle().pipe(
                 tap(() => {
-                    console.log('ccc');
                     const response: Response = context
                         .switchToHttp()
                         .getResponse<Response>();
 
                     if (this.writeIntoFile) {
-                        console.log('ddd');
                         this.debuggerService.info({
                             type: 'response',
                             statusCode: response.statusCode,
