@@ -20,7 +20,10 @@ export default registerAs(
             version: process.env.HTTP_VERSION ?? '1',
         },
 
-        globalPrefix: '/api',
+        globalPrefix:
+            process.env.APP_ENV === ENUM_APP_ENVIRONMENT.PRODUCTION
+                ? ''
+                : '/api',
         http: {
             enable: process.env.HTTP_ENABLE === 'true' ?? false,
             host: process.env.HTTP_HOST ?? 'localhost',

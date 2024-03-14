@@ -47,7 +47,7 @@
     "rollback": "yarn rollback:email && yarn rollback:apikey && yarn rollback:user && yarn rollback:role"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.533.0",
+    "@aws-sdk/client-s3": "^3.534.0",
     "@aws-sdk/client-ses": "^3.533.0",
     "@casl/ability": "^6.7.0",
     "@faker-js/faker": "^8.4.1",
@@ -65,7 +65,7 @@
     "@nestjs/terminus": "^10.2.3",
     "@nestjs/throttler": "^5.1.2",
     "@ntegral/nestjs-sentry": "^4.0.1",
-    "@sentry/node": "^7.106.1",
+    "@sentry/node": "^7.107.0",
     "@types/response-time": "^2.3.8",
     "apple-auth": "^1.0.9",
     "axios": "^1.6.7",

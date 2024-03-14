@@ -55,6 +55,7 @@
 * If you change the environment value of `APP_ENV` to `production`, that will trigger.
     1. CorsMiddleware will implement config from `src/configs/middleware.config.ts`.
     2. Documentation will `disable`.
+    3. Global prefix will remove. Before is `/api`.
 * For monitoring, this project will use sentry.io, and only send `500` or `internal server error`.
 
 ## Todo
