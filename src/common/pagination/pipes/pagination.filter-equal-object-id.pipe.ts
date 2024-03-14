@@ -24,16 +24,15 @@ export function PaginationFilterEqualObjectIdPipe(
             }
 
             value = value.trim();
-            const finalValue = Types.ObjectId.isValid(value)
-                ? new Types.ObjectId(value)
-                : value;
-
             let res: Record<string, any>;
             if (raw) {
                 res = {
                     [field]: value,
                 };
+            } else if (!Types.ObjectId.isValid(value)) {
+                value = undefined;
             } else {
+                const finalValue = new Types.ObjectId(value);
                 res = this.paginationService.filterEqual<
                     Types.ObjectId | string
                 >(field, finalValue);

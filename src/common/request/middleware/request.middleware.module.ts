@@ -10,7 +10,6 @@ import { RequestHelmetMiddleware } from 'src/common/request/middleware/helmet/re
 import { RequestIdMiddleware } from 'src/common/request/middleware/id/request.id.middleware';
 import { RequestTimestampMiddleware } from 'src/common/request/middleware/timestamp/request.timestamp.middleware';
 import { RequestTimezoneMiddleware } from 'src/common/request/middleware/timezone/request.timezone.middleware';
-import { RequestUserAgentMiddleware } from 'src/common/request/middleware/user-agent/request.user-agent.middleware';
 import { RequestVersionMiddleware } from 'src/common/request/middleware/version/request.version.middleware';
 
 @Module({})
@@ -26,7 +25,6 @@ export class RequestMiddlewareModule implements NestModule {
                 RequestUrlencodedBodyParserMiddleware,
                 RequestCorsMiddleware,
                 RequestVersionMiddleware,
-                RequestUserAgentMiddleware,
                 RequestTimestampMiddleware,
                 RequestTimezoneMiddleware
             )

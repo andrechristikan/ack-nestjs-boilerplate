@@ -19,6 +19,16 @@ export class HelperFileService implements IHelperFileService {
         return buff;
     }
 
+    writeCsvFromArray<T = any>(rows: T[][]): Buffer {
+        const worksheet = utils.aoa_to_sheet(rows);
+        const csv = utils.sheet_to_csv(worksheet, { FS: ';' });
+
+        // create buffer
+        const buff: Buffer = Buffer.from(csv, 'utf8');
+
+        return buff;
+    }
+
     writeExcel<T = any>(
         rows: IHelperFileRows<T>[],
         options?: IHelperFileReadOptions
@@ -35,6 +45,27 @@ export class HelperFileService implements IHelperFileService {
                 row.sheetName ?? `Sheet${index + 1}`
             );
         }
+
+        // create buffer
+        const buff: Buffer = write(workbook, {
+            type: 'buffer',
+            bookType: ENUM_HELPER_FILE_EXCEL_TYPE.XLSX,
+            password: options?.password,
+        });
+
+        return buff;
+    }
+
+    writeExcelFromArray<T = any>(
+        rows: T[][],
+        options?: IHelperFileReadOptions
+    ): Buffer {
+        // workbook
+        const workbook = utils.book_new();
+
+        // worksheet
+        const worksheet = utils.aoa_to_sheet(rows);
+        utils.book_append_sheet(workbook, worksheet, `Sheet1`);
 
         // create buffer
         const buff: Buffer = write(workbook, {

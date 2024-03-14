@@ -13,9 +13,11 @@ import {
 } from '@aws-sdk/client-s3';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import { AWS_S3_MAX_PART_NUMBER } from 'src/common/aws/constants/aws.s3.constant';
 import {
     IAwsS3PutItem,
     IAwsS3PutItemOptions,
+    IAwsS3PutItemWithAclOptions,
 } from 'src/common/aws/interfaces/aws.interface';
 import { AwsS3MultipartSerialization } from 'src/common/aws/serializations/aws.s3-multipart.serialization';
 import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
@@ -317,7 +319,6 @@ describe('AwsS3Service', () => {
                 size: 1,
             };
             const options: IAwsS3PutItemOptions = {
-                acl: 'public-read',
                 path: 'test',
             };
 
@@ -349,7 +350,6 @@ describe('AwsS3Service', () => {
                 size: 1,
             };
             const options: IAwsS3PutItemOptions = {
-                acl: 'public-read',
                 path: '/test',
             };
 
@@ -381,7 +381,6 @@ describe('AwsS3Service', () => {
                 size: 1,
             };
             const options: IAwsS3PutItemOptions = {
-                acl: 'public-read',
                 path: 'test',
                 customFilename: 'asdfgh',
             };
@@ -404,6 +403,126 @@ describe('AwsS3Service', () => {
                 size: 1,
             };
             const result = service.putItemInBucket(file);
+
+            try {
+                await result;
+            } catch (err: any) {}
+
+            expect(service['s3Client'].send).toHaveBeenCalled();
+            expect(result).rejects.toThrow(error);
+        });
+    });
+
+    describe('putItemInBucketWithAcl', () => {
+        it('should accept path and return correct result', async () => {
+            const data: PutObjectCommandOutput = { $metadata: {} };
+            jest.spyOn(service['s3Client'], 'send').mockResolvedValue(
+                data as never
+            );
+
+            const expected = {
+                path: 'test',
+                pathWithFilename: 'test/file.png',
+                filename: 'file.png',
+                completedUrl: 'https://test.com/test/file.png',
+                baseUrl: 'https://test.com',
+                bucket: 'test-bucket',
+                mime: 'png',
+                size: 1,
+            };
+            const file: IAwsS3PutItem = {
+                buffer: Buffer.from('test-content'),
+                originalname: 'file.png',
+                size: 1,
+            };
+            const options: IAwsS3PutItemWithAclOptions = {
+                acl: 'public-read',
+                path: 'test',
+            };
+
+            const result = await service.putItemInBucketWithAcl(file, options);
+
+            expect(service['s3Client'].send).toHaveBeenCalled();
+            expect(result).toEqual(expected);
+        });
+
+        it('should accept path and return correct result, start path with /', async () => {
+            const data: PutObjectCommandOutput = { $metadata: {} };
+            jest.spyOn(service['s3Client'], 'send').mockResolvedValue(
+                data as never
+            );
+
+            const expected = {
+                bucket: 'test-bucket',
+                path: 'test',
+                pathWithFilename: 'test/file.png',
+                filename: 'file.png',
+                completedUrl: 'https://test.com/test/file.png',
+                baseUrl: 'https://test.com',
+                mime: 'png',
+                size: 1,
+            };
+            const file: IAwsS3PutItem = {
+                buffer: Buffer.from('test-content'),
+                originalname: 'file.png',
+                size: 1,
+            };
+            const options: IAwsS3PutItemWithAclOptions = {
+                acl: 'public-read',
+                path: '/test',
+            };
+
+            const result = await service.putItemInBucketWithAcl(file, options);
+
+            expect(service['s3Client'].send).toHaveBeenCalled();
+            expect(result).toEqual(expected);
+        });
+
+        it('should accept path, customFilename, and return correct result', async () => {
+            const data: PutObjectCommandOutput = { $metadata: {} };
+            jest.spyOn(service['s3Client'], 'send').mockResolvedValue(
+                data as never
+            );
+
+            const expected = {
+                baseUrl: 'https://test.com',
+                bucket: 'test-bucket',
+                completedUrl: 'https://test.com/test/asdfgh.png',
+                filename: 'asdfgh.png',
+                mime: 'png',
+                pathWithFilename: 'test/asdfgh.png',
+                size: 1,
+                path: 'test',
+            };
+            const file: IAwsS3PutItem = {
+                buffer: Buffer.from('test-content'),
+                originalname: 'file.png',
+                size: 1,
+            };
+            const options: IAwsS3PutItemWithAclOptions = {
+                acl: 'public-read',
+                path: 'test',
+                customFilename: 'asdfgh',
+            };
+
+            const result = await service.putItemInBucketWithAcl(file, options);
+
+            expect(service['s3Client'].send).toHaveBeenCalled();
+            expect(result).toEqual(expected);
+        });
+
+        it('should throw error', async () => {
+            const error = new Error('Put Item Error');
+            jest.spyOn(service['s3Client'], 'send').mockRejectedValue(
+                error as never
+            );
+
+            const file: IAwsS3PutItem = {
+                buffer: Buffer.from('test-content'),
+                originalname: 'file.png',
+                size: 1,
+            };
+            const result = service.putItemInBucketWithAcl(file);
 
             try {
                 await result;
@@ -542,7 +661,6 @@ describe('AwsS3Service', () => {
         it('should return object multipart upload', async () => {
             const options: IAwsS3PutItemOptions = {
                 path: 'path',
-                acl: 'private',
             };
             const data: CreateMultipartUploadCommandOutput = {
                 $metadata: {},
@@ -581,7 +699,6 @@ describe('AwsS3Service', () => {
         it('should return object multipart upload, path start with /', async () => {
             const options: IAwsS3PutItemOptions = {
                 path: '/path',
-                acl: 'private',
             };
             const data: CreateMultipartUploadCommandOutput = {
                 $metadata: {},
@@ -620,7 +737,6 @@ describe('AwsS3Service', () => {
         it('should return object multipart upload with customFilename', async () => {
             const options: IAwsS3PutItemOptions = {
                 path: 'path',
-                acl: 'private',
                 customFilename: '123456',
             };
             const data: CreateMultipartUploadCommandOutput = {
@@ -657,6 +773,24 @@ describe('AwsS3Service', () => {
             expect(result).toEqual(expected);
         });
 
+        it('throws an error if max part number is greater than x', async () => {
+            const error = new Error(
+                `Max part number is greater than ${AWS_S3_MAX_PART_NUMBER}`
+            );
+            const file: IAwsS3PutItem = {
+                buffer: Buffer.from('test-content'),
+                originalname: 'file.png',
+                size: 1,
+            };
+            const result = service.createMultiPart(file, 100000);
+
+            try {
+                await result;
+            } catch (err: any) {}
+
+            expect(result).rejects.toThrow(error);
+        });
+
         it('throws an error if an error occurs while create multipart', async () => {
             const error = new Error('failed');
             jest.spyOn(service['s3Client'], 'send').mockRejectedValue(
@@ -669,6 +803,159 @@ describe('AwsS3Service', () => {
                 size: 1,
             };
             const result = service.createMultiPart(file, 2);
+
+            try {
+                await result;
+            } catch (err: any) {}
+
+            expect(service['s3Client'].send).toHaveBeenCalled();
+            expect(result).rejects.toThrow(error);
+        });
+    });
+
+    describe('createMultiPartWithAcl', () => {
+        it('should return object multipart upload', async () => {
+            const options: IAwsS3PutItemWithAclOptions = {
+                path: 'path',
+                acl: 'private',
+            };
+            const data: CreateMultipartUploadCommandOutput = {
+                $metadata: {},
+                UploadId: '12345',
+            };
+            jest.spyOn(service['s3Client'], 'send').mockResolvedValue(
+                data as never
+            );
+
+            const file: IAwsS3PutItem = {
+                buffer: Buffer.from('test-content'),
+                originalname: 'file.png',
+                size: 1,
+            };
+            const result = await service.createMultiPartWithAcl(
+                file,
+                2,
+                options
+            );
+
+            const expected = {
+                bucket: 'test-bucket',
+                completedUrl: 'https://test.com/path/file.png',
+                filename: 'file.png',
+                lastPartNumber: 0,
+                maxPartNumber: 2,
+                mime: 'png',
+                parts: [],
+                pathWithFilename: 'path/file.png',
+                size: 0,
+                path: 'path',
+                uploadId: '12345',
+                baseUrl: 'https://test.com',
+            };
+
+            expect(service['s3Client'].send).toHaveBeenCalled();
+            expect(result).toEqual(expected);
+        });
+
+        it('should return object multipart upload, path start with /', async () => {
+            const options: IAwsS3PutItemWithAclOptions = {
+                path: '/path',
+                acl: 'private',
+            };
+            const data: CreateMultipartUploadCommandOutput = {
+                $metadata: {},
+                UploadId: '12345',
+            };
+            jest.spyOn(service['s3Client'], 'send').mockResolvedValue(
+                data as never
+            );
+
+            const file: IAwsS3PutItem = {
+                buffer: Buffer.from('test-content'),
+                originalname: 'file.png',
+                size: 1,
+            };
+            const result = await service.createMultiPartWithAcl(
+                file,
+                2,
+                options
+            );
+
+            const expected = {
+                bucket: 'test-bucket',
+                completedUrl: 'https://test.com/path/file.png',
+                filename: 'file.png',
+                lastPartNumber: 0,
+                maxPartNumber: 2,
+                mime: 'png',
+                parts: [],
+                pathWithFilename: 'path/file.png',
+                size: 0,
+                path: 'path',
+                uploadId: '12345',
+                baseUrl: 'https://test.com',
+            };
+
+            expect(service['s3Client'].send).toHaveBeenCalled();
+            expect(result).toEqual(expected);
+        });
+
+        it('should return object multipart upload with customFilename', async () => {
+            const options: IAwsS3PutItemWithAclOptions = {
+                path: 'path',
+                acl: 'private',
+                customFilename: '123456',
+            };
+            const data: CreateMultipartUploadCommandOutput = {
+                $metadata: {},
+                UploadId: '12345',
+            };
+            jest.spyOn(service['s3Client'], 'send').mockResolvedValue(
+                data as never
+            );
+
+            const file: IAwsS3PutItem = {
+                buffer: Buffer.from('test-content'),
+                originalname: 'file.png',
+                size: 1,
+            };
+            const result = await service.createMultiPartWithAcl(
+                file,
+                2,
+                options
+            );
+
+            const expected = {
+                baseUrl: 'https://test.com',
+                bucket: 'test-bucket',
+                completedUrl: 'https://test.com/path/123456.png',
+                filename: '123456.png',
+                lastPartNumber: 0,
+                maxPartNumber: 2,
+                mime: 'png',
+                path: 'path',
+                parts: [],
+                pathWithFilename: 'path/123456.png',
+                size: 0,
+                uploadId: '12345',
+            };
+
+            expect(service['s3Client'].send).toHaveBeenCalled();
+            expect(result).toEqual(expected);
+        });
+
+        it('throws an error if an error occurs while create multipart', async () => {
+            const error = new Error('failed');
+            jest.spyOn(service['s3Client'], 'send').mockRejectedValue(
+                error as never
+            );
+
+            const file: IAwsS3PutItem = {
+                buffer: Buffer.from('test-content'),
+                originalname: 'file.png',
+                size: 1,
+            };
+            const result = service.createMultiPartWithAcl(file, 2);
 
             try {
                 await result;

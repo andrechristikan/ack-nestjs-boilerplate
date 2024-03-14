@@ -8,10 +8,12 @@ export default registerAs(
         maxFiles: '7d',
         maxSize: '2m',
         sentry: {
-            enable: true,
             dsn: process.env.SENTRY_DSN,
             timeout: ms('10s'),
-            logLevels: ['fatal'],
+            logLevels: {
+                exception: ['fatal'],
+                request: ['log'],
+            },
         },
     })
 );

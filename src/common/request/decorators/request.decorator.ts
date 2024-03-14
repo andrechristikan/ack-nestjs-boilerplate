@@ -4,7 +4,6 @@ import {
     ExecutionContext,
     SetMetadata,
     UseGuards,
-    UseInterceptors,
 } from '@nestjs/common';
 import { ClassConstructor } from 'class-transformer';
 import {
@@ -14,27 +13,11 @@ import {
 } from 'src/common/request/constants/request.constant';
 import { RequestParamRawGuard } from 'src/common/request/guards/request.param.guard';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { IResult } from 'ua-parser-js';
-import { RequestUserAgentInterceptor } from 'src/common/request/interceptors/request.user-agent.interceptor';
-
-export const RequestUserAgent: () => ParameterDecorator = createParamDecorator(
-    (data: string, ctx: ExecutionContext): IResult => {
-        const { __userAgent } = ctx.switchToHttp().getRequest<IRequestApp>();
-        return __userAgent;
-    }
-);
 
 export const RequestId: () => ParameterDecorator = createParamDecorator(
     (data: string, ctx: ExecutionContext): string => {
         const { __id } = ctx.switchToHttp().getRequest<IRequestApp>();
         return __id;
-    }
-);
-
-export const RequestXTimestamp: () => ParameterDecorator = createParamDecorator(
-    (data: string, ctx: ExecutionContext): number => {
-        const { __xTimestamp } = ctx.switchToHttp().getRequest<IRequestApp>();
-        return __xTimestamp;
     }
 );
 
@@ -59,10 +42,6 @@ export function RequestParamGuard(
         UseGuards(RequestParamRawGuard),
         SetMetadata(REQUEST_PARAM_CLASS_DTOS_META_KEY, classValidation)
     );
-}
-
-export function RequestValidateUserAgent(): MethodDecorator {
-    return applyDecorators(UseInterceptors(RequestUserAgentInterceptor));
 }
 
 export function RequestTimeout(seconds: string): MethodDecorator {

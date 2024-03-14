@@ -56,9 +56,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
         const __requestId = request.__id ?? DatabaseDefaultUUID();
         const __path = request.path;
         const __timestamp =
-            request.__xTimestamp ??
-            request.__timestamp ??
-            this.helperDateService.createTimestamp();
+            request.__timestamp ?? this.helperDateService.createTimestamp();
         const __timezone =
             request.__timezone ??
             Intl.DateTimeFormat().resolvedOptions().timeZone;

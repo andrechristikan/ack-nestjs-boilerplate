@@ -35,6 +35,10 @@ export default async function (app: NestApplication) {
                 { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
                 'google'
             )
+            .addBearerAuth(
+                { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+                'apple'
+            )
             .addApiKey(
                 { type: 'apiKey', in: 'header', name: 'x-api-key' },
                 'apiKey'

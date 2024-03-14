@@ -43,6 +43,16 @@ export function UserAuthLoginGoogleDoc(): MethodDecorator {
     );
 }
 
+export function UserAuthLoginAppleDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'login with access token apple',
+        }),
+        DocAuth({ apiKey: true, apple: true }),
+        DocResponse('user.loginWithApple')
+    );
+}
+
 export function UserAuthRefreshDoc(): MethodDecorator {
     return applyDecorators(
         Doc({

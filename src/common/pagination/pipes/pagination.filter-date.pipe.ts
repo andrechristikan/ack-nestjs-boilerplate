@@ -42,7 +42,7 @@ export function PaginationFilterDatePipe(
             let res: Record<string, any>;
             if (raw) {
                 res = {
-                    [field]: value,
+                    [field]: finalValue,
                 };
             } else {
                 res = this.paginationService.filterDate(field, finalValue);

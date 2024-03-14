@@ -3,6 +3,9 @@ import { ObjectCannedACL } from '@aws-sdk/client-s3';
 export interface IAwsS3PutItemOptions {
     path?: string;
     customFilename?: string;
+}
+
+export interface IAwsS3PutItemWithAclOptions extends IAwsS3PutItemOptions {
     acl?: ObjectCannedACL;
 }
 

@@ -1,5 +1,6 @@
 import {
     HttpStatus,
+    LogLevel,
     Module,
     UnprocessableEntityException,
     ValidationError,
@@ -29,6 +30,9 @@ import { GreaterThanEqualConstraint } from 'src/common/request/validations/reque
 import { GreaterThanConstraint } from 'src/common/request/validations/request.greater-than.validation';
 import { LessThanEqualConstraint } from 'src/common/request/validations/request.less-than-equal.validation';
 import { LessThanConstraint } from 'src/common/request/validations/request.less-than.validation';
+import { SentryModule } from '@ntegral/nestjs-sentry';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
+import { RequestLogInterceptor } from 'src/common/request/interceptors/request.log.interceptor';
 
 @Module({
     controllers: [],
@@ -36,6 +40,10 @@ import { LessThanConstraint } from 'src/common/request/validations/request.less-
         {
             provide: APP_INTERCEPTOR,
             useClass: RequestTimeoutInterceptor,
+        },
+        {
+            provide: APP_INTERCEPTOR,
+            useClass: RequestLogInterceptor,
         },
         {
             provide: APP_PIPE,
@@ -88,6 +96,25 @@ import { LessThanConstraint } from 'src/common/request/validations/request.less-
                     },
                 ],
             }),
+        }),
+        SentryModule.forRootAsync({
+            imports: [ConfigModule],
+            useFactory: async (configService: ConfigService) => ({
+                dsn: configService.get('debugger.sentry.dsn'),
+                debug: false,
+                environment: configService.get<ENUM_APP_ENVIRONMENT>('app.env'),
+                release: configService.get<string>('app.repoVersion'),
+                logLevels: configService.get<LogLevel[]>(
+                    'debugger.sentry.logLevels.request'
+                ),
+                close: {
+                    enabled: true,
+                    timeout: configService.get<number>(
+                        'debugger.sentry.timeout'
+                    ),
+                },
+            }),
+            inject: [ConfigService],
         }),
     ],
 })

@@ -420,6 +420,14 @@ export function DocAuth(options?: IDocAuthOptions) {
         });
     }
 
+    if (options?.apple) {
+        docs.push(ApiBearerAuth('apple'));
+        oneOfUnauthorized.push({
+            messagePath: 'auth.error.appleSSO',
+            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_APPLE_SSO_ERROR,
+        });
+    }
+
     if (options?.apiKey) {
         docs.push(ApiSecurity('apiKey'));
         oneOfUnauthorized.push(

@@ -7,7 +7,25 @@ describe('HelperFileService', () => {
 
     beforeEach(async () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
-            providers: [ConfigService, HelperFileService],
+            providers: [
+                {
+                    provide: ConfigService,
+                    useValue: {
+                        get: jest.fn().mockImplementation((key: string) => {
+                            switch (key) {
+                                case 'app.chromeBin':
+                                    return process.env.DOCKER_INSTALLATION ===
+                                        'true'
+                                        ? '/usr/bin/chromium-browser'
+                                        : null;
+                                default:
+                                    return undefined;
+                            }
+                        }),
+                    },
+                },
+                HelperFileService,
+            ],
         }).compile();
 
         service = moduleRef.get<HelperFileService>(HelperFileService);
@@ -29,6 +47,18 @@ describe('HelperFileService', () => {
         });
     });
 
+    describe('writeCsvFromArray', () => {
+        it('should return a buffer of csv from array of array', () => {
+            const rows = [
+                ['Ford', 'Mustang', 2020],
+                ['Tesla', 'Model S', 2021],
+            ];
+            const buffer = service.writeCsvFromArray(rows);
+            expect(buffer).toBeDefined();
+            expect(buffer).toBeInstanceOf(Buffer);
+        });
+    });
+
     describe('writeExcel', () => {
         it('should return a buffer of excel', () => {
             const rows = [
@@ -36,6 +66,18 @@ describe('HelperFileService', () => {
                 { make: 'Tesla', model: 'Model S', year: 2021 },
             ];
             const buffer = service.writeExcel([{ data: rows }]);
+            expect(buffer).toBeDefined();
+            expect(buffer).toBeInstanceOf(Buffer);
+        });
+    });
+
+    describe('writeExcelFromArray', () => {
+        it('should return a buffer of excel from array of array', () => {
+            const rows = [
+                ['Ford', 'Mustang', 2020],
+                ['Tesla', 'Model S', 2021],
+            ];
+            const buffer = service.writeExcelFromArray(rows);
             expect(buffer).toBeDefined();
             expect(buffer).toBeInstanceOf(Buffer);
         });

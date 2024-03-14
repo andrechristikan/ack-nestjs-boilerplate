@@ -43,6 +43,7 @@ import {
     UserAuthRefreshDoc,
     UserAuthUpdateProfileDoc,
     UserAuthUploadProfileDoc,
+    UserAuthLoginAppleDoc,
 } from 'src/modules/user/docs/user.auth.doc';
 import { UserChangePasswordDto } from 'src/modules/user/dtos/user.change-password.dto';
 import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
@@ -73,6 +74,8 @@ import { FileTypePipe } from 'src/common/file/pipes/file.type.pipe';
 import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
 import { IFile } from 'src/common/file/interfaces/file.interface';
 import { IAwsS3RandomFilename } from 'src/common/aws/interfaces/aws.interface';
+import { AuthAppleOAuth2Protected } from 'src/common/auth/decorators/auth.apple.decorator';
+import { AuthApplePayloadSerialization } from 'src/common/auth/serializations/auth.apple-payload.serialization';
 
 @ApiTags('modules.auth.user')
 @Controller({
@@ -226,6 +229,102 @@ export class UserAuthController {
     async loginGoogle(
         @AuthJwtPayload<AuthGooglePayloadSerialization>()
         { user: userPayload }: AuthGooglePayloadSerialization
+    ): Promise<IResponse> {
+        const user: UserDoc = await this.userService.findOneByEmail(
+            userPayload.email
+        );
+
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_NOT_FOUND_ERROR,
+                message: 'user.error.notFound',
+            });
+        } else if (user.blocked) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_BLOCKED_ERROR,
+                message: 'user.error.blocked',
+            });
+        } else if (user.inactivePermanent) {
+            throw new ForbiddenException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_PERMANENT_ERROR,
+                message: 'user.error.inactivePermanent',
+            });
+        } else if (!user.isActive) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_INACTIVE_ERROR,
+                message: 'user.error.inactive',
+            });
+        }
+
+        const userWithRole: IUserDoc =
+            await this.userService.joinWithRole(user);
+        if (!userWithRole.role.isActive) {
+            throw new ForbiddenException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_INACTIVE_ERROR,
+                message: 'role.error.inactive',
+            });
+        }
+
+        const payload: UserPayloadSerialization =
+            await this.userService.payloadSerialization(userWithRole);
+        const tokenType: string = await this.authService.getTokenType();
+        const loginDate: Date = await this.authService.getLoginDate();
+        const expiresIn: number =
+            await this.authService.getAccessTokenExpirationTime();
+        const payloadAccessToken: AuthAccessPayloadSerialization =
+            await this.authService.createPayloadAccessToken(payload, {
+                loginWith: ENUM_AUTH_LOGIN_WITH.EMAIL,
+                loginFrom: ENUM_AUTH_LOGIN_FROM.PASSWORD,
+                loginDate,
+            });
+        const payloadRefreshToken: AuthRefreshPayloadSerialization =
+            await this.authService.createPayloadRefreshToken(
+                payload._id,
+                payloadAccessToken
+            );
+
+        const payloadEncryption = await this.authService.getPayloadEncryption();
+        let payloadHashedAccessToken: AuthAccessPayloadSerialization | string =
+            payloadAccessToken;
+        let payloadHashedRefreshToken:
+            | AuthRefreshPayloadSerialization
+            | string = payloadRefreshToken;
+
+        if (payloadEncryption) {
+            payloadHashedAccessToken =
+                await this.authService.encryptAccessToken(payloadAccessToken);
+            payloadHashedRefreshToken =
+                await this.authService.encryptRefreshToken(payloadRefreshToken);
+        }
+
+        const roleType = userWithRole.role.type;
+        const accessToken: string = await this.authService.createAccessToken(
+            payloadHashedAccessToken
+        );
+        const refreshToken: string = await this.authService.createRefreshToken(
+            payloadHashedRefreshToken
+        );
+
+        return {
+            data: {
+                tokenType,
+                roleType,
+                expiresIn,
+                accessToken,
+                refreshToken,
+            },
+        };
+    }
+
+    @UserAuthLoginAppleDoc()
+    @Response('user.loginApple')
+    @AuthAppleOAuth2Protected()
+    @ApiKeyPublicProtected()
+    @Get('/login/apple')
+    async loginApple(
+        @AuthJwtPayload<AuthApplePayloadSerialization>()
+        { user: userPayload }: AuthApplePayloadSerialization
     ): Promise<IResponse> {
         const user: UserDoc = await this.userService.findOneByEmail(
             userPayload.email

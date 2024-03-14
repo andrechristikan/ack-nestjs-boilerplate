@@ -5,8 +5,13 @@ import {
 
 export interface IHelperFileService {
     writeCsv<T = any>(rows: IHelperFileRows<T>): Buffer;
+    writeCsvFromArray<T = any>(rows: T[][]): Buffer;
     writeExcel<T = any>(
         rows: IHelperFileRows<T>[],
+        options?: IHelperFileReadOptions
+    ): Buffer;
+    writeExcelFromArray<T = any>(
+        rows: T[][],
         options?: IHelperFileReadOptions
     ): Buffer;
     readCsv(file: Buffer): IHelperFileRows;

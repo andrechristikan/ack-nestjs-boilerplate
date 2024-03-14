@@ -7,7 +7,11 @@ import {
 import { IAuthService } from 'src/common/auth/interfaces/auth.service.interface';
 import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
 import { AuthRefreshPayloadSerialization } from 'src/common/auth/serializations/auth.refresh-payload.serialization';
-import { IHelperGooglePayload } from 'src/common/helper/interfaces/helper.interface';
+import {
+    IHelperApplePayload,
+    IHelperGooglePayload,
+} from 'src/common/helper/interfaces/helper.interface';
+import { HelperAppleService } from 'src/common/helper/services/helper.apple.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
 import { HelperGoogleService } from 'src/common/helper/services/helper.google.service';
@@ -44,6 +48,7 @@ export class AuthService implements IAuthService {
         private readonly helperStringService: HelperStringService,
         private readonly helperEncryptionService: HelperEncryptionService,
         private readonly helperGoogleService: HelperGoogleService,
+        private readonly helperAppleService: HelperAppleService,
         private readonly configService: ConfigService
     ) {
         this.accessTokenSecretKey = this.configService.get<string>(
@@ -299,6 +304,10 @@ export class AuthService implements IAuthService {
         accessToken: string
     ): Promise<IHelperGooglePayload> {
         return this.helperGoogleService.getTokenInfo(accessToken);
+    }
+
+    async appleGetTokenInfo(accessToken: string): Promise<IHelperApplePayload> {
+        return this.helperAppleService.getTokenInfo(accessToken);
     }
 
     async getPasswordAttempt(): Promise<boolean> {

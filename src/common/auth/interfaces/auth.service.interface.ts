@@ -4,7 +4,10 @@ import {
 } from 'src/common/auth/interfaces/auth.interface';
 import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
 import { AuthRefreshPayloadSerialization } from 'src/common/auth/serializations/auth.refresh-payload.serialization';
-import { IHelperGooglePayload } from 'src/common/helper/interfaces/helper.interface';
+import {
+    IHelperApplePayload,
+    IHelperGooglePayload,
+} from 'src/common/helper/interfaces/helper.interface';
 
 export interface IAuthService {
     encryptAccessToken(payload: Record<string, any>): Promise<string>;
@@ -49,4 +52,7 @@ export interface IAuthService {
     getSubject(): Promise<string>;
     getPayloadEncryption(): Promise<boolean>;
     googleGetTokenInfo(accessToken: string): Promise<IHelperGooglePayload>;
+    appleGetTokenInfo(accessToken: string): Promise<IHelperApplePayload>;
+    getPasswordAttempt(): Promise<boolean>;
+    getMaxPasswordAttempt(): Promise<number>;
 }

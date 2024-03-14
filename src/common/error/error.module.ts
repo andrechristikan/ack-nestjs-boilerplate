@@ -27,7 +27,7 @@ import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
                 environment: configService.get<ENUM_APP_ENVIRONMENT>('app.env'),
                 release: configService.get<string>('app.repoVersion'),
                 logLevels: configService.get<LogLevel[]>(
-                    'debugger.sentry.logLevel'
+                    'debugger.sentry.logLevels.exception'
                 ),
                 close: {
                     enabled: true,

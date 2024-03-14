@@ -85,3 +85,9 @@ export interface IHelperGooglePayload {
 export interface IHelperGoogleRefresh {
     accessToken: string;
 }
+
+// Helper apple
+
+export interface IHelperApplePayload extends IHelperGooglePayload {}
+
+export interface IHelperAppleRefresh extends IHelperGoogleRefresh {}

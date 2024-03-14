@@ -13,6 +13,7 @@ import {
 import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
 import { AuthRefreshPayloadSerialization } from 'src/common/auth/serializations/auth.refresh-payload.serialization';
 import { HelperGoogleService } from 'src/common/helper/services/helper.google.service';
+import { HelperAppleService } from 'src/common/helper/services/helper.apple.service';
 
 describe('AuthService', () => {
     let service: AuthService;
@@ -86,6 +87,19 @@ describe('AuthService', () => {
         }),
     };
 
+    const mockAppleService = {
+        getTokenInfo: jest.fn().mockImplementation(async () => {
+            return {
+                email: 'mail@mail.com',
+            };
+        }),
+        refreshToken: jest.fn().mockImplementation(async () => {
+            return {
+                accessToken: 'mockedData',
+            };
+        }),
+    };
+
     beforeEach(async () => {
         const moduleRef: TestingModule = await Test.createTestingModule({
             providers: [
@@ -95,6 +109,7 @@ describe('AuthService', () => {
                 HelperDateService,
                 HelperStringService,
                 { provide: HelperGoogleService, useValue: mockGoogleService },
+                { provide: HelperAppleService, useValue: mockAppleService },
                 { provide: JwtService, useValue: mockJwtService },
                 { provide: ConfigService, useValue: mockConfigService },
             ],
@@ -402,6 +417,16 @@ describe('AuthService', () => {
                 email: 'mail@mail.com',
             };
             const tokenInfo = await service.googleGetTokenInfo('mockedData');
+            expect(tokenInfo).toEqual(result);
+        });
+    });
+
+    describe('appleGetTokenInfo', () => {
+        it('should get info of token from apple api', async () => {
+            const result = {
+                email: 'mail@mail.com',
+            };
+            const tokenInfo = await service.appleGetTokenInfo('mockedData');
             expect(tokenInfo).toEqual(result);
         });
     });

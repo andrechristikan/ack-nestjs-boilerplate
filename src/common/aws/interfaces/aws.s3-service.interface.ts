@@ -2,6 +2,7 @@ import { HeadBucketCommandOutput, UploadPartRequest } from '@aws-sdk/client-s3';
 import {
     IAwsS3PutItem,
     IAwsS3PutItemOptions,
+    IAwsS3PutItemWithAclOptions,
 } from 'src/common/aws/interfaces/aws.interface';
 import {
     AwsS3MultipartPartsSerialization,
@@ -21,6 +22,10 @@ export interface IAwsS3Service {
         file: IAwsS3PutItem,
         options?: IAwsS3PutItemOptions
     ): Promise<AwsS3Serialization>;
+    putItemInBucketWithAcl(
+        file: IAwsS3PutItem,
+        options?: IAwsS3PutItemWithAclOptions
+    ): Promise<AwsS3Serialization>;
     deleteItemInBucket(pathWithFilename: string): Promise<void>;
     deleteItemsInBucket(pathWithFilename: string[]): Promise<void>;
     deleteFolder(dir: string): Promise<void>;
@@ -28,6 +33,11 @@ export interface IAwsS3Service {
         file: IAwsS3PutItem,
         maxPartNumber: number,
         options?: IAwsS3PutItemOptions
+    ): Promise<AwsS3MultipartSerialization>;
+    createMultiPartWithAcl(
+        file: IAwsS3PutItem,
+        maxPartNumber: number,
+        options?: IAwsS3PutItemWithAclOptions
     ): Promise<AwsS3MultipartSerialization>;
     uploadPart(
         multipart: AwsS3MultipartSerialization,

@@ -10,6 +10,7 @@ import DebuggerConfig from './debugger.config';
 import MessageConfig from './message.config';
 import GoogleConfig from './google.config';
 import EmailConfig from './email.config';
+import AppleConfig from './apple.config';
 
 export default [
     AppConfig,
@@ -24,4 +25,5 @@ export default [
     MessageConfig,
     GoogleConfig,
     EmailConfig,
+    AppleConfig,
 ];

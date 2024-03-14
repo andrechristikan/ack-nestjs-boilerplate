@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import winston, { LoggerOptions } from 'winston';
 import * as Transport from 'winston-transport';
 import DailyRotateFile from 'winston-daily-rotate-file';
-import { DEBUGGER_NAME } from 'src/common/debugger/constants/debugger.constant';
 import { IDebuggerOptionService } from 'src/common/debugger/interfaces/debugger.options-service.interface';
 
 @Injectable()
@@ -23,7 +22,7 @@ export class DebuggerOptionService implements IDebuggerOptionService {
             transports.push(
                 new DailyRotateFile({
                     filename: `%DATE%.log`,
-                    dirname: `logs/${DEBUGGER_NAME}/error`,
+                    dirname: `logs/error`,
                     datePattern: 'YYYY-MM-DD',
                     zippedArchive: true,
                     maxSize: maxSize,
@@ -34,7 +33,7 @@ export class DebuggerOptionService implements IDebuggerOptionService {
             transports.push(
                 new DailyRotateFile({
                     filename: `%DATE%.log`,
-                    dirname: `logs/${DEBUGGER_NAME}/default`,
+                    dirname: `logs/default`,
                     datePattern: 'YYYY-MM-DD',
                     zippedArchive: true,
                     maxSize: maxSize,

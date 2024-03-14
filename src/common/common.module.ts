@@ -129,6 +129,11 @@ import { DebuggerLoggerModule } from 'src/common/debugger/debugger.logger.module
                     .allow(null, '')
                     .optional(),
 
+                SSO_APPLE_CLIENT_ID: Joi.string().allow(null, '').optional(),
+                SSO_APPLE_TEAM_ID: Joi.string().allow(null, '').optional(),
+                SSO_APPLE_KEY_ID: Joi.string().allow(null, '').optional(),
+                SSO_APPLE_CALLBACK_URL: Joi.string().allow(null, '').optional(),
+
                 SENTRY_DSN: Joi.string().allow(null, '').optional(),
             }),
             validationOptions: {
