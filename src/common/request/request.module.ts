@@ -32,7 +32,6 @@ import { LessThanEqualConstraint } from 'src/common/request/validations/request.
 import { LessThanConstraint } from 'src/common/request/validations/request.less-than.validation';
 import { SentryModule } from '@ntegral/nestjs-sentry';
 import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
-import { RequestLogInterceptor } from 'src/common/request/interceptors/request.log.interceptor';
 
 @Module({
     controllers: [],
@@ -40,10 +39,6 @@ import { RequestLogInterceptor } from 'src/common/request/interceptors/request.l
         {
             provide: APP_INTERCEPTOR,
             useClass: RequestTimeoutInterceptor,
-        },
-        {
-            provide: APP_INTERCEPTOR,
-            useClass: RequestLogInterceptor,
         },
         {
             provide: APP_PIPE,
