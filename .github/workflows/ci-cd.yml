@@ -218,7 +218,7 @@ jobs:
           command: |
             docker container prune --force
             docker image prune --force
-            docker rmi $(docker images **/${{ env.AWS_ECR_URI }} -q) --force
+            docker rmi $(docker images ${{ env.AWS_ECR_URI }}/** -q) --force
           host: ${{ env.SSH_HOST }}
           port: ${{ env.SSH_PORT }}
           user: ${{ env.SSH_USER }}
@@ -326,7 +326,7 @@ jobs:
           command: |
             docker container prune --force
             docker image prune --force
-            docker rmi $(docker images ${{ env.AWS_ECR_URI }} -q) --force
+            docker rmi $(docker images ${{ env.AWS_ECR_URI }}/** -q) --force
           host: ${{ env.SSH_HOST }}
           port: ${{ env.SSH_PORT }}
           user: ${{ env.SSH_USER }}
