@@ -50,6 +50,7 @@ export interface IHelperDateCreateOptions {
 
 export interface IHelperDateFormatOptions {
     format?: ENUM_HELPER_DATE_FORMAT | string;
+    locale?: string;
 }
 
 export interface IHelperDateForwardOptions {

@@ -5,6 +5,7 @@ import {
     ENUM_HELPER_DATE_FORMAT,
 } from 'src/common/helper/constants/helper.enum.constant';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 
 describe('HelperDateService', () => {
     let service: HelperDateService;
@@ -18,7 +19,7 @@ describe('HelperDateService', () => {
                     useValue: {
                         get: jest.fn().mockImplementation((key: string) => {
                             switch (key) {
-                                case 'app.tz':
+                                case 'app.timezone':
                                 default:
                                     return 'UTC';
                             }
@@ -180,7 +181,10 @@ describe('HelperDateService', () => {
         it('should format a date with given options', () => {
             const date = new Date('2021-01-01');
             const format = ENUM_HELPER_DATE_FORMAT.ONLY_MONTH;
-            const formattedDate = service.format(date, { format });
+            const formattedDate = service.format(date, {
+                format,
+                locale: ENUM_MESSAGE_LANGUAGE.EN,
+            });
             expect(formattedDate).toEqual('01');
         });
     });

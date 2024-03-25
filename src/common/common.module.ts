@@ -15,8 +15,11 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
 import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
-import { APP_LANGUAGE } from 'src/app/constants/app.constant';
+import {
+    ENUM_APP_ENVIRONMENT,
+    ENUM_APP_TIMEZONE,
+} from 'src/app/constants/app.enum.constant';
+import { APP_LANGUAGE, APP_TIMEZONE } from 'src/app/constants/app.constant';
 import { PolicyModule } from 'src/common/policy/policy.module';
 import { DebuggerLoggerModule } from 'src/common/debugger/debugger.logger.module';
 
@@ -40,7 +43,10 @@ import { DebuggerLoggerModule } from 'src/common/debugger/debugger.logger.module
                     .valid(...Object.values(ENUM_MESSAGE_LANGUAGE))
                     .default(APP_LANGUAGE)
                     .required(),
-                APP_TZ: Joi.string().required(),
+                APP_TZ: Joi.string()
+                    .valid(...Object.values(ENUM_APP_TIMEZONE))
+                    .default(APP_TIMEZONE)
+                    .required(),
                 APP_MAINTENANCE: Joi.boolean().default(false).required(),
 
                 HTTP_ENABLE: Joi.boolean().default(true).required(),

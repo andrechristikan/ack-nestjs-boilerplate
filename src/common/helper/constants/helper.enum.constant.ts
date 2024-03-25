@@ -9,6 +9,7 @@ export enum ENUM_HELPER_DATE_FORMAT {
     ONLY_YEAR = 'YYYY',
     ONLY_MONTH = 'MM',
     ONLY_DATE = 'DD',
+    ONLY_TIME = 'HH:mm',
     ISO_DATE = 'YYYY-MM-DDTHH:MM:SSZ',
     DAY_LONG = 'dddd',
     DAY_SHORT = 'ddd',

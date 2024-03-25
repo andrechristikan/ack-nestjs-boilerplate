@@ -3,3 +3,8 @@ export enum ENUM_APP_ENVIRONMENT {
     STAGING = 'staging',
     DEVELOPMENT = 'development',
 }
+
+export enum ENUM_APP_TIMEZONE {
+    ASIA_SINGAPORE = 'Asia/Singapore',
+    ASIA_JAKARTA = 'Asia/Jakarta',
+}

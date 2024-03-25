@@ -372,7 +372,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         const del = this._repository.deleteMany({
             _id: {
                 $in: _id,
-            },
+            } as any,
         });
 
         if (options?.session) {
@@ -430,7 +430,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
                 {
                     _id: {
                         $in: _id,
-                    },
+                    } as any,
                 },
                 {
                     $set: {
@@ -503,7 +503,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
                 {
                     _id: {
                         $in: _id,
-                    },
+                    } as any,
                 },
                 {
                     $set: {

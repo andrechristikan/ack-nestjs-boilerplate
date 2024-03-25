@@ -125,7 +125,7 @@ describe('ApiKeyService', () => {
                     useValue: {
                         get: jest.fn().mockImplementation((key: string) => {
                             switch (key) {
-                                case 'app.tz':
+                                case 'app.timezone':
                                     return 'UTC';
                                 case 'app.env':
                                 default:

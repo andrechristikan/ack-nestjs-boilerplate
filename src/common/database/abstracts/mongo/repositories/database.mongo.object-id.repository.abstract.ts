@@ -390,7 +390,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
         const del = this._repository.deleteMany({
             _id: {
                 $in: _id.map((val) => new Types.ObjectId(val)),
-            },
+            } as any,
         });
 
         if (options?.session) {
@@ -448,7 +448,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
                 {
                     _id: {
                         $in: _id.map((val) => new Types.ObjectId(val)),
-                    },
+                    } as any,
                 },
                 {
                     $set: {
@@ -521,7 +521,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
                 {
                     _id: {
                         $in: _id.map((val) => new Types.ObjectId(val)),
-                    },
+                    } as any,
                 },
                 {
                     $set: {

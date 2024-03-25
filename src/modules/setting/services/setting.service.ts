@@ -32,7 +32,7 @@ export class SettingService implements ISettingService {
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
     ) {
-        this.timezone = this.configService.get<string>('app.tz');
+        this.timezone = this.configService.get<string>('app.timezone');
         this.timezoneOffset = this.helperDateService.format(
             this.helperDateService.create(),
             { format: ENUM_HELPER_DATE_FORMAT.TIMEZONE }
