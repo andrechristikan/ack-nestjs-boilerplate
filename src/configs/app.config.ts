@@ -11,7 +11,7 @@ export default registerAs(
         name: process.env.APP_NAME ?? 'ack',
         env: process.env.APP_ENV ?? ENUM_APP_ENVIRONMENT.DEVELOPMENT,
 
-        tz: process.env.APP_TZ ?? APP_TIMEZONE,
+        timezone: process.env.APP_TIMEZONE ?? APP_TIMEZONE,
 
         repoVersion: version,
         versioning: {
