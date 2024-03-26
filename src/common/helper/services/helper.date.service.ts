@@ -95,13 +95,13 @@ export class HelperDateService implements IHelperDateService {
     }
 
     format(date: Date, options?: IHelperDateFormatOptions): string {
-        const m = moment(date).tz(this.defTz);
-
         if (options?.locale) {
             moment.locale(options.locale);
         }
 
-        return m.format(options?.format ?? ENUM_HELPER_DATE_FORMAT.DATE);
+        return moment(date)
+            .tz(this.defTz)
+            .format(options?.format ?? ENUM_HELPER_DATE_FORMAT.DATE);
     }
 
     formatIsoDurationFromMinutes(minutes: number): string {
