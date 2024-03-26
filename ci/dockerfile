@@ -30,5 +30,6 @@ RUN touch .env
 RUN set -x && yarn --production=true
 
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/data ./data
 
 CMD ["yarn", "start:prod"]
