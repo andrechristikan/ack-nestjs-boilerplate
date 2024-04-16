@@ -19,7 +19,7 @@ export class MobileNumberAllowedConstraint
             'user.mobileNumberCountryCodeAllowed'
         );
         mobileNumbersSetting;
-        const check = mobileNumbersSetting.find((val) => value.startsWith(val));
+        const check = mobileNumbersSetting.find(val => value.startsWith(val));
 
         return !!check;
     }

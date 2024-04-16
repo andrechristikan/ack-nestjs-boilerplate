@@ -322,7 +322,7 @@ export class AwsS3Service implements IAwsS3Service {
         >(commandList);
 
         try {
-            const listItems = lists.Contents.map((val) => ({
+            const listItems = lists.Contents.map(val => ({
                 Key: val.Key,
             }));
             const commandDeleteItems: DeleteObjectsCommand =

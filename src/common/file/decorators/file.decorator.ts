@@ -60,7 +60,7 @@ export function FileUploadMultipleFields(
     return applyDecorators(
         UseInterceptors(
             FileFieldsInterceptor(
-                fields.map((e) => ({
+                fields.map(e => ({
                     name: e.field,
                     maxCount: e.maxFiles,
                 })),

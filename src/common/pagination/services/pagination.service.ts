@@ -80,7 +80,7 @@ export class PaginationService implements IPaginationService {
         }
 
         return {
-            $or: availableSearch.map((val) => ({
+            $or: availableSearch.map(val => ({
                 [val]: {
                     $regex: new RegExp(searchValue),
                     $options: 'i',

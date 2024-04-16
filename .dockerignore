@@ -1,5 +1,3 @@
-#husky
-
 # Build dependencies
 node_modules/
 coverage/

@@ -4,7 +4,7 @@ import {
     Doc,
     DocAuth,
     DocDefault,
-    DocErrorGroup,
+    DocGroup,
     DocRequest,
     DocGuard,
     DocResponse,
@@ -39,7 +39,7 @@ export function SettingAdminGetDoc(): MethodDecorator {
             serialization: SettingGetSerialization,
         }),
         DocAuth({ apiKey: true }),
-        DocErrorGroup([
+        DocGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,
                 statusCode:
@@ -66,7 +66,7 @@ export function SettingAdminUpdateDoc(): MethodDecorator {
             serialization: ResponseIdSerialization,
         }),
         DocGuard({ role: true, policy: true }),
-        DocErrorGroup([
+        DocGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,
                 statusCode:

@@ -283,7 +283,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
                 _id: {
                     $nin:
                         options?.excludeId.map(
-                            (val) => new Types.ObjectId(val)
+                            val => new Types.ObjectId(val)
                         ) ?? [],
                 },
             };
@@ -389,7 +389,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
     ): Promise<boolean> {
         const del = this._repository.deleteMany({
             _id: {
-                $in: _id.map((val) => new Types.ObjectId(val)),
+                $in: _id.map(val => new Types.ObjectId(val)),
             } as any,
         });
 
@@ -447,7 +447,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
             .updateMany(
                 {
                     _id: {
-                        $in: _id.map((val) => new Types.ObjectId(val)),
+                        $in: _id.map(val => new Types.ObjectId(val)),
                     } as any,
                 },
                 {
@@ -520,7 +520,7 @@ export abstract class DatabaseMongoObjectIdRepositoryAbstract<
             .updateMany(
                 {
                     _id: {
-                        $in: _id.map((val) => new Types.ObjectId(val)),
+                        $in: _id.map(val => new Types.ObjectId(val)),
                     } as any,
                 },
                 {

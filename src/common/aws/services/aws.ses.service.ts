@@ -220,7 +220,7 @@ export class AwsSESService implements IAwsSESService {
         const command: SendBulkTemplatedEmailCommand =
             new SendBulkTemplatedEmailCommand({
                 Template: templateName,
-                Destinations: recipients.map((e) => ({
+                Destinations: recipients.map(e => ({
                     Destination: {
                         ToAddresses: [e.recipient],
                         BccAddresses: bcc ?? [],

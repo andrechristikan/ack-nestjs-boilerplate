@@ -60,7 +60,7 @@ export class UserCreateDto {
     @IsOptional()
     @MinLength(10)
     @MaxLength(14)
-    @ValidateIf((e) => e.mobileNumber !== '')
+    @ValidateIf(e => e.mobileNumber !== '')
     @Type(() => String)
     @MobileNumberAllowed()
     readonly mobileNumber?: string;

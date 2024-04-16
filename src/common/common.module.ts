@@ -21,7 +21,6 @@ import {
 } from 'src/app/constants/app.enum.constant';
 import { APP_LANGUAGE, APP_TIMEZONE } from 'src/app/constants/app.constant';
 import { PolicyModule } from 'src/common/policy/policy.module';
-import { DebuggerLoggerModule } from 'src/common/debugger/debugger.logger.module';
 
 @Module({
     controllers: [],
@@ -58,10 +57,6 @@ import { DebuggerLoggerModule } from 'src/common/debugger/debugger.logger.module
                 HTTP_VERSIONING_ENABLE: Joi.boolean().default(true).required(),
                 HTTP_VERSION: Joi.number().required(),
 
-                DEBUGGER_WRITE_INTO_FILE: Joi.boolean()
-                    .default(false)
-                    .required(),
-
                 JOB_ENABLE: Joi.boolean().default(false).required(),
 
                 DATABASE_HOST: Joi.string()
@@ -93,30 +88,6 @@ import { DebuggerLoggerModule } from 'src/common/debugger/debugger.logger.module
                     .min(5)
                     .max(50)
                     .required(),
-
-                AUTH_JWT_PAYLOAD_ENCRYPT: Joi.boolean()
-                    .default(false)
-                    .required(),
-                AUTH_JWT_PAYLOAD_ACCESS_TOKEN_ENCRYPT_KEY: Joi.string()
-                    .allow(null, '')
-                    .min(20)
-                    .max(50)
-                    .optional(),
-                AUTH_JWT_PAYLOAD_ACCESS_TOKEN_ENCRYPT_IV: Joi.string()
-                    .allow(null, '')
-                    .min(16)
-                    .max(50)
-                    .optional(),
-                AUTH_JWT_PAYLOAD_REFRESH_TOKEN_ENCRYPT_KEY: Joi.string()
-                    .allow(null, '')
-                    .min(20)
-                    .max(50)
-                    .optional(),
-                AUTH_JWT_PAYLOAD_REFRESH_TOKEN_ENCRYPT_IV: Joi.string()
-                    .allow(null, '')
-                    .min(16)
-                    .max(50)
-                    .optional(),
 
                 AWS_S3_CREDENTIAL_KEY: Joi.string().allow(null, '').optional(),
                 AWS_S3_CREDENTIAL_SECRET: Joi.string()
@@ -161,7 +132,6 @@ import { DebuggerLoggerModule } from 'src/common/debugger/debugger.logger.module
         ResponseModule,
         RequestModule,
         PolicyModule,
-        DebuggerLoggerModule,
         ApiKeyModule,
         AuthModule.forRoot(),
     ],

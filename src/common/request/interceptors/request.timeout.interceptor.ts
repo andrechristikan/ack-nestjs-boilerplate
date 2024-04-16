@@ -48,7 +48,7 @@ export class RequestTimeoutInterceptor
 
                 return next.handle().pipe(
                     timeout(ms(seconds)),
-                    catchError((err) => {
+                    catchError(err => {
                         if (err instanceof TimeoutError) {
                             throw new RequestTimeoutException({
                                 statusCode:
@@ -62,7 +62,7 @@ export class RequestTimeoutInterceptor
             } else {
                 return next.handle().pipe(
                     timeout(this.maxTimeoutInSecond),
-                    catchError((err) => {
+                    catchError(err => {
                         if (err instanceof TimeoutError) {
                             throw new RequestTimeoutException({
                                 statusCode:

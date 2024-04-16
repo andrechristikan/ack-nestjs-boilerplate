@@ -1,4 +1,3 @@
-import { faker } from '@faker-js/faker';
 import { applyDecorators, HttpStatus } from '@nestjs/common';
 import {
     ApiBearerAuth,
@@ -215,9 +214,6 @@ export function DocAllOf<T>(
 }
 
 export function Doc(options?: IDocOptions): MethodDecorator {
-    const currentTimestamp: number = new Date().valueOf();
-    const userAgent: string = faker.internet.userAgent();
-
     return applyDecorators(
         ApiOperation({
             summary: options?.summary,
@@ -227,16 +223,6 @@ export function Doc(options?: IDocOptions): MethodDecorator {
         }),
         ApiHeaders([
             {
-                name: 'user-agent',
-                description: 'User agent header',
-                required: false,
-                schema: {
-                    default: userAgent,
-                    example: userAgent,
-                    type: 'string',
-                },
-            },
-            {
                 name: 'x-custom-lang',
                 description: 'Custom language header',
                 required: false,
@@ -244,16 +230,6 @@ export function Doc(options?: IDocOptions): MethodDecorator {
                     default: APP_LANGUAGE,
                     example: APP_LANGUAGE,
                     type: 'string',
-                },
-            },
-            {
-                name: 'x-timestamp',
-                description: 'Timestamp header, in microseconds',
-                required: false,
-                schema: {
-                    default: currentTimestamp,
-                    example: currentTimestamp,
-                    type: 'number',
                 },
             },
         ]),
@@ -298,14 +274,14 @@ export function DocRequest(options?: IDocRequestOptions) {
     }
 
     if (options?.params) {
-        const params: MethodDecorator[] = options?.params?.map((param) =>
+        const params: MethodDecorator[] = options?.params?.map(param =>
             ApiParam(param)
         );
         docs.push(...params);
     }
 
     if (options?.queries) {
-        const queries: MethodDecorator[] = options?.queries?.map((query) =>
+        const queries: MethodDecorator[] = options?.queries?.map(query =>
             ApiQuery(query)
         );
         docs.push(...queries);
@@ -322,14 +298,14 @@ export function DocRequestFile(options?: IDocRequestFileOptions) {
     const docs: Array<ClassDecorator | MethodDecorator> = [];
 
     if (options?.params) {
-        const params: MethodDecorator[] = options?.params.map((param) =>
+        const params: MethodDecorator[] = options?.params.map(param =>
             ApiParam(param)
         );
         docs.push(...params);
     }
 
     if (options?.queries) {
-        const queries: MethodDecorator[] = options?.queries?.map((query) =>
+        const queries: MethodDecorator[] = options?.queries?.map(query =>
             ApiQuery(query)
         );
         docs.push(...queries);
@@ -344,33 +320,6 @@ export function DocRequestFile(options?: IDocRequestFileOptions) {
 
 export function DocGuard(options?: IDocGuardOptions) {
     const oneOfForbidden: IDocOfOptions[] = [];
-    if (options?.userAgent) {
-        oneOfForbidden.push(
-            {
-                statusCode:
-                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_OS_INVALID_ERROR,
-                messagePath: 'request.error.userAgentInvalid',
-            },
-            {
-                statusCode:
-                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_BROWSER_INVALID_ERROR,
-                messagePath: 'request.error.userAgentBrowserInvalid',
-            },
-            {
-                statusCode:
-                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_OS_INVALID_ERROR,
-                messagePath: 'request.error.userAgentOsInvalid',
-            }
-        );
-    }
-
-    if (options?.timestamp) {
-        oneOfForbidden.push({
-            statusCode:
-                ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
-            messagePath: 'request.error.timestampInvalid',
-        });
-    }
 
     if (options?.role) {
         oneOfForbidden.push({
@@ -481,7 +430,7 @@ export function DocResponse<T = void>(
     return applyDecorators(ApiProduces('application/json'), DocDefault(docs));
 }
 
-export function DocErrorGroup(docs: MethodDecorator[]) {
+export function DocGroup(docs: MethodDecorator[]) {
     return applyDecorators(...docs);
 }
 

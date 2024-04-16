@@ -40,8 +40,6 @@ export interface IDocRequestFileOptions
     extends Omit<IDocRequestOptions, 'bodyType'> {}
 
 export interface IDocGuardOptions {
-    userAgent?: boolean;
-    timestamp?: boolean;
     role?: boolean;
     policy?: boolean;
 }

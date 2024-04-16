@@ -47,7 +47,7 @@ export class FileTypePipe implements PipeTransform {
     }
 
     async validate(mimetype: string): Promise<void> {
-        if (!this.type.find((val) => val === mimetype.toLowerCase())) {
+        if (!this.type.find(val => val === mimetype.toLowerCase())) {
             throw new UnsupportedMediaTypeException({
                 statusCode: ENUM_FILE_STATUS_CODE_ERROR.FILE_EXTENSION_ERROR,
                 message: 'file.error.mimeInvalid',

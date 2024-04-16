@@ -84,7 +84,7 @@ export class RoleCreateDto extends PartialType(RoleUpdateDto) {
     @IsNotEmpty()
     @IsArray()
     @ValidateNested()
-    @ValidateIf((e) => e.type === ENUM_ROLE_TYPE.ADMIN)
+    @ValidateIf(e => e.type === ENUM_ROLE_TYPE.ADMIN)
     @Transform(({ value, obj }) =>
         obj.type !== ENUM_ROLE_TYPE.ADMIN ? [] : value
     )

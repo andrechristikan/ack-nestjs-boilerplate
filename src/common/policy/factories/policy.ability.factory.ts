@@ -76,7 +76,7 @@ export class PolicyAbilityFactory {
             .map(({ subject, action }) => {
                 return action
                     .map(
-                        (val) => (ability: IPolicyAbility) =>
+                        val => (ability: IPolicyAbility) =>
                             ability.can(val, subject)
                     )
                     .flat(1);

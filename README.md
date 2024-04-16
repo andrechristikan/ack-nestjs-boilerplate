@@ -69,6 +69,7 @@
 * [ ] CD Using AWS ECS and deploy to AWS EC2, `currently only using AWS EC2`
 * [x] Update Package, and remove unused package
 * [x] Add Apple SSO
+* [ ] Stragiht forward
 * [ ] Update Documentation, add behaviors
 * [ ] Update Documentation, and include an diagram for easier comprehension
 * [ ] Add Redis

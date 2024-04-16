@@ -7,8 +7,5 @@
     "logs",
     "test",
     "data"
-  ],
-  "include": [
-    "src"
-  ],
+  ]
 }

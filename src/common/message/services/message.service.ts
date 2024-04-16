@@ -107,7 +107,7 @@ export class MessageService implements IMessageService {
         errors: IErrorValidationImport[],
         options?: IMessageErrorOptions
     ): IErrorsImport[] {
-        return errors.map((val) => ({
+        return errors.map(val => ({
             row: val.row,
             sheetName: val.sheetName,
             errors: this.getRequestErrorsMessage(val.errors, options),

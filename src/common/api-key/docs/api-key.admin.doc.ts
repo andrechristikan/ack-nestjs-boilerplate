@@ -18,7 +18,7 @@ import {
     Doc,
     DocAuth,
     DocDefault,
-    DocErrorGroup,
+    DocGroup,
     DocOneOf,
     DocRequest,
     DocGuard,
@@ -58,7 +58,7 @@ export function ApiKeyAdminGetDoc(): MethodDecorator {
             serialization: ApiKeyGetSerialization,
         }),
         DocGuard({ role: true, policy: true }),
-        DocErrorGroup([
+        DocGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,
                 statusCode:
@@ -100,7 +100,7 @@ export function ApiKeyAdminActiveDoc(): MethodDecorator {
         }),
         DocResponse('apiKey.active'),
         DocGuard({ role: true, policy: true }),
-        DocErrorGroup([
+        DocGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,
                 statusCode:
@@ -136,7 +136,7 @@ export function ApiKeyAdminInactiveDoc(): MethodDecorator {
         }),
         DocResponse('apiKey.inactive'),
         DocGuard({ role: true, policy: true }),
-        DocErrorGroup([
+        DocGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,
                 statusCode:
@@ -174,7 +174,7 @@ export function ApiKeyAdminResetDoc(): MethodDecorator {
         DocResponse<ApiKeyResetSerialization>('apiKey.reset', {
             serialization: ApiKeyResetSerialization,
         }),
-        DocErrorGroup([
+        DocGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,
                 statusCode:
@@ -214,7 +214,7 @@ export function ApiKeyAdminUpdateDoc(): MethodDecorator {
         DocResponse<ResponseIdSerialization>('apiKey.update', {
             serialization: ResponseIdSerialization,
         }),
-        DocErrorGroup([
+        DocGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,
                 statusCode:
@@ -254,7 +254,7 @@ export function ApiKeyAdminUpdateDateDoc(): MethodDecorator {
         DocResponse<ResponseIdSerialization>('apiKey.updateDate', {
             serialization: ResponseIdSerialization,
         }),
-        DocErrorGroup([
+        DocGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,
                 statusCode:

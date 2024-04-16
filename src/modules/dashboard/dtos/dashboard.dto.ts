@@ -10,7 +10,7 @@ export class DashboardDto {
     })
     @IsDateString()
     @IsOptional()
-    @ValidateIf((e) => e.startDate !== '' || e.endDate !== '')
+    @ValidateIf(e => e.startDate !== '' || e.endDate !== '')
     startDate?: Date;
 
     @ApiProperty({
@@ -21,6 +21,6 @@ export class DashboardDto {
     @IsDateString()
     @IsOptional()
     @GreaterThanEqual('startDate')
-    @ValidateIf((e) => e.startDate !== '' || e.endDate !== '')
+    @ValidateIf(e => e.startDate !== '' || e.endDate !== '')
     endDate?: Date;
 }

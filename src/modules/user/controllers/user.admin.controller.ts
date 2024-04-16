@@ -384,9 +384,8 @@ export class UserAdminController {
         }
 
         const mobileNumbers =
-            file.extracts[0].data.map((e) => e.mobileNumber).filter((e) => e) ??
-            [];
-        const emails = file.extracts[0].data.map((e) => e.email) ?? [];
+            file.extracts[0].data.map(e => e.mobileNumber).filter(e => e) ?? [];
+        const emails = file.extracts[0].data.map(e => e.email) ?? [];
 
         const promises: Promise<any>[] = [
             this.userService.existByEmails(emails),
