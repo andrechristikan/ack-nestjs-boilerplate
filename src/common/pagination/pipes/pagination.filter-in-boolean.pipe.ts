@@ -2,13 +2,14 @@ import { Inject, Injectable, mixin, Type } from '@nestjs/common';
 import { PipeTransform, Scope } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
+import { IPaginationFilterOptions } from 'src/common/pagination/interfaces/pagination.interface';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationFilterInBooleanPipe(
     field: string,
     defaultValue: boolean[],
-    raw: boolean
+    options?: IPaginationFilterOptions
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
     class MixinPaginationFilterInBooleanPipe implements PipeTransform {
@@ -18,29 +19,32 @@ export function PaginationFilterInBooleanPipe(
             private readonly helperArrayService: HelperArrayService
         ) {}
 
-        async transform(
-            value: string
-        ): Promise<Record<string, { $in: boolean[] } | boolean[]>> {
-            let finalValue: boolean[] = defaultValue as boolean[];
-
-            if (value) {
-                finalValue = this.helperArrayService.unique(
-                    value.split(',').map((val: string) => val === 'true')
-                );
-            }
-
-            let res: Record<string, any>;
-            if (raw) {
-                res = {
-                    [field]: finalValue,
+        async transform(value: string): Promise<Record<string, any>> {
+            if (options?.raw) {
+                this.addToRequestInstance(value);
+                return {
+                    [field]: value,
                 };
-            } else {
-                res = this.paginationService.filterIn<boolean>(
-                    field,
-                    finalValue
-                );
             }
 
+            const finalValue: boolean[] = value
+                ? this.helperArrayService.unique(
+                      value.split(',').map((val: string) => val === 'true')
+                  )
+                : defaultValue;
+
+            if (finalValue.length === 2) {
+                return undefined;
+            }
+
+            this.addToRequestInstance(finalValue);
+            return this.paginationService.filterEqual<boolean>(
+                field,
+                finalValue[0]
+            );
+        }
+
+        addToRequestInstance(value: any): void {
             this.request.__pagination = {
                 ...this.request.__pagination,
                 filters: this.request.__pagination?.filters
@@ -50,8 +54,6 @@ export function PaginationFilterInBooleanPipe(
                       }
                     : { [field]: value },
             };
-
-            return res;
         }
     }
 

@@ -4,28 +4,26 @@ import {
     ApiKeyDocQueryIsActive,
 } from 'src/common/api-key/constants/api-key.doc.constant';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
-import { ApiKeyCreateDto } from 'src/common/api-key/dtos/api-key.create.dto';
-import {
-    ApiKeyUpdateDateDto,
-    ApiKeyUpdateDto,
-} from 'src/common/api-key/dtos/api-key.update.dto';
-import { ApiKeyCreateSerialization } from 'src/common/api-key/serializations/api-key.create.serialization';
-import { ApiKeyGetSerialization } from 'src/common/api-key/serializations/api-key.get.serialization';
-import { ApiKeyListSerialization } from 'src/common/api-key/serializations/api-key.list.serialization';
-import { ApiKeyResetSerialization } from 'src/common/api-key/serializations/api-key.reset.serialization';
+import { ApiKeyCreateRequestDto } from 'src/common/api-key/dtos/request/api-key.create.request.dto';
+import { ApiKeyUpdateDateRequestDto } from 'src/common/api-key/dtos/request/api-key.update-date.request.dto';
+import { ApiKeyUpdateNameRequestDto } from 'src/common/api-key/dtos/request/api-key.update-name.request.dto';
+import { ApiKeyCreateResponseDto } from 'src/common/api-key/dtos/response/api-key.create.dto';
+import { ApiKeyGetResponseDto } from 'src/common/api-key/dtos/response/api-key.get.response.dto';
+import { ApiKeyListResponseDto } from 'src/common/api-key/dtos/response/api-key.list.response.dto';
+import { ApiKeyResetResponseDto } from 'src/common/api-key/dtos/response/api-key.reset.dto';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
     Doc,
     DocAuth,
     DocDefault,
-    DocGroup,
     DocOneOf,
     DocRequest,
     DocGuard,
     DocResponse,
     DocResponsePaging,
+    DocErrorGroup,
 } from 'src/common/doc/decorators/doc.decorator';
-import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
+import { ResponseIdDto } from 'src/common/response/dtos/response/response.id.dto';
 
 export function ApiKeyAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -37,9 +35,9 @@ export function ApiKeyAdminListDoc(): MethodDecorator {
             apiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
-        DocResponsePaging<ApiKeyListSerialization>('apiKey.list', {
-            serialization: ApiKeyListSerialization,
+        DocGuard({ policy: true }),
+        DocResponsePaging<ApiKeyListResponseDto>('apiKey.list', {
+            dto: ApiKeyListResponseDto,
         })
     );
 }
@@ -54,11 +52,11 @@ export function ApiKeyAdminGetDoc(): MethodDecorator {
             apiKey: true,
             jwtAccessToken: true,
         }),
-        DocResponse<ApiKeyGetSerialization>('apiKey.get', {
-            serialization: ApiKeyGetSerialization,
+        DocResponse<ApiKeyGetResponseDto>('apiKey.get', {
+            dto: ApiKeyGetResponseDto,
         }),
-        DocGuard({ role: true, policy: true }),
-        DocGroup([
+        DocGuard({ policy: true }),
+        DocErrorGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,
                 statusCode:
@@ -78,12 +76,12 @@ export function ApiKeyAdminCreateDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
-            body: ApiKeyCreateDto,
+            dto: ApiKeyCreateRequestDto,
         }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse<ApiKeyCreateSerialization>('apiKey.create', {
+        DocGuard({ policy: true }),
+        DocResponse<ApiKeyCreateResponseDto>('apiKey.create', {
             httpStatus: HttpStatus.CREATED,
-            serialization: ApiKeyCreateSerialization,
+            dto: ApiKeyCreateResponseDto,
         })
     );
 }
@@ -99,8 +97,8 @@ export function ApiKeyAdminActiveDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocResponse('apiKey.active'),
-        DocGuard({ role: true, policy: true }),
-        DocGroup([
+        DocGuard({ policy: true }),
+        DocErrorGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,
                 statusCode:
@@ -135,8 +133,8 @@ export function ApiKeyAdminInactiveDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocResponse('apiKey.inactive'),
-        DocGuard({ role: true, policy: true }),
-        DocGroup([
+        DocGuard({ policy: true }),
+        DocErrorGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,
                 statusCode:
@@ -170,11 +168,11 @@ export function ApiKeyAdminResetDoc(): MethodDecorator {
             apiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse<ApiKeyResetSerialization>('apiKey.reset', {
-            serialization: ApiKeyResetSerialization,
+        DocGuard({ policy: true }),
+        DocResponse<ApiKeyResetResponseDto>('apiKey.reset', {
+            dto: ApiKeyResetResponseDto,
         }),
-        DocGroup([
+        DocErrorGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,
                 statusCode:
@@ -198,23 +196,21 @@ export function ApiKeyAdminResetDoc(): MethodDecorator {
     );
 }
 
-export function ApiKeyAdminUpdateDoc(): MethodDecorator {
+export function ApiKeyAdminUpdateNameDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'update data an api key' }),
         DocRequest({
             params: ApiKeyDocParamsId,
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
-            body: ApiKeyUpdateDto,
+            dto: ApiKeyUpdateNameRequestDto,
         }),
         DocAuth({
             apiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse<ResponseIdSerialization>('apiKey.update', {
-            serialization: ResponseIdSerialization,
-        }),
-        DocGroup([
+        DocGuard({ policy: true }),
+        DocResponse('apiKey.update'),
+        DocErrorGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,
                 statusCode:
@@ -244,17 +240,17 @@ export function ApiKeyAdminUpdateDateDoc(): MethodDecorator {
         DocRequest({
             params: ApiKeyDocParamsId,
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
-            body: ApiKeyUpdateDateDto,
+            dto: ApiKeyUpdateDateRequestDto,
         }),
         DocAuth({
             apiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse<ResponseIdSerialization>('apiKey.updateDate', {
-            serialization: ResponseIdSerialization,
+        DocGuard({ policy: true }),
+        DocResponse<ResponseIdDto>('apiKey.updateDate', {
+            dto: ResponseIdDto,
         }),
-        DocGroup([
+        DocErrorGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,
                 statusCode:
@@ -288,7 +284,7 @@ export function ApiKeyAdminDeleteDoc(): MethodDecorator {
             apiKey: true,
             jwtAccessToken: true,
         }),
-        DocGuard({ role: true, policy: true }),
+        DocGuard({ policy: true }),
         DocResponse('apiKey.delete')
     );
 }

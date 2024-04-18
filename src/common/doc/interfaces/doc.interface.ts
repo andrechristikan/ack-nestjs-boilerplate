@@ -11,13 +11,13 @@ export interface IDocOptions {
     description?: string;
 }
 
-export interface IDocOfOptions {
+export interface IDocOfOptions<T = any> {
     statusCode: number;
     messagePath: string;
-    serialization?: ClassConstructor<any>;
+    dto?: ClassConstructor<T>;
 }
 
-export interface IDocDefaultOptions extends IDocOfOptions {
+export interface IDocDefaultOptions<T = any> extends IDocOfOptions<T> {
     httpStatus: HttpStatus;
 }
 
@@ -29,38 +29,36 @@ export interface IDocAuthOptions {
     apple?: boolean;
 }
 
-export interface IDocRequestOptions {
+export interface IDocRequestOptions<T = any> {
     params?: ApiParamOptions[];
     queries?: ApiQueryOptions[];
     bodyType?: ENUM_DOC_REQUEST_BODY_TYPE;
-    body?: ClassConstructor<any>;
+    dto?: ClassConstructor<T>;
 }
 
 export interface IDocRequestFileOptions
     extends Omit<IDocRequestOptions, 'bodyType'> {}
 
 export interface IDocGuardOptions {
-    role?: boolean;
     policy?: boolean;
 }
 
-export interface IDocResponseOptions<T> {
+export interface IDocResponseOptions<T = any> {
     statusCode?: number;
     httpStatus?: HttpStatus;
-    serialization?: ClassConstructor<T>;
+    dto?: ClassConstructor<T>;
 }
 
-export interface IDocResponsePagingOptions<T>
-    extends Omit<IDocResponseOptions<T>, 'serialization'> {
-    serialization: ClassConstructor<T>;
+export interface IDocResponsePagingOptions<T = any>
+    extends Omit<IDocResponseOptions<T>, 'dto'> {
+    dto: ClassConstructor<T>;
 }
 
 export interface IDocResponseFileOptions
-    extends Omit<IDocResponseOptions<any>, 'serialization' | 'statusCode'> {
+    extends Omit<IDocResponseOptions, 'dto' | 'statusCode'> {
     fileType?: ENUM_FILE_MIME;
 }
 
-export interface IDocErrorOptions<T> {
+export interface IDocErrorOptions<T> extends IDocResponseOptions<T> {
     messagePath: string;
-    options?: IDocResponseOptions<T>;
 }

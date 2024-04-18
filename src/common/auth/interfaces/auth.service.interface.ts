@@ -1,45 +1,34 @@
+import { AuthJwtAccessPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.access-payload.dto';
+import { AuthJwtRefreshPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
 import {
     IAuthPassword,
     IAuthPayloadOptions,
 } from 'src/common/auth/interfaces/auth.interface';
-import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
-import { AuthRefreshPayloadSerialization } from 'src/common/auth/serializations/auth.refresh-payload.serialization';
 import {
     IHelperApplePayload,
     IHelperGooglePayload,
 } from 'src/common/helper/interfaces/helper.interface';
 
 export interface IAuthService {
-    encryptAccessToken(payload: Record<string, any>): Promise<string>;
-    decryptAccessToken(
-        payload: Record<string, any>
-    ): Promise<Record<string, any>>;
-    createAccessToken(
-        payloadHashed: string | Record<string, any>
-    ): Promise<string>;
+    createAccessToken(payload: AuthJwtAccessPayloadDto): Promise<string>;
     validateAccessToken(token: string): Promise<boolean>;
-    payloadAccessToken(token: string): Promise<Record<string, any>>;
-    encryptRefreshToken(payload: Record<string, any>): Promise<string>;
-    decryptRefreshToken(
-        payload: Record<string, any>
-    ): Promise<Record<string, any>>;
-    createRefreshToken(
-        payloadHashed: string | Record<string, any>
-    ): Promise<string>;
+    payloadAccessToken(token: string): Promise<AuthJwtAccessPayloadDto>;
+    createRefreshToken(payload: AuthJwtRefreshPayloadDto): Promise<string>;
     validateRefreshToken(token: string): Promise<boolean>;
-    payloadRefreshToken(token: string): Promise<Record<string, any>>;
+    payloadRefreshToken(token: string): Promise<AuthJwtRefreshPayloadDto>;
     validateUser(
         passwordString: string,
         passwordHash: string
     ): Promise<boolean>;
     createPayloadAccessToken(
         user: Record<string, any>,
-        { loginFrom, loginWith, loginDate }: IAuthPayloadOptions
-    ): Promise<AuthAccessPayloadSerialization>;
-    createPayloadRefreshToken(
-        _id: string,
-        { loginFrom, loginWith, loginDate }: AuthAccessPayloadSerialization
-    ): Promise<AuthRefreshPayloadSerialization>;
+        { loginFrom, loginDate }: IAuthPayloadOptions
+    ): Promise<AuthJwtAccessPayloadDto>;
+    createPayloadRefreshToken({
+        _id,
+        loginFrom,
+        loginDate,
+    }: AuthJwtAccessPayloadDto): Promise<AuthJwtRefreshPayloadDto>;
     createSalt(length: number): Promise<string>;
     createPassword(password: string): Promise<IAuthPassword>;
     createPasswordRandom(): Promise<string>;
@@ -50,7 +39,6 @@ export interface IAuthService {
     getIssuer(): Promise<string>;
     getAudience(): Promise<string>;
     getSubject(): Promise<string>;
-    getPayloadEncryption(): Promise<boolean>;
     googleGetTokenInfo(accessToken: string): Promise<IHelperGooglePayload>;
     appleGetTokenInfo(accessToken: string): Promise<IHelperApplePayload>;
     getPasswordAttempt(): Promise<boolean>;

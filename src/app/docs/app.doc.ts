@@ -1,5 +1,5 @@
 import { applyDecorators } from '@nestjs/common';
-import { AppHelloSerialization } from 'src/app/serializations/app.hello.serialization';
+import { AppHelloDto } from 'src/app/dtos/response/app.hello.dto';
 import { Doc, DocResponse } from 'src/common/doc/decorators/doc.decorator';
 
 export function AppHelloDoc(): MethodDecorator {
@@ -7,8 +7,8 @@ export function AppHelloDoc(): MethodDecorator {
         Doc({
             summary: 'hello test api',
         }),
-        DocResponse<AppHelloSerialization>('app.hello', {
-            serialization: AppHelloSerialization,
+        DocResponse<AppHelloDto>('app.hello', {
+            dto: AppHelloDto,
         })
     );
 }

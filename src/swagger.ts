@@ -3,8 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { NestApplication } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
-import { ResponseSerialization } from 'src/common/response/serializations/response.serialization';
-import { ResponsePagingSerialization } from 'src/common/response/serializations/response.paging.serialization';
 import { writeFileSync } from 'fs';
 
 export default async function (app: NestApplication) {
@@ -47,7 +45,6 @@ export default async function (app: NestApplication) {
 
         const document = SwaggerModule.createDocument(app, documentBuild, {
             deepScanRoutes: true,
-            extraModels: [ResponseSerialization, ResponsePagingSerialization],
         });
 
         writeFileSync('./data/swagger.json', JSON.stringify(document));

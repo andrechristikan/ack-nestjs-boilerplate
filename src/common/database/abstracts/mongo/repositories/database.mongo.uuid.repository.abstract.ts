@@ -77,7 +77,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             findAll.session(options.session);
         }
 
-        return options?.plainObject ? findAll.lean() : findAll.exec();
+        return findAll.exec();
     }
 
     async findAllDistinct<T = EntityDocument>(
@@ -118,7 +118,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             findAll.session(options.session);
         }
 
-        return (options?.plainObject ? findAll.lean() : findAll.exec()) as any;
+        return findAll.exec() as any;
     }
     async findOne<T = EntityDocument>(
         find: Record<string, any>,
@@ -146,7 +146,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             findOne.session(options.session);
         }
 
-        return options?.plainObject ? findOne.lean() : findOne.exec();
+        return findOne.exec();
     }
 
     async findOneById<T = EntityDocument>(
@@ -175,7 +175,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             findOne.session(options.session);
         }
 
-        return options?.plainObject ? findOne.lean() : findOne.exec();
+        return findOne.exec();
     }
 
     async findOneAndLock<T = EntityDocument>(

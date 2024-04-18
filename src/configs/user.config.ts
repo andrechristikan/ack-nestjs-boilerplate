@@ -8,6 +8,8 @@ export default registerAs(
             process.env.APP_ENV === ENUM_APP_ENVIRONMENT.PRODUCTION
                 ? '/user/{user}'
                 : '/test/user/{user}',
+
+        // TODO: Move to DB
         mobileNumberCountryCodeAllowed: ['628'],
     })
 );

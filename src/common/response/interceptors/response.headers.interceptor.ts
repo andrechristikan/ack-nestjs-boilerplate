@@ -23,7 +23,8 @@ export class ResponseHeadersInterceptor
             const responseExpress: Response = ctx.getResponse();
             const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
-            responseExpress.setHeader('x-custom-lang', request.__xCustomLang);
+            responseExpress.setHeader('x-custom-lang', request.__language);
+            responseExpress.setHeader('x-timestamp', request.__timestamp);
             responseExpress.setHeader('x-timezone', request.__timezone);
             responseExpress.setHeader('x-request-id', request.__id);
             responseExpress.setHeader('x-version', request.__version);

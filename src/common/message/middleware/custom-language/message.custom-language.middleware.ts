@@ -1,45 +1,31 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Response, NextFunction } from 'express';
-import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
 import { MessageService } from 'src/common/message/services/message.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
 export class MessageCustomLanguageMiddleware implements NestMiddleware {
-    constructor(
-        private readonly helperArrayService: HelperArrayService,
-        private readonly messageService: MessageService
-    ) {}
+    constructor(private readonly messageService: MessageService) {}
 
     async use(
         req: IRequestApp,
         res: Response,
         next: NextFunction
     ): Promise<void> {
-        let language: string = this.messageService.getLanguage();
-        const availableLanguages: string[] =
-            this.messageService.getAvailableLanguages();
-        let customLang: string[] = [language];
+        let customLang: string = this.messageService.getLanguage();
 
         const reqLanguages: string = req.headers['x-custom-lang'] as string;
         if (reqLanguages) {
-            const splitLanguage: string[] = reqLanguages
-                .split(',')
-                .map(val => val.toLowerCase());
-            const languages: string[] = this.helperArrayService.getIntersection(
-                availableLanguages,
-                splitLanguage
-            );
+            const language: string[] =
+                this.messageService.filterLanguage(reqLanguages);
 
-            if (languages.length > 0) {
-                language = languages.join(',');
-                customLang = languages;
+            if (language.length > 0) {
+                customLang = reqLanguages;
             }
         }
 
-        req.__customLang = customLang;
-        req.__xCustomLang = language;
-        req.headers['x-custom-lang'] = language;
+        req.__language = customLang;
+        req.headers['x-custom-lang'] = customLang;
 
         next();
     }

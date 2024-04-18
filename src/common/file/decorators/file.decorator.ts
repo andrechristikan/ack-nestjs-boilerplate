@@ -14,7 +14,7 @@ import { IFileMultipleField } from 'src/common/file/interfaces/file.interface';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function FileUploadSingle(
-    field?: string,
+    field = 'file',
     fileSize = FILE_SIZE_IN_BYTES
 ): MethodDecorator {
     return applyDecorators(
@@ -30,13 +30,13 @@ export function FileUploadSingle(
 }
 
 export function FileUploadMultiple(
-    field?: string,
-    maxFiles?: number,
+    field = 'files',
+    maxFiles = 2,
     fileSize = FILE_SIZE_IN_BYTES
 ): MethodDecorator {
     return applyDecorators(
         UseInterceptors(
-            FilesInterceptor(field ?? 'files', maxFiles ?? 2, {
+            FilesInterceptor(field ?? 'files', maxFiles, {
                 limits: {
                     fileSize,
                 },
@@ -44,14 +44,6 @@ export function FileUploadMultiple(
         )
     );
 }
-
-export const FilePartNumber: () => ParameterDecorator = createParamDecorator(
-    (data: string, ctx: ExecutionContext): number => {
-        const request = ctx.switchToHttp().getRequest<IRequestApp>();
-        const { headers } = request;
-        return headers['x-part-number'] ? Number(headers['x-part-number']) : 0;
-    }
-);
 
 export function FileUploadMultipleFields(
     fields: IFileMultipleField[],
@@ -73,3 +65,11 @@ export function FileUploadMultipleFields(
         )
     );
 }
+
+export const FilePartNumber: () => ParameterDecorator = createParamDecorator(
+    (_: unknown, ctx: ExecutionContext): number => {
+        const request = ctx.switchToHttp().getRequest<IRequestApp>();
+        const { headers } = request;
+        return headers['x-part-number'] ? Number(headers['x-part-number']) : 0;
+    }
+);

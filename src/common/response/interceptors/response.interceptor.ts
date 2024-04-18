@@ -11,30 +11,22 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 import { MessageService } from 'src/common/message/services/message.service';
 import { Reflector } from '@nestjs/core';
-import {
-    ClassConstructor,
-    ClassTransformOptions,
-    plainToInstance,
-} from 'class-transformer';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import {
-    IMessage,
-    IMessageOptionsProperties,
-} from 'src/common/message/interfaces/message.interface';
-import {
-    ResponseSerialization,
-    ResponseMetadataSerialization,
-} from 'src/common/response/serializations/response.serialization';
+import { IMessageOptionsProperties } from 'src/common/message/interfaces/message.interface';
 import {
     RESPONSE_MESSAGE_PATH_META_KEY,
     RESPONSE_MESSAGE_PROPERTIES_META_KEY,
-    RESPONSE_SERIALIZATION_META_KEY,
-    RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
 } from 'src/common/response/constants/response.constant';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
+import {
+    ResponseDto,
+    ResponseMetadataDto,
+} from 'src/common/response/dtos/response.dto';
 
 @Injectable()
-export class ResponseInterceptor<T> implements NestInterceptor<Promise<T>> {
+export class ResponseInterceptor
+    implements NestInterceptor<Promise<ResponseDto>>
+{
     constructor(
         private readonly reflector: Reflector,
         private readonly messageService: MessageService
@@ -43,10 +35,10 @@ export class ResponseInterceptor<T> implements NestInterceptor<Promise<T>> {
     async intercept(
         context: ExecutionContext,
         next: CallHandler
-    ): Promise<Observable<Promise<ResponseSerialization>>> {
+    ): Promise<Observable<Promise<ResponseDto>>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
-                map(async (res: Promise<Record<string, any>>) => {
+                map(async (res: Promise<any>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
                     const response: Response = ctx.getResponse();
                     const request: IRequestApp = ctx.getRequest<IRequestApp>();
@@ -55,16 +47,6 @@ export class ResponseInterceptor<T> implements NestInterceptor<Promise<T>> {
                         RESPONSE_MESSAGE_PATH_META_KEY,
                         context.getHandler()
                     );
-                    const classSerialization: ClassConstructor<any> =
-                        this.reflector.get<ClassConstructor<any>>(
-                            RESPONSE_SERIALIZATION_META_KEY,
-                            context.getHandler()
-                        );
-                    const classSerializationOptions: ClassTransformOptions =
-                        this.reflector.get<ClassTransformOptions>(
-                            RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
-                            context.getHandler()
-                        );
                     let messageProperties: IMessageOptionsProperties =
                         this.reflector.get<IMessageOptionsProperties>(
                             RESPONSE_MESSAGE_PROPERTIES_META_KEY,
@@ -72,7 +54,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<Promise<T>> {
                         );
 
                     // metadata
-                    const __customLang = request.__customLang;
+                    const __language = request.__language;
                     const __requestId = request.__id;
                     const __path = request.path;
                     const __timestamp = request.__timestamp;
@@ -84,8 +66,8 @@ export class ResponseInterceptor<T> implements NestInterceptor<Promise<T>> {
                     let httpStatus: HttpStatus = response.statusCode;
                     let statusCode: number = response.statusCode;
                     let data: Record<string, any> = undefined;
-                    let metadata: ResponseMetadataSerialization = {
-                        languages: __customLang,
+                    let metadata: ResponseMetadataDto = {
+                        language: __language,
                         timestamp: __timestamp,
                         timezone: __timezone,
                         requestId: __requestId,
@@ -95,20 +77,12 @@ export class ResponseInterceptor<T> implements NestInterceptor<Promise<T>> {
                     };
 
                     // response
-                    const responseData = (await res) as IResponse;
+                    const responseData = (await res) as IResponse<any>;
 
                     if (responseData) {
                         const { _metadata } = responseData;
+
                         data = responseData.data;
-
-                        if (data && classSerialization) {
-                            data = plainToInstance(
-                                classSerialization,
-                                data,
-                                classSerializationOptions
-                            );
-                        }
-
                         httpStatus =
                             _metadata?.customProperty?.httpStatus ?? httpStatus;
                         statusCode =
@@ -127,11 +101,13 @@ export class ResponseInterceptor<T> implements NestInterceptor<Promise<T>> {
                         };
                     }
 
-                    const message: string | IMessage =
-                        await this.messageService.get(messagePath, {
-                            customLanguages: __customLang,
+                    const message: string = this.messageService.setMessage(
+                        messagePath,
+                        {
+                            customLanguage: __language,
                             properties: messageProperties,
-                        });
+                        }
+                    );
 
                     response.status(httpStatus);
 

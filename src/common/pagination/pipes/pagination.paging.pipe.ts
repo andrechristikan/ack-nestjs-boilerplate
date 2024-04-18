@@ -1,7 +1,6 @@
 import { Inject, Injectable, mixin, Type } from '@nestjs/common';
 import { PipeTransform, Scope } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
-import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
@@ -12,8 +11,7 @@ export function PaginationPagingPipe(
     class MixinPaginationPagingPipe implements PipeTransform {
         constructor(
             @Inject(REQUEST) protected readonly request: IRequestApp,
-            private readonly paginationService: PaginationService,
-            private readonly helperNumberService: HelperNumberService
+            private readonly paginationService: PaginationService
         ) {}
 
         async transform(
@@ -27,18 +25,21 @@ export function PaginationPagingPipe(
             );
             const offset: number = this.paginationService.offset(page, perPage);
 
-            this.request.__pagination = {
-                ...this.request.__pagination,
-                page,
-                perPage,
-            };
-
+            this.addToRequestInstance(page, perPage);
             return {
                 ...value,
                 page,
                 perPage,
                 _limit: perPage,
                 _offset: offset,
+            };
+        }
+
+        addToRequestInstance(page: number, perPage: number): void {
+            this.request.__pagination = {
+                ...this.request.__pagination,
+                page,
+                perPage,
             };
         }
     }

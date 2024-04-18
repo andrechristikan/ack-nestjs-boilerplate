@@ -1,32 +1,30 @@
 import { AbilityBuilder, createMongoAbility } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
-import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
-import { ENUM_POLICY_REQUEST_ACTION } from 'src/common/policy/constants/policy.enum.constant';
+import { AuthJwtAccessPayloadPermissionDto } from 'src/common/auth/dtos/jwt/auth.jwt.access-payload.dto';
+import {
+    ENUM_POLICY_REQUEST_ACTION,
+    ENUM_POLICY_SUBJECT,
+} from 'src/common/policy/constants/policy.enum.constant';
 import { ENUM_POLICY_ACTION } from 'src/common/policy/constants/policy.enum.constant';
 import {
     IPolicyAbility,
-    IPolicyRequest,
-    IPolicyRule,
+    IPolicyAbilityFlat,
     IPolicyRuleAbility,
     PolicyHandler,
 } from 'src/common/policy/interfaces/policy.interface';
-import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
-import { UserPayloadPermissionSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 
 @Injectable()
 export class PolicyAbilityFactory {
-    constructor(private readonly helperNumberService: HelperNumberService) {}
-
-    defineAbilityFromRole({ type, permissions }: IPolicyRequest) {
-        const { can, build } = new AbilityBuilder<IPolicyAbility>(
+    defineAbilityFromRequest(permissions: AuthJwtAccessPayloadPermissionDto[]) {
+        const { can, build } = new AbilityBuilder<IPolicyRuleAbility>(
             createMongoAbility
         );
 
-        if (type === ENUM_ROLE_TYPE.SUPER_ADMIN) {
+        if (permissions.some(e => e.subject === ENUM_POLICY_SUBJECT.ALL)) {
             can(ENUM_POLICY_ACTION.MANAGE, 'all');
         } else {
             for (const permission of permissions) {
-                const abilities = this.mappingAbility(permission);
+                const abilities = this.mappingAbilityFromRequest(permission);
 
                 for (const ability of abilities) {
                     can(ability.action, ability.subject);
@@ -37,20 +35,20 @@ export class PolicyAbilityFactory {
         return build();
     }
 
-    mappingAbility({
+    mappingAbilityFromRequest({
         subject,
         action,
-    }: UserPayloadPermissionSerialization): IPolicyRuleAbility[] {
+    }: AuthJwtAccessPayloadPermissionDto): IPolicyAbilityFlat[] {
         return action
             .split(',')
             .map((val: string) => ({
-                action: this.mappingRequestRule(Number.parseInt(val)),
+                action: this.mappingAbility(Number.parseInt(val)),
                 subject,
             }))
             .flat(1);
     }
 
-    mappingRequestRule(action: number): ENUM_POLICY_ACTION {
+    mappingAbility(action: number): ENUM_POLICY_ACTION {
         switch (action) {
             case ENUM_POLICY_REQUEST_ACTION.MANAGE:
                 return ENUM_POLICY_ACTION.MANAGE;
@@ -71,12 +69,12 @@ export class PolicyAbilityFactory {
         }
     }
 
-    handlerRules(rules: IPolicyRule[]): PolicyHandler[] {
-        return rules
+    handlerAbilities(abilities: IPolicyAbility[]): PolicyHandler[] {
+        return abilities
             .map(({ subject, action }) => {
                 return action
                     .map(
-                        val => (ability: IPolicyAbility) =>
+                        val => (ability: IPolicyRuleAbility) =>
                             ability.can(val, subject)
                     )
                     .flat(1);

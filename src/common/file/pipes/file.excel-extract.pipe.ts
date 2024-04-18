@@ -6,7 +6,7 @@ import { IFile, IFileExtract } from 'src/common/file/interfaces/file.interface';
 import { IHelperFileRows } from 'src/common/helper/interfaces/helper.interface';
 import { HelperFileService } from 'src/common/helper/services/helper.file.service';
 
-// Support excel and csv
+//! Support excel and csv
 @Injectable()
 export class FileExcelExtractPipe<T> implements PipeTransform {
     constructor(private readonly helperFileService: HelperFileService) {}

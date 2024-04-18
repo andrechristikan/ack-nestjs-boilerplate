@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PipeTransform } from '@nestjs/common/interfaces';
 import { IFile } from 'src/common/file/interfaces/file.interface';
 
-// Support excel and csv
+//! Support only excel
 @Injectable()
 export class FileExcelPasswordPipe implements PipeTransform {
     constructor(readonly password: string) {}

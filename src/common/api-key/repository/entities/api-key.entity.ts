@@ -34,6 +34,7 @@ export class ApiKeyEntity extends DatabaseMongoUUIDEntityAbstract {
         unique: true,
         index: true,
         trim: true,
+        maxlength: 50,
     })
     key: string;
 

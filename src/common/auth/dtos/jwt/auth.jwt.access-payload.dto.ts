@@ -1,0 +1,69 @@
+import { faker } from '@faker-js/faker';
+import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { ENUM_AUTH_LOGIN_FROM } from 'src/common/auth/constants/auth.enum.constant';
+import {
+    ENUM_POLICY_ROLE,
+    ENUM_POLICY_SUBJECT,
+} from 'src/common/policy/constants/policy.enum.constant';
+
+export class AuthJwtAccessPayloadPermissionDto {
+    @ApiProperty({
+        required: true,
+        enum: ENUM_POLICY_SUBJECT,
+    })
+    subject: ENUM_POLICY_SUBJECT;
+
+    @ApiProperty({
+        required: true,
+        nullable: false,
+    })
+    action: string;
+}
+
+export class AuthJwtAccessPayloadUserDto {
+    @ApiProperty({
+        required: true,
+        nullable: false,
+    })
+    readonly _id: string;
+
+    @ApiProperty({
+        required: true,
+        nullable: false,
+    })
+    readonly role: string;
+
+    @ApiProperty({
+        required: true,
+        nullable: false,
+        enum: ENUM_POLICY_ROLE,
+    })
+    readonly type: ENUM_POLICY_ROLE;
+
+    @ApiProperty({
+        required: true,
+        nullable: false,
+        type: AuthJwtAccessPayloadPermissionDto,
+        isArray: true,
+        default: [],
+    })
+    @Type(() => AuthJwtAccessPayloadPermissionDto)
+    readonly permissions: AuthJwtAccessPayloadPermissionDto[];
+}
+
+export class AuthJwtAccessPayloadDto extends AuthJwtAccessPayloadUserDto {
+    @ApiProperty({
+        required: true,
+        nullable: false,
+        example: faker.date.recent(),
+    })
+    readonly loginDate: Date;
+
+    @ApiProperty({
+        required: true,
+        nullable: false,
+        enum: ENUM_AUTH_LOGIN_FROM,
+    })
+    readonly loginFrom: ENUM_AUTH_LOGIN_FROM;
+}

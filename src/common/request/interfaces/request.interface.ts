@@ -1,23 +1,18 @@
 import { Request } from 'express';
 import { IApiKeyPayload } from 'src/common/api-key/interfaces/api-key.interface';
-import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
-import { RequestPaginationSerialization } from 'src/common/request/serializations/request.pagination.serialization';
+import { AuthJwtAccessPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.access-payload.dto';
+import { ResponsePagingMetadataPaginationDto } from 'src/common/response/dtos/response.paging.dto';
 
-export interface IRequestApp<T = AuthAccessPayloadSerialization>
-    extends Request {
+export interface IRequestApp<T = AuthJwtAccessPayloadDto> extends Request {
     apiKey?: IApiKeyPayload;
     user?: T;
 
     __id: string;
     __timestamp: number;
     __timezone: string;
-    __customLang: string[];
-    __xCustomLang: string;
+    __language: string;
     __version: string;
     __repoVersion: string;
 
-    __class?: string;
-    __function?: string;
-
-    __pagination?: RequestPaginationSerialization;
+    __pagination?: ResponsePagingMetadataPaginationDto;
 }

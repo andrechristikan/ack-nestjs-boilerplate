@@ -1,37 +1,15 @@
-import {
-    HttpStatus,
-    LogLevel,
-    Module,
-    UnprocessableEntityException,
-    ValidationError,
-    ValidationPipe,
-} from '@nestjs/common';
+import { HttpStatus, Module, ValidationPipe } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { RequestTimeoutInterceptor } from 'src/common/request/interceptors/request.timeout.interceptor';
 import { RequestMiddlewareModule } from 'src/common/request/middleware/request.middleware.module';
-import { MobileNumberAllowedConstraint } from 'src/common/request/validations/request.mobile-number-allowed.validation';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from './constants/request.status-code.constant';
-import { IsPasswordMediumConstraint } from './validations/request.is-password-medium.validation';
-import { IsPasswordStrongConstraint } from './validations/request.is-password-strong.validation';
-import { IsPasswordWeakConstraint } from './validations/request.is-password-weak.validation';
-import { IsStartWithConstraint } from './validations/request.is-start-with.validation';
-import { IsOnlyDigitsConstraint } from './validations/request.only-digits.validation';
-import { SafeStringConstraint } from './validations/request.safe-string.validation';
-import { MaxBinaryFileConstraint } from 'src/common/request/validations/request.max-binary-file.validation';
 import {
     ThrottlerGuard,
     ThrottlerModule,
     ThrottlerModuleOptions,
 } from '@nestjs/throttler';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { DateLessThanEqualTodayConstraint } from 'src/common/request/validations/request.date-less-than-equal-today.validation';
-import { DateGreaterThanEqualTodayConstraint } from 'src/common/request/validations/request.date-greater-than-equal-today.validation';
-import { GreaterThanEqualConstraint } from 'src/common/request/validations/request.greater-than-equal.validation';
-import { GreaterThanConstraint } from 'src/common/request/validations/request.greater-than.validation';
-import { LessThanEqualConstraint } from 'src/common/request/validations/request.less-than-equal.validation';
-import { LessThanConstraint } from 'src/common/request/validations/request.less-than.validation';
-import { SentryModule } from '@ntegral/nestjs-sentry';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
+import { ValidationError } from 'class-validator';
+import { RequestValidationException } from 'src/common/request/exceptions/request.validation.exception';
 
 @Module({
     controllers: [],
@@ -41,42 +19,23 @@ import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
             useClass: RequestTimeoutInterceptor,
         },
         {
+            provide: APP_GUARD,
+            useClass: ThrottlerGuard,
+        },
+        {
             provide: APP_PIPE,
             useFactory: () =>
                 new ValidationPipe({
                     transform: true,
-                    skipNullProperties: false,
-                    skipUndefinedProperties: false,
-                    skipMissingProperties: false,
-                    forbidUnknownValues: false,
+                    skipNullProperties: true,
+                    skipUndefinedProperties: true,
+                    skipMissingProperties: true,
+                    forbidUnknownValues: true,
                     errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
                     exceptionFactory: async (errors: ValidationError[]) =>
-                        new UnprocessableEntityException({
-                            statusCode:
-                                ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR,
-                            message: 'request.validation',
-                            errors,
-                        }),
+                        new RequestValidationException(errors),
                 }),
         },
-        {
-            provide: APP_GUARD,
-            useClass: ThrottlerGuard,
-        },
-        DateGreaterThanEqualTodayConstraint,
-        DateLessThanEqualTodayConstraint,
-        GreaterThanEqualConstraint,
-        GreaterThanConstraint,
-        IsPasswordStrongConstraint,
-        IsPasswordMediumConstraint,
-        IsPasswordWeakConstraint,
-        IsStartWithConstraint,
-        LessThanEqualConstraint,
-        LessThanConstraint,
-        MaxBinaryFileConstraint,
-        MobileNumberAllowedConstraint,
-        IsOnlyDigitsConstraint,
-        SafeStringConstraint,
     ],
     imports: [
         RequestMiddlewareModule,
@@ -91,25 +50,6 @@ import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
                     },
                 ],
             }),
-        }),
-        SentryModule.forRootAsync({
-            imports: [ConfigModule],
-            useFactory: async (configService: ConfigService) => ({
-                dsn: configService.get('debugger.sentry.dsn'),
-                debug: false,
-                environment: configService.get<ENUM_APP_ENVIRONMENT>('app.env'),
-                release: configService.get<string>('app.repoVersion'),
-                logLevels: configService.get<LogLevel[]>(
-                    'debugger.sentry.logLevels.request'
-                ),
-                close: {
-                    enabled: true,
-                    timeout: configService.get<number>(
-                        'debugger.sentry.timeout'
-                    ),
-                },
-            }),
-            inject: [ConfigService],
         }),
     ],
 })

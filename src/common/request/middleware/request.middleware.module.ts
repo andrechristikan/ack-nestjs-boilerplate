@@ -25,8 +25,8 @@ export class RequestMiddlewareModule implements NestModule {
                 RequestUrlencodedBodyParserMiddleware,
                 RequestCorsMiddleware,
                 RequestVersionMiddleware,
-                RequestTimestampMiddleware,
-                RequestTimezoneMiddleware
+                RequestTimezoneMiddleware,
+                RequestTimestampMiddleware
             )
             .forRoutes('*');
     }

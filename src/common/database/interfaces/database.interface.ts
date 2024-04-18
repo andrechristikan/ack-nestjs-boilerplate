@@ -1,5 +1,5 @@
 import { PopulateOptions } from 'mongoose';
-import { IPaginationOptions } from 'src/common/pagination/interfaces/pagination.interface';
+import { IPaginationOrder } from 'src/common/pagination/interfaces/pagination.interface';
 
 // find one
 export interface IDatabaseFindOneOptions<T = any> {
@@ -7,7 +7,6 @@ export interface IDatabaseFindOneOptions<T = any> {
     join?: boolean | PopulateOptions | PopulateOptions[];
     session?: T;
     withDeleted?: boolean;
-    plainObject?: boolean;
 }
 
 // find one lock
@@ -27,8 +26,17 @@ export type IDatabaseSaveOptions<T = any> = Pick<
 >;
 
 // find
+export interface IDatabaseFindAllPaginationPagingOptions {
+    limit: number;
+    offset: number;
+}
+export interface IDatabaseFindAllPaginationOptions {
+    paging?: IDatabaseFindAllPaginationPagingOptions;
+    order?: IPaginationOrder;
+}
+
 export interface IDatabaseFindAllOptions<T = any>
-    extends IPaginationOptions,
+    extends IDatabaseFindAllPaginationOptions,
         IDatabaseFindOneOptions<T> {}
 
 // create

@@ -7,11 +7,6 @@ import {
     IAwsS3RandomFilename,
 } from 'src/common/aws/interfaces/aws.interface';
 import { IAwsS3Service } from 'src/common/aws/interfaces/aws.s3-service.interface';
-import {
-    AwsS3MultipartPartsSerialization,
-    AwsS3MultipartSerialization,
-} from 'src/common/aws/serializations/aws.s3-multipart.serialization';
-import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { Readable } from 'stream';
 import {
     S3Client,
@@ -59,6 +54,11 @@ import {
 } from '@aws-sdk/client-s3';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { AWS_S3_MAX_PART_NUMBER } from 'src/common/aws/constants/aws.s3.constant';
+import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
+import {
+    AwsS3MultipartDto,
+    AwsS3MultipartPartsDto,
+} from 'src/common/aws/dtos/aws.s3-multipart.dto';
 
 @Injectable()
 export class AwsS3Service implements IAwsS3Service {
@@ -119,7 +119,7 @@ export class AwsS3Service implements IAwsS3Service {
         }
     }
 
-    async listItemInBucket(prefix?: string): Promise<AwsS3Serialization[]> {
+    async listItemInBucket(prefix?: string): Promise<AwsS3Dto[]> {
         const command: ListObjectsV2Command = new ListObjectsV2Command({
             Bucket: this.bucket,
             Prefix: prefix,
@@ -183,7 +183,7 @@ export class AwsS3Service implements IAwsS3Service {
     async putItemInBucket(
         file: IAwsS3PutItem,
         options?: IAwsS3PutItemOptions
-    ): Promise<AwsS3Serialization> {
+    ): Promise<AwsS3Dto> {
         let path: string = options?.path;
         path = path?.startsWith('/') ? path.replace('/', '') : path;
 
@@ -226,7 +226,7 @@ export class AwsS3Service implements IAwsS3Service {
     async putItemInBucketWithAcl(
         file: IAwsS3PutItem,
         options?: IAwsS3PutItemWithAclOptions
-    ): Promise<AwsS3Serialization> {
+    ): Promise<AwsS3Dto> {
         let path: string = options?.path;
         path = path?.startsWith('/') ? path.replace('/', '') : path;
         const acl: ObjectCannedACL = options?.acl
@@ -357,7 +357,7 @@ export class AwsS3Service implements IAwsS3Service {
         file: IAwsS3PutItem,
         maxPartNumber: number,
         options?: IAwsS3PutItemOptions
-    ): Promise<AwsS3MultipartSerialization> {
+    ): Promise<AwsS3MultipartDto> {
         if (maxPartNumber > AWS_S3_MAX_PART_NUMBER) {
             throw new Error(
                 `Max part number is greater than ${AWS_S3_MAX_PART_NUMBER}`
@@ -409,7 +409,7 @@ export class AwsS3Service implements IAwsS3Service {
         file: IAwsS3PutItem,
         maxPartNumber: number,
         options?: IAwsS3PutItemWithAclOptions
-    ): Promise<AwsS3MultipartSerialization> {
+    ): Promise<AwsS3MultipartDto> {
         let path: string = options?.path ?? '/';
         path = path.startsWith('/') ? path.replace('/', '') : path;
         const acl: ObjectCannedACL = options?.acl
@@ -457,10 +457,10 @@ export class AwsS3Service implements IAwsS3Service {
     }
 
     async uploadPart(
-        multipart: AwsS3MultipartSerialization,
+        multipart: AwsS3MultipartDto,
         partNumber: number,
         content: string | Uint8Array | Buffer
-    ): Promise<AwsS3MultipartPartsSerialization> {
+    ): Promise<AwsS3MultipartPartsDto> {
         const uploadPartCommand: UploadPartCommand = new UploadPartCommand({
             Bucket: this.bucket,
             Key: multipart.path,
@@ -486,9 +486,9 @@ export class AwsS3Service implements IAwsS3Service {
     }
 
     async updateMultiPart(
-        { size, parts, ...others }: AwsS3MultipartSerialization,
-        part: AwsS3MultipartPartsSerialization
-    ): Promise<AwsS3MultipartSerialization> {
+        { size, parts, ...others }: AwsS3MultipartDto,
+        part: AwsS3MultipartPartsDto
+    ): Promise<AwsS3MultipartDto> {
         parts.push(part);
         return {
             ...others,
@@ -498,9 +498,7 @@ export class AwsS3Service implements IAwsS3Service {
         };
     }
 
-    async completeMultipart(
-        multipart: AwsS3MultipartSerialization
-    ): Promise<void> {
+    async completeMultipart(multipart: AwsS3MultipartDto): Promise<void> {
         const completeMultipartCommand: CompleteMultipartUploadCommand =
             new CompleteMultipartUploadCommand({
                 Bucket: this.bucket,
@@ -523,9 +521,7 @@ export class AwsS3Service implements IAwsS3Service {
         }
     }
 
-    async abortMultipart(
-        multipart: AwsS3MultipartSerialization
-    ): Promise<void> {
+    async abortMultipart(multipart: AwsS3MultipartDto): Promise<void> {
         const abortMultipartCommand: AbortMultipartUploadCommand =
             new AbortMultipartUploadCommand({
                 Bucket: this.bucket,

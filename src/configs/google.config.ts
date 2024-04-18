@@ -1,5 +1,6 @@
 import { registerAs } from '@nestjs/config';
 
+// TODO: Test it
 export default registerAs(
     'google',
     (): Record<string, any> => ({

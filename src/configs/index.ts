@@ -6,7 +6,6 @@ import AwsConfig from './aws.config';
 import UserConfig from './user.config';
 import RequestConfig from './request.config';
 import DocConfig from './doc.config';
-import DebuggerConfig from './debugger.config';
 import MessageConfig from './message.config';
 import GoogleConfig from './google.config';
 import EmailConfig from './email.config';
@@ -21,7 +20,6 @@ export default [
     UserConfig,
     RequestConfig,
     DocConfig,
-    DebuggerConfig,
     MessageConfig,
     GoogleConfig,
     EmailConfig,

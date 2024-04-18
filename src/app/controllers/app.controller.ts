@@ -2,7 +2,7 @@ import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
 import { AppHelloDoc } from 'src/app/docs/app.doc';
-import { AppHelloSerialization } from 'src/app/serializations/app.hello.serialization';
+import { AppHelloDto } from 'src/app/dtos/response/app.hello.dto';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
@@ -13,6 +13,7 @@ import { IResponse } from 'src/common/response/interfaces/response.interface';
     path: '/',
 })
 export class AppController {
+    // TODO: Change
     private readonly serviceName: string;
 
     constructor(
@@ -23,9 +24,9 @@ export class AppController {
     }
 
     @AppHelloDoc()
-    @Response('app.hello', { serialization: AppHelloSerialization })
+    @Response('app.hello')
     @Get('/hello')
-    async hello(): Promise<IResponse> {
+    async hello(): Promise<IResponse<AppHelloDto>> {
         const newDate = this.helperDateService.create();
 
         return {

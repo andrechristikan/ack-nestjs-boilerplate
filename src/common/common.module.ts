@@ -3,7 +3,6 @@ import { ConfigModule } from '@nestjs/config';
 import { HelperModule } from 'src/common/helper/helper.module';
 import { ErrorModule } from 'src/common/error/error.module';
 import { ResponseModule } from 'src/common/response/response.module';
-import { RequestModule } from 'src/common/request/request.module';
 import { AuthModule } from 'src/common/auth/auth.module';
 import { MessageModule } from 'src/common/message/message.module';
 import { PaginationModule } from 'src/common/pagination/pagination.module';
@@ -21,6 +20,7 @@ import {
 } from 'src/app/constants/app.enum.constant';
 import { APP_LANGUAGE, APP_TIMEZONE } from 'src/app/constants/app.constant';
 import { PolicyModule } from 'src/common/policy/policy.module';
+import { RequestModule } from 'src/common/request/request.module';
 
 @Module({
     controllers: [],
@@ -59,14 +59,10 @@ import { PolicyModule } from 'src/common/policy/policy.module';
 
                 JOB_ENABLE: Joi.boolean().default(false).required(),
 
-                DATABASE_HOST: Joi.string()
+                DATABASE_URI: Joi.string()
                     .default('mongodb://localhost:27017')
                     .required(),
-                DATABASE_NAME: Joi.string().default('ack').required(),
-                DATABASE_USER: Joi.string().allow(null, '').optional(),
-                DATABASE_PASSWORD: Joi.string().allow(null, '').optional(),
                 DATABASE_DEBUG: Joi.boolean().default(false).required(),
-                DATABASE_OPTIONS: Joi.string().allow(null, '').optional(),
 
                 AUTH_JWT_SUBJECT: Joi.string().required(),
                 AUTH_JWT_AUDIENCE: Joi.string().required(),

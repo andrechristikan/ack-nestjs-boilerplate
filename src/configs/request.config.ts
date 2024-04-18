@@ -1,7 +1,6 @@
 import { registerAs } from '@nestjs/config';
 import bytes from 'bytes';
 import ms from 'ms';
-import { seconds } from 'src/common/helper/constants/helper.function.constant';
 import { ENUM_REQUEST_METHOD } from 'src/common/request/constants/request.enum.constant';
 
 export default registerAs(
@@ -22,27 +21,6 @@ export default registerAs(
             },
         },
         timeout: ms('30s'), // 30s based on ms module
-        userAgent: {
-            os: [
-                'Mobile',
-                'Mac OS',
-                'Windows',
-                'UNIX',
-                'Linux',
-                'iOS',
-                'Android',
-            ],
-            browser: [
-                'IE',
-                'Safari',
-                'Edge',
-                'Opera',
-                'Chrome',
-                'Firefox',
-                'Samsung Browser',
-                'UCBrowser',
-            ],
-        },
         cors: {
             allowMethod: [
                 ENUM_REQUEST_METHOD.GET,
@@ -84,7 +62,7 @@ export default registerAs(
             ],
         },
         throttle: {
-            ttl: seconds('500'), // 0.5 secs
+            ttl: ms('500'), // 0.5 secs
             limit: 10, // max request per reset time
         },
     })

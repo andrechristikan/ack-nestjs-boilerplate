@@ -39,25 +39,18 @@ import {
     ApiKeyAdminListDoc,
     ApiKeyAdminResetDoc,
     ApiKeyAdminUpdateDateDoc,
-    ApiKeyAdminUpdateDoc,
+    ApiKeyAdminUpdateNameDoc,
 } from 'src/common/api-key/docs/api-key.admin.doc';
-import { ApiKeyCreateDto } from 'src/common/api-key/dtos/api-key.create.dto';
-import { ApiKeyRequestDto } from 'src/common/api-key/dtos/api-key.request.dto';
-import {
-    ApiKeyUpdateDateDto,
-    ApiKeyUpdateDto,
-} from 'src/common/api-key/dtos/api-key.update.dto';
-import { IApiKeyCreated } from 'src/common/api-key/interfaces/api-key.interface';
-import {
-    ApiKeyDoc,
-    ApiKeyEntity,
-} from 'src/common/api-key/repository/entities/api-key.entity';
-import { ApiKeyCreateSerialization } from 'src/common/api-key/serializations/api-key.create.serialization';
-import { ApiKeyGetSerialization } from 'src/common/api-key/serializations/api-key.get.serialization';
-import { ApiKeyListSerialization } from 'src/common/api-key/serializations/api-key.list.serialization';
-import { ApiKeyResetSerialization } from 'src/common/api-key/serializations/api-key.reset.serialization';
+import { ApiKeyCreateRequestDto } from 'src/common/api-key/dtos/request/api-key.create.request.dto';
+import { ApiKeyUpdateDateRequestDto } from 'src/common/api-key/dtos/request/api-key.update-date.request.dto';
+import { ApiKeyUpdateNameRequestDto } from 'src/common/api-key/dtos/request/api-key.update-name.request.dto';
+import { ApiKeyCreateResponseDto } from 'src/common/api-key/dtos/response/api-key.create.dto';
+import { ApiKeyGetResponseDto } from 'src/common/api-key/dtos/response/api-key.get.response.dto';
+import { ApiKeyListResponseDto } from 'src/common/api-key/dtos/response/api-key.list.response.dto';
+import { ApiKeyResetResponseDto } from 'src/common/api-key/dtos/response/api-key.reset.dto';
+import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
-import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
+import { AuthJwtAccessAdminProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import {
     PaginationQuery,
     PaginationQueryFilterInBoolean,
@@ -70,7 +63,7 @@ import {
     ENUM_POLICY_SUBJECT,
 } from 'src/common/policy/constants/policy.enum.constant';
 import { PolicyAbilityProtected } from 'src/common/policy/decorators/policy.decorator';
-import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
+import { RequestParamRequired } from 'src/common/request/decorators/request.decorator';
 import {
     Response,
     ResponsePaging,
@@ -79,7 +72,6 @@ import {
     IResponse,
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
-import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 
 @ApiTags('common.admin.apiKey')
 @Controller({
@@ -93,14 +85,12 @@ export class ApiKeyAdminController {
     ) {}
 
     @ApiKeyAdminListDoc()
-    @ResponsePaging('apiKey.list', {
-        serialization: ApiKeyListSerialization,
-    })
+    @ResponsePaging('apiKey.list')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ],
     })
-    @AuthJwtAdminAccessProtected()
+    @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
     @Get('/list')
     async list(
@@ -120,115 +110,111 @@ export class ApiKeyAdminController {
             ENUM_API_KEY_TYPE
         )
         type: Record<string, any>
-    ): Promise<IResponsePaging> {
+    ): Promise<IResponsePaging<ApiKeyListResponseDto>> {
         const find: Record<string, any> = {
             ..._search,
             ...isActive,
             ...type,
         };
 
-        const apiKeys: ApiKeyEntity[] =
-            await this.apiKeyService.findAll<ApiKeyEntity>(find, {
-                paging: {
-                    limit: _limit,
-                    offset: _offset,
-                },
-                order: _order,
-                plainObject: true,
-            });
+        const apiKeys: ApiKeyDoc[] = await this.apiKeyService.findAll(find, {
+            paging: {
+                limit: _limit,
+                offset: _offset,
+            },
+            order: _order,
+        });
         const total: number = await this.apiKeyService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
             total,
             _limit
         );
+        const mapped = await this.apiKeyService.mapApiKeyList(apiKeys);
 
         return {
             _pagination: { totalPage, total },
-            data: apiKeys,
+            data: mapped,
         };
     }
 
     @ApiKeyAdminGetDoc()
-    @Response('apiKey.get', {
-        serialization: ApiKeyGetSerialization,
-    })
+    @Response('apiKey.get')
     @ApiKeyAdminGetGuard()
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ],
     })
-    @AuthJwtAdminAccessProtected()
+    @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
-    @RequestParamGuard(ApiKeyRequestDto)
+    @RequestParamRequired()
     @Get('/get/:apiKey')
-    async get(@GetApiKey(true) apiKey: ApiKeyEntity): Promise<IResponse> {
-        return { data: apiKey };
+    async get(
+        @GetApiKey() apiKey: ApiKeyDoc
+    ): Promise<IResponse<ApiKeyGetResponseDto>> {
+        const mapped = await this.apiKeyService.mapApiKeyGet(apiKey);
+        return { data: mapped };
     }
 
     @ApiKeyAdminCreateDoc()
-    @Response('apiKey.create', { serialization: ApiKeyCreateSerialization })
+    @Response('apiKey.create')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
     })
-    @AuthJwtAdminAccessProtected()
+    @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
     @Post('/create')
-    async create(@Body() body: ApiKeyCreateDto): Promise<IResponse> {
-        const created: IApiKeyCreated = await this.apiKeyService.create(body);
+    async create(
+        @Body() body: ApiKeyCreateRequestDto
+    ): Promise<IResponse<ApiKeyCreateResponseDto>> {
+        const created: ApiKeyCreateResponseDto =
+            await this.apiKeyService.create(body);
 
         return {
-            data: {
-                _id: created.doc._id,
-                secret: created.secret,
-            },
+            data: created,
         };
     }
 
     @ApiKeyAdminResetDoc()
-    @Response('apiKey.reset', { serialization: ApiKeyResetSerialization })
+    @Response('apiKey.reset')
     @ApiKeyAdminUpdateResetGuard()
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @AuthJwtAdminAccessProtected()
+    @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
-    @RequestParamGuard(ApiKeyRequestDto)
+    @RequestParamRequired()
     @Patch('/update/:apiKey/reset')
-    async reset(@GetApiKey() apiKey: ApiKeyDoc): Promise<IResponse> {
-        const secret: string = await this.apiKeyService.createSecret();
-        const updated: ApiKeyDoc = await this.apiKeyService.reset(
-            apiKey,
-            secret
-        );
+    async reset(
+        @GetApiKey() apiKey: ApiKeyDoc
+    ): Promise<IResponse<ApiKeyResetResponseDto>> {
+        const updated: ApiKeyResetResponseDto =
+            await this.apiKeyService.reset(apiKey);
 
         return {
-            data: {
-                _id: updated._id,
-                secret,
-            },
+            data: updated,
         };
     }
 
-    @ApiKeyAdminUpdateDoc()
-    @Response('apiKey.update', { serialization: ResponseIdSerialization })
+    @ApiKeyAdminUpdateNameDoc()
+    @Response('apiKey.updateName')
     @ApiKeyAdminUpdateGuard()
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @AuthJwtAdminAccessProtected()
+    @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
-    @RequestParamGuard(ApiKeyRequestDto)
+    @RequestParamRequired()
     @Put('/update/:apiKey')
     async updateName(
-        @Body() body: ApiKeyUpdateDto,
+        @Body() body: ApiKeyUpdateNameRequestDto,
         @GetApiKey() apiKey: ApiKeyDoc
-    ): Promise<IResponse> {
+    ): Promise<IResponse<void>> {
         await this.apiKeyService.update(apiKey, body);
 
-        return { data: { _id: apiKey._id } };
+        return;
     }
 
     @ApiKeyAdminInactiveDoc()
@@ -238,9 +224,9 @@ export class ApiKeyAdminController {
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @AuthJwtAdminAccessProtected()
+    @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
-    @RequestParamGuard(ApiKeyRequestDto)
+    @RequestParamRequired()
     @Patch('/update/:apiKey/inactive')
     async inactive(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
         await this.apiKeyService.inactive(apiKey);
@@ -255,9 +241,9 @@ export class ApiKeyAdminController {
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @AuthJwtAdminAccessProtected()
+    @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
-    @RequestParamGuard(ApiKeyRequestDto)
+    @RequestParamRequired()
     @Patch('/update/:apiKey/active')
     async active(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
         await this.apiKeyService.active(apiKey);
@@ -266,23 +252,23 @@ export class ApiKeyAdminController {
     }
 
     @ApiKeyAdminUpdateDateDoc()
-    @Response('apiKey.updateDate', { serialization: ResponseIdSerialization })
+    @Response('apiKey.updateDate')
     @ApiKeyAdminUpdateGuard()
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
     })
-    @AuthJwtAdminAccessProtected()
+    @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
-    @RequestParamGuard(ApiKeyRequestDto)
+    @RequestParamRequired()
     @Put('/update/:apiKey/date')
     async updateDate(
-        @Body() body: ApiKeyUpdateDateDto,
+        @Body() body: ApiKeyUpdateDateRequestDto,
         @GetApiKey() apiKey: ApiKeyDoc
-    ): Promise<IResponse> {
+    ): Promise<IResponse<void>> {
         await this.apiKeyService.updateDate(apiKey, body);
 
-        return { data: { _id: apiKey._id } };
+        return;
     }
 
     @ApiKeyAdminDeleteDoc()
@@ -292,9 +278,9 @@ export class ApiKeyAdminController {
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
     })
-    @AuthJwtAdminAccessProtected()
+    @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
-    @RequestParamGuard(ApiKeyRequestDto)
+    @RequestParamRequired()
     @Delete('/delete/:apiKey')
     async delete(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
         await this.apiKeyService.delete(apiKey);

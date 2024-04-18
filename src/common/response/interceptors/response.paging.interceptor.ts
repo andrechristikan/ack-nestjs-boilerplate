@@ -11,34 +11,24 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 import { MessageService } from 'src/common/message/services/message.service';
 import { Reflector } from '@nestjs/core';
-import {
-    ClassConstructor,
-    ClassTransformOptions,
-    plainToInstance,
-} from 'class-transformer';
 import qs from 'qs';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import {
-    IMessage,
-    IMessageOptionsProperties,
-} from 'src/common/message/interfaces/message.interface';
-import {
-    ResponsePaginationCursorSerialization,
-    ResponsePagingMetadataSerialization,
-    ResponsePagingSerialization,
-} from 'src/common/response/serializations/response.paging.serialization';
+import { IMessageOptionsProperties } from 'src/common/message/interfaces/message.interface';
 import {
     RESPONSE_MESSAGE_PATH_META_KEY,
     RESPONSE_MESSAGE_PROPERTIES_META_KEY,
-    RESPONSE_SERIALIZATION_META_KEY,
-    RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
 } from 'src/common/response/constants/response.constant';
 import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
+import {
+    ResponsePagingDto,
+    ResponsePagingMetadataCursorDto,
+    ResponsePagingMetadataDto,
+} from 'src/common/response/dtos/response.paging.dto';
 
 @Injectable()
-export class ResponsePagingInterceptor<T>
-    implements NestInterceptor<Promise<T>>
+export class ResponsePagingInterceptor
+    implements NestInterceptor<Promise<ResponsePagingDto>>
 {
     constructor(
         private readonly reflector: Reflector,
@@ -49,10 +39,10 @@ export class ResponsePagingInterceptor<T>
     async intercept(
         context: ExecutionContext,
         next: CallHandler
-    ): Promise<Observable<Promise<ResponsePagingSerialization>>> {
+    ): Promise<Observable<Promise<ResponsePagingDto>>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
-                map(async (res: Promise<IResponsePaging>) => {
+                map(async (res: Promise<IResponsePaging<any>>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
                     const response: Response = ctx.getResponse();
                     const request: IRequestApp = ctx.getRequest<IRequestApp>();
@@ -61,16 +51,6 @@ export class ResponsePagingInterceptor<T>
                         RESPONSE_MESSAGE_PATH_META_KEY,
                         context.getHandler()
                     );
-                    const classSerialization: ClassConstructor<any> =
-                        this.reflector.get<ClassConstructor<any>>(
-                            RESPONSE_SERIALIZATION_META_KEY,
-                            context.getHandler()
-                        );
-                    const classSerializationOptions: ClassTransformOptions =
-                        this.reflector.get<ClassTransformOptions>(
-                            RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
-                            context.getHandler()
-                        );
                     let messageProperties: IMessageOptionsProperties =
                         this.reflector.get<IMessageOptionsProperties>(
                             RESPONSE_MESSAGE_PROPERTIES_META_KEY,
@@ -78,7 +58,7 @@ export class ResponsePagingInterceptor<T>
                         );
 
                     // metadata
-                    const __customLang = request.__customLang;
+                    const __language = request.__language;
                     const __path = request.path;
                     const __requestId = request.__id;
                     const __timestamp = request.__timestamp;
@@ -90,8 +70,8 @@ export class ResponsePagingInterceptor<T>
                     let httpStatus: HttpStatus = response.statusCode;
                     let statusCode: number = response.statusCode;
                     let data: Record<string, any>[] = [];
-                    let metadata: ResponsePagingMetadataSerialization = {
-                        languages: __customLang,
+                    let metadata: ResponsePagingMetadataDto = {
+                        language: __language,
                         timestamp: __timestamp,
                         timezone: __timezone,
                         requestId: __requestId,
@@ -101,7 +81,7 @@ export class ResponsePagingInterceptor<T>
                     };
 
                     // response
-                    const responseData = (await res) as IResponsePaging;
+                    const responseData = (await res) as IResponsePaging<any>;
                     if (!responseData) {
                         throw new Error(
                             'ResponsePaging must instanceof IResponsePaging'
@@ -116,16 +96,8 @@ export class ResponsePagingInterceptor<T>
                     }
 
                     const { _metadata } = responseData;
+
                     data = responseData.data;
-
-                    if (classSerialization) {
-                        data = plainToInstance(
-                            classSerialization,
-                            data,
-                            classSerializationOptions
-                        );
-                    }
-
                     httpStatus =
                         _metadata?.customProperty?.httpStatus ?? httpStatus;
                     statusCode =
@@ -139,18 +111,13 @@ export class ResponsePagingInterceptor<T>
                     delete _metadata?.customProperty;
 
                     // metadata pagination
-
                     const { query } = request;
-
                     delete query.perPage;
-
                     delete query.page;
 
                     const total: number = responseData._pagination.total;
-
                     const totalPage: number =
                         responseData._pagination.totalPage;
-
                     const perPage: number = __pagination.perPage;
                     const page: number = __pagination.page;
 
@@ -158,7 +125,7 @@ export class ResponsePagingInterceptor<T>
                         encode: false,
                     });
 
-                    const cursorPaginationMetadata: ResponsePaginationCursorSerialization =
+                    const cursorPaginationMetadata: ResponsePagingMetadataCursorDto =
                         {
                             nextPage:
                                 page < totalPage
@@ -166,9 +133,7 @@ export class ResponsePagingInterceptor<T>
                                         ? `${__path}?perPage=${perPage}&page=${
                                               page + 1
                                           }&${queryString}`
-                                        : `${__path}?perPage=${perPage}&page=${
-                                              page + 1
-                                          }`
+                                        : `${__path}?perPage=${perPage}&page=${page + 1}`
                                     : undefined,
                             previousPage:
                                 page > 1
@@ -176,9 +141,7 @@ export class ResponsePagingInterceptor<T>
                                         ? `${__path}?perPage=${perPage}&page=${
                                               page - 1
                                           }&${queryString}`
-                                        : `${__path}?perPage=${perPage}&page=${
-                                              page - 1
-                                          }`
+                                        : `${__path}?perPage=${perPage}&page=${page - 1}`
                                     : undefined,
                             firstPage:
                                 totalPage > 1
@@ -214,11 +177,13 @@ export class ResponsePagingInterceptor<T>
                         metadata.cursor = cursorPaginationMetadata;
                     }
 
-                    const message: string | IMessage =
-                        await this.messageService.get(messagePath, {
-                            customLanguages: __customLang,
+                    const message: string = this.messageService.setMessage(
+                        messagePath,
+                        {
+                            customLanguage: __language,
                             properties: messageProperties,
-                        });
+                        }
+                    );
 
                     response.status(httpStatus);
 
