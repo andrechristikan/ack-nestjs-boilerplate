@@ -9,6 +9,7 @@ import {
 import fs from 'fs';
 import { JwtService } from '@nestjs/jwt';
 
+// TODO: Merge with Google Service and rename to ThridParty Helper
 @Injectable()
 export class HelperAppleService implements IHelperAppleService {
     private readonly appleClient: AppleAuth;

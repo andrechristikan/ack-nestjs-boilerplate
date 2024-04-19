@@ -1,5 +1,4 @@
 import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
 import { AppHelloDoc } from 'src/app/docs/app.doc';
 import { AppHelloDto } from 'src/app/dtos/response/app.hello.dto';
@@ -13,15 +12,7 @@ import { IResponse } from 'src/common/response/interfaces/response.interface';
     path: '/',
 })
 export class AppController {
-    // TODO: Change
-    private readonly serviceName: string;
-
-    constructor(
-        private readonly configService: ConfigService,
-        private readonly helperDateService: HelperDateService
-    ) {
-        this.serviceName = this.configService.get<string>('app.name');
-    }
+    constructor(private readonly helperDateService: HelperDateService) {}
 
     @AppHelloDoc()
     @Response('app.hello')
@@ -30,13 +21,6 @@ export class AppController {
         const newDate = this.helperDateService.create();
 
         return {
-            _metadata: {
-                customProperty: {
-                    messageProperties: {
-                        serviceName: this.serviceName,
-                    },
-                },
-            },
             data: {
                 date: newDate,
                 format: this.helperDateService.format(newDate),

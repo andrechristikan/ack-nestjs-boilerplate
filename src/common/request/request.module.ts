@@ -27,9 +27,7 @@ import { RequestValidationException } from 'src/common/request/exceptions/reques
             useFactory: () =>
                 new ValidationPipe({
                     transform: true,
-                    skipNullProperties: true,
                     skipUndefinedProperties: true,
-                    skipMissingProperties: true,
                     forbidUnknownValues: true,
                     errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
                     exceptionFactory: async (errors: ValidationError[]) =>

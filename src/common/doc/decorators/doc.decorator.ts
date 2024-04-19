@@ -321,14 +321,13 @@ export function DocRequestFile(options?: IDocRequestFileOptions) {
 export function DocGuard(options?: IDocGuardOptions) {
     const oneOfForbidden: IDocOfOptions[] = [];
 
-    // TODO:
-    // if (options?.role) {
-    //     oneOfForbidden.push({
-    //         statusCode:
-    //             ENUM_ROLE_STATUS_CODE_ERROR.ROLE_PAYLOAD_TYPE_INVALID_ERROR,
-    //         messagePath: 'role.error.typeForbidden',
-    //     });
-    // }
+    if (options?.role) {
+        oneOfForbidden.push({
+            statusCode:
+                ENUM_POLICY_STATUS_CODE_ERROR.POLICY_ROLE_FORBIDDEN_ERROR,
+            messagePath: 'role.error.roleForbidden',
+        });
+    }
 
     if (options?.policy) {
         oneOfForbidden.push({

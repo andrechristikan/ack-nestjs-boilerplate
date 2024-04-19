@@ -2,6 +2,7 @@ import { applyDecorators, HttpStatus } from '@nestjs/common';
 import {
     ApiKeyDocParamsId,
     ApiKeyDocQueryIsActive,
+    ApiKeyDocQueryType,
 } from 'src/common/api-key/constants/api-key.doc.constant';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
 import { ApiKeyCreateRequestDto } from 'src/common/api-key/dtos/request/api-key.create.request.dto';
@@ -29,7 +30,7 @@ export function ApiKeyAdminListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({ summary: 'get list of api keys' }),
         DocRequest({
-            queries: ApiKeyDocQueryIsActive,
+            queries: [...ApiKeyDocQueryIsActive, ...ApiKeyDocQueryType],
         }),
         DocAuth({
             apiKey: true,

@@ -1,9 +1,9 @@
 import { Query } from '@nestjs/common';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import {
     IPaginationFilterDateOptions,
     IPaginationFilterEqualOptions,
     IPaginationFilterOptions,
+    IPaginationQueryOptions,
 } from 'src/common/pagination/interfaces/pagination.interface';
 import { PaginationFilterDatePipe } from 'src/common/pagination/pipes/pagination.filter-date.pipe';
 import { PaginationFilterEqualPipe } from 'src/common/pagination/pipes/pagination.filter-equal.pipe';
@@ -15,13 +15,13 @@ import { PaginationPagingPipe } from 'src/common/pagination/pipes/pagination.pag
 import { PaginationSearchPipe } from 'src/common/pagination/pipes/pagination.search.pipe';
 
 //! Pagination query helper
-export function PaginationQuery(
-    defaultPerPage: number,
-    defaultOrderBy: string,
-    defaultOrderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
-    availableSearch: string[],
-    availableOrderBy: string[]
-): ParameterDecorator {
+export function PaginationQuery({
+    defaultPerPage,
+    defaultOrderBy,
+    defaultOrderDirection,
+    availableSearch,
+    availableOrderBy,
+}: IPaginationQueryOptions): ParameterDecorator {
     return Query(
         PaginationSearchPipe(availableSearch),
         PaginationPagingPipe(defaultPerPage),

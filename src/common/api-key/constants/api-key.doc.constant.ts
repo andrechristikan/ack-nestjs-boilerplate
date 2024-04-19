@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker';
+import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.constant';
 
 export const ApiKeyDocQueryIsActive = [
     {
@@ -7,6 +8,17 @@ export const ApiKeyDocQueryIsActive = [
         required: false,
         type: 'string',
         example: 'true,false',
+        description: "boolean value with ',' delimiter",
+    },
+];
+
+export const ApiKeyDocQueryType = [
+    {
+        name: 'type',
+        allowEmptyValue: true,
+        required: false,
+        type: 'string',
+        example: Object.values(ENUM_API_KEY_TYPE).join(','),
         description: "boolean value with ',' delimiter",
     },
 ];

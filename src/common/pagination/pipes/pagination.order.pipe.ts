@@ -1,16 +1,20 @@
 import { Inject, Injectable, mixin, Type } from '@nestjs/common';
 import { PipeTransform, Scope } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
-import Case from 'case';
-import { PAGINATION_DEFAULT_AVAILABLE_ORDER_DIRECTION } from 'src/common/pagination/constants/pagination.constant';
+import {
+    PAGINATION_DEFAULT_AVAILABLE_ORDER_BY,
+    PAGINATION_DEFAULT_AVAILABLE_ORDER_DIRECTION,
+    PAGINATION_DEFAULT_ORDER_BY,
+    PAGINATION_DEFAULT_ORDER_DIRECTION,
+} from 'src/common/pagination/constants/pagination.constant';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationOrderPipe(
-    defaultOrderBy: string,
-    defaultOrderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
-    availableOrderBy: string[]
+    defaultOrderBy: string = PAGINATION_DEFAULT_ORDER_BY,
+    defaultOrderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE = PAGINATION_DEFAULT_ORDER_DIRECTION,
+    availableOrderBy: string[] = PAGINATION_DEFAULT_AVAILABLE_ORDER_BY
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
     class MixinPaginationOrderPipe implements PipeTransform {
@@ -22,12 +26,7 @@ export function PaginationOrderPipe(
         async transform(
             value: Record<string, any>
         ): Promise<Record<string, any>> {
-            defaultOrderBy = Case.snake(defaultOrderBy);
-            availableOrderBy = availableOrderBy.map(e => Case.snake(e));
-
-            const orderBy: string = value?.orderBy
-                ? Case.snake(value?.orderBy)
-                : defaultOrderBy;
+            const orderBy: string = value?.orderBy ?? defaultOrderBy;
             const orderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE =
                 value?.orderDirection ?? defaultOrderDirection;
             const availableOrderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE[] =

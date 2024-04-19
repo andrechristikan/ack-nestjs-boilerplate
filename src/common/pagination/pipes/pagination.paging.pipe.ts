@@ -1,11 +1,12 @@
 import { Inject, Injectable, mixin, Type } from '@nestjs/common';
 import { PipeTransform, Scope } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
+import { PAGINATION_DEFAULT_PAGE } from 'src/common/pagination/constants/pagination.constant';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationPagingPipe(
-    defaultPerPage: number
+    defaultPerPage: number = PAGINATION_DEFAULT_PAGE
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
     class MixinPaginationPagingPipe implements PipeTransform {
@@ -18,7 +19,7 @@ export function PaginationPagingPipe(
             value: Record<string, any>
         ): Promise<Record<string, any>> {
             const page: number = this.paginationService.page(
-                Number.parseInt(value?.page ?? 1)
+                value?.page ? Number.parseInt(value?.page) : 1
             );
             const perPage: number = this.paginationService.perPage(
                 Number.parseInt(value?.perPage ?? defaultPerPage)

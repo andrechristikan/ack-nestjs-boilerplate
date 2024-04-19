@@ -9,6 +9,7 @@ import { Response } from 'express';
 import { IErrorException } from 'src/common/error/interfaces/error.interface';
 import { IMessageValidationError } from 'src/common/message/interfaces/message.interface';
 import { MessageService } from 'src/common/message/services/message.service';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { RequestValidationException } from 'src/common/request/exceptions/request.validation.exception';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ResponseMetadataDto } from 'src/common/response/dtos/response.dto';
@@ -30,9 +31,10 @@ export class ErrorValidationFilter implements ExceptionFilter {
             request.__language ?? this.messageService.getLanguage();
 
         // set default
-        const responseException = exception.getResponse() as IErrorException;
-        const statusHttp: HttpStatus = exception.getStatus();
-        const statusCode = responseException.statusCode;
+        const rawErrors = exception.getErrors();
+        const statusHttp: HttpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
+        const statusCode =
+            ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR;
         const metadata: ResponseMetadataDto = {
             language: __language,
             timestamp: request.__timestamp,
@@ -44,14 +46,11 @@ export class ErrorValidationFilter implements ExceptionFilter {
         };
 
         // set response
-        const message = this.messageService.setMessage(
-            responseException.message,
-            {
-                customLanguage: __language,
-            }
-        );
+        const message = this.messageService.setMessage(exception.message, {
+            customLanguage: __language,
+        });
         const errors: IMessageValidationError[] =
-            this.messageService.setValidationMessage(responseException.errors, {
+            this.messageService.setValidationMessage(rawErrors, {
                 customLanguage: __language,
             });
 

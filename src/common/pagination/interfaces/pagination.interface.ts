@@ -8,6 +8,14 @@ export type IPaginationOrder = Record<
     ENUM_PAGINATION_ORDER_DIRECTION_TYPE
 >;
 
+export interface IPaginationQueryOptions {
+    defaultPerPage?: number;
+    defaultOrderBy?: string;
+    defaultOrderDirection?: ENUM_PAGINATION_ORDER_DIRECTION_TYPE;
+    availableSearch?: string[];
+    availableOrderBy?: string[];
+}
+
 export interface IPaginationFilterOptions {
     queryField?: string;
     raw?: boolean;

@@ -1,5 +1,6 @@
 {
     "validation": "Validation errors",
+    "unknownValue": "Unknown value doesn't allowed.",
     "min": "{property} has less elements than the minimum allowed.",
     "max": "{property} has more elements than the maximum allowed.",
     "maxLength": "{property} has more elements than the maximum allowed.",
@@ -36,12 +37,5 @@
     "LessThan": "{property} has less than {value}",
     "lessThanEqual": "{property} must less than equal {value}",
     "greaterThan": "{property} must greater than {value}",
-    "greaterThanEqual": "{property} must greater than equal {value}",
-    "error": {
-        "userAgentInvalid": "Request user agent not acceptable",
-        "userAgentOsInvalid": "Request user agent OS not acceptable",
-        "userAgentBrowserInvalid": "Request user agent Browser not acceptable",
-        "timestampInvalid": "Timestamp invalid",
-        "toleranceTimeInMs": "Timestamp out of tolerance"
-    }
+    "greaterThanEqual": "{property} must greater than equal {value}"
 }

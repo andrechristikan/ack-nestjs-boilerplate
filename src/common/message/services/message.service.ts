@@ -63,18 +63,21 @@ export class MessageService implements IMessageService {
     ): IMessageValidationError[] {
         const messages: IMessageValidationError[] = [];
         for (const error of errors) {
+            const property = error.property ?? 'unknown';
             const constraints: string[] = Object.keys(error.constraints ?? []);
 
             for (const constraint of constraints) {
+                const message = this.setMessage(`request.${constraint}`, {
+                    customLanguage: options?.customLanguage,
+                    properties: {
+                        property,
+                        value: error.value,
+                    },
+                });
+
                 messages.push({
-                    property: error.property,
-                    message: this.setMessage(`request.${constraint}`, {
-                        customLanguage: options?.customLanguage,
-                        properties: {
-                            property: error.property,
-                            value: error.value,
-                        },
-                    }),
+                    property,
+                    message: message,
                 });
             }
         }

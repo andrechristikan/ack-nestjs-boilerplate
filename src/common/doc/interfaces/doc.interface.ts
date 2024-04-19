@@ -41,6 +41,7 @@ export interface IDocRequestFileOptions
 
 export interface IDocGuardOptions {
     policy?: boolean;
+    role?: boolean;
 }
 
 export interface IDocResponseOptions<T = any> {

@@ -1,12 +1,11 @@
 import { Inject, Injectable, mixin, Type } from '@nestjs/common';
 import { PipeTransform, Scope } from '@nestjs/common/interfaces';
 import { REQUEST } from '@nestjs/core';
-import Case from 'case';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationSearchPipe(
-    availableSearch: string[]
+    availableSearch: string[] = []
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
     class MixinPaginationSearchPipe implements PipeTransform {
@@ -18,12 +17,11 @@ export function PaginationSearchPipe(
         async transform(
             value: Record<string, any>
         ): Promise<Record<string, any>> {
-            if (!value?.search) {
+            if (availableSearch.length === 0 || !value?.search) {
                 this.addToRequestInstance(value?.search, availableSearch);
                 return undefined;
             }
 
-            availableSearch = availableSearch.map(e => Case.snake(e));
             const search: Record<string, any> = this.paginationService.search(
                 value?.search,
                 availableSearch

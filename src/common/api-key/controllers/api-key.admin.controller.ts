@@ -13,9 +13,6 @@ import {
     API_KEY_DEFAULT_AVAILABLE_ORDER_BY,
     API_KEY_DEFAULT_AVAILABLE_SEARCH,
     API_KEY_DEFAULT_IS_ACTIVE,
-    API_KEY_DEFAULT_ORDER_BY,
-    API_KEY_DEFAULT_ORDER_DIRECTION,
-    API_KEY_DEFAULT_PER_PAGE,
     API_KEY_DEFAULT_TYPE,
 } from 'src/common/api-key/constants/api-key.list.constant';
 import {
@@ -63,7 +60,6 @@ import {
     ENUM_POLICY_SUBJECT,
 } from 'src/common/policy/constants/policy.enum.constant';
 import { PolicyAbilityProtected } from 'src/common/policy/decorators/policy.decorator';
-import { RequestParamRequired } from 'src/common/request/decorators/request.decorator';
 import {
     Response,
     ResponsePaging,
@@ -73,6 +69,7 @@ import {
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
 
+// TODO: Change Guard to Pipe
 @ApiTags('common.admin.apiKey')
 @Controller({
     version: '1',
@@ -94,13 +91,10 @@ export class ApiKeyAdminController {
     @ApiKeyPublicProtected()
     @Get('/list')
     async list(
-        @PaginationQuery(
-            API_KEY_DEFAULT_PER_PAGE,
-            API_KEY_DEFAULT_ORDER_BY,
-            API_KEY_DEFAULT_ORDER_DIRECTION,
-            API_KEY_DEFAULT_AVAILABLE_SEARCH,
-            API_KEY_DEFAULT_AVAILABLE_ORDER_BY
-        )
+        @PaginationQuery({
+            availableOrderBy: API_KEY_DEFAULT_AVAILABLE_ORDER_BY,
+            availableSearch: API_KEY_DEFAULT_AVAILABLE_SEARCH,
+        })
         { _search, _limit, _offset, _order }: PaginationListDto,
         @PaginationQueryFilterInBoolean('isActive', API_KEY_DEFAULT_IS_ACTIVE)
         isActive: Record<string, any>,
@@ -146,7 +140,6 @@ export class ApiKeyAdminController {
     })
     @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
-    @RequestParamRequired()
     @Get('/get/:apiKey')
     async get(
         @GetApiKey() apiKey: ApiKeyDoc
@@ -184,7 +177,6 @@ export class ApiKeyAdminController {
     })
     @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
-    @RequestParamRequired()
     @Patch('/update/:apiKey/reset')
     async reset(
         @GetApiKey() apiKey: ApiKeyDoc
@@ -206,7 +198,6 @@ export class ApiKeyAdminController {
     })
     @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
-    @RequestParamRequired()
     @Put('/update/:apiKey')
     async updateName(
         @Body() body: ApiKeyUpdateNameRequestDto,
@@ -226,7 +217,6 @@ export class ApiKeyAdminController {
     })
     @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
-    @RequestParamRequired()
     @Patch('/update/:apiKey/inactive')
     async inactive(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
         await this.apiKeyService.inactive(apiKey);
@@ -243,7 +233,6 @@ export class ApiKeyAdminController {
     })
     @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
-    @RequestParamRequired()
     @Patch('/update/:apiKey/active')
     async active(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
         await this.apiKeyService.active(apiKey);
@@ -260,7 +249,6 @@ export class ApiKeyAdminController {
     })
     @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
-    @RequestParamRequired()
     @Put('/update/:apiKey/date')
     async updateDate(
         @Body() body: ApiKeyUpdateDateRequestDto,
@@ -280,7 +268,6 @@ export class ApiKeyAdminController {
     })
     @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
-    @RequestParamRequired()
     @Delete('/delete/:apiKey')
     async delete(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
         await this.apiKeyService.delete(apiKey);
