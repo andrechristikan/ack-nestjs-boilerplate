@@ -3,6 +3,7 @@ import {
     Controller,
     Delete,
     Get,
+    Param,
     Patch,
     Post,
     Put,
@@ -15,18 +16,7 @@ import {
     API_KEY_DEFAULT_IS_ACTIVE,
     API_KEY_DEFAULT_TYPE,
 } from 'src/common/api-key/constants/api-key.list.constant';
-import {
-    ApiKeyAdminDeleteGuard,
-    ApiKeyAdminGetGuard,
-    ApiKeyAdminUpdateActiveGuard,
-    ApiKeyAdminUpdateGuard,
-    ApiKeyAdminUpdateInactiveGuard,
-    ApiKeyAdminUpdateResetGuard,
-} from 'src/common/api-key/decorators/api-key.admin.decorator';
-import {
-    ApiKeyPublicProtected,
-    GetApiKey,
-} from 'src/common/api-key/decorators/api-key.decorator';
+import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import {
     ApiKeyAdminActiveDoc,
     ApiKeyAdminCreateDoc,
@@ -45,6 +35,11 @@ import { ApiKeyCreateResponseDto } from 'src/common/api-key/dtos/response/api-ke
 import { ApiKeyGetResponseDto } from 'src/common/api-key/dtos/response/api-key.get.response.dto';
 import { ApiKeyListResponseDto } from 'src/common/api-key/dtos/response/api-key.list.response.dto';
 import { ApiKeyResetResponseDto } from 'src/common/api-key/dtos/response/api-key.reset.dto';
+import {
+    ApiKeyActivePipe,
+    ApiKeyInactivePipe,
+} from 'src/common/api-key/pipes/api-key.is-active.pipe';
+import { ApiKeyParsePipe } from 'src/common/api-key/pipes/api-key.parse.pipe';
 import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { AuthJwtAccessAdminProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
@@ -60,6 +55,7 @@ import {
     ENUM_POLICY_SUBJECT,
 } from 'src/common/policy/constants/policy.enum.constant';
 import { PolicyAbilityProtected } from 'src/common/policy/decorators/policy.decorator';
+import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
 import {
     Response,
     ResponsePaging,
@@ -69,7 +65,6 @@ import {
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
 
-// TODO: Change Guard to Pipe
 @ApiTags('common.admin.apiKey')
 @Controller({
     version: '1',
@@ -133,7 +128,6 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminGetDoc()
     @Response('apiKey.get')
-    @ApiKeyAdminGetGuard()
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ],
@@ -142,7 +136,8 @@ export class ApiKeyAdminController {
     @ApiKeyPublicProtected()
     @Get('/get/:apiKey')
     async get(
-        @GetApiKey() apiKey: ApiKeyDoc
+        @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe)
+        apiKey: ApiKeyDoc
     ): Promise<IResponse<ApiKeyGetResponseDto>> {
         const mapped = await this.apiKeyService.mapApiKeyGet(apiKey);
         return { data: mapped };
@@ -170,7 +165,6 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminResetDoc()
     @Response('apiKey.reset')
-    @ApiKeyAdminUpdateResetGuard()
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
@@ -179,7 +173,8 @@ export class ApiKeyAdminController {
     @ApiKeyPublicProtected()
     @Patch('/update/:apiKey/reset')
     async reset(
-        @GetApiKey() apiKey: ApiKeyDoc
+        @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe, ApiKeyActivePipe)
+        apiKey: ApiKeyDoc
     ): Promise<IResponse<ApiKeyResetResponseDto>> {
         const updated: ApiKeyResetResponseDto =
             await this.apiKeyService.reset(apiKey);
@@ -191,7 +186,6 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminUpdateNameDoc()
     @Response('apiKey.updateName')
-    @ApiKeyAdminUpdateGuard()
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
@@ -201,7 +195,8 @@ export class ApiKeyAdminController {
     @Put('/update/:apiKey')
     async updateName(
         @Body() body: ApiKeyUpdateNameRequestDto,
-        @GetApiKey() apiKey: ApiKeyDoc
+        @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe, ApiKeyActivePipe)
+        apiKey: ApiKeyDoc
     ): Promise<IResponse<void>> {
         await this.apiKeyService.update(apiKey, body);
 
@@ -210,7 +205,6 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminInactiveDoc()
     @Response('apiKey.inactive')
-    @ApiKeyAdminUpdateInactiveGuard()
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
@@ -218,7 +212,10 @@ export class ApiKeyAdminController {
     @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
     @Patch('/update/:apiKey/inactive')
-    async inactive(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
+    async inactive(
+        @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe)
+        apiKey: ApiKeyDoc
+    ): Promise<void> {
         await this.apiKeyService.inactive(apiKey);
 
         return;
@@ -226,7 +223,6 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminActiveDoc()
     @Response('apiKey.active')
-    @ApiKeyAdminUpdateActiveGuard()
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
@@ -234,7 +230,15 @@ export class ApiKeyAdminController {
     @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
     @Patch('/update/:apiKey/active')
-    async active(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
+    async active(
+        @Param(
+            'apiKey',
+            RequestRequiredPipe,
+            ApiKeyParsePipe,
+            ApiKeyInactivePipe
+        )
+        apiKey: ApiKeyDoc
+    ): Promise<void> {
         await this.apiKeyService.active(apiKey);
 
         return;
@@ -242,7 +246,6 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminUpdateDateDoc()
     @Response('apiKey.updateDate')
-    @ApiKeyAdminUpdateGuard()
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
@@ -252,7 +255,8 @@ export class ApiKeyAdminController {
     @Put('/update/:apiKey/date')
     async updateDate(
         @Body() body: ApiKeyUpdateDateRequestDto,
-        @GetApiKey() apiKey: ApiKeyDoc
+        @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe, ApiKeyActivePipe)
+        apiKey: ApiKeyDoc
     ): Promise<IResponse<void>> {
         await this.apiKeyService.updateDate(apiKey, body);
 
@@ -261,7 +265,6 @@ export class ApiKeyAdminController {
 
     @ApiKeyAdminDeleteDoc()
     @Response('apiKey.delete')
-    @ApiKeyAdminDeleteGuard()
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.API_KEY,
         action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
@@ -269,7 +272,10 @@ export class ApiKeyAdminController {
     @AuthJwtAccessAdminProtected()
     @ApiKeyPublicProtected()
     @Delete('/delete/:apiKey')
-    async delete(@GetApiKey() apiKey: ApiKeyDoc): Promise<void> {
+    async delete(
+        @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe)
+        apiKey: ApiKeyDoc
+    ): Promise<void> {
         await this.apiKeyService.delete(apiKey);
 
         return;

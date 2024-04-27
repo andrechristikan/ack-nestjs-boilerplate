@@ -25,6 +25,8 @@ import {
     ResponsePagingMetadataCursorDto,
     ResponsePagingMetadataDto,
 } from 'src/common/response/dtos/response.paging.dto';
+import { ConfigService } from '@nestjs/config';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 
 @Injectable()
 export class ResponsePagingInterceptor
@@ -33,7 +35,9 @@ export class ResponsePagingInterceptor
     constructor(
         private readonly reflector: Reflector,
         private readonly messageService: MessageService,
-        private readonly helperArrayService: HelperArrayService
+        private readonly helperArrayService: HelperArrayService,
+        private readonly configService: ConfigService,
+        private readonly helperDateService: HelperDateService
     ) {}
 
     async intercept(
@@ -57,27 +61,30 @@ export class ResponsePagingInterceptor
                             context.getHandler()
                         );
 
-                    // metadata
-                    const __language = request.__language;
-                    const __path = request.path;
-                    const __requestId = request.__id;
-                    const __timestamp = request.__timestamp;
-                    const __timezone = request.__timezone;
-                    const __version = request.__version;
-                    const __repoVersion = request.__repoVersion;
-                    const __pagination = request.__pagination;
-
                     let httpStatus: HttpStatus = response.statusCode;
                     let statusCode: number = response.statusCode;
                     let data: Record<string, any>[] = [];
+
+                    // metadata
+                    const xPath = request.path;
+                    const xPagination = request.__pagination;
+                    const xLanguage: string =
+                        request.__language ?? this.messageService.getLanguage();
+                    const xId = request.__id;
+                    const xTimestamp = this.helperDateService.createTimestamp();
+                    const xTimezone =
+                        Intl.DateTimeFormat().resolvedOptions().timeZone;
+                    const xVersion = request.__version;
+                    const xRepoVersion =
+                        this.configService.get<string>('app.repoVersion');
                     let metadata: ResponsePagingMetadataDto = {
-                        language: __language,
-                        timestamp: __timestamp,
-                        timezone: __timezone,
-                        requestId: __requestId,
-                        path: __path,
-                        version: __version,
-                        repoVersion: __repoVersion,
+                        language: xLanguage,
+                        timestamp: xTimestamp,
+                        timezone: xTimezone,
+                        requestId: xId,
+                        path: xPath,
+                        version: xVersion,
+                        repoVersion: xRepoVersion,
                     };
 
                     // response
@@ -118,8 +125,8 @@ export class ResponsePagingInterceptor
                     const total: number = responseData._pagination.total;
                     const totalPage: number =
                         responseData._pagination.totalPage;
-                    const perPage: number = __pagination.perPage;
-                    const page: number = __pagination.page;
+                    const perPage: number = xPagination.perPage;
+                    const page: number = xPagination.page;
 
                     const queryString = qs.stringify(query, {
                         encode: false,
@@ -130,30 +137,30 @@ export class ResponsePagingInterceptor
                             nextPage:
                                 page < totalPage
                                     ? queryString
-                                        ? `${__path}?perPage=${perPage}&page=${
+                                        ? `${xPath}?perPage=${perPage}&page=${
                                               page + 1
                                           }&${queryString}`
-                                        : `${__path}?perPage=${perPage}&page=${page + 1}`
+                                        : `${xPath}?perPage=${perPage}&page=${page + 1}`
                                     : undefined,
                             previousPage:
                                 page > 1
                                     ? queryString
-                                        ? `${__path}?perPage=${perPage}&page=${
+                                        ? `${xPath}?perPage=${perPage}&page=${
                                               page - 1
                                           }&${queryString}`
-                                        : `${__path}?perPage=${perPage}&page=${page - 1}`
+                                        : `${xPath}?perPage=${perPage}&page=${page - 1}`
                                     : undefined,
                             firstPage:
                                 totalPage > 1
                                     ? queryString
-                                        ? `${__path}?perPage=${perPage}&page=${1}&${queryString}`
-                                        : `${__path}?perPage=${perPage}&page=${1}`
+                                        ? `${xPath}?perPage=${perPage}&page=${1}&${queryString}`
+                                        : `${xPath}?perPage=${perPage}&page=${1}`
                                     : undefined,
                             lastPage:
                                 totalPage > 1
                                     ? queryString
-                                        ? `${__path}?perPage=${perPage}&page=${totalPage}&${queryString}`
-                                        : `${__path}?perPage=${perPage}&page=${totalPage}`
+                                        ? `${xPath}?perPage=${perPage}&page=${totalPage}&${queryString}`
+                                        : `${xPath}?perPage=${perPage}&page=${totalPage}`
                                     : undefined,
                         };
 
@@ -161,7 +168,7 @@ export class ResponsePagingInterceptor
                         ...metadata,
                         ..._metadata,
                         pagination: {
-                            ...__pagination,
+                            ...xPagination,
                             ...metadata._pagination,
                             total,
                             totalPage: data.length > 0 ? totalPage : 0,
@@ -180,11 +187,17 @@ export class ResponsePagingInterceptor
                     const message: string = this.messageService.setMessage(
                         messagePath,
                         {
-                            customLanguage: __language,
+                            customLanguage: xLanguage,
                             properties: messageProperties,
                         }
                     );
 
+                    response.setHeader('x-custom-lang', xLanguage);
+                    response.setHeader('x-timestamp', xTimestamp);
+                    response.setHeader('x-timezone', xTimezone);
+                    response.setHeader('x-request-id', xId);
+                    response.setHeader('x-version', xVersion);
+                    response.setHeader('x-repo-version', xRepoVersion);
                     response.status(httpStatus);
 
                     return {

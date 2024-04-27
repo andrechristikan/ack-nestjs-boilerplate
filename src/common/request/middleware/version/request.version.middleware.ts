@@ -14,8 +14,6 @@ export class RequestVersionMiddleware implements NestMiddleware {
     private readonly versioningPrefix: string;
     private readonly versioningVersion: string;
 
-    private readonly repoVersion: string;
-
     constructor(private readonly configService: ConfigService) {
         this.env = this.configService.get<ENUM_APP_ENVIRONMENT>('app.env');
 
@@ -30,7 +28,6 @@ export class RequestVersionMiddleware implements NestMiddleware {
         this.versioningVersion = this.configService.get<string>(
             'app.versioning.version'
         );
-        this.repoVersion = this.configService.get<string>('app.repoVersion');
     }
 
     async use(
@@ -55,7 +52,6 @@ export class RequestVersionMiddleware implements NestMiddleware {
         }
 
         req.__version = version;
-        req.__repoVersion = this.repoVersion;
 
         next();
     }

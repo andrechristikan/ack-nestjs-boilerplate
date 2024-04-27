@@ -6,8 +6,10 @@ import {
     HttpStatus,
 } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
+import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { IErrorException } from 'src/common/error/interfaces/error.interface';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import {
     IMessageOptionsProperties,
     IMessageValidationError,
@@ -18,16 +20,16 @@ import { ResponseMetadataDto } from 'src/common/response/dtos/response.dto';
 
 @Catch(HttpException)
 export class ErrorHttpFilter implements ExceptionFilter {
-    constructor(private readonly messageService: MessageService) {}
+    constructor(
+        private readonly messageService: MessageService,
+        private readonly configService: ConfigService,
+        private readonly helperDateService: HelperDateService
+    ) {}
 
     async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
         const ctx: HttpArgumentsHost = host.switchToHttp();
         const response: Response = ctx.getResponse<Response>();
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
-
-        // get request headers
-        const __language: string =
-            request.__language ?? this.messageService.getLanguage();
 
         // set default
         let statusHttp: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -36,14 +38,23 @@ export class ErrorHttpFilter implements ExceptionFilter {
         const errors: IMessageValidationError[] = undefined;
         let messageProperties: IMessageOptionsProperties = undefined;
         let data: Record<string, any> = undefined;
+
+        // metadata
+        const xLanguage: string =
+            request.__language ?? this.messageService.getLanguage();
+        const xId = request.__id;
+        const xTimestamp = this.helperDateService.createTimestamp();
+        const xTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const xVersion = request.__version;
+        const xRepoVersion = this.configService.get<string>('app.repoVersion');
         let metadata: ResponseMetadataDto = {
-            language: __language,
-            timestamp: request.__timestamp,
-            timezone: request.__timezone,
-            requestId: request.__id,
+            language: xLanguage,
+            timestamp: xTimestamp,
+            timezone: xTimezone,
+            requestId: xId,
             path: request.path,
-            version: request.__version,
-            repoVersion: request.__repoVersion,
+            version: xVersion,
+            repoVersion: xRepoVersion,
         };
 
         // Restructure
@@ -68,7 +79,7 @@ export class ErrorHttpFilter implements ExceptionFilter {
         }
 
         const message: string = this.messageService.setMessage(messagePath, {
-            customLanguage: __language,
+            customLanguage: xLanguage,
             properties: messageProperties,
         });
 
@@ -81,12 +92,12 @@ export class ErrorHttpFilter implements ExceptionFilter {
         };
 
         response
-            .setHeader('x-custom-lang', __language)
-            .setHeader('x-timestamp', request.__timestamp)
-            .setHeader('x-timezone', request.__timezone)
-            .setHeader('x-request-id', request.__id)
-            .setHeader('x-version', request.__version)
-            .setHeader('x-repo-version', request.__repoVersion)
+            .setHeader('x-custom-lang', xLanguage)
+            .setHeader('x-timestamp', xTimestamp)
+            .setHeader('x-timezone', xTimezone)
+            .setHeader('x-request-id', xId)
+            .setHeader('x-version', xVersion)
+            .setHeader('x-repo-version', xRepoVersion)
             .status(statusHttp)
             .json(responseBody);
 

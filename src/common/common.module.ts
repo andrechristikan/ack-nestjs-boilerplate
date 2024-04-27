@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { HelperModule } from 'src/common/helper/helper.module';
 import { ErrorModule } from 'src/common/error/error.module';
-import { ResponseModule } from 'src/common/response/response.module';
 import { AuthModule } from 'src/common/auth/auth.module';
 import { MessageModule } from 'src/common/message/message.module';
 import { PaginationModule } from 'src/common/pagination/pagination.module';
@@ -125,7 +124,6 @@ import { RequestModule } from 'src/common/request/request.module';
         HelperModule,
         PaginationModule,
         ErrorModule,
-        ResponseModule,
         RequestModule,
         PolicyModule,
         ApiKeyModule,

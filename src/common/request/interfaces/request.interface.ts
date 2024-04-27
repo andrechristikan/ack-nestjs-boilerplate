@@ -8,11 +8,8 @@ export interface IRequestApp<T = AuthJwtAccessPayloadDto> extends Request {
     user?: T;
 
     __id: string;
-    __timestamp: number;
-    __timezone: string;
     __language: string;
     __version: string;
-    __repoVersion: string;
 
     __pagination?: ResponsePagingMetadataPaginationDto;
 }
