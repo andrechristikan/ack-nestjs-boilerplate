@@ -16,6 +16,7 @@ import { IMessageService } from 'src/common/message/interfaces/message.service.i
 export class MessageService implements IMessageService {
     private readonly defaultLanguage: string;
     private readonly availableLanguage: string[];
+    private readonly debug: boolean;
 
     constructor(
         private readonly i18n: I18nService,
@@ -27,6 +28,7 @@ export class MessageService implements IMessageService {
         this.availableLanguage = this.configService.get<string[]>(
             'message.availableLanguage'
         );
+        this.debug = this.configService.get<boolean>('app.debug');
     }
 
     getAvailableLanguages(): string[] {
@@ -54,6 +56,7 @@ export class MessageService implements IMessageService {
         return this.i18n.translate(path, {
             lang: language,
             args: options?.properties,
+            debug: this.debug,
         }) as any;
     }
 

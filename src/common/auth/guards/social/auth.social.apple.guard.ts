@@ -4,11 +4,10 @@ import {
     Injectable,
     UnauthorizedException,
 } from '@nestjs/common';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
 import { AuthSocialApplePayloadDto } from 'src/common/auth/dtos/social/auth.social.apple-payload.dto';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { IHelperApplePayload } from 'src/common/helper/interfaces/helper.interface';
-import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
 export class AuthSocialAppleGuard implements CanActivate {
@@ -34,7 +33,7 @@ export class AuthSocialAppleGuard implements CanActivate {
         const accessToken: string = acArr[1];
 
         try {
-            const payload: IHelperApplePayload =
+            const payload: AuthSocialApplePayloadDto =
                 await this.authService.appleGetTokenInfo(accessToken);
 
             request.user = {

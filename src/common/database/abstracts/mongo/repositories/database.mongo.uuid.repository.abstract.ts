@@ -6,7 +6,7 @@ import {
     PopulateOptions,
     Document,
 } from 'mongoose';
-import { DatabaseBaseRepositoryAbstract } from 'src/common/database/abstracts/base/database.base-repository.abstract';
+import { DatabaseRepositoryAbstract } from 'src/common/database/abstracts/base/database.repository.abstract';
 import { DATABASE_DELETED_AT_FIELD_NAME } from 'src/common/database/constants/database.constant';
 import {
     IDatabaseCreateOptions,
@@ -29,7 +29,7 @@ import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/cons
 export abstract class DatabaseMongoUUIDRepositoryAbstract<
     Entity,
     EntityDocument,
-> extends DatabaseBaseRepositoryAbstract<EntityDocument> {
+> extends DatabaseRepositoryAbstract<EntityDocument> {
     protected _repository: Model<Entity>;
     protected _joinOnFind?: PopulateOptions | PopulateOptions[];
 

@@ -2,10 +2,8 @@ import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ENUM_AUTH_LOGIN_FROM } from 'src/common/auth/constants/auth.enum.constant';
-import {
-    ENUM_POLICY_ROLE,
-    ENUM_POLICY_SUBJECT,
-} from 'src/common/policy/constants/policy.enum.constant';
+import { ENUM_POLICY_SUBJECT } from 'src/common/policy/constants/policy.enum.constant';
+import { ENUM_ROLE_TYPE } from 'src/common/role/constants/role.enum.constant';
 
 export class AuthJwtAccessPayloadPermissionDto {
     @ApiProperty({
@@ -21,7 +19,21 @@ export class AuthJwtAccessPayloadPermissionDto {
     action: string;
 }
 
-export class AuthJwtAccessPayloadUserDto {
+export class AuthJwtAccessPayloadDto {
+    @ApiProperty({
+        required: true,
+        nullable: false,
+        example: faker.date.recent(),
+    })
+    readonly loginDate: Date;
+
+    @ApiProperty({
+        required: true,
+        nullable: false,
+        enum: ENUM_AUTH_LOGIN_FROM,
+    })
+    readonly loginFrom: ENUM_AUTH_LOGIN_FROM;
+
     @ApiProperty({
         required: true,
         nullable: false,
@@ -37,9 +49,9 @@ export class AuthJwtAccessPayloadUserDto {
     @ApiProperty({
         required: true,
         nullable: false,
-        enum: ENUM_POLICY_ROLE,
+        enum: ENUM_ROLE_TYPE,
     })
-    readonly type: ENUM_POLICY_ROLE;
+    readonly type: ENUM_ROLE_TYPE;
 
     @ApiProperty({
         required: true,
@@ -50,20 +62,4 @@ export class AuthJwtAccessPayloadUserDto {
     })
     @Type(() => AuthJwtAccessPayloadPermissionDto)
     readonly permissions: AuthJwtAccessPayloadPermissionDto[];
-}
-
-export class AuthJwtAccessPayloadDto extends AuthJwtAccessPayloadUserDto {
-    @ApiProperty({
-        required: true,
-        nullable: false,
-        example: faker.date.recent(),
-    })
-    readonly loginDate: Date;
-
-    @ApiProperty({
-        required: true,
-        nullable: false,
-        enum: ENUM_AUTH_LOGIN_FROM,
-    })
-    readonly loginFrom: ENUM_AUTH_LOGIN_FROM;
 }

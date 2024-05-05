@@ -12,7 +12,7 @@ export function HealthCheckDoc(): MethodDecorator {
             summary: 'health check api',
         }),
         DocAuth({
-            jwtAccessToken: true,
+            xApiKey: true,
         }),
         DocResponse<HealthResponseDto>('health.check', {
             dto: HealthResponseDto,

@@ -27,7 +27,7 @@ export class RequestTimeoutInterceptor
         private readonly reflector: Reflector
     ) {
         this.maxTimeoutInSecond =
-            this.configService.get<number>('request.timeout');
+            this.configService.get<number>('middleware.timeout');
     }
 
     async intercept(

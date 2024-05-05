@@ -4,11 +4,10 @@ import {
     Injectable,
     UnauthorizedException,
 } from '@nestjs/common';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
 import { AuthSocialGooglePayloadDto } from 'src/common/auth/dtos/social/auth.social.google-payload.dto';
 import { AuthService } from 'src/common/auth/services/auth.service';
-import { IHelperGooglePayload } from 'src/common/helper/interfaces/helper.interface';
-import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
 export class AuthSocialGoogleGuard implements CanActivate {
@@ -33,7 +32,7 @@ export class AuthSocialGoogleGuard implements CanActivate {
         // TODO: Validate Token
 
         try {
-            const payload: IHelperGooglePayload =
+            const payload: AuthSocialGooglePayloadDto =
                 await this.authService.googleGetTokenInfo(accessToken);
 
             request.user = {

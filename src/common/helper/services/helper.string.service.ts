@@ -34,16 +34,10 @@ export class HelperStringService implements IHelperStringService {
         } else if (text.length <= 10) {
             const stringCensor = '*'.repeat(7);
             return `${stringCensor}${text.slice(-3)}`;
-        } else if (text.length <= 25) {
-            const lengthExplicit = Math.ceil((text.length / 100) * 30);
-            const lengthCensor = Math.ceil((text.length / 100) * 50);
-            const stringCensor = '*'.repeat(lengthCensor);
-            return `${stringCensor}${text.slice(-lengthExplicit)}`;
         }
 
         const stringCensor = '*'.repeat(10);
-        const lengthExplicit = Math.ceil((text.length / 100) * 30);
-        return `${text.slice(0, 3)}${stringCensor}${text.slice(-lengthExplicit)}`;
+        return `${text.slice(0, 3)}${stringCensor}${text.slice(-4)}`;
     }
 
     checkEmail(email: string): boolean {

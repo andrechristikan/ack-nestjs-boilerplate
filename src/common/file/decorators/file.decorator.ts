@@ -10,18 +10,23 @@ import {
     FilesInterceptor,
 } from '@nestjs/platform-express';
 import { FILE_SIZE_IN_BYTES } from 'src/common/file/constants/file.constant';
-import { IFileMultipleField } from 'src/common/file/interfaces/file.interface';
+import {
+    IFileUploadMultiple,
+    IFileUploadMultipleField,
+    IFileUploadMultipleFieldOptions,
+    IFileUploadSingle,
+} from 'src/common/file/interfaces/file.interface';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
-export function FileUploadSingle(
-    field = 'file',
-    fileSize = FILE_SIZE_IN_BYTES
-): MethodDecorator {
+export function FileUploadSingle({
+    field,
+    fileSize,
+}: IFileUploadSingle): MethodDecorator {
     return applyDecorators(
         UseInterceptors(
             FileInterceptor(field ?? 'file', {
                 limits: {
-                    fileSize,
+                    fileSize: fileSize ?? FILE_SIZE_IN_BYTES,
                     files: 1,
                 },
             })
@@ -29,16 +34,16 @@ export function FileUploadSingle(
     );
 }
 
-export function FileUploadMultiple(
-    field = 'files',
-    maxFiles = 2,
-    fileSize = FILE_SIZE_IN_BYTES
-): MethodDecorator {
+export function FileUploadMultiple({
+    field,
+    fileSize,
+    maxFiles,
+}: IFileUploadMultiple): MethodDecorator {
     return applyDecorators(
         UseInterceptors(
-            FilesInterceptor(field ?? 'files', maxFiles, {
+            FilesInterceptor(field ?? 'files', maxFiles ?? 2, {
                 limits: {
-                    fileSize,
+                    fileSize: fileSize ?? FILE_SIZE_IN_BYTES,
                 },
             })
         )
@@ -46,8 +51,8 @@ export function FileUploadMultiple(
 }
 
 export function FileUploadMultipleFields(
-    fields: IFileMultipleField[],
-    fileSize = FILE_SIZE_IN_BYTES
+    fields: IFileUploadMultipleField[],
+    options?: IFileUploadMultipleFieldOptions
 ): MethodDecorator {
     return applyDecorators(
         UseInterceptors(
@@ -58,7 +63,7 @@ export function FileUploadMultipleFields(
                 })),
                 {
                     limits: {
-                        fileSize,
+                        fileSize: options?.fileSize ?? FILE_SIZE_IN_BYTES,
                     },
                 }
             )

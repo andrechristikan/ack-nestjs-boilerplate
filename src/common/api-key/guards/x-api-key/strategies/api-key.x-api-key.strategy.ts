@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import Strategy from 'passport-headerapikey';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
 import { ApiKeyEntity } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
 export class ApiKeyXApiKeyStrategy extends PassportStrategy(
@@ -20,19 +20,19 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
             { header: 'X-API-KEY', prefix: '' },
             true,
             async (
-                apiKey: string,
+                xApiKey: string,
                 verified: (
                     error: Error,
                     user?: Record<string, any>,
                     info?: string | number
                 ) => Promise<void>,
                 req: IRequestApp
-            ) => this.validate(apiKey, verified, req)
+            ) => this.validate(xApiKey, verified, req)
         );
     }
 
     async validate(
-        apiKey: string,
+        xApiKey: string,
         verified: (
             error: Error,
             user?: ApiKeyEntity,
@@ -40,11 +40,11 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
         ) => Promise<void>,
         req: IRequestApp
     ): Promise<void> {
-        const xApiKey: string[] = apiKey.split(':');
-        if (xApiKey.length !== 2) {
+        const xApiKeyArr: string[] = xApiKey.split(':');
+        if (xApiKeyArr.length !== 2) {
             verified(
                 new Error(
-                    `${ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INVALID_ERROR}`
+                    `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID_ERROR}`
                 ),
                 null,
                 null
@@ -53,45 +53,45 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
             return;
         }
 
-        const key = xApiKey[0];
-        const secret = xApiKey[1];
+        const key = xApiKeyArr[0];
+        const secret = xApiKeyArr[1];
         const today = this.helperDateService.create();
-        const authApi: ApiKeyEntity =
+        const apiKey: ApiKeyEntity =
             await this.apiKeyService.findOneByActiveKey(key);
 
-        if (!authApi) {
+        if (!apiKey) {
             verified(
                 new Error(
-                    `${ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR}`
+                    `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_NOT_FOUND_ERROR}`
                 ),
                 null,
                 null
             );
 
             return;
-        } else if (!authApi.isActive) {
+        } else if (!apiKey.isActive) {
             verified(
                 new Error(
-                    `${ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_IS_ACTIVE_ERROR}`
+                    `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INACTIVE_ERROR}`
                 ),
                 null,
                 null
             );
 
             return;
-        } else if (authApi.startDate && authApi.endDate) {
-            if (today < authApi.startDate) {
+        } else if (apiKey.startDate && apiKey.endDate) {
+            if (today < apiKey.startDate) {
                 verified(
                     new Error(
-                        `${ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_ACTIVE_YET_ERROR}`
+                        `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INACTIVE_ERROR}`
                     ),
                     null,
                     null
                 );
-            } else if (today > authApi.endDate) {
+            } else if (today > apiKey.endDate) {
                 verified(
                     new Error(
-                        `${ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_EXPIRED_ERROR}`
+                        `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_EXPIRED_ERROR}`
                     ),
                     null,
                     null
@@ -101,11 +101,11 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
 
         const hashed = await this.apiKeyService.createHashApiKey(key, secret);
         const validateApiKey: boolean =
-            await this.apiKeyService.validateHashApiKey(hashed, authApi.hash);
+            await this.apiKeyService.validateHashApiKey(hashed, apiKey.hash);
         if (!validateApiKey) {
             verified(
                 new Error(
-                    `${ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INVALID_ERROR}`
+                    `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID_ERROR}`
                 ),
                 null,
                 null
@@ -115,12 +115,11 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
         }
 
         req.apiKey = {
-            _id: `${authApi._id}`,
-            key: authApi.key,
-            type: authApi.type,
-            name: authApi.name,
+            _id: apiKey._id,
+            key: apiKey.key,
+            type: apiKey.type,
         };
-        verified(null, authApi);
+        verified(null, apiKey);
 
         return;
     }

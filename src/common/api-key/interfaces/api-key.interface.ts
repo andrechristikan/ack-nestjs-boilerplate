@@ -4,5 +4,4 @@ export interface IApiKeyPayload {
     _id: string;
     key: string;
     type: ENUM_API_KEY_TYPE;
-    name: string;
 }

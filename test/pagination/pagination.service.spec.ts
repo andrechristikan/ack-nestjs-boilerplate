@@ -41,22 +41,6 @@ describe('PaginationService', () => {
         });
     });
 
-    describe('offsetWithoutMax', () => {
-        it('should return the offset without the maximum page limit', () => {
-            expect(service.offsetWithoutMax(1, 10)).toBe(0);
-        });
-    });
-
-    describe('totalPageWithoutMax', () => {
-        it('should calculate the total number of pages without the maximum page limit for 0 data', () => {
-            expect(service.totalPageWithoutMax(0, 10)).toBe(1);
-        });
-
-        it('should calculate the total number of pages without the maximum page limit', () => {
-            expect(service.totalPageWithoutMax(100, 10)).toBe(10);
-        });
-    });
-
     describe('page', () => {
         it('should return the default page value if no page parameter is provided', () => {
             expect(service.page()).toBe(1);

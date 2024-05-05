@@ -35,17 +35,6 @@ export class PaginationService implements IPaginationService {
             : totalPage;
     }
 
-    offsetWithoutMax(page: number, perPage: number): number {
-        const offset: number = (page - 1) * perPage;
-        return offset;
-    }
-
-    totalPageWithoutMax(totalData: number, perPage: number): number {
-        let totalPage = Math.ceil(totalData / perPage);
-        totalPage = totalPage === 0 ? 1 : totalPage;
-        return totalPage;
-    }
-
     page(page?: number): number {
         return page
             ? page > PAGINATION_DEFAULT_MAX_PAGE
@@ -74,6 +63,7 @@ export class PaginationService implements IPaginationService {
         return { [orderBy]: orderDirectionValue };
     }
 
+    // TODO: Move to DB Service
     search(
         searchValue: string,
         availableSearch: string[]

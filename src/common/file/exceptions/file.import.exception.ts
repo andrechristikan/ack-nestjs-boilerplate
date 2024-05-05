@@ -6,8 +6,7 @@ export class FileImportException extends HttpException {
     constructor(errors: IMessageValidationImportErrorParam[]) {
         super(
             {
-                statusCode:
-                    ENUM_FILE_STATUS_CODE_ERROR.FILE_VALIDATION_DTO_ERROR,
+                statusCode: ENUM_FILE_STATUS_CODE_ERROR.VALIDATION_DTO_ERROR,
                 message: 'file.error.validationDto',
                 errors,
             },

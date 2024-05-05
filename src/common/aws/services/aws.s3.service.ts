@@ -53,12 +53,12 @@ import {
     CompletedPart,
 } from '@aws-sdk/client-s3';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
-import { AWS_S3_MAX_PART_NUMBER } from 'src/common/aws/constants/aws.s3.constant';
 import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
 import {
     AwsS3MultipartDto,
     AwsS3MultipartPartsDto,
 } from 'src/common/aws/dtos/aws.s3-multipart.dto';
+import { AWS_S3_MAX_PART_NUMBER } from 'src/common/aws/constants/aws.constant';
 
 @Injectable()
 export class AwsS3Service implements IAwsS3Service {

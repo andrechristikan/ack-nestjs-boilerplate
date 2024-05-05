@@ -5,10 +5,10 @@ import {
     BadRequestException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { API_KEY_X_TYPE_META_KEY } from 'src/common/api-key/constants/api-key.constant';
 import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.constant';
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
-import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()
 export class ApiKeyXApiKeyTypeGuard implements CanActivate {
@@ -28,8 +28,8 @@ export class ApiKeyXApiKeyTypeGuard implements CanActivate {
         if (!required.includes(apiKey.type)) {
             throw new BadRequestException({
                 statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_TYPE_INVALID_ERROR,
-                message: 'apiKey.error.typeInvalid',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_FORBIDDEN_ERROR,
+                message: 'apiKey.error.xApiKey.forbidden',
             });
         }
         return true;

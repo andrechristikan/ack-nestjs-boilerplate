@@ -4,8 +4,6 @@ import { IPaginationOrder } from 'src/common/pagination/interfaces/pagination.in
 export interface IPaginationService {
     offset(page: number, perPage: number): number;
     totalPage(totalData: number, perPage: number): number;
-    offsetWithoutMax(page: number, perPage: number): number;
-    totalPageWithoutMax(totalData: number, perPage: number): number;
     page(page?: number): number;
     perPage(perPage?: number): number;
     order(

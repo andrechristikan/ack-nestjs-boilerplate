@@ -24,7 +24,7 @@ export interface IDocDefaultOptions<T = any> extends IDocOfOptions<T> {
 export interface IDocAuthOptions {
     jwtAccessToken?: boolean;
     jwtRefreshToken?: boolean;
-    apiKey?: boolean;
+    xApiKey?: boolean;
     google?: boolean;
     apple?: boolean;
 }

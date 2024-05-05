@@ -6,7 +6,7 @@ export class RequestValidationException extends Error {
     constructor(errors: ValidationError[]) {
         super('RequestValidationException');
 
-        this.name = 'RequestValidationException';
+        this.name = this.name;
         this.message = 'request.validation';
         this.errors = errors;
     }

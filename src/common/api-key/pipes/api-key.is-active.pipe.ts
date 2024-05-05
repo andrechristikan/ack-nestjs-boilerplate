@@ -7,8 +7,7 @@ export class ApiKeyActivePipe implements PipeTransform {
     async transform(value: ApiKeyDoc): Promise<ApiKeyDoc> {
         if (!value.isActive) {
             throw new BadRequestException({
-                statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_IS_ACTIVE_ERROR,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.IS_ACTIVE_ERROR,
                 message: 'apiKey.error.isActiveInvalid',
             });
         }
@@ -22,8 +21,7 @@ export class ApiKeyInactivePipe implements PipeTransform {
     async transform(value: ApiKeyDoc): Promise<ApiKeyDoc> {
         if (value.isActive) {
             throw new BadRequestException({
-                statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_IS_ACTIVE_ERROR,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.IS_ACTIVE_ERROR,
                 message: 'apiKey.error.isActiveInvalid',
             });
         }

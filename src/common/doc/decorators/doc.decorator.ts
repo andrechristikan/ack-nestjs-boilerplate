@@ -13,9 +13,6 @@ import {
     ApiSecurity,
     getSchemaPath,
 } from '@nestjs/swagger';
-import { APP_LANGUAGE } from 'src/app/constants/app.constant';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
     IDocAuthOptions,
@@ -28,13 +25,17 @@ import {
     IDocResponseFileOptions,
     IDocResponseOptions,
 } from 'src/common/doc/interfaces/doc.interface';
-import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
-import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/common/policy/constants/policy.status-code.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ResponseDto } from 'src/common/response/dtos/response.dto';
 import { ResponsePagingDto } from 'src/common/response/dtos/response.paging.dto';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
+import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/common/policy/constants/policy.status-code.constant';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/common/role/constants/role.status-code.constant';
+import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
 
 export function DocDefault<T>(options: IDocDefaultOptions<T>): MethodDecorator {
     const docs = [];
@@ -227,21 +228,16 @@ export function Doc(options?: IDocOptions): MethodDecorator {
                 description: 'Custom language header',
                 required: false,
                 schema: {
-                    default: APP_LANGUAGE,
-                    example: APP_LANGUAGE,
+                    default: ENUM_MESSAGE_LANGUAGE.EN,
+                    example: ENUM_MESSAGE_LANGUAGE.EN,
                     type: 'string',
                 },
             },
         ]),
         DocDefault({
-            httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
-            messagePath: 'http.serverError.serviceUnavailable',
-            statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_SERVICE_UNAVAILABLE,
-        }),
-        DocDefault({
             httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
             messagePath: 'http.serverError.internalServerError',
-            statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+            statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
         }),
         DocDefault({
             httpStatus: HttpStatus.REQUEST_TIMEOUT,
@@ -323,17 +319,15 @@ export function DocGuard(options?: IDocGuardOptions) {
 
     if (options?.role) {
         oneOfForbidden.push({
-            statusCode:
-                ENUM_POLICY_STATUS_CODE_ERROR.POLICY_ROLE_FORBIDDEN_ERROR,
-            messagePath: 'role.error.roleForbidden',
+            statusCode: ENUM_ROLE_STATUS_CODE_ERROR.FORBIDDEN_ERROR,
+            messagePath: 'role.error.forbidden',
         });
     }
 
     if (options?.policy) {
         oneOfForbidden.push({
-            statusCode:
-                ENUM_POLICY_STATUS_CODE_ERROR.POLICY_ABILITY_FORBIDDEN_ERROR,
-            messagePath: 'policy.error.abilityForbidden',
+            statusCode: ENUM_POLICY_STATUS_CODE_ERROR.FORBIDDEN_ERROR,
+            messagePath: 'policy.error.forbidden',
         });
     }
 
@@ -377,32 +371,33 @@ export function DocAuth(options?: IDocAuthOptions) {
         });
     }
 
-    if (options?.apiKey) {
-        docs.push(ApiSecurity('apiKey'));
+    if (options?.xApiKey) {
+        docs.push(ApiSecurity('xApiKey'));
         oneOfUnauthorized.push(
             {
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NEEDED_ERROR,
-                messagePath: 'apiKey.error.keyNeeded',
+                statusCode:
+                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_REQUIRED_ERROR,
+                messagePath: 'apiKey.error.xApiKey.required',
             },
             {
                 statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR,
-                messagePath: 'apiKey.error.notFound',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_NOT_FOUND_ERROR,
+                messagePath: 'apiKey.error.xApiKey.notFound',
             },
             {
                 statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_ACTIVE_YET_ERROR,
-                messagePath: 'apiKey.error.notActiveYet',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_EXPIRED_ERROR,
+                messagePath: 'apiKey.error.xApiKey.expired',
             },
             {
                 statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_EXPIRED_ERROR,
-                messagePath: 'apiKey.error.expired',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID_ERROR,
+                messagePath: 'apiKey.error.xApiKey.invalid',
             },
             {
                 statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INVALID_ERROR,
-                messagePath: 'apiKey.error.invalid',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_FORBIDDEN_ERROR,
+                messagePath: 'apiKey.error.xApiKey.forbidden',
             }
         );
     }

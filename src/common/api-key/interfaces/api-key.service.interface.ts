@@ -1,15 +1,4 @@
 import {
-    ApiKeyCreateRawRequestDto,
-    ApiKeyCreateRequestDto,
-} from 'src/common/api-key/dtos/request/api-key.create.request.dto';
-import { ApiKeyUpdateDateRequestDto } from 'src/common/api-key/dtos/request/api-key.update-date.request.dto';
-import { ApiKeyUpdateNameRequestDto } from 'src/common/api-key/dtos/request/api-key.update-name.request.dto';
-import { ApiKeyCreateResponseDto } from 'src/common/api-key/dtos/response/api-key.create.dto';
-import { ApiKeyGetResponseDto } from 'src/common/api-key/dtos/response/api-key.get.response.dto';
-import { ApiKeyListResponseDto } from 'src/common/api-key/dtos/response/api-key.list.response.dto';
-import { ApiKeyResetResponseDto } from 'src/common/api-key/dtos/response/api-key.reset.dto';
-import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
-import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
@@ -17,6 +6,17 @@ import {
     IDatabaseManyOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
+import {
+    ApiKeyCreateRawRequestDto,
+    ApiKeyCreateRequestDto,
+} from 'src/common/api-key/dtos/request/api-key.create.request.dto';
+import { ApiKeyUpdateDateRequestDto } from 'src/common/api-key/dtos/request/api-key.update-date.request.dto';
+import { ApiKeyUpdateRequestDto } from 'src/common/api-key/dtos/request/api-key.update.request.dto';
+import { ApiKeyCreateResponseDto } from 'src/common/api-key/dtos/response/api-key.create.dto';
+import { ApiKeyGetResponseDto } from 'src/common/api-key/dtos/response/api-key.get.response.dto';
+import { ApiKeyListResponseDto } from 'src/common/api-key/dtos/response/api-key.list.response.dto';
+import { ApiKeyResetResponseDto } from 'src/common/api-key/dtos/response/api-key.reset.dto';
+import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
 
 export interface IApiKeyService {
     findAll(
@@ -68,7 +68,7 @@ export interface IApiKeyService {
     ): Promise<ApiKeyDoc>;
     update(
         repository: ApiKeyDoc,
-        { name }: ApiKeyUpdateNameRequestDto,
+        { name }: ApiKeyUpdateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<ApiKeyDoc>;
     updateDate(

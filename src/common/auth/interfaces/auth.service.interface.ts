@@ -1,13 +1,8 @@
 import { AuthJwtAccessPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.access-payload.dto';
 import { AuthJwtRefreshPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
-import {
-    IAuthPassword,
-    IAuthPayloadOptions,
-} from 'src/common/auth/interfaces/auth.interface';
-import {
-    IHelperApplePayload,
-    IHelperGooglePayload,
-} from 'src/common/helper/interfaces/helper.interface';
+import { AuthSocialApplePayloadDto } from 'src/common/auth/dtos/social/auth.social.apple-payload.dto';
+import { AuthSocialGooglePayloadDto } from 'src/common/auth/dtos/social/auth.social.google-payload.dto';
+import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 
 export interface IAuthService {
     createAccessToken(payload: AuthJwtAccessPayloadDto): Promise<string>;
@@ -21,8 +16,7 @@ export interface IAuthService {
         passwordHash: string
     ): Promise<boolean>;
     createPayloadAccessToken(
-        user: Record<string, any>,
-        { loginFrom, loginDate }: IAuthPayloadOptions
+        payload: AuthJwtAccessPayloadDto
     ): Promise<AuthJwtAccessPayloadDto>;
     createPayloadRefreshToken({
         _id,
@@ -39,8 +33,10 @@ export interface IAuthService {
     getIssuer(): Promise<string>;
     getAudience(): Promise<string>;
     getSubject(): Promise<string>;
-    googleGetTokenInfo(accessToken: string): Promise<IHelperGooglePayload>;
-    appleGetTokenInfo(accessToken: string): Promise<IHelperApplePayload>;
     getPasswordAttempt(): Promise<boolean>;
-    getMaxPasswordAttempt(): Promise<number>;
+    getPasswordMaxAttempt(): Promise<number>;
+    appleGetTokenInfo(code: string): Promise<AuthSocialApplePayloadDto>;
+    googleGetTokenInfo(
+        accessToken: string
+    ): Promise<AuthSocialGooglePayloadDto>;
 }

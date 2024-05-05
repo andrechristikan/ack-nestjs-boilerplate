@@ -22,9 +22,3 @@ export enum ENUM_POLICY_SUBJECT {
     ALL = 'ALL',
     API_KEY = 'API_KEY',
 }
-
-export enum ENUM_POLICY_ROLE {
-    ADMIN = 'ADMIN',
-    SUPER_ADMIN = 'SUPER_ADMIN',
-    USER = 'USER',
-}

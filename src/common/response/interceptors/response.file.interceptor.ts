@@ -9,7 +9,6 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
-import { HelperFileService } from 'src/common/helper/services/helper.file.service';
 import { Reflector } from '@nestjs/core';
 import {
     RESPONSE_FILE_EXCEL_PASSWORD_META_KEY,
@@ -19,6 +18,7 @@ import { HelperDateService } from 'src/common/helper/services/helper.date.servic
 import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/constants/helper.enum.constant';
 import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
 import { IResponseFileExcel } from 'src/common/response/interfaces/response.interface';
+import { FileService } from 'src/common/file/services/file.service';
 
 @Injectable()
 export class ResponseFileExcelInterceptor
@@ -26,7 +26,7 @@ export class ResponseFileExcelInterceptor
 {
     constructor(
         private readonly reflector: Reflector,
-        private readonly helperFileService: HelperFileService,
+        private readonly fileService: FileService,
         private readonly helperDateService: HelperDateService
     ) {}
 
@@ -67,7 +67,7 @@ export class ResponseFileExcelInterceptor
 
                     if (type === ENUM_HELPER_FILE_EXCEL_TYPE.XLSX) {
                         // create file
-                        const file: Buffer = this.helperFileService.writeExcel(
+                        const file: Buffer = this.fileService.writeExcel(
                             responseData.data,
                             {
                                 password,
@@ -89,7 +89,7 @@ export class ResponseFileExcelInterceptor
                     }
 
                     // create file
-                    const file: Buffer = this.helperFileService.writeCsv(
+                    const file: Buffer = this.fileService.writeCsv(
                         responseData.data[0]
                     );
 

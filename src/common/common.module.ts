@@ -1,30 +1,28 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { HelperModule } from 'src/common/helper/helper.module';
-import { ErrorModule } from 'src/common/error/error.module';
-import { AuthModule } from 'src/common/auth/auth.module';
-import { MessageModule } from 'src/common/message/message.module';
-import { PaginationModule } from 'src/common/pagination/pagination.module';
-import Joi from 'joi';
-import { ENUM_MESSAGE_LANGUAGE } from './message/constants/message.enum.constant';
-import configs from 'src/configs';
-import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 import { MongooseModule } from '@nestjs/mongoose';
-import { DatabaseOptionsService } from 'src/common/database/services/database.options.service';
-import { DatabaseOptionsModule } from 'src/common/database/database.options.module';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
+import { DatabaseModule } from 'src/common/database/database.module';
+import { DatabaseService } from 'src/common/database/services/database.service';
+import { MessageModule } from 'src/common/message/message.module';
+import { HelperModule } from 'src/common/helper/helper.module';
+import { RequestModule } from 'src/common/request/request.module';
+import { PolicyModule } from 'src/common/policy/policy.module';
+import { AuthModule } from 'src/common/auth/auth.module';
+import { ConfigModule } from '@nestjs/config';
+import Joi from 'joi';
+import configs from 'src/configs';
 import {
     ENUM_APP_ENVIRONMENT,
     ENUM_APP_TIMEZONE,
 } from 'src/app/constants/app.enum.constant';
-import { APP_LANGUAGE, APP_TIMEZONE } from 'src/app/constants/app.constant';
-import { PolicyModule } from 'src/common/policy/policy.module';
-import { RequestModule } from 'src/common/request/request.module';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
+import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 
 @Module({
     controllers: [],
     providers: [],
     imports: [
+        // Config
         ConfigModule.forRoot({
             load: configs,
             isGlobal: true,
@@ -35,17 +33,17 @@ import { RequestModule } from 'src/common/request/request.module';
                 APP_NAME: Joi.string().required(),
                 APP_ENV: Joi.string()
                     .valid(...Object.values(ENUM_APP_ENVIRONMENT))
-                    .default('development')
+                    .default(ENUM_APP_ENVIRONMENT.DEVELOPMENT)
                     .required(),
                 APP_LANGUAGE: Joi.string()
                     .valid(...Object.values(ENUM_MESSAGE_LANGUAGE))
-                    .default(APP_LANGUAGE)
+                    .default(ENUM_MESSAGE_LANGUAGE.EN)
                     .required(),
                 APP_TIMEZONE: Joi.string()
                     .valid(...Object.values(ENUM_APP_TIMEZONE))
-                    .default(APP_TIMEZONE)
+                    .default(ENUM_APP_TIMEZONE.ASIA_SINGAPORE)
                     .required(),
-                APP_MAINTENANCE: Joi.boolean().default(false).required(),
+                APP_DEBUG: Joi.boolean().default(true).required(),
 
                 HTTP_ENABLE: Joi.boolean().default(true).required(),
                 HTTP_HOST: [
@@ -53,8 +51,9 @@ import { RequestModule } from 'src/common/request/request.module';
                     Joi.valid('localhost').required(),
                 ],
                 HTTP_PORT: Joi.number().default(3000).required(),
-                HTTP_VERSIONING_ENABLE: Joi.boolean().default(true).required(),
-                HTTP_VERSION: Joi.number().required(),
+
+                URL_VERSIONING_ENABLE: Joi.boolean().default(true).required(),
+                URL_VERSION: Joi.number().required(),
 
                 JOB_ENABLE: Joi.boolean().default(false).required(),
 
@@ -96,15 +95,25 @@ import { RequestModule } from 'src/common/request/request.module';
                     .optional(),
                 AWS_SES_REGION: Joi.string().allow(null, '').optional(),
 
-                SSO_GOOGLE_CLIENT_ID: Joi.string().allow(null, '').optional(),
-                SSO_GOOGLE_CLIENT_SECRET: Joi.string()
+                AUTH_SOCIAL_GOOGLE_CLIENT_ID: Joi.string()
+                    .allow(null, '')
+                    .optional(),
+                AUTH_SOCIAL_GOOGLE_CLIENT_SECRET: Joi.string()
                     .allow(null, '')
                     .optional(),
 
-                SSO_APPLE_CLIENT_ID: Joi.string().allow(null, '').optional(),
-                SSO_APPLE_TEAM_ID: Joi.string().allow(null, '').optional(),
-                SSO_APPLE_KEY_ID: Joi.string().allow(null, '').optional(),
-                SSO_APPLE_CALLBACK_URL: Joi.string().allow(null, '').optional(),
+                AUTH_SOCIAL_APPLE_CLIENT_ID: Joi.string()
+                    .allow(null, '')
+                    .optional(),
+                AUTH_SOCIAL_APPLE_TEAM_ID: Joi.string()
+                    .allow(null, '')
+                    .optional(),
+                AUTH_SOCIAL_APPLE_KEY_ID: Joi.string()
+                    .allow(null, '')
+                    .optional(),
+                AUTH_SOCIAL_APPLE_CALLBACK_URL: Joi.string()
+                    .allow(null, '')
+                    .optional(),
 
                 SENTRY_DSN: Joi.string().allow(null, '').optional(),
             }),
@@ -115,19 +124,17 @@ import { RequestModule } from 'src/common/request/request.module';
         }),
         MongooseModule.forRootAsync({
             connectionName: DATABASE_CONNECTION_NAME,
-            imports: [DatabaseOptionsModule],
-            inject: [DatabaseOptionsService],
-            useFactory: (databaseOptionsService: DatabaseOptionsService) =>
-                databaseOptionsService.createOptions(),
+            imports: [DatabaseModule],
+            inject: [DatabaseService],
+            useFactory: (databaseService: DatabaseService) =>
+                databaseService.createOptions(),
         }),
-        MessageModule,
-        HelperModule,
-        PaginationModule,
-        ErrorModule,
-        RequestModule,
-        PolicyModule,
-        ApiKeyModule,
+        MessageModule.forRoot(),
+        HelperModule.forRoot(),
+        RequestModule.forRoot(),
+        PolicyModule.forRoot(),
         AuthModule.forRoot(),
+        ApiKeyModule.forRoot(),
     ],
 })
 export class CommonModule {}

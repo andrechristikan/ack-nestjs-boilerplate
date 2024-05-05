@@ -3,10 +3,10 @@ import { ApiProperty, IntersectionType, PartialType } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsString, MaxLength } from 'class-validator';
 import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.constant';
 import { ApiKeyUpdateDateRequestDto } from 'src/common/api-key/dtos/request/api-key.update-date.request.dto';
-import { ApiKeyUpdateNameRequestDto } from 'src/common/api-key/dtos/request/api-key.update-name.request.dto';
+import { ApiKeyUpdateRequestDto } from 'src/common/api-key/dtos/request/api-key.update.request.dto';
 
 export class ApiKeyCreateRequestDto extends IntersectionType(
-    ApiKeyUpdateNameRequestDto,
+    ApiKeyUpdateRequestDto,
     PartialType(ApiKeyUpdateDateRequestDto)
 ) {
     @ApiProperty({

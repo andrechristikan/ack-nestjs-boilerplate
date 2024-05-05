@@ -1,8 +1,7 @@
 import { Prop, SchemaFactory } from '@nestjs/mongoose';
-import { CallbackWithoutResultAndOptionalError } from 'mongoose';
+import { Document } from 'mongoose';
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
-import { Document } from 'mongoose';
 import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.constant';
 
 export const ApiKeyDatabaseName = 'apikeys';
@@ -68,12 +67,3 @@ export class ApiKeyEntity extends DatabaseMongoUUIDEntityAbstract {
 export const ApiKeySchema = SchemaFactory.createForClass(ApiKeyEntity);
 
 export type ApiKeyDoc = ApiKeyEntity & Document<string>;
-
-ApiKeySchema.pre(
-    'save',
-    function (next: CallbackWithoutResultAndOptionalError) {
-        this.name = this.name.toLowerCase();
-
-        next();
-    }
-);

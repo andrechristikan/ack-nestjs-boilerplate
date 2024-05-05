@@ -11,6 +11,7 @@ export class ApiKeyUpdateDateRequestDto {
     })
     @IsNotEmpty()
     @IsISO8601()
+    // TODO:
     // @DateGreaterThanEqualToday()
     startDate: Date;
 
@@ -22,6 +23,7 @@ export class ApiKeyUpdateDateRequestDto {
     })
     @IsNotEmpty()
     @IsISO8601()
+    // TODO:
     // @GreaterThanEqual('startDate')
     endDate: Date;
 }

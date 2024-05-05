@@ -66,7 +66,6 @@ export class ResponseInterceptor
                     const xPath = request.path;
                     const xLanguage: string =
                         request.__language ?? this.messageService.getLanguage();
-                    const xId = request.__id;
                     const xTimestamp = this.helperDateService.createTimestamp();
                     const xTimezone =
                         Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -77,7 +76,6 @@ export class ResponseInterceptor
                         language: xLanguage,
                         timestamp: xTimestamp,
                         timezone: xTimezone,
-                        requestId: xId,
                         path: xPath,
                         version: xVersion,
                         repoVersion: xRepoVersion,
@@ -119,7 +117,6 @@ export class ResponseInterceptor
                     response.setHeader('x-custom-lang', xLanguage);
                     response.setHeader('x-timestamp', xTimestamp);
                     response.setHeader('x-timezone', xTimezone);
-                    response.setHeader('x-request-id', xId);
                     response.setHeader('x-version', xVersion);
                     response.setHeader('x-repo-version', xRepoVersion);
                     response.status(httpStatus);

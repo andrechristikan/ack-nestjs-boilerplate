@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { plainToInstance } from 'class-transformer';
 import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
@@ -7,27 +9,25 @@ import {
     IDatabaseManyOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
+import { HelperStringService } from 'src/common/helper/services/helper.string.service';
+import {
+    ApiKeyCreateRawRequestDto,
+    ApiKeyCreateRequestDto,
+} from 'src/common/api-key/dtos/request/api-key.create.request.dto';
+import { ApiKeyUpdateDateRequestDto } from 'src/common/api-key/dtos/request/api-key.update-date.request.dto';
+import { ApiKeyUpdateRequestDto } from 'src/common/api-key/dtos/request/api-key.update.request.dto';
+import { ApiKeyCreateResponseDto } from 'src/common/api-key/dtos/response/api-key.create.dto';
+import { ApiKeyGetResponseDto } from 'src/common/api-key/dtos/response/api-key.get.response.dto';
+import { ApiKeyListResponseDto } from 'src/common/api-key/dtos/response/api-key.list.response.dto';
+import { ApiKeyResetResponseDto } from 'src/common/api-key/dtos/response/api-key.reset.dto';
 import { IApiKeyService } from 'src/common/api-key/interfaces/api-key.service.interface';
 import {
     ApiKeyDoc,
     ApiKeyEntity,
 } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyRepository } from 'src/common/api-key/repository/repositories/api-key.repository';
-import { HelperStringService } from 'src/common/helper/services/helper.string.service';
-import { ConfigService } from '@nestjs/config';
-import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { ApiKeyUpdateNameRequestDto } from 'src/common/api-key/dtos/request/api-key.update-name.request.dto';
-import { ApiKeyUpdateDateRequestDto } from 'src/common/api-key/dtos/request/api-key.update-date.request.dto';
-import {
-    ApiKeyCreateRawRequestDto,
-    ApiKeyCreateRequestDto,
-} from 'src/common/api-key/dtos/request/api-key.create.request.dto';
-import { ApiKeyListResponseDto } from 'src/common/api-key/dtos/response/api-key.list.response.dto';
-import { plainToInstance } from 'class-transformer';
-import { ApiKeyGetResponseDto } from 'src/common/api-key/dtos/response/api-key.get.response.dto';
-import { ApiKeyCreateResponseDto } from 'src/common/api-key/dtos/response/api-key.create.dto';
-import { ApiKeyResetResponseDto } from 'src/common/api-key/dtos/response/api-key.reset.dto';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
@@ -168,7 +168,7 @@ export class ApiKeyService implements IApiKeyService {
 
     async update(
         repository: ApiKeyDoc,
-        { name }: ApiKeyUpdateNameRequestDto,
+        { name }: ApiKeyUpdateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<ApiKeyDoc> {
         repository.name = name;

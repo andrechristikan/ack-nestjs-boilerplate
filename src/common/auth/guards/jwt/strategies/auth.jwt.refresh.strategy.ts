@@ -12,17 +12,17 @@ export class AuthJwtRefreshStrategy extends PassportStrategy(
     constructor(private readonly configService: ConfigService) {
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderWithScheme(
-                configService.get<string>('auth.prefixAuthorization')
+                configService.get<string>('auth.jwt.prefixAuthorization')
             ),
             ignoreExpiration: false,
             jsonWebTokenOptions: {
-                ignoreNotBefore: true,
-                audience: configService.get<string>('auth.audience'),
-                issuer: configService.get<string>('auth.issuer'),
-                subject: configService.get<string>('auth.subject'),
+                ignoreNotBefore: false,
+                audience: configService.get<string>('auth.jwt.audience'),
+                issuer: configService.get<string>('auth.jwt.issuer'),
+                subject: configService.get<string>('auth.jwt.subject'),
             },
             secretOrKey: configService.get<string>(
-                'auth.refreshToken.secretKey'
+                'auth.jwt.refreshToken.secretKey'
             ),
         });
     }

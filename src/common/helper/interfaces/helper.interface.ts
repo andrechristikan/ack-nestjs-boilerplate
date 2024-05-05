@@ -65,30 +65,3 @@ export interface IHelperDateRoundDownOptions {
     second: boolean;
     millisecond: boolean;
 }
-
-// Helper File
-
-export interface IHelperFileRows<T = any> {
-    data: T[];
-    sheetName?: string;
-}
-
-export interface IHelperFileReadOptions {
-    password?: string;
-}
-
-// Helper google
-
-export interface IHelperGooglePayload {
-    email: string;
-}
-
-export interface IHelperGoogleRefresh {
-    accessToken: string;
-}
-
-// Helper apple
-
-export interface IHelperApplePayload extends IHelperGooglePayload {}
-
-export interface IHelperAppleRefresh extends IHelperGoogleRefresh {}

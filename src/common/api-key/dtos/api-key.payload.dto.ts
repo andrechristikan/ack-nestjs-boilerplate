@@ -1,9 +1,9 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
+import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.constant';
-import { ResponseIdDto } from 'src/common/response/dtos/response/response.id.dto';
 
-export class ApiKeyPayloadDto extends ResponseIdDto {
+export class ApiKeyPayloadDto extends DatabaseIdResponseDto {
     @ApiProperty({
         description: 'Alias name of api key',
         example: faker.person.jobTitle(),

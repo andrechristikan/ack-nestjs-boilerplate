@@ -39,7 +39,7 @@ export default async function (app: NestApplication) {
             )
             .addApiKey(
                 { type: 'apiKey', in: 'header', name: 'x-api-key' },
-                'apiKey'
+                'xApiKey'
             )
             .build();
 

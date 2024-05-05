@@ -10,14 +10,6 @@ import {
 } from 'src/common/request/constants/request.constant';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
-//! Get request id
-export const RequestId: () => ParameterDecorator = createParamDecorator(
-    (_: unknown, ctx: ExecutionContext): string => {
-        const { __id } = ctx.switchToHttp().getRequest<IRequestApp>();
-        return __id;
-    }
-);
-
 //! Get request language
 export const RequestLanguage: () => ParameterDecorator = createParamDecorator(
     (_: unknown, ctx: ExecutionContext): string => {

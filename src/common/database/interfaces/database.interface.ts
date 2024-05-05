@@ -10,10 +10,7 @@ export interface IDatabaseFindOneOptions<T = any> {
 }
 
 // find one lock
-export type IDatabaseFindOneLockOptions<T = any> = Omit<
-    IDatabaseFindOneOptions<T>,
-    'plainObject'
->;
+export type IDatabaseFindOneLockOptions<T = any> = IDatabaseFindOneOptions<T>;
 
 export type IDatabaseGetTotalOptions<T = any> = Pick<
     IDatabaseFindOneOptions<T>,
@@ -40,14 +37,12 @@ export interface IDatabaseFindAllOptions<T = any>
         IDatabaseFindOneOptions<T> {}
 
 // create
-
 export interface IDatabaseCreateOptions<T = any>
     extends Pick<IDatabaseFindOneOptions<T>, 'session'> {
     _id?: string;
 }
 
 // exist
-
 export interface IDatabaseExistOptions<T = any>
     extends Pick<
         IDatabaseFindOneOptions<T>,
@@ -72,7 +67,6 @@ export type IDatabaseSoftDeleteManyOptions<T = any> = IDatabaseManyOptions<T>;
 export type IDatabaseRestoreManyOptions<T = any> = IDatabaseManyOptions<T>;
 
 // Raw
-
 export type IDatabaseRawOptions<T = any> = Pick<
     IDatabaseFindOneOptions<T>,
     'session' | 'withDeleted'

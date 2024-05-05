@@ -28,15 +28,9 @@
     "spell": "cspell lint --config cspell.json '{src,test}/**/*.ts' --color --gitignore --no-must-find-files --no-summary --no-progress || true",
     "upgrade:package": "ncu -u",
     "seed:apikey": "nestjs-command seed:apikey",
-    "seed:role": "nestjs-command seed:role",
-    "seed:user": "nestjs-command seed:user",
-    "seed:email": "nestjs-command seed:email",
     "rollback:apikey": "nestjs-command remove:apikey",
-    "rollback:role": "nestjs-command remove:role",
-    "rollback:user": "nestjs-command remove:user",
-    "rollback:email": "nestjs-command remove:email",
-    "seed": "yarn seed:role && yarn seed:user && yarn seed:apikey",
-    "rollback": "yarn rollback:apikey && yarn rollback:user && yarn rollback:role"
+    "seed": "yarn seed:apikey",
+    "rollback": "yarn rollback:apikey"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.554.0",
@@ -104,6 +98,7 @@
     "@types/multer": "^1.4.11",
     "@types/node": "^20.12.7",
     "@types/passport-jwt": "^4.0.1",
+    "@types/response-time": "^2.3.8",
     "@types/supertest": "^6.0.2",
     "@types/uuid": "^9.0.8",
     "cspell": "^8.7.0",
