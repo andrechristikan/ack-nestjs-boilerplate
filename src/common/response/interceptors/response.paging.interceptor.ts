@@ -40,10 +40,10 @@ export class ResponsePagingInterceptor
         private readonly helperDateService: HelperDateService
     ) {}
 
-    async intercept(
+    intercept(
         context: ExecutionContext,
         next: CallHandler
-    ): Promise<Observable<Promise<ResponsePagingDto>>> {
+    ): Observable<Promise<ResponsePagingDto>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
                 map(async (res: Promise<IResponsePaging<any>>) => {
@@ -73,7 +73,11 @@ export class ResponsePagingInterceptor
                     const xTimestamp = this.helperDateService.createTimestamp();
                     const xTimezone =
                         Intl.DateTimeFormat().resolvedOptions().timeZone;
-                    const xVersion = request.__version;
+                    const xVersion =
+                        request.__version ??
+                        this.configService.get<string>(
+                            'app.urlVersion.version'
+                        );
                     const xRepoVersion =
                         this.configService.get<string>('app.repoVersion');
                     let metadata: ResponsePagingMetadataDto = {

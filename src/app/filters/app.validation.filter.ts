@@ -12,7 +12,6 @@ import { IAppException } from 'src/app/interfaces/app.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { IMessageValidationError } from 'src/common/message/interfaces/message.interface';
 import { MessageService } from 'src/common/message/services/message.service';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { RequestValidationException } from 'src/common/request/exceptions/request.validation.exception';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ResponseMetadataDto } from 'src/common/response/dtos/response.dto';
@@ -39,10 +38,9 @@ export class AppValidationFilter implements ExceptionFilter {
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
         // set default
-        const rawErrors = exception.getErrors();
-        const statusHttp: HttpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
-        const statusCode =
-            ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR;
+        const responseException = exception.getResponse() as IAppException;
+        const statusHttp: HttpStatus = exception.getStatus();
+        const statusCode = responseException.statusCode;
 
         // metadata
         const xLanguage: string =
@@ -67,7 +65,7 @@ export class AppValidationFilter implements ExceptionFilter {
             customLanguage: xLanguage,
         });
         const errors: IMessageValidationError[] =
-            this.messageService.setValidationMessage(rawErrors, {
+            this.messageService.setValidationMessage(responseException.errors, {
                 customLanguage: xLanguage,
             });
 

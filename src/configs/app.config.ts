@@ -1,5 +1,4 @@
 import { registerAs } from '@nestjs/config';
-import ms from 'ms';
 import { version } from 'package.json';
 import {
     ENUM_APP_ENVIRONMENT,
@@ -33,14 +32,6 @@ export default registerAs(
             enable: process.env.URL_VERSION_ENABLE === 'true' ?? false,
             prefix: 'v',
             version: process.env.URL_VERSION ?? '1',
-        },
-        sentry: {
-            dsn: process.env.SENTRY_DSN,
-            timeout: ms('10s'),
-            logLevels: {
-                exception: ['fatal'],
-                request: ['log'],
-            },
         },
     })
 );

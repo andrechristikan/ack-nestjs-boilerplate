@@ -15,15 +15,12 @@ export class ApiKeyXApiKeyGuard extends AuthGuard('x-api-key') {
     }
 
     handleRequest<IApiKeyPayload = any>(
-        err: Record<string, any>,
+        err: Error,
         apiKey: IApiKeyPayload,
-        info: Error | string
+        info: BadRequestError
     ): IApiKeyPayload {
         if (err || !apiKey) {
-            if (
-                info instanceof BadRequestError &&
-                info.message === 'Missing API Key'
-            ) {
+            if (info.message === 'Missing Api Key') {
                 throw new UnauthorizedException({
                     statusCode:
                         ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_REQUIRED_ERROR,

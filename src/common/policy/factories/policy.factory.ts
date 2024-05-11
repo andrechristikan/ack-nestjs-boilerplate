@@ -7,16 +7,16 @@ import {
     ENUM_POLICY_SUBJECT,
 } from 'src/common/policy/constants/policy.enum.constant';
 import {
-    IPolicy,
-    IPolicyFlat,
-    IPolicyRule,
-    PolicyHandler,
+    IPolicyAbility,
+    IPolicyAbilityFlat,
+    IPolicyAbilityHandlerCallback,
+    IPolicyAbilityRule,
 } from 'src/common/policy/interfaces/policy.interface';
 
 @Injectable()
-export class PolicyFactory {
+export class PolicyAbilityFactory {
     defineFromRequest(permissions: AuthJwtAccessPayloadPermissionDto[]) {
-        const { can, build } = new AbilityBuilder<IPolicyRule>(
+        const { can, build } = new AbilityBuilder<IPolicyAbilityRule>(
             createMongoAbility
         );
 
@@ -38,7 +38,7 @@ export class PolicyFactory {
     mappingFromRequest({
         subject,
         action,
-    }: AuthJwtAccessPayloadPermissionDto): IPolicyFlat[] {
+    }: AuthJwtAccessPayloadPermissionDto): IPolicyAbilityFlat[] {
         return action
             .split(',')
             .map((val: string) => ({
@@ -69,12 +69,14 @@ export class PolicyFactory {
         }
     }
 
-    handlerAbilities(abilities: IPolicy[]): PolicyHandler[] {
+    handlerAbilities(
+        abilities: IPolicyAbility[]
+    ): IPolicyAbilityHandlerCallback[] {
         return abilities
             .map(({ subject, action }) => {
                 return action
                     .map(
-                        val => (ability: IPolicyRule) =>
+                        val => (ability: IPolicyAbilityRule) =>
                             ability.can(val, subject)
                     )
                     .flat(1);

@@ -1,3 +1,0 @@
-export enum ENUM_ROLE_STATUS_CODE_ERROR {
-    FORBIDDEN_ERROR = 5010,
-}

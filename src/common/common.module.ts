@@ -29,6 +29,8 @@ import { ApiKeyModule } from 'src/common/api-key/api-key.module';
             cache: true,
             envFilePath: ['.env'],
             expandVariables: true,
+
+            // TODO: Move to class-validation
             validationSchema: Joi.object({
                 APP_NAME: Joi.string().required(),
                 APP_ENV: Joi.string()

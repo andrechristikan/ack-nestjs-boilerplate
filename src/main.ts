@@ -32,6 +32,8 @@ async function bootstrap() {
 
     // Global
     app.setGlobalPrefix(globalPrefix);
+
+    // For Custom Validation
     useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
     // Versioning

@@ -2,8 +2,10 @@ import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ENUM_AUTH_LOGIN_FROM } from 'src/common/auth/constants/auth.enum.constant';
-import { ENUM_POLICY_SUBJECT } from 'src/common/policy/constants/policy.enum.constant';
-import { ENUM_ROLE_TYPE } from 'src/common/role/constants/role.enum.constant';
+import {
+    ENUM_POLICY_ROLE_TYPE,
+    ENUM_POLICY_SUBJECT,
+} from 'src/common/policy/constants/policy.enum.constant';
 
 export class AuthJwtAccessPayloadPermissionDto {
     @ApiProperty({
@@ -49,9 +51,9 @@ export class AuthJwtAccessPayloadDto {
     @ApiProperty({
         required: true,
         nullable: false,
-        enum: ENUM_ROLE_TYPE,
+        enum: ENUM_POLICY_ROLE_TYPE,
     })
-    readonly type: ENUM_ROLE_TYPE;
+    readonly type: ENUM_POLICY_ROLE_TYPE;
 
     @ApiProperty({
         required: true,

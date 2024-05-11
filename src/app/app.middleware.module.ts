@@ -1,4 +1,9 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import {
+    LogLevel,
+    MiddlewareConsumer,
+    Module,
+    NestModule,
+} from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import {
@@ -6,6 +11,8 @@ import {
     ThrottlerModule,
     ThrottlerModuleOptions,
 } from '@nestjs/throttler';
+import { SentryModule } from '@ntegral/nestjs-sentry';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 import { AppGeneralFilter } from 'src/app/filters/app.general.filter';
 import { AppHttpFilter } from 'src/app/filters/app.http.filter';
 import { AppValidationImportFilter } from 'src/app/filters/app.validation-import.filter';
@@ -59,6 +66,23 @@ import { UrlVersionMiddleware } from 'src/app/middlewares/url-version.middleware
                     },
                 ],
             }),
+        }),
+        SentryModule.forRootAsync({
+            imports: [ConfigModule],
+            useFactory: async (configService: ConfigService) => ({
+                dsn: configService.get('debug.sentry.dsn'),
+                debug: false,
+                environment: configService.get<ENUM_APP_ENVIRONMENT>('app.env'),
+                release: configService.get<string>('app.repoVersion'),
+                logLevels: configService.get<LogLevel[]>(
+                    'debug.sentry.logLevels.exception'
+                ),
+                close: {
+                    enabled: true,
+                    timeout: configService.get<number>('debug.sentry.timeout'),
+                },
+            }),
+            inject: [ConfigService],
         }),
     ],
 })

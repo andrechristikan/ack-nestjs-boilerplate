@@ -63,7 +63,6 @@ export class PaginationService implements IPaginationService {
         return { [orderBy]: orderDirectionValue };
     }
 
-    // TODO: Move to DB Service
     search(
         searchValue: string,
         availableSearch: string[]

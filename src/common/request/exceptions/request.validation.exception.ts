@@ -1,17 +1,17 @@
+import { HttpException, HttpStatus } from '@nestjs/common';
 import { ValidationError } from 'class-validator';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 
-export class RequestValidationException extends Error {
-    private readonly errors: ValidationError[];
-
+export class RequestValidationException extends HttpException {
     constructor(errors: ValidationError[]) {
-        super('RequestValidationException');
-
-        this.name = this.name;
-        this.message = 'request.validation';
-        this.errors = errors;
-    }
-
-    getErrors(): ValidationError[] {
-        return this.errors;
+        super(
+            {
+                statusCode:
+                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR,
+                message: 'request.validation',
+                errors,
+            },
+            HttpStatus.UNPROCESSABLE_ENTITY
+        );
     }
 }

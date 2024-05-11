@@ -5,33 +5,33 @@ import {
     Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { POLICY_ROLE_META_KEY } from 'src/common/policy/constants/policy.constant';
+import { ENUM_POLICY_ROLE_TYPE } from 'src/common/policy/constants/policy.enum.constant';
+import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/common/policy/constants/policy.status-code.constant';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { ROLE_META_KEY } from 'src/common/role/constants/role.constant';
-import { ENUM_ROLE_TYPE } from 'src/common/role/constants/role.enum.constant';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/common/role/constants/role.status-code.constant';
 
 @Injectable()
-export class RoleGuard implements CanActivate {
+export class PolicyRoleGuard implements CanActivate {
     constructor(private readonly reflector: Reflector) {}
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const role =
-            this.reflector.get<ENUM_ROLE_TYPE>(
-                ROLE_META_KEY,
+            this.reflector.get<ENUM_POLICY_ROLE_TYPE>(
+                POLICY_ROLE_META_KEY,
                 context.getHandler()
             ) || [];
 
         const { user } = context.switchToHttp().getRequest<IRequestApp>();
         const { type } = user;
 
-        if (type === ENUM_ROLE_TYPE.SUPER_ADMIN) {
+        if (type === ENUM_POLICY_ROLE_TYPE.SUPER_ADMIN) {
             return true;
         }
 
         if (role !== type) {
             throw new ForbiddenException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.FORBIDDEN_ERROR,
-                message: 'role.error.forbidden',
+                statusCode: ENUM_POLICY_STATUS_CODE_ERROR.ROLE_FORBIDDEN_ERROR,
+                message: 'policy.error.roleForbidden',
             });
         }
 

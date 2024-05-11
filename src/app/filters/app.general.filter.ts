@@ -14,6 +14,7 @@ import { HttpAdapterHost } from '@nestjs/core';
 import { InjectSentry, SentryService } from '@ntegral/nestjs-sentry';
 import { Response } from 'express';
 import { IAppException } from 'src/app/interfaces/app.interface';
+import { FileImportException } from 'src/common/file/exceptions/file.import.exception';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { MessageService } from 'src/common/message/services/message.service';
 import { RequestValidationException } from 'src/common/request/exceptions/request.validation.exception';
@@ -108,7 +109,8 @@ export class AppGeneralFilter implements ExceptionFilter {
         if (
             (exception instanceof HttpException &&
                 !(exception instanceof InternalServerErrorException)) ||
-            exception instanceof RequestValidationException
+            exception instanceof RequestValidationException ||
+            exception instanceof FileImportException
         ) {
             return;
         }

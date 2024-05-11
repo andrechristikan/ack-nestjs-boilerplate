@@ -4,23 +4,21 @@ import {
     ENUM_POLICY_SUBJECT,
 } from 'src/common/policy/constants/policy.enum.constant';
 
-export interface IPolicy {
+export interface IPolicyAbility {
     subject: ENUM_POLICY_SUBJECT;
     action: ENUM_POLICY_ACTION[];
 }
-export interface IPolicyFlat {
+export interface IPolicyAbilityFlat {
     subject: ENUM_POLICY_SUBJECT;
     action: ENUM_POLICY_ACTION;
 }
 
-export type IPolicySubject = InferSubjects<ENUM_POLICY_SUBJECT> | 'all';
+export type IPolicyAbilitySubject = InferSubjects<ENUM_POLICY_SUBJECT> | 'all';
 
-export type IPolicyRule = MongoAbility<[ENUM_POLICY_ACTION, IPolicySubject]>;
+export type IPolicyAbilityRule = MongoAbility<
+    [ENUM_POLICY_ACTION, IPolicyAbilitySubject]
+>;
 
-interface IPolicyHandler {
-    handle(ability: IPolicyRule): boolean;
-}
-
-type IPolicyHandlerCallback = (ability: IPolicyRule) => boolean;
-
-export type PolicyHandler = IPolicyHandler | IPolicyHandlerCallback;
+export type IPolicyAbilityHandlerCallback = (
+    ability: IPolicyAbilityRule
+) => boolean;

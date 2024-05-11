@@ -34,7 +34,6 @@ import { ResponsePagingDto } from 'src/common/response/dtos/response.paging.dto'
 import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
 import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
 import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/common/policy/constants/policy.status-code.constant';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/common/role/constants/role.status-code.constant';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
 
 export function DocDefault<T>(options: IDocDefaultOptions<T>): MethodDecorator {
@@ -319,15 +318,15 @@ export function DocGuard(options?: IDocGuardOptions) {
 
     if (options?.role) {
         oneOfForbidden.push({
-            statusCode: ENUM_ROLE_STATUS_CODE_ERROR.FORBIDDEN_ERROR,
-            messagePath: 'role.error.forbidden',
+            statusCode: ENUM_POLICY_STATUS_CODE_ERROR.ROLE_FORBIDDEN_ERROR,
+            messagePath: 'policy.error.roleForbidden',
         });
     }
 
     if (options?.policy) {
         oneOfForbidden.push({
-            statusCode: ENUM_POLICY_STATUS_CODE_ERROR.FORBIDDEN_ERROR,
-            messagePath: 'policy.error.forbidden',
+            statusCode: ENUM_POLICY_STATUS_CODE_ERROR.ABILITY_FORBIDDEN_ERROR,
+            messagePath: 'policy.error.abilityForbidden',
         });
     }
 

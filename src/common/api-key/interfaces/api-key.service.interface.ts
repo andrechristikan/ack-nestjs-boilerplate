@@ -93,6 +93,6 @@ export interface IApiKeyService {
         options?: IDatabaseManyOptions
     ): Promise<boolean>;
     inactiveManyByEndDate(options?: IDatabaseManyOptions): Promise<boolean>;
-    mapApiKeyList(apiKeys: ApiKeyDoc[]): Promise<ApiKeyListResponseDto[]>;
-    mapApiKeyGet(apiKeys: ApiKeyDoc): Promise<ApiKeyGetResponseDto>;
+    mapList(apiKeys: ApiKeyDoc[]): Promise<ApiKeyListResponseDto[]>;
+    mapGet(apiKey: ApiKeyDoc): Promise<ApiKeyGetResponseDto>;
 }

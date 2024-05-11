@@ -30,10 +30,10 @@ export class ResponseFileExcelInterceptor
         private readonly helperDateService: HelperDateService
     ) {}
 
-    async intercept(
+    intercept(
         context: ExecutionContext,
         next: CallHandler
-    ): Promise<Observable<Promise<Record<string, any>>>> {
+    ): Observable<Promise<StreamableFile>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
                 map(async (res: Promise<IResponseFileExcel>) => {

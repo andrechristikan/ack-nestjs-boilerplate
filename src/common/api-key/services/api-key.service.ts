@@ -261,15 +261,13 @@ export class ApiKeyService implements IApiKeyService {
         );
     }
 
-    async mapApiKeyList(
-        apiKeys: ApiKeyDoc[]
-    ): Promise<ApiKeyListResponseDto[]> {
+    async mapList(apiKeys: ApiKeyDoc[]): Promise<ApiKeyListResponseDto[]> {
         const plainObject: ApiKeyEntity[] = apiKeys.map(e => e.toObject());
 
         return plainToInstance(ApiKeyListResponseDto, plainObject);
     }
 
-    async mapApiKeyGet(apiKeys: ApiKeyDoc): Promise<ApiKeyGetResponseDto> {
-        return plainToInstance(ApiKeyGetResponseDto, apiKeys.toObject());
+    async mapGet(apiKey: ApiKeyDoc): Promise<ApiKeyGetResponseDto> {
+        return plainToInstance(ApiKeyGetResponseDto, apiKey.toObject());
     }
 }

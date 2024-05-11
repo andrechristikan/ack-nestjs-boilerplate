@@ -30,10 +30,7 @@ export class RequestTimeoutInterceptor
             this.configService.get<number>('middleware.timeout');
     }
 
-    async intercept(
-        context: ExecutionContext,
-        next: CallHandler
-    ): Promise<Observable<Promise<any> | string>> {
+    intercept(context: ExecutionContext, next: CallHandler): Observable<void> {
         if (context.getType() === 'http') {
             const customTimeout = this.reflector.get<boolean>(
                 REQUEST_CUSTOM_TIMEOUT_META_KEY,
