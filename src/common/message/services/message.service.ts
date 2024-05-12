@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { ValidationError } from 'class-validator';
 import { I18nService } from 'nestjs-i18n';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 import {
     IMessageErrorOptions,
     IMessageSetOptions,
@@ -14,8 +15,8 @@ import { IMessageService } from 'src/common/message/interfaces/message.service.i
 
 @Injectable()
 export class MessageService implements IMessageService {
-    private readonly defaultLanguage: string;
-    private readonly availableLanguage: string[];
+    private readonly defaultLanguage: ENUM_MESSAGE_LANGUAGE;
+    private readonly availableLanguage: ENUM_MESSAGE_LANGUAGE[];
     private readonly debug: boolean;
 
     constructor(
@@ -24,18 +25,18 @@ export class MessageService implements IMessageService {
         private readonly helperArrayService: HelperArrayService
     ) {
         this.defaultLanguage =
-            this.configService.get<string>('message.language');
-        this.availableLanguage = this.configService.get<string[]>(
-            'message.availableLanguage'
-        );
+            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
+        this.availableLanguage = this.configService.get<
+            ENUM_MESSAGE_LANGUAGE[]
+        >('message.availableLanguage');
         this.debug = this.configService.get<boolean>('app.debug');
     }
 
-    getAvailableLanguages(): string[] {
+    getAvailableLanguages(): ENUM_MESSAGE_LANGUAGE[] {
         return this.availableLanguage;
     }
 
-    getLanguage(): string {
+    getLanguage(): ENUM_MESSAGE_LANGUAGE {
         return this.defaultLanguage;
     }
 

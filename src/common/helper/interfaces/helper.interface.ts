@@ -20,7 +20,6 @@ export interface IHelperJwtOptions
 
 // Helper String
 export interface IHelperStringRandomOptions {
-    upperCase?: boolean;
     safe?: boolean;
 }
 

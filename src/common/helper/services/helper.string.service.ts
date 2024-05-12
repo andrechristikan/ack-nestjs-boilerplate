@@ -13,18 +13,17 @@ export class HelperStringService implements IHelperStringService {
         const timestamp = `${new Date().getTime()}`;
         const randomString: string = this.random(length, {
             safe: true,
-            upperCase: true,
         });
 
-        return `${timestamp}${randomString}`;
+        return `${timestamp}${randomString}`.toUpperCase();
     }
 
     random(length: number, options?: IHelperStringRandomOptions): string {
         const rString = options?.safe
-            ? new RandExp(`[A-Z]{${length},${length}}`)
+            ? new RandExp(`[A-Za-z0-9]{${length},${length}}`)
             : new RandExp(`\\w{${length},${length}}`);
 
-        return options?.upperCase ? rString.gen().toUpperCase() : rString.gen();
+        return rString.gen();
     }
 
     censor(text: string): string {
@@ -45,21 +44,11 @@ export class HelperStringService implements IHelperStringService {
         return regex.test(email);
     }
 
-    checkPasswordWeak(
+    checkPasswordStrength(
         password: string,
         options?: IHelperStringPasswordOptions
     ): boolean {
-        const length = options?.length ?? 6;
-        const regex = new RegExp(`^(?=.*?[A-Z])(?=.*?[a-z]).{${length},}$`);
-
-        return regex.test(password);
-    }
-
-    checkPasswordMedium(
-        password: string,
-        options?: IHelperStringPasswordOptions
-    ): boolean {
-        const length = options?.length ?? 6;
+        const length = options?.length ?? 8;
         const regex = new RegExp(
             `^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9]).{${length},}$`
         );
@@ -67,20 +56,8 @@ export class HelperStringService implements IHelperStringService {
         return regex.test(password);
     }
 
-    checkPasswordStrong(
-        password: string,
-        options?: IHelperStringPasswordOptions
-    ): boolean {
-        const length = options?.length ?? 6;
-        const regex = new RegExp(
-            `^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{${length},}$`
-        );
-
-        return regex.test(password);
-    }
-
     checkSafeString(text: string): boolean {
-        const regex = new RegExp('^[A-Za-z0-9_-]+$');
+        const regex = new RegExp('^[A-Za-z0-9]+$');
         return regex.test(text);
     }
 

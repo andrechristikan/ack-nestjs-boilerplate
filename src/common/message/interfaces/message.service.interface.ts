@@ -1,4 +1,5 @@
 import { ValidationError } from '@nestjs/common';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 import {
     IMessageErrorOptions,
     IMessageSetOptions,
@@ -8,8 +9,8 @@ import {
 } from 'src/common/message/interfaces/message.interface';
 
 export interface IMessageService {
-    getAvailableLanguages(): string[];
-    getLanguage(): string;
+    getAvailableLanguages(): ENUM_MESSAGE_LANGUAGE[];
+    getLanguage(): ENUM_MESSAGE_LANGUAGE;
     filterLanguage(customLanguage: string): string[];
     setMessage(path: string, options?: IMessageSetOptions): string;
     setValidationMessage(

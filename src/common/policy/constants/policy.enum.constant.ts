@@ -21,6 +21,7 @@ export enum ENUM_POLICY_REQUEST_ACTION {
 export enum ENUM_POLICY_SUBJECT {
     ALL = 'ALL',
     API_KEY = 'API_KEY',
+    SETTING = 'SETTING',
     ROLE = 'ROLE',
 }
 

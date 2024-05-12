@@ -221,7 +221,6 @@ export class ApiKeyService implements IApiKeyService {
     async createKey(): Promise<string> {
         const random: string = this.helperStringService.random(25, {
             safe: false,
-            upperCase: true,
         });
         return `${this.env}_${random}`;
     }
@@ -229,7 +228,6 @@ export class ApiKeyService implements IApiKeyService {
     async createSecret(): Promise<string> {
         return this.helperStringService.random(35, {
             safe: false,
-            upperCase: true,
         });
     }
 

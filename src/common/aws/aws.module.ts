@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { AwsS3Service } from './services/aws.s3.service';
+import { AwsS3Service } from 'src/common/aws/services/aws.s3.service';
 import { AwsSESService } from 'src/common/aws/services/aws.ses.service';
 
 @Module({

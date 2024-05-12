@@ -3,7 +3,7 @@ import { Logger, VersioningType } from '@nestjs/common';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
 import { useContainer } from 'class-validator';
-import swaggerInit from './swagger';
+import swaggerInit from 'src/swagger';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule);

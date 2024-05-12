@@ -1,6 +1,6 @@
 import { DynamicModule, ForwardReference, Module, Type } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
-import { JobsRouterModule } from './router/jobs.router.module';
+import { JobsRouterModule } from 'src/jobs/router/jobs.router.module';
 
 @Module({})
 export class JobsModule {
