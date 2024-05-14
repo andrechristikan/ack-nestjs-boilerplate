@@ -3,6 +3,7 @@ import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 import { ApiKeyAdminController } from 'src/common/api-key/controllers/api-key.admin.controller';
 import { AuthModule } from 'src/common/auth/auth.module';
 import { PaginationModule } from 'src/common/pagination/pagination.module';
+import { EmailModule } from 'src/modules/email/email.module';
 import { RoleAdminController } from 'src/modules/role/controllers/role.admin.controller';
 import { RoleModule } from 'src/modules/role/role.module';
 import { SettingAdminController } from 'src/modules/setting/controllers/setting.admin.controller';
@@ -25,6 +26,7 @@ import { UserModule } from 'src/modules/user/user.module';
         RoleModule,
         UserModule,
         AuthModule,
+        EmailModule,
     ],
 })
 export class RoutesAdminModule {}

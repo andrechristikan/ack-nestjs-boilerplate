@@ -33,6 +33,7 @@ import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.
 import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
+import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -99,8 +100,13 @@ export class UserService implements IUserService {
     }
 
     async create(
-        role: string,
-        { email, mobileNumber, firstName, lastName }: UserCreateRequestDto,
+        {
+            email,
+            mobileNumber,
+            firstName,
+            lastName,
+            role,
+        }: UserCreateRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         signUpFrom: ENUM_USER_SIGN_UP_FROM,
         options?: IDatabaseCreateOptions
@@ -108,7 +114,7 @@ export class UserService implements IUserService {
         const create: UserEntity = new UserEntity();
         create.firstName = firstName;
         create.lastName = lastName;
-        create.email = email ?? undefined;
+        create.email = email;
         create.mobileNumber = mobileNumber;
         create.role = role;
         create.status = ENUM_USER_STATUS.ACTIVE;
@@ -120,6 +126,30 @@ export class UserService implements IUserService {
         create.passwordAttempt = 0;
         create.signUpDate = this.helperDateService.create();
         create.signUpFrom = signUpFrom;
+
+        return this.userRepository.create<UserEntity>(create, options);
+    }
+
+    async signUp(
+        role: string,
+        { email, firstName, lastName }: UserSignUpRequestDto,
+        { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
+        options?: IDatabaseCreateOptions
+    ): Promise<UserDoc> {
+        const create: UserEntity = new UserEntity();
+        create.firstName = firstName;
+        create.lastName = lastName;
+        create.email = email;
+        create.role = role;
+        create.status = ENUM_USER_STATUS.ACTIVE;
+        create.blocked = false;
+        create.password = passwordHash;
+        create.salt = salt;
+        create.passwordExpired = passwordExpired;
+        create.passwordCreated = passwordCreated;
+        create.passwordAttempt = 0;
+        create.signUpDate = this.helperDateService.create();
+        create.signUpFrom = ENUM_USER_SIGN_UP_FROM.PUBLIC;
 
         return this.userRepository.create<UserEntity>(create, options);
     }

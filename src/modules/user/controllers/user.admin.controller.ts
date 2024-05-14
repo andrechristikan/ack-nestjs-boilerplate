@@ -1,4 +1,14 @@
-import { Controller, Get, Param, Patch } from '@nestjs/common';
+import {
+    Body,
+    ConflictException,
+    Controller,
+    Get,
+    InternalServerErrorException,
+    NotFoundException,
+    Param,
+    Patch,
+    Post,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import {
@@ -38,13 +48,17 @@ import {
 import {
     UserAdminActiveDoc,
     UserAdminBlockedDoc,
+    UserAdminCreateDoc,
     UserAdminGetDoc,
     UserAdminInactiveDoc,
     UserAdminListDoc,
 } from 'src/modules/user/docs/user.admin.doc';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
-import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
+import {
+    ENUM_USER_SIGN_UP_FROM,
+    ENUM_USER_STATUS,
+} from 'src/modules/user/constants/user.enum.constant';
 import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
 import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
 import {
@@ -55,6 +69,17 @@ import { UserNotBlockedPipe } from 'src/modules/user/pipes/user.blocked.pipe';
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
 import { UserNotSelfPipe } from 'src/modules/user/pipes/user.not-self.pipe';
+import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
+import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
+import { EmailService } from 'src/modules/email/services/email.service';
+import { RoleService } from 'src/modules/role/services/role.service';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
+import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
+import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
+import { AuthService } from 'src/common/auth/services/auth.service';
+import { ClientSession, Connection } from 'mongoose';
+import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
+import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -63,7 +88,11 @@ import { UserNotSelfPipe } from 'src/modules/user/pipes/user.not-self.pipe';
 })
 export class UserAdminController {
     constructor(
+        @DatabaseConnection() private readonly databaseConnection: Connection,
         private readonly paginationService: PaginationService,
+        private readonly roleService: RoleService,
+        private readonly emailService: EmailService,
+        private readonly authService: AuthService,
         private readonly userService: UserService
     ) {}
 
@@ -161,6 +190,102 @@ export class UserAdminController {
         return { data: mapped };
     }
 
+    @UserAdminCreateDoc()
+    @Response('user.create')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.CREATE],
+    })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @AuthJwtAccessProtected()
+    @Post('/create')
+    async create(
+        @Body()
+        {
+            email,
+            mobileNumber,
+            role,
+            firstName,
+            lastName,
+            password: passwordString,
+        }: UserCreateRequestDto
+    ): Promise<IResponse<DatabaseIdResponseDto>> {
+        const promises: Promise<any>[] = [
+            this.roleService.findOneById(role),
+            this.userService.existByEmail(email),
+        ];
+
+        if (mobileNumber) {
+            promises.push(this.userService.existByMobileNumber(mobileNumber));
+        }
+
+        const [checkRole, emailExist, mobileNumberExist] =
+            await Promise.all(promises);
+
+        if (!checkRole) {
+            throw new NotFoundException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                message: 'role.error.notFound',
+            });
+        } else if (emailExist) {
+            throw new ConflictException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_EXIST_ERROR,
+                message: 'user.error.emailExist',
+            });
+        } else if (mobileNumberExist) {
+            throw new ConflictException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.MOBILE_NUMBER_EXIST_ERROR,
+                message: 'user.error.mobileNumberExist',
+            });
+        }
+
+        const password: IAuthPassword =
+            await this.authService.createPassword(passwordString);
+
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
+
+        try {
+            const created = await this.userService.create(
+                {
+                    email,
+                    mobileNumber,
+                    role,
+                    firstName,
+                    lastName,
+                    password: passwordString,
+                },
+                password,
+                ENUM_USER_SIGN_UP_FROM.ADMIN,
+                { session }
+            );
+
+            await this.emailService.sendSignUp({
+                email,
+                name:
+                    firstName && lastName ? `${firstName} ${lastName}` : email,
+            });
+
+            await session.commitTransaction();
+            await session.endSession();
+
+            return {
+                data: { _id: created._id },
+            };
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
+    }
+
     @UserAdminInactiveDoc()
     @Response('user.inactive')
     @PolicyAbilityProtected({
@@ -181,6 +306,7 @@ export class UserAdminController {
         )
         user: UserDoc
     ): Promise<void> {
+        // TODO: INSERT USER HISTORY
         await this.userService.inactive(user);
 
         return;
@@ -206,6 +332,7 @@ export class UserAdminController {
         )
         user: UserDoc
     ): Promise<void> {
+        // TODO: INSERT USER HISTORY
         await this.userService.active(user);
 
         return;
@@ -231,6 +358,8 @@ export class UserAdminController {
         )
         user: UserDoc
     ): Promise<void> {
+        // TODO: INSERT USER HISTORY
+
         await this.userService.blocked(user);
 
         return;

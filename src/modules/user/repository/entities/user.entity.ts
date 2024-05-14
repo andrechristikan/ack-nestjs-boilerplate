@@ -33,15 +33,15 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     lastName: string;
 
     @Prop({
-        required: true,
+        required: false,
         trim: true,
-        index: true,
+        sparse: true,
         unique: true,
         type: String,
         maxlength: 20,
         minlength: 8,
     })
-    mobileNumber: string;
+    mobileNumber?: string;
 
     @Prop({
         required: true,

@@ -27,10 +27,8 @@
     "deadcode": "ts-prune --project tsconfig.json --unusedInModule --skip *.json",
     "spell": "cspell lint --config cspell.json '{src,test}/**/*.ts' --color --gitignore --no-must-find-files --no-summary --no-progress || true",
     "upgrade:package": "ncu -u",
-    "seed:apikey": "nestjs-command seed:apikey",
-    "rollback:apikey": "nestjs-command remove:apikey",
-    "seed": "yarn seed:apikey",
-    "rollback": "yarn rollback:apikey"
+    "seed": "nestjs-command seed:email && nestjs-command seed:setting  && nestjs-command seed:apikey && nestjs-command seed:role && nestjs-command seed:user",
+    "rollback": "nestjs-command remove:email && nestjs-command remove:setting && nestjs-command remove:apikey && nestjs-command remove:user && nestjs-command remove:role"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.554.0",

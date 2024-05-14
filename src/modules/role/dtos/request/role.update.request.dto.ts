@@ -4,6 +4,7 @@ import {
     IsArray,
     IsEnum,
     IsNotEmpty,
+    IsOptional,
     IsString,
     ValidateIf,
     ValidateNested,
@@ -24,9 +25,9 @@ export class RoleUpdateRequestDto {
         nullable: true,
     })
     @IsString()
-    @IsNotEmpty()
+    @IsOptional()
     @Type(() => String)
-    readonly description: string;
+    readonly description?: string;
 
     @ApiProperty({
         description: 'Representative for role type',

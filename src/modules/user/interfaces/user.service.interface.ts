@@ -13,6 +13,7 @@ import {
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
+import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
 import { UserUpdatePasswordAttemptRequestDto } from 'src/modules/user/dtos/request/user.update-password-attempt.request.dto';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.request.dto';
 import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
@@ -29,6 +30,10 @@ export interface IUserService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<UserDoc[]>;
+    findAllWithRoles(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<IUserDoc[]>;
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
@@ -50,10 +55,21 @@ export interface IUserService {
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
     create(
-        role: string,
-        { email, mobileNumber, firstName, lastName }: UserCreateRequestDto,
+        {
+            email,
+            mobileNumber,
+            firstName,
+            lastName,
+            role,
+        }: UserCreateRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         signUpFrom: ENUM_USER_SIGN_UP_FROM,
+        options?: IDatabaseCreateOptions
+    ): Promise<UserDoc>;
+    signUp(
+        role: string,
+        { email, firstName, lastName }: UserSignUpRequestDto,
+        { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc>;
     existByEmail(

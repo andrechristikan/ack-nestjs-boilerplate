@@ -7,6 +7,8 @@ import {
     IsEmail,
     MaxLength,
     MinLength,
+    IsOptional,
+    IsMongoId,
 } from 'class-validator';
 import { IsPassword } from 'src/common/request/validations/request.is-password.validation';
 
@@ -21,6 +23,14 @@ export class UserCreateRequestDto {
     @MaxLength(100)
     @Type(() => String)
     readonly email: string;
+
+    @ApiProperty({
+        example: faker.string.uuid(),
+        required: true,
+    })
+    @IsNotEmpty()
+    @IsMongoId()
+    readonly role: string;
 
     @ApiProperty({
         example: faker.person.firstName(),
@@ -53,16 +63,16 @@ export class UserCreateRequestDto {
             min: 7,
             max: 11,
         })}`,
-        required: true,
+        required: false,
         maxLength: 20,
         minLength: 8,
     })
     @IsString()
-    @IsNotEmpty()
+    @IsOptional()
     @MinLength(8)
     @MaxLength(20)
     @Type(() => String)
-    readonly mobileNumber: string;
+    readonly mobileNumber?: string;
 
     @ApiProperty({
         description: 'string password',

@@ -1,5 +1,6 @@
 export enum ENUM_USER_SIGN_UP_FROM {
-    ADMIN_PANEL = 'ADMIN_PANEL',
+    ADMIN = 'ADMIN',
+    PUBLIC = 'PUBLIC',
 }
 
 export enum ENUM_USER_STATUS {

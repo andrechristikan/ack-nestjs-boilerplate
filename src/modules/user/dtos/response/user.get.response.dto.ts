@@ -27,8 +27,7 @@ export class UserGetResponseDto extends DatabaseIdResponseDto {
     readonly lastName: string;
 
     @ApiProperty({
-        nullable: false,
-        required: true,
+        required: false,
         example: `628${faker.string.fromCharacters('1234567890', {
             min: 7,
             max: 11,
@@ -36,7 +35,7 @@ export class UserGetResponseDto extends DatabaseIdResponseDto {
         maxLength: 20,
         minLength: 8,
     })
-    readonly mobileNumber: string;
+    readonly mobileNumber?: string;
 
     @ApiProperty({
         required: true,
@@ -85,7 +84,7 @@ export class UserGetResponseDto extends DatabaseIdResponseDto {
     @ApiProperty({
         required: true,
         nullable: false,
-        example: ENUM_USER_SIGN_UP_FROM.ADMIN_PANEL,
+        example: ENUM_USER_SIGN_UP_FROM.ADMIN,
     })
     readonly signUpFrom: ENUM_USER_SIGN_UP_FROM;
 

@@ -459,7 +459,7 @@ export class UserUserController {
     @ApiKeyPublicProtected()
     @Delete('/delete')
     async deleteSelf(@User() user: UserDoc): Promise<void> {
-        // TODO: INSERT USER HITORY
+        // TODO: INSERT USER HISTORY
         await this.userService.selfDelete(user);
 
         return;
