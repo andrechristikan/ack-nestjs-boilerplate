@@ -56,20 +56,12 @@
     1. CorsMiddleware will implement config from `src/configs/middleware.config.ts`.
     2. Documentation will `disable`.
     3. Global prefix will remove. Before is `/api`.
-* For monitoring, this project will use sentry.io, and only send `500` or `internal server error`.
+* For monitoring, this project will use `sentry.io`, and only send `500` or `internal server error`.
 
 ## Todo
 
-* [x] Remove Debugger HTTP
-* [x] Setting Move to Modules
-* [x] Debugger env change
-* [x] Add exception filter to Sentry.io
-* [x] Add Email Module with AWS SES
-* [x] CI Push docker image to AWS ECR, `currently using Docker Hub`
-* [ ] CD Using AWS ECS and deploy to AWS EC2, `currently only using AWS EC2`
-* [x] Update Package, and remove unused package
-* [x] Add Apple SSO
-* [ ] Stragiht forward
+* [ ] Refactor to version 6, more straightforward
+* [ ] Refactor unit test
 * [ ] Update Documentation, add behaviors
 * [ ] Update Documentation, and include an diagram for easier comprehension
 * [ ] Add Redis
@@ -100,8 +92,8 @@ Describes which version.
 | NestJs Swagger | v7.x |
 | NodeJs     | v20.x    |
 | Typescript | v5.x     |
-| Mongoose   | v8.x     |
-| MongoDB    | v6.x     |
+| Mongoose   | v10.x     |
+| MongoDB    | v7.x     |
 | Yarn       | v1.x     |
 | NPM        | v10.x     |
 | Docker     | v24.x    |
