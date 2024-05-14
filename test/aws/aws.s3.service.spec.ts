@@ -368,10 +368,10 @@ describe('AwsS3Service', () => {
             const expected = {
                 baseUrl: 'https://test.com',
                 bucket: 'test-bucket',
-                completedUrl: 'https://test.com/test/asdfgh.png',
-                filename: 'asdfgh.png',
+                completedUrl: 'https://test.com/test/file.png',
+                filename: 'file.png',
                 mime: 'png',
-                pathWithFilename: 'test/asdfgh.png',
+                pathWithFilename: 'test/file.png',
                 size: 1,
                 path: 'test',
             };
@@ -382,7 +382,7 @@ describe('AwsS3Service', () => {
             };
             const options: IAwsS3PutItemOptions = {
                 path: 'test',
-                customFilename: 'asdfgh',
+                customFilename: 'file',
             };
 
             const result = await service.putItemInBucket(file, options);
@@ -487,10 +487,10 @@ describe('AwsS3Service', () => {
             const expected = {
                 baseUrl: 'https://test.com',
                 bucket: 'test-bucket',
-                completedUrl: 'https://test.com/test/asdfgh.png',
-                filename: 'asdfgh.png',
+                completedUrl: 'https://test.com/test/file.png',
+                filename: 'file.png',
                 mime: 'png',
-                pathWithFilename: 'test/asdfgh.png',
+                pathWithFilename: 'test/file.png',
                 size: 1,
                 path: 'test',
             };
@@ -502,7 +502,7 @@ describe('AwsS3Service', () => {
             const options: IAwsS3PutItemWithAclOptions = {
                 acl: 'public-read',
                 path: 'test',
-                customFilename: 'asdfgh',
+                customFilename: 'file',
             };
 
             const result = await service.putItemInBucketWithAcl(file, options);

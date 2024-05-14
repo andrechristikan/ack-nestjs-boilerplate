@@ -16,7 +16,18 @@
         "dtos",
         "blabla",
         "randexp",
-        "mediumpassword"
+        "mediumpassword",
+        "ntegral",
+        "headerapikey",
+        "apikeys",
+        "maxlength",
+        "openxmlformats",
+        "officedocument",
+        "spreadsheetml",
+        "DDTHH",
+        "casl",
+        "Streamable",
+        "superadmin"
     ],
     "ignorePaths": [
         "node_modules/**", 
