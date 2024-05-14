@@ -70,6 +70,7 @@ import { UserRefreshResponseDto } from 'src/modules/user/dtos/response/user.refr
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserHistoryService } from 'src/modules/user/services/user-history.service';
+import { UserPasswordService } from 'src/modules/user/services/user-password.service';
 import { UserService } from 'src/modules/user/services/user.service';
 
 @ApiTags('modules.user.user')
@@ -83,7 +84,8 @@ export class UserUserController {
         private readonly userService: UserService,
         private readonly awsS3Service: AwsS3Service,
         private readonly authService: AuthService,
-        private readonly userHistoryService: UserHistoryService
+        private readonly userHistoryService: UserHistoryService,
+        private readonly userPasswordService: UserPasswordService
     ) {}
 
     @UserLoginCredentialDoc()
@@ -352,16 +354,17 @@ export class UserUserController {
             });
         }
 
-        // TODO: CHECK OLD PASSWORD
-        const newMatchPassword: boolean = await this.authService.validateUser(
-            body.newPassword,
-            user.password
+        const password: IAuthPassword = await this.authService.createPassword(
+            body.newPassword
         );
-        if (newMatchPassword) {
+        const checkUserPassword = await this.userPasswordService.findOneByUser(
+            user,
+            password
+        );
+        if (checkUserPassword) {
             throw new BadRequestException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.PASSWORD_NEW_MUST_DIFFERENCE_ERROR,
-                message: 'user.error.newPasswordMustDifference',
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_MUST_NEW_ERROR,
+                message: 'user.error.passwordMustNew',
             });
         }
 
@@ -370,11 +373,9 @@ export class UserUserController {
         session.startTransaction();
 
         try {
-            const password: IAuthPassword =
-                await this.authService.createPassword(body.newPassword);
-
             await this.userService.resetPasswordAttempt(user, { session });
             await this.userService.updatePassword(user, password, { session });
+            await this.userPasswordService.createByUser(user, { session });
 
             await session.commitTransaction();
             await session.endSession();

@@ -5,7 +5,7 @@ import { DatabaseEntity } from 'src/common/database/decorators/database.decorato
 import { ENUM_USER_HISTORY_STATE } from 'src/modules/user/constants/user-history.enum.constant';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
-export const UserHistoryDatabaseName = 'userHistories';
+export const UserHistoryDatabaseName = 'userhistories';
 
 @DatabaseEntity({ collection: UserHistoryDatabaseName })
 export class UserHistoryEntity extends DatabaseMongoUUIDEntityAbstract {

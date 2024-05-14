@@ -6,12 +6,14 @@ import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
+import { UserPasswordService } from 'src/modules/user/services/user-password.service';
 
 @Injectable()
 export class MigrationUserSeed {
     constructor(
         private readonly authService: AuthService,
         private readonly userService: UserService,
+        private readonly userPasswordService: UserPasswordService,
         private readonly roleService: RoleService
     ) {}
 
@@ -29,53 +31,58 @@ export class MigrationUserSeed {
         const memberRole: RoleDoc =
             await this.roleService.findOneByName('member');
         const userRole: RoleDoc = await this.roleService.findOneByName('user');
-        const user1: Promise<UserDoc> = this.userService.create(
-            {
-                role: superAdminRole._id,
-                firstName: 'superadmin',
-                lastName: 'test',
-                email: 'superadmin@mail.com',
-                password,
-            },
-            passwordHash,
-            ENUM_USER_SIGN_UP_FROM.ADMIN
-        );
-        const user2: Promise<UserDoc> = this.userService.create(
-            {
-                role: adminRole._id,
-                firstName: 'admin',
-                lastName: 'test',
-                email: 'admin@mail.com',
-                password,
-            },
-            passwordHash,
-            ENUM_USER_SIGN_UP_FROM.ADMIN
-        );
-        const user3: Promise<UserDoc> = this.userService.create(
-            {
-                role: userRole._id,
-                firstName: 'user',
-                lastName: 'test',
-                email: 'user@mail.com',
-                password,
-            },
-            passwordHash,
-            ENUM_USER_SIGN_UP_FROM.ADMIN
-        );
-        const user4: Promise<UserDoc> = this.userService.create(
-            {
-                role: memberRole._id,
-                firstName: 'member',
-                lastName: 'test',
-                email: 'member@mail.com',
-                password,
-            },
-            passwordHash,
-            ENUM_USER_SIGN_UP_FROM.ADMIN
-        );
 
         try {
-            await Promise.all([user1, user2, user3, user4]);
+            const user1: UserDoc = await this.userService.create(
+                {
+                    role: superAdminRole._id,
+                    firstName: 'superadmin',
+                    lastName: 'test',
+                    email: 'superadmin@mail.com',
+                    password,
+                },
+                passwordHash,
+                ENUM_USER_SIGN_UP_FROM.ADMIN
+            );
+
+            const user2: UserDoc = await this.userService.create(
+                {
+                    role: adminRole._id,
+                    firstName: 'admin',
+                    lastName: 'test',
+                    email: 'admin@mail.com',
+                    password,
+                },
+                passwordHash,
+                ENUM_USER_SIGN_UP_FROM.ADMIN
+            );
+            const user3: UserDoc = await this.userService.create(
+                {
+                    role: userRole._id,
+                    firstName: 'user',
+                    lastName: 'test',
+                    email: 'user@mail.com',
+                    password,
+                },
+                passwordHash,
+                ENUM_USER_SIGN_UP_FROM.ADMIN
+            );
+            const user4: UserDoc = await this.userService.create(
+                {
+                    role: memberRole._id,
+                    firstName: 'member',
+                    lastName: 'test',
+                    email: 'member@mail.com',
+                    password,
+                },
+                passwordHash,
+                ENUM_USER_SIGN_UP_FROM.ADMIN
+            );
+
+            await this.userPasswordService.createByUser(user1);
+            await this.userPasswordService.createByUser(user2);
+            await this.userPasswordService.createByUser(user3);
+            await this.userPasswordService.createByUser(user4);
         } catch (err: any) {
             throw new Error(err.message);
         }

@@ -84,6 +84,7 @@ import { ClientSession, Connection } from 'mongoose';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { UserHistoryService } from 'src/modules/user/services/user-history.service';
+import { UserPasswordService } from 'src/modules/user/services/user-password.service';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -98,7 +99,8 @@ export class UserAdminController {
         private readonly emailService: EmailService,
         private readonly authService: AuthService,
         private readonly userService: UserService,
-        private readonly userHistoryService: UserHistoryService
+        private readonly userHistoryService: UserHistoryService,
+        private readonly userPasswordService: UserPasswordService
     ) {}
 
     @UserAdminListDoc()
@@ -266,6 +268,7 @@ export class UserAdminController {
                 ENUM_USER_SIGN_UP_FROM.ADMIN,
                 { session }
             );
+            await this.userPasswordService.createByUser(created, { session });
 
             await this.emailService.sendSignUp({
                 email,
