@@ -27,7 +27,9 @@
         "DDTHH",
         "casl",
         "Streamable",
-        "superadmin"
+        "superadmin",
+        "userhistories",
+        "userpasswords"
     ],
     "ignorePaths": [
         "node_modules/**", 
