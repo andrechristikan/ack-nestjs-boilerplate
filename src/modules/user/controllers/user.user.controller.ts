@@ -69,6 +69,7 @@ import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.prof
 import { UserRefreshResponseDto } from 'src/modules/user/dtos/response/user.refresh.response.dto';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+import { UserHistoryService } from 'src/modules/user/services/user-history.service';
 import { UserService } from 'src/modules/user/services/user.service';
 
 @ApiTags('modules.user.user')
@@ -81,7 +82,8 @@ export class UserUserController {
         @DatabaseConnection() private readonly databaseConnection: Connection,
         private readonly userService: UserService,
         private readonly awsS3Service: AwsS3Service,
-        private readonly authService: AuthService
+        private readonly authService: AuthService,
+        private readonly userHistoryService: UserHistoryService
     ) {}
 
     @UserLoginCredentialDoc()
@@ -458,10 +460,35 @@ export class UserUserController {
     @AuthJwtAccessProtected()
     @ApiKeyPublicProtected()
     @Delete('/delete')
-    async deleteSelf(@User() user: UserDoc): Promise<void> {
-        // TODO: INSERT USER HISTORY
-        await this.userService.selfDelete(user);
+    async deleteSelf(
+        @User() user: UserDoc,
+        @AuthJwtPayload('_id') _id: string
+    ): Promise<void> {
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
 
-        return;
+        try {
+            await this.userService.selfDelete(user, {
+                session,
+            });
+            await this.userHistoryService.createBlockedByUser(user, _id, {
+                session,
+            });
+
+            await session.commitTransaction();
+            await session.endSession();
+
+            return;
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
     }
 }

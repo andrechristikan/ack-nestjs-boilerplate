@@ -1,6 +1,8 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsISO8601, IsNotEmpty } from 'class-validator';
+import { DateGreaterThanEqual } from 'src/common/request/validations/request.date-greater-than.validation';
+import { GreaterThanEqualOtherProperty } from 'src/common/request/validations/request.greater-than-other-property.validation';
 
 export class ApiKeyUpdateDateRequestDto {
     @ApiProperty({
@@ -11,8 +13,7 @@ export class ApiKeyUpdateDateRequestDto {
     })
     @IsNotEmpty()
     @IsISO8601()
-    // TODO:
-    // @DateGreaterThanEqualToday()
+    @DateGreaterThanEqual(new Date())
     startDate: Date;
 
     @ApiProperty({
@@ -23,7 +24,6 @@ export class ApiKeyUpdateDateRequestDto {
     })
     @IsNotEmpty()
     @IsISO8601()
-    // TODO:
-    // @GreaterThanEqual('startDate')
+    @GreaterThanEqualOtherProperty('startDate')
     endDate: Date;
 }

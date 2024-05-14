@@ -2,8 +2,11 @@ import { NestApplication, NestFactory } from '@nestjs/core';
 import { Logger, VersioningType } from '@nestjs/common';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
-import { useContainer } from 'class-validator';
+import { useContainer, validate } from 'class-validator';
 import swaggerInit from 'src/swagger';
+import { plainToInstance } from 'class-transformer';
+import { AppEnvDto } from 'src/app/dtos/app.env.dto';
+import { MessageService } from 'src/common/message/services/message.service';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule);
@@ -54,6 +57,17 @@ async function bootstrap() {
     logger.log(`==========================================================`);
 
     logger.log(`Environment Variable`, 'NestApplication');
+
+    // Validate Env
+    const classEnv = plainToInstance(AppEnvDto, process.env);
+    const errors = await validate(classEnv);
+    if (errors.length > 0) {
+        const messageService = app.get(MessageService);
+        const errorsMessage = messageService.setValidationMessage(errors);
+        logger.log(errorsMessage, 'NestApplication');
+        throw new Error('Env Variable Invalid');
+    }
+
     logger.log(JSON.parse(JSON.stringify(process.env)), 'NestApplication');
 
     logger.log(`==========================================================`);

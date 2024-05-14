@@ -54,7 +54,10 @@ import {
     UserAdminListDoc,
 } from 'src/modules/user/docs/user.admin.doc';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
+import {
+    AuthJwtAccessProtected,
+    AuthJwtPayload,
+} from 'src/common/auth/decorators/auth.jwt.decorator';
 import {
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
@@ -80,6 +83,7 @@ import { AuthService } from 'src/common/auth/services/auth.service';
 import { ClientSession, Connection } from 'mongoose';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { UserHistoryService } from 'src/modules/user/services/user-history.service';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -93,7 +97,8 @@ export class UserAdminController {
         private readonly roleService: RoleService,
         private readonly emailService: EmailService,
         private readonly authService: AuthService,
-        private readonly userService: UserService
+        private readonly userService: UserService,
+        private readonly userHistoryService: UserHistoryService
     ) {}
 
     @UserAdminListDoc()
@@ -304,12 +309,33 @@ export class UserAdminController {
             UserNotSelfPipe,
             UserStatusActivePipe
         )
-        user: UserDoc
+        user: UserDoc,
+        @AuthJwtPayload('_id') _id: string
     ): Promise<void> {
-        // TODO: INSERT USER HISTORY
-        await this.userService.inactive(user);
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
 
-        return;
+        try {
+            await this.userService.inactive(user, { session });
+            await this.userHistoryService.createInactiveByUser(user, _id, {
+                session,
+            });
+
+            await session.commitTransaction();
+            await session.endSession();
+
+            return;
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
     }
 
     @UserAdminActiveDoc()
@@ -330,12 +356,33 @@ export class UserAdminController {
             UserNotSelfPipe,
             UserStatusInactivePipe
         )
-        user: UserDoc
+        user: UserDoc,
+        @AuthJwtPayload('_id') _id: string
     ): Promise<void> {
-        // TODO: INSERT USER HISTORY
-        await this.userService.active(user);
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
 
-        return;
+        try {
+            await this.userService.active(user, { session });
+            await this.userHistoryService.createActiveByUser(user, _id, {
+                session,
+            });
+
+            await session.commitTransaction();
+            await session.endSession();
+
+            return;
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
     }
 
     @UserAdminBlockedDoc()
@@ -356,12 +403,32 @@ export class UserAdminController {
             UserNotSelfPipe,
             UserNotBlockedPipe
         )
-        user: UserDoc
+        user: UserDoc,
+        @AuthJwtPayload('_id') _id: string
     ): Promise<void> {
-        // TODO: INSERT USER HISTORY
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
 
-        await this.userService.blocked(user);
+        try {
+            await this.userService.blocked(user, { session });
+            await this.userHistoryService.createBlockedByUser(user, _id, {
+                session,
+            });
 
-        return;
+            await session.commitTransaction();
+            await session.endSession();
+
+            return;
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
     }
 }

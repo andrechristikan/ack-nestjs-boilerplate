@@ -58,9 +58,8 @@ export class RoleEntity extends DatabaseMongoUUIDEntityAbstract {
                     required: true,
                 },
                 action: {
-                    type: Array,
                     required: true,
-                    default: [
+                    type: [
                         {
                             required: true,
                             type: String,

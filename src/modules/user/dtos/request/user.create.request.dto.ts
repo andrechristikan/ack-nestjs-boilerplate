@@ -8,7 +8,7 @@ import {
     MaxLength,
     MinLength,
     IsOptional,
-    IsMongoId,
+    IsUUID,
 } from 'class-validator';
 import { IsPassword } from 'src/common/request/validations/request.is-password.validation';
 
@@ -29,7 +29,7 @@ export class UserCreateRequestDto {
         required: true,
     })
     @IsNotEmpty()
-    @IsMongoId()
+    @IsUUID()
     readonly role: string;
 
     @ApiProperty({

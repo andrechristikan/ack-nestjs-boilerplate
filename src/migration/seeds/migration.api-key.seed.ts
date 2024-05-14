@@ -1,11 +1,16 @@
 import { Command } from 'nestjs-command';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.constant';
+import { faker } from '@faker-js/faker';
 
 @Injectable()
 export class MigrationApiKeySeed {
-    constructor(private readonly apiKeyService: ApiKeyService) {}
+    private readonly logger: Logger;
+
+    constructor(private readonly apiKeyService: ApiKeyService) {
+        this.logger = new Logger(MigrationApiKeySeed.name);
+    }
 
     @Command({
         command: 'seed:apikey',
@@ -13,17 +18,33 @@ export class MigrationApiKeySeed {
     })
     async seeds(): Promise<void> {
         try {
+            const apiKeyPublicKey = faker.string.alphanumeric(20);
+            const apiKeyPublicSecret = faker.string.alphanumeric(50);
             await this.apiKeyService.createRaw({
                 name: 'Api Key Public Migration',
                 type: ENUM_API_KEY_TYPE.PUBLIC,
-                key: '8M5LeT6bnl5OGYZZVvC6',
-                secret: 'qkiYgtywz9WYkDgK1IJ6qFeBx7SOqZRz',
+                key: apiKeyPublicKey,
+                secret: apiKeyPublicSecret,
             });
+
+            const apiKeyPrivateKey = faker.string.alphanumeric(20);
+            const apiKeyPrivateSecret = faker.string.alphanumeric(50);
             await this.apiKeyService.createRaw({
-                name: 'Api Key Public Migration',
+                name: 'Api Key Private Migration',
                 type: ENUM_API_KEY_TYPE.PRIVATE,
-                key: 'dQ9fDRDZh4cAnKvVeEjJ',
-                secret: '6ky6drqfX1DHJ6rwPGzjPcpVMqu5TUTC',
+                key: apiKeyPrivateKey,
+                secret: apiKeyPrivateSecret,
+            });
+
+            // Print key and Secret
+            this.logger.log({
+                key: apiKeyPublicKey,
+                secret: apiKeyPublicSecret,
+            });
+
+            this.logger.log({
+                key: apiKeyPrivateKey,
+                secret: apiKeyPrivateSecret,
             });
         } catch (err: any) {
             throw new Error(err.message);

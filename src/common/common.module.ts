@@ -9,13 +9,7 @@ import { RequestModule } from 'src/common/request/request.module';
 import { PolicyModule } from 'src/common/policy/policy.module';
 import { AuthModule } from 'src/common/auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
-import Joi from 'joi';
 import configs from 'src/configs';
-import {
-    ENUM_APP_ENVIRONMENT,
-    ENUM_APP_TIMEZONE,
-} from 'src/app/constants/app.enum.constant';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 import { ApiKeyModule } from 'src/common/api-key/api-key.module';
 
 @Module({
@@ -28,101 +22,7 @@ import { ApiKeyModule } from 'src/common/api-key/api-key.module';
             isGlobal: true,
             cache: true,
             envFilePath: ['.env'],
-            expandVariables: true,
-
-            // TODO: Move to class-validation
-            validationSchema: Joi.object({
-                APP_NAME: Joi.string().required(),
-                APP_ENV: Joi.string()
-                    .valid(...Object.values(ENUM_APP_ENVIRONMENT))
-                    .default(ENUM_APP_ENVIRONMENT.DEVELOPMENT)
-                    .required(),
-                APP_LANGUAGE: Joi.string()
-                    .valid(...Object.values(ENUM_MESSAGE_LANGUAGE))
-                    .default(ENUM_MESSAGE_LANGUAGE.EN)
-                    .required(),
-                APP_TIMEZONE: Joi.string()
-                    .valid(...Object.values(ENUM_APP_TIMEZONE))
-                    .default(ENUM_APP_TIMEZONE.ASIA_SINGAPORE)
-                    .required(),
-                APP_DEBUG: Joi.boolean().default(true).required(),
-
-                HTTP_ENABLE: Joi.boolean().default(true).required(),
-                HTTP_HOST: [
-                    Joi.string().ip({ version: 'ipv4' }).required(),
-                    Joi.valid('localhost').required(),
-                ],
-                HTTP_PORT: Joi.number().default(3000).required(),
-
-                URL_VERSIONING_ENABLE: Joi.boolean().default(true).required(),
-                URL_VERSION: Joi.number().required(),
-
-                JOB_ENABLE: Joi.boolean().default(false).required(),
-
-                DATABASE_URI: Joi.string()
-                    .default('mongodb://localhost:27017')
-                    .required(),
-                DATABASE_DEBUG: Joi.boolean().default(false).required(),
-
-                AUTH_JWT_SUBJECT: Joi.string().required(),
-                AUTH_JWT_AUDIENCE: Joi.string().required(),
-                AUTH_JWT_ISSUER: Joi.string().required(),
-
-                AUTH_JWT_ACCESS_TOKEN_EXPIRED: Joi.string()
-                    .default('15m')
-                    .required(),
-                AUTH_JWT_ACCESS_TOKEN_SECRET_KEY: Joi.string()
-                    .alphanum()
-                    .min(5)
-                    .max(50)
-                    .required(),
-                AUTH_JWT_REFRESH_TOKEN_EXPIRED: Joi.string()
-                    .default('182d')
-                    .required(),
-                AUTH_JWT_REFRESH_TOKEN_SECRET_KEY: Joi.string()
-                    .alphanum()
-                    .min(5)
-                    .max(50)
-                    .required(),
-
-                AWS_S3_CREDENTIAL_KEY: Joi.string().allow(null, '').optional(),
-                AWS_S3_CREDENTIAL_SECRET: Joi.string()
-                    .allow(null, '')
-                    .optional(),
-                AWS_S3_REGION: Joi.string().allow(null, '').optional(),
-                AWS_S3_BUCKET: Joi.string().allow(null, '').optional(),
-                AWS_SES_CREDENTIAL_KEY: Joi.string().allow(null, '').optional(),
-                AWS_SES_CREDENTIAL_SECRET: Joi.string()
-                    .allow(null, '')
-                    .optional(),
-                AWS_SES_REGION: Joi.string().allow(null, '').optional(),
-
-                AUTH_SOCIAL_GOOGLE_CLIENT_ID: Joi.string()
-                    .allow(null, '')
-                    .optional(),
-                AUTH_SOCIAL_GOOGLE_CLIENT_SECRET: Joi.string()
-                    .allow(null, '')
-                    .optional(),
-
-                AUTH_SOCIAL_APPLE_CLIENT_ID: Joi.string()
-                    .allow(null, '')
-                    .optional(),
-                AUTH_SOCIAL_APPLE_TEAM_ID: Joi.string()
-                    .allow(null, '')
-                    .optional(),
-                AUTH_SOCIAL_APPLE_KEY_ID: Joi.string()
-                    .allow(null, '')
-                    .optional(),
-                AUTH_SOCIAL_APPLE_CALLBACK_URL: Joi.string()
-                    .allow(null, '')
-                    .optional(),
-
-                SENTRY_DSN: Joi.string().allow(null, '').optional(),
-            }),
-            validationOptions: {
-                allowUnknown: true,
-                abortEarly: true,
-            },
+            expandVariables: false,
         }),
         MongooseModule.forRootAsync({
             connectionName: DATABASE_CONNECTION_NAME,

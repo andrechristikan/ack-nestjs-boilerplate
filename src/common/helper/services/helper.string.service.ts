@@ -1,5 +1,5 @@
+import { faker } from '@faker-js/faker';
 import { Injectable } from '@nestjs/common';
-import RandExp from 'randexp';
 import {
     IHelperStringCurrencyOptions,
     IHelperStringPasswordOptions,
@@ -19,11 +19,13 @@ export class HelperStringService implements IHelperStringService {
     }
 
     random(length: number, options?: IHelperStringRandomOptions): string {
-        const rString = options?.safe
-            ? new RandExp(`[A-Za-z0-9]{${length},${length}}`)
-            : new RandExp(`\\w{${length},${length}}`);
-
-        return rString.gen();
+        return options?.safe
+            ? faker.string.alphanumeric({
+                  length: { min: length, max: length },
+              })
+            : faker.string.numeric({
+                  length: { min: length, max: length },
+              });
     }
 
     censor(text: string): string {
