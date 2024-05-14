@@ -234,16 +234,16 @@ export class AuthService implements IAuthService {
         return today > passwordExpiredConvert;
     }
 
-    async getLoginDate(): Promise<Date> {
-        return this.helperDateService.create();
-    }
-
     async getTokenType(): Promise<string> {
         return this.jwtPrefixAuthorization;
     }
 
     async getAccessTokenExpirationTime(): Promise<number> {
         return this.jwtAccessTokenExpirationTime;
+    }
+
+    async getRefreshTokenExpirationTime(): Promise<number> {
+        return this.jwtRefreshTokenExpirationTime;
     }
 
     async getIssuer(): Promise<string> {

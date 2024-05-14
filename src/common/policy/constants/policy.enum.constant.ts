@@ -23,6 +23,7 @@ export enum ENUM_POLICY_SUBJECT {
     API_KEY = 'API_KEY',
     SETTING = 'SETTING',
     ROLE = 'ROLE',
+    USER = 'USER',
 }
 
 export enum ENUM_POLICY_ROLE_TYPE {

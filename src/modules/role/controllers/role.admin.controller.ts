@@ -64,6 +64,8 @@ import {
 import { RoleParsePipe } from 'src/modules/role/pipes/role.parse.pipe';
 import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 import { RoleService } from 'src/modules/role/services/role.service';
+import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+import { UserService } from 'src/modules/user/services/user.service';
 
 @ApiTags('modules.admin.role')
 @Controller({
@@ -73,7 +75,8 @@ import { RoleService } from 'src/modules/role/services/role.service';
 export class RoleAdminController {
     constructor(
         private readonly paginationService: PaginationService,
-        private readonly roleService: RoleService
+        private readonly roleService: RoleService,
+        private readonly userService: UserService
     ) {}
 
     @RoleAdminListDoc()
@@ -161,7 +164,7 @@ export class RoleAdminController {
         const exist: boolean = await this.roleService.existByName(name);
         if (exist) {
             throw new ConflictException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_EXIST_ERROR,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.EXIST_ERROR,
                 message: 'role.error.exist',
             });
         }
@@ -213,16 +216,15 @@ export class RoleAdminController {
     async delete(
         @Param('role', RequestRequiredPipe, RoleParsePipe) role: RoleDoc
     ): Promise<void> {
-        // TODO:
-        // const used: UserDoc = await this.userService.findOne({
-        //     role: role._id,
-        // });
-        // if (used) {
-        //     throw new ConflictException({
-        //         statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_USED_ERROR,
-        //         message: 'role.error.used',
-        //     });
-        // }
+        const used: UserDoc = await this.userService.findOne({
+            role: role._id,
+        });
+        if (used) {
+            throw new ConflictException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.USED_ERROR,
+                message: 'role.error.used',
+            });
+        }
 
         await this.roleService.delete(role);
 

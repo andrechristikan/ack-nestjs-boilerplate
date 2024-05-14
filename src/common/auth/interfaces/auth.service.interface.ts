@@ -27,9 +27,9 @@ export interface IAuthService {
     createPassword(password: string): Promise<IAuthPassword>;
     createPasswordRandom(): Promise<string>;
     checkPasswordExpired(passwordExpired: Date): Promise<boolean>;
-    getLoginDate(): Promise<Date>;
     getTokenType(): Promise<string>;
     getAccessTokenExpirationTime(): Promise<number>;
+    getRefreshTokenExpirationTime(): Promise<number>;
     getIssuer(): Promise<string>;
     getAudience(): Promise<string>;
     getSubject(): Promise<string>;

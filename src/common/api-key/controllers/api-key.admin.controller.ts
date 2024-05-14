@@ -67,6 +67,7 @@ import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
 } from 'src/common/policy/decorators/policy.decorator';
+import { ApiKeyNotExpiredPipe } from 'src/common/api-key/pipes/api-key.expired.pipe';
 
 @ApiTags('common.admin.apiKey')
 @Controller({
@@ -179,7 +180,13 @@ export class ApiKeyAdminController {
     @ApiKeyPublicProtected()
     @Patch('/update/:apiKey/reset')
     async reset(
-        @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe, ApiKeyActivePipe)
+        @Param(
+            'apiKey',
+            RequestRequiredPipe,
+            ApiKeyParsePipe,
+            ApiKeyActivePipe,
+            ApiKeyNotExpiredPipe
+        )
         apiKey: ApiKeyDoc
     ): Promise<IResponse<ApiKeyResetResponseDto>> {
         const updated: ApiKeyResetResponseDto =
@@ -202,7 +209,13 @@ export class ApiKeyAdminController {
     @Put('/update/:apiKey')
     async update(
         @Body() body: ApiKeyUpdateRequestDto,
-        @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe, ApiKeyActivePipe)
+        @Param(
+            'apiKey',
+            RequestRequiredPipe,
+            ApiKeyParsePipe,
+            ApiKeyActivePipe,
+            ApiKeyNotExpiredPipe
+        )
         apiKey: ApiKeyDoc
     ): Promise<IResponse<void>> {
         await this.apiKeyService.update(apiKey, body);
@@ -221,7 +234,13 @@ export class ApiKeyAdminController {
     @ApiKeyPublicProtected()
     @Patch('/update/:apiKey/inactive')
     async inactive(
-        @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe, ApiKeyActivePipe)
+        @Param(
+            'apiKey',
+            RequestRequiredPipe,
+            ApiKeyParsePipe,
+            ApiKeyActivePipe,
+            ApiKeyNotExpiredPipe
+        )
         apiKey: ApiKeyDoc
     ): Promise<void> {
         await this.apiKeyService.inactive(apiKey);
@@ -244,7 +263,8 @@ export class ApiKeyAdminController {
             'apiKey',
             RequestRequiredPipe,
             ApiKeyParsePipe,
-            ApiKeyInactivePipe
+            ApiKeyInactivePipe,
+            ApiKeyNotExpiredPipe
         )
         apiKey: ApiKeyDoc
     ): Promise<void> {

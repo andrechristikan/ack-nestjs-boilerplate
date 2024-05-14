@@ -7,7 +7,7 @@ export class RoleActivePipe implements PipeTransform {
     async transform(value: RoleDoc): Promise<RoleDoc> {
         if (!value.isActive) {
             throw new BadRequestException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_ACTIVE_ERROR,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.IS_ACTIVE_ERROR,
                 message: 'role.error.isActiveInvalid',
             });
         }
@@ -21,7 +21,7 @@ export class RoleInactivePipe implements PipeTransform {
     async transform(value: RoleDoc): Promise<RoleDoc> {
         if (value.isActive) {
             throw new BadRequestException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.ROLE_IS_ACTIVE_ERROR,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.IS_ACTIVE_ERROR,
                 message: 'role.error.isActiveInvalid',
             });
         }

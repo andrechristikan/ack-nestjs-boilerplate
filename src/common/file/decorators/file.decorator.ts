@@ -18,15 +18,12 @@ import {
 } from 'src/common/file/interfaces/file.interface';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
-export function FileUploadSingle({
-    field,
-    fileSize,
-}: IFileUploadSingle): MethodDecorator {
+export function FileUploadSingle(options?: IFileUploadSingle): MethodDecorator {
     return applyDecorators(
         UseInterceptors(
-            FileInterceptor(field ?? 'file', {
+            FileInterceptor(options?.field ?? 'file', {
                 limits: {
-                    fileSize: fileSize ?? FILE_SIZE_IN_BYTES,
+                    fileSize: options?.fileSize ?? FILE_SIZE_IN_BYTES,
                     files: 1,
                 },
             })
@@ -34,18 +31,20 @@ export function FileUploadSingle({
     );
 }
 
-export function FileUploadMultiple({
-    field,
-    fileSize,
-    maxFiles,
-}: IFileUploadMultiple): MethodDecorator {
+export function FileUploadMultiple(
+    options?: IFileUploadMultiple
+): MethodDecorator {
     return applyDecorators(
         UseInterceptors(
-            FilesInterceptor(field ?? 'files', maxFiles ?? 2, {
-                limits: {
-                    fileSize: fileSize ?? FILE_SIZE_IN_BYTES,
-                },
-            })
+            FilesInterceptor(
+                options?.field ?? 'files',
+                options?.maxFiles ?? 2,
+                {
+                    limits: {
+                        fileSize: options?.fileSize ?? FILE_SIZE_IN_BYTES,
+                    },
+                }
+            )
         )
     );
 }

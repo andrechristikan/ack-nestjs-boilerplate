@@ -4,7 +4,7 @@ import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api
 import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
 
 @Injectable()
-export class ApiKeyExpiredPipe implements PipeTransform {
+export class ApiKeyNotExpiredPipe implements PipeTransform {
     constructor(private readonly helperDateService: HelperDateService) {}
 
     async transform(value: ApiKeyDoc): Promise<ApiKeyDoc> {

@@ -9,7 +9,6 @@ export enum ENUM_FILE_MIME_IMAGE {
     JPG = 'image/jpg',
     JPEG = 'image/jpeg',
     PNG = 'image/png',
-    PDF = 'application/pdf',
 }
 
 export enum ENUM_FILE_MIME_DOCUMENT {
