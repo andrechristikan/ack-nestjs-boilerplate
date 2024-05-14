@@ -1,31 +1,21 @@
 {
     "testTimeout": 5000,
     "rootDir": "../",
-    "modulePaths": [
-        "."
-    ],
+    "modulePaths": ["."],
     "testEnvironment": "node",
-    "testMatch": [
-        "<rootDir>/test/**/*.spec.ts"
-    ],
+    "testMatch": ["<rootDir>/test/**/*.spec.ts"],
     "collectCoverage": true,
     "coverageDirectory": "coverage",
-    "collectCoverageFrom": [
-        "<rootDir>/src/common/**/services/*.service.ts"
-    ],
+    "collectCoverageFrom": [],
     "coverageThreshold": {
-      "global": {
-        "branches": 100,
-        "functions": 100,
-        "lines": 100,
-        "statements": 100
-      }
+        "global": {
+            "branches": 100,
+            "functions": 100,
+            "lines": 100,
+            "statements": 100
+        }
     },
-    "moduleFileExtensions": [
-        "js", 
-        "ts", 
-        "json"
-    ],
+    "moduleFileExtensions": ["js", "ts", "json"],
     "transform": {
         "^.+\\.(t|j)s$": "ts-jest"
     },
