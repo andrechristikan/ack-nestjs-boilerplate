@@ -16,6 +16,7 @@ import {
     UserDocQueryStatus,
 } from 'src/modules/user/constants/user.doc.constant';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
+import { UserUpdatePasswordRequestDto } from 'src/modules/user/dtos/request/user.update-password.request.dto';
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
 
@@ -130,5 +131,24 @@ export function UserAdminBlockedDoc(): MethodDecorator {
         }),
         DocGuard({ role: true, policy: true }),
         DocResponse('user.blocked')
+    );
+}
+
+export function UserAdminUpdatePasswordDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'update user password',
+        }),
+        DocRequest({
+            params: UserDocParamsId,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            dto: UserUpdatePasswordRequestDto,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true }),
+        DocResponse('user.updatePassword')
     );
 }

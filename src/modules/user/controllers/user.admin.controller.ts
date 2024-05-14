@@ -8,6 +8,7 @@ import {
     Param,
     Patch,
     Post,
+    Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
@@ -52,6 +53,7 @@ import {
     UserAdminGetDoc,
     UserAdminInactiveDoc,
     UserAdminListDoc,
+    UserAdminUpdatePasswordDoc,
 } from 'src/modules/user/docs/user.admin.doc';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import {
@@ -85,6 +87,7 @@ import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.co
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { UserHistoryService } from 'src/modules/user/services/user-history.service';
 import { UserPasswordService } from 'src/modules/user/services/user-password.service';
+import { UserUpdatePasswordRequestDto } from 'src/modules/user/dtos/request/user.update-password.request.dto';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -416,6 +419,61 @@ export class UserAdminController {
         try {
             await this.userService.blocked(user, { session });
             await this.userHistoryService.createBlockedByUser(user, _id, {
+                session,
+            });
+
+            await session.commitTransaction();
+            await session.endSession();
+
+            return;
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
+    }
+
+    @UserAdminUpdatePasswordDoc()
+    @Response('user.updatePassword')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+    })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @AuthJwtAccessProtected()
+    @ApiKeyPublicProtected()
+    @Put('/update/:user/password')
+    async updatePassword(
+        @Param(
+            'user',
+            RequestRequiredPipe,
+            UserParsePipe,
+            UserNotSelfPipe,
+            UserStatusInactivePipe
+        )
+        user: UserDoc,
+        @AuthJwtPayload('_id') _id: string,
+        @Body() { password: passwordString }: UserUpdatePasswordRequestDto
+    ): Promise<void> {
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
+
+        try {
+            const password =
+                await this.authService.createPassword(passwordString);
+            user = await this.userService.updatePassword(user, password, {
+                session,
+            });
+            user = await this.userService.resetPasswordAttempt(user, {
+                session,
+            });
+            await this.userPasswordService.createByUser(user, {
                 session,
             });
 

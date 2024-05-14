@@ -373,8 +373,12 @@ export class UserUserController {
         session.startTransaction();
 
         try {
-            await this.userService.resetPasswordAttempt(user, { session });
-            await this.userService.updatePassword(user, password, { session });
+            user = await this.userService.resetPasswordAttempt(user, {
+                session,
+            });
+            user = await this.userService.updatePassword(user, password, {
+                session,
+            });
             await this.userPasswordService.createByUser(user, { session });
 
             await session.commitTransaction();
