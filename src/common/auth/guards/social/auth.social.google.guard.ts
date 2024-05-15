@@ -18,7 +18,7 @@ export class AuthSocialGoogleGuard implements CanActivate {
             .switchToHttp()
             .getRequest<IRequestApp<AuthSocialGooglePayloadDto>>();
         const { authorization } = request.headers;
-        const acArr = authorization.split('Bearer ');
+        const acArr = authorization?.split('Bearer ') ?? [];
         if (acArr.length !== 2) {
             throw new UnauthorizedException({
                 statusCode:
@@ -28,8 +28,6 @@ export class AuthSocialGoogleGuard implements CanActivate {
         }
 
         const accessToken: string = acArr[1];
-
-        // TODO: Validate Token
 
         try {
             const payload: AuthSocialGooglePayloadDto =

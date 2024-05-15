@@ -32,13 +32,25 @@ export function UserLoginCredentialDoc(): MethodDecorator {
     );
 }
 
-export function UserLoginGoogleDoc(): MethodDecorator {
+export function UserLoginSocialGoogleDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
-            summary: 'login with google',
+            summary: 'login with social google',
         }),
         DocAuth({ xApiKey: true, google: true }),
-        DocResponse<UserLoginResponseDto>('user.loginWithGoogle', {
+        DocResponse<UserLoginResponseDto>('user.loginWithSocialGoogle', {
+            dto: UserLoginResponseDto,
+        })
+    );
+}
+
+export function UserLoginSocialAppleDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'login with social apple',
+        }),
+        DocAuth({ xApiKey: true, apple: true }),
+        DocResponse<UserLoginResponseDto>('user.loginWithSocialApple', {
             dto: UserLoginResponseDto,
         })
     );

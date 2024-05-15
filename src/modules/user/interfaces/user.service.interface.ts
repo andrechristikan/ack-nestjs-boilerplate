@@ -1,5 +1,3 @@
-import { ENUM_AUTH_LOGIN_FROM } from 'src/common/auth/constants/auth.enum.constant';
-import { AuthJwtAccessPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.access-payload.dto';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
 import {
@@ -130,10 +128,6 @@ export interface IUserService {
     ): Promise<UserDoc>;
     joinWithRole(repository: UserDoc): Promise<IUserDoc>;
     getPhotoUploadPath(user: string): Promise<string>;
-    mapPayload(
-        data: IUserDoc,
-        loginWith: ENUM_AUTH_LOGIN_FROM
-    ): Promise<AuthJwtAccessPayloadDto>;
     deleteMany(
         find: Record<string, any>,
         options?: IDatabaseManyOptions

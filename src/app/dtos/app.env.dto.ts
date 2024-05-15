@@ -146,15 +146,7 @@ export class AppEnvDto {
 
     @IsOptional()
     @IsString()
-    AUTH_SOCIAL_APPLE_TEAM_ID?: string;
-
-    @IsOptional()
-    @IsString()
-    AUTH_SOCIAL_APPLE_KEY_ID?: string;
-
-    @IsOptional()
-    @IsString()
-    AUTH_SOCIAL_APPLE_CALLBACK_URL?: string;
+    AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID?: string;
 
     @IsOptional()
     @IsString()

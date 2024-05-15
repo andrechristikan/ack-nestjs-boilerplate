@@ -1,3 +1,4 @@
+import { ENUM_AUTH_LOGIN_FROM } from 'src/common/auth/constants/auth.enum.constant';
 import { AuthJwtAccessPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.access-payload.dto';
 import { AuthJwtRefreshPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
 import { AuthSocialApplePayloadDto } from 'src/common/auth/dtos/social/auth.social.apple-payload.dto';
@@ -16,7 +17,8 @@ export interface IAuthService {
         passwordHash: string
     ): Promise<boolean>;
     createPayloadAccessToken(
-        payload: AuthJwtAccessPayloadDto
+        data: Record<string, any>,
+        loginFrom: ENUM_AUTH_LOGIN_FROM
     ): Promise<AuthJwtAccessPayloadDto>;
     createPayloadRefreshToken({
         _id,

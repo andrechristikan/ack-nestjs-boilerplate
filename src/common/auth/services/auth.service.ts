@@ -1,18 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import AppleAuth, { AppleAuthAccessToken, AppleAuthConfig } from 'apple-auth';
-import { OAuth2Client, TokenInfo } from 'google-auth-library';
+import verifyAppleToken from 'verify-apple-id-token';
+import { LoginTicket, OAuth2Client } from 'google-auth-library';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
-import fs from 'fs';
 import { IAuthService } from 'src/common/auth/interfaces/auth.service.interface';
 import { AuthJwtAccessPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.access-payload.dto';
 import { AuthJwtRefreshPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { AuthSocialApplePayloadDto } from 'src/common/auth/dtos/social/auth.social.apple-payload.dto';
 import { AuthSocialGooglePayloadDto } from 'src/common/auth/dtos/social/auth.social.google-payload.dto';
+import { ENUM_AUTH_LOGIN_FROM } from 'src/common/auth/constants/auth.enum.constant';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -36,9 +37,8 @@ export class AuthService implements IAuthService {
     private readonly passwordMaxAttempt: number;
 
     // apple
-    private readonly appleClient: AppleAuth;
-    private readonly appleConfigClient: AppleAuthConfig;
-    private readonly appleCertP8Path: string;
+    private readonly appleClientId: string;
+    private readonly appleSignInClientId: string;
 
     // google
     private readonly googleClient: OAuth2Client;
@@ -87,24 +87,11 @@ export class AuthService implements IAuthService {
         );
 
         // apple
-        this.appleConfigClient = {
-            client_id: this.configService.get<string>('auth.apple.clientId'),
-            team_id: this.configService.get<string>('auth.apple.teamId'),
-            key_id: this.configService.get<string>('auth.apple.keyId'),
-            redirect_uri: this.configService.get<string>(
-                'auth.apple.callbackUrl'
-            ),
-            scope: 'name email',
-        };
-        this.appleCertP8Path = this.configService.get<string>(
-            'auth.apple.certP8Path'
+        this.appleClientId = this.configService.get<string>(
+            'auth.apple.clientId'
         );
-
-        const certP8: string = fs.readFileSync(this.appleCertP8Path).toString();
-        this.appleClient = new AppleAuth(
-            this.appleConfigClient,
-            certP8,
-            'text'
+        this.appleSignInClientId = this.configService.get<string>(
+            'auth.apple.signInClientId'
         );
 
         // google
@@ -185,9 +172,20 @@ export class AuthService implements IAuthService {
     }
 
     async createPayloadAccessToken(
-        payload: AuthJwtAccessPayloadDto
+        data: Record<string, any>,
+        loginFrom: ENUM_AUTH_LOGIN_FROM
     ): Promise<AuthJwtAccessPayloadDto> {
-        return payload;
+        const loginDate = this.helperDateService.create();
+
+        return plainToInstance(AuthJwtAccessPayloadDto, {
+            _id: data._id,
+            type: data.role.type,
+            role: data.role._id,
+            email: data.email,
+            permissions: data.role.permissions,
+            loginDate,
+            loginFrom,
+        });
     }
 
     async createPayloadRefreshToken({
@@ -266,24 +264,29 @@ export class AuthService implements IAuthService {
         return this.passwordMaxAttempt;
     }
 
-    async appleGetTokenInfo(code: string): Promise<AuthSocialApplePayloadDto> {
-        const check: AppleAuthAccessToken =
-            await this.appleClient.accessToken(code);
-
-        const payload =
-            this.helperEncryptionService.jwtDecrypt<AuthSocialApplePayloadDto>(
-                check.access_token
-            );
+    async appleGetTokenInfo(
+        idToken: string
+    ): Promise<AuthSocialApplePayloadDto> {
+        const payload = await verifyAppleToken({
+            idToken,
+            clientId: [this.appleClientId, this.appleSignInClientId],
+        });
 
         return { email: payload.email };
     }
 
     async googleGetTokenInfo(
-        accessToken: string
+        idToken: string
     ): Promise<AuthSocialGooglePayloadDto> {
-        const payload: TokenInfo =
-            await this.googleClient.getTokenInfo(accessToken);
+        try {
+            const login: LoginTicket = await this.googleClient.verifyIdToken({
+                idToken: idToken,
+            });
+            const payload = login.getPayload();
 
-        return { email: payload.email };
+            return { email: payload.email };
+        } catch (err) {
+            throw err;
+        }
     }
 }

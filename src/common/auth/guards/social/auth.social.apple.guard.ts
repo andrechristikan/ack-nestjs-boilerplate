@@ -18,7 +18,7 @@ export class AuthSocialAppleGuard implements CanActivate {
             .switchToHttp()
             .getRequest<IRequestApp<AuthSocialApplePayloadDto>>();
         const { authorization } = request.headers;
-        const acArr = authorization.split('Bearer ');
+        const acArr = authorization?.split('Bearer ') ?? [];
 
         if (acArr.length !== 2) {
             throw new UnauthorizedException({
@@ -27,8 +27,6 @@ export class AuthSocialAppleGuard implements CanActivate {
                 message: 'auth.error.socialApple',
             });
         }
-
-        // TODO: Validate Token
 
         const accessToken: string = acArr[1];
 

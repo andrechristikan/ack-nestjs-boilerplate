@@ -25,9 +25,13 @@ import {
     AuthJwtRefreshProtected,
     AuthJwtToken,
 } from 'src/common/auth/decorators/auth.jwt.decorator';
-import { AuthSocialGoogleProtected } from 'src/common/auth/decorators/auth.social.decorator';
+import {
+    AuthSocialAppleProtected,
+    AuthSocialGoogleProtected,
+} from 'src/common/auth/decorators/auth.social.decorator';
 import { AuthJwtAccessPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.access-payload.dto';
 import { AuthJwtRefreshPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
+import { AuthSocialApplePayloadDto } from 'src/common/auth/dtos/social/auth.social.apple-payload.dto';
 import { AuthSocialGooglePayloadDto } from 'src/common/auth/dtos/social/auth.social.google-payload.dto';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { AuthService } from 'src/common/auth/services/auth.service';
@@ -56,7 +60,8 @@ import {
     UserChangePasswordDoc,
     UserDeleteSelfDoc,
     UserLoginCredentialDoc,
-    UserLoginGoogleDoc,
+    UserLoginSocialAppleDoc,
+    UserLoginSocialGoogleDoc,
     UserProfileDoc,
     UserRefreshDoc,
     UserUpdateProfileDoc,
@@ -161,11 +166,6 @@ export class UserUserController {
 
         const roleType = userWithRole.role.type;
         const tokenType: string = await this.authService.getTokenType();
-        const payload: AuthJwtAccessPayloadDto =
-            await this.userService.mapPayload(
-                userWithRole,
-                ENUM_AUTH_LOGIN_FROM.CREDENTIAL
-            );
 
         const checkPasswordExpired: boolean =
             await this.authService.checkPasswordExpired(user.passwordExpired);
@@ -180,12 +180,17 @@ export class UserUserController {
         const expiresInAccessToken: number =
             await this.authService.getAccessTokenExpirationTime();
         const payloadAccessToken: AuthJwtAccessPayloadDto =
-            await this.authService.createPayloadAccessToken(payload);
+            await this.authService.createPayloadAccessToken(
+                userWithRole,
+                ENUM_AUTH_LOGIN_FROM.CREDENTIAL
+            );
         const accessToken: string =
             await this.authService.createAccessToken(payloadAccessToken);
 
         const payloadRefreshToken: AuthJwtRefreshPayloadDto =
-            await this.authService.createPayloadRefreshToken(payload);
+            await this.authService.createPayloadRefreshToken(
+                payloadAccessToken
+            );
         const refreshToken: string =
             await this.authService.createRefreshToken(payloadRefreshToken);
 
@@ -200,10 +205,10 @@ export class UserUserController {
         };
     }
 
-    @UserLoginGoogleDoc()
-    @Response('user.loginWithGoogle')
+    @UserLoginSocialGoogleDoc()
+    @Response('user.loginWithSocialGoogle')
     @AuthSocialGoogleProtected()
-    @Post('/login/google')
+    @Post('/login/social/google')
     async loginWithGoogle(
         @AuthJwtPayload<AuthSocialGooglePayloadDto>()
         { email }: AuthSocialGooglePayloadDto
@@ -245,11 +250,6 @@ export class UserUserController {
 
         const roleType = userWithRole.role.type;
         const tokenType: string = await this.authService.getTokenType();
-        const payload: AuthJwtAccessPayloadDto =
-            await this.userService.mapPayload(
-                userWithRole,
-                ENUM_AUTH_LOGIN_FROM.SOCIAL_GOOGLE
-            );
 
         const checkPasswordExpired: boolean =
             await this.authService.checkPasswordExpired(user.passwordExpired);
@@ -264,12 +264,101 @@ export class UserUserController {
         const expiresInAccessToken: number =
             await this.authService.getAccessTokenExpirationTime();
         const payloadAccessToken: AuthJwtAccessPayloadDto =
-            await this.authService.createPayloadAccessToken(payload);
+            await this.authService.createPayloadAccessToken(
+                userWithRole,
+                ENUM_AUTH_LOGIN_FROM.SOCIAL_GOOGLE
+            );
         const accessToken: string =
             await this.authService.createAccessToken(payloadAccessToken);
 
         const payloadRefreshToken: AuthJwtRefreshPayloadDto =
-            await this.authService.createPayloadRefreshToken(payload);
+            await this.authService.createPayloadRefreshToken(
+                payloadAccessToken
+            );
+        const refreshToken: string =
+            await this.authService.createRefreshToken(payloadRefreshToken);
+
+        return {
+            data: {
+                tokenType,
+                roleType,
+                expiresIn: expiresInAccessToken,
+                accessToken,
+                refreshToken,
+            },
+        };
+    }
+
+    @UserLoginSocialAppleDoc()
+    @Response('user.loginWithSocialApple')
+    @AuthSocialAppleProtected()
+    @Post('/login/social/apple')
+    async loginWithApple(
+        @AuthJwtPayload<AuthSocialApplePayloadDto>()
+        { email }: AuthSocialApplePayloadDto
+    ): Promise<IResponse<UserLoginResponseDto>> {
+        const user: UserDoc = await this.userService.findOneByEmail(email);
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                message: 'user.error.notFound',
+            });
+        } else if (user.blocked) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_BLOCKED_ERROR,
+                message: 'user.error.blocked',
+            });
+        } else if (user.status === ENUM_USER_STATUS.DELETED) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_DELETED_ERROR,
+                message: 'user.error.deleted',
+            });
+        } else if (user.status === ENUM_USER_STATUS.INACTIVE) {
+            throw new ForbiddenException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_INACTIVE_ERROR,
+                message: 'user.error.inactive',
+            });
+        }
+
+        const userWithRole: IUserDoc =
+            await this.userService.joinWithRole(user);
+        if (!userWithRole.role.isActive) {
+            throw new ForbiddenException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.INACTIVE_ERROR,
+                message: 'role.error.inactive',
+            });
+        }
+
+        await this.userService.resetPasswordAttempt(user);
+
+        const roleType = userWithRole.role.type;
+        const tokenType: string = await this.authService.getTokenType();
+
+        const checkPasswordExpired: boolean =
+            await this.authService.checkPasswordExpired(user.passwordExpired);
+
+        if (checkPasswordExpired) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED_ERROR,
+                message: 'user.error.passwordExpired',
+            });
+        }
+
+        const expiresInAccessToken: number =
+            await this.authService.getAccessTokenExpirationTime();
+        const payloadAccessToken: AuthJwtAccessPayloadDto =
+            await this.authService.createPayloadAccessToken(
+                userWithRole,
+                ENUM_AUTH_LOGIN_FROM.SOCIAL_APPLE
+            );
+        const accessToken: string =
+            await this.authService.createAccessToken(payloadAccessToken);
+
+        const payloadRefreshToken: AuthJwtRefreshPayloadDto =
+            await this.authService.createPayloadRefreshToken(
+                payloadAccessToken
+            );
         const refreshToken: string =
             await this.authService.createRefreshToken(payloadRefreshToken);
 
@@ -299,13 +388,11 @@ export class UserUserController {
     ): Promise<IResponse<UserRefreshResponseDto>> {
         const roleType = user.role.type;
         const tokenType: string = await this.authService.getTokenType();
-        const payload: AuthJwtAccessPayloadDto =
-            await this.userService.mapPayload(user, loginFrom);
 
         const expiresInAccessToken: number =
             await this.authService.getAccessTokenExpirationTime();
         const payloadAccessToken: AuthJwtAccessPayloadDto =
-            await this.authService.createPayloadAccessToken(payload);
+            await this.authService.createPayloadAccessToken(user, loginFrom);
         const accessToken: string =
             await this.authService.createAccessToken(payloadAccessToken);
 

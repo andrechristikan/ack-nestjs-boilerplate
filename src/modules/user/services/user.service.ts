@@ -27,8 +27,6 @@ import {
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
 import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
 import { UserUpdatePasswordAttemptRequestDto } from 'src/modules/user/dtos/request/user.update-password-attempt.request.dto';
-import { ENUM_AUTH_LOGIN_FROM } from 'src/common/auth/constants/auth.enum.constant';
-import { AuthJwtAccessPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.access-payload.dto';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.request.dto';
 import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
@@ -298,22 +296,6 @@ export class UserService implements IUserService {
     }
     async getPhotoUploadPath(user: string): Promise<string> {
         return this.uploadPath.replace('{user}', user);
-    }
-
-    async mapPayload(
-        data: IUserDoc,
-        loginFrom: ENUM_AUTH_LOGIN_FROM
-    ): Promise<AuthJwtAccessPayloadDto> {
-        const loginDate = this.helperDateService.create();
-
-        return plainToInstance(AuthJwtAccessPayloadDto, {
-            _id: data._id,
-            type: data.role.type,
-            role: data.role._id,
-            permissions: data.role.permissions,
-            loginDate,
-            loginFrom,
-        });
     }
 
     async deleteMany(

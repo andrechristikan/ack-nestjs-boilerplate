@@ -36,11 +36,8 @@ export default registerAs(
         },
 
         apple: {
-            certP8Path: './data/SignInApple_AuthKey.p8',
             clientId: process.env.AUTH_SOCIAL_APPLE_CLIENT_ID,
-            teamId: process.env.AUTH_SOCIAL_APPLE_TEAM_ID,
-            keyId: process.env.AUTH_SOCIAL_APPLE_KEY_ID,
-            callbackUrl: process.env.AUTH_SOCIAL_APPLE_CALLBACK_URL,
+            signInClientId: process.env.AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID,
         },
         google: {
             clientId: process.env.AUTH_SOCIAL_GOOGLE_CLIENT_ID,

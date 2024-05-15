@@ -46,6 +46,12 @@ export class AuthJwtAccessPayloadDto {
         required: true,
         nullable: false,
     })
+    readonly email: string;
+
+    @ApiProperty({
+        required: true,
+        nullable: false,
+    })
     readonly role: string;
 
     @ApiProperty({
