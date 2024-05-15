@@ -13,6 +13,6 @@
     ],
     "webpack": false,
     "deleteOutDir": true,
-    "watchAssets": false
+    "watchAssets": true
   }
 }

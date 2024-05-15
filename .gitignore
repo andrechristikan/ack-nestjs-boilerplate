@@ -2,6 +2,7 @@
 /dist
 /node_modules
 .warmup/
+swagger.json
 
 # Logs
 logs
@@ -49,6 +50,3 @@ lerna-debug.log*
 !.env.example
 config.yaml
 config.yml
-
-# data
-data/swagger.json

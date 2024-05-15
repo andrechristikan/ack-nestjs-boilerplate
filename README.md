@@ -49,9 +49,9 @@
 
 * The features will be relate with AWS / Amazon web service
 * Stateless Authorization
-* If you want to implement `database transactions`. You must run MongoDB as a `replication set`.
-* If you want to implement `Google SSO`. You must have google cloud console account, then create your own SSO / Credential API to get the  `clientId` and `clientSecret`.
-* If you want to implement `Apple SSO`. You must have `certificate p8 for auth`.
+* Must run MongoDB as a `replication set` for `database transactions`.
+* If you want to implement `Google SSO`. You must have google cloud console account, then create your own Credential to get the  `clientId` and `clientSecret`.
+* If you want to implement `Apple SSO`. You must have `clientId` and `signInClientId`.
 * If you change the environment value of `APP_ENV` to `production`, that will trigger.
     1. CorsMiddleware will implement config from `src/configs/middleware.config.ts`.
     2. Documentation will `disable`.
@@ -60,7 +60,7 @@
 
 ## Todo
 
-* [ ] Refactor to version 6, more straightforward
+* [x] Refactor to version 6, more straightforward
 * [ ] Refactor unit test
 * [ ] Update Documentation, add behaviors
 * [ ] Update Documentation, and include an diagram for easier comprehension

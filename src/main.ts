@@ -11,21 +11,21 @@ import { MessageService } from 'src/common/message/services/message.service';
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
-    const databaseUri: string = configService.get<string>('database.host');
+    const databaseUri: string = configService.get<string>('database.uri');
     const env: string = configService.get<string>('app.env');
     const timezone: string = configService.get<string>('app.timezone');
     const host: string = configService.get<string>('app.http.host');
     const port: number = configService.get<number>('app.http.port');
     const globalPrefix: string = configService.get<string>('app.globalPrefix');
     const versioningPrefix: string = configService.get<string>(
-        'app.versioning.prefix'
+        'app.urlVersion.prefix'
     );
-    const version: string = configService.get<string>('app.versioning.version');
+    const version: string = configService.get<string>('app.urlVersion.version');
 
     // enable
     const httpEnable: boolean = configService.get<boolean>('app.http.enable');
     const versionEnable: string = configService.get<string>(
-        'app.versioning.enable'
+        'app.urlVersion.enable'
     );
     const jobEnable: boolean = configService.get<boolean>('app.jobEnable');
 
