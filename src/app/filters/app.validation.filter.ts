@@ -37,6 +37,10 @@ export class AppValidationFilter implements ExceptionFilter {
         const response: Response = ctx.getResponse<Response>();
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
+        if (this.debug) {
+            this.logger.error(exception);
+        }
+
         // set default
         const responseException = exception.getResponse() as IAppException;
         const statusHttp: HttpStatus = exception.getStatus();
@@ -68,10 +72,6 @@ export class AppValidationFilter implements ExceptionFilter {
             this.messageService.setValidationMessage(responseException.errors, {
                 customLanguage: xLanguage,
             });
-
-        if (this.debug) {
-            this.logger.error(message);
-        }
 
         const responseBody: IAppException = {
             statusCode,

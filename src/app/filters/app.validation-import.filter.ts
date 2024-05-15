@@ -40,6 +40,10 @@ export class AppValidationImportFilter implements ExceptionFilter {
         const response: Response = ctx.getResponse<Response>();
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
+        if (this.debug) {
+            this.logger.error(exception);
+        }
+
         // set default
         const responseException =
             exception.getResponse() as IAppImportException;
@@ -78,10 +82,6 @@ export class AppValidationImportFilter implements ExceptionFilter {
                     customLanguage: xLanguage,
                 }
             );
-
-        if (this.debug) {
-            this.logger.error(message);
-        }
 
         const responseBody: IAppImportException = {
             statusCode,

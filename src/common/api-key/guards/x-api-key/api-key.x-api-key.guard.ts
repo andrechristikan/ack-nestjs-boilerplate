@@ -19,43 +19,39 @@ export class ApiKeyXApiKeyGuard extends AuthGuard('x-api-key') {
         apiKey: IApiKeyPayload,
         info: BadRequestError
     ): IApiKeyPayload {
-        if (err || !apiKey) {
-            if (info.message === 'Missing Api Key') {
-                throw new UnauthorizedException({
-                    statusCode:
-                        ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_REQUIRED_ERROR,
-                    message: 'apiKey.error.xApiKey.required',
-                });
-            } else if (err) {
-                const statusCode: number = Number.parseInt(
-                    err.message as string
-                );
+        if (!apiKey || info?.message === 'Missing Api Key') {
+            throw new UnauthorizedException({
+                statusCode:
+                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_REQUIRED_ERROR,
+                message: 'apiKey.error.xApiKey.required',
+            });
+        } else if (err) {
+            const statusCode: number = Number.parseInt(err.message as string);
 
-                if (
-                    statusCode ===
-                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_NOT_FOUND_ERROR
-                ) {
-                    throw new ForbiddenException({
-                        statusCode,
-                        message: 'apiKey.error.xApiKey.notFound',
-                    });
-                } else if (
-                    statusCode ===
-                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INACTIVE_ERROR
-                ) {
-                    throw new ForbiddenException({
-                        statusCode,
-                        message: 'apiKey.error.xApiKey.inactive',
-                    });
-                } else if (
-                    statusCode ===
-                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_EXPIRED_ERROR
-                ) {
-                    throw new ForbiddenException({
-                        statusCode,
-                        message: 'apiKey.error.xApiKey.expired',
-                    });
-                }
+            if (
+                statusCode ===
+                ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_NOT_FOUND_ERROR
+            ) {
+                throw new ForbiddenException({
+                    statusCode,
+                    message: 'apiKey.error.xApiKey.notFound',
+                });
+            } else if (
+                statusCode ===
+                ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INACTIVE_ERROR
+            ) {
+                throw new ForbiddenException({
+                    statusCode,
+                    message: 'apiKey.error.xApiKey.inactive',
+                });
+            } else if (
+                statusCode ===
+                ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_EXPIRED_ERROR
+            ) {
+                throw new ForbiddenException({
+                    statusCode,
+                    message: 'apiKey.error.xApiKey.expired',
+                });
             }
 
             throw new UnauthorizedException({

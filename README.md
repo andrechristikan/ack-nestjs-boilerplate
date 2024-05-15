@@ -61,6 +61,7 @@
 ## Todo
 
 * [x] Refactor to version 6, more straightforward
+* [ ] Add message remaining
 * [ ] Refactor unit test
 * [ ] Update Documentation, add behaviors
 * [ ] Update Documentation, and include an diagram for easier comprehension

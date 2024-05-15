@@ -45,6 +45,10 @@ export class AppGeneralFilter implements ExceptionFilter {
         const response: Response = ctx.getResponse<Response>();
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
+        if (this.debug) {
+            this.logger.error(exception);
+        }
+
         // sentry
         this.sendToSentry(exception);
 
@@ -82,10 +86,6 @@ export class AppGeneralFilter implements ExceptionFilter {
         const message: string = this.messageService.setMessage(messagePath, {
             customLanguage: xLanguage,
         });
-
-        if (this.debug) {
-            this.logger.error(message);
-        }
 
         const responseBody: IAppException = {
             statusCode,

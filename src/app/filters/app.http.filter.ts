@@ -37,6 +37,10 @@ export class AppHttpFilter implements ExceptionFilter {
         const response: Response = ctx.getResponse<Response>();
         const request: IRequestApp = ctx.getRequest<IRequestApp>();
 
+        if (this.debug) {
+            this.logger.error(exception);
+        }
+
         // set default
         let statusHttp: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
         let messagePath = `http.${statusHttp}`;
@@ -88,10 +92,6 @@ export class AppHttpFilter implements ExceptionFilter {
             customLanguage: xLanguage,
             properties: messageProperties,
         });
-
-        if (this.debug) {
-            this.logger.error(message);
-        }
 
         const responseBody: IAppException = {
             statusCode,
