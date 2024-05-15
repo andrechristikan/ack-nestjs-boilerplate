@@ -3,7 +3,7 @@ import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.
 
 export class UserUpdateProfileRequestDto extends PickType(
     UserCreateRequestDto,
-    ['firstName', 'lastName'] as const
+    ['firstName', 'lastName', 'mobileNumber'] as const
 ) {
     @ApiProperty({
         required: false,

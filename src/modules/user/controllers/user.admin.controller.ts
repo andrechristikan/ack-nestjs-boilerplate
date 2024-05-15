@@ -1,4 +1,5 @@
 import {
+    BadRequestException,
     Body,
     ConflictException,
     Controller,
@@ -51,6 +52,8 @@ import {
     UserAdminBlockedDoc,
     UserAdminCreateDoc,
     UserAdminGetDoc,
+    UserAdminGetHistoryListDoc,
+    UserAdminGetPasswordListDoc,
     UserAdminInactiveDoc,
     UserAdminListDoc,
     UserAdminUpdatePasswordDoc,
@@ -88,6 +91,11 @@ import { DatabaseConnection } from 'src/common/database/decorators/database.deco
 import { UserHistoryService } from 'src/modules/user/services/user-history.service';
 import { UserPasswordService } from 'src/modules/user/services/user-password.service';
 import { UserUpdatePasswordRequestDto } from 'src/modules/user/dtos/request/user.update-password.request.dto';
+import { SettingService } from 'src/modules/setting/services/setting.service';
+import { UserHistoryDoc } from 'src/modules/user/repository/entities/user-history.entity';
+import { UserPasswordDoc } from 'src/modules/user/repository/entities/user-password.entity';
+import { UserHistoryListResponseDto } from 'src/modules/user/dtos/response/user-history.list.response.dto';
+import { UserPasswordListResponseDto } from 'src/modules/user/dtos/response/user-password.list.response.dto';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -103,7 +111,8 @@ export class UserAdminController {
         private readonly authService: AuthService,
         private readonly userService: UserService,
         private readonly userHistoryService: UserHistoryService,
-        private readonly userPasswordService: UserPasswordService
+        private readonly userPasswordService: UserPasswordService,
+        private readonly settingService: SettingService
     ) {}
 
     @UserAdminListDoc()
@@ -200,6 +209,96 @@ export class UserAdminController {
         return { data: mapped };
     }
 
+    @UserAdminGetHistoryListDoc()
+    @ResponsePaging('user.listHistory')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ],
+    })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @AuthJwtAccessProtected()
+    @ApiKeyPublicProtected()
+    @Get('/get/:user/history')
+    async listHistory(
+        @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc,
+        @PaginationQuery()
+        { _search, _limit, _offset, _order }: PaginationListDto
+    ): Promise<IResponsePaging<UserHistoryListResponseDto>> {
+        const find: Record<string, any> = {
+            ..._search,
+            user: user._id,
+        };
+
+        const userHistories: UserHistoryDoc[] =
+            await this.userHistoryService.findAllByUser(user._id, find, {
+                paging: {
+                    limit: _limit,
+                    offset: _offset,
+                },
+                order: _order,
+            });
+        const total: number = await this.userHistoryService.getTotalByUser(
+            user._id,
+            find
+        );
+        const totalPage: number = this.paginationService.totalPage(
+            total,
+            _limit
+        );
+
+        const mapped = await this.userHistoryService.mapList(userHistories);
+
+        return {
+            _pagination: { total, totalPage },
+            data: mapped,
+        };
+    }
+
+    @UserAdminGetPasswordListDoc()
+    @ResponsePaging('user.listPassword')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ],
+    })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @AuthJwtAccessProtected()
+    @ApiKeyPublicProtected()
+    @Get('/get/:user/password')
+    async listPassword(
+        @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc,
+        @PaginationQuery()
+        { _search, _limit, _offset, _order }: PaginationListDto
+    ): Promise<IResponsePaging<UserPasswordListResponseDto>> {
+        const find: Record<string, any> = {
+            ..._search,
+            user: user._id,
+        };
+
+        const userHistories: UserPasswordDoc[] =
+            await this.userPasswordService.findAllByUser(user._id, find, {
+                paging: {
+                    limit: _limit,
+                    offset: _offset,
+                },
+                order: _order,
+            });
+        const total: number = await this.userPasswordService.getTotalByUser(
+            user._id,
+            find
+        );
+        const totalPage: number = this.paginationService.totalPage(
+            total,
+            _limit
+        );
+
+        const mapped = await this.userPasswordService.mapList(userHistories);
+
+        return {
+            _pagination: { total, totalPage },
+            data: mapped,
+        };
+    }
+
     @UserAdminCreateDoc()
     @Response('user.create')
     @PolicyAbilityProtected({
@@ -220,6 +319,16 @@ export class UserAdminController {
             password: passwordString,
         }: UserCreateRequestDto
     ): Promise<IResponse<DatabaseIdResponseDto>> {
+        const checkMobileNumberAllowed =
+            await this.settingService.checkMobileNumberAllowed(mobileNumber);
+        if (!checkMobileNumberAllowed) {
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.MOBILE_NUMBER_NOT_ALLOWED_ERROR,
+                message: 'user.error.mobileNumberNotAllowed',
+            });
+        }
+
         const promises: Promise<any>[] = [
             this.roleService.findOneById(role),
             this.userService.existByEmail(email),

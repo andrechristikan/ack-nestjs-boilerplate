@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
 import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
@@ -7,6 +8,7 @@ import {
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_USER_HISTORY_STATE } from 'src/modules/user/constants/user-history.enum.constant';
 import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
+import { UserHistoryListResponseDto } from 'src/modules/user/dtos/response/user-history.list.response.dto';
 import { IUserHistoryService } from 'src/modules/user/interfaces/user-history.service.interface';
 import {
     UserHistoryDoc,
@@ -163,5 +165,11 @@ export class UserHistoryService implements IUserHistoryService {
             create,
             options
         );
+    }
+
+    async mapList(
+        userHistories: UserHistoryDoc[]
+    ): Promise<UserHistoryListResponseDto[]> {
+        return plainToInstance(UserHistoryListResponseDto, userHistories);
     }
 }

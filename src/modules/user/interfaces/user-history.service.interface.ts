@@ -4,6 +4,7 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { UserHistoryListResponseDto } from 'src/modules/user/dtos/response/user-history.list.response.dto';
 import { UserHistoryDoc } from 'src/modules/user/repository/entities/user-history.entity';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 
@@ -54,4 +55,7 @@ export interface IUserHistoryService {
         by: string,
         options?: IDatabaseCreateOptions
     ): Promise<UserHistoryDoc>;
+    mapList(
+        userHistories: UserHistoryDoc[]
+    ): Promise<UserHistoryListResponseDto[]>;
 }

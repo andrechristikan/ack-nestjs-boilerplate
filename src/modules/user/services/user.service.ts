@@ -396,12 +396,18 @@ export class UserService implements IUserService {
 
     async updateProfile(
         repository: UserDoc,
-        { firstName, lastName, address }: UserUpdateProfileRequestDto,
+        {
+            firstName,
+            lastName,
+            address,
+            mobileNumber,
+        }: UserUpdateProfileRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.firstName = firstName;
         repository.lastName = lastName;
         repository.address = address;
+        repository.mobileNumber = mobileNumber;
 
         return this.userRepository.save(repository, options);
     }

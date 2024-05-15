@@ -45,6 +45,7 @@ import { PolicyRoleProtected } from 'src/common/policy/decorators/policy.decorat
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
+import { SettingService } from 'src/modules/setting/services/setting.service';
 import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import {
@@ -85,7 +86,8 @@ export class UserUserController {
         private readonly awsS3Service: AwsS3Service,
         private readonly authService: AuthService,
         private readonly userHistoryService: UserHistoryService,
-        private readonly userPasswordService: UserPasswordService
+        private readonly userPasswordService: UserPasswordService,
+        private readonly settingService: SettingService
     ) {}
 
     @UserLoginCredentialDoc()
@@ -417,9 +419,19 @@ export class UserUserController {
     @Put('/profile/update')
     async updateProfile(
         @User() user: UserDoc,
-        @Body() body: UserUpdateProfileRequestDto
+        @Body() { mobileNumber, ...body }: UserUpdateProfileRequestDto
     ): Promise<void> {
-        await this.userService.updateProfile(user, body);
+        const checkMobileNumberAllowed =
+            await this.settingService.checkMobileNumberAllowed(mobileNumber);
+        if (!checkMobileNumberAllowed) {
+            throw new BadRequestException({
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.MOBILE_NUMBER_NOT_ALLOWED_ERROR,
+                message: 'user.error.mobileNumberNotAllowed',
+            });
+        }
+
+        await this.userService.updateProfile(user, { ...body, mobileNumber });
 
         return;
     }

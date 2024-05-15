@@ -159,17 +159,46 @@ export class SettingService implements ISettingService {
         return this.timezoneOffset;
     }
 
-    async mapList(settings: SettingDoc[]): Promise<SettingListResponseDto[]> {
+    async mapList<T = any>(
+        settings: SettingDoc[]
+    ): Promise<SettingListResponseDto<T>[]> {
         return settings.map(e => {
-            const parseValue = this.getValue<any>(e.type, e.value);
+            const parseValue = this.getValue<T>(e.type, e.value);
 
             return { ...e.toObject(), value: parseValue };
         });
     }
 
-    async mapGet(setting: SettingDoc): Promise<SettingGetResponseDto> {
-        const parseValue = this.getValue<any>(setting.type, setting.value);
+    async mapGet<T = any>(
+        setting: SettingDoc
+    ): Promise<SettingGetResponseDto<T>> {
+        const parseValue = this.getValue<T>(setting.type, setting.value);
 
         return { ...setting.toObject(), value: parseValue };
+    }
+
+    async getMobileNumberAllowed(
+        options?: IDatabaseFindOneOptions
+    ): Promise<SettingGetResponseDto<string[]>> {
+        const setting = await this.findOneByName(
+            'mobileNumberAllowed',
+            options
+        );
+
+        return this.mapGet(setting);
+    }
+
+    async checkMobileNumberAllowed(
+        mobileNumber: string,
+        options?: IDatabaseFindOneOptions
+    ) {
+        const setting = await this.findOneByName(
+            'mobileNumberAllowed',
+            options
+        );
+
+        const mapped = await this.mapGet(setting);
+
+        return mapped.value.some((e: string) => mobileNumber.startsWith(e));
     }
 }

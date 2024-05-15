@@ -5,6 +5,7 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { UserPasswordListResponseDto } from 'src/modules/user/dtos/response/user-password.list.response.dto';
 import { UserPasswordDoc } from 'src/modules/user/repository/entities/user-password.entity';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 
@@ -44,4 +45,7 @@ export interface IUserPasswordService {
         user: UserDoc,
         options?: IDatabaseCreateOptions
     ): Promise<UserPasswordDoc>;
+    mapList(
+        userHistories: UserPasswordDoc[]
+    ): Promise<UserPasswordListResponseDto[]>;
 }

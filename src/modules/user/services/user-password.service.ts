@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import {
     IDatabaseCreateOptions,
@@ -6,6 +7,7 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { UserPasswordListResponseDto } from 'src/modules/user/dtos/response/user-password.list.response.dto';
 import { IUserPasswordService } from 'src/modules/user/interfaces/user-password.service.interface';
 import {
     UserPasswordDoc,
@@ -102,5 +104,11 @@ export class UserPasswordService implements IUserPasswordService {
             create,
             options
         );
+    }
+
+    async mapList(
+        userHistories: UserPasswordDoc[]
+    ): Promise<UserPasswordListResponseDto[]> {
+        return plainToInstance(UserPasswordListResponseDto, userHistories);
     }
 }

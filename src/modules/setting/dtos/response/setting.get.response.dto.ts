@@ -4,7 +4,7 @@ import { Exclude } from 'class-transformer';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/constants/setting.enum.constant';
 
-export class SettingGetResponseDto extends DatabaseIdResponseDto {
+export class SettingGetResponseDto<T = any> extends DatabaseIdResponseDto {
     @ApiProperty({
         description: 'Name of setting',
         example: 'MaintenanceOn',
@@ -40,7 +40,7 @@ export class SettingGetResponseDto extends DatabaseIdResponseDto {
         required: true,
         nullable: false,
     })
-    readonly value: string | number | boolean;
+    readonly value: T;
 
     @ApiProperty({
         description: 'Date created at',

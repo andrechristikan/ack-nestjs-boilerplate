@@ -15,20 +15,16 @@ import { PaginationPagingPipe } from 'src/common/pagination/pipes/pagination.pag
 import { PaginationSearchPipe } from 'src/common/pagination/pipes/pagination.search.pipe';
 
 //! Pagination query helper
-export function PaginationQuery({
-    defaultPerPage,
-    defaultOrderBy,
-    defaultOrderDirection,
-    availableSearch,
-    availableOrderBy,
-}: IPaginationQueryOptions): ParameterDecorator {
+export function PaginationQuery(
+    options?: IPaginationQueryOptions
+): ParameterDecorator {
     return Query(
-        PaginationSearchPipe(availableSearch),
-        PaginationPagingPipe(defaultPerPage),
+        PaginationSearchPipe(options?.availableSearch),
+        PaginationPagingPipe(options?.defaultPerPage),
         PaginationOrderPipe(
-            defaultOrderBy,
-            defaultOrderDirection,
-            availableOrderBy
+            options?.defaultOrderBy,
+            options?.defaultOrderDirection,
+            options?.availableOrderBy
         )
     );
 }

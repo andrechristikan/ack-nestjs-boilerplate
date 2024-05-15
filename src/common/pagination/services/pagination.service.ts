@@ -67,7 +67,11 @@ export class PaginationService implements IPaginationService {
         searchValue: string,
         availableSearch: string[]
     ): Record<string, any> {
-        if (searchValue === undefined || searchValue === '') {
+        if (
+            searchValue === undefined ||
+            searchValue === '' ||
+            availableSearch.length === 0
+        ) {
             return undefined;
         }
 

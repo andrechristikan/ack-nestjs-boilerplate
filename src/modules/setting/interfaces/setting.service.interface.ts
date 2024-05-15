@@ -51,6 +51,11 @@ export interface ISettingService {
     checkValue(type: ENUM_SETTING_DATA_TYPE, value: string): boolean;
     getTimezone(): Promise<string>;
     getTimezoneOffset(): Promise<string>;
-    mapList(settings: SettingDoc[]): Promise<SettingListResponseDto[]>;
-    mapGet(settings: SettingDoc): Promise<SettingGetResponseDto>;
+    mapList<T = any>(
+        settings: SettingDoc[]
+    ): Promise<SettingListResponseDto<T>[]>;
+    mapGet<T = any>(settings: SettingDoc): Promise<SettingGetResponseDto<T>>;
+    getMobileNumberAllowed(
+        options?: IDatabaseFindOneOptions
+    ): Promise<SettingGetResponseDto<Record<string, any>>>;
 }

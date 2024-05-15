@@ -153,7 +153,12 @@ export interface IUserService {
     mapProfile(user: IUserDoc): Promise<UserProfileResponseDto>;
     updateProfile(
         repository: UserDoc,
-        { firstName, lastName, address }: UserUpdateProfileRequestDto,
+        {
+            firstName,
+            lastName,
+            address,
+            mobileNumber,
+        }: UserUpdateProfileRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     mapList(user: IUserDoc[]): Promise<UserListResponseDto[]>;

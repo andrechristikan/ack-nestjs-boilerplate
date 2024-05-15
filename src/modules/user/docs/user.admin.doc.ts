@@ -17,6 +17,8 @@ import {
 } from 'src/modules/user/constants/user.doc.constant';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
 import { UserUpdatePasswordRequestDto } from 'src/modules/user/dtos/request/user.update-password.request.dto';
+import { UserHistoryListResponseDto } from 'src/modules/user/dtos/response/user-history.list.response.dto';
+import { UserPasswordListResponseDto } from 'src/modules/user/dtos/response/user-password.list.response.dto';
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
 
@@ -39,6 +41,44 @@ export function UserAdminListDoc(): MethodDecorator {
         DocGuard({ role: true, policy: true }),
         DocResponsePaging<UserListResponseDto>('user.list', {
             dto: UserListResponseDto,
+        })
+    );
+}
+
+export function UserAdminGetHistoryListDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'get all user state histories',
+        }),
+        DocRequest({
+            params: UserDocParamsId,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true }),
+        DocResponsePaging<UserHistoryListResponseDto>('user.listHistory', {
+            dto: UserHistoryListResponseDto,
+        })
+    );
+}
+
+export function UserAdminGetPasswordListDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'get all user history change password',
+        }),
+        DocRequest({
+            params: UserDocParamsId,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true }),
+        DocResponsePaging<UserPasswordListResponseDto>('user.listPassword', {
+            dto: UserPasswordListResponseDto,
         })
     );
 }
