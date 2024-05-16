@@ -1,10 +1,8 @@
 {
     "error": {
-        "notFound": "File not found",
-        "maxSize": "File size too big",
-        "maxFiles": "Files are to many",
-        "mimeInvalid": "File extension not valid",
-        "needExtractFirst": "Extract data needed",
-        "validationDto": "Import Data invalid"
+        "validationDto": "The provided data does not meet validation criteria.",
+        "mimeInvalid": "The MIME type of the file is invalid.",
+        "requiredParseFirst": "Parsing the data is required before this operation.",
+        "required": "This field is required and cannot be left blank."
     }
 }

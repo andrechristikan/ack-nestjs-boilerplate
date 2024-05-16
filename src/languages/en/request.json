@@ -23,7 +23,6 @@
     "minDate": "{property} has less date than the minimum allowed.",
     "maxDate": "{property} has  more elements than the maximum allowed.",
     "isDate": "{property} should be a date",
-
     "isPasswordStrong": "{property} must have strong pattern",
     "isPasswordMedium": "{property} must have medium pattern",
     "isPasswordWeak": "{property} must have weak pattern",

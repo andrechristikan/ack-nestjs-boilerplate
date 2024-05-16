@@ -1,22 +1,24 @@
 {
-    "list":"Get list of api keys succeed",
-    "get":"Get Detail of api key succeed",
-    "create":"Create api key succeed",
-    "reset":"Reset api key succeed",
-    "update":"Update api key succeed",
-    "inactive":"Inactive api key succeed",
-    "active":"Active api key succeed",
-    "updateDate":"Update date api key succeed",
-    "delete":"Delete api key succeed",
+    "list": "List of apikeys retrieved successfully.",
+    "get": "Apikey details fetched successfully.",
+    "create": "New apikey created successfully.",
+    "reset": "Apikey reset successfully.",
+    "update": "Apikey updated successfully.",
+    "inactive": "Apikey marked as inactive.",
+    "active": "Apikey marked as active.",
+    "updateDate": "Apikey date updated successfully.",
+    "delete": "Apikey deleted successfully.",
     "error": {
-        "exist": "API Key Exist",
-        "isActiveInvalid": "API Key is active invalid",
-        "expired": "API Key expired",
-        "notFound": "API Key not found",
-        "keyNeeded": "Api Key is missing",
-        "inactive": "Auth API Inactive",
-        "notActiveYet":"Api Key not active yet",
-        "invalid": "Invalid API Key",
-        "typeInvalid": "Api Key type invalid"
+        "xApiKey": {
+            "required": "xApikey is required.",
+            "notFound": "xApikey not found.",
+            "inactive": "xApikey is inactive.",
+            "expired": "xApikey has expired.",
+            "invalid": "xApikey is invalid.",
+            "forbidden": "xApikey does not have permission."
+        },
+        "expired": "Apikey has expired.",
+        "isActiveInvalid": "The active status of Apikey is invalid.",
+        "notFound": "Apikey not found."
     }
 }

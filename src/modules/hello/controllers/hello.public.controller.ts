@@ -15,7 +15,7 @@ export class HelloPublicController {
     constructor(private readonly helperDateService: HelperDateService) {}
 
     @HelloDoc()
-    @Response('hello')
+    @Response('hello.hello')
     @Get('/')
     async hello(): Promise<IResponse<HelloResponseDto>> {
         const newDate = this.helperDateService.create();

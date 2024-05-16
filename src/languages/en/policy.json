@@ -1,0 +1,6 @@
+{
+    "error": {
+        "abilityForbidden": "You do not have the required permissions to perform this action.",
+        "roleForbidden": "Your role does not grant access to this resource."
+    }
+}

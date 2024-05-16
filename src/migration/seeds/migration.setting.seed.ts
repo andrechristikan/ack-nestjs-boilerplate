@@ -16,7 +16,7 @@ export class MigrationSettingSeed {
             await this.settingService.create({
                 name: 'mobileNumberAllowed',
                 type: ENUM_SETTING_DATA_TYPE.JSON,
-                value: '[62]',
+                value: '["62","65"]',
             });
         } catch (err: any) {
             throw new Error(err.message);
