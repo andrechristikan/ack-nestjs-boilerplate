@@ -12,6 +12,7 @@ import {
 import {
     UserDocParamsId,
     UserDocQueryBlocked,
+    UserDocQueryRole,
     UserDocQuerySignUpDate,
     UserDocQueryStatus,
 } from 'src/modules/user/constants/user.doc.constant';
@@ -32,6 +33,7 @@ export function UserAdminListDoc(): MethodDecorator {
                 ...UserDocQueryStatus,
                 ...UserDocQueryBlocked,
                 ...UserDocQuerySignUpDate,
+                ...UserDocQueryRole,
             ],
         }),
         DocAuth({

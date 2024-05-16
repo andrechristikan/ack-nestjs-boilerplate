@@ -95,6 +95,23 @@ export class UserHistoryService implements IUserHistoryService {
         }
     }
 
+    async createCreatedByUser(
+        user: UserDoc,
+        by: string,
+        options?: IDatabaseCreateOptions
+    ): Promise<UserHistoryDoc> {
+        const create: UserHistoryEntity = new UserHistoryEntity();
+        create.afterState = ENUM_USER_HISTORY_STATE.ACTIVE;
+        create.beforeState = ENUM_USER_HISTORY_STATE.CREATED;
+        create.user = user._id;
+        create.by = by;
+
+        return this.userHistoryRepository.create<UserHistoryEntity>(
+            create,
+            options
+        );
+    }
+
     async createActiveByUser(
         user: UserDoc,
         by: string,

@@ -1,16 +1,11 @@
 import { Command } from 'nestjs-command';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
 import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.constant';
-import { faker } from '@faker-js/faker';
 
 @Injectable()
 export class MigrationApiKeySeed {
-    private readonly logger: Logger;
-
-    constructor(private readonly apiKeyService: ApiKeyService) {
-        this.logger = new Logger(MigrationApiKeySeed.name);
-    }
+    constructor(private readonly apiKeyService: ApiKeyService) {}
 
     @Command({
         command: 'seed:apikey',
@@ -18,8 +13,8 @@ export class MigrationApiKeySeed {
     })
     async seeds(): Promise<void> {
         try {
-            const apiKeyPublicKey = faker.string.alphanumeric(20);
-            const apiKeyPublicSecret = faker.string.alphanumeric(50);
+            const apiKeyPublicKey = 'v8VB0yY887lMpTA2VJMV';
+            const apiKeyPublicSecret = 'zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg';
             await this.apiKeyService.createRaw({
                 name: 'Api Key Public Migration',
                 type: ENUM_API_KEY_TYPE.PUBLIC,
@@ -27,22 +22,11 @@ export class MigrationApiKeySeed {
                 secret: apiKeyPublicSecret,
             });
 
-            const apiKeyPrivateKey = faker.string.alphanumeric(20);
-            const apiKeyPrivateSecret = faker.string.alphanumeric(50);
+            const apiKeyPrivateKey = 'OgXYkQyOtP7Zl5uCbKd8';
+            const apiKeyPrivateSecret = '3kh0hW7pIAH3wW9DwUGrP8Y5RW9Ywv';
             await this.apiKeyService.createRaw({
                 name: 'Api Key Private Migration',
                 type: ENUM_API_KEY_TYPE.PRIVATE,
-                key: apiKeyPrivateKey,
-                secret: apiKeyPrivateSecret,
-            });
-
-            // Print key and Secret
-            this.logger.log({
-                key: apiKeyPublicKey,
-                secret: apiKeyPublicSecret,
-            });
-
-            this.logger.log({
                 key: apiKeyPrivateKey,
                 secret: apiKeyPrivateSecret,
             });

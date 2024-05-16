@@ -154,7 +154,7 @@ export class UserAdminController {
             ..._search,
             ...status,
             ...blocked,
-            role: role._id,
+            ...role,
         };
 
         if (startDate && endDate) {
@@ -379,6 +379,13 @@ export class UserAdminController {
                 password,
                 ENUM_USER_SIGN_UP_FROM.ADMIN,
                 { session }
+            );
+            await this.userHistoryService.createCreatedByUser(
+                created,
+                created._id,
+                {
+                    session,
+                }
             );
             await this.userPasswordService.createByUser(created, { session });
 

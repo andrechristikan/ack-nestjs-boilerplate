@@ -131,7 +131,6 @@ Describes which version.
 * Server Side Pagination
 * Import and export data with CSV or Excel by using `decorator`
 * Sentry.io for Monitoring Tools
-* Debugger with `Winston` 📝
 
 ### Database
 
@@ -146,7 +145,6 @@ Describes which version.
 
 * Apply `helmet`, `cors`, and `throttler`
 * Timeout awareness and can override ⌛️
-* User agent awareness, and can whitelist user agent
 
 ### Setting
 
@@ -181,6 +179,7 @@ Installation will describe in difference doc. [here][doc-installation].
 ## API Spec
 
 You can check The API Spec after running this project. Url `localhost:3000/docs`.
+`x-api-key` is `v8VB0yY887lMpTA2VJMV:zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg`
 
 ## License
 

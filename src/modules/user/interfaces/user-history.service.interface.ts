@@ -35,6 +35,11 @@ export interface IUserHistoryService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
+    createCreatedByUser(
+        user: UserDoc,
+        by: string,
+        options?: IDatabaseCreateOptions
+    ): Promise<UserHistoryDoc>;
     createActiveByUser(
         user: UserDoc,
         by: string,

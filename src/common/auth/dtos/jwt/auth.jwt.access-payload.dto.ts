@@ -1,8 +1,10 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ENUM_AUTH_LOGIN_FROM } from 'src/common/auth/constants/auth.enum.constant';
 import {
+    ENUM_POLICY_ACTION,
+    ENUM_POLICY_REQUEST_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
 } from 'src/common/policy/constants/policy.enum.constant';
@@ -17,6 +19,29 @@ export class AuthJwtAccessPayloadPermissionDto {
     @ApiProperty({
         required: true,
         nullable: false,
+    })
+    @Transform(({ value }) => {
+        return value
+            .map((e: ENUM_POLICY_ACTION) => {
+                switch (e) {
+                    case ENUM_POLICY_ACTION.CREATE:
+                        return ENUM_POLICY_REQUEST_ACTION.CREATE;
+                    case ENUM_POLICY_ACTION.UPDATE:
+                        return ENUM_POLICY_REQUEST_ACTION.UPDATE;
+                    case ENUM_POLICY_ACTION.DELETE:
+                        return ENUM_POLICY_REQUEST_ACTION.DELETE;
+                    case ENUM_POLICY_ACTION.EXPORT:
+                        return ENUM_POLICY_REQUEST_ACTION.EXPORT;
+                    case ENUM_POLICY_ACTION.IMPORT:
+                        return ENUM_POLICY_REQUEST_ACTION.IMPORT;
+                    case ENUM_POLICY_ACTION.MANAGE:
+                        return ENUM_POLICY_REQUEST_ACTION.MANAGE;
+                    case ENUM_POLICY_ACTION.READ:
+                    default:
+                        return ENUM_POLICY_REQUEST_ACTION.READ;
+                }
+            })
+            .join(',');
     })
     action: string;
 }

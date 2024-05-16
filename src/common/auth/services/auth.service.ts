@@ -14,6 +14,7 @@ import { AuthSocialApplePayloadDto } from 'src/common/auth/dtos/social/auth.soci
 import { AuthSocialGooglePayloadDto } from 'src/common/auth/dtos/social/auth.social.google-payload.dto';
 import { ENUM_AUTH_LOGIN_FROM } from 'src/common/auth/constants/auth.enum.constant';
 import { plainToInstance } from 'class-transformer';
+import { Document } from 'mongoose';
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -103,7 +104,7 @@ export class AuthService implements IAuthService {
 
     async createAccessToken(payload: AuthJwtAccessPayloadDto): Promise<string> {
         return this.helperEncryptionService.jwtEncrypt(
-            { data: payload },
+            { ...payload },
             {
                 secretKey: this.jwtAccessTokenSecretKey,
                 expiredIn: this.jwtAccessTokenExpirationTime,
@@ -133,7 +134,7 @@ export class AuthService implements IAuthService {
         payload: AuthJwtRefreshPayloadDto
     ): Promise<string> {
         return this.helperEncryptionService.jwtEncrypt(
-            { data: payload },
+            { ...payload },
             {
                 secretKey: this.jwtRefreshTokenSecretKey,
                 expiredIn: this.jwtRefreshTokenExpirationTime,
@@ -171,18 +172,19 @@ export class AuthService implements IAuthService {
         );
     }
 
-    async createPayloadAccessToken(
-        data: Record<string, any>,
+    async createPayloadAccessToken<T extends Document>(
+        data: T,
         loginFrom: ENUM_AUTH_LOGIN_FROM
     ): Promise<AuthJwtAccessPayloadDto> {
         const loginDate = this.helperDateService.create();
+        const plainObject: any = data.toObject();
 
         return plainToInstance(AuthJwtAccessPayloadDto, {
-            _id: data._id,
-            type: data.role.type,
-            role: data.role._id,
-            email: data.email,
-            permissions: data.role.permissions,
+            _id: plainObject._id,
+            type: plainObject.role.type,
+            role: plainObject.role._id,
+            email: plainObject.email,
+            permissions: plainObject.role.permissions,
             loginDate,
             loginFrom,
         });

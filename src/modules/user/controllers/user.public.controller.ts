@@ -19,6 +19,8 @@ import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { UserPublicSignUpDoc } from 'src/modules/user/docs/user.public.doc';
 import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
+import { UserHistoryService } from 'src/modules/user/services/user-history.service';
+import { UserPasswordService } from 'src/modules/user/services/user-password.service';
 import { UserService } from 'src/modules/user/services/user.service';
 
 @ApiTags('modules.public.user')
@@ -30,6 +32,8 @@ export class UserPublicController {
     constructor(
         @DatabaseConnection() private readonly databaseConnection: Connection,
         private readonly userService: UserService,
+        private readonly userHistoryService: UserHistoryService,
+        private readonly userPasswordService: UserPasswordService,
         private readonly authService: AuthService,
         private readonly roleService: RoleService,
         private readonly emailService: EmailService
@@ -74,7 +78,7 @@ export class UserPublicController {
         session.startTransaction();
 
         try {
-            await this.userService.signUp(
+            const user = await this.userService.signUp(
                 role._id,
                 {
                     email,
@@ -85,6 +89,10 @@ export class UserPublicController {
                 password,
                 { session }
             );
+            await this.userHistoryService.createCreatedByUser(user, user._id, {
+                session,
+            });
+            await this.userPasswordService.createByUser(user, { session });
 
             await this.emailService.sendSignUp({
                 email,

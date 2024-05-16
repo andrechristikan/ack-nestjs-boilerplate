@@ -11,13 +11,23 @@ export const UserDocParamsId = [
     },
 ];
 
+export const UserDocQueryRole = [
+    {
+        name: 'role',
+        allowEmptyValue: true,
+        required: false,
+        type: 'string',
+        example: faker.string.uuid(),
+    },
+];
+
 export const UserDocQueryStatus = [
     {
         name: 'status',
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: Object.values(ENUM_USER_STATUS),
+        example: Object.values(ENUM_USER_STATUS).join(','),
         description: "value with ',' delimiter",
     },
 ];

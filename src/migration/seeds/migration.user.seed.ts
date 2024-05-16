@@ -7,6 +7,7 @@ import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import { UserPasswordService } from 'src/modules/user/services/user-password.service';
+import { UserHistoryService } from 'src/modules/user/services/user-history.service';
 
 @Injectable()
 export class MigrationUserSeed {
@@ -14,6 +15,7 @@ export class MigrationUserSeed {
         private readonly authService: AuthService,
         private readonly userService: UserService,
         private readonly userPasswordService: UserPasswordService,
+        private readonly userHistoryService: UserHistoryService,
         private readonly roleService: RoleService
     ) {}
 
@@ -79,6 +81,10 @@ export class MigrationUserSeed {
                 ENUM_USER_SIGN_UP_FROM.ADMIN
             );
 
+            await this.userHistoryService.createCreatedByUser(user1, user1._id);
+            await this.userHistoryService.createCreatedByUser(user2, user2._id);
+            await this.userHistoryService.createCreatedByUser(user3, user3._id);
+            await this.userHistoryService.createCreatedByUser(user4, user4._id);
             await this.userPasswordService.createByUser(user1);
             await this.userPasswordService.createByUser(user2);
             await this.userPasswordService.createByUser(user3);

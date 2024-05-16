@@ -24,11 +24,11 @@ export class PolicyRoleGuard implements CanActivate {
         const { user } = context.switchToHttp().getRequest<IRequestApp>();
         const { type } = user;
 
-        if (type === ENUM_POLICY_ROLE_TYPE.SUPER_ADMIN) {
+        if (role?.length === 0 || type === ENUM_POLICY_ROLE_TYPE.SUPER_ADMIN) {
             return true;
         }
 
-        if (role !== type) {
+        if (!role.includes(type)) {
             throw new ForbiddenException({
                 statusCode: ENUM_POLICY_STATUS_CODE_ERROR.ROLE_FORBIDDEN_ERROR,
                 message: 'policy.error.roleForbidden',

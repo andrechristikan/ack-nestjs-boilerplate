@@ -1,3 +1,4 @@
+import { Document } from 'mongoose';
 import { ENUM_AUTH_LOGIN_FROM } from 'src/common/auth/constants/auth.enum.constant';
 import { AuthJwtAccessPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.access-payload.dto';
 import { AuthJwtRefreshPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
@@ -16,8 +17,8 @@ export interface IAuthService {
         passwordString: string,
         passwordHash: string
     ): Promise<boolean>;
-    createPayloadAccessToken(
-        data: Record<string, any>,
+    createPayloadAccessToken<T extends Document>(
+        data: T,
         loginFrom: ENUM_AUTH_LOGIN_FROM
     ): Promise<AuthJwtAccessPayloadDto>;
     createPayloadRefreshToken({
