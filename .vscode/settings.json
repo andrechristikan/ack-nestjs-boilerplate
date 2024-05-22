@@ -5,6 +5,7 @@
         "typescript",
         "typescriptreact"
     ],
+    "eslint.experimental.useFlatConfig": true,
     "editor.defaultFormatter": "dbaeumer.vscode-eslint",
     "editor.codeActionsOnSave": {
         "source.fixAll.eslint": "explicit"

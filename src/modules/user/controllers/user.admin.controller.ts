@@ -218,7 +218,7 @@ export class UserAdminController {
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
     @ApiKeyPublicProtected()
-    @Get('/get/:user/history')
+    @Get('/get/:user/history/list')
     async listHistory(
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc,
         @PaginationQuery()
@@ -263,7 +263,7 @@ export class UserAdminController {
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
     @ApiKeyPublicProtected()
-    @Get('/get/:user/password')
+    @Get('/get/:user/password/list')
     async listPassword(
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc,
         @PaginationQuery()
