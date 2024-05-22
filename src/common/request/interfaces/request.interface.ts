@@ -1,26 +1,17 @@
 import { Request } from 'express';
-import { IApiKeyPayload } from 'src/common/api-key/interfaces/api-key.interface';
-import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
-import { RequestPaginationSerialization } from 'src/common/request/serializations/request.pagination.serialization';
-import { IResult } from 'ua-parser-js';
+import { ResponsePagingMetadataPaginationDto } from 'src/common/response/dtos/response.paging.dto';
 
-export interface IRequestApp<T = AuthAccessPayloadSerialization>
-    extends Request {
-    apiKey?: IApiKeyPayload;
+export interface IRequestApp<
+    T = Record<string, any>,
+    N = Record<string, any>,
+    B = Record<string, any>,
+> extends Request {
+    apiKey?: B;
     user?: T;
+    __user?: N;
 
-    __id: string;
-    __xTimestamp?: number;
-    __timestamp: number;
-    __timezone: string;
-    __customLang: string[];
-    __xCustomLang: string;
+    __language: string;
     __version: string;
-    __repoVersion: string;
-    __userAgent: IResult;
 
-    __class?: string;
-    __function?: string;
-
-    __pagination?: RequestPaginationSerialization;
+    __pagination?: ResponsePagingMetadataPaginationDto;
 }

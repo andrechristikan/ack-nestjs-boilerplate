@@ -2,138 +2,101 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ValidationError } from 'class-validator';
 import { I18nService } from 'nestjs-i18n';
-import {
-    IErrors,
-    IErrorsImport,
-    IErrorValidationImport,
-} from 'src/common/error/interfaces/error.interface';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 import {
     IMessageErrorOptions,
-    IMessageOptions,
     IMessageSetOptions,
+    IMessageValidationError,
+    IMessageValidationImportError,
+    IMessageValidationImportErrorParam,
 } from 'src/common/message/interfaces/message.interface';
 import { IMessageService } from 'src/common/message/interfaces/message.service.interface';
 
 @Injectable()
 export class MessageService implements IMessageService {
-    private readonly appDefaultLanguage: string;
-    private readonly appDefaultAvailableLanguage: string[];
+    private readonly defaultLanguage: ENUM_MESSAGE_LANGUAGE;
+    private readonly availableLanguage: ENUM_MESSAGE_LANGUAGE[];
+    private readonly debug: boolean;
 
     constructor(
         private readonly i18n: I18nService,
         private readonly configService: ConfigService,
         private readonly helperArrayService: HelperArrayService
     ) {
-        this.appDefaultLanguage =
-            this.configService.get<string>('message.language');
-        this.appDefaultAvailableLanguage = this.configService.get<string[]>(
-            'message.availableLanguage'
-        );
+        this.defaultLanguage =
+            this.configService.get<ENUM_MESSAGE_LANGUAGE>('message.language');
+        this.availableLanguage = this.configService.get<
+            ENUM_MESSAGE_LANGUAGE[]
+        >('message.availableLanguage');
+        this.debug = this.configService.get<boolean>('app.debug');
     }
 
-    getAvailableLanguages(): string[] {
-        return this.appDefaultAvailableLanguage;
+    getAvailableLanguages(): ENUM_MESSAGE_LANGUAGE[] {
+        return this.availableLanguage;
     }
 
-    getLanguage(): string {
-        return this.appDefaultLanguage;
+    getLanguage(): ENUM_MESSAGE_LANGUAGE {
+        return this.defaultLanguage;
     }
 
-    filterLanguage(customLanguages: string[]): string[] {
+    //! Filter message base on available language
+    filterLanguage(customLanguage: string): string[] {
         return this.helperArrayService.getIntersection(
-            customLanguages,
-            this.appDefaultAvailableLanguage
+            [customLanguage],
+            this.availableLanguage
         );
     }
 
-    setMessage(
-        lang: string,
-        key: string,
-        options?: IMessageSetOptions
-    ): string {
-        return this.i18n.translate(key, {
-            lang: lang,
+    //! set message by path  base on language
+    setMessage(path: string, options?: IMessageSetOptions): string {
+        const language: string = options?.customLanguage
+            ? this.filterLanguage(options.customLanguage)[0]
+            : this.defaultLanguage;
+
+        return this.i18n.translate(path, {
+            lang: language,
             args: options?.properties,
+            debug: this.debug,
         }) as any;
     }
 
-    getRequestErrorsMessage(
-        requestErrors: ValidationError[],
+    setValidationMessage(
+        errors: ValidationError[],
         options?: IMessageErrorOptions
-    ): IErrors[] {
-        const messages: Array<IErrors[]> = [];
-        for (const requestError of requestErrors) {
-            let children: Record<string, any>[] = requestError.children;
-            let constraints: string[] = Object.keys(
-                requestError.constraints ?? []
-            );
-            let property: string = requestError.property;
-            let propertyValue: string = requestError.value;
+    ): IMessageValidationError[] {
+        const messages: IMessageValidationError[] = [];
+        for (const error of errors) {
+            const property = error.property ?? 'unknown';
+            const constraints: string[] = Object.keys(error.constraints ?? []);
 
-            while (children?.length > 0) {
-                property = `${property}.${children[0].property}`;
-
-                if (children[0].children?.length > 0) {
-                    children = children[0].children;
-                } else {
-                    constraints = Object.keys(children[0].constraints);
-                    propertyValue = children[0].value;
-                    children = [];
-                }
-            }
-
-            const errors: IErrors[] = [];
             for (const constraint of constraints) {
-                errors.push({
+                const message = this.setMessage(`request.${constraint}`, {
+                    customLanguage: options?.customLanguage,
+                    properties: {
+                        property,
+                        value: error.value,
+                    },
+                });
+
+                messages.push({
                     property,
-                    message: this.get(`request.${constraint}`, {
-                        customLanguages: options?.customLanguages,
-                        properties: {
-                            property,
-                            value: propertyValue,
-                        },
-                    }),
+                    message: message,
                 });
             }
-
-            messages.push(errors);
         }
 
-        return messages.flat(1) as IErrors[];
+        return messages;
     }
 
-    getImportErrorsMessage(
-        errors: IErrorValidationImport[],
+    setValidationImportMessage(
+        errors: IMessageValidationImportErrorParam[],
         options?: IMessageErrorOptions
-    ): IErrorsImport[] {
-        return errors.map((val) => ({
+    ): IMessageValidationImportError[] {
+        return errors.map(val => ({
             row: val.row,
             sheetName: val.sheetName,
-            errors: this.getRequestErrorsMessage(val.errors, options),
+            errors: this.setValidationMessage(val.error, options),
         }));
-    }
-
-    get<T = string>(key: string, options?: IMessageOptions): T {
-        const customLanguages =
-            options?.customLanguages?.length > 0
-                ? this.filterLanguage(options.customLanguages)
-                : [this.appDefaultLanguage];
-
-        if (customLanguages.length > 1) {
-            return customLanguages.reduce(
-                (a, v) => ({
-                    ...a,
-                    [v]: this.setMessage(v, key, {
-                        properties: options?.properties,
-                    }),
-                }),
-                {}
-            ) as any;
-        }
-
-        return this.setMessage(customLanguages[0], key, {
-            properties: options?.properties,
-        }) as any;
     }
 }

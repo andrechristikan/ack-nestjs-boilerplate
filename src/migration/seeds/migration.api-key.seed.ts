@@ -13,18 +13,22 @@ export class MigrationApiKeySeed {
     })
     async seeds(): Promise<void> {
         try {
+            const apiKeyPublicKey = 'v8VB0yY887lMpTA2VJMV';
+            const apiKeyPublicSecret = 'zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg';
             await this.apiKeyService.createRaw({
                 name: 'Api Key Public Migration',
                 type: ENUM_API_KEY_TYPE.PUBLIC,
-                key: '2ihKDneb9jQGgidAOqfO',
-                secret: 'ZLCtDd2rh3TAyVhfAeo3JOPvWfAsTp0Oq6rHl69D',
+                key: apiKeyPublicKey,
+                secret: apiKeyPublicSecret,
             });
 
+            const apiKeyPrivateKey = 'OgXYkQyOtP7Zl5uCbKd8';
+            const apiKeyPrivateSecret = '3kh0hW7pIAH3wW9DwUGrP8Y5RW9Ywv';
             await this.apiKeyService.createRaw({
-                name: 'Api Key Service Migration',
-                type: ENUM_API_KEY_TYPE.SERVICE,
-                key: 'XL6kCmBw0ice0FszxVPc',
-                secret: '6WhgBRZytEYcmFWmRQxxOMr8NRJnnmcHQUkSAHMn',
+                name: 'Api Key Private Migration',
+                type: ENUM_API_KEY_TYPE.PRIVATE,
+                key: apiKeyPrivateKey,
+                secret: apiKeyPrivateSecret,
             });
         } catch (err: any) {
             throw new Error(err.message);

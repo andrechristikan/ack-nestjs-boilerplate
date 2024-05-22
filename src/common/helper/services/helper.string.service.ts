@@ -1,5 +1,5 @@
+import { faker } from '@faker-js/faker';
 import { Injectable } from '@nestjs/common';
-import RandExp from 'randexp';
 import {
     IHelperStringCurrencyOptions,
     IHelperStringPasswordOptions,
@@ -13,18 +13,19 @@ export class HelperStringService implements IHelperStringService {
         const timestamp = `${new Date().getTime()}`;
         const randomString: string = this.random(length, {
             safe: true,
-            upperCase: true,
         });
 
-        return `${timestamp}${randomString}`;
+        return `${timestamp}${randomString}`.toUpperCase();
     }
 
     random(length: number, options?: IHelperStringRandomOptions): string {
-        const rString = options?.safe
-            ? new RandExp(`[A-Z]{${length},${length}}`)
-            : new RandExp(`\\w{${length},${length}}`);
-
-        return options?.upperCase ? rString.gen().toUpperCase() : rString.gen();
+        return options?.safe
+            ? faker.string.alphanumeric({
+                  length: { min: length, max: length },
+              })
+            : faker.string.numeric({
+                  length: { min: length, max: length },
+              });
     }
 
     censor(text: string): string {
@@ -34,16 +35,10 @@ export class HelperStringService implements IHelperStringService {
         } else if (text.length <= 10) {
             const stringCensor = '*'.repeat(7);
             return `${stringCensor}${text.slice(-3)}`;
-        } else if (text.length <= 25) {
-            const lengthExplicit = Math.ceil((text.length / 100) * 30);
-            const lengthCensor = Math.ceil((text.length / 100) * 50);
-            const stringCensor = '*'.repeat(lengthCensor);
-            return `${stringCensor}${text.slice(-lengthExplicit)}`;
         }
 
         const stringCensor = '*'.repeat(10);
-        const lengthExplicit = Math.ceil((text.length / 100) * 30);
-        return `${text.slice(0, 3)}${stringCensor}${text.slice(-lengthExplicit)}`;
+        return `${text.slice(0, 3)}${stringCensor}${text.slice(-4)}`;
     }
 
     checkEmail(email: string): boolean {
@@ -51,21 +46,11 @@ export class HelperStringService implements IHelperStringService {
         return regex.test(email);
     }
 
-    checkPasswordWeak(
+    checkPasswordStrength(
         password: string,
         options?: IHelperStringPasswordOptions
     ): boolean {
-        const length = options?.length ?? 6;
-        const regex = new RegExp(`^(?=.*?[A-Z])(?=.*?[a-z]).{${length},}$`);
-
-        return regex.test(password);
-    }
-
-    checkPasswordMedium(
-        password: string,
-        options?: IHelperStringPasswordOptions
-    ): boolean {
-        const length = options?.length ?? 6;
+        const length = options?.length ?? 8;
         const regex = new RegExp(
             `^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9]).{${length},}$`
         );
@@ -73,20 +58,8 @@ export class HelperStringService implements IHelperStringService {
         return regex.test(password);
     }
 
-    checkPasswordStrong(
-        password: string,
-        options?: IHelperStringPasswordOptions
-    ): boolean {
-        const length = options?.length ?? 6;
-        const regex = new RegExp(
-            `^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{${length},}$`
-        );
-
-        return regex.test(password);
-    }
-
     checkSafeString(text: string): boolean {
-        const regex = new RegExp('^[A-Za-z0-9_-]+$');
+        const regex = new RegExp('^[A-Za-z0-9]+$');
         return regex.test(text);
     }
 

@@ -3,14 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import {
     IAwsS3PutItem,
     IAwsS3PutItemOptions,
+    IAwsS3PutItemWithAclOptions,
     IAwsS3RandomFilename,
 } from 'src/common/aws/interfaces/aws.interface';
 import { IAwsS3Service } from 'src/common/aws/interfaces/aws.s3-service.interface';
-import {
-    AwsS3MultipartPartsSerialization,
-    AwsS3MultipartSerialization,
-} from 'src/common/aws/serializations/aws.s3-multipart.serialization';
-import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
 import { Readable } from 'stream';
 import {
     S3Client,
@@ -57,6 +53,12 @@ import {
     CompletedPart,
 } from '@aws-sdk/client-s3';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
+import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
+import {
+    AwsS3MultipartDto,
+    AwsS3MultipartPartsDto,
+} from 'src/common/aws/dtos/aws.s3-multipart.dto';
+import { AWS_S3_MAX_PART_NUMBER } from 'src/common/aws/constants/aws.constant';
 
 @Injectable()
 export class AwsS3Service implements IAwsS3Service {
@@ -117,7 +119,7 @@ export class AwsS3Service implements IAwsS3Service {
         }
     }
 
-    async listItemInBucket(prefix?: string): Promise<AwsS3Serialization[]> {
+    async listItemInBucket(prefix?: string): Promise<AwsS3Dto[]> {
         const command: ListObjectsV2Command = new ListObjectsV2Command({
             Bucket: this.bucket,
             Prefix: prefix,
@@ -181,7 +183,50 @@ export class AwsS3Service implements IAwsS3Service {
     async putItemInBucket(
         file: IAwsS3PutItem,
         options?: IAwsS3PutItemOptions
-    ): Promise<AwsS3Serialization> {
+    ): Promise<AwsS3Dto> {
+        let path: string = options?.path;
+        path = path?.startsWith('/') ? path.replace('/', '') : path;
+
+        const mime: string = file.originalname.substring(
+            file.originalname.lastIndexOf('.') + 1,
+            file.originalname.length
+        );
+        const filename = options?.customFilename
+            ? `${options?.customFilename}.${mime}`
+            : file.originalname;
+        const content: string | Uint8Array | Buffer = file.buffer;
+        const key: string = path ? `${path}/${filename}` : filename;
+        const command: PutObjectCommand = new PutObjectCommand({
+            Bucket: this.bucket,
+            Key: key,
+            Body: content,
+        });
+
+        try {
+            await this.s3Client.send<
+                PutObjectCommandInput,
+                PutObjectCommandOutput
+            >(command);
+
+            return {
+                bucket: this.bucket,
+                path,
+                pathWithFilename: key,
+                filename: filename,
+                completedUrl: `${this.baseUrl}/${key}`,
+                baseUrl: this.baseUrl,
+                mime,
+                size: file.size,
+            };
+        } catch (err: any) {
+            throw err;
+        }
+    }
+
+    async putItemInBucketWithAcl(
+        file: IAwsS3PutItem,
+        options?: IAwsS3PutItemWithAclOptions
+    ): Promise<AwsS3Dto> {
         let path: string = options?.path;
         path = path?.startsWith('/') ? path.replace('/', '') : path;
         const acl: ObjectCannedACL = options?.acl
@@ -277,7 +322,7 @@ export class AwsS3Service implements IAwsS3Service {
         >(commandList);
 
         try {
-            const listItems = lists.Contents.map((val) => ({
+            const listItems = lists.Contents.map(val => ({
                 Key: val.Key,
             }));
             const commandDeleteItems: DeleteObjectsCommand =
@@ -312,7 +357,59 @@ export class AwsS3Service implements IAwsS3Service {
         file: IAwsS3PutItem,
         maxPartNumber: number,
         options?: IAwsS3PutItemOptions
-    ): Promise<AwsS3MultipartSerialization> {
+    ): Promise<AwsS3MultipartDto> {
+        if (maxPartNumber > AWS_S3_MAX_PART_NUMBER) {
+            throw new Error(
+                `Max part number is greater than ${AWS_S3_MAX_PART_NUMBER}`
+            );
+        }
+        let path: string = options?.path ?? '/';
+        path = path.startsWith('/') ? path.replace('/', '') : path;
+
+        const mime: string = file.originalname.substring(
+            file.originalname.lastIndexOf('.') + 1,
+            file.originalname.length
+        );
+        const filename = options?.customFilename
+            ? `${options?.customFilename}.${mime}`
+            : file.originalname;
+        const key: string = path ? `${path}/${filename}` : filename;
+        const multiPartCommand: CreateMultipartUploadCommand =
+            new CreateMultipartUploadCommand({
+                Bucket: this.bucket,
+                Key: key,
+            });
+
+        try {
+            const response = await this.s3Client.send<
+                CreateMultipartUploadCommandInput,
+                CreateMultipartUploadCommandOutput
+            >(multiPartCommand);
+
+            return {
+                bucket: this.bucket,
+                uploadId: response.UploadId,
+                path,
+                pathWithFilename: key,
+                filename: filename,
+                completedUrl: `${this.baseUrl}/${key}`,
+                baseUrl: this.baseUrl,
+                mime,
+                size: 0,
+                lastPartNumber: 0,
+                maxPartNumber: maxPartNumber,
+                parts: [],
+            };
+        } catch (err: any) {
+            throw err;
+        }
+    }
+
+    async createMultiPartWithAcl(
+        file: IAwsS3PutItem,
+        maxPartNumber: number,
+        options?: IAwsS3PutItemWithAclOptions
+    ): Promise<AwsS3MultipartDto> {
         let path: string = options?.path ?? '/';
         path = path.startsWith('/') ? path.replace('/', '') : path;
         const acl: ObjectCannedACL = options?.acl
@@ -360,10 +457,10 @@ export class AwsS3Service implements IAwsS3Service {
     }
 
     async uploadPart(
-        multipart: AwsS3MultipartSerialization,
+        multipart: AwsS3MultipartDto,
         partNumber: number,
         content: string | Uint8Array | Buffer
-    ): Promise<AwsS3MultipartPartsSerialization> {
+    ): Promise<AwsS3MultipartPartsDto> {
         const uploadPartCommand: UploadPartCommand = new UploadPartCommand({
             Bucket: this.bucket,
             Key: multipart.path,
@@ -389,9 +486,9 @@ export class AwsS3Service implements IAwsS3Service {
     }
 
     async updateMultiPart(
-        { size, parts, ...others }: AwsS3MultipartSerialization,
-        part: AwsS3MultipartPartsSerialization
-    ): Promise<AwsS3MultipartSerialization> {
+        { size, parts, ...others }: AwsS3MultipartDto,
+        part: AwsS3MultipartPartsDto
+    ): Promise<AwsS3MultipartDto> {
         parts.push(part);
         return {
             ...others,
@@ -401,9 +498,7 @@ export class AwsS3Service implements IAwsS3Service {
         };
     }
 
-    async completeMultipart(
-        multipart: AwsS3MultipartSerialization
-    ): Promise<void> {
+    async completeMultipart(multipart: AwsS3MultipartDto): Promise<void> {
         const completeMultipartCommand: CompleteMultipartUploadCommand =
             new CompleteMultipartUploadCommand({
                 Bucket: this.bucket,
@@ -426,9 +521,7 @@ export class AwsS3Service implements IAwsS3Service {
         }
     }
 
-    async abortMultipart(
-        multipart: AwsS3MultipartSerialization
-    ): Promise<void> {
+    async abortMultipart(multipart: AwsS3MultipartDto): Promise<void> {
         const abortMultipartCommand: AbortMultipartUploadCommand =
             new AbortMultipartUploadCommand({
                 Bucket: this.bucket,

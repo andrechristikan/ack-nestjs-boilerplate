@@ -2,11 +2,11 @@ import { Command } from 'nestjs-command';
 import { Injectable } from '@nestjs/common';
 import {
     ENUM_POLICY_ACTION,
+    ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
 } from 'src/common/policy/constants/policy.enum.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
-import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
+import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
 
 @Injectable()
 export class MigrationRoleSeed {
@@ -17,23 +17,23 @@ export class MigrationRoleSeed {
         describe: 'seed roles',
     })
     async seeds(): Promise<void> {
-        const dataAdmin: RoleCreateDto[] = [
+        const dataAdmin: RoleCreateRequestDto[] = [
             {
                 name: 'superadmin',
-                type: ENUM_ROLE_TYPE.SUPER_ADMIN,
+                type: ENUM_POLICY_ROLE_TYPE.SUPER_ADMIN,
                 permissions: [],
             },
             {
                 name: 'admin',
-                type: ENUM_ROLE_TYPE.ADMIN,
-                permissions: Object.values(ENUM_POLICY_SUBJECT).map((val) => ({
+                type: ENUM_POLICY_ROLE_TYPE.ADMIN,
+                permissions: Object.values(ENUM_POLICY_SUBJECT).map(val => ({
                     subject: val,
                     action: [ENUM_POLICY_ACTION.MANAGE],
                 })),
             },
             {
                 name: 'member',
-                type: ENUM_ROLE_TYPE.USER,
+                type: ENUM_POLICY_ROLE_TYPE.USER,
                 permissions: [
                     {
                         subject: ENUM_POLICY_SUBJECT.API_KEY,
@@ -43,7 +43,7 @@ export class MigrationRoleSeed {
             },
             {
                 name: 'user',
-                type: ENUM_ROLE_TYPE.USER,
+                type: ENUM_POLICY_ROLE_TYPE.USER,
                 permissions: [],
             },
         ];

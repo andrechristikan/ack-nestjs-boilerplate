@@ -25,8 +25,8 @@ export class HelperEncryptionService implements IHelperEncryptionService {
         return basicToken1 === basicToken2;
     }
 
-    aes256Encrypt(
-        data: string | Record<string, any> | Record<string, any>[],
+    aes256Encrypt<T = Record<string, any>>(
+        data: T,
         key: string,
         iv: string
     ): string {
@@ -40,11 +40,11 @@ export class HelperEncryptionService implements IHelperEncryptionService {
         return cipher.toString();
     }
 
-    aes256Decrypt(
+    aes256Decrypt<T = Record<string, any>>(
         encrypted: string,
         key: string,
         iv: string
-    ): string | Record<string, any> | Record<string, any>[] {
+    ): T {
         const cIv = enc.Utf8.parse(iv);
         const cipher = AES.decrypt(encrypted, key, {
             mode: mode.CBC,
@@ -73,8 +73,8 @@ export class HelperEncryptionService implements IHelperEncryptionService {
         });
     }
 
-    jwtDecrypt(token: string): Record<string, any> {
-        return this.jwtService.decode(token) as Record<string, any>;
+    jwtDecrypt<T>(token: string): T {
+        return this.jwtService.decode<T>(token);
     }
 
     jwtVerify(token: string, options: IHelperJwtVerifyOptions): boolean {

@@ -1,10 +1,13 @@
 import { Prop, SchemaFactory } from '@nestjs/mongoose';
-import { CallbackWithoutResultAndOptionalError, Document } from 'mongoose';
+import { Document } from 'mongoose';
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
-import { ENUM_POLICY_SUBJECT } from 'src/common/policy/constants/policy.enum.constant';
-import { IPolicyRule } from 'src/common/policy/interfaces/policy.interface';
-import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
+import {
+    ENUM_POLICY_ACTION,
+    ENUM_POLICY_ROLE_TYPE,
+    ENUM_POLICY_SUBJECT,
+} from 'src/common/policy/constants/policy.enum.constant';
+import { RolePermissionDto } from 'src/modules/role/dtos/role.permission.dto';
 
 export const RoleDatabaseName = 'roles';
 
@@ -14,7 +17,6 @@ export class RoleEntity extends DatabaseMongoUUIDEntityAbstract {
         required: true,
         index: true,
         unique: true,
-        lowercase: true,
         trim: true,
         maxlength: 30,
         type: String,
@@ -38,11 +40,11 @@ export class RoleEntity extends DatabaseMongoUUIDEntityAbstract {
 
     @Prop({
         required: true,
-        enum: ENUM_ROLE_TYPE,
+        enum: ENUM_POLICY_ROLE_TYPE,
         index: true,
         type: String,
     })
-    type: ENUM_ROLE_TYPE;
+    type: ENUM_POLICY_ROLE_TYPE;
 
     @Prop({
         required: true,
@@ -56,22 +58,21 @@ export class RoleEntity extends DatabaseMongoUUIDEntityAbstract {
                     required: true,
                 },
                 action: {
-                    type: Array,
                     required: true,
-                    default: [],
+                    type: [
+                        {
+                            required: true,
+                            type: String,
+                            enum: ENUM_POLICY_ACTION,
+                        },
+                    ],
                 },
             },
         ],
     })
-    permissions: IPolicyRule[];
+    permissions: RolePermissionDto[];
 }
 
 export const RoleSchema = SchemaFactory.createForClass(RoleEntity);
 
 export type RoleDoc = RoleEntity & Document;
-
-RoleSchema.pre('save', function (next: CallbackWithoutResultAndOptionalError) {
-    this.name = this.name.toLowerCase();
-
-    next();
-});

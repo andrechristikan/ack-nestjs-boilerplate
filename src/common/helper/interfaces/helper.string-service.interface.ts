@@ -9,15 +9,7 @@ export interface IHelperStringService {
     random(length: number, options?: IHelperStringRandomOptions): string;
     censor(text: string): string;
     checkEmail(email: string): boolean;
-    checkPasswordWeak(
-        password: string,
-        options?: IHelperStringPasswordOptions
-    ): boolean;
-    checkPasswordMedium(
-        password: string,
-        options?: IHelperStringPasswordOptions
-    ): boolean;
-    checkPasswordStrong(
+    checkPasswordStrength(
         password: string,
         options?: IHelperStringPasswordOptions
     ): boolean;

@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ENUM_ROLE_TYPE } from 'src/modules/role/constants/role.enum.constant';
+import { ENUM_POLICY_ROLE_TYPE } from 'src/common/policy/constants/policy.enum.constant';
 
 export const RoleDocQueryIsActive = [
     {
@@ -18,7 +18,7 @@ export const RoleDocQueryType = [
         allowEmptyValue: true,
         required: false,
         type: 'string',
-        example: Object.values(ENUM_ROLE_TYPE).join(','),
+        example: Object.values(ENUM_POLICY_ROLE_TYPE).join(','),
         description: "enum value with ',' delimiter",
     },
 ];

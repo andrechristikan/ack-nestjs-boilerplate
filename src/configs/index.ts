@@ -1,15 +1,14 @@
-import AppConfig from './app.config';
-import AuthConfig from './auth.config';
-import DatabaseConfig from './database.config';
-import HelperConfig from './helper.config';
-import AwsConfig from './aws.config';
-import UserConfig from './user.config';
-import RequestConfig from './request.config';
-import DocConfig from './doc.config';
-import DebuggerConfig from './debugger.config';
-import MessageConfig from './message.config';
-import GoogleConfig from './google.config';
-import EmailConfig from './email.config';
+import AppConfig from 'src/configs/app.config';
+import AuthConfig from 'src/configs/auth.config';
+import DatabaseConfig from 'src/configs/database.config';
+import HelperConfig from 'src/configs/helper.config';
+import AwsConfig from 'src/configs/aws.config';
+import UserConfig from 'src/configs/user.config';
+import MiddlewareConfig from 'src/configs/middleware.config';
+import RequestConfig from 'src/configs/request.config';
+import DocConfig from 'src/configs/doc.config';
+import MessageConfig from 'src/configs/message.config';
+import EmailConfig from 'src/configs/email.config';
 
 export default [
     AppConfig,
@@ -18,10 +17,9 @@ export default [
     HelperConfig,
     AwsConfig,
     UserConfig,
+    MiddlewareConfig,
     RequestConfig,
     DocConfig,
-    DebuggerConfig,
     MessageConfig,
-    GoogleConfig,
     EmailConfig,
 ];

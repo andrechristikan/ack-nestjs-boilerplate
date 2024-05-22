@@ -9,7 +9,6 @@ import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 export function PaginationFilterDatePipe(
     field: string,
-    raw: boolean,
     options?: IPaginationFilterDateOptions
 ): Type<PipeTransform> {
     @Injectable({ scope: Scope.REQUEST })
@@ -23,6 +22,13 @@ export function PaginationFilterDatePipe(
         async transform(value: string): Promise<Record<string, Date | string>> {
             if (!value) {
                 return undefined;
+            }
+
+            if (options?.raw) {
+                this.addToRequestInstance(value);
+                return {
+                    [field]: value,
+                };
             }
 
             let finalValue: Date = this.helperDateService.create(value);
@@ -39,15 +45,11 @@ export function PaginationFilterDatePipe(
                 finalValue = this.helperDateService.startOfDay(finalValue);
             }
 
-            let res: Record<string, any>;
-            if (raw) {
-                res = {
-                    [field]: value,
-                };
-            } else {
-                res = this.paginationService.filterDate(field, finalValue);
-            }
+            this.addToRequestInstance(value);
+            return this.paginationService.filterDate(field, finalValue);
+        }
 
+        addToRequestInstance(value: any): void {
             this.request.__pagination = {
                 ...this.request.__pagination,
                 filters: this.request.__pagination?.filters
@@ -57,8 +59,6 @@ export function PaginationFilterDatePipe(
                       }
                     : { [field]: value },
             };
-
-            return res;
         }
     }
 

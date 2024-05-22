@@ -1,15 +1,26 @@
-import { Body, ConflictException, Controller, Post } from '@nestjs/common';
+import {
+    Body,
+    ConflictException,
+    Controller,
+    InternalServerErrorException,
+    NotFoundException,
+    Post,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { ClientSession, Connection } from 'mongoose';
+import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { AuthService } from 'src/common/auth/services/auth.service';
+import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { EmailService } from 'src/modules/email/services/email.service';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { UserPublicSignUpDoc } from 'src/modules/user/docs/user.public.doc';
-import { UserSignUpDto } from 'src/modules/user/dtos/user.sign-up.dto';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
+import { UserHistoryService } from 'src/modules/user/services/user-history.service';
+import { UserPasswordService } from 'src/modules/user/services/user-password.service';
 import { UserService } from 'src/modules/user/services/user.service';
 
 @ApiTags('modules.public.user')
@@ -19,7 +30,10 @@ import { UserService } from 'src/modules/user/services/user.service';
 })
 export class UserPublicController {
     constructor(
+        @DatabaseConnection() private readonly databaseConnection: Connection,
         private readonly userService: UserService,
+        private readonly userHistoryService: UserHistoryService,
+        private readonly userPasswordService: UserPasswordService,
         private readonly authService: AuthService,
         private readonly roleService: RoleService,
         private readonly emailService: EmailService
@@ -31,47 +45,73 @@ export class UserPublicController {
     @Post('/sign-up')
     async signUp(
         @Body()
-        { email, mobileNumber, ...body }: UserSignUpDto
+        {
+            email,
+            firstName,
+            lastName,
+            password: passwordString,
+        }: UserSignUpRequestDto
     ): Promise<void> {
         const promises: Promise<any>[] = [
             this.roleService.findOneByName('user'),
             this.userService.existByEmail(email),
         ];
 
-        if (mobileNumber) {
-            promises.push(this.userService.existByMobileNumber(mobileNumber));
-        }
+        const [role, emailExist] = await Promise.all(promises);
 
-        const [role, emailExist, mobileNumberExist] =
-            await Promise.all(promises);
-
-        if (emailExist) {
+        if (!role) {
+            throw new NotFoundException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                message: 'role.error.notFound',
+            });
+        } else if (emailExist) {
             throw new ConflictException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.USER_EMAIL_EXIST_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_EXIST_ERROR,
                 message: 'user.error.emailExist',
             });
-        } else if (mobileNumberExist) {
-            throw new ConflictException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.USER_MOBILE_NUMBER_EXIST_ERROR,
-                message: 'user.error.mobileNumberExist',
-            });
         }
 
-        const password = await this.authService.createPassword(body.password);
+        const password = await this.authService.createPassword(passwordString);
 
-        const user: UserDoc = await this.userService.create(
-            {
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
+
+        try {
+            const user = await this.userService.signUp(
+                role._id,
+                {
+                    email,
+                    firstName,
+                    lastName,
+                    password: passwordString,
+                },
+                password,
+                { session }
+            );
+            await this.userHistoryService.createCreatedByUser(user, user._id, {
+                session,
+            });
+            await this.userPasswordService.createByUser(user, { session });
+
+            await this.emailService.sendSignUp({
                 email,
-                mobileNumber,
-                signUpFrom: ENUM_USER_SIGN_UP_FROM.PUBLIC,
-                role: role._id,
-                ...body,
-            },
-            password
-        );
+                name:
+                    firstName && lastName ? `${firstName} ${lastName}` : email,
+            });
 
-        await this.emailService.sendSignUp(user);
+            await session.commitTransaction();
+            await session.endSession();
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
 
         return;
     }

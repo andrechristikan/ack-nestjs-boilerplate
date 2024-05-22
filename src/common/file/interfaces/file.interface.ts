@@ -1,18 +1,25 @@
-import { IHelperFileRows } from 'src/common/helper/interfaces/helper.interface';
+export type IFile = Express.Multer.File;
 
-export interface IFile extends Omit<Express.Multer.File, 'filename'> {
+export interface IFileRows<T = any> {
+    data: T[];
+    sheetName?: string;
+}
+
+export interface IFileReadOptions {
     password?: string;
 }
 
-export type IFileExtract<T = any> = IFile & {
-    extracts: IHelperFileRows<T>[];
-};
-
-export interface IFileMultipleField {
+export interface IFileUploadSingle {
     field: string;
+    fileSize: number;
+}
+
+export interface IFileUploadMultiple extends IFileUploadSingle {
     maxFiles: number;
 }
 
-export interface IFileExtractOptions {
-    password?: string;
-}
+export interface IFileUploadMultipleField
+    extends Omit<IFileUploadMultiple, 'fileSize'> {}
+
+export interface IFileUploadMultipleFieldOptions
+    extends Pick<IFileUploadSingle, 'fileSize'> {}

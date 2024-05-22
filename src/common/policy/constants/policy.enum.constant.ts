@@ -19,8 +19,15 @@ export enum ENUM_POLICY_REQUEST_ACTION {
 }
 
 export enum ENUM_POLICY_SUBJECT {
+    ALL = 'ALL',
     API_KEY = 'API_KEY',
     SETTING = 'SETTING',
     ROLE = 'ROLE',
+    USER = 'USER',
+}
+
+export enum ENUM_POLICY_ROLE_TYPE {
+    SUPER_ADMIN = 'SUPER_ADMIN',
+    ADMIN = 'ADMIN',
     USER = 'USER',
 }

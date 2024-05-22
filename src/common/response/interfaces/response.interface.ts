@@ -1,10 +1,9 @@
 import { HttpStatus } from '@nestjs/common';
-import { ClassConstructor } from 'class-transformer';
+import { IFileRows } from 'src/common/file/interfaces/file.interface';
 import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/constants/helper.enum.constant';
-import { IHelperFileRows } from 'src/common/helper/interfaces/helper.interface';
 import { IMessageOptionsProperties } from 'src/common/message/interfaces/message.interface';
 
-export interface IResponseCustomPropertyMetadata {
+export interface IResponseCustomProperty {
     statusCode?: number;
     message?: string;
     httpStatus?: HttpStatus;
@@ -13,33 +12,24 @@ export interface IResponseCustomPropertyMetadata {
 
 // metadata
 export interface IResponseMetadata {
-    customProperty?: IResponseCustomPropertyMetadata;
+    customProperty?: IResponseCustomProperty;
     [key: string]: any;
 }
 
 // decorator options
-
-export interface IResponseOptions<T> {
-    serialization?: ClassConstructor<T>;
+export interface IResponseOptions {
     messageProperties?: IMessageOptionsProperties;
 }
 
-export interface IResponsePagingOptions<T>
-    extends Omit<IResponseOptions<T>, 'serialization'> {
-    serialization: ClassConstructor<T>;
-}
-
-export interface IResponseFileExcelOptions<T>
-    extends Pick<IResponseOptions<T>, 'messageProperties'> {
-    serialization?: ClassConstructor<T>[];
+export interface IResponseFileExcelOptions {
     type?: ENUM_HELPER_FILE_EXCEL_TYPE;
     password?: string;
 }
 
 // response
-export interface IResponse {
+export interface IResponse<T = void> {
     _metadata?: IResponseMetadata;
-    data?: Record<string, any>;
+    data?: T;
 }
 
 // response pagination
@@ -48,12 +38,12 @@ export interface IResponsePagingPagination {
     total: number;
 }
 
-export interface IResponsePaging {
+export interface IResponsePaging<T> {
     _metadata?: IResponseMetadata;
     _pagination: IResponsePagingPagination;
-    data: Record<string, any>[];
+    data: T[];
 }
 
 export interface IResponseFileExcel {
-    data: IHelperFileRows[];
+    data: IFileRows[];
 }

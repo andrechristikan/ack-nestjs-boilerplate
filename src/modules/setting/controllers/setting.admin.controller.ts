@@ -3,20 +3,26 @@ import {
     Body,
     Controller,
     Get,
+    Param,
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
-import { AuthJwtAdminAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
+import { AuthJwtAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
+import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 import { PaginationQuery } from 'src/common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 import {
     ENUM_POLICY_ACTION,
+    ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
 } from 'src/common/policy/constants/policy.enum.constant';
-import { PolicyAbilityProtected } from 'src/common/policy/decorators/policy.decorator';
-import { RequestParamGuard } from 'src/common/request/decorators/request.decorator';
+import {
+    PolicyAbilityProtected,
+    PolicyRoleProtected,
+} from 'src/common/policy/decorators/policy.decorator';
+import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
 import {
     Response,
     ResponsePaging,
@@ -25,33 +31,18 @@ import {
     IResponse,
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
-import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
-import {
-    SETTING_DEFAULT_AVAILABLE_ORDER_BY,
-    SETTING_DEFAULT_AVAILABLE_SEARCH,
-    SETTING_DEFAULT_ORDER_BY,
-    SETTING_DEFAULT_ORDER_DIRECTION,
-    SETTING_DEFAULT_PER_PAGE,
-} from 'src/modules/setting/constants/setting.list.constant';
+import { SETTING_DEFAULT_AVAILABLE_SEARCH } from 'src/modules/setting/constants/setting.list.constant';
 import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/modules/setting/constants/setting.status-code.constant';
-import {
-    SettingAdminGetGuard,
-    SettingAdminUpdateGuard,
-} from 'src/modules/setting/decorators/setting.admin.decorator';
-import { GetSetting } from 'src/modules/setting/decorators/setting.decorator';
 import {
     SettingAdminGetDoc,
     SettingAdminListDoc,
     SettingAdminUpdateDoc,
 } from 'src/modules/setting/docs/setting.admin.doc';
-import { SettingRequestDto } from 'src/modules/setting/dtos/setting.request.dto';
-import { SettingUpdateValueDto } from 'src/modules/setting/dtos/setting.update-value.dto';
-import {
-    SettingDoc,
-    SettingEntity,
-} from 'src/modules/setting/repository/entities/setting.entity';
-import { SettingGetSerialization } from 'src/modules/setting/serializations/setting.get.serialization';
-import { SettingListSerialization } from 'src/modules/setting/serializations/setting.list.serialization';
+import { SettingUpdateRequestDto } from 'src/modules/setting/dtos/request/setting.update.request.dto';
+import { SettingGetResponseDto } from 'src/modules/setting/dtos/response/setting.get.response.dto';
+import { SettingListResponseDto } from 'src/modules/setting/dtos/response/setting.list.response.dto';
+import { SettingParsePipe } from 'src/modules/setting/pipes/setting.parse.pipe';
+import { SettingDoc } from 'src/modules/setting/repository/entities/setting.entity';
 import { SettingService } from 'src/modules/setting/services/setting.service';
 
 @ApiTags('modules.admin.setting')
@@ -66,34 +57,34 @@ export class SettingAdminController {
     ) {}
 
     @SettingAdminListDoc()
-    @ResponsePaging('setting.list', {
-        serialization: SettingListSerialization,
+    @ResponsePaging('setting.list')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.SETTING,
+        action: [ENUM_POLICY_ACTION.READ],
     })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @AuthJwtAccessProtected()
     @ApiKeyPublicProtected()
     @Get('/list')
     async list(
-        @PaginationQuery(
-            SETTING_DEFAULT_PER_PAGE,
-            SETTING_DEFAULT_ORDER_BY,
-            SETTING_DEFAULT_ORDER_DIRECTION,
-            SETTING_DEFAULT_AVAILABLE_SEARCH,
-            SETTING_DEFAULT_AVAILABLE_ORDER_BY
-        )
+        @PaginationQuery({
+            availableSearch: SETTING_DEFAULT_AVAILABLE_SEARCH,
+        })
         { _search, _limit, _offset, _order }: PaginationListDto
-    ): Promise<IResponsePaging> {
+    ): Promise<IResponsePaging<SettingListResponseDto>> {
         const find: Record<string, any> = {
             ..._search,
         };
 
-        const settings: SettingEntity[] =
-            await this.settingService.findAll<SettingEntity>(find, {
-                paging: {
-                    limit: _limit,
-                    offset: _offset,
-                },
-                order: _order,
-                plainObject: true,
-            });
+        const settings: SettingDoc[] = await this.settingService.findAll(find, {
+            paging: {
+                limit: _limit,
+                offset: _offset,
+            },
+            order: _order,
+        });
+        const mapSettings: SettingListResponseDto[] =
+            await this.settingService.mapList(settings);
         const total: number = await this.settingService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
             total,
@@ -102,44 +93,43 @@ export class SettingAdminController {
 
         return {
             _pagination: { total, totalPage },
-            data: settings,
+            data: mapSettings,
         };
     }
 
     @SettingAdminGetDoc()
-    @Response('setting.get', {
-        serialization: SettingGetSerialization,
+    @Response('setting.get')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.SETTING,
+        action: [ENUM_POLICY_ACTION.READ],
     })
-    @SettingAdminGetGuard()
-    @ApiKeyPublicProtected()
-    @RequestParamGuard(SettingRequestDto)
-    @Get('get/:setting')
-    async get(@GetSetting(true) setting: SettingEntity): Promise<IResponse> {
-        return { data: setting };
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @AuthJwtAccessProtected()
+    @Get('/get/:setting')
+    async get(
+        @Param('setting', RequestRequiredPipe, SettingParsePipe)
+        setting: SettingDoc
+    ): Promise<IResponse<SettingGetResponseDto>> {
+        const mapSetting = await this.settingService.mapGet(setting);
+        return { data: mapSetting };
     }
 
     @SettingAdminUpdateDoc()
-    @Response('setting.update', {
-        serialization: ResponseIdSerialization,
-    })
-    @SettingAdminUpdateGuard()
+    @Response('setting.update')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.SETTING,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+        action: [ENUM_POLICY_ACTION.READ],
     })
-    @AuthJwtAdminAccessProtected()
-    @ApiKeyPublicProtected()
-    @RequestParamGuard(SettingRequestDto)
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @AuthJwtAccessProtected()
     @Put('/update/:setting')
     async update(
-        @GetSetting() setting: SettingDoc,
+        @Param('setting', RequestRequiredPipe, SettingParsePipe)
+        setting: SettingDoc,
         @Body()
-        body: SettingUpdateValueDto
-    ): Promise<IResponse> {
-        const check = await this.settingService.checkValue(
-            body.value,
-            body.type
-        );
+        body: SettingUpdateRequestDto
+    ): Promise<IResponse<DatabaseIdResponseDto>> {
+        const check = this.settingService.checkValue(setting.type, body.value);
         if (!check) {
             throw new BadRequestException({
                 statusCode:
@@ -148,7 +138,7 @@ export class SettingAdminController {
             });
         }
 
-        await this.settingService.updateValue(setting, body);
+        await this.settingService.update(setting, body);
 
         return {
             data: { _id: setting._id },

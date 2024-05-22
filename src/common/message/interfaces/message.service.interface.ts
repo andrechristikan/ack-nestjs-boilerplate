@@ -1,27 +1,24 @@
 import { ValidationError } from '@nestjs/common';
-import {
-    IErrors,
-    IErrorsImport,
-    IErrorValidationImport,
-} from 'src/common/error/interfaces/error.interface';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 import {
     IMessageErrorOptions,
-    IMessageOptions,
     IMessageSetOptions,
+    IMessageValidationError,
+    IMessageValidationImportError,
+    IMessageValidationImportErrorParam,
 } from 'src/common/message/interfaces/message.interface';
 
 export interface IMessageService {
-    getAvailableLanguages(): string[];
-    getLanguage(): string;
-    filterLanguage(customLanguages: string[]): string[];
-    setMessage(lang: string, key: string, options?: IMessageSetOptions): string;
-    getRequestErrorsMessage(
-        requestErrors: ValidationError[],
+    getAvailableLanguages(): ENUM_MESSAGE_LANGUAGE[];
+    getLanguage(): ENUM_MESSAGE_LANGUAGE;
+    filterLanguage(customLanguage: string): string[];
+    setMessage(path: string, options?: IMessageSetOptions): string;
+    setValidationMessage(
+        errors: ValidationError[],
         options?: IMessageErrorOptions
-    ): IErrors[];
-    getImportErrorsMessage(
-        errors: IErrorValidationImport[],
+    ): IMessageValidationError[];
+    setValidationImportMessage(
+        errors: IMessageValidationImportErrorParam[],
         options?: IMessageErrorOptions
-    ): IErrorsImport[];
-    get<T = string>(key: string, options?: IMessageOptions): T;
+    ): IMessageValidationImportError[];
 }

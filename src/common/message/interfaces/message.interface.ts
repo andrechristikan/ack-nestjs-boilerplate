@@ -1,14 +1,27 @@
-export type IMessage = Record<string, string>;
+import { ValidationError } from '@nestjs/common';
 
 export type IMessageOptionsProperties = Record<string, string | number>;
 
-export interface IMessageOptions {
-    readonly customLanguages?: string[];
+export interface IMessageErrorOptions {
+    readonly customLanguage?: string;
+}
+
+export interface IMessageSetOptions extends IMessageErrorOptions {
     readonly properties?: IMessageOptionsProperties;
 }
 
-export interface IMessageErrorOptions {
-    readonly customLanguages?: string[];
+export interface IMessageValidationError {
+    property: string;
+    message: string;
 }
 
-export type IMessageSetOptions = Omit<IMessageOptions, 'customLanguages'>;
+export interface IMessageValidationImportErrorParam {
+    sheetName: string;
+    row: number;
+    error: ValidationError[];
+}
+
+export interface IMessageValidationImportError
+    extends Omit<IMessageValidationImportErrorParam, 'error'> {
+    errors: IMessageValidationError[];
+}

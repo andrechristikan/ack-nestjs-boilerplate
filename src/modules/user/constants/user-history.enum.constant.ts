@@ -1,0 +1,7 @@
+export enum ENUM_USER_HISTORY_STATE {
+    CREATED = 'CREATED',
+    ACTIVE = 'ACTIVE',
+    INACTIVE = 'INACTIVE',
+    DELETED = 'DELETED',
+    BLOCKED = 'BLOCKED',
+}

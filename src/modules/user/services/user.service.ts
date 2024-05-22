@@ -7,7 +7,6 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
     IDatabaseManyOptions,
-    IDatabaseCreateManyOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 import {
@@ -17,24 +16,26 @@ import {
 import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { ConfigService } from '@nestjs/config';
-import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
-import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
-import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 import { plainToInstance } from 'class-transformer';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
-import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
-import { UserUpdateUsernameDto } from 'src/modules/user/dtos/user.update-username.dto';
-import { UserUpdatePasswordAttemptDto } from 'src/modules/user/dtos/user.update-password-attempt.dto';
-import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
-import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
+import {
+    ENUM_USER_SIGN_UP_FROM,
+    ENUM_USER_STATUS,
+} from 'src/modules/user/constants/user.enum.constant';
+import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
+import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
+import { UserUpdatePasswordAttemptRequestDto } from 'src/modules/user/dtos/request/user.update-password-attempt.request.dto';
+import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.request.dto';
+import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
+import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
+import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
+import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
 
 @Injectable()
 export class UserService implements IUserService {
     private readonly uploadPath: string;
-
-    private readonly mobileNumberCountryCodeAllowed: string[];
 
     constructor(
         private readonly userRepository: UserRepository,
@@ -42,89 +43,111 @@ export class UserService implements IUserService {
         private readonly configService: ConfigService
     ) {
         this.uploadPath = this.configService.get<string>('user.uploadPath');
-
-        this.mobileNumberCountryCodeAllowed = this.configService.get<string[]>(
-            'user.mobileNumberCountryCodeAllowed'
-        );
     }
 
-    async findAll<T = IUserDoc>(
+    async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<T[]> {
-        return this.userRepository.findAll<T>(find, options);
+    ): Promise<UserDoc[]> {
+        return this.userRepository.findAll<UserDoc>(find, options);
     }
 
-    async findOneById<T>(
+    async findAllWithRoles(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<IUserDoc[]> {
+        return this.userRepository.findAll<IUserDoc>(find, {
+            ...options,
+            join: true,
+        });
+    }
+
+    async findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<T> {
-        return this.userRepository.findOneById<T>(_id, options);
+    ): Promise<UserDoc> {
+        return this.userRepository.findOneById<UserDoc>(_id, options);
     }
 
-    async findOne<T>(
+    async findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<T> {
-        return this.userRepository.findOne<T>(find, options);
+    ): Promise<UserDoc> {
+        return this.userRepository.findOne<UserDoc>(find, options);
     }
 
-    async findOneByUsername<T>(
-        username: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<T> {
-        return this.userRepository.findOne<T>({ username }, options);
-    }
-
-    async findOneByEmail<T>(
+    async findOneByEmail(
         email: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<T> {
-        return this.userRepository.findOne<T>({ email }, options);
+    ): Promise<UserDoc> {
+        return this.userRepository.findOne<UserDoc>({ email }, options);
     }
 
-    async findOneByMobileNumber<T>(
+    async findOneByMobileNumber(
         mobileNumber: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<T> {
-        return this.userRepository.findOne<T>({ mobileNumber }, options);
+    ): Promise<UserDoc> {
+        return this.userRepository.findOne<UserDoc>({ mobileNumber }, options);
     }
 
     async getTotal(
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number> {
-        return this.userRepository.getTotal(find, { ...options, join: true });
+        return this.userRepository.getTotal(find, options);
     }
 
     async create(
         {
-            firstName,
-            lastName,
             email,
             mobileNumber,
+            firstName,
+            lastName,
             role,
-            signUpFrom,
-        }: UserCreateDto,
+        }: UserCreateRequestDto,
+        { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
+        signUpFrom: ENUM_USER_SIGN_UP_FROM,
+        options?: IDatabaseCreateOptions
+    ): Promise<UserDoc> {
+        const create: UserEntity = new UserEntity();
+        create.firstName = firstName;
+        create.lastName = lastName;
+        create.email = email;
+        create.mobileNumber = mobileNumber;
+        create.role = role;
+        create.status = ENUM_USER_STATUS.ACTIVE;
+        create.blocked = false;
+        create.password = passwordHash;
+        create.salt = salt;
+        create.passwordExpired = passwordExpired;
+        create.passwordCreated = passwordCreated;
+        create.passwordAttempt = 0;
+        create.signUpDate = this.helperDateService.create();
+        create.signUpFrom = signUpFrom;
+
+        return this.userRepository.create<UserEntity>(create, options);
+    }
+
+    async signUp(
+        role: string,
+        { email, firstName, lastName }: UserSignUpRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc> {
         const create: UserEntity = new UserEntity();
         create.firstName = firstName;
-        create.email = email;
-        create.password = passwordHash;
-        create.role = role;
-        create.isActive = true;
-        create.inactivePermanent = false;
-        create.blocked = false;
         create.lastName = lastName;
+        create.email = email;
+        create.role = role;
+        create.status = ENUM_USER_STATUS.ACTIVE;
+        create.blocked = false;
+        create.password = passwordHash;
         create.salt = salt;
         create.passwordExpired = passwordExpired;
         create.passwordCreated = passwordCreated;
-        create.signUpDate = this.helperDateService.create();
         create.passwordAttempt = 0;
-        create.mobileNumber = mobileNumber ?? undefined;
-        create.signUpFrom = signUpFrom;
+        create.signUpDate = this.helperDateService.create();
+        create.signUpFrom = ENUM_USER_SIGN_UP_FROM.PUBLIC;
 
         return this.userRepository.create<UserEntity>(create, options);
     }
@@ -156,47 +179,9 @@ export class UserService implements IUserService {
         );
     }
 
-    async existByUsername(
-        username: string,
-        options?: IDatabaseExistOptions
-    ): Promise<boolean> {
-        return this.userRepository.exists(
-            { username },
-            { ...options, withDeleted: true }
-        );
-    }
-
-    async delete(
-        repository: UserDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc> {
-        return this.userRepository.softDelete(repository, options);
-    }
-
-    async updateName(
-        repository: UserDoc,
-        { firstName, lastName }: UserUpdateNameDto,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc> {
-        repository.firstName = firstName;
-        repository.lastName = lastName;
-
-        return this.userRepository.save(repository, options);
-    }
-
-    async updateUsername(
-        repository: UserDoc,
-        { username }: UserUpdateUsernameDto,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc> {
-        repository.username = username;
-
-        return this.userRepository.save(repository, options);
-    }
-
     async updatePhoto(
         repository: UserDoc,
-        photo: AwsS3Serialization,
+        photo: AwsS3Dto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.photo = photo;
@@ -221,8 +206,7 @@ export class UserService implements IUserService {
         repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserEntity> {
-        repository.isActive = true;
-        repository.inactiveDate = undefined;
+        repository.status = ENUM_USER_STATUS.ACTIVE;
 
         return this.userRepository.save(repository, options);
     }
@@ -231,19 +215,17 @@ export class UserService implements IUserService {
         repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
-        repository.isActive = false;
-        repository.inactiveDate = this.helperDateService.create();
+        repository.status = ENUM_USER_STATUS.INACTIVE;
 
         return this.userRepository.save(repository, options);
     }
 
-    async inactivePermanent(
+    async selfDelete(
         repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
-        repository.isActive = false;
-        repository.inactivePermanent = true;
-        repository.inactiveDate = this.helperDateService.create();
+        repository.status = ENUM_USER_STATUS.DELETED;
+        repository.selfDeletion = true;
 
         return this.userRepository.save(repository, options);
     }
@@ -253,7 +235,6 @@ export class UserService implements IUserService {
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.blocked = true;
-        repository.blockedDate = this.helperDateService.create();
 
         return this.userRepository.save(repository, options);
     }
@@ -263,14 +244,13 @@ export class UserService implements IUserService {
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.blocked = false;
-        repository.blockedDate = undefined;
 
         return this.userRepository.save(repository, options);
     }
 
     async updatePasswordAttempt(
         repository: UserDoc,
-        { passwordAttempt }: UserUpdatePasswordAttemptDto,
+        { passwordAttempt }: UserUpdatePasswordAttemptRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.passwordAttempt = passwordAttempt;
@@ -314,48 +294,8 @@ export class UserService implements IUserService {
             model: RoleEntity.name,
         });
     }
-
-    async getUploadPath(user: string): Promise<string> {
+    async getPhotoUploadPath(user: string): Promise<string> {
         return this.uploadPath.replace('{user}', user);
-    }
-
-    async payloadSerialization(
-        data: IUserDoc
-    ): Promise<UserPayloadSerialization> {
-        return plainToInstance(UserPayloadSerialization, data.toObject());
-    }
-
-    async import(
-        data: UserImportDto[],
-        role: string,
-        { passwordCreated, passwordHash, salt }: IAuthPassword,
-        options?: IDatabaseCreateManyOptions
-    ): Promise<boolean> {
-        const passwordExpired: Date = this.helperDateService.backwardInDays(1);
-        const users: UserEntity[] = data.map(
-            ({ email, firstName, lastName, mobileNumber }) => {
-                const create: UserEntity = new UserEntity();
-                create.firstName = firstName;
-                create.email = email;
-                create.password = passwordHash;
-                create.role = role;
-                create.isActive = true;
-                create.inactivePermanent = false;
-                create.blocked = false;
-                create.lastName = lastName;
-                create.salt = salt;
-                create.passwordExpired = passwordExpired;
-                create.passwordCreated = passwordCreated;
-                create.signUpDate = this.helperDateService.create();
-                create.passwordAttempt = 0;
-                create.mobileNumber = mobileNumber ?? undefined;
-                create.signUpFrom = ENUM_USER_SIGN_UP_FROM.ADMIN;
-
-                return create;
-            }
-        );
-
-        return this.userRepository.createMany<UserEntity>(users, options);
     }
 
     async deleteMany(
@@ -365,36 +305,103 @@ export class UserService implements IUserService {
         return this.userRepository.deleteMany(find, options);
     }
 
-    async getMobileNumberCountryCodeAllowed(): Promise<string[]> {
-        return this.mobileNumberCountryCodeAllowed;
-    }
-
-    async existByEmails(
-        emails: string[],
-        options?: IDatabaseExistOptions
-    ): Promise<boolean> {
-        return this.userRepository.exists(
+    async findOneByIdAndActive(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<IUserDoc> {
+        return this.userRepository.findOne<IUserDoc>(
+            { _id, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
             {
-                email: {
-                    $regex: new RegExp(`\\b${emails.join('|')}\\b`),
-                    $options: 'i',
+                ...options,
+                join: {
+                    path: 'role',
+                    localField: 'role',
+                    foreignField: '_id',
+                    match: {
+                        isActive: true,
+                    },
+                    model: RoleEntity.name,
                 },
-            },
-            { ...options, withDeleted: true }
+            }
         );
     }
 
-    async existByMobileNumbers(
-        mobileNumbers: string[],
-        options?: IDatabaseExistOptions
-    ): Promise<boolean> {
-        return this.userRepository.exists(
+    async findOneByEmailAndActive(
+        email: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<IUserDoc> {
+        return this.userRepository.findOne<IUserDoc>(
+            { email, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
             {
-                mobileNumber: {
-                    $in: mobileNumbers,
+                ...options,
+                join: {
+                    path: 'role',
+                    localField: 'role',
+                    foreignField: '_id',
+                    match: {
+                        isActive: true,
+                    },
+                    model: RoleEntity.name,
                 },
-            },
-            { ...options, withDeleted: true }
+            }
         );
+    }
+
+    async findOneByMobileNumberAndActive(
+        mobileNumber: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<IUserDoc> {
+        return this.userRepository.findOne<IUserDoc>(
+            {
+                mobileNumber,
+                status: ENUM_USER_STATUS.ACTIVE,
+                blocked: false,
+            },
+            {
+                ...options,
+                join: {
+                    path: 'role',
+                    localField: 'role',
+                    foreignField: '_id',
+                    match: {
+                        isActive: true,
+                    },
+                    model: RoleEntity.name,
+                },
+            }
+        );
+    }
+
+    async mapProfile(user: IUserDoc): Promise<UserProfileResponseDto> {
+        return plainToInstance(UserProfileResponseDto, user.toObject());
+    }
+
+    async updateProfile(
+        repository: UserDoc,
+        {
+            firstName,
+            lastName,
+            address,
+            mobileNumber,
+        }: UserUpdateProfileRequestDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        repository.firstName = firstName;
+        repository.lastName = lastName;
+        repository.address = address;
+        repository.mobileNumber = mobileNumber;
+
+        return this.userRepository.save(repository, options);
+    }
+
+    async mapList(user: IUserDoc[]): Promise<UserListResponseDto[]> {
+        return plainToInstance(
+            UserListResponseDto,
+            user.map(u => u.toObject())
+        );
+    }
+
+    async mapGet(user: IUserDoc): Promise<UserGetResponseDto> {
+        return plainToInstance(UserGetResponseDto, user.toObject());
     }
 }

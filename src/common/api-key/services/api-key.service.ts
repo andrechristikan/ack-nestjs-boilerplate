@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { plainToInstance } from 'class-transformer';
 import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
@@ -7,25 +9,25 @@ import {
     IDatabaseManyOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
+import { HelperStringService } from 'src/common/helper/services/helper.string.service';
+import {
+    ApiKeyCreateRawRequestDto,
+    ApiKeyCreateRequestDto,
+} from 'src/common/api-key/dtos/request/api-key.create.request.dto';
+import { ApiKeyUpdateDateRequestDto } from 'src/common/api-key/dtos/request/api-key.update-date.request.dto';
+import { ApiKeyUpdateRequestDto } from 'src/common/api-key/dtos/request/api-key.update.request.dto';
+import { ApiKeyCreateResponseDto } from 'src/common/api-key/dtos/response/api-key.create.dto';
+import { ApiKeyGetResponseDto } from 'src/common/api-key/dtos/response/api-key.get.response.dto';
+import { ApiKeyListResponseDto } from 'src/common/api-key/dtos/response/api-key.list.response.dto';
+import { ApiKeyResetResponseDto } from 'src/common/api-key/dtos/response/api-key.reset.dto';
 import { IApiKeyService } from 'src/common/api-key/interfaces/api-key.service.interface';
-import { IApiKeyCreated } from 'src/common/api-key/interfaces/api-key.interface';
 import {
     ApiKeyDoc,
     ApiKeyEntity,
 } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyRepository } from 'src/common/api-key/repository/repositories/api-key.repository';
-import { HelperStringService } from 'src/common/helper/services/helper.string.service';
-import { ConfigService } from '@nestjs/config';
-import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
-import {
-    ApiKeyCreateDto,
-    ApiKeyCreateRawDto,
-} from 'src/common/api-key/dtos/api-key.create.dto';
-import {
-    ApiKeyUpdateDateDto,
-    ApiKeyUpdateDto,
-} from 'src/common/api-key/dtos/api-key.update.dto';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 
 @Injectable()
 export class ApiKeyService implements IApiKeyService {
@@ -41,11 +43,11 @@ export class ApiKeyService implements IApiKeyService {
         this.env = this.configService.get<string>('app.env');
     }
 
-    async findAll<T = ApiKeyDoc>(
+    async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<T[]> {
-        return this.apiKeyRepository.findAll<T>(find, options);
+    ): Promise<ApiKeyDoc[]> {
+        return this.apiKeyRepository.findAll<ApiKeyDoc>(find, options);
     }
 
     async findOneById(
@@ -90,9 +92,9 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     async create(
-        { name, type, startDate, endDate }: ApiKeyCreateDto,
+        { name, type, startDate, endDate }: ApiKeyCreateRequestDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyCreated> {
+    ): Promise<ApiKeyCreateResponseDto> {
         const key = await this.createKey();
         const secret = await this.createSecret();
         const hash: string = await this.createHashApiKey(key, secret);
@@ -112,13 +114,20 @@ export class ApiKeyService implements IApiKeyService {
         const created: ApiKeyDoc =
             await this.apiKeyRepository.create<ApiKeyEntity>(dto, options);
 
-        return { doc: created, secret };
+        return { _id: created._id, key: created.key, secret };
     }
 
     async createRaw(
-        { name, key, type, secret, startDate, endDate }: ApiKeyCreateRawDto,
+        {
+            name,
+            key,
+            type,
+            secret,
+            startDate,
+            endDate,
+        }: ApiKeyCreateRawRequestDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyCreated> {
+    ): Promise<ApiKeyCreateResponseDto> {
         const hash: string = await this.createHashApiKey(key, secret);
 
         const dto: ApiKeyEntity = new ApiKeyEntity();
@@ -136,7 +145,7 @@ export class ApiKeyService implements IApiKeyService {
         const created: ApiKeyDoc =
             await this.apiKeyRepository.create<ApiKeyEntity>(dto, options);
 
-        return { doc: created, secret };
+        return { _id: created._id, key: created.key, secret };
     }
 
     async active(
@@ -159,7 +168,7 @@ export class ApiKeyService implements IApiKeyService {
 
     async update(
         repository: ApiKeyDoc,
-        { name }: ApiKeyUpdateDto,
+        { name }: ApiKeyUpdateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<ApiKeyDoc> {
         repository.name = name;
@@ -169,7 +178,7 @@ export class ApiKeyService implements IApiKeyService {
 
     async updateDate(
         repository: ApiKeyDoc,
-        { startDate, endDate }: ApiKeyUpdateDateDto,
+        { startDate, endDate }: ApiKeyUpdateDateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<ApiKeyDoc> {
         repository.startDate = this.helperDateService.startOfDay(startDate);
@@ -180,9 +189,9 @@ export class ApiKeyService implements IApiKeyService {
 
     async reset(
         repository: ApiKeyDoc,
-        secret: string,
         options?: IDatabaseSaveOptions
-    ): Promise<ApiKeyDoc> {
+    ): Promise<ApiKeyResetResponseDto> {
+        const secret: string = await this.createSecret();
         const hash: string = await this.createHashApiKey(
             repository.key,
             secret
@@ -190,7 +199,9 @@ export class ApiKeyService implements IApiKeyService {
 
         repository.hash = hash;
 
-        return this.apiKeyRepository.save(repository, options);
+        const updated = await this.apiKeyRepository.save(repository, options);
+
+        return { _id: updated._id, key: updated.key, secret };
     }
 
     async delete(
@@ -210,7 +221,6 @@ export class ApiKeyService implements IApiKeyService {
     async createKey(): Promise<string> {
         const random: string = this.helperStringService.random(25, {
             safe: false,
-            upperCase: true,
         });
         return `${this.env}_${random}`;
     }
@@ -218,7 +228,6 @@ export class ApiKeyService implements IApiKeyService {
     async createSecret(): Promise<string> {
         return this.helperStringService.random(35, {
             safe: false,
-            upperCase: true,
         });
     }
 
@@ -248,5 +257,15 @@ export class ApiKeyService implements IApiKeyService {
             },
             options
         );
+    }
+
+    async mapList(apiKeys: ApiKeyDoc[]): Promise<ApiKeyListResponseDto[]> {
+        const plainObject: ApiKeyEntity[] = apiKeys.map(e => e.toObject());
+
+        return plainToInstance(ApiKeyListResponseDto, plainObject);
+    }
+
+    async mapGet(apiKey: ApiKeyDoc): Promise<ApiKeyGetResponseDto> {
+        return plainToInstance(ApiKeyGetResponseDto, apiKey.toObject());
     }
 }

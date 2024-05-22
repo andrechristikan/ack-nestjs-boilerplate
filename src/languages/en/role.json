@@ -1,18 +1,16 @@
 {
-    "list": "List Role Success.",
-    "get": "Get Role Success.",
-    "create": "Create Succeed",
-    "update": "Update Succeed",
-    "updatePermission": "Update permission Succeed",
-    "delete": "Delete Succeed",
-    "inactive": "Inactive Succeed",
-    "active": "Active Succeed",
+    "list": "List of roles retrieved successfully.",
+    "get": "Role details fetched successfully.",
+    "create": "New role created successfully.",
+    "update": "Role updated successfully.",
+    "delete": "Role deleted successfully.",
+    "inactive": "Role marked as inactive.",
+    "active": "Role marked as active.",
     "error": {
-        "notFound": "Role not found",
-        "inactive": "Role is inactive",
-        "exist": "Role exist",
-        "used": "Role in used",
-        "isActiveInvalid": "Role is active invalid",
-        "typeForbidden": "Role type not allowed"
+        "exist": "Role with the provided name already exists.",
+        "used": "The role is currently in use and cannot be deleted.",
+        "isActiveInvalid": "Invalid active status for the role.",
+        "notFound": "The requested role was not found.",
+        "inactive": "The role is already inactive."
     }
 }

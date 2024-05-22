@@ -1,55 +1,72 @@
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
-import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
+import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
 import {
     IDatabaseCreateOptions,
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
-    IDatabaseManyOptions,
-    IDatabaseCreateManyOptions,
     IDatabaseGetTotalOptions,
+    IDatabaseManyOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { UserCreateDto } from 'src/modules/user/dtos/user.create.dto';
-import { UserImportDto } from 'src/modules/user/dtos/user.import.dto';
-import { UserUpdateNameDto } from 'src/modules/user/dtos/user.update-name.dto';
-import { UserUpdatePasswordAttemptDto } from 'src/modules/user/dtos/user.update-password-attempt.dto';
-import { UserUpdateUsernameDto } from 'src/modules/user/dtos/user.update-username.dto';
+import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
+import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
+import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
+import { UserUpdatePasswordAttemptRequestDto } from 'src/modules/user/dtos/request/user.update-password-attempt.request.dto';
+import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.request.dto';
+import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
+import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
+import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import {
     UserDoc,
     UserEntity,
 } from 'src/modules/user/repository/entities/user.entity';
-import { UserPayloadSerialization } from 'src/modules/user/serializations/user.payload.serialization';
 
 export interface IUserService {
-    findAll<T>(
+    findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<T[]>;
-    findOneById<T>(_id: string, options?: IDatabaseFindOneOptions): Promise<T>;
-    findOne<T>(
+    ): Promise<UserDoc[]>;
+    findAllWithRoles(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<IUserDoc[]>;
+    findOneById(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<UserDoc>;
+    findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<T>;
-    findOneByUsername<T>(
-        username: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<T>;
-    findOneByEmail<T>(
+    ): Promise<UserDoc>;
+    findOneByEmail(
         email: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<T>;
-    findOneByMobileNumber<T>(
+    ): Promise<UserDoc>;
+    findOneByMobileNumber(
         mobileNumber: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<T>;
+    ): Promise<UserDoc>;
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
     create(
-        { firstName, lastName, email, mobileNumber, role }: UserCreateDto,
+        {
+            email,
+            mobileNumber,
+            firstName,
+            lastName,
+            role,
+        }: UserCreateRequestDto,
+        { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
+        signUpFrom: ENUM_USER_SIGN_UP_FROM,
+        options?: IDatabaseCreateOptions
+    ): Promise<UserDoc>;
+    signUp(
+        role: string,
+        { email, firstName, lastName }: UserSignUpRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc>;
@@ -61,27 +78,9 @@ export interface IUserService {
         mobileNumber: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean>;
-    existByUsername(
-        username: string,
-        options?: IDatabaseExistOptions
-    ): Promise<boolean>;
-    delete(
-        repository: UserDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc>;
-    updateName(
-        repository: UserDoc,
-        { firstName, lastName }: UserUpdateNameDto,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc>;
-    updateUsername(
-        repository: UserDoc,
-        { username }: UserUpdateUsernameDto,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc>;
     updatePhoto(
         repository: UserDoc,
-        photo: AwsS3Serialization,
+        photo: AwsS3Dto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     updatePassword(
@@ -97,7 +96,7 @@ export interface IUserService {
         repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
-    inactivePermanent(
+    selfDelete(
         repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
@@ -111,7 +110,7 @@ export interface IUserService {
     ): Promise<UserDoc>;
     updatePasswordAttempt(
         repository: UserDoc,
-        { passwordAttempt }: UserUpdatePasswordAttemptDto,
+        { passwordAttempt }: UserUpdatePasswordAttemptRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     increasePasswordAttempt(
@@ -128,24 +127,34 @@ export interface IUserService {
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     joinWithRole(repository: UserDoc): Promise<IUserDoc>;
-    getUploadPath(user: string): Promise<string>;
-    payloadSerialization(data: IUserDoc): Promise<UserPayloadSerialization>;
+    getPhotoUploadPath(user: string): Promise<string>;
     deleteMany(
         find: Record<string, any>,
         options?: IDatabaseManyOptions
     ): Promise<boolean>;
-    import(
-        data: UserImportDto[],
-        role: string,
-        { passwordCreated, passwordHash, salt }: IAuthPassword,
-        options?: IDatabaseCreateManyOptions
-    ): Promise<boolean>;
-    existByEmails(
-        emails: string[],
-        options?: IDatabaseExistOptions
-    ): Promise<boolean>;
-    existByMobileNumbers(
-        mobileNumbers: string[],
-        options?: IDatabaseExistOptions
-    ): Promise<boolean>;
+    findOneByIdAndActive(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<IUserDoc>;
+    findOneByEmailAndActive(
+        email: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<IUserDoc>;
+    findOneByMobileNumberAndActive(
+        mobileNumber: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<IUserDoc>;
+    mapProfile(user: IUserDoc): Promise<UserProfileResponseDto>;
+    updateProfile(
+        repository: UserDoc,
+        {
+            firstName,
+            lastName,
+            address,
+            mobileNumber,
+        }: UserUpdateProfileRequestDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
+    mapList(user: IUserDoc[]): Promise<UserListResponseDto[]>;
+    mapGet(user: IUserDoc): Promise<UserGetResponseDto>;
 }

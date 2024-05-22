@@ -1,5 +1,4 @@
 export interface IHelperArrayService {
-    getCombinations<T>(...list: T[][]): T[];
     getFromLeft<T>(array: T[], length: number): T[];
     getFromRight<T>(array: T[], length: number): T[];
     getDifference<T>(a: T[], b: T[]): T[];

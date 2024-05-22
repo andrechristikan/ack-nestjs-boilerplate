@@ -28,8 +28,8 @@ export class FileRequiredPipe implements PipeTransform {
             (Array.isArray(value) && value.length === 0)
         ) {
             throw new UnprocessableEntityException({
-                statusCode: ENUM_FILE_STATUS_CODE_ERROR.FILE_NEEDED_ERROR,
-                message: 'file.error.notFound',
+                statusCode: ENUM_FILE_STATUS_CODE_ERROR.REQUIRED_ERROR,
+                message: 'file.error.required',
             });
         }
 

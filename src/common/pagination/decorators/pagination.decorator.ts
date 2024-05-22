@@ -1,120 +1,88 @@
 import { Query } from '@nestjs/common';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import {
     IPaginationFilterDateOptions,
-    IPaginationFilterStringContainOptions,
-    IPaginationFilterStringEqualOptions,
+    IPaginationFilterEqualOptions,
+    IPaginationFilterOptions,
+    IPaginationQueryOptions,
 } from 'src/common/pagination/interfaces/pagination.interface';
-import { PaginationFilterContainPipe } from 'src/common/pagination/pipes/pagination.filter-contain.pipe';
 import { PaginationFilterDatePipe } from 'src/common/pagination/pipes/pagination.filter-date.pipe';
-import { PaginationFilterEqualEnumPipe } from 'src/common/pagination/pipes/pagination.filter-equal-enum.pipe';
-import { PaginationFilterEqualObjectIdPipe } from 'src/common/pagination/pipes/pagination.filter-equal-object-id.pipe';
 import { PaginationFilterEqualPipe } from 'src/common/pagination/pipes/pagination.filter-equal.pipe';
 import { PaginationFilterInBooleanPipe } from 'src/common/pagination/pipes/pagination.filter-in-boolean.pipe';
 import { PaginationFilterInEnumPipe } from 'src/common/pagination/pipes/pagination.filter-in-enum.pipe';
+import { PaginationFilterStringContainPipe } from 'src/common/pagination/pipes/pagination.filter-string-contain.pipe';
 import { PaginationOrderPipe } from 'src/common/pagination/pipes/pagination.order.pipe';
 import { PaginationPagingPipe } from 'src/common/pagination/pipes/pagination.paging.pipe';
 import { PaginationSearchPipe } from 'src/common/pagination/pipes/pagination.search.pipe';
 
+//! Pagination query helper
 export function PaginationQuery(
-    defaultPerPage: number,
-    defaultOrderBy: string,
-    defaultOrderDirection: ENUM_PAGINATION_ORDER_DIRECTION_TYPE,
-    availableSearch: string[],
-    availableOrderBy: string[]
+    options?: IPaginationQueryOptions
 ): ParameterDecorator {
     return Query(
-        PaginationSearchPipe(availableSearch),
-        PaginationPagingPipe(defaultPerPage),
+        PaginationSearchPipe(options?.availableSearch),
+        PaginationPagingPipe(options?.defaultPerPage),
         PaginationOrderPipe(
-            defaultOrderBy,
-            defaultOrderDirection,
-            availableOrderBy
+            options?.defaultOrderBy,
+            options?.defaultOrderDirection,
+            options?.availableOrderBy
         )
     );
 }
 
+//! Pagination query filter boolean will convert into repository query
 export function PaginationQueryFilterInBoolean(
     field: string,
     defaultValue: boolean[],
-    queryField?: string,
-    raw = false
+    options?: IPaginationFilterOptions
 ): ParameterDecorator {
     return Query(
-        queryField ?? field,
-        PaginationFilterInBooleanPipe(field, defaultValue, raw)
+        options?.queryField ?? field,
+        PaginationFilterInBooleanPipe(field, defaultValue, options)
     );
 }
 
+//! Pagination query filter enum will convert into repository
 export function PaginationQueryFilterInEnum<T>(
     field: string,
     defaultValue: T,
     defaultEnum: Record<string, any>,
-    queryField?: string,
-    raw = false
+    options?: IPaginationFilterOptions
 ): ParameterDecorator {
     return Query(
-        queryField ?? field,
-        PaginationFilterInEnumPipe<T>(field, defaultValue, defaultEnum, raw)
+        options?.queryField ?? field,
+        PaginationFilterInEnumPipe<T>(field, defaultValue, defaultEnum, options)
     );
 }
 
-export function PaginationQueryFilterEqualEnum<T>(
-    field: string,
-    defaultValue: T,
-    defaultEnum: Record<string, any>,
-    queryField?: string,
-    raw = false
-): ParameterDecorator {
-    return Query(
-        queryField ?? field,
-        PaginationFilterEqualEnumPipe<T>(field, defaultValue, defaultEnum, raw)
-    );
-}
-
+//! Pagination query filter equal will convert into repository
 export function PaginationQueryFilterEqual(
     field: string,
-    queryField?: string,
-    options?: IPaginationFilterStringEqualOptions,
-    raw = false
+    options?: IPaginationFilterEqualOptions
 ): ParameterDecorator {
     return Query(
-        queryField ?? field,
-        PaginationFilterEqualPipe(field, raw, options)
+        options?.queryField ?? field,
+        PaginationFilterEqualPipe(field, options)
     );
 }
 
-export function PaginationQueryFilterContain(
+//! Pagination query filter string contain will convert into repository
+export function PaginationQueryFilterStringContain(
     field: string,
-    queryField?: string,
-    options?: IPaginationFilterStringContainOptions,
-    raw = false
+    options?: IPaginationFilterOptions
 ): ParameterDecorator {
     return Query(
-        queryField ?? field,
-        PaginationFilterContainPipe(field, raw, options)
+        options?.queryField ?? field,
+        PaginationFilterStringContainPipe(field, options)
     );
 }
 
+//! Pagination query filter date will convert into repository
 export function PaginationQueryFilterDate(
     field: string,
-    queryField?: string,
-    options?: IPaginationFilterDateOptions,
-    raw = false
+    options?: IPaginationFilterDateOptions
 ): ParameterDecorator {
     return Query(
-        queryField ?? field,
-        PaginationFilterDatePipe(field, raw, options)
-    );
-}
-
-export function PaginationQueryFilterEqualObjectId(
-    field: string,
-    queryField?: string,
-    raw = false
-): ParameterDecorator {
-    return Query(
-        queryField ?? field,
-        PaginationFilterEqualObjectIdPipe(field, raw)
+        options?.queryField ?? field,
+        PaginationFilterDatePipe(field, options)
     );
 }

@@ -1,4 +1,5 @@
 import { applyDecorators, HttpStatus } from '@nestjs/common';
+import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
     Doc,
@@ -8,16 +9,15 @@ import {
     DocResponse,
     DocResponsePaging,
 } from 'src/common/doc/decorators/doc.decorator';
-import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import {
     RoleDocParamsId,
     RoleDocQueryIsActive,
     RoleDocQueryType,
 } from 'src/modules/role/constants/role.doc.constant';
-import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
-import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
-import { RoleGetSerialization } from 'src/modules/role/serializations/role.get.serialization';
-import { RoleListSerialization } from 'src/modules/role/serializations/role.list.serialization';
+import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
+import { RoleUpdateRequestDto } from 'src/modules/role/dtos/request/role.update.request.dto';
+import { RoleGetResponseDto } from 'src/modules/role/dtos/response/role.get.response.dto';
+import { RoleListResponseDto } from 'src/modules/role/dtos/response/role.list.response.dto';
 
 export function RoleAdminListDoc(): MethodDecorator {
     return applyDecorators(
@@ -28,12 +28,12 @@ export function RoleAdminListDoc(): MethodDecorator {
             queries: [...RoleDocQueryIsActive, ...RoleDocQueryType],
         }),
         DocAuth({
-            apiKey: true,
+            xApiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
-        DocResponsePaging<RoleListSerialization>('role.list', {
-            serialization: RoleListSerialization,
+        DocResponsePaging<RoleListResponseDto>('role.list', {
+            dto: RoleListResponseDto,
         })
     );
 }
@@ -47,12 +47,12 @@ export function RoleAdminGetDoc(): MethodDecorator {
             params: RoleDocParamsId,
         }),
         DocAuth({
-            apiKey: true,
+            xApiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
-        DocResponse<RoleGetSerialization>('role.get', {
-            serialization: RoleGetSerialization,
+        DocResponse<RoleGetResponseDto>('role.get', {
+            dto: RoleGetResponseDto,
         })
     );
 }
@@ -63,17 +63,17 @@ export function RoleAdminCreateDoc(): MethodDecorator {
             summary: 'create a role',
         }),
         DocAuth({
-            apiKey: true,
+            xApiKey: true,
             jwtAccessToken: true,
         }),
         DocRequest({
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
-            body: RoleCreateDto,
+            dto: RoleCreateRequestDto,
         }),
         DocGuard({ role: true, policy: true }),
-        DocResponse<ResponseIdSerialization>('role.create', {
+        DocResponse<DatabaseIdResponseDto>('role.create', {
             httpStatus: HttpStatus.CREATED,
-            serialization: ResponseIdSerialization,
+            dto: DatabaseIdResponseDto,
         })
     );
 }
@@ -87,7 +87,7 @@ export function RoleAdminActiveDoc(): MethodDecorator {
             params: RoleDocParamsId,
         }),
         DocAuth({
-            apiKey: true,
+            xApiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
@@ -104,7 +104,7 @@ export function RoleAdminInactiveDoc(): MethodDecorator {
             params: RoleDocParamsId,
         }),
         DocAuth({
-            apiKey: true,
+            xApiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
@@ -120,15 +120,15 @@ export function RoleAdminUpdateDoc(): MethodDecorator {
         DocRequest({
             params: RoleDocParamsId,
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
-            body: RoleUpdateDto,
+            dto: RoleUpdateRequestDto,
         }),
         DocAuth({
-            apiKey: true,
+            xApiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),
-        DocResponse<ResponseIdSerialization>('role.update', {
-            serialization: ResponseIdSerialization,
+        DocResponse<DatabaseIdResponseDto>('role.update', {
+            dto: DatabaseIdResponseDto,
         })
     );
 }
@@ -142,7 +142,7 @@ export function RoleAdminDeleteDoc(): MethodDecorator {
             params: RoleDocParamsId,
         }),
         DocAuth({
-            apiKey: true,
+            xApiKey: true,
             jwtAccessToken: true,
         }),
         DocGuard({ role: true, policy: true }),

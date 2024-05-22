@@ -1,204 +1,165 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-    IAuthPassword,
-    IAuthPayloadOptions,
-} from 'src/common/auth/interfaces/auth.interface';
-import { IAuthService } from 'src/common/auth/interfaces/auth.service.interface';
-import { AuthAccessPayloadSerialization } from 'src/common/auth/serializations/auth.access-payload.serialization';
-import { AuthRefreshPayloadSerialization } from 'src/common/auth/serializations/auth.refresh-payload.serialization';
-import { IHelperGooglePayload } from 'src/common/helper/interfaces/helper.interface';
+import verifyAppleToken from 'verify-apple-id-token';
+import { LoginTicket, OAuth2Client } from 'google-auth-library';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperEncryptionService } from 'src/common/helper/services/helper.encryption.service';
-import { HelperGoogleService } from 'src/common/helper/services/helper.google.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
+import { IAuthService } from 'src/common/auth/interfaces/auth.service.interface';
+import { AuthJwtAccessPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.access-payload.dto';
+import { AuthJwtRefreshPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
+import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
+import { AuthSocialApplePayloadDto } from 'src/common/auth/dtos/social/auth.social.apple-payload.dto';
+import { AuthSocialGooglePayloadDto } from 'src/common/auth/dtos/social/auth.social.google-payload.dto';
+import { ENUM_AUTH_LOGIN_FROM } from 'src/common/auth/constants/auth.enum.constant';
+import { plainToInstance } from 'class-transformer';
+import { Document } from 'mongoose';
 
 @Injectable()
 export class AuthService implements IAuthService {
-    private readonly accessTokenSecretKey: string;
-    private readonly accessTokenExpirationTime: number;
-    private readonly accessTokenEncryptKey: string;
-    private readonly accessTokenEncryptIv: string;
+    // jwt
+    private readonly jwtAccessTokenSecretKey: string;
+    private readonly jwtAccessTokenExpirationTime: number;
 
-    private readonly refreshTokenSecretKey: string;
-    private readonly refreshTokenExpirationTime: number;
-    private readonly refreshTokenEncryptKey: string;
-    private readonly refreshTokenEncryptIv: string;
+    private readonly jwtRefreshTokenSecretKey: string;
+    private readonly jwtRefreshTokenExpirationTime: number;
 
-    private readonly payloadEncryption: boolean;
-    private readonly prefixAuthorization: string;
-    private readonly audience: string;
-    private readonly issuer: string;
-    private readonly subject: string;
+    private readonly jwtPrefixAuthorization: string;
+    private readonly jwtAudience: string;
+    private readonly jwtIssuer: string;
+    private readonly jwtSubject: string;
 
+    // password
     private readonly passwordExpiredIn: number;
     private readonly passwordSaltLength: number;
 
     private readonly passwordAttempt: boolean;
-    private readonly maxPasswordAttempt: number;
+    private readonly passwordMaxAttempt: number;
+
+    // apple
+    private readonly appleClientId: string;
+    private readonly appleSignInClientId: string;
+
+    // google
+    private readonly googleClient: OAuth2Client;
 
     constructor(
         private readonly helperHashService: HelperHashService,
         private readonly helperDateService: HelperDateService,
         private readonly helperStringService: HelperStringService,
         private readonly helperEncryptionService: HelperEncryptionService,
-        private readonly helperGoogleService: HelperGoogleService,
         private readonly configService: ConfigService
     ) {
-        this.accessTokenSecretKey = this.configService.get<string>(
-            'auth.accessToken.secretKey'
+        // jwt
+        this.jwtAccessTokenSecretKey = this.configService.get<string>(
+            'auth.jwt.accessToken.secretKey'
         );
-        this.accessTokenExpirationTime = this.configService.get<number>(
-            'auth.accessToken.expirationTime'
-        );
-        this.accessTokenEncryptKey = this.configService.get<string>(
-            'auth.accessToken.encryptKey'
-        );
-        this.accessTokenEncryptIv = this.configService.get<string>(
-            'auth.accessToken.encryptIv'
+        this.jwtAccessTokenExpirationTime = this.configService.get<number>(
+            'auth.jwt.accessToken.expirationTime'
         );
 
-        this.refreshTokenSecretKey = this.configService.get<string>(
-            'auth.refreshToken.secretKey'
+        this.jwtRefreshTokenSecretKey = this.configService.get<string>(
+            'auth.jwt.refreshToken.secretKey'
         );
-        this.refreshTokenExpirationTime = this.configService.get<number>(
-            'auth.refreshToken.expirationTime'
-        );
-        this.refreshTokenEncryptKey = this.configService.get<string>(
-            'auth.refreshToken.encryptKey'
-        );
-        this.refreshTokenEncryptIv = this.configService.get<string>(
-            'auth.refreshToken.encryptIv'
+        this.jwtRefreshTokenExpirationTime = this.configService.get<number>(
+            'auth.jwt.refreshToken.expirationTime'
         );
 
-        this.payloadEncryption = this.configService.get<boolean>(
-            'auth.payloadEncryption'
+        this.jwtPrefixAuthorization = this.configService.get<string>(
+            'auth.jwt.prefixAuthorization'
         );
-        this.prefixAuthorization = this.configService.get<string>(
-            'auth.prefixAuthorization'
-        );
-        this.subject = this.configService.get<string>('auth.subject');
-        this.audience = this.configService.get<string>('auth.audience');
-        this.issuer = this.configService.get<string>('auth.issuer');
+        this.jwtSubject = this.configService.get<string>('auth.jwt.subject');
+        this.jwtAudience = this.configService.get<string>('auth.jwt.audience');
+        this.jwtIssuer = this.configService.get<string>('auth.jwt.issuer');
 
+        // password
         this.passwordExpiredIn = this.configService.get<number>(
             'auth.password.expiredIn'
         );
         this.passwordSaltLength = this.configService.get<number>(
             'auth.password.saltLength'
         );
-
         this.passwordAttempt = this.configService.get<boolean>(
             'auth.password.attempt'
         );
-        this.maxPasswordAttempt = this.configService.get<number>(
+        this.passwordMaxAttempt = this.configService.get<number>(
             'auth.password.maxAttempt'
         );
-    }
 
-    async encryptAccessToken(
-        payload: AuthAccessPayloadSerialization
-    ): Promise<string> {
-        return this.helperEncryptionService.aes256Encrypt(
-            payload,
-            this.accessTokenEncryptKey,
-            this.accessTokenEncryptIv
+        // apple
+        this.appleClientId = this.configService.get<string>(
+            'auth.apple.clientId'
+        );
+        this.appleSignInClientId = this.configService.get<string>(
+            'auth.apple.signInClientId'
+        );
+
+        // google
+        this.googleClient = new OAuth2Client(
+            this.configService.get<string>('auth.google.clientId'),
+            this.configService.get<string>('auth.google.clientSecret')
         );
     }
 
-    async decryptAccessToken({
-        data,
-    }: Record<string, any>): Promise<AuthAccessPayloadSerialization> {
-        return this.helperEncryptionService.aes256Decrypt(
-            data,
-            this.accessTokenEncryptKey,
-            this.accessTokenEncryptIv
-        ) as AuthAccessPayloadSerialization;
-    }
-
-    async createAccessToken(
-        payloadHashed: string | AuthAccessPayloadSerialization
-    ): Promise<string> {
+    async createAccessToken(payload: AuthJwtAccessPayloadDto): Promise<string> {
         return this.helperEncryptionService.jwtEncrypt(
-            { data: payloadHashed },
+            { ...payload },
             {
-                secretKey: this.accessTokenSecretKey,
-                expiredIn: this.accessTokenExpirationTime,
-                audience: this.audience,
-                issuer: this.issuer,
-                subject: this.subject,
+                secretKey: this.jwtAccessTokenSecretKey,
+                expiredIn: this.jwtAccessTokenExpirationTime,
+                audience: this.jwtAudience,
+                issuer: this.jwtIssuer,
+                subject: this.jwtSubject,
             }
         );
     }
 
     async validateAccessToken(token: string): Promise<boolean> {
         return this.helperEncryptionService.jwtVerify(token, {
-            secretKey: this.accessTokenSecretKey,
-            audience: this.audience,
-            issuer: this.issuer,
-            subject: this.subject,
+            secretKey: this.jwtAccessTokenSecretKey,
+            audience: this.jwtAudience,
+            issuer: this.jwtIssuer,
+            subject: this.jwtSubject,
         });
     }
 
-    async payloadAccessToken(
-        token: string
-    ): Promise<AuthAccessPayloadSerialization> {
-        return this.helperEncryptionService.jwtDecrypt(
+    async payloadAccessToken(token: string): Promise<AuthJwtAccessPayloadDto> {
+        return this.helperEncryptionService.jwtDecrypt<AuthJwtAccessPayloadDto>(
             token
-        ) as AuthAccessPayloadSerialization;
-    }
-
-    async encryptRefreshToken(
-        payload: AuthRefreshPayloadSerialization
-    ): Promise<string> {
-        return this.helperEncryptionService.aes256Encrypt(
-            payload,
-            this.refreshTokenEncryptKey,
-            this.refreshTokenEncryptIv
         );
     }
 
-    async decryptRefreshToken({
-        data,
-    }: Record<string, any>): Promise<AuthRefreshPayloadSerialization> {
-        return this.helperEncryptionService.aes256Decrypt(
-            data,
-            this.refreshTokenEncryptKey,
-            this.refreshTokenEncryptIv
-        ) as AuthRefreshPayloadSerialization;
-    }
-
     async createRefreshToken(
-        payloadHashed: string | AuthRefreshPayloadSerialization
+        payload: AuthJwtRefreshPayloadDto
     ): Promise<string> {
         return this.helperEncryptionService.jwtEncrypt(
-            { data: payloadHashed },
+            { ...payload },
             {
-                secretKey: this.refreshTokenSecretKey,
-                expiredIn: this.refreshTokenExpirationTime,
-                audience: this.audience,
-                issuer: this.issuer,
-                subject: this.subject,
+                secretKey: this.jwtRefreshTokenSecretKey,
+                expiredIn: this.jwtRefreshTokenExpirationTime,
+                audience: this.jwtAudience,
+                issuer: this.jwtIssuer,
+                subject: this.jwtSubject,
             }
         );
     }
 
     async validateRefreshToken(token: string): Promise<boolean> {
         return this.helperEncryptionService.jwtVerify(token, {
-            secretKey: this.refreshTokenSecretKey,
-            audience: this.audience,
-            issuer: this.issuer,
-            subject: this.subject,
+            secretKey: this.jwtRefreshTokenSecretKey,
+            audience: this.jwtAudience,
+            issuer: this.jwtIssuer,
+            subject: this.jwtSubject,
         });
     }
 
     async payloadRefreshToken(
         token: string
-    ): Promise<AuthRefreshPayloadSerialization> {
-        return this.helperEncryptionService.jwtDecrypt(
+    ): Promise<AuthJwtRefreshPayloadDto> {
+        return this.helperEncryptionService.jwtDecrypt<AuthJwtRefreshPayloadDto>(
             token
-        ) as AuthRefreshPayloadSerialization;
+        );
     }
 
     async validateUser(
@@ -211,26 +172,32 @@ export class AuthService implements IAuthService {
         );
     }
 
-    async createPayloadAccessToken(
-        user: Record<string, any>,
-        { loginFrom, loginWith, loginDate }: IAuthPayloadOptions
-    ): Promise<AuthAccessPayloadSerialization> {
-        return {
-            user,
-            loginFrom,
-            loginWith,
+    async createPayloadAccessToken<T extends Document>(
+        data: T,
+        loginFrom: ENUM_AUTH_LOGIN_FROM
+    ): Promise<AuthJwtAccessPayloadDto> {
+        const loginDate = this.helperDateService.create();
+        const plainObject: any = data.toObject();
+
+        return plainToInstance(AuthJwtAccessPayloadDto, {
+            _id: plainObject._id,
+            type: plainObject.role.type,
+            role: plainObject.role._id,
+            email: plainObject.email,
+            permissions: plainObject.role.permissions,
             loginDate,
-        };
+            loginFrom,
+        });
     }
 
-    async createPayloadRefreshToken(
-        _id: string,
-        { loginFrom, loginWith, loginDate }: AuthAccessPayloadSerialization
-    ): Promise<AuthRefreshPayloadSerialization> {
+    async createPayloadRefreshToken({
+        _id,
+        loginFrom,
+        loginDate,
+    }: AuthJwtAccessPayloadDto): Promise<AuthJwtRefreshPayloadDto> {
         return {
-            user: { _id },
+            _id,
             loginFrom,
-            loginWith,
             loginDate,
         };
     }
@@ -267,45 +234,61 @@ export class AuthService implements IAuthService {
         return today > passwordExpiredConvert;
     }
 
-    async getLoginDate(): Promise<Date> {
-        return this.helperDateService.create();
-    }
-
     async getTokenType(): Promise<string> {
-        return this.prefixAuthorization;
+        return this.jwtPrefixAuthorization;
     }
 
     async getAccessTokenExpirationTime(): Promise<number> {
-        return this.accessTokenExpirationTime;
+        return this.jwtAccessTokenExpirationTime;
+    }
+
+    async getRefreshTokenExpirationTime(): Promise<number> {
+        return this.jwtRefreshTokenExpirationTime;
     }
 
     async getIssuer(): Promise<string> {
-        return this.issuer;
+        return this.jwtIssuer;
     }
 
     async getAudience(): Promise<string> {
-        return this.audience;
+        return this.jwtAudience;
     }
 
     async getSubject(): Promise<string> {
-        return this.subject;
-    }
-
-    async getPayloadEncryption(): Promise<boolean> {
-        return this.payloadEncryption;
-    }
-
-    async googleGetTokenInfo(
-        accessToken: string
-    ): Promise<IHelperGooglePayload> {
-        return this.helperGoogleService.getTokenInfo(accessToken);
+        return this.jwtSubject;
     }
 
     async getPasswordAttempt(): Promise<boolean> {
         return this.passwordAttempt;
     }
 
-    async getMaxPasswordAttempt(): Promise<number> {
-        return this.maxPasswordAttempt;
+    async getPasswordMaxAttempt(): Promise<number> {
+        return this.passwordMaxAttempt;
+    }
+
+    async appleGetTokenInfo(
+        idToken: string
+    ): Promise<AuthSocialApplePayloadDto> {
+        const payload = await verifyAppleToken({
+            idToken,
+            clientId: [this.appleClientId, this.appleSignInClientId],
+        });
+
+        return { email: payload.email };
+    }
+
+    async googleGetTokenInfo(
+        idToken: string
+    ): Promise<AuthSocialGooglePayloadDto> {
+        try {
+            const login: LoginTicket = await this.googleClient.verifyIdToken({
+                idToken: idToken,
+            });
+            const payload = login.getPayload();
+
+            return { email: payload.email };
+        } catch (err) {
+            throw err;
+        }
     }
 }

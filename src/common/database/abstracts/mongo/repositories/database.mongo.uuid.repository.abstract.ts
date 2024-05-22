@@ -6,7 +6,7 @@ import {
     PopulateOptions,
     Document,
 } from 'mongoose';
-import { DatabaseBaseRepositoryAbstract } from 'src/common/database/abstracts/base/database.base-repository.abstract';
+import { DatabaseRepositoryAbstract } from 'src/common/database/abstracts/base/database.repository.abstract';
 import { DATABASE_DELETED_AT_FIELD_NAME } from 'src/common/database/constants/database.constant';
 import {
     IDatabaseCreateOptions,
@@ -29,7 +29,7 @@ import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/cons
 export abstract class DatabaseMongoUUIDRepositoryAbstract<
     Entity,
     EntityDocument,
-> extends DatabaseBaseRepositoryAbstract<EntityDocument> {
+> extends DatabaseRepositoryAbstract<EntityDocument> {
     protected _repository: Model<Entity>;
     protected _joinOnFind?: PopulateOptions | PopulateOptions[];
 
@@ -77,7 +77,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             findAll.session(options.session);
         }
 
-        return options?.plainObject ? findAll.lean() : findAll.exec();
+        return findAll.exec();
     }
 
     async findAllDistinct<T = EntityDocument>(
@@ -118,7 +118,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             findAll.session(options.session);
         }
 
-        return (options?.plainObject ? findAll.lean() : findAll.exec()) as any;
+        return findAll.exec() as any;
     }
     async findOne<T = EntityDocument>(
         find: Record<string, any>,
@@ -146,11 +146,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             findOne.session(options.session);
         }
 
-        if (options?.order) {
-            findOne.sort(options.order);
-        }
-
-        return options?.plainObject ? findOne.lean() : findOne.exec();
+        return findOne.exec();
     }
 
     async findOneById<T = EntityDocument>(
@@ -179,11 +175,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
             findOne.session(options.session);
         }
 
-        if (options?.order) {
-            findOne.sort(options.order);
-        }
-
-        return options?.plainObject ? findOne.lean() : findOne.exec();
+        return findOne.exec();
     }
 
     async findOneAndLock<T = EntityDocument>(
@@ -213,10 +205,6 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
 
         if (options?.session) {
             findOne.session(options.session);
-        }
-
-        if (options?.order) {
-            findOne.sort(options.order);
         }
 
         return findOne.exec();
@@ -249,10 +237,6 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
 
         if (options?.session) {
             findOne.session(options.session);
-        }
-
-        if (options?.order) {
-            findOne.sort(options.order);
         }
 
         return findOne.exec();
@@ -388,7 +372,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         const del = this._repository.deleteMany({
             _id: {
                 $in: _id,
-            },
+            } as any,
         });
 
         if (options?.session) {
@@ -446,7 +430,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
                 {
                     _id: {
                         $in: _id,
-                    },
+                    } as any,
                 },
                 {
                     $set: {
@@ -519,7 +503,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
                 {
                     _id: {
                         $in: _id,
-                    },
+                    } as any,
                 },
                 {
                     $set: {

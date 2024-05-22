@@ -4,11 +4,6 @@ import { IHelperArrayService } from 'src/common/helper/interfaces/helper.array-s
 
 @Injectable()
 export class HelperArrayService implements IHelperArrayService {
-    getCombinations<T>(...list: T[][]): T[] {
-        // TODO:
-        return [];
-    }
-
     getFromLeft<T>(array: T[], length: number): T[] {
         return _.take(array, length);
     }

@@ -1,4 +1,5 @@
 import { HttpStatus, applyDecorators } from '@nestjs/common';
+import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
     Doc,
@@ -10,21 +11,21 @@ import {
     DocResponse,
     DocResponsePaging,
 } from 'src/common/doc/decorators/doc.decorator';
-import { ResponseIdSerialization } from 'src/common/response/serializations/response.id.serialization';
 import { SettingDocParamsId } from 'src/modules/setting/constants/setting.doc.constant';
 import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/modules/setting/constants/setting.status-code.constant';
-import { SettingUpdateValueDto } from 'src/modules/setting/dtos/setting.update-value.dto';
-import { SettingGetSerialization } from 'src/modules/setting/serializations/setting.get.serialization';
-import { SettingListSerialization } from 'src/modules/setting/serializations/setting.list.serialization';
+import { SettingUpdateRequestDto } from 'src/modules/setting/dtos/request/setting.update.request.dto';
+import { SettingGetResponseDto } from 'src/modules/setting/dtos/response/setting.get.response.dto';
+import { SettingListResponseDto } from 'src/modules/setting/dtos/response/setting.list.response.dto';
 
 export function SettingAdminListDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'get list of settings',
         }),
-        DocAuth({ apiKey: true }),
-        DocResponsePaging<SettingListSerialization>('setting.list', {
-            serialization: SettingListSerialization,
+        DocAuth({ xApiKey: true, jwtAccessToken: true }),
+        DocGuard({ role: true, policy: true }),
+        DocResponsePaging<SettingListResponseDto>('setting.list', {
+            dto: SettingListResponseDto,
         })
     );
 }
@@ -35,10 +36,11 @@ export function SettingAdminGetDoc(): MethodDecorator {
         DocRequest({
             params: SettingDocParamsId,
         }),
-        DocResponse<SettingGetSerialization>('setting.get', {
-            serialization: SettingGetSerialization,
+        DocResponse<SettingGetResponseDto>('setting.get', {
+            dto: SettingGetResponseDto,
         }),
-        DocAuth({ apiKey: true }),
+        DocAuth({ xApiKey: true, jwtAccessToken: true }),
+        DocGuard({ role: true, policy: true }),
         DocErrorGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,
@@ -55,17 +57,17 @@ export function SettingAdminUpdateDoc(): MethodDecorator {
         Doc({ summary: 'update a setting' }),
         DocRequest({
             params: SettingDocParamsId,
-            body: SettingUpdateValueDto,
+            dto: SettingUpdateRequestDto,
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
         }),
         DocAuth({
             jwtAccessToken: true,
-            apiKey: true,
-        }),
-        DocResponse<ResponseIdSerialization>('setting.update', {
-            serialization: ResponseIdSerialization,
+            xApiKey: true,
         }),
         DocGuard({ role: true, policy: true }),
+        DocResponse<DatabaseIdResponseDto>('setting.update', {
+            dto: DatabaseIdResponseDto,
+        }),
         DocErrorGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,

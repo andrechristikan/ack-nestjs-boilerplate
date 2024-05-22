@@ -1,23 +1,22 @@
 import {
+    IDatabaseCreateManyOptions,
     IDatabaseCreateOptions,
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
-    IDatabaseManyOptions,
-    IDatabaseCreateManyOptions,
     IDatabaseGetTotalOptions,
+    IDatabaseManyOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
-import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
-import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
+import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
+import { RoleUpdateRequestDto } from 'src/modules/role/dtos/request/role.update.request.dto';
 import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 
 export interface IRoleService {
-    findAll<T>(
+    findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<T[]>;
+    ): Promise<RoleDoc[]>;
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
@@ -39,17 +38,12 @@ export interface IRoleService {
         options?: IDatabaseExistOptions
     ): Promise<boolean>;
     create(
-        data: RoleCreateDto,
+        { name, description, type, permissions }: RoleCreateRequestDto,
         options?: IDatabaseCreateOptions
     ): Promise<RoleDoc>;
     update(
         repository: RoleDoc,
-        data: RoleUpdateDto,
-        options?: IDatabaseSaveOptions
-    ): Promise<RoleDoc>;
-    updatePermissions(
-        repository: RoleDoc,
-        data: RoleUpdatePermissionDto,
+        { permissions, type, description }: RoleUpdateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<RoleDoc>;
     active(
@@ -69,7 +63,7 @@ export interface IRoleService {
         options?: IDatabaseManyOptions
     ): Promise<boolean>;
     createMany(
-        data: RoleCreateDto[],
+        data: RoleCreateRequestDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean>;
 }

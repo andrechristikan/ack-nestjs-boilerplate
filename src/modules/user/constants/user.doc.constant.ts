@@ -1,35 +1,13 @@
 import { faker } from '@faker-js/faker';
+import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
 
-export const UserDocQueryIsActive = [
+export const UserDocParamsId = [
     {
-        name: 'isActive',
-        allowEmptyValue: true,
-        required: false,
+        name: 'user',
+        allowEmptyValue: false,
+        required: true,
         type: 'string',
-        example: 'true,false',
-        description: "boolean value with ',' delimiter",
-    },
-];
-
-export const UserDocQueryBlocked = [
-    {
-        name: 'blocked',
-        allowEmptyValue: true,
-        required: false,
-        type: 'string',
-        example: 'true,false',
-        description: "boolean value with ',' delimiter",
-    },
-];
-
-export const UserDocQueryInactivePermanent = [
-    {
-        name: 'inactivePermanent',
-        allowEmptyValue: true,
-        required: false,
-        type: 'string',
-        example: 'true,false',
-        description: "boolean value with ',' delimiter",
+        example: faker.string.uuid(),
     },
 ];
 
@@ -43,12 +21,41 @@ export const UserDocQueryRole = [
     },
 ];
 
-export const UserDocParamsId = [
+export const UserDocQueryStatus = [
     {
-        name: 'user',
-        allowEmptyValue: false,
-        required: true,
+        name: 'status',
+        allowEmptyValue: true,
+        required: false,
         type: 'string',
-        example: faker.string.uuid(),
+        example: Object.values(ENUM_USER_STATUS).join(','),
+        description: "value with ',' delimiter",
+    },
+];
+
+export const UserDocQueryBlocked = [
+    {
+        name: 'blocked',
+        allowEmptyValue: true,
+        required: false,
+        type: 'string',
+        example: 'true,false',
+        description: "value with ',' delimiter",
+    },
+];
+
+export const UserDocQuerySignUpDate = [
+    {
+        name: 'startDate',
+        allowEmptyValue: true,
+        required: false,
+        type: 'string',
+        example: faker.date.past(),
+    },
+    {
+        name: 'endDate',
+        allowEmptyValue: true,
+        required: false,
+        type: 'string',
+        example: faker.date.recent(),
     },
 ];

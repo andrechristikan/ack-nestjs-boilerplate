@@ -5,16 +5,14 @@ on:
   pull_request:
     branches: 
     - main
-    # - staging
     
 jobs:
   test:
     runs-on: ubuntu-latest
-    environment: staging
 
     strategy:
       matrix:
-        node-version: ['18.x']
+        node-version: ['lts/*']
 
     steps:
       - name: Git checkout

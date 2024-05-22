@@ -1,13 +1,10 @@
-#husky
-
 # Build dependencies
 node_modules/
 coverage/
 dist/
-data/*
+swagger.json
 .husky/
 .github/
-prod/
 
 # Logs
 logs/

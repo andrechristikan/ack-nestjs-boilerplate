@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ApiKeyModule } from 'src/common/api-key/api-key.module';
-import { RoleModule } from 'src/modules/role/role.module';
+import { AuthModule } from 'src/common/auth/auth.module';
+import { AwsModule } from 'src/common/aws/aws.module';
+import { SettingModule } from 'src/modules/setting/setting.module';
 import { UserUserController } from 'src/modules/user/controllers/user.user.controller';
 import { UserModule } from 'src/modules/user/user.module';
 
@@ -8,6 +9,6 @@ import { UserModule } from 'src/modules/user/user.module';
     controllers: [UserUserController],
     providers: [],
     exports: [],
-    imports: [UserModule, ApiKeyModule, RoleModule],
+    imports: [UserModule, AuthModule, AwsModule, SettingModule],
 })
 export class RoutesUserModule {}

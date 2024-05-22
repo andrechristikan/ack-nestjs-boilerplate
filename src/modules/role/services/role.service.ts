@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
 import {
     IDatabaseCreateOptions,
     IDatabaseExistOptions,
@@ -9,9 +10,10 @@ import {
     IDatabaseCreateManyOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { RoleCreateDto } from 'src/modules/role/dtos/role.create.dto';
-import { RoleUpdatePermissionDto } from 'src/modules/role/dtos/role.update-permission.dto';
-import { RoleUpdateDto } from 'src/modules/role/dtos/role.update.dto';
+import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
+import { RoleUpdateRequestDto } from 'src/modules/role/dtos/request/role.update.request.dto';
+import { RoleGetResponseDto } from 'src/modules/role/dtos/response/role.get.response.dto';
+import { RoleListResponseDto } from 'src/modules/role/dtos/response/role.list.response.dto';
 import { IRoleService } from 'src/modules/role/interfaces/role.service.interface';
 import {
     RoleDoc,
@@ -23,11 +25,11 @@ import { RoleRepository } from 'src/modules/role/repository/repositories/role.re
 export class RoleService implements IRoleService {
     constructor(private readonly roleRepository: RoleRepository) {}
 
-    async findAll<T = RoleDoc>(
+    async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<T[]> {
-        return this.roleRepository.findAll<T>(find, options);
+    ): Promise<RoleDoc[]> {
+        return this.roleRepository.findAll<RoleDoc>(find, options);
     }
 
     async findOneById(
@@ -66,12 +68,12 @@ export class RoleService implements IRoleService {
             {
                 name,
             },
-            { ...options, withDeleted: true }
+            options
         );
     }
 
     async create(
-        { name, description, type, permissions }: RoleCreateDto,
+        { name, description, type, permissions }: RoleCreateRequestDto,
         options?: IDatabaseCreateOptions
     ): Promise<RoleDoc> {
         const create: RoleEntity = new RoleEntity();
@@ -86,21 +88,12 @@ export class RoleService implements IRoleService {
 
     async update(
         repository: RoleDoc,
-        { description }: RoleUpdateDto,
+        { permissions, type, description }: RoleUpdateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<RoleDoc> {
         repository.description = description;
-
-        return this.roleRepository.save(repository, options);
-    }
-
-    async updatePermissions(
-        repository: RoleDoc,
-        { permissions, type }: RoleUpdatePermissionDto,
-        options?: IDatabaseSaveOptions
-    ): Promise<RoleDoc> {
-        repository.permissions = permissions;
         repository.type = type;
+        repository.permissions = permissions;
 
         return this.roleRepository.save(repository, options);
     }
@@ -138,7 +131,7 @@ export class RoleService implements IRoleService {
     }
 
     async createMany(
-        data: RoleCreateDto[],
+        data: RoleCreateRequestDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean> {
         const create: RoleEntity[] = data.map(({ type, name, permissions }) => {
@@ -151,5 +144,15 @@ export class RoleService implements IRoleService {
             return entity;
         });
         return this.roleRepository.createMany<RoleEntity>(create, options);
+    }
+
+    async mapList(roles: RoleDoc[]): Promise<RoleListResponseDto[]> {
+        const plainObject: RoleEntity[] = roles.map(e => e.toObject());
+
+        return plainToInstance(RoleListResponseDto, plainObject);
+    }
+
+    async mapGet(role: RoleDoc): Promise<RoleGetResponseDto> {
+        return plainToInstance(RoleGetResponseDto, role.toObject());
     }
 }

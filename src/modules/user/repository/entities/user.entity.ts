@@ -1,30 +1,22 @@
 import { Prop, SchemaFactory } from '@nestjs/mongoose';
-import { CallbackWithoutResultAndOptionalError, Document } from 'mongoose';
-import { AwsS3Serialization } from 'src/common/aws/serializations/aws.s3.serialization';
+import { Document } from 'mongoose';
+import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
 import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
-import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
+import {
+    ENUM_USER_GENDER,
+    ENUM_USER_SIGN_UP_FROM,
+    ENUM_USER_STATUS,
+} from 'src/modules/user/constants/user.enum.constant';
 
 export const UserDatabaseName = 'users';
 
 @DatabaseEntity({ collection: UserDatabaseName })
 export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     @Prop({
-        required: false,
-        sparse: true,
-        index: true,
-        trim: true,
-        type: String,
-        unique: true,
-        maxlength: 100,
-    })
-    username?: string;
-
-    @Prop({
         required: true,
         index: true,
-        lowercase: true,
         trim: true,
         type: String,
         maxlength: 50,
@@ -34,7 +26,6 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     @Prop({
         required: true,
         index: true,
-        lowercase: true,
         trim: true,
         type: String,
         maxlength: 50,
@@ -43,18 +34,19 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
 
     @Prop({
         required: false,
-        sparse: true,
         trim: true,
+        sparse: true,
         unique: true,
         type: String,
-        maxlength: 15,
+        maxlength: 20,
+        minlength: 8,
     })
     mobileNumber?: string;
 
     @Prop({
         required: true,
-        index: true,
         unique: true,
+        index: true,
         trim: true,
         lowercase: true,
         type: String,
@@ -114,25 +106,12 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
 
     @Prop({
         required: true,
-        default: true,
+        default: ENUM_USER_STATUS.ACTIVE,
         index: true,
-        type: Boolean,
+        type: String,
+        enum: ENUM_USER_STATUS,
     })
-    isActive: boolean;
-
-    @Prop({
-        required: true,
-        default: false,
-        index: true,
-        type: Boolean,
-    })
-    inactivePermanent: boolean;
-
-    @Prop({
-        required: false,
-        type: Date,
-    })
-    inactiveDate?: Date;
+    status: ENUM_USER_STATUS;
 
     @Prop({
         required: true,
@@ -141,12 +120,6 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
         type: Boolean,
     })
     blocked: boolean;
-
-    @Prop({
-        required: false,
-        type: Date,
-    })
-    blockedDate?: Date;
 
     @Prop({
         required: false,
@@ -165,17 +138,26 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
             },
         },
     })
-    photo?: AwsS3Serialization;
+    photo?: AwsS3Dto;
+
+    @Prop({
+        required: false,
+        maxlength: 200,
+    })
+    address?: string;
+
+    @Prop({
+        required: false,
+        enum: ENUM_USER_GENDER,
+    })
+    gender?: ENUM_USER_GENDER;
+
+    @Prop({
+        required: false,
+    })
+    selfDeletion?: boolean;
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserEntity);
 
 export type UserDoc = UserEntity & Document;
-
-UserSchema.pre('save', function (next: CallbackWithoutResultAndOptionalError) {
-    this.email = this.email.toLowerCase();
-    this.firstName = this.firstName.toLowerCase();
-    this.lastName = this.lastName.toLowerCase();
-
-    next();
-});

@@ -1,70 +1,57 @@
 import { Injectable, UnsupportedMediaTypeException } from '@nestjs/common';
 import { PipeTransform } from '@nestjs/common/interfaces';
-import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
+import {
+    ENUM_FILE_MIME,
+    ENUM_FILE_MIME_EXCEL,
+} from 'src/common/file/constants/file.enum.constant';
 import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
-import { IFile, IFileExtract } from 'src/common/file/interfaces/file.interface';
-import { IHelperFileRows } from 'src/common/helper/interfaces/helper.interface';
-import { HelperFileService } from 'src/common/helper/services/helper.file.service';
+import { IFile, IFileRows } from 'src/common/file/interfaces/file.interface';
+import { FileService } from 'src/common/file/services/file.service';
 
-// Support excel and csv
+//! Support excel and csv
 @Injectable()
-export class FileExcelExtractPipe<T> implements PipeTransform {
-    constructor(private readonly helperFileService: HelperFileService) {}
+export class FileExcelParsePipe<T> implements PipeTransform {
+    constructor(private readonly fileService: FileService) {}
 
-    async transform(value: IFile): Promise<IFileExtract<T>> {
+    async transform(value: IFile): Promise<IFileRows<T>[]> {
         if (!value) {
             return;
         }
 
         await this.validate(value);
-
-        const extracts: IHelperFileRows<T>[] = this.extracts(value);
-
-        return {
-            ...value,
-            extracts,
-        };
+        const parse: IFileRows<T>[] = this.parse(value);
+        return parse;
     }
 
     async validate(value: IFile): Promise<void> {
         const mimetype = value.mimetype.toLowerCase();
-        const supportedFiles: string[] = [
-            ENUM_FILE_MIME.CSV,
-            ENUM_FILE_MIME.XLSX,
-        ];
+        const supportedFiles: string[] = Object.values(ENUM_FILE_MIME_EXCEL);
 
         if (!supportedFiles.includes(mimetype)) {
             throw new UnsupportedMediaTypeException({
-                statusCode: ENUM_FILE_STATUS_CODE_ERROR.FILE_EXTENSION_ERROR,
+                statusCode: ENUM_FILE_STATUS_CODE_ERROR.MIME_ERROR,
                 message: 'file.error.mimeInvalid',
             });
         }
     }
 
-    extracts(value: IFile): IHelperFileRows<T>[] {
+    parse(value: IFile): IFileRows<T>[] {
         if (value.mimetype === ENUM_FILE_MIME.CSV) {
-            return this.extractsCsv(value);
+            return this.parseCsv(value);
         }
 
-        return this.extractsExcel(value);
+        return this.parseExcel(value);
     }
 
-    extractsCsv(value: IFile): IHelperFileRows<T>[] {
-        const extracts: IHelperFileRows = this.helperFileService.readCsv(
-            value.buffer
-        );
+    parseCsv(value: IFile): IFileRows<T>[] {
+        const parse: IFileRows = this.fileService.readCsv(value.buffer);
 
-        return [extracts];
+        return [parse];
     }
 
-    extractsExcel(value: IFile): IHelperFileRows<T>[] {
-        const extracts: IHelperFileRows[] = this.helperFileService.readExcel(
-            value.buffer,
-            {
-                password: value?.password,
-            }
-        );
+    parseExcel(value: IFile): IFileRows<T>[] {
+        const parse: IFileRows[] = this.fileService.readExcel(value.buffer);
 
-        return extracts;
+        return parse;
     }
 }

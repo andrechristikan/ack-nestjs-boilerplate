@@ -1,10 +1,9 @@
 import { DynamicModule, ForwardReference, Module, Type } from '@nestjs/common';
 import { RouterModule as NestJsRouterModule } from '@nestjs/core';
-import { RoutesAdminModule } from './routes/routes.admin.module';
 import { RoutesUserModule } from 'src/router/routes/routes.user.module';
 import { RoutesPublicModule } from 'src/router/routes/routes.public.module';
-import { RoutesAuthModule } from 'src/router/routes/routes.auth.module';
-import { RoutesServiceModule } from 'src/router/routes/routes.service.module';
+import { RoutesPrivateModule } from 'src/router/routes/routes.private.module';
+import { RoutesAdminModule } from 'src/router/routes/routes.admin.module';
 
 @Module({})
 export class RouterModule {
@@ -19,14 +18,17 @@ export class RouterModule {
         if (process.env.HTTP_ENABLE === 'true') {
             imports.push(
                 RoutesPublicModule,
+                RoutesPrivateModule,
                 RoutesUserModule,
                 RoutesAdminModule,
-                RoutesAuthModule,
-                RoutesServiceModule,
                 NestJsRouterModule.register([
                     {
                         path: '/public',
                         module: RoutesPublicModule,
+                    },
+                    {
+                        path: '/private',
+                        module: RoutesPrivateModule,
                     },
                     {
                         path: '/admin',
@@ -35,14 +37,6 @@ export class RouterModule {
                     {
                         path: '/user',
                         module: RoutesUserModule,
-                    },
-                    {
-                        path: '/auth',
-                        module: RoutesAuthModule,
-                    },
-                    {
-                        path: '/service',
-                        module: RoutesServiceModule,
                     },
                 ])
             );

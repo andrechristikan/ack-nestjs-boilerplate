@@ -21,7 +21,7 @@ export class HelperDateService implements IHelperDateService {
     private readonly defTz: string;
 
     constructor(private readonly configService: ConfigService) {
-        this.defTz = this.configService.get<string>('app.tz');
+        this.defTz = this.configService.get<string>('app.timezone');
     }
 
     calculateAge(dateOfBirth: Date, year?: number): number {
@@ -95,6 +95,10 @@ export class HelperDateService implements IHelperDateService {
     }
 
     format(date: Date, options?: IHelperDateFormatOptions): string {
+        if (options?.locale) {
+            moment.locale(options.locale);
+        }
+
         return moment(date)
             .tz(this.defTz)
             .format(options?.format ?? ENUM_HELPER_DATE_FORMAT.DATE);

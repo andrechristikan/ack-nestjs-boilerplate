@@ -1,14 +1,4 @@
 import {
-    ApiKeyCreateDto,
-    ApiKeyCreateRawDto,
-} from 'src/common/api-key/dtos/api-key.create.dto';
-import {
-    ApiKeyUpdateDateDto,
-    ApiKeyUpdateDto,
-} from 'src/common/api-key/dtos/api-key.update.dto';
-import { IApiKeyCreated } from 'src/common/api-key/interfaces/api-key.interface';
-import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
-import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
     IDatabaseFindOneOptions,
@@ -16,12 +6,23 @@ import {
     IDatabaseManyOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
+import {
+    ApiKeyCreateRawRequestDto,
+    ApiKeyCreateRequestDto,
+} from 'src/common/api-key/dtos/request/api-key.create.request.dto';
+import { ApiKeyUpdateDateRequestDto } from 'src/common/api-key/dtos/request/api-key.update-date.request.dto';
+import { ApiKeyUpdateRequestDto } from 'src/common/api-key/dtos/request/api-key.update.request.dto';
+import { ApiKeyCreateResponseDto } from 'src/common/api-key/dtos/response/api-key.create.dto';
+import { ApiKeyGetResponseDto } from 'src/common/api-key/dtos/response/api-key.get.response.dto';
+import { ApiKeyListResponseDto } from 'src/common/api-key/dtos/response/api-key.list.response.dto';
+import { ApiKeyResetResponseDto } from 'src/common/api-key/dtos/response/api-key.reset.dto';
+import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
 
 export interface IApiKeyService {
-    findAll<T>(
+    findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<T[]>;
+    ): Promise<ApiKeyDoc[]>;
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
@@ -43,13 +44,20 @@ export interface IApiKeyService {
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
     create(
-        { name, startDate, endDate }: ApiKeyCreateDto,
+        { name, type, startDate, endDate }: ApiKeyCreateRequestDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyCreated>;
+    ): Promise<ApiKeyCreateResponseDto>;
     createRaw(
-        { name, key, secret, startDate, endDate }: ApiKeyCreateRawDto,
+        {
+            name,
+            key,
+            type,
+            secret,
+            startDate,
+            endDate,
+        }: ApiKeyCreateRawRequestDto,
         options?: IDatabaseCreateOptions
-    ): Promise<IApiKeyCreated>;
+    ): Promise<ApiKeyCreateResponseDto>;
     active(
         repository: ApiKeyDoc,
         options?: IDatabaseSaveOptions
@@ -60,19 +68,18 @@ export interface IApiKeyService {
     ): Promise<ApiKeyDoc>;
     update(
         repository: ApiKeyDoc,
-        { name }: ApiKeyUpdateDto,
+        { name }: ApiKeyUpdateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<ApiKeyDoc>;
     updateDate(
         repository: ApiKeyDoc,
-        { startDate, endDate }: ApiKeyUpdateDateDto,
+        { startDate, endDate }: ApiKeyUpdateDateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<ApiKeyDoc>;
     reset(
         repository: ApiKeyDoc,
-        secret: string,
         options?: IDatabaseSaveOptions
-    ): Promise<ApiKeyDoc>;
+    ): Promise<ApiKeyResetResponseDto>;
     delete(
         repository: ApiKeyDoc,
         options?: IDatabaseSaveOptions
@@ -86,4 +93,6 @@ export interface IApiKeyService {
         options?: IDatabaseManyOptions
     ): Promise<boolean>;
     inactiveManyByEndDate(options?: IDatabaseManyOptions): Promise<boolean>;
+    mapList(apiKeys: ApiKeyDoc[]): Promise<ApiKeyListResponseDto[]>;
+    mapGet(apiKey: ApiKeyDoc): Promise<ApiKeyGetResponseDto>;
 }

@@ -1,21 +1,16 @@
 import { PopulateOptions } from 'mongoose';
-import { IPaginationOptions } from 'src/common/pagination/interfaces/pagination.interface';
+import { IPaginationOrder } from 'src/common/pagination/interfaces/pagination.interface';
 
 // find one
-export interface IDatabaseFindOneOptions<T = any>
-    extends Pick<IPaginationOptions, 'order'> {
+export interface IDatabaseFindOneOptions<T = any> {
     select?: Record<string, boolean | number> | string;
     join?: boolean | PopulateOptions | PopulateOptions[];
     session?: T;
     withDeleted?: boolean;
-    plainObject?: boolean;
 }
 
 // find one lock
-export type IDatabaseFindOneLockOptions<T = any> = Omit<
-    IDatabaseFindOneOptions<T>,
-    'plainObject'
->;
+export type IDatabaseFindOneLockOptions<T = any> = IDatabaseFindOneOptions<T>;
 
 export type IDatabaseGetTotalOptions<T = any> = Pick<
     IDatabaseFindOneOptions<T>,
@@ -28,19 +23,26 @@ export type IDatabaseSaveOptions<T = any> = Pick<
 >;
 
 // find
+export interface IDatabaseFindAllPaginationPagingOptions {
+    limit: number;
+    offset: number;
+}
+export interface IDatabaseFindAllPaginationOptions {
+    paging?: IDatabaseFindAllPaginationPagingOptions;
+    order?: IPaginationOrder;
+}
+
 export interface IDatabaseFindAllOptions<T = any>
-    extends IPaginationOptions,
-        Omit<IDatabaseFindOneOptions<T>, 'order'> {}
+    extends IDatabaseFindAllPaginationOptions,
+        IDatabaseFindOneOptions<T> {}
 
 // create
-
 export interface IDatabaseCreateOptions<T = any>
     extends Pick<IDatabaseFindOneOptions<T>, 'session'> {
     _id?: string;
 }
 
 // exist
-
 export interface IDatabaseExistOptions<T = any>
     extends Pick<
         IDatabaseFindOneOptions<T>,
@@ -65,7 +67,6 @@ export type IDatabaseSoftDeleteManyOptions<T = any> = IDatabaseManyOptions<T>;
 export type IDatabaseRestoreManyOptions<T = any> = IDatabaseManyOptions<T>;
 
 // Raw
-
 export type IDatabaseRawOptions<T = any> = Pick<
     IDatabaseFindOneOptions<T>,
     'session' | 'withDeleted'

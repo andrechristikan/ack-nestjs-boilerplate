@@ -9,24 +9,16 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
-import { HelperFileService } from 'src/common/helper/services/helper.file.service';
-import {
-    ClassConstructor,
-    ClassTransformOptions,
-    plainToInstance,
-} from 'class-transformer';
 import { Reflector } from '@nestjs/core';
 import {
     RESPONSE_FILE_EXCEL_PASSWORD_META_KEY,
-    RESPONSE_FILE_EXCEL_SERIALIZATION_META_KEY,
     RESPONSE_FILE_EXCEL_TYPE_META_KEY,
-    RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
 } from 'src/common/response/constants/response.constant';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/constants/helper.enum.constant';
 import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
-import { IHelperFileRows } from 'src/common/helper/interfaces/helper.interface';
 import { IResponseFileExcel } from 'src/common/response/interfaces/response.interface';
+import { FileService } from 'src/common/file/services/file.service';
 
 @Injectable()
 export class ResponseFileExcelInterceptor
@@ -34,14 +26,14 @@ export class ResponseFileExcelInterceptor
 {
     constructor(
         private readonly reflector: Reflector,
-        private readonly helperFileService: HelperFileService,
+        private readonly fileService: FileService,
         private readonly helperDateService: HelperDateService
     ) {}
 
-    async intercept(
+    intercept(
         context: ExecutionContext,
         next: CallHandler
-    ): Promise<Observable<Promise<Record<string, any>>>> {
+    ): Observable<Promise<StreamableFile>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
                 map(async (res: Promise<IResponseFileExcel>) => {
@@ -59,17 +51,6 @@ export class ResponseFileExcelInterceptor
                         context.getHandler()
                     );
 
-                    const classSerialization: ClassConstructor<any>[] =
-                        this.reflector.get<ClassConstructor<any>[]>(
-                            RESPONSE_FILE_EXCEL_SERIALIZATION_META_KEY,
-                            context.getHandler()
-                        );
-                    const classSerializationOptions: ClassTransformOptions =
-                        this.reflector.get<ClassTransformOptions>(
-                            RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
-                            context.getHandler()
-                        );
-
                     // set default response
                     const responseData = (await res) as IResponseFileExcel;
 
@@ -79,39 +60,18 @@ export class ResponseFileExcelInterceptor
                         );
                     } else if (
                         !responseData.data ||
-                        !Array.isArray(responseData.data) ||
-                        responseData.data.length === 0
+                        !Array.isArray(responseData.data)
                     ) {
-                        throw new Error(
-                            'Field data must in array and can not be empty'
-                        );
+                        throw new Error('Field data must in array');
                     }
 
                     if (type === ENUM_HELPER_FILE_EXCEL_TYPE.XLSX) {
-                        const datas: IHelperFileRows[] = responseData.data;
-
-                        if (
-                            classSerialization &&
-                            Array.isArray(classSerialization) &&
-                            classSerialization.length > 0
-                        ) {
-                            for (const [index, data] of datas.entries()) {
-                                if (classSerialization[index]) {
-                                    const dataSerialization = plainToInstance(
-                                        classSerialization[index],
-                                        data,
-                                        classSerializationOptions
-                                    );
-
-                                    datas[index].data = dataSerialization;
-                                }
-                            }
-                        }
-
                         // create file
-                        const file: Buffer = this.helperFileService.writeExcel(
-                            datas,
-                            { password }
+                        const file: Buffer = this.fileService.writeExcel(
+                            responseData.data,
+                            {
+                                password,
+                            }
                         );
 
                         // set headers
@@ -129,26 +89,9 @@ export class ResponseFileExcelInterceptor
                     }
 
                     // create file
-                    const data: IHelperFileRows = responseData.data[0];
-
-                    if (
-                        classSerialization &&
-                        Array.isArray(classSerialization) &&
-                        classSerialization.length > 0
-                    ) {
-                        if (classSerialization[0]) {
-                            const dataSerialization = plainToInstance(
-                                classSerialization[0],
-                                data.data,
-                                classSerializationOptions
-                            );
-
-                            data.data = dataSerialization;
-                        }
-                    }
-
-                    // create file
-                    const file: Buffer = this.helperFileService.writeCsv(data);
+                    const file: Buffer = this.fileService.writeCsv(
+                        responseData.data[0]
+                    );
 
                     // set headers
                     const timestamp = this.helperDateService.createTimestamp();

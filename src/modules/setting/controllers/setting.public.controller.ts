@@ -1,18 +1,16 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
-import {
-    FILE_SIZE_IN_BYTES,
-    FILE_SIZE_LARGE_IN_BYTES,
-    FILE_SIZE_MEDIUM_IN_BYTES,
-} from 'src/common/file/constants/file.constant';
+import { FILE_SIZE_IN_BYTES } from 'src/common/file/constants/file.constant';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 import { MessageService } from 'src/common/message/services/message.service';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { SettingPublicCoreDoc } from 'src/modules/setting/docs/setting.public.doc';
-import { SettingCoreSerialization } from 'src/modules/setting/serializations/setting.core.serialization';
-import { SettingFileSerialization } from 'src/modules/setting/serializations/setting.file.serialization';
-import { SettingTimezoneSerialization } from 'src/modules/setting/serializations/setting.timezone.serialization';
+import { SettingCoreResponseDto } from 'src/modules/setting/dtos/response/setting.core.response.dto';
+import { SettingFileResponseDto } from 'src/modules/setting/dtos/response/setting.file.response.dto';
+import { SettingLanguageResponseDto } from 'src/modules/setting/dtos/response/setting.language.response.dto';
+import { SettingTimezoneResponseDto } from 'src/modules/setting/dtos/response/setting.timezone.response.dto';
 import { SettingService } from 'src/modules/setting/services/setting.service';
 
 @ApiTags('modules.public.setting')
@@ -22,39 +20,43 @@ import { SettingService } from 'src/modules/setting/services/setting.service';
 })
 export class SettingPublicController {
     constructor(
-        private readonly settingService: SettingService,
-        private readonly messageService: MessageService
+        private readonly messageService: MessageService,
+        private readonly settingService: SettingService
     ) {}
 
     @SettingPublicCoreDoc()
-    @Response('setting.core', {
-        serialization: SettingCoreSerialization,
-    })
+    @Response('setting.core')
     @ApiKeyPublicProtected()
     @Get('/core')
-    async getUserMaxCertificate(): Promise<IResponse> {
-        const languages: string[] = this.messageService.getAvailableLanguages();
+    async getUserMaxCertificate(): Promise<IResponse<SettingCoreResponseDto>> {
+        const availableLanguage: ENUM_MESSAGE_LANGUAGE[] =
+            this.messageService.getAvailableLanguages();
+        const currentLanguage: ENUM_MESSAGE_LANGUAGE =
+            this.messageService.getLanguage();
+
+        const language: SettingLanguageResponseDto = {
+            language: currentLanguage,
+            availableLanguage,
+        };
 
         const tz: string = await this.settingService.getTimezone();
         const timezoneOffset: string =
             await this.settingService.getTimezoneOffset();
 
-        const timezone: SettingTimezoneSerialization = {
+        const timezone: SettingTimezoneResponseDto = {
             timezone: tz,
             timezoneOffset: timezoneOffset,
         };
 
-        const file: SettingFileSerialization = {
+        const file: SettingFileResponseDto = {
             sizeInBytes: FILE_SIZE_IN_BYTES,
-            sizeMediumInBytes: FILE_SIZE_MEDIUM_IN_BYTES,
-            sizeLargeInBytes: FILE_SIZE_LARGE_IN_BYTES,
         };
 
         return {
             data: {
-                languages,
-                file,
                 timezone,
+                language,
+                file,
             },
         };
     }

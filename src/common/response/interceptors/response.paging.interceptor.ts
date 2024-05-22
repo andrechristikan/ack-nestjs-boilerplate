@@ -11,48 +11,42 @@ import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 import { MessageService } from 'src/common/message/services/message.service';
 import { Reflector } from '@nestjs/core';
-import {
-    ClassConstructor,
-    ClassTransformOptions,
-    plainToInstance,
-} from 'class-transformer';
 import qs from 'qs';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import {
-    IMessage,
-    IMessageOptionsProperties,
-} from 'src/common/message/interfaces/message.interface';
-import {
-    ResponsePaginationCursorSerialization,
-    ResponsePagingMetadataSerialization,
-    ResponsePagingSerialization,
-} from 'src/common/response/serializations/response.paging.serialization';
+import { IMessageOptionsProperties } from 'src/common/message/interfaces/message.interface';
 import {
     RESPONSE_MESSAGE_PATH_META_KEY,
     RESPONSE_MESSAGE_PROPERTIES_META_KEY,
-    RESPONSE_SERIALIZATION_META_KEY,
-    RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
 } from 'src/common/response/constants/response.constant';
 import { IResponsePaging } from 'src/common/response/interfaces/response.interface';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
+import {
+    ResponsePagingDto,
+    ResponsePagingMetadataCursorDto,
+    ResponsePagingMetadataDto,
+} from 'src/common/response/dtos/response.paging.dto';
+import { ConfigService } from '@nestjs/config';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 
 @Injectable()
-export class ResponsePagingInterceptor<T>
-    implements NestInterceptor<Promise<T>>
+export class ResponsePagingInterceptor
+    implements NestInterceptor<Promise<ResponsePagingDto>>
 {
     constructor(
         private readonly reflector: Reflector,
         private readonly messageService: MessageService,
-        private readonly helperArrayService: HelperArrayService
+        private readonly helperArrayService: HelperArrayService,
+        private readonly configService: ConfigService,
+        private readonly helperDateService: HelperDateService
     ) {}
 
-    async intercept(
+    intercept(
         context: ExecutionContext,
         next: CallHandler
-    ): Promise<Observable<Promise<ResponsePagingSerialization>>> {
+    ): Observable<Promise<ResponsePagingDto>> {
         if (context.getType() === 'http') {
             return next.handle().pipe(
-                map(async (res: Promise<IResponsePaging>) => {
+                map(async (res: Promise<IResponsePaging<any>>) => {
                     const ctx: HttpArgumentsHost = context.switchToHttp();
                     const response: Response = ctx.getResponse();
                     const request: IRequestApp = ctx.getRequest<IRequestApp>();
@@ -61,48 +55,42 @@ export class ResponsePagingInterceptor<T>
                         RESPONSE_MESSAGE_PATH_META_KEY,
                         context.getHandler()
                     );
-                    const classSerialization: ClassConstructor<any> =
-                        this.reflector.get<ClassConstructor<any>>(
-                            RESPONSE_SERIALIZATION_META_KEY,
-                            context.getHandler()
-                        );
-                    const classSerializationOptions: ClassTransformOptions =
-                        this.reflector.get<ClassTransformOptions>(
-                            RESPONSE_SERIALIZATION_OPTIONS_META_KEY,
-                            context.getHandler()
-                        );
                     let messageProperties: IMessageOptionsProperties =
                         this.reflector.get<IMessageOptionsProperties>(
                             RESPONSE_MESSAGE_PROPERTIES_META_KEY,
                             context.getHandler()
                         );
 
-                    // metadata
-                    const __customLang = request.__customLang;
-                    const __path = request.path;
-                    const __requestId = request.__id;
-                    const __timestamp =
-                        request.__xTimestamp ?? request.__timestamp;
-                    const __timezone = request.__timezone;
-                    const __version = request.__version;
-                    const __repoVersion = request.__repoVersion;
-                    const __pagination = request.__pagination;
-
                     let httpStatus: HttpStatus = response.statusCode;
                     let statusCode: number = response.statusCode;
                     let data: Record<string, any>[] = [];
-                    let metadata: ResponsePagingMetadataSerialization = {
-                        languages: __customLang,
-                        timestamp: __timestamp,
-                        timezone: __timezone,
-                        requestId: __requestId,
-                        path: __path,
-                        version: __version,
-                        repoVersion: __repoVersion,
+
+                    // metadata
+                    const xPath = request.path;
+                    const xPagination = request.__pagination;
+                    const xLanguage: string =
+                        request.__language ?? this.messageService.getLanguage();
+                    const xTimestamp = this.helperDateService.createTimestamp();
+                    const xTimezone =
+                        Intl.DateTimeFormat().resolvedOptions().timeZone;
+                    const xVersion =
+                        request.__version ??
+                        this.configService.get<string>(
+                            'app.urlVersion.version'
+                        );
+                    const xRepoVersion =
+                        this.configService.get<string>('app.repoVersion');
+                    let metadata: ResponsePagingMetadataDto = {
+                        language: xLanguage,
+                        timestamp: xTimestamp,
+                        timezone: xTimezone,
+                        path: xPath,
+                        version: xVersion,
+                        repoVersion: xRepoVersion,
                     };
 
                     // response
-                    const responseData = (await res) as IResponsePaging;
+                    const responseData = (await res) as IResponsePaging<any>;
                     if (!responseData) {
                         throw new Error(
                             'ResponsePaging must instanceof IResponsePaging'
@@ -117,16 +105,8 @@ export class ResponsePagingInterceptor<T>
                     }
 
                     const { _metadata } = responseData;
+
                     data = responseData.data;
-
-                    if (classSerialization) {
-                        data = plainToInstance(
-                            classSerialization,
-                            data,
-                            classSerializationOptions
-                        );
-                    }
-
                     httpStatus =
                         _metadata?.customProperty?.httpStatus ?? httpStatus;
                     statusCode =
@@ -140,58 +120,49 @@ export class ResponsePagingInterceptor<T>
                     delete _metadata?.customProperty;
 
                     // metadata pagination
-
                     const { query } = request;
-
                     delete query.perPage;
-
                     delete query.page;
 
                     const total: number = responseData._pagination.total;
-
                     const totalPage: number =
                         responseData._pagination.totalPage;
-
-                    const perPage: number = __pagination.perPage;
-                    const page: number = __pagination.page;
+                    const perPage: number = xPagination.perPage;
+                    const page: number = xPagination.page;
 
                     const queryString = qs.stringify(query, {
                         encode: false,
                     });
 
-                    const cursorPaginationMetadata: ResponsePaginationCursorSerialization =
+                    const cursorPaginationMetadata: ResponsePagingMetadataCursorDto =
                         {
                             nextPage:
                                 page < totalPage
                                     ? queryString
-                                        ? `${__path}?perPage=${perPage}&page=${
+                                        ? `${xPath}?perPage=${perPage}&page=${
                                               page + 1
                                           }&${queryString}`
-                                        : `${__path}?perPage=${perPage}&page=${
-                                              page + 1
-                                          }`
+                                        : `${xPath}?perPage=${perPage}&page=${page + 1}`
                                     : undefined,
                             previousPage:
                                 page > 1
                                     ? queryString
-                                        ? `${__path}?perPage=${perPage}&page=${
+                                        ? `${xPath}?perPage=${perPage}&page=${
                                               page - 1
                                           }&${queryString}`
-                                        : `${__path}?perPage=${perPage}&page=${
-                                              page - 1
-                                          }`
+                                        : `${xPath}?perPage=${perPage}&page=${page - 1}`
                                     : undefined,
                             firstPage:
                                 totalPage > 1
                                     ? queryString
-                                        ? `${__path}?perPage=${perPage}&page=${1}&${queryString}`
-                                        : `${__path}?perPage=${perPage}&page=${1}`
+                                        ? `${xPath}?perPage=${perPage}&page=${1}&${queryString}`
+                                        : `${xPath}?perPage=${perPage}&page=${1}`
                                     : undefined,
                             lastPage:
                                 totalPage > 1
                                     ? queryString
-                                        ? `${__path}?perPage=${perPage}&page=${totalPage}&${queryString}`
-                                        : `${__path}?perPage=${perPage}&page=${totalPage}`
+                                        ? `${xPath}?perPage=${perPage}&page=${totalPage}&${queryString}`
+                                        : `${xPath}?perPage=${perPage}&page=${totalPage}`
                                     : undefined,
                         };
 
@@ -199,7 +170,7 @@ export class ResponsePagingInterceptor<T>
                         ...metadata,
                         ..._metadata,
                         pagination: {
-                            ...__pagination,
+                            ...xPagination,
                             ...metadata._pagination,
                             total,
                             totalPage: data.length > 0 ? totalPage : 0,
@@ -215,12 +186,19 @@ export class ResponsePagingInterceptor<T>
                         metadata.cursor = cursorPaginationMetadata;
                     }
 
-                    const message: string | IMessage =
-                        await this.messageService.get(messagePath, {
-                            customLanguages: __customLang,
+                    const message: string = this.messageService.setMessage(
+                        messagePath,
+                        {
+                            customLanguage: xLanguage,
                             properties: messageProperties,
-                        });
+                        }
+                    );
 
+                    response.setHeader('x-custom-lang', xLanguage);
+                    response.setHeader('x-timestamp', xTimestamp);
+                    response.setHeader('x-timezone', xTimezone);
+                    response.setHeader('x-version', xVersion);
+                    response.setHeader('x-repo-version', xRepoVersion);
                     response.status(httpStatus);
 
                     return {

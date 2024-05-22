@@ -20,7 +20,6 @@ export interface IHelperJwtOptions
 
 // Helper String
 export interface IHelperStringRandomOptions {
-    upperCase?: boolean;
     safe?: boolean;
 }
 
@@ -50,6 +49,7 @@ export interface IHelperDateCreateOptions {
 
 export interface IHelperDateFormatOptions {
     format?: ENUM_HELPER_DATE_FORMAT | string;
+    locale?: string;
 }
 
 export interface IHelperDateForwardOptions {
@@ -63,25 +63,4 @@ export interface IHelperDateRoundDownOptions {
     minute: boolean;
     second: boolean;
     millisecond: boolean;
-}
-
-// Helper File
-
-export interface IHelperFileRows<T = any> {
-    data: T[];
-    sheetName?: string;
-}
-
-export interface IHelperFileReadOptions {
-    password?: string;
-}
-
-// Helper google
-
-export interface IHelperGooglePayload {
-    email: string;
-}
-
-export interface IHelperGoogleRefresh {
-    accessToken: string;
 }

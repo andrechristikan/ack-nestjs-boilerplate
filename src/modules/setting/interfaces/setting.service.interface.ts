@@ -7,15 +7,17 @@ import {
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/constants/setting.enum.constant';
-import { SettingCreateDto } from 'src/modules/setting/dtos/setting.create.dto';
-import { SettingUpdateValueDto } from 'src/modules/setting/dtos/setting.update-value.dto';
+import { SettingCreateRequestDto } from 'src/modules/setting/dtos/request/setting.create.request.dto';
+import { SettingUpdateRequestDto } from 'src/modules/setting/dtos/request/setting.update.request.dto';
+import { SettingGetResponseDto } from 'src/modules/setting/dtos/response/setting.get.response.dto';
+import { SettingListResponseDto } from 'src/modules/setting/dtos/response/setting.list.response.dto';
 import { SettingDoc } from 'src/modules/setting/repository/entities/setting.entity';
 
 export interface ISettingService {
-    findAll<T>(
+    findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<T[]>;
+    ): Promise<SettingDoc[]>;
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
@@ -29,23 +31,31 @@ export interface ISettingService {
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
     create(
-        { name, description, type, value }: SettingCreateDto,
+        { name, description, type, value }: SettingCreateRequestDto,
         options?: IDatabaseCreateOptions
     ): Promise<SettingDoc>;
-    updateValue(
+    update(
         repository: SettingDoc,
-        { type, value }: SettingUpdateValueDto,
+        { value, description }: SettingUpdateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<SettingDoc>;
     delete(
         repository: SettingDoc,
         options?: IDatabaseSaveOptions
     ): Promise<SettingDoc>;
-    getValue<T>(setting: SettingDoc): Promise<T>;
-    checkValue(value: string, type: ENUM_SETTING_DATA_TYPE): Promise<boolean>;
     deleteMany(
         find: Record<string, any>,
         options?: IDatabaseManyOptions
     ): Promise<boolean>;
+    getValue<T>(type: ENUM_SETTING_DATA_TYPE, value: string): T;
+    checkValue(type: ENUM_SETTING_DATA_TYPE, value: string): boolean;
     getTimezone(): Promise<string>;
+    getTimezoneOffset(): Promise<string>;
+    mapList<T = any>(
+        settings: SettingDoc[]
+    ): Promise<SettingListResponseDto<T>[]>;
+    mapGet<T = any>(settings: SettingDoc): Promise<SettingGetResponseDto<T>>;
+    getMobileNumberAllowed(
+        options?: IDatabaseFindOneOptions
+    ): Promise<SettingGetResponseDto<Record<string, any>>>;
 }

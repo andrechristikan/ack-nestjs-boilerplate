@@ -10,18 +10,20 @@ import {
     FilesInterceptor,
 } from '@nestjs/platform-express';
 import { FILE_SIZE_IN_BYTES } from 'src/common/file/constants/file.constant';
-import { IFileMultipleField } from 'src/common/file/interfaces/file.interface';
+import {
+    IFileUploadMultiple,
+    IFileUploadMultipleField,
+    IFileUploadMultipleFieldOptions,
+    IFileUploadSingle,
+} from 'src/common/file/interfaces/file.interface';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
-export function FileUploadSingle(
-    field?: string,
-    fileSize = FILE_SIZE_IN_BYTES
-): MethodDecorator {
+export function FileUploadSingle(options?: IFileUploadSingle): MethodDecorator {
     return applyDecorators(
         UseInterceptors(
-            FileInterceptor(field ?? 'file', {
+            FileInterceptor(options?.field ?? 'file', {
                 limits: {
-                    fileSize,
+                    fileSize: options?.fileSize ?? FILE_SIZE_IN_BYTES,
                     files: 1,
                 },
             })
@@ -30,46 +32,48 @@ export function FileUploadSingle(
 }
 
 export function FileUploadMultiple(
-    field?: string,
-    maxFiles?: number,
-    fileSize = FILE_SIZE_IN_BYTES
+    options?: IFileUploadMultiple
 ): MethodDecorator {
     return applyDecorators(
         UseInterceptors(
-            FilesInterceptor(field ?? 'files', maxFiles ?? 2, {
-                limits: {
-                    fileSize,
-                },
-            })
-        )
-    );
-}
-
-export const FilePartNumber: () => ParameterDecorator = createParamDecorator(
-    (data: string, ctx: ExecutionContext): number => {
-        const request = ctx.switchToHttp().getRequest<IRequestApp>();
-        const { headers } = request;
-        return headers['x-part-number'] ? Number(headers['x-part-number']) : 0;
-    }
-);
-
-export function FileUploadMultipleFields(
-    fields: IFileMultipleField[],
-    fileSize = FILE_SIZE_IN_BYTES
-): MethodDecorator {
-    return applyDecorators(
-        UseInterceptors(
-            FileFieldsInterceptor(
-                fields.map((e) => ({
-                    name: e.field,
-                    maxCount: e.maxFiles,
-                })),
+            FilesInterceptor(
+                options?.field ?? 'files',
+                options?.maxFiles ?? 2,
                 {
                     limits: {
-                        fileSize,
+                        fileSize: options?.fileSize ?? FILE_SIZE_IN_BYTES,
                     },
                 }
             )
         )
     );
 }
+
+export function FileUploadMultipleFields(
+    fields: IFileUploadMultipleField[],
+    options?: IFileUploadMultipleFieldOptions
+): MethodDecorator {
+    return applyDecorators(
+        UseInterceptors(
+            FileFieldsInterceptor(
+                fields.map(e => ({
+                    name: e.field,
+                    maxCount: e.maxFiles,
+                })),
+                {
+                    limits: {
+                        fileSize: options?.fileSize ?? FILE_SIZE_IN_BYTES,
+                    },
+                }
+            )
+        )
+    );
+}
+
+export const FilePartNumber: () => ParameterDecorator = createParamDecorator(
+    (_: unknown, ctx: ExecutionContext): number => {
+        const request = ctx.switchToHttp().getRequest<IRequestApp>();
+        const { headers } = request;
+        return Number(headers['x-part-number']) ?? 0;
+    }
+);

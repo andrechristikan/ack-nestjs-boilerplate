@@ -2,36 +2,41 @@ import { NestApplication, NestFactory } from '@nestjs/core';
 import { Logger, VersioningType } from '@nestjs/common';
 import { AppModule } from 'src/app/app.module';
 import { ConfigService } from '@nestjs/config';
-import { useContainer } from 'class-validator';
-import swaggerInit from './swagger';
+import { useContainer, validate } from 'class-validator';
+import swaggerInit from 'src/swagger';
+import { plainToInstance } from 'class-transformer';
+import { AppEnvDto } from 'src/app/dtos/app.env.dto';
+import { MessageService } from 'src/common/message/services/message.service';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
-    const databaseUri: string = configService.get<string>('database.host');
+    const databaseUri: string = configService.get<string>('database.uri');
     const env: string = configService.get<string>('app.env');
-    const tz: string = configService.get<string>('app.tz');
+    const timezone: string = configService.get<string>('app.timezone');
     const host: string = configService.get<string>('app.http.host');
     const port: number = configService.get<number>('app.http.port');
     const globalPrefix: string = configService.get<string>('app.globalPrefix');
     const versioningPrefix: string = configService.get<string>(
-        'app.versioning.prefix'
+        'app.urlVersion.prefix'
     );
-    const version: string = configService.get<string>('app.versioning.version');
+    const version: string = configService.get<string>('app.urlVersion.version');
 
     // enable
     const httpEnable: boolean = configService.get<boolean>('app.http.enable');
     const versionEnable: string = configService.get<string>(
-        'app.versioning.enable'
+        'app.urlVersion.enable'
     );
     const jobEnable: boolean = configService.get<boolean>('app.jobEnable');
 
     const logger = new Logger();
     process.env.NODE_ENV = env;
-    process.env.TZ = tz;
+    process.env.TZ = timezone;
 
     // Global
     app.setGlobalPrefix(globalPrefix);
+
+    // For Custom Validation
     useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
     // Versioning
@@ -52,6 +57,17 @@ async function bootstrap() {
     logger.log(`==========================================================`);
 
     logger.log(`Environment Variable`, 'NestApplication');
+
+    // Validate Env
+    const classEnv = plainToInstance(AppEnvDto, process.env);
+    const errors = await validate(classEnv);
+    if (errors.length > 0) {
+        const messageService = app.get(MessageService);
+        const errorsMessage = messageService.setValidationMessage(errors);
+        logger.log(errorsMessage, 'NestApplication');
+        throw new Error('Env Variable Invalid');
+    }
+
     logger.log(JSON.parse(JSON.stringify(process.env)), 'NestApplication');
 
     logger.log(`==========================================================`);

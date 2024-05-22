@@ -10,11 +10,11 @@ import { Reflector } from '@nestjs/core';
 import { Observable, throwError, TimeoutError } from 'rxjs';
 import { catchError, timeout } from 'rxjs/operators';
 import ms from 'ms';
-import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import {
     REQUEST_CUSTOM_TIMEOUT_META_KEY,
     REQUEST_CUSTOM_TIMEOUT_VALUE_META_KEY,
 } from 'src/common/request/constants/request.constant';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 
 @Injectable()
 export class RequestTimeoutInterceptor
@@ -27,13 +27,10 @@ export class RequestTimeoutInterceptor
         private readonly reflector: Reflector
     ) {
         this.maxTimeoutInSecond =
-            this.configService.get<number>('request.timeout');
+            this.configService.get<number>('middleware.timeout');
     }
 
-    async intercept(
-        context: ExecutionContext,
-        next: CallHandler
-    ): Promise<Observable<Promise<any> | string>> {
+    intercept(context: ExecutionContext, next: CallHandler): Observable<void> {
         if (context.getType() === 'http') {
             const customTimeout = this.reflector.get<boolean>(
                 REQUEST_CUSTOM_TIMEOUT_META_KEY,
@@ -48,11 +45,11 @@ export class RequestTimeoutInterceptor
 
                 return next.handle().pipe(
                     timeout(ms(seconds)),
-                    catchError((err) => {
+                    catchError(err => {
                         if (err instanceof TimeoutError) {
                             throw new RequestTimeoutException({
                                 statusCode:
-                                    ENUM_ERROR_STATUS_CODE_ERROR.ERROR_REQUEST_TIMEOUT,
+                                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMEOUT_ERROR,
                                 message: 'http.clientError.requestTimeOut',
                             });
                         }
@@ -62,11 +59,11 @@ export class RequestTimeoutInterceptor
             } else {
                 return next.handle().pipe(
                     timeout(this.maxTimeoutInSecond),
-                    catchError((err) => {
+                    catchError(err => {
                         if (err instanceof TimeoutError) {
                             throw new RequestTimeoutException({
                                 statusCode:
-                                    ENUM_ERROR_STATUS_CODE_ERROR.ERROR_REQUEST_TIMEOUT,
+                                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMEOUT_ERROR,
                                 message: 'http.clientError.requestTimeOut',
                             });
                         }

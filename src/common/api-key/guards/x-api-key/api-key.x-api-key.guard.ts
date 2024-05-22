@@ -5,8 +5,8 @@ import {
     Injectable,
     UnauthorizedException,
 } from '@nestjs/common';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
 import { BadRequestError } from 'passport-headerapikey';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
 
 @Injectable()
 export class ApiKeyXApiKeyGuard extends AuthGuard('x-api-key') {
@@ -15,64 +15,49 @@ export class ApiKeyXApiKeyGuard extends AuthGuard('x-api-key') {
     }
 
     handleRequest<IApiKeyPayload = any>(
-        err: Record<string, any>,
+        err: Error,
         apiKey: IApiKeyPayload,
-        info: Error | string
+        info: BadRequestError
     ): IApiKeyPayload {
-        if (err || !apiKey) {
-            if (
-                info instanceof BadRequestError &&
-                info.message === 'Missing API Key'
-            ) {
-                throw new UnauthorizedException({
-                    statusCode:
-                        ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NEEDED_ERROR,
-                    message: 'apiKey.error.keyNeeded',
-                });
-            } else if (err) {
-                const statusCode: number = Number.parseInt(
-                    err.message as string
-                );
+        if (!apiKey || info?.message === 'Missing Api Key') {
+            throw new UnauthorizedException({
+                statusCode:
+                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_REQUIRED_ERROR,
+                message: 'apiKey.error.xApiKey.required',
+            });
+        } else if (err) {
+            const statusCode: number = Number.parseInt(err.message as string);
 
-                if (
-                    statusCode ===
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR
-                ) {
-                    throw new ForbiddenException({
-                        statusCode,
-                        message: 'apiKey.error.notFound',
-                    });
-                } else if (
-                    statusCode ===
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_IS_ACTIVE_ERROR
-                ) {
-                    throw new ForbiddenException({
-                        statusCode,
-                        message: 'apiKey.error.inactive',
-                    });
-                } else if (
-                    statusCode ===
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_ACTIVE_YET_ERROR
-                ) {
-                    throw new ForbiddenException({
-                        statusCode,
-                        message: 'apiKey.error.notActiveYet',
-                    });
-                } else if (
-                    statusCode ===
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_EXPIRED_ERROR
-                ) {
-                    throw new ForbiddenException({
-                        statusCode,
-                        message: 'apiKey.error.expired',
-                    });
-                }
+            if (
+                statusCode ===
+                ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_NOT_FOUND_ERROR
+            ) {
+                throw new ForbiddenException({
+                    statusCode,
+                    message: 'apiKey.error.xApiKey.notFound',
+                });
+            } else if (
+                statusCode ===
+                ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INACTIVE_ERROR
+            ) {
+                throw new ForbiddenException({
+                    statusCode,
+                    message: 'apiKey.error.xApiKey.inactive',
+                });
+            } else if (
+                statusCode ===
+                ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_EXPIRED_ERROR
+            ) {
+                throw new ForbiddenException({
+                    statusCode,
+                    message: 'apiKey.error.xApiKey.expired',
+                });
             }
 
             throw new UnauthorizedException({
                 statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INVALID_ERROR,
-                message: 'apiKey.error.invalid',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID_ERROR,
+                message: 'apiKey.error.xApiKey.invalid',
             });
         }
 

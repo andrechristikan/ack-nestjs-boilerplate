@@ -1,4 +1,3 @@
-import { faker } from '@faker-js/faker';
 import { applyDecorators, HttpStatus } from '@nestjs/common';
 import {
     ApiBearerAuth,
@@ -14,37 +13,33 @@ import {
     ApiSecurity,
     getSchemaPath,
 } from '@nestjs/swagger';
-import { APP_LANGUAGE } from 'src/app/constants/app.constant';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
 import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
+    IDocAuthOptions,
+    IDocDefaultOptions,
     IDocGuardOptions,
+    IDocOfOptions,
     IDocOptions,
     IDocRequestFileOptions,
     IDocRequestOptions,
     IDocResponseFileOptions,
-    IDocResponsePagingOptions,
-} from 'src/common/doc/interfaces/doc.interface';
-import {
-    IDocAuthOptions,
-    IDocDefaultOptions,
-    IDocOfOptions,
     IDocResponseOptions,
 } from 'src/common/doc/interfaces/doc.interface';
-import { ENUM_ERROR_STATUS_CODE_ERROR } from 'src/common/error/constants/error.status-code.constant';
 import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
-import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/common/policy/constants/policy.status-code.constant';
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
-import { ResponseSerialization } from 'src/common/response/serializations/response.serialization';
-import { ResponsePagingSerialization } from 'src/common/response/serializations/response.paging.serialization';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
+import { ResponseDto } from 'src/common/response/dtos/response.dto';
+import { ResponsePagingDto } from 'src/common/response/dtos/response.paging.dto';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
+import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/common/policy/constants/policy.status-code.constant';
+import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
 
-export function DocDefault<T>(options: IDocDefaultOptions): MethodDecorator {
+export function DocDefault<T>(options: IDocDefaultOptions<T>): MethodDecorator {
     const docs = [];
     const schema: Record<string, any> = {
-        allOf: [{ $ref: getSchemaPath(ResponseSerialization<T>) }],
+        allOf: [{ $ref: getSchemaPath(ResponseDto) }],
         properties: {
             message: {
                 example: options.messagePath,
@@ -56,19 +51,20 @@ export function DocDefault<T>(options: IDocDefaultOptions): MethodDecorator {
         },
     };
 
-    if (options.serialization) {
-        docs.push(ApiExtraModels(options.serialization));
+    if (options.dto) {
+        docs.push(ApiExtraModels(options.dto as any));
         schema.properties = {
             ...schema.properties,
             data: {
-                $ref: getSchemaPath(options.serialization),
+                $ref: getSchemaPath(options.dto as any),
             },
         };
     }
 
     return applyDecorators(
-        ApiExtraModels(ResponseSerialization<T>),
+        ApiExtraModels(ResponseDto),
         ApiResponse({
+            description: options.httpStatus.toString(),
             status: options.httpStatus,
             schema,
         }),
@@ -76,7 +72,7 @@ export function DocDefault<T>(options: IDocDefaultOptions): MethodDecorator {
     );
 }
 
-export function DocOneOf<T>(
+export function DocOneOf(
     httpStatus: HttpStatus,
     ...documents: IDocOfOptions[]
 ): MethodDecorator {
@@ -85,7 +81,7 @@ export function DocOneOf<T>(
 
     for (const doc of documents) {
         const oneOfSchema: Record<string, any> = {
-            allOf: [{ $ref: getSchemaPath(ResponseSerialization<T>) }],
+            allOf: [{ $ref: getSchemaPath(ResponseDto) }],
             properties: {
                 message: {
                     example: doc.messagePath,
@@ -97,12 +93,12 @@ export function DocOneOf<T>(
             },
         };
 
-        if (doc.serialization) {
-            docs.push(ApiExtraModels(doc.serialization));
+        if (doc.dto) {
+            docs.push(ApiExtraModels(doc.dto));
             oneOfSchema.properties = {
                 ...oneOfSchema.properties,
                 data: {
-                    $ref: getSchemaPath(doc.serialization),
+                    $ref: getSchemaPath(doc.dto),
                 },
             };
         }
@@ -111,8 +107,9 @@ export function DocOneOf<T>(
     }
 
     return applyDecorators(
-        ApiExtraModels(ResponseSerialization<T>),
+        ApiExtraModels(ResponseDto),
         ApiResponse({
+            description: httpStatus.toString(),
             status: httpStatus,
             schema: {
                 oneOf,
@@ -122,7 +119,7 @@ export function DocOneOf<T>(
     );
 }
 
-export function DocAnyOf<T>(
+export function DocAnyOf(
     httpStatus: HttpStatus,
     ...documents: IDocOfOptions[]
 ): MethodDecorator {
@@ -131,7 +128,7 @@ export function DocAnyOf<T>(
 
     for (const doc of documents) {
         const anyOfSchema: Record<string, any> = {
-            allOf: [{ $ref: getSchemaPath(ResponseSerialization<T>) }],
+            allOf: [{ $ref: getSchemaPath(ResponseDto) }],
             properties: {
                 message: {
                     example: doc.messagePath,
@@ -143,12 +140,12 @@ export function DocAnyOf<T>(
             },
         };
 
-        if (doc.serialization) {
-            docs.push(ApiExtraModels(doc.serialization));
+        if (doc.dto) {
+            docs.push(ApiExtraModels(doc.dto));
             anyOfSchema.properties = {
                 ...anyOfSchema.properties,
                 data: {
-                    $ref: getSchemaPath(doc.serialization),
+                    $ref: getSchemaPath(doc.dto),
                 },
             };
         }
@@ -157,8 +154,9 @@ export function DocAnyOf<T>(
     }
 
     return applyDecorators(
-        ApiExtraModels(ResponseSerialization<T>),
+        ApiExtraModels(ResponseDto),
         ApiResponse({
+            description: httpStatus.toString(),
             status: httpStatus,
             schema: {
                 anyOf,
@@ -168,7 +166,7 @@ export function DocAnyOf<T>(
     );
 }
 
-export function DocAllOf<T>(
+export function DocAllOf(
     httpStatus: HttpStatus,
     ...documents: IDocOfOptions[]
 ): MethodDecorator {
@@ -177,7 +175,7 @@ export function DocAllOf<T>(
 
     for (const doc of documents) {
         const allOfSchema: Record<string, any> = {
-            allOf: [{ $ref: getSchemaPath(ResponseSerialization<T>) }],
+            allOf: [{ $ref: getSchemaPath(ResponseDto) }],
             properties: {
                 message: {
                     example: doc.messagePath,
@@ -189,12 +187,12 @@ export function DocAllOf<T>(
             },
         };
 
-        if (doc.serialization) {
-            docs.push(ApiExtraModels(doc.serialization));
+        if (doc.dto) {
+            docs.push(ApiExtraModels(doc.dto));
             allOfSchema.properties = {
                 ...allOfSchema.properties,
                 data: {
-                    $ref: getSchemaPath(doc.serialization),
+                    $ref: getSchemaPath(doc.dto),
                 },
             };
         }
@@ -203,8 +201,9 @@ export function DocAllOf<T>(
     }
 
     return applyDecorators(
-        ApiExtraModels(ResponseSerialization<T>),
+        ApiExtraModels(ResponseDto),
         ApiResponse({
+            description: httpStatus.toString(),
             status: httpStatus,
             schema: {
                 allOf,
@@ -215,9 +214,6 @@ export function DocAllOf<T>(
 }
 
 export function Doc(options?: IDocOptions): MethodDecorator {
-    const currentTimestamp: number = new Date().valueOf();
-    const userAgent: string = faker.internet.userAgent();
-
     return applyDecorators(
         ApiOperation({
             summary: options?.summary,
@@ -227,50 +223,25 @@ export function Doc(options?: IDocOptions): MethodDecorator {
         }),
         ApiHeaders([
             {
-                name: 'user-agent',
-                description: 'User agent header',
-                required: false,
-                schema: {
-                    default: userAgent,
-                    example: userAgent,
-                    type: 'string',
-                },
-            },
-            {
                 name: 'x-custom-lang',
                 description: 'Custom language header',
                 required: false,
                 schema: {
-                    default: APP_LANGUAGE,
-                    example: APP_LANGUAGE,
+                    default: ENUM_MESSAGE_LANGUAGE.EN,
+                    example: ENUM_MESSAGE_LANGUAGE.EN,
                     type: 'string',
-                },
-            },
-            {
-                name: 'x-timestamp',
-                description: 'Timestamp header, in microseconds',
-                required: false,
-                schema: {
-                    default: currentTimestamp,
-                    example: currentTimestamp,
-                    type: 'number',
                 },
             },
         ]),
         DocDefault({
-            httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
-            messagePath: 'http.serverError.serviceUnavailable',
-            statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_SERVICE_UNAVAILABLE,
-        }),
-        DocDefault({
             httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
             messagePath: 'http.serverError.internalServerError',
-            statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_UNKNOWN,
+            statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
         }),
         DocDefault({
             httpStatus: HttpStatus.REQUEST_TIMEOUT,
             messagePath: 'http.serverError.requestTimeout',
-            statusCode: ENUM_ERROR_STATUS_CODE_ERROR.ERROR_REQUEST_TIMEOUT,
+            statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMEOUT_ERROR,
         })
     );
 }
@@ -298,21 +269,21 @@ export function DocRequest(options?: IDocRequestOptions) {
     }
 
     if (options?.params) {
-        const params: MethodDecorator[] = options?.params?.map((param) =>
+        const params: MethodDecorator[] = options?.params?.map(param =>
             ApiParam(param)
         );
         docs.push(...params);
     }
 
     if (options?.queries) {
-        const queries: MethodDecorator[] = options?.queries?.map((query) =>
+        const queries: MethodDecorator[] = options?.queries?.map(query =>
             ApiQuery(query)
         );
         docs.push(...queries);
     }
 
-    if (options?.body) {
-        docs.push(ApiBody({ type: options?.body }));
+    if (options?.dto) {
+        docs.push(ApiBody({ type: options?.dto }));
     }
 
     return applyDecorators(...docs);
@@ -322,21 +293,21 @@ export function DocRequestFile(options?: IDocRequestFileOptions) {
     const docs: Array<ClassDecorator | MethodDecorator> = [];
 
     if (options?.params) {
-        const params: MethodDecorator[] = options?.params.map((param) =>
+        const params: MethodDecorator[] = options?.params.map(param =>
             ApiParam(param)
         );
         docs.push(...params);
     }
 
     if (options?.queries) {
-        const queries: MethodDecorator[] = options?.queries?.map((query) =>
+        const queries: MethodDecorator[] = options?.queries?.map(query =>
             ApiQuery(query)
         );
         docs.push(...queries);
     }
 
-    if (options?.body) {
-        docs.push(ApiBody({ type: options?.body }));
+    if (options?.dto) {
+        docs.push(ApiBody({ type: options?.dto }));
     }
 
     return applyDecorators(ApiConsumes('multipart/form-data'), ...docs);
@@ -344,46 +315,17 @@ export function DocRequestFile(options?: IDocRequestFileOptions) {
 
 export function DocGuard(options?: IDocGuardOptions) {
     const oneOfForbidden: IDocOfOptions[] = [];
-    if (options?.userAgent) {
-        oneOfForbidden.push(
-            {
-                statusCode:
-                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_OS_INVALID_ERROR,
-                messagePath: 'request.error.userAgentInvalid',
-            },
-            {
-                statusCode:
-                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_BROWSER_INVALID_ERROR,
-                messagePath: 'request.error.userAgentBrowserInvalid',
-            },
-            {
-                statusCode:
-                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_USER_AGENT_OS_INVALID_ERROR,
-                messagePath: 'request.error.userAgentOsInvalid',
-            }
-        );
-    }
-
-    if (options?.timestamp) {
-        oneOfForbidden.push({
-            statusCode:
-                ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMESTAMP_INVALID_ERROR,
-            messagePath: 'request.error.timestampInvalid',
-        });
-    }
 
     if (options?.role) {
         oneOfForbidden.push({
-            statusCode:
-                ENUM_ROLE_STATUS_CODE_ERROR.ROLE_PAYLOAD_TYPE_INVALID_ERROR,
-            messagePath: 'role.error.typeForbidden',
+            statusCode: ENUM_POLICY_STATUS_CODE_ERROR.ROLE_FORBIDDEN_ERROR,
+            messagePath: 'policy.error.roleForbidden',
         });
     }
 
     if (options?.policy) {
         oneOfForbidden.push({
-            statusCode:
-                ENUM_POLICY_STATUS_CODE_ERROR.POLICY_ABILITY_FORBIDDEN_ERROR,
+            statusCode: ENUM_POLICY_STATUS_CODE_ERROR.ABILITY_FORBIDDEN_ERROR,
             messagePath: 'policy.error.abilityForbidden',
         });
     }
@@ -415,37 +357,46 @@ export function DocAuth(options?: IDocAuthOptions) {
     if (options?.google) {
         docs.push(ApiBearerAuth('google'));
         oneOfUnauthorized.push({
-            messagePath: 'auth.error.googleSSO',
-            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_GOOGLE_SSO_ERROR,
+            messagePath: 'auth.error.socialGoogle',
+            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_SOCIAL_GOOGLE_ERROR,
         });
     }
 
-    if (options?.apiKey) {
-        docs.push(ApiSecurity('apiKey'));
+    if (options?.apple) {
+        docs.push(ApiBearerAuth('apple'));
+        oneOfUnauthorized.push({
+            messagePath: 'auth.error.socialApple',
+            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_SOCIAL_APPLE_ERROR,
+        });
+    }
+
+    if (options?.xApiKey) {
+        docs.push(ApiSecurity('xApiKey'));
         oneOfUnauthorized.push(
             {
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NEEDED_ERROR,
-                messagePath: 'apiKey.error.keyNeeded',
+                statusCode:
+                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_REQUIRED_ERROR,
+                messagePath: 'apiKey.error.xApiKey.required',
             },
             {
                 statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_FOUND_ERROR,
-                messagePath: 'apiKey.error.notFound',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_NOT_FOUND_ERROR,
+                messagePath: 'apiKey.error.xApiKey.notFound',
             },
             {
                 statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_NOT_ACTIVE_YET_ERROR,
-                messagePath: 'apiKey.error.notActiveYet',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_EXPIRED_ERROR,
+                messagePath: 'apiKey.error.xApiKey.expired',
             },
             {
                 statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_EXPIRED_ERROR,
-                messagePath: 'apiKey.error.expired',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID_ERROR,
+                messagePath: 'apiKey.error.xApiKey.invalid',
             },
             {
                 statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.API_KEY_INVALID_ERROR,
-                messagePath: 'apiKey.error.invalid',
+                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_FORBIDDEN_ERROR,
+                messagePath: 'apiKey.error.xApiKey.forbidden',
             }
         );
     }
@@ -466,8 +417,8 @@ export function DocResponse<T = void>(
         statusCode: options?.statusCode ?? options?.httpStatus ?? HttpStatus.OK,
     };
 
-    if (options?.serialization) {
-        docs.serialization = options?.serialization;
+    if (options?.dto) {
+        docs.dto = options?.dto;
     }
 
     return applyDecorators(ApiProduces('application/json'), DocDefault(docs));
@@ -477,9 +428,9 @@ export function DocErrorGroup(docs: MethodDecorator[]) {
     return applyDecorators(...docs);
 }
 
-export function DocResponsePaging<T = void>(
+export function DocResponsePaging<T>(
     messagePath: string,
-    options: IDocResponsePagingOptions<T>
+    options: IDocResponseOptions<T>
 ): MethodDecorator {
     const docs: IDocDefaultOptions = {
         httpStatus: options?.httpStatus ?? HttpStatus.OK,
@@ -487,8 +438,8 @@ export function DocResponsePaging<T = void>(
         statusCode: options?.statusCode ?? options?.httpStatus ?? HttpStatus.OK,
     };
 
-    if (options?.serialization) {
-        docs.serialization = options?.serialization;
+    if (options?.dto) {
+        docs.dto = options?.dto;
     }
 
     return applyDecorators(
@@ -536,14 +487,13 @@ export function DocResponsePaging<T = void>(
             description:
                 'Order direction base on _metadata.pagination.availableOrderDirection',
         }),
-        ApiExtraModels(ResponsePagingSerialization<T>),
-        ApiExtraModels(options.serialization),
+        ApiExtraModels(ResponsePagingDto),
+        ApiExtraModels(options.dto as any),
         ApiResponse({
+            description: docs.httpStatus.toString(),
             status: docs.httpStatus,
             schema: {
-                allOf: [
-                    { $ref: getSchemaPath(ResponsePagingSerialization<T>) },
-                ],
+                allOf: [{ $ref: getSchemaPath(ResponsePagingDto) }],
                 properties: {
                     message: {
                         example: messagePath,
@@ -555,7 +505,7 @@ export function DocResponsePaging<T = void>(
                     data: {
                         type: 'array',
                         items: {
-                            $ref: getSchemaPath(docs.serialization),
+                            $ref: getSchemaPath(docs.dto),
                         },
                     },
                 },
@@ -572,6 +522,7 @@ export function DocResponseFile(
     return applyDecorators(
         ApiProduces(options?.fileType ?? ENUM_FILE_MIME.CSV),
         ApiResponse({
+            description: httpStatus.toString(),
             status: httpStatus,
         })
     );

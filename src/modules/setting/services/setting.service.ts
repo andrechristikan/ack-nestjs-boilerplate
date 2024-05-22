@@ -12,8 +12,10 @@ import { ENUM_HELPER_DATE_FORMAT } from 'src/common/helper/constants/helper.enum
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
 import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/constants/setting.enum.constant';
-import { SettingCreateDto } from 'src/modules/setting/dtos/setting.create.dto';
-import { SettingUpdateValueDto } from 'src/modules/setting/dtos/setting.update-value.dto';
+import { SettingCreateRequestDto } from 'src/modules/setting/dtos/request/setting.create.request.dto';
+import { SettingUpdateRequestDto } from 'src/modules/setting/dtos/request/setting.update.request.dto';
+import { SettingGetResponseDto } from 'src/modules/setting/dtos/response/setting.get.response.dto';
+import { SettingListResponseDto } from 'src/modules/setting/dtos/response/setting.list.response.dto';
 import { ISettingService } from 'src/modules/setting/interfaces/setting.service.interface';
 import {
     SettingDoc,
@@ -32,18 +34,18 @@ export class SettingService implements ISettingService {
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService
     ) {
-        this.timezone = this.configService.get<string>('app.tz');
+        this.timezone = this.configService.get<string>('app.timezone');
         this.timezoneOffset = this.helperDateService.format(
             this.helperDateService.create(),
             { format: ENUM_HELPER_DATE_FORMAT.TIMEZONE }
         );
     }
 
-    async findAll<T = SettingDoc>(
+    async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<T[]> {
-        return this.settingRepository.findAll<T>(find, options);
+    ): Promise<SettingDoc[]> {
+        return this.settingRepository.findAll<SettingDoc>(find, options);
     }
 
     async findOneById(
@@ -68,7 +70,7 @@ export class SettingService implements ISettingService {
     }
 
     async create(
-        { name, description, type, value }: SettingCreateDto,
+        { name, description, type, value }: SettingCreateRequestDto,
         options?: IDatabaseCreateOptions
     ): Promise<SettingDoc> {
         const create: SettingEntity = new SettingEntity();
@@ -80,12 +82,12 @@ export class SettingService implements ISettingService {
         return this.settingRepository.create<SettingEntity>(create, options);
     }
 
-    async updateValue(
+    async update(
         repository: SettingDoc,
-        { type, value }: SettingUpdateValueDto,
+        { description, value }: SettingUpdateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<SettingDoc> {
-        repository.type = type;
+        repository.description = description;
         repository.value = value;
 
         return this.settingRepository.save(repository, options);
@@ -98,28 +100,32 @@ export class SettingService implements ISettingService {
         return this.settingRepository.softDelete(repository, options);
     }
 
-    async getValue<T>(setting: SettingDoc): Promise<T> {
-        if (
-            setting.type === ENUM_SETTING_DATA_TYPE.BOOLEAN &&
-            (setting.value === 'true' || setting.value === 'false')
-        ) {
-            return (setting.value === 'true') as any;
-        } else if (
-            setting.type === ENUM_SETTING_DATA_TYPE.NUMBER &&
-            this.helperNumberService.check(setting.value)
-        ) {
-            return Number.parseInt(setting.value) as any;
-        } else if (setting.type === ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING) {
-            return setting.value.split(',') as any;
-        }
-
-        return setting.value as any;
+    async deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseManyOptions
+    ): Promise<boolean> {
+        return this.settingRepository.deleteMany(find, options);
     }
 
-    async checkValue(
-        value: string,
-        type: ENUM_SETTING_DATA_TYPE
-    ): Promise<boolean> {
+    getValue<T>(type: ENUM_SETTING_DATA_TYPE, value: string): T {
+        if (
+            type === ENUM_SETTING_DATA_TYPE.BOOLEAN &&
+            (value === 'true' || value === 'false')
+        ) {
+            return (value === 'true') as T;
+        } else if (
+            type === ENUM_SETTING_DATA_TYPE.NUMBER &&
+            this.helperNumberService.check(value)
+        ) {
+            return Number.parseInt(value) as T;
+        } else if (type === ENUM_SETTING_DATA_TYPE.JSON) {
+            return JSON.parse(value) as T;
+        }
+
+        return value as T;
+    }
+
+    checkValue(type: ENUM_SETTING_DATA_TYPE, value: string): boolean {
         if (
             type === ENUM_SETTING_DATA_TYPE.BOOLEAN &&
             (value === 'true' || value === 'false')
@@ -131,21 +137,18 @@ export class SettingService implements ISettingService {
         ) {
             return true;
         } else if (
-            (type === ENUM_SETTING_DATA_TYPE.STRING ||
-                type === ENUM_SETTING_DATA_TYPE.ARRAY_OF_STRING) &&
+            type === ENUM_SETTING_DATA_TYPE.STRING &&
             typeof value === 'string'
         ) {
             return true;
+        } else if (type === ENUM_SETTING_DATA_TYPE.JSON) {
+            try {
+                JSON.parse(value);
+                return true;
+            } catch (_) {}
         }
 
         return false;
-    }
-
-    async deleteMany(
-        find: Record<string, any>,
-        options?: IDatabaseManyOptions
-    ): Promise<boolean> {
-        return this.settingRepository.deleteMany(find, options);
     }
 
     async getTimezone(): Promise<string> {
@@ -154,5 +157,48 @@ export class SettingService implements ISettingService {
 
     async getTimezoneOffset(): Promise<string> {
         return this.timezoneOffset;
+    }
+
+    async mapList<T = any>(
+        settings: SettingDoc[]
+    ): Promise<SettingListResponseDto<T>[]> {
+        return settings.map(e => {
+            const parseValue = this.getValue<T>(e.type, e.value);
+
+            return { ...e.toObject(), value: parseValue };
+        });
+    }
+
+    async mapGet<T = any>(
+        setting: SettingDoc
+    ): Promise<SettingGetResponseDto<T>> {
+        const parseValue = this.getValue<T>(setting.type, setting.value);
+
+        return { ...setting.toObject(), value: parseValue };
+    }
+
+    async getMobileNumberAllowed(
+        options?: IDatabaseFindOneOptions
+    ): Promise<SettingGetResponseDto<string[]>> {
+        const setting = await this.findOneByName(
+            'mobileNumberAllowed',
+            options
+        );
+
+        return this.mapGet(setting);
+    }
+
+    async checkMobileNumberAllowed(
+        mobileNumber: string,
+        options?: IDatabaseFindOneOptions
+    ) {
+        const setting = await this.findOneByName(
+            'mobileNumberAllowed',
+            options
+        );
+
+        const mapped = await this.mapGet(setting);
+
+        return mapped.value.some((e: string) => mobileNumber.startsWith(e));
     }
 }
