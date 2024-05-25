@@ -287,13 +287,12 @@ export class UserService implements IUserService {
     }
 
     async joinWithRole(repository: UserDoc): Promise<IUserDoc> {
-        return repository.populate({
-            path: 'role',
-            localField: 'role',
-            foreignField: '_id',
+        return this.userRepository.join(repository, {
+            field: 'role',
+            localKey: 'role',
+            foreignKey: '_id',
             model: RoleEntity.name,
             justOne: true,
-            perDocumentLimit: 1,
         });
     }
 
@@ -317,15 +316,14 @@ export class UserService implements IUserService {
             {
                 ...options,
                 join: {
-                    path: 'role',
-                    localField: 'role',
-                    foreignField: '_id',
-                    match: {
-                        isActive: true,
-                    },
+                    field: 'role',
+                    localKey: 'role',
+                    foreignKey: '_id',
                     model: RoleEntity.name,
                     justOne: true,
-                    perDocumentLimit: 1,
+                    condition: {
+                        isActive: true,
+                    },
                 },
             }
         );
@@ -340,15 +338,14 @@ export class UserService implements IUserService {
             {
                 ...options,
                 join: {
-                    path: 'role',
-                    localField: 'role',
-                    foreignField: '_id',
-                    match: {
-                        isActive: true,
-                    },
+                    field: 'role',
+                    localKey: 'role',
+                    foreignKey: '_id',
                     model: RoleEntity.name,
                     justOne: true,
-                    perDocumentLimit: 1,
+                    condition: {
+                        isActive: true,
+                    },
                 },
             }
         );
@@ -367,15 +364,14 @@ export class UserService implements IUserService {
             {
                 ...options,
                 join: {
-                    path: 'role',
-                    localField: 'role',
-                    foreignField: '_id',
-                    match: {
-                        isActive: true,
-                    },
+                    field: 'role',
+                    localKey: 'role',
+                    foreignKey: '_id',
                     model: RoleEntity.name,
                     justOne: true,
-                    perDocumentLimit: 1,
+                    condition: {
+                        isActive: true,
+                    },
                 },
             }
         );
