@@ -292,8 +292,11 @@ export class UserService implements IUserService {
             localField: 'role',
             foreignField: '_id',
             model: RoleEntity.name,
+            justOne: true,
+            perDocumentLimit: 1,
         });
     }
+
     async getPhotoUploadPath(user: string): Promise<string> {
         return this.uploadPath.replace('{user}', user);
     }
@@ -321,6 +324,8 @@ export class UserService implements IUserService {
                         isActive: true,
                     },
                     model: RoleEntity.name,
+                    justOne: true,
+                    perDocumentLimit: 1,
                 },
             }
         );
@@ -342,6 +347,8 @@ export class UserService implements IUserService {
                         isActive: true,
                     },
                     model: RoleEntity.name,
+                    justOne: true,
+                    perDocumentLimit: 1,
                 },
             }
         );
@@ -367,6 +374,8 @@ export class UserService implements IUserService {
                         isActive: true,
                     },
                     model: RoleEntity.name,
+                    justOne: true,
+                    perDocumentLimit: 1,
                 },
             }
         );

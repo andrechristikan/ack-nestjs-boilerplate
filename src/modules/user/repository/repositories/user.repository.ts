@@ -23,6 +23,8 @@ export class UserRepository extends DatabaseMongoUUIDRepositoryAbstract<
                 localField: 'role',
                 foreignField: '_id',
                 model: RoleEntity.name,
+                justOne: true,
+                perDocumentLimit: 1,
             },
         ]);
     }

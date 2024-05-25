@@ -1,14 +1,17 @@
-import { Prop, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
-import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+import {
+    DatabaseEntity,
+    DatabaseProp,
+    DatabaseSchema,
+} from 'src/common/database/decorators/database.decorator';
+import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
 export const UserPasswordDatabaseName = 'userpasswords';
 
 @DatabaseEntity({ collection: UserPasswordDatabaseName })
 export class UserPasswordEntity extends DatabaseMongoUUIDEntityAbstract {
-    @Prop({
+    @DatabaseProp({
         required: true,
         index: true,
         trim: true,
@@ -17,14 +20,12 @@ export class UserPasswordEntity extends DatabaseMongoUUIDEntityAbstract {
     })
     user: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         type: String,
     })
     password: string;
 }
 
-export const UserPasswordSchema =
-    SchemaFactory.createForClass(UserPasswordEntity);
-
-export type UserPasswordDoc = UserPasswordEntity & Document;
+export const UserPasswordSchema = DatabaseSchema(UserPasswordEntity);
+export type UserPasswordDoc = IDatabaseDocument<UserPasswordEntity>;

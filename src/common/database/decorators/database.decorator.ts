@@ -1,9 +1,14 @@
+import { Type } from '@nestjs/common';
 import {
     InjectConnection,
     InjectModel,
+    Prop,
+    PropOptions,
     Schema,
+    SchemaFactory,
     SchemaOptions,
 } from '@nestjs/mongoose';
+import { Schema as MongooseSchema } from 'mongoose';
 import {
     DATABASE_CONNECTION_NAME,
     DATABASE_CREATED_AT_FIELD_NAME,
@@ -27,9 +32,19 @@ export function DatabaseEntity(options?: SchemaOptions): ClassDecorator {
     return Schema({
         ...options,
         versionKey: false,
-        timestamps: {
+        timestamps: options?.timestamps ?? {
             createdAt: DATABASE_CREATED_AT_FIELD_NAME,
             updatedAt: DATABASE_UPDATED_AT_FIELD_NAME,
         },
     });
+}
+
+export function DatabaseProp(options?: PropOptions<any>): PropertyDecorator {
+    return Prop(options);
+}
+
+export function DatabaseSchema<T = any, N = MongooseSchema<T>>(
+    entity: Type<T>
+): N {
+    return SchemaFactory.createForClass<T>(entity) as N;
 }

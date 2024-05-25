@@ -77,10 +77,10 @@ export class EmailService implements IEmailService {
         }
     }
 
-    async createSignUp(): Promise<boolean> {
+    async createWelcome(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
-                name: ENUM_EMAIL.SIGN_UP,
+                name: ENUM_EMAIL.WElCOME,
                 subject: `Welcome`,
                 htmlBody: readFileSync(
                     './templates/email.sign-up.template.html',
@@ -94,10 +94,10 @@ export class EmailService implements IEmailService {
         }
     }
 
-    async getSignUp(): Promise<GetTemplateCommandOutput> {
+    async getWelcome(): Promise<GetTemplateCommandOutput> {
         try {
             const template = await this.awsSESService.getTemplate({
-                name: ENUM_EMAIL.SIGN_UP,
+                name: ENUM_EMAIL.WElCOME,
             });
 
             return template;
@@ -106,10 +106,10 @@ export class EmailService implements IEmailService {
         }
     }
 
-    async deleteSignUp(): Promise<boolean> {
+    async deleteWelcome(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: ENUM_EMAIL.SIGN_UP,
+                name: ENUM_EMAIL.WElCOME,
             });
 
             return true;
@@ -118,10 +118,10 @@ export class EmailService implements IEmailService {
         }
     }
 
-    async sendSignUp({ name, email }: EmailSendDto): Promise<boolean> {
+    async sendWelcome({ name, email }: EmailSendDto): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: ENUM_EMAIL.SIGN_UP,
+                templateName: ENUM_EMAIL.WElCOME,
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {

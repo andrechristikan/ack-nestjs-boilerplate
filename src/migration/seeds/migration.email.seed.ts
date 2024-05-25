@@ -12,7 +12,7 @@ export class MigrationEmailSeed {
     })
     async seeds(): Promise<void> {
         try {
-            await this.emailService.createSignUp();
+            await this.emailService.createWelcome();
         } catch (err: any) {}
 
         try {
@@ -28,7 +28,7 @@ export class MigrationEmailSeed {
     })
     async remove(): Promise<void> {
         await this.emailService.deleteChangePassword();
-        await this.emailService.deleteSignUp();
+        await this.emailService.deleteWelcome();
 
         return;
     }

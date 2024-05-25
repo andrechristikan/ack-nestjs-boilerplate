@@ -1,26 +1,26 @@
-import { Prop } from '@nestjs/mongoose';
 import { DatabaseEntityAbstract } from 'src/common/database/abstracts/base/database.entity.abstract';
 import {
     DATABASE_CREATED_AT_FIELD_NAME,
     DATABASE_DELETED_AT_FIELD_NAME,
     DATABASE_UPDATED_AT_FIELD_NAME,
 } from 'src/common/database/constants/database.constant';
+import { DatabaseProp } from 'src/common/database/decorators/database.decorator';
 import { v4 as uuidV4 } from 'uuid';
 export abstract class DatabaseMongoUUIDEntityAbstract extends DatabaseEntityAbstract<string> {
-    @Prop({
+    @DatabaseProp({
         type: String,
         default: uuidV4,
     })
     _id: string;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
         index: true,
         type: Date,
     })
     [DATABASE_DELETED_AT_FIELD_NAME]?: Date;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
         index: 'asc',
         type: Date,
@@ -28,7 +28,7 @@ export abstract class DatabaseMongoUUIDEntityAbstract extends DatabaseEntityAbst
     })
     [DATABASE_CREATED_AT_FIELD_NAME]?: Date;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
         index: 'asc',
         type: Date,

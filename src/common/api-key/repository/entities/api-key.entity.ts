@@ -1,14 +1,17 @@
-import { Prop, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
-import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+import {
+    DatabaseEntity,
+    DatabaseProp,
+    DatabaseSchema,
+} from 'src/common/database/decorators/database.decorator';
 import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.constant';
+import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
 
 export const ApiKeyDatabaseName = 'apikeys';
 
 @DatabaseEntity({ collection: ApiKeyDatabaseName })
 export class ApiKeyEntity extends DatabaseMongoUUIDEntityAbstract {
-    @Prop({
+    @DatabaseProp({
         required: true,
         enum: ENUM_API_KEY_TYPE,
         index: true,
@@ -16,7 +19,7 @@ export class ApiKeyEntity extends DatabaseMongoUUIDEntityAbstract {
     })
     type: ENUM_API_KEY_TYPE;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         index: true,
         type: String,
@@ -27,7 +30,7 @@ export class ApiKeyEntity extends DatabaseMongoUUIDEntityAbstract {
     })
     name: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         type: String,
         unique: true,
@@ -37,33 +40,32 @@ export class ApiKeyEntity extends DatabaseMongoUUIDEntityAbstract {
     })
     key: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         trim: true,
         type: String,
     })
     hash: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         index: true,
         type: Boolean,
     })
     isActive: boolean;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
         type: Date,
     })
     startDate?: Date;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
         type: Date,
     })
     endDate?: Date;
 }
 
-export const ApiKeySchema = SchemaFactory.createForClass(ApiKeyEntity);
-
-export type ApiKeyDoc = ApiKeyEntity & Document<string>;
+export const ApiKeySchema = DatabaseSchema(ApiKeyEntity);
+export type ApiKeyDoc = IDatabaseDocument<ApiKeyEntity>;

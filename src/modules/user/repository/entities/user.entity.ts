@@ -1,8 +1,14 @@
-import { Prop, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
-import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
+import {
+    AwsS3Entity,
+    AwsS3Schema,
+} from 'src/common/aws/repository/entities/aws.s3.entity';
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
-import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+import {
+    DatabaseEntity,
+    DatabaseProp,
+    DatabaseSchema,
+} from 'src/common/database/decorators/database.decorator';
+import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import {
     ENUM_USER_GENDER,
@@ -14,7 +20,7 @@ export const UserDatabaseName = 'users';
 
 @DatabaseEntity({ collection: UserDatabaseName })
 export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
-    @Prop({
+    @DatabaseProp({
         required: true,
         index: true,
         trim: true,
@@ -23,7 +29,7 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     })
     firstName: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         index: true,
         trim: true,
@@ -32,7 +38,7 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     })
     lastName: string;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
         trim: true,
         sparse: true,
@@ -43,7 +49,7 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     })
     mobileNumber?: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         unique: true,
         index: true,
@@ -54,57 +60,57 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     })
     email: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         ref: RoleEntity.name,
         index: true,
     })
     role: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         type: String,
     })
     password: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         type: Date,
     })
     passwordExpired: Date;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         type: Date,
     })
     passwordCreated: Date;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         default: 0,
         type: Number,
     })
     passwordAttempt: number;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         type: Date,
     })
     signUpDate: Date;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         enum: ENUM_USER_SIGN_UP_FROM,
     })
     signUpFrom: ENUM_USER_SIGN_UP_FROM;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         type: String,
     })
     salt: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         default: ENUM_USER_STATUS.ACTIVE,
         index: true,
@@ -113,7 +119,7 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     })
     status: ENUM_USER_STATUS;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         default: false,
         index: true,
@@ -121,43 +127,29 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     })
     blocked: boolean;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
-        _id: false,
-        type: {
-            path: String,
-            pathWithFilename: String,
-            filename: String,
-            completedUrl: String,
-            baseUrl: String,
-            mime: String,
-            size: Number,
-            duration: {
-                required: false,
-                type: Number,
-            },
-        },
+        schema: AwsS3Schema,
     })
-    photo?: AwsS3Dto;
+    photo?: AwsS3Entity;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
         maxlength: 200,
     })
     address?: string;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
         enum: ENUM_USER_GENDER,
     })
     gender?: ENUM_USER_GENDER;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
     })
     selfDeletion?: boolean;
 }
 
-export const UserSchema = SchemaFactory.createForClass(UserEntity);
-
-export type UserDoc = UserEntity & Document;
+export const UserSchema = DatabaseSchema(UserEntity);
+export type UserDoc = IDatabaseDocument<UserEntity>;

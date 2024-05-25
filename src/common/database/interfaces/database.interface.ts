@@ -1,5 +1,7 @@
-import { PopulateOptions } from 'mongoose';
+import { Document, PopulateOptions } from 'mongoose';
 import { IPaginationOrder } from 'src/common/pagination/interfaces/pagination.interface';
+
+export type IDatabaseDocument<T> = T & Document;
 
 // find one
 export interface IDatabaseFindOneOptions<T = any> {

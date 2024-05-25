@@ -94,7 +94,7 @@ export class UserPublicController {
             });
             await this.userPasswordService.createByUser(user, { session });
 
-            await this.emailService.sendSignUp({
+            await this.emailService.sendWelcome({
                 email,
                 name:
                     firstName && lastName ? `${firstName} ${lastName}` : email,

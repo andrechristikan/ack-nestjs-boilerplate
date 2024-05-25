@@ -387,7 +387,7 @@ export class UserAdminController {
             );
             await this.userPasswordService.createByUser(created, { session });
 
-            await this.emailService.sendSignUp({
+            await this.emailService.sendWelcome({
                 email,
                 name:
                     firstName && lastName ? `${firstName} ${lastName}` : email,
