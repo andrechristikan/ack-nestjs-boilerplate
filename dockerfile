@@ -1,5 +1,5 @@
 FROM node:lts-alpine
-LABEL maintainer "ack@baibay.id"
+LABEL maintainer "andrechristikan@gmail.com"
 
 ENV NODE_ENV=${NODE_ENV}
 
