@@ -10,6 +10,7 @@ export default registerAs(
     (): Record<string, any> => ({
         name: process.env.APP_NAME ?? 'ack',
         env: process.env.APP_ENV ?? ENUM_APP_ENVIRONMENT.DEVELOPMENT,
+        migration: process.env.APP_MIGRATION === 'true' ?? false,
         timezone: process.env.APP_TIMEZONE ?? ENUM_APP_TIMEZONE.ASIA_SINGAPORE,
         repoVersion: version,
         globalPrefix:

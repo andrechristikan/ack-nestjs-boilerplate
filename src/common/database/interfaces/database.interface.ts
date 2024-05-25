@@ -1,6 +1,10 @@
 import { Document } from 'mongoose';
 import { IPaginationOrder } from 'src/common/pagination/interfaces/pagination.interface';
 
+export interface IDatabaseQueryContainOptions {
+    fullWord: boolean;
+}
+
 export interface IDatabaseJoinOptions {
     field: string;
     localKey: string;
