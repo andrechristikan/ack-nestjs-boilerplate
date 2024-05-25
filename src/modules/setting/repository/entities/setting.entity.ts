@@ -7,9 +7,9 @@ import {
 import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/constants/setting.enum.constant';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
 
-export const SettingDatabaseName = 'settings';
+export const SettingTableName = 'Settings';
 
-@DatabaseEntity({ collection: SettingDatabaseName })
+@DatabaseEntity({ collection: SettingTableName })
 export class SettingEntity extends DatabaseMongoUUIDEntityAbstract {
     @DatabaseProp({
         required: true,

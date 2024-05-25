@@ -8,9 +8,9 @@ import { IDatabaseDocument } from 'src/common/database/interfaces/database.inter
 import { ENUM_USER_HISTORY_STATE } from 'src/modules/user/constants/user-history.enum.constant';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
-export const UserHistoryDatabaseName = 'userhistories';
+export const UserHistoryTableName = 'UserHistories';
 
-@DatabaseEntity({ collection: UserHistoryDatabaseName })
+@DatabaseEntity({ collection: UserHistoryTableName })
 export class UserHistoryEntity extends DatabaseMongoUUIDEntityAbstract {
     @DatabaseProp({
         required: true,

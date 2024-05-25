@@ -7,9 +7,9 @@ import {
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
-export const UserPasswordDatabaseName = 'userpasswords';
+export const UserPasswordTableName = 'UserPasswords';
 
-@DatabaseEntity({ collection: UserPasswordDatabaseName })
+@DatabaseEntity({ collection: UserPasswordTableName })
 export class UserPasswordEntity extends DatabaseMongoUUIDEntityAbstract {
     @DatabaseProp({
         required: true,

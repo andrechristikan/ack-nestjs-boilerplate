@@ -7,9 +7,9 @@ import {
 import { ENUM_API_KEY_TYPE } from 'src/common/api-key/constants/api-key.enum.constant';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
 
-export const ApiKeyDatabaseName = 'apikeys';
+export const ApiKeyTableName = 'ApiKeys';
 
-@DatabaseEntity({ collection: ApiKeyDatabaseName })
+@DatabaseEntity({ collection: ApiKeyTableName })
 export class ApiKeyEntity extends DatabaseMongoUUIDEntityAbstract {
     @DatabaseProp({
         required: true,

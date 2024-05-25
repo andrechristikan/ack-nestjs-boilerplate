@@ -11,9 +11,9 @@ import {
     RolePermissionSchema,
 } from 'src/modules/role/repository/entities/role.permission.entity';
 
-export const RoleDatabaseName = 'roles';
+export const RoleTableName = 'Roles';
 
-@DatabaseEntity({ collection: RoleDatabaseName })
+@DatabaseEntity({ collection: RoleTableName })
 export class RoleEntity extends DatabaseMongoUUIDEntityAbstract {
     @DatabaseProp({
         required: true,

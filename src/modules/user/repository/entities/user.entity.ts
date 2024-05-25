@@ -16,9 +16,9 @@ import {
     ENUM_USER_STATUS,
 } from 'src/modules/user/constants/user.enum.constant';
 
-export const UserDatabaseName = 'users';
+export const UserTableName = 'Users';
 
-@DatabaseEntity({ collection: UserDatabaseName })
+@DatabaseEntity({ collection: UserTableName })
 export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     @DatabaseProp({
         required: true,
