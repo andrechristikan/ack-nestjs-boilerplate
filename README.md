@@ -38,7 +38,7 @@
     - [Others](#others)
   - [Third Party Integration](#third-party-integration)
   - [Installation](#installation)
-  - [API Spec](#api-spec)
+  - [Swagger](#swagger)
   - [License](#license)
   - [Contribute](#contribute)
   - [Contact](#contact)
@@ -47,6 +47,7 @@
 
 > Very limited documentation
 
+* There have been some breaking changes between v5 and v6.
 * The features will be relate with AWS / Amazon web service
 * Stateless Authorization
 * Must run MongoDB as a `replication set` for `database transactions`.
@@ -61,7 +62,7 @@
 ## Todo
 
 * [x] Refactor to version 6, more straightforward
-* [ ] Add message remaining
+* [x] Add message remaining
 * [ ] Refactor unit test
 * [ ] Update Documentation, add behaviors
 * [ ] Update Documentation, and include an diagram for easier comprehension
@@ -176,10 +177,9 @@ Describes which version.
 
 Installation will describe in difference doc. [here][doc-installation].
 
-## API Spec
+## Swagger
 
-You can check The API Spec after running this project. Url `localhost:3000/docs`.
-`x-api-key` is `v8VB0yY887lMpTA2VJMV:zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg`
+You can check The Swagger after running this project. Url `localhost:3000/docs` and don't for get to put `x-api-key` on header.
 
 ## License
 
@@ -225,7 +225,7 @@ If your code behind commit with the original / main / master branch, please upda
 
 <!-- CONTACTS -->
 [author-linkedin]: https://linkedin.com/in/andrechristikan
-[author-email]: mailto:ack@baibay.id
+[author-email]: mailto:andrechristikan@gmail.com
 [author-github]: https://github.com/andrechristikan
 
 <!-- Repo LINKS -->
@@ -233,11 +233,6 @@ If your code behind commit with the original / main / master branch, please upda
 [ack-stars]: https://github.com/andrechristikan/ack-nestjs-boilerplate/stargazers
 [ack-forks]: https://github.com/andrechristikan/ack-nestjs-boilerplate/network/members
 [ack-contributors]: https://github.com/andrechristikan/ack-nestjs-boilerplate/graphs/contributors
-
-<!-- Other Repo Links -->
-[ack]: https://github.com/andrechristikan/ack-nestjs-boilerplate
-[ack-typeorm]: https://github.com/andrechristikan/nestjs-boilerplate-typeorm
-[ack-kafka]: https://github.com/andrechristikan/ack-nestjs-boilerplate-kafka
 
 <!-- license -->
 [license]: LICENSE.md

@@ -226,7 +226,6 @@ export class UserAdminController {
     ): Promise<IResponsePaging<UserHistoryListResponseDto>> {
         const find: Record<string, any> = {
             ..._search,
-            user: user._id,
         };
 
         const userHistories: UserHistoryDoc[] =
@@ -271,7 +270,6 @@ export class UserAdminController {
     ): Promise<IResponsePaging<UserPasswordListResponseDto>> {
         const find: Record<string, any> = {
             ..._search,
-            user: user._id,
         };
 
         const userHistories: UserPasswordDoc[] =
