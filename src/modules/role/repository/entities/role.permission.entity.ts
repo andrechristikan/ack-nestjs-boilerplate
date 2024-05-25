@@ -3,7 +3,6 @@ import {
     DatabaseProp,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
-import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_SUBJECT,
@@ -28,4 +27,3 @@ export class RolePermissionEntity {
 }
 
 export const RolePermissionSchema = DatabaseSchema(RolePermissionEntity);
-export type RolePermissionDoc = IDatabaseDocument<RolePermissionEntity>;

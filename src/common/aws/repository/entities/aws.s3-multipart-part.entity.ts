@@ -3,7 +3,6 @@ import {
     DatabaseProp,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
-import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
 
 @DatabaseEntity({ timestamps: false, _id: false })
 export class AwsS3MultipartPartEntity {
@@ -29,4 +28,3 @@ export class AwsS3MultipartPartEntity {
 export const AwsS3MultipartPartSchema = DatabaseSchema(
     AwsS3MultipartPartEntity
 );
-export type AwsS3MultipartPartDoc = IDatabaseDocument<AwsS3MultipartPartEntity>;

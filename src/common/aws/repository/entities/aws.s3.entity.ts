@@ -3,7 +3,6 @@ import {
     DatabaseProp,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
-import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
 
 @DatabaseEntity({ timestamps: false, _id: false })
 export class AwsS3Entity {
@@ -63,4 +62,3 @@ export class AwsS3Entity {
 }
 
 export const AwsS3Schema = DatabaseSchema(AwsS3Entity);
-export type AwsS3Doc = IDatabaseDocument<AwsS3Entity>;
