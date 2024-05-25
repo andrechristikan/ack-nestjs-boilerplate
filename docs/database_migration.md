@@ -18,8 +18,8 @@ yarn rollback
 ```
 
 # API Key Test
-api key: `2ihKDneb9jQGgidAOqfO`
-api key secret: `ZLCtDd2rh3TAyVhfAeo3JOPvWfAsTp0Oq6rHl69D`
+api key: `v8VB0yY887lMpTA2VJMV`
+api key secret: `zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg`
 
 # User Test
 
@@ -37,16 +37,4 @@ api key secret: `ZLCtDd2rh3TAyVhfAeo3JOPvWfAsTp0Oq6rHl69D`
    - password: `aaAA@123`
 
 <!-- Reference -->
-[ref-nestjs]: http://nestjs.com
-[ref-mongoose]: https://mongoosejs.com
-[ref-mongodb]: https://docs.mongodb.com/
-[ref-nodejs]: https://nodejs.org/
-[ref-typescript]: https://www.typescriptlang.org/
-[ref-docker]: https://docs.docker.com
-[ref-dockercompose]: https://docs.docker.com/compose/
-[ref-yarn]: https://yarnpkg.com
-[ref-12factor]: https://12factor.net
 [ref-nestjscommand]: https://gitlab.com/aa900031/nestjs-command
-[ref-jwt]: https://jwt.io
-[ref-jest]: https://jestjs.io/docs/getting-started
-[ref-git]: https://git-scm.com
