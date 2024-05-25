@@ -23,7 +23,7 @@ import {
     IDatabaseFindOneLockOptions,
     IDatabaseRawFindAllOptions,
     IDatabaseRawGetTotalOptions,
-    IDatabaseJoinOptions,
+    IDatabaseJoin,
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 
@@ -32,11 +32,11 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
     EntityDocument,
 > extends DatabaseRepositoryAbstract<EntityDocument> {
     protected _repository: Model<Entity>;
-    protected _joinOnFind?: IDatabaseJoinOptions | IDatabaseJoinOptions[];
+    protected _joinOnFind?: IDatabaseJoin | IDatabaseJoin[];
 
     constructor(
         repository: Model<Entity>,
-        options?: IDatabaseJoinOptions | IDatabaseJoinOptions[]
+        options?: IDatabaseJoin | IDatabaseJoin[]
     ) {
         super();
 
@@ -602,9 +602,9 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
 
     async join<T = any>(
         repository: EntityDocument & Document<string>,
-        options: IDatabaseJoinOptions
+        joins: IDatabaseJoin | IDatabaseJoin[]
     ): Promise<T> {
-        const cOptions = this._convertJoinOption(options);
+        const cOptions = this._convertJoinOption(joins);
 
         return repository.populate(cOptions);
     }
@@ -752,7 +752,7 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
     }
 
     private _convertJoinOption(
-        options: IDatabaseJoinOptions | IDatabaseJoinOptions[]
+        options: IDatabaseJoin | IDatabaseJoin[]
     ): PopulateOptions | PopulateOptions[] {
         if (Array.isArray(options)) {
             const cOptions: PopulateOptions[] = options.map(e => {

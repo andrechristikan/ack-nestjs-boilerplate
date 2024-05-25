@@ -5,7 +5,7 @@ export interface IDatabaseQueryContainOptions {
     fullWord: boolean;
 }
 
-export interface IDatabaseJoinOptions {
+export interface IDatabaseJoin {
     field: string;
     localKey: string;
     foreignKey: string;
@@ -19,7 +19,7 @@ export type IDatabaseDocument<T> = T & Document;
 // find one
 export interface IDatabaseFindOneOptions<T = any> {
     select?: Record<string, boolean | number> | string;
-    join?: boolean | IDatabaseJoinOptions | IDatabaseJoinOptions[];
+    join?: boolean | IDatabaseJoin | IDatabaseJoin[];
     session?: T;
     withDeleted?: boolean;
 }

@@ -14,7 +14,7 @@ import {
     IDatabaseFindOneLockOptions,
     IDatabaseRawFindAllOptions,
     IDatabaseRawGetTotalOptions,
-    IDatabaseJoinOptions,
+    IDatabaseJoin,
 } from 'src/common/database/interfaces/database.interface';
 
 export abstract class DatabaseRepositoryAbstract<Entity = any> {
@@ -127,7 +127,7 @@ export abstract class DatabaseRepositoryAbstract<Entity = any> {
 
     abstract join<T = any>(
         repository: Entity,
-        options: IDatabaseJoinOptions
+        joins: IDatabaseJoin | IDatabaseJoin[]
     ): Promise<T>;
 
     abstract updateManyRaw(
