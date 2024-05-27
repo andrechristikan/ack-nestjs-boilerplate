@@ -133,7 +133,7 @@ export class SettingAdminController {
         if (!check) {
             throw new BadRequestException({
                 statusCode:
-                    ENUM_SETTING_STATUS_CODE_ERROR.SETTING_VALUE_NOT_ALLOWED_ERROR,
+                    ENUM_SETTING_STATUS_CODE_ERROR.VALUE_NOT_ALLOWED_ERROR,
                 message: 'setting.error.valueNotAllowed',
             });
         }

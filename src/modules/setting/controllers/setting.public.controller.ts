@@ -13,6 +13,7 @@ import { SettingLanguageResponseDto } from 'src/modules/setting/dtos/response/se
 import { SettingTimezoneResponseDto } from 'src/modules/setting/dtos/response/setting.timezone.response.dto';
 import { SettingService } from 'src/modules/setting/services/setting.service';
 
+// TODO: MOBILE NUMBER -> COUNTRY ALLOWED TABLE SEPARATE
 @ApiTags('modules.public.setting')
 @Controller({
     version: '1',

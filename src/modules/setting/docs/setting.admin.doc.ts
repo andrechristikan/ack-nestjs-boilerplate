@@ -44,8 +44,7 @@ export function SettingAdminGetDoc(): MethodDecorator {
         DocErrorGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,
-                statusCode:
-                    ENUM_SETTING_STATUS_CODE_ERROR.SETTING_NOT_FOUND_ERROR,
+                statusCode: ENUM_SETTING_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
                 messagePath: 'setting.error.notFound',
             }),
         ])
@@ -71,14 +70,13 @@ export function SettingAdminUpdateDoc(): MethodDecorator {
         DocErrorGroup([
             DocDefault({
                 httpStatus: HttpStatus.NOT_FOUND,
-                statusCode:
-                    ENUM_SETTING_STATUS_CODE_ERROR.SETTING_NOT_FOUND_ERROR,
+                statusCode: ENUM_SETTING_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
                 messagePath: 'setting.error.notFound',
             }),
             DocDefault({
                 httpStatus: HttpStatus.BAD_REQUEST,
                 statusCode:
-                    ENUM_SETTING_STATUS_CODE_ERROR.SETTING_VALUE_NOT_ALLOWED_ERROR,
+                    ENUM_SETTING_STATUS_CODE_ERROR.VALUE_NOT_ALLOWED_ERROR,
                 messagePath: 'setting.error.valueNotAllowed',
             }),
         ])

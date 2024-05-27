@@ -49,7 +49,7 @@ export class RequestTimeoutInterceptor
                         if (err instanceof TimeoutError) {
                             throw new RequestTimeoutException({
                                 statusCode:
-                                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMEOUT_ERROR,
+                                    ENUM_REQUEST_STATUS_CODE_ERROR.TIMEOUT_ERROR,
                                 message: 'http.clientError.requestTimeOut',
                             });
                         }
@@ -63,7 +63,7 @@ export class RequestTimeoutInterceptor
                         if (err instanceof TimeoutError) {
                             throw new RequestTimeoutException({
                                 statusCode:
-                                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMEOUT_ERROR,
+                                    ENUM_REQUEST_STATUS_CODE_ERROR.TIMEOUT_ERROR,
                                 message: 'http.clientError.requestTimeOut',
                             });
                         }

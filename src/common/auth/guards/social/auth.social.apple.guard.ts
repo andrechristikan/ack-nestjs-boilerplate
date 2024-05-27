@@ -22,8 +22,7 @@ export class AuthSocialAppleGuard implements CanActivate {
 
         if (acArr.length !== 2) {
             throw new UnauthorizedException({
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_SOCIAL_GOOGLE_ERROR,
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_ERROR,
                 message: 'auth.error.socialApple',
             });
         }
@@ -41,8 +40,7 @@ export class AuthSocialAppleGuard implements CanActivate {
             return true;
         } catch (err: any) {
             throw new UnauthorizedException({
-                statusCode:
-                    ENUM_AUTH_STATUS_CODE_ERROR.AUTH_SOCIAL_GOOGLE_ERROR,
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_ERROR,
                 message: 'auth.error.socialApple',
             });
         }
