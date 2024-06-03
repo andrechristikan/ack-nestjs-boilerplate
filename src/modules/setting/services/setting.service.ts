@@ -48,6 +48,13 @@ export class SettingService implements ISettingService {
         return this.settingRepository.findAll<SettingDoc>(find, options);
     }
 
+    async findOne(
+        find: Record<string, any>,
+        options?: IDatabaseFindOneOptions
+    ): Promise<SettingDoc> {
+        return this.settingRepository.findOne<SettingDoc>(find, options);
+    }
+
     async findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
@@ -118,8 +125,6 @@ export class SettingService implements ISettingService {
             this.helperNumberService.check(value)
         ) {
             return Number.parseInt(value) as T;
-        } else if (type === ENUM_SETTING_DATA_TYPE.JSON) {
-            return JSON.parse(value) as T;
         }
 
         return value as T;
@@ -141,11 +146,6 @@ export class SettingService implements ISettingService {
             typeof value === 'string'
         ) {
             return true;
-        } else if (type === ENUM_SETTING_DATA_TYPE.JSON) {
-            try {
-                JSON.parse(value);
-                return true;
-            } catch (_) {}
         }
 
         return false;
@@ -175,30 +175,5 @@ export class SettingService implements ISettingService {
         const parseValue = this.getValue<T>(setting.type, setting.value);
 
         return { ...setting.toObject(), value: parseValue };
-    }
-
-    async getMobileNumberAllowed(
-        options?: IDatabaseFindOneOptions
-    ): Promise<SettingGetResponseDto<string[]>> {
-        const setting = await this.findOneByName(
-            'mobileNumberAllowed',
-            options
-        );
-
-        return this.mapGet(setting);
-    }
-
-    async checkMobileNumberAllowed(
-        mobileNumber: string,
-        options?: IDatabaseFindOneOptions
-    ) {
-        const setting = await this.findOneByName(
-            'mobileNumberAllowed',
-            options
-        );
-
-        const mapped = await this.mapGet(setting);
-
-        return mapped.value.some((e: string) => mobileNumber.startsWith(e));
     }
 }

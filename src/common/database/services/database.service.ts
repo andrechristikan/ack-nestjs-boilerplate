@@ -11,7 +11,6 @@ export class DatabaseService implements IDatabaseService {
 
     createOptions(): MongooseModuleOptions {
         const env = this.configService.get<string>('app.env');
-        const migration = this.configService.get<boolean>('app.migration');
 
         const uri = this.configService.get<string>('database.uri');
         const debug = this.configService.get<boolean>('database.debug');
@@ -26,8 +25,8 @@ export class DatabaseService implements IDatabaseService {
 
         const mongooseOptions: MongooseModuleOptions = {
             uri,
-            autoCreate: migration,
-            autoIndex: migration,
+            autoCreate: true,
+            autoIndex: true,
             ...timeoutOptions,
         };
 

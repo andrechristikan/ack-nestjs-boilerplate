@@ -94,13 +94,13 @@ export function DatabaseQueryContain(
     };
 }
 
-export function DatabaseQueryOr(queries: Record<string, any>) {
+export function DatabaseQueryOr(queries: Record<string, any>[]) {
     return {
         $or: queries,
     };
 }
 
-export function DatabaseQueryAnd(queries: Record<string, any>) {
+export function DatabaseQueryAnd(queries: Record<string, any>[]) {
     return {
         $and: queries,
     };

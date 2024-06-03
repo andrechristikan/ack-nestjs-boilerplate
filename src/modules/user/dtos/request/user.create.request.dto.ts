@@ -59,7 +59,18 @@ export class UserCreateRequestDto {
     readonly lastName: string;
 
     @ApiProperty({
-        example: `628${faker.string.fromCharacters('1234567890', {
+        example: faker.helpers.arrayElement(['62', '65']),
+        required: false,
+        description: 'Country phone code',
+        maxLength: 4,
+    })
+    @IsString()
+    @IsOptional()
+    @MaxLength(4)
+    readonly mobileNumberCode?: string;
+
+    @ApiProperty({
+        example: `8${faker.string.fromCharacters('1234567890', {
             min: 7,
             max: 11,
         })}`,

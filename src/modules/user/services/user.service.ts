@@ -101,6 +101,7 @@ export class UserService implements IUserService {
         {
             email,
             mobileNumber,
+            mobileNumberCode,
             firstName,
             lastName,
             role,
@@ -113,7 +114,6 @@ export class UserService implements IUserService {
         create.firstName = firstName;
         create.lastName = lastName;
         create.email = email;
-        create.mobileNumber = mobileNumber;
         create.role = role;
         create.status = ENUM_USER_STATUS.ACTIVE;
         create.blocked = false;
@@ -124,6 +124,11 @@ export class UserService implements IUserService {
         create.passwordAttempt = 0;
         create.signUpDate = this.helperDateService.create();
         create.signUpFrom = signUpFrom;
+
+        if (mobileNumber && mobileNumberCode) {
+            create.mobileNumber = mobileNumber;
+            create.mobileNumberCode = mobileNumberCode;
+        }
 
         return this.userRepository.create<UserEntity>(create, options);
     }
@@ -388,13 +393,18 @@ export class UserService implements IUserService {
             lastName,
             address,
             mobileNumber,
+            mobileNumberCode,
         }: UserUpdateProfileRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.firstName = firstName;
         repository.lastName = lastName;
         repository.address = address;
-        repository.mobileNumber = mobileNumber;
+
+        if (mobileNumber && mobileNumberCode) {
+            repository.mobileNumber = mobileNumber;
+            repository.mobileNumberCode = mobileNumberCode;
+        }
 
         return this.userRepository.save(repository, options);
     }

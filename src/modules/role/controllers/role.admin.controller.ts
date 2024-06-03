@@ -233,6 +233,10 @@ export class RoleAdminController {
 
     @RoleAdminInactiveDoc()
     @Response('role.inactive')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.ROLE,
+        action: [ENUM_POLICY_ACTION.READ],
+    })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
     @ApiKeyPublicProtected()
@@ -248,6 +252,10 @@ export class RoleAdminController {
 
     @RoleAdminActiveDoc()
     @Response('role.active')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.ROLE,
+        action: [ENUM_POLICY_ACTION.READ],
+    })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
     @ApiKeyPublicProtected()

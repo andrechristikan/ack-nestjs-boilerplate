@@ -18,6 +18,10 @@ export interface ISettingService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<SettingDoc[]>;
+    findOne(
+        find: Record<string, any>,
+        options?: IDatabaseFindOneOptions
+    ): Promise<SettingDoc>;
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
@@ -55,7 +59,4 @@ export interface ISettingService {
         settings: SettingDoc[]
     ): Promise<SettingListResponseDto<T>[]>;
     mapGet<T = any>(settings: SettingDoc): Promise<SettingGetResponseDto<T>>;
-    getMobileNumberAllowed(
-        options?: IDatabaseFindOneOptions
-    ): Promise<SettingGetResponseDto<Record<string, any>>>;
 }

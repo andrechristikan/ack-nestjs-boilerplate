@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from 'src/common/auth/auth.module';
+import { CountryPublicController } from 'src/modules/country/controllers/country.public.controller';
+import { CountryModule } from 'src/modules/country/country.module';
 import { EmailModule } from 'src/modules/email/email.module';
 import { HelloPublicController } from 'src/modules/hello/controllers/hello.public.controller';
 import { RoleModule } from 'src/modules/role/role.module';
@@ -13,9 +15,17 @@ import { UserModule } from 'src/modules/user/user.module';
         HelloPublicController,
         SettingPublicController,
         UserPublicController,
+        CountryPublicController,
     ],
     providers: [],
     exports: [],
-    imports: [SettingModule, UserModule, AuthModule, RoleModule, EmailModule],
+    imports: [
+        SettingModule,
+        UserModule,
+        AuthModule,
+        RoleModule,
+        EmailModule,
+        CountryModule,
+    ],
 })
 export class RoutesPublicModule {}

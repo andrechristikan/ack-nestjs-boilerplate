@@ -12,5 +12,5 @@ export class UserUpdatePasswordAttemptRequestDto {
     @Min(0)
     @Max(3)
     @Type(() => Number)
-    passwordAttempt: number;
+    readonly passwordAttempt: number;
 }

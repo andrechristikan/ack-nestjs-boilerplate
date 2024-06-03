@@ -1,0 +1,11 @@
+{
+    "list": "List of countries retrieved successfully.",
+    "get": "Country details fetched successfully.",
+    "inactive": "Country marked as inactive.",
+    "active": "Country marked as active.",
+    "all": "Get all countries retrieved successfully.",
+    "error": {
+        "isActiveInvalid": "Invalid active status for the country.",
+        "notFound": "The requested country was not found."
+    }
+}

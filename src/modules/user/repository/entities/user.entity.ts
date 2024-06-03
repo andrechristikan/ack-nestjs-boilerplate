@@ -42,12 +42,18 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
         required: false,
         trim: true,
         sparse: true,
-        unique: true,
         type: String,
         maxlength: 20,
         minlength: 8,
     })
     mobileNumber?: string;
+
+    @DatabaseProp({
+        required: false,
+        type: String,
+        maxLength: 4,
+    })
+    mobileNumberCode?: string;
 
     @DatabaseProp({
         required: true,

@@ -3,5 +3,6 @@ import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.
 
 export class UserSignUpRequestDto extends OmitType(UserCreateRequestDto, [
     'mobileNumber',
+    'mobileNumberCode',
     'role',
 ] as const) {}

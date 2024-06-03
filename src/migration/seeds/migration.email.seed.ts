@@ -7,10 +7,10 @@ export class MigrationEmailSeed {
     constructor(private readonly emailService: EmailService) {}
 
     @Command({
-        command: 'seed:email',
-        describe: 'seeds emails',
+        command: 'migrate:email',
+        describe: 'migrate emails',
     })
-    async seeds(): Promise<void> {
+    async migrate(): Promise<void> {
         try {
             await this.emailService.createWelcome();
         } catch (err: any) {}
@@ -18,17 +18,6 @@ export class MigrationEmailSeed {
         try {
             await this.emailService.createChangePassword();
         } catch (err: any) {}
-
-        return;
-    }
-
-    @Command({
-        command: 'remove:email',
-        describe: 'remove emails',
-    })
-    async remove(): Promise<void> {
-        await this.emailService.deleteChangePassword();
-        await this.emailService.deleteWelcome();
 
         return;
     }

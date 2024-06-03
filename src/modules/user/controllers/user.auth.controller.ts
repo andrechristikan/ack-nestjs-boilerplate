@@ -45,8 +45,9 @@ import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
 import { FileTypePipe } from 'src/common/file/pipes/file.type.pipe';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
+import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/constants/country.status-code.constant';
+import { CountryService } from 'src/modules/country/services/country.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { SettingService } from 'src/modules/setting/services/setting.service';
 import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import {
@@ -86,7 +87,7 @@ export class UserAuthController {
         private readonly awsS3Service: AwsS3Service,
         private readonly authService: AuthService,
         private readonly userPasswordService: UserPasswordService,
-        private readonly settingService: SettingService
+        private readonly countryService: CountryService
     ) {}
 
     @UserAuthLoginCredentialDoc()
@@ -500,19 +501,27 @@ export class UserAuthController {
     @Put('/profile/update')
     async updateProfile(
         @User() user: UserDoc,
-        @Body() { mobileNumber, ...body }: UserUpdateProfileRequestDto
+        @Body()
+        { mobileNumber, mobileNumberCode, ...body }: UserUpdateProfileRequestDto
     ): Promise<void> {
-        const checkMobileNumberAllowed =
-            await this.settingService.checkMobileNumberAllowed(mobileNumber);
-        if (!checkMobileNumberAllowed) {
-            throw new BadRequestException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.MOBILE_NUMBER_NOT_ALLOWED_ERROR,
-                message: 'user.error.mobileNumberNotAllowed',
-            });
+        if (mobileNumber && mobileNumberCode) {
+            const checkCountry =
+                await this.countryService.findOneActiveByPhoneCode(
+                    mobileNumberCode
+                );
+            if (!checkCountry) {
+                throw new NotFoundException({
+                    statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                    message: 'country.error.notFound',
+                });
+            }
         }
 
-        await this.userService.updateProfile(user, { ...body, mobileNumber });
+        await this.userService.updateProfile(user, {
+            ...body,
+            mobileNumber,
+            mobileNumberCode,
+        });
 
         return;
     }

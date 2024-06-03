@@ -1,5 +1,4 @@
 import {
-    BadRequestException,
     Body,
     ConflictException,
     Controller,
@@ -91,11 +90,12 @@ import { DatabaseConnection } from 'src/common/database/decorators/database.deco
 import { UserHistoryService } from 'src/modules/user/services/user-history.service';
 import { UserPasswordService } from 'src/modules/user/services/user-password.service';
 import { UserUpdatePasswordRequestDto } from 'src/modules/user/dtos/request/user.update-password.request.dto';
-import { SettingService } from 'src/modules/setting/services/setting.service';
 import { UserHistoryDoc } from 'src/modules/user/repository/entities/user-history.entity';
 import { UserPasswordDoc } from 'src/modules/user/repository/entities/user-password.entity';
 import { UserHistoryListResponseDto } from 'src/modules/user/dtos/response/user-history.list.response.dto';
 import { UserPasswordListResponseDto } from 'src/modules/user/dtos/response/user-password.list.response.dto';
+import { CountryService } from 'src/modules/country/services/country.service';
+import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/constants/country.status-code.constant';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -112,7 +112,7 @@ export class UserAdminController {
         private readonly userService: UserService,
         private readonly userHistoryService: UserHistoryService,
         private readonly userPasswordService: UserPasswordService,
-        private readonly settingService: SettingService
+        private readonly countryService: CountryService
     ) {}
 
     @UserAdminListDoc()
@@ -311,20 +311,24 @@ export class UserAdminController {
         {
             email,
             mobileNumber,
+            mobileNumberCode,
             role,
             firstName,
             lastName,
             password: passwordString,
         }: UserCreateRequestDto
     ): Promise<IResponse<DatabaseIdResponseDto>> {
-        const checkMobileNumberAllowed =
-            await this.settingService.checkMobileNumberAllowed(mobileNumber);
-        if (!checkMobileNumberAllowed) {
-            throw new BadRequestException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.MOBILE_NUMBER_NOT_ALLOWED_ERROR,
-                message: 'user.error.mobileNumberNotAllowed',
-            });
+        if (mobileNumber && mobileNumberCode) {
+            const checkCountry =
+                await this.countryService.findOneActiveByPhoneCode(
+                    mobileNumberCode
+                );
+            if (!checkCountry) {
+                throw new NotFoundException({
+                    statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                    message: 'country.error.notFound',
+                });
+            }
         }
 
         const promises: Promise<any>[] = [
@@ -369,6 +373,7 @@ export class UserAdminController {
                 {
                     email,
                     mobileNumber,
+                    mobileNumberCode,
                     role,
                     firstName,
                     lastName,
