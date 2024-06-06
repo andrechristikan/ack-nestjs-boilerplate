@@ -10,7 +10,7 @@ COPY package.json yarn.lock ./
 RUN touch .env
 
 RUN mkdir data
-RUN set -x && yarn
+RUN set -x && yarn --frozen-lockfile
 
 COPY . .
 
