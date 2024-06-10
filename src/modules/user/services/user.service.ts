@@ -99,14 +99,13 @@ export class UserService implements IUserService {
     }
 
     async create(
-        { email, mobileNumber, name, familyName, role }: UserCreateRequestDto,
+        { email, mobileNumber, name, role }: UserCreateRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         signUpFrom: ENUM_USER_SIGN_UP_FROM,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc> {
         const create: UserEntity = new UserEntity();
         create.name = name;
-        create.familyName = familyName;
         create.email = email;
         create.role = role;
         create.status = ENUM_USER_STATUS.ACTIVE;

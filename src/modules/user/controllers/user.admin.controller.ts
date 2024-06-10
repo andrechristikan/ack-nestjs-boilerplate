@@ -307,7 +307,7 @@ export class UserAdminController {
     @Post('/create')
     async create(
         @Body()
-        { email, mobileNumber, role, name, familyName }: UserCreateRequestDto
+        { email, mobileNumber, role, name }: UserCreateRequestDto
     ): Promise<IResponse<DatabaseIdResponseDto>> {
         if (mobileNumber) {
             const checkCountry = await this.countryService.findOneActiveById(
@@ -355,7 +355,6 @@ export class UserAdminController {
                     mobileNumber,
                     role,
                     name,
-                    familyName,
                 },
                 password,
                 ENUM_USER_SIGN_UP_FROM.ADMIN,

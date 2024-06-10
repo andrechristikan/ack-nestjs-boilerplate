@@ -7,7 +7,6 @@ import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.
 export class UserSignUpRequestDto extends OmitType(UserCreateRequestDto, [
     'mobileNumber',
     'role',
-    'familyName',
 ] as const) {
     @ApiProperty({
         description: 'string password',

@@ -49,19 +49,6 @@ export class UserCreateRequestDto {
     readonly name: string;
 
     @ApiProperty({
-        example: faker.person.lastName(),
-        required: false,
-        maxLength: 50,
-        minLength: 1,
-    })
-    @IsString()
-    @IsOptional()
-    @MinLength(1)
-    @MaxLength(50)
-    @Type(() => String)
-    readonly familyName?: string;
-
-    @ApiProperty({
         required: false,
         type: () => UserUpdateMobileNumberDto,
     })

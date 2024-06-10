@@ -54,7 +54,7 @@ export interface IUserService {
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
     create(
-        { email, mobileNumber, name, familyName, role }: UserCreateRequestDto,
+        { email, mobileNumber, name, role }: UserCreateRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         signUpFrom: ENUM_USER_SIGN_UP_FROM,
         options?: IDatabaseCreateOptions

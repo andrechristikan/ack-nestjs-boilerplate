@@ -23,7 +23,7 @@ export function UserAuthUpdateMobileNumberDoc(): MethodDecorator {
             jwtAccessToken: true,
         }),
         DocGuard({ role: true }),
-        DocResponse('user.deleteSelf')
+        DocResponse('user.updateMobileNumber')
     );
 }
 
