@@ -32,6 +32,7 @@ import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.resp
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
 import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
+import { UserUpdateMobileNumberDto } from 'src/modules/user/dtos/request/user.update-mobile-number.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -98,21 +99,14 @@ export class UserService implements IUserService {
     }
 
     async create(
-        {
-            email,
-            mobileNumber,
-            mobileNumberCode,
-            firstName,
-            lastName,
-            role,
-        }: UserCreateRequestDto,
+        { email, mobileNumber, name, familyName, role }: UserCreateRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         signUpFrom: ENUM_USER_SIGN_UP_FROM,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc> {
         const create: UserEntity = new UserEntity();
-        create.firstName = firstName;
-        create.lastName = lastName;
+        create.name = name;
+        create.familyName = familyName;
         create.email = email;
         create.role = role;
         create.status = ENUM_USER_STATUS.ACTIVE;
@@ -125,9 +119,8 @@ export class UserService implements IUserService {
         create.signUpDate = this.helperDateService.create();
         create.signUpFrom = signUpFrom;
 
-        if (mobileNumber && mobileNumberCode) {
+        if (mobileNumber) {
             create.mobileNumber = mobileNumber;
-            create.mobileNumberCode = mobileNumberCode;
         }
 
         return this.userRepository.create<UserEntity>(create, options);
@@ -135,13 +128,12 @@ export class UserService implements IUserService {
 
     async signUp(
         role: string,
-        { email, firstName, lastName }: UserSignUpRequestDto,
+        { email, name }: UserSignUpRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc> {
         const create: UserEntity = new UserEntity();
-        create.firstName = firstName;
-        create.lastName = lastName;
+        create.name = name;
         create.email = email;
         create.role = role;
         create.status = ENUM_USER_STATUS.ACTIVE;
@@ -388,23 +380,34 @@ export class UserService implements IUserService {
 
     async updateProfile(
         repository: UserDoc,
-        {
-            firstName,
-            lastName,
-            address,
-            mobileNumber,
-            mobileNumberCode,
-        }: UserUpdateProfileRequestDto,
+        { name, familyName, address }: UserUpdateProfileRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
-        repository.firstName = firstName;
-        repository.lastName = lastName;
+        repository.name = name;
+        repository.familyName = familyName;
         repository.address = address;
 
-        if (mobileNumber && mobileNumberCode) {
-            repository.mobileNumber = mobileNumber;
-            repository.mobileNumberCode = mobileNumberCode;
-        }
+        return this.userRepository.save(repository, options);
+    }
+
+    async updateMobileNumber(
+        repository: UserDoc,
+        { country, number }: UserUpdateMobileNumberDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        repository.mobileNumber = {
+            country,
+            number,
+        };
+
+        return this.userRepository.save(repository, options);
+    }
+
+    async deleteMobileNumber(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        repository.mobileNumber = undefined;
 
         return this.userRepository.save(repository, options);
     }

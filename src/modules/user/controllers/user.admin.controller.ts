@@ -89,7 +89,6 @@ import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.co
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { UserHistoryService } from 'src/modules/user/services/user-history.service';
 import { UserPasswordService } from 'src/modules/user/services/user-password.service';
-import { UserUpdatePasswordRequestDto } from 'src/modules/user/dtos/request/user.update-password.request.dto';
 import { UserHistoryDoc } from 'src/modules/user/repository/entities/user-history.entity';
 import { UserPasswordDoc } from 'src/modules/user/repository/entities/user-password.entity';
 import { UserHistoryListResponseDto } from 'src/modules/user/dtos/response/user-history.list.response.dto';
@@ -308,21 +307,12 @@ export class UserAdminController {
     @Post('/create')
     async create(
         @Body()
-        {
-            email,
-            mobileNumber,
-            mobileNumberCode,
-            role,
-            firstName,
-            lastName,
-            password: passwordString,
-        }: UserCreateRequestDto
+        { email, mobileNumber, role, name, familyName }: UserCreateRequestDto
     ): Promise<IResponse<DatabaseIdResponseDto>> {
-        if (mobileNumber && mobileNumberCode) {
-            const checkCountry =
-                await this.countryService.findOneActiveByPhoneCode(
-                    mobileNumberCode
-                );
+        if (mobileNumber) {
+            const checkCountry = await this.countryService.findOneActiveById(
+                mobileNumber.country
+            );
             if (!checkCountry) {
                 throw new NotFoundException({
                     statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
@@ -336,12 +326,7 @@ export class UserAdminController {
             this.userService.existByEmail(email),
         ];
 
-        if (mobileNumber) {
-            promises.push(this.userService.existByMobileNumber(mobileNumber));
-        }
-
-        const [checkRole, emailExist, mobileNumberExist] =
-            await Promise.all(promises);
+        const [checkRole, emailExist] = await Promise.all(promises);
 
         if (!checkRole) {
             throw new NotFoundException({
@@ -353,14 +338,9 @@ export class UserAdminController {
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_EXIST_ERROR,
                 message: 'user.error.emailExist',
             });
-        } else if (mobileNumberExist) {
-            throw new ConflictException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.MOBILE_NUMBER_EXIST_ERROR,
-                message: 'user.error.mobileNumberExist',
-            });
         }
 
+        const passwordString = await this.authService.createPasswordRandom();
         const password: IAuthPassword =
             await this.authService.createPassword(passwordString);
 
@@ -373,11 +353,9 @@ export class UserAdminController {
                 {
                     email,
                     mobileNumber,
-                    mobileNumberCode,
                     role,
-                    firstName,
-                    lastName,
-                    password: passwordString,
+                    name,
+                    familyName,
                 },
                 password,
                 ENUM_USER_SIGN_UP_FROM.ADMIN,
@@ -392,10 +370,14 @@ export class UserAdminController {
             );
             await this.userPasswordService.createByUser(created, { session });
 
-            await this.emailService.sendWelcome({
+            const emailSend = {
                 email,
-                name:
-                    firstName && lastName ? `${firstName} ${lastName}` : email,
+                name,
+            };
+            await this.emailService.sendWelcome(emailSend);
+            await this.emailService.sendTempPassword(emailSend, {
+                password: passwordString,
+                expiredAt: password.passwordExpired,
             });
 
             await session.commitTransaction();
@@ -576,14 +558,15 @@ export class UserAdminController {
             UserStatusInactivePipe
         )
         user: UserDoc,
-        @AuthJwtPayload('_id') _id: string,
-        @Body() { password: passwordString }: UserUpdatePasswordRequestDto
+        @AuthJwtPayload('_id') _id: string
     ): Promise<void> {
         const session: ClientSession =
             await this.databaseConnection.startSession();
         session.startTransaction();
 
         try {
+            const passwordString =
+                await this.authService.createPasswordRandom();
             const password =
                 await this.authService.createPassword(passwordString);
             user = await this.userService.updatePassword(user, password, {
@@ -592,8 +575,17 @@ export class UserAdminController {
             user = await this.userService.resetPasswordAttempt(user, {
                 session,
             });
-            await this.userPasswordService.createByUser(user, {
+            await this.userPasswordService.createByAdmin(user, _id, {
                 session,
+            });
+
+            const emailSend = {
+                email: user.email,
+                name: user.name,
+            };
+            await this.emailService.sendTempPassword(emailSend, {
+                password: passwordString,
+                expiredAt: password.passwordExpired,
             });
 
             await session.commitTransaction();

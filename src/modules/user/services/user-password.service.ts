@@ -98,6 +98,23 @@ export class UserPasswordService implements IUserPasswordService {
     ): Promise<UserPasswordDoc> {
         const create: UserPasswordEntity = new UserPasswordEntity();
         create.user = user._id;
+        create.by = user._id;
+        create.password = user.password;
+
+        return this.userPasswordRepository.create<UserPasswordEntity>(
+            create,
+            options
+        );
+    }
+
+    async createByAdmin(
+        user: UserDoc,
+        by: string,
+        options?: IDatabaseCreateOptions
+    ): Promise<UserPasswordDoc> {
+        const create: UserPasswordEntity = new UserPasswordEntity();
+        create.user = user._id;
+        create.by = by;
         create.password = user.password;
 
         return this.userPasswordRepository.create<UserPasswordEntity>(

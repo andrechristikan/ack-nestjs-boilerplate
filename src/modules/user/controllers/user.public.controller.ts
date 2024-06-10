@@ -45,12 +45,7 @@ export class UserPublicController {
     @Post('/sign-up')
     async signUp(
         @Body()
-        {
-            email,
-            firstName,
-            lastName,
-            password: passwordString,
-        }: UserSignUpRequestDto
+        { email, name, password: passwordString }: UserSignUpRequestDto
     ): Promise<void> {
         const promises: Promise<any>[] = [
             this.roleService.findOneByName('user'),
@@ -82,8 +77,7 @@ export class UserPublicController {
                 role._id,
                 {
                     email,
-                    firstName,
-                    lastName,
+                    name,
                     password: passwordString,
                 },
                 password,
@@ -96,8 +90,7 @@ export class UserPublicController {
 
             await this.emailService.sendWelcome({
                 email,
-                name:
-                    firstName && lastName ? `${firstName} ${lastName}` : email,
+                name,
             });
 
             await session.commitTransaction();

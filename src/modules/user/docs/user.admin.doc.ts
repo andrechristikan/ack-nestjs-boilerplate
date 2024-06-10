@@ -17,7 +17,6 @@ import {
     UserDocQueryStatus,
 } from 'src/modules/user/constants/user.doc.constant';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
-import { UserUpdatePasswordRequestDto } from 'src/modules/user/dtos/request/user.update-password.request.dto';
 import { UserHistoryListResponseDto } from 'src/modules/user/dtos/response/user-history.list.response.dto';
 import { UserPasswordListResponseDto } from 'src/modules/user/dtos/response/user-password.list.response.dto';
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
@@ -180,11 +179,6 @@ export function UserAdminUpdatePasswordDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'update user password',
-        }),
-        DocRequest({
-            params: UserDocParamsId,
-            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
-            dto: UserUpdatePasswordRequestDto,
         }),
         DocAuth({
             xApiKey: true,

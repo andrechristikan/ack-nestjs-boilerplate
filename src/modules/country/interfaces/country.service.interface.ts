@@ -27,6 +27,10 @@ export interface ICountryService {
         _id: string,
         options?: IDatabaseFindOneOptions
     ): Promise<CountryDoc>;
+    findOneActiveById(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<CountryDoc>;
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions

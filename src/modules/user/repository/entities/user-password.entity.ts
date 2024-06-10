@@ -25,6 +25,15 @@ export class UserPasswordEntity extends DatabaseMongoUUIDEntityAbstract {
         type: String,
     })
     password: string;
+
+    @DatabaseProp({
+        required: true,
+        index: true,
+        trim: true,
+        type: String,
+        ref: UserEntity.name,
+    })
+    by: string;
 }
 
 export const UserPasswordSchema = DatabaseSchema(UserPasswordEntity);

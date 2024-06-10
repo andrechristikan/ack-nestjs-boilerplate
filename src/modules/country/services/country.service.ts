@@ -55,6 +55,16 @@ export class CountryService implements ICountryService {
         return this.countryRepository.findOneById<CountryDoc>(_id, options);
     }
 
+    async findOneActiveById(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<CountryDoc> {
+        return this.countryRepository.findOne<CountryDoc>(
+            { _id, isActive: true },
+            options
+        );
+    }
+
     async getTotal(
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions

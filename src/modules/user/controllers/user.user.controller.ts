@@ -1,7 +1,9 @@
 import {
+    Body,
     Controller,
     Delete,
     InternalServerErrorException,
+    Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ClientSession } from 'mongoose';
@@ -20,7 +22,11 @@ import {
     User,
     UserProtected,
 } from 'src/modules/user/decorators/user.decorator';
-import { UserUserDeleteSelfDoc } from 'src/modules/user/docs/user.user.doc';
+import {
+    UserAuthUpdateMobileNumberDoc,
+    UserUserDeleteSelfDoc,
+} from 'src/modules/user/docs/user.user.doc';
+import { UserUpdateMobileNumberDto } from 'src/modules/user/dtos/request/user.update-mobile-number.dto';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserHistoryService } from 'src/modules/user/services/user-history.service';
 import { UserService } from 'src/modules/user/services/user.service';
@@ -36,6 +42,22 @@ export class UserUserController {
         private readonly userService: UserService,
         private readonly userHistoryService: UserHistoryService
     ) {}
+
+    @UserAuthUpdateMobileNumberDoc()
+    @Response('user.updateMobileNumber')
+    @UserProtected()
+    @AuthJwtAccessProtected()
+    @ApiKeyPublicProtected()
+    @Put('/update/mobile-number')
+    async updateMobileNumber(
+        @User() user: UserDoc,
+        @Body()
+        body: UserUpdateMobileNumberDto
+    ): Promise<void> {
+        await this.userService.updateMobileNumber(user, body);
+
+        return;
+    }
 
     @UserUserDeleteSelfDoc()
     @Response('user.deleteSelf')

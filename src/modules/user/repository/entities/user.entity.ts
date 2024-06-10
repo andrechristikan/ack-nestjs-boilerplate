@@ -9,6 +9,7 @@ import {
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
+import { CountryEntity } from 'src/modules/country/repository/entities/country.entity';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import {
     ENUM_USER_GENDER,
@@ -18,6 +19,32 @@ import {
 
 export const UserTableName = 'Users';
 
+@DatabaseEntity({
+    _id: false,
+    timestamps: false,
+})
+export class UserMobileNumberEntity {
+    @DatabaseProp({
+        required: true,
+        type: String,
+        index: true,
+        ref: CountryEntity.name,
+    })
+    country: string;
+
+    @DatabaseProp({
+        required: false,
+        trim: true,
+        index: true,
+        type: String,
+        maxlength: 20,
+        minlength: 8,
+    })
+    number: string;
+}
+
+export const UserMobileNumberSchema = DatabaseSchema(UserMobileNumberEntity);
+
 @DatabaseEntity({ collection: UserTableName })
 export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     @DatabaseProp({
@@ -25,35 +52,24 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
         index: true,
         trim: true,
         type: String,
-        maxlength: 50,
+        maxlength: 100,
     })
-    firstName: string;
-
-    @DatabaseProp({
-        required: true,
-        index: true,
-        trim: true,
-        type: String,
-        maxlength: 50,
-    })
-    lastName: string;
+    name: string;
 
     @DatabaseProp({
         required: false,
         trim: true,
+        type: String,
+        maxlength: 50,
+    })
+    familyName?: string;
+
+    @DatabaseProp({
+        required: false,
         sparse: true,
-        type: String,
-        maxlength: 20,
-        minlength: 8,
+        schema: UserMobileNumberSchema,
     })
-    mobileNumber?: string;
-
-    @DatabaseProp({
-        required: false,
-        type: String,
-        maxLength: 4,
-    })
-    mobileNumberCode?: string;
+    mobileNumber?: UserMobileNumberEntity;
 
     @DatabaseProp({
         required: true,

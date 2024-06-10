@@ -38,10 +38,8 @@ export class MigrationUserSeed {
             const user1: UserDoc = await this.userService.create(
                 {
                     role: superAdminRole._id,
-                    firstName: 'superadmin',
-                    lastName: 'test',
+                    name: 'superadmin',
                     email: 'superadmin@mail.com',
-                    password,
                 },
                 passwordHash,
                 ENUM_USER_SIGN_UP_FROM.ADMIN
@@ -50,10 +48,8 @@ export class MigrationUserSeed {
             const user2: UserDoc = await this.userService.create(
                 {
                     role: adminRole._id,
-                    firstName: 'admin',
-                    lastName: 'test',
+                    name: 'admin',
                     email: 'admin@mail.com',
-                    password,
                 },
                 passwordHash,
                 ENUM_USER_SIGN_UP_FROM.ADMIN
@@ -61,10 +57,8 @@ export class MigrationUserSeed {
             const user3: UserDoc = await this.userService.create(
                 {
                     role: userRole._id,
-                    firstName: 'user',
-                    lastName: 'test',
+                    name: 'user',
                     email: 'user@mail.com',
-                    password,
                 },
                 passwordHash,
                 ENUM_USER_SIGN_UP_FROM.ADMIN
@@ -72,10 +66,8 @@ export class MigrationUserSeed {
             const user4: UserDoc = await this.userService.create(
                 {
                     role: memberRole._id,
-                    firstName: 'member',
-                    lastName: 'test',
+                    name: 'member',
                     email: 'member@mail.com',
-                    password,
                 },
                 passwordHash,
                 ENUM_USER_SIGN_UP_FROM.ADMIN

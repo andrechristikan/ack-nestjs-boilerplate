@@ -223,7 +223,7 @@ export class AuthService implements IAuthService {
     }
 
     async createPasswordRandom(): Promise<string> {
-        return this.helperStringService.random(15);
+        return this.helperStringService.random(10);
     }
 
     async checkPasswordExpired(passwordExpired: Date): Promise<boolean> {

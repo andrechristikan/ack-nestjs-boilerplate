@@ -9,8 +9,11 @@ import {
     MinLength,
     IsOptional,
     IsUUID,
+    ValidateNested,
+    IsNotEmptyObject,
+    IsObject,
 } from 'class-validator';
-import { IsPassword } from 'src/common/request/validations/request.is-password.validation';
+import { UserUpdateMobileNumberDto } from 'src/modules/user/dtos/request/user.update-mobile-number.dto';
 
 export class UserCreateRequestDto {
     @ApiProperty({
@@ -33,70 +36,39 @@ export class UserCreateRequestDto {
     readonly role: string;
 
     @ApiProperty({
-        example: faker.person.firstName(),
+        example: faker.person.fullName(),
         required: true,
-        maxLength: 50,
+        maxLength: 100,
         minLength: 1,
     })
     @IsString()
     @IsNotEmpty()
     @MinLength(1)
-    @MaxLength(50)
+    @MaxLength(100)
     @Type(() => String)
-    readonly firstName: string;
+    readonly name: string;
 
     @ApiProperty({
         example: faker.person.lastName(),
-        required: true,
+        required: false,
         maxLength: 50,
         minLength: 1,
     })
     @IsString()
-    @IsNotEmpty()
+    @IsOptional()
     @MinLength(1)
     @MaxLength(50)
     @Type(() => String)
-    readonly lastName: string;
+    readonly familyName?: string;
 
     @ApiProperty({
-        example: faker.helpers.arrayElement(['62', '65']),
         required: false,
-        description: 'Country phone code',
-        maxLength: 4,
+        type: () => UserUpdateMobileNumberDto,
     })
-    @IsString()
+    @ValidateNested()
+    @IsNotEmptyObject()
+    @IsObject()
     @IsOptional()
-    @MaxLength(4)
-    readonly mobileNumberCode?: string;
-
-    @ApiProperty({
-        example: `8${faker.string.fromCharacters('1234567890', {
-            min: 7,
-            max: 11,
-        })}`,
-        required: false,
-        maxLength: 20,
-        minLength: 8,
-    })
-    @IsString()
-    @IsOptional()
-    @MinLength(8)
-    @MaxLength(20)
-    @Type(() => String)
-    readonly mobileNumber?: string;
-
-    @ApiProperty({
-        description: 'string password',
-        example: `${faker.string.alphanumeric(5).toLowerCase()}${faker.string
-            .alphanumeric(5)
-            .toUpperCase()}@@!123`,
-        required: true,
-        maxLength: 50,
-        minLength: 8,
-    })
-    @IsNotEmpty()
-    @IsPassword()
-    @MinLength(8)
-    @MaxLength(50)
-    readonly password: string;
+    @Type(() => UserUpdateMobileNumberDto)
+    readonly mobileNumber?: UserUpdateMobileNumberDto;
 }
