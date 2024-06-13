@@ -42,20 +42,3 @@ export const UserDocQueryBlocked = [
         description: "value with ',' delimiter",
     },
 ];
-
-export const UserDocQuerySignUpDate = [
-    {
-        name: 'startDate',
-        allowEmptyValue: true,
-        required: false,
-        type: 'string',
-        example: faker.date.past(),
-    },
-    {
-        name: 'endDate',
-        allowEmptyValue: true,
-        required: false,
-        type: 'string',
-        example: faker.date.recent(),
-    },
-];

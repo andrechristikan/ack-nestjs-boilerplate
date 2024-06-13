@@ -31,7 +31,6 @@ import {
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import {
     PaginationQuery,
-    PaginationQueryFilterDate,
     PaginationQueryFilterEqual,
     PaginationQueryFilterInBoolean,
     PaginationQueryFilterInEnum,
@@ -138,14 +137,6 @@ export class UserAdminController {
         status: Record<string, any>,
         @PaginationQueryFilterInBoolean('blocked', USER_DEFAULT_BLOCKED)
         blocked: Record<string, any>,
-        @PaginationQueryFilterDate('startDate', {
-            raw: true,
-        })
-        startDate: Record<string, any>,
-        @PaginationQueryFilterDate('endDate', {
-            raw: true,
-        })
-        endDate: Record<string, any>,
         @PaginationQueryFilterEqual('role')
         role: Record<string, any>
     ): Promise<IResponsePaging<UserListResponseDto>> {
@@ -155,13 +146,6 @@ export class UserAdminController {
             ...blocked,
             ...role,
         };
-
-        if (startDate && endDate) {
-            find.signUpDate = {
-                $gte: startDate.startDate,
-                $lte: endDate.endDate,
-            };
-        }
 
         const users: IUserDoc[] = await this.userService.findAllWithRoles(
             find,

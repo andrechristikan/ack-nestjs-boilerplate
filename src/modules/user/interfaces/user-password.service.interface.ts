@@ -53,4 +53,10 @@ export interface IUserPasswordService {
     mapList(
         userHistories: UserPasswordDoc[]
     ): Promise<UserPasswordListResponseDto[]>;
+    checkPasswordPeriodByUser(
+        user: UserDoc,
+        password: IAuthPassword,
+        options?: IDatabaseFindOneOptions
+    ): Promise<boolean>;
+    getPasswordPeriod(): Promise<number>;
 }

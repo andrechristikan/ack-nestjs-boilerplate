@@ -27,7 +27,6 @@ export class UserMobileNumberEntity {
     @DatabaseProp({
         required: true,
         type: String,
-        index: true,
         ref: CountryEntity.name,
     })
     country: string;
@@ -35,7 +34,6 @@ export class UserMobileNumberEntity {
     @DatabaseProp({
         required: false,
         trim: true,
-        index: true,
         type: String,
         maxlength: 20,
         minlength: 8,
@@ -66,7 +64,6 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
 
     @DatabaseProp({
         required: false,
-        sparse: true,
         schema: UserMobileNumberSchema,
     })
     mobileNumber?: UserMobileNumberEntity;

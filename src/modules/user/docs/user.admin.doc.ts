@@ -13,7 +13,6 @@ import {
     UserDocParamsId,
     UserDocQueryBlocked,
     UserDocQueryRole,
-    UserDocQuerySignUpDate,
     UserDocQueryStatus,
 } from 'src/modules/user/constants/user.doc.constant';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
@@ -31,7 +30,6 @@ export function UserAdminListDoc(): MethodDecorator {
             queries: [
                 ...UserDocQueryStatus,
                 ...UserDocQueryBlocked,
-                ...UserDocQuerySignUpDate,
                 ...UserDocQueryRole,
             ],
         }),

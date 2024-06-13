@@ -18,7 +18,7 @@ export default registerAs(
                     process.env.AUTH_JWT_REFRESH_TOKEN_SECRET_KEY ??
                     '123456000',
                 expirationTime: ms(
-                    process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED ?? '182d'
+                    process.env.AUTH_JWT_REFRESH_TOKEN_EXPIRED ?? '90d'
                 ), // 1 hours
             },
 
@@ -32,7 +32,8 @@ export default registerAs(
             attempt: false,
             maxAttempt: 5,
             saltLength: 8,
-            expiredIn: ms('182d'), // 182 days
+            expiredIn: ms('182d') / 1000, // 182 days
+            period: ms('90d') / 1000,
         },
 
         apple: {

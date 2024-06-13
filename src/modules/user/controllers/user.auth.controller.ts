@@ -46,7 +46,6 @@ import { FileTypePipe } from 'src/common/file/pipes/file.type.pipe';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { CountryService } from 'src/modules/country/services/country.service';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import {
@@ -151,8 +150,9 @@ export class UserAuthController {
             await this.userService.joinWithRole(user);
         if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.INACTIVE_ERROR,
-                message: 'role.error.inactive',
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_ROLE_INACTIVE_ERROR,
+                message: 'user.error.roleInactive',
             });
         }
 
@@ -235,8 +235,9 @@ export class UserAuthController {
             await this.userService.joinWithRole(user);
         if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.INACTIVE_ERROR,
-                message: 'role.error.inactive',
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_ROLE_INACTIVE_ERROR,
+                message: 'user.error.roleInactive',
             });
         }
 
@@ -319,8 +320,9 @@ export class UserAuthController {
             await this.userService.joinWithRole(user);
         if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.INACTIVE_ERROR,
-                message: 'role.error.inactive',
+                statusCode:
+                    ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_ROLE_INACTIVE_ERROR,
+                message: 'user.error.roleInactive',
             });
         }
 
@@ -440,14 +442,22 @@ export class UserAuthController {
         const password: IAuthPassword = await this.authService.createPassword(
             body.newPassword
         );
-        const checkUserPassword = await this.userPasswordService.findOneByUser(
-            user,
-            password
-        );
+        const checkUserPassword =
+            await this.userPasswordService.checkPasswordPeriodByUser(
+                user,
+                password
+            );
         if (checkUserPassword) {
+            const passwordPeriod =
+                await this.userPasswordService.getPasswordPeriod();
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_MUST_NEW_ERROR,
                 message: 'user.error.passwordMustNew',
+                _metadata: {
+                    customProperty: {
+                        period: passwordPeriod,
+                    },
+                },
             });
         }
 

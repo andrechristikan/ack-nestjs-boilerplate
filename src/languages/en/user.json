@@ -27,7 +27,7 @@
         "passwordExpired": "Password has expired.",
         "passwordAttemptMax": "Maximum password attempts exceeded.",
         "passwordNotMatch": "Passwords do not match.",
-        "passwordMustNew": "New password must be different from previous passwords.",
+        "passwordMustNew": "New password must be different from previous passwords within {period}.",
         "mobileNumberNotAllowed": "Mobile number is not allowed.",
         "blockedInvalid": "Invalid blocked status.",
         "notFound": "User not found.",
