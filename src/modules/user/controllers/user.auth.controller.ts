@@ -12,8 +12,10 @@ import {
     Post,
     Put,
     UploadedFile,
+    Req,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
 import { ClientSession, Connection } from 'mongoose';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
@@ -45,6 +47,7 @@ import { FileRequiredPipe } from 'src/common/file/pipes/file.required.pipe';
 import { FileTypePipe } from 'src/common/file/pipes/file.type.pipe';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
+import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/constants/country.status-code.constant';
 import { CountryService } from 'src/modules/country/services/country.service';
 import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
@@ -70,6 +73,7 @@ import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.prof
 import { UserRefreshResponseDto } from 'src/modules/user/dtos/response/user.refresh.response.dto';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+import { UserLoginHistoryService } from 'src/modules/user/services/user-login-history.service';
 import { UserPasswordService } from 'src/modules/user/services/user-password.service';
 import { UserService } from 'src/modules/user/services/user.service';
 
@@ -85,7 +89,8 @@ export class UserAuthController {
         private readonly awsS3Service: AwsS3Service,
         private readonly authService: AuthService,
         private readonly userPasswordService: UserPasswordService,
-        private readonly countryService: CountryService
+        private readonly countryService: CountryService,
+        private readonly userLoginHistoryService: UserLoginHistoryService
     ) {}
 
     @UserAuthLoginCredentialDoc()
@@ -94,7 +99,8 @@ export class UserAuthController {
     @HttpCode(HttpStatus.OK)
     @Post('/login/credential')
     async loginWithCredential(
-        @Body() { email, password }: UserLoginRequestDto
+        @Body() { email, password }: UserLoginRequestDto,
+        @Req() request: Request
     ): Promise<IResponse<UserLoginResponseDto>> {
         const user: UserDoc = await this.userService.findOneByEmail(email);
         if (!user) {
@@ -147,7 +153,7 @@ export class UserAuthController {
         }
 
         const userWithRole: IUserDoc =
-            await this.userService.joinWithRole(user);
+            await this.userService.joinWithRoleAndCountry(user);
         if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
                 statusCode:
@@ -156,20 +162,44 @@ export class UserAuthController {
             });
         }
 
-        await this.userService.resetPasswordAttempt(user);
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
+
+        try {
+            await this.userService.resetPasswordAttempt(user, { session });
+
+            const checkPasswordExpired: boolean =
+                await this.authService.checkPasswordExpired(
+                    user.passwordExpired
+                );
+            if (checkPasswordExpired) {
+                throw new ForbiddenException({
+                    statusCode:
+                        ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED_ERROR,
+                    message: 'user.error.passwordExpired',
+                });
+            }
+
+            await this.userLoginHistoryService.create(
+                request,
+                {
+                    user: user._id,
+                },
+                { session }
+            );
+
+            await session.commitTransaction();
+            await session.endSession();
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+
+            throw err;
+        }
 
         const roleType = userWithRole.role.type;
         const tokenType: string = await this.authService.getTokenType();
-
-        const checkPasswordExpired: boolean =
-            await this.authService.checkPasswordExpired(user.passwordExpired);
-
-        if (checkPasswordExpired) {
-            throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED_ERROR,
-                message: 'user.error.passwordExpired',
-            });
-        }
 
         const expiresInAccessToken: number =
             await this.authService.getAccessTokenExpirationTime();
@@ -205,7 +235,8 @@ export class UserAuthController {
     @Post('/login/social/google')
     async loginWithGoogle(
         @AuthJwtPayload<AuthSocialGooglePayloadDto>()
-        { email }: AuthSocialGooglePayloadDto
+        { email }: AuthSocialGooglePayloadDto,
+        @Req() request: Request
     ): Promise<IResponse<UserLoginResponseDto>> {
         const user: UserDoc = await this.userService.findOneByEmail(email);
         if (!user) {
@@ -232,7 +263,7 @@ export class UserAuthController {
         }
 
         const userWithRole: IUserDoc =
-            await this.userService.joinWithRole(user);
+            await this.userService.joinWithRoleAndCountry(user);
         if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
                 statusCode:
@@ -241,20 +272,44 @@ export class UserAuthController {
             });
         }
 
-        await this.userService.resetPasswordAttempt(user);
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
+
+        try {
+            await this.userService.resetPasswordAttempt(user, { session });
+
+            const checkPasswordExpired: boolean =
+                await this.authService.checkPasswordExpired(
+                    user.passwordExpired
+                );
+            if (checkPasswordExpired) {
+                throw new ForbiddenException({
+                    statusCode:
+                        ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED_ERROR,
+                    message: 'user.error.passwordExpired',
+                });
+            }
+
+            await this.userLoginHistoryService.create(
+                request,
+                {
+                    user: user._id,
+                },
+                { session }
+            );
+
+            await session.commitTransaction();
+            await session.endSession();
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+
+            throw err;
+        }
 
         const roleType = userWithRole.role.type;
         const tokenType: string = await this.authService.getTokenType();
-
-        const checkPasswordExpired: boolean =
-            await this.authService.checkPasswordExpired(user.passwordExpired);
-
-        if (checkPasswordExpired) {
-            throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED_ERROR,
-                message: 'user.error.passwordExpired',
-            });
-        }
 
         const expiresInAccessToken: number =
             await this.authService.getAccessTokenExpirationTime();
@@ -290,7 +345,8 @@ export class UserAuthController {
     @Post('/login/social/apple')
     async loginWithApple(
         @AuthJwtPayload<AuthSocialApplePayloadDto>()
-        { email }: AuthSocialApplePayloadDto
+        { email }: AuthSocialApplePayloadDto,
+        @Req() request: Request
     ): Promise<IResponse<UserLoginResponseDto>> {
         const user: UserDoc = await this.userService.findOneByEmail(email);
         if (!user) {
@@ -317,7 +373,7 @@ export class UserAuthController {
         }
 
         const userWithRole: IUserDoc =
-            await this.userService.joinWithRole(user);
+            await this.userService.joinWithRoleAndCountry(user);
         if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
                 statusCode:
@@ -326,20 +382,43 @@ export class UserAuthController {
             });
         }
 
-        await this.userService.resetPasswordAttempt(user);
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
+
+        try {
+            await this.userService.resetPasswordAttempt(user, { session });
+
+            const checkPasswordExpired: boolean =
+                await this.authService.checkPasswordExpired(
+                    user.passwordExpired
+                );
+            if (checkPasswordExpired) {
+                throw new ForbiddenException({
+                    statusCode:
+                        ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED_ERROR,
+                    message: 'user.error.passwordExpired',
+                });
+            }
+
+            await this.userLoginHistoryService.create(
+                request,
+                {
+                    user: user._id,
+                },
+                { session }
+            );
+
+            await session.commitTransaction();
+            await session.endSession();
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+            throw err;
+        }
 
         const roleType = userWithRole.role.type;
         const tokenType: string = await this.authService.getTokenType();
-
-        const checkPasswordExpired: boolean =
-            await this.authService.checkPasswordExpired(user.passwordExpired);
-
-        if (checkPasswordExpired) {
-            throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED_ERROR,
-                message: 'user.error.passwordExpired',
-            });
-        }
 
         const expiresInAccessToken: number =
             await this.authService.getAccessTokenExpirationTime();
@@ -511,9 +590,17 @@ export class UserAuthController {
     async updateProfile(
         @User() user: UserDoc,
         @Body()
-        body: UserUpdateProfileRequestDto
+        { country, ...body }: UserUpdateProfileRequestDto
     ): Promise<void> {
-        await this.userService.updateProfile(user, body);
+        const checkCountry = this.countryService.findOneActiveById(country);
+        if (!checkCountry) {
+            throw new NotFoundException({
+                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                message: 'country.error.notFound',
+            });
+        }
+
+        await this.userService.updateProfile(user, { country, ...body });
 
         return;
     }

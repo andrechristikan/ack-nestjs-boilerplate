@@ -178,6 +178,9 @@ export function UserAdminUpdatePasswordDoc(): MethodDecorator {
         Doc({
             summary: 'update user password',
         }),
+        DocRequest({
+            params: UserDocParamsId,
+        }),
         DocAuth({
             xApiKey: true,
             jwtAccessToken: true,

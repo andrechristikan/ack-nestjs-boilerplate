@@ -147,16 +147,14 @@ export class UserAdminController {
             ...role,
         };
 
-        const users: IUserDoc[] = await this.userService.findAllWithRoles(
-            find,
-            {
+        const users: IUserDoc[] =
+            await this.userService.findAllWithRoleAndCountry(find, {
                 paging: {
                     limit: _limit,
                     offset: _offset,
                 },
                 order: _order,
-            }
-        );
+            });
         const total: number = await this.userService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
             total,
@@ -185,7 +183,7 @@ export class UserAdminController {
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc
     ): Promise<IResponse<UserProfileResponseDto>> {
         const userWithRole: IUserDoc =
-            await this.userService.joinWithRole(user);
+            await this.userService.joinWithRoleAndCountry(user);
         const mapped: UserProfileResponseDto =
             await this.userService.mapProfile(userWithRole);
 
@@ -291,31 +289,26 @@ export class UserAdminController {
     @Post('/create')
     async create(
         @Body()
-        { email, mobileNumber, role, name }: UserCreateRequestDto
+        { email, role, name, country }: UserCreateRequestDto
     ): Promise<IResponse<DatabaseIdResponseDto>> {
-        if (mobileNumber) {
-            const checkCountry = await this.countryService.findOneActiveById(
-                mobileNumber.country
-            );
-            if (!checkCountry) {
-                throw new NotFoundException({
-                    statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
-                    message: 'country.error.notFound',
-                });
-            }
-        }
-
         const promises: Promise<any>[] = [
             this.roleService.findOneById(role),
             this.userService.existByEmail(email),
+            this.countryService.findOneActiveById(country),
         ];
 
-        const [checkRole, emailExist] = await Promise.all(promises);
+        const [checkRole, emailExist, checkCountry] =
+            await Promise.all(promises);
 
         if (!checkRole) {
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
                 message: 'role.error.notFound',
+            });
+        } else if (!checkCountry) {
+            throw new NotFoundException({
+                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                message: 'country.error.notFound',
             });
         } else if (emailExist) {
             throw new ConflictException({
@@ -336,7 +329,7 @@ export class UserAdminController {
             const created = await this.userService.create(
                 {
                     email,
-                    mobileNumber,
+                    country,
                     role,
                     name,
                 },

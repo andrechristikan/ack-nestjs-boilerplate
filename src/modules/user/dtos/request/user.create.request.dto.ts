@@ -7,13 +7,8 @@ import {
     IsEmail,
     MaxLength,
     MinLength,
-    IsOptional,
     IsUUID,
-    ValidateNested,
-    IsNotEmptyObject,
-    IsObject,
 } from 'class-validator';
-import { UserUpdateMobileNumberDto } from 'src/modules/user/dtos/request/user.update-mobile-number.dto';
 
 export class UserCreateRequestDto {
     @ApiProperty({
@@ -49,13 +44,11 @@ export class UserCreateRequestDto {
     readonly name: string;
 
     @ApiProperty({
-        required: false,
-        type: () => UserUpdateMobileNumberDto,
+        example: faker.string.uuid(),
+        required: true,
     })
-    @ValidateNested()
-    @IsNotEmptyObject()
-    @IsObject()
-    @IsOptional()
-    @Type(() => UserUpdateMobileNumberDto)
-    readonly mobileNumber?: UserUpdateMobileNumberDto;
+    @IsString()
+    @IsUUID()
+    @IsNotEmpty()
+    readonly country: string;
 }

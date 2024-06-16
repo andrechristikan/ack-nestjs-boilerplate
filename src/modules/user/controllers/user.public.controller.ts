@@ -13,6 +13,8 @@ import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.dec
 import { AuthService } from 'src/common/auth/services/auth.service';
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
+import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/constants/country.status-code.constant';
+import { CountryService } from 'src/modules/country/services/country.service';
 import { EmailService } from 'src/modules/email/services/email.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
@@ -36,7 +38,8 @@ export class UserPublicController {
         private readonly userPasswordService: UserPasswordService,
         private readonly authService: AuthService,
         private readonly roleService: RoleService,
-        private readonly emailService: EmailService
+        private readonly emailService: EmailService,
+        private readonly countryService: CountryService
     ) {}
 
     @UserPublicSignUpDoc()
@@ -45,19 +48,25 @@ export class UserPublicController {
     @Post('/sign-up')
     async signUp(
         @Body()
-        { email, name, password: passwordString }: UserSignUpRequestDto
+        { email, name, password: passwordString, country }: UserSignUpRequestDto
     ): Promise<void> {
         const promises: Promise<any>[] = [
             this.roleService.findOneByName('user'),
             this.userService.existByEmail(email),
+            this.countryService.findOneActiveById(country),
         ];
 
-        const [role, emailExist] = await Promise.all(promises);
+        const [role, emailExist, checkCountry] = await Promise.all(promises);
 
         if (!role) {
             throw new NotFoundException({
                 statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
                 message: 'role.error.notFound',
+            });
+        } else if (!checkCountry) {
+            throw new NotFoundException({
+                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                message: 'country.error.notFound',
             });
         } else if (emailExist) {
             throw new ConflictException({
@@ -79,6 +88,7 @@ export class UserPublicController {
                     email,
                     name,
                     password: passwordString,
+                    country,
                 },
                 password,
                 { session }

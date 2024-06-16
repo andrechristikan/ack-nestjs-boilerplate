@@ -29,7 +29,7 @@ export interface IUserService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<UserDoc[]>;
-    findAllWithRoles(
+    findAllWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<IUserDoc[]>;
@@ -54,14 +54,14 @@ export interface IUserService {
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
     create(
-        { email, mobileNumber, name, role }: UserCreateRequestDto,
+        { email, name, role, country }: UserCreateRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         signUpFrom: ENUM_USER_SIGN_UP_FROM,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc>;
     signUp(
         role: string,
-        { email, name }: UserSignUpRequestDto,
+        { email, name, country }: UserSignUpRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc>;
@@ -121,7 +121,7 @@ export interface IUserService {
         passwordExpired: Date,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
-    joinWithRole(repository: UserDoc): Promise<IUserDoc>;
+    joinWithRoleAndCountry(repository: UserDoc): Promise<IUserDoc>;
     getPhotoUploadPath(user: string): Promise<string>;
     deleteMany(
         find: Record<string, any>,

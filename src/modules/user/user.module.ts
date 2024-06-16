@@ -3,11 +3,22 @@ import { UserRepositoryModule } from 'src/modules/user/repository/user.repositor
 import { UserService } from './services/user.service';
 import { UserHistoryService } from 'src/modules/user/services/user-history.service';
 import { UserPasswordService } from 'src/modules/user/services/user-password.service';
+import { UserLoginHistoryService } from 'src/modules/user/services/user-login-history.service';
 
 @Module({
     imports: [UserRepositoryModule],
-    exports: [UserService, UserHistoryService, UserPasswordService],
-    providers: [UserService, UserHistoryService, UserPasswordService],
+    exports: [
+        UserService,
+        UserHistoryService,
+        UserPasswordService,
+        UserLoginHistoryService,
+    ],
+    providers: [
+        UserService,
+        UserHistoryService,
+        UserPasswordService,
+        UserLoginHistoryService,
+    ],
     controllers: [],
 })
 export class UserModule {}

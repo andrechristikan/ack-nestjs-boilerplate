@@ -6,7 +6,7 @@ import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.
 
 export class UserUpdateProfileRequestDto extends PickType(
     UserCreateRequestDto,
-    ['name'] as const
+    ['name', 'country'] as const
 ) {
     @ApiProperty({
         example: faker.person.lastName(),

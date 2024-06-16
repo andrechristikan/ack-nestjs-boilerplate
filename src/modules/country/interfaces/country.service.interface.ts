@@ -19,6 +19,14 @@ export interface ICountryService {
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
     ): Promise<CountryDoc>;
+    findOneByAlpha2(
+        alpha2: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<CountryDoc>;
+    findOneByName(
+        name: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<CountryDoc>;
     findOneActiveByPhoneCode(
         phoneCode: string,
         options?: IDatabaseFindOneOptions

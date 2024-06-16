@@ -8,6 +8,9 @@ import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import { UserPasswordService } from 'src/modules/user/services/user-password.service';
 import { UserHistoryService } from 'src/modules/user/services/user-history.service';
+import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
+import { CountryService } from 'src/modules/country/services/country.service';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 
 @Injectable()
 export class MigrationUserSeed {
@@ -16,7 +19,8 @@ export class MigrationUserSeed {
         private readonly userService: UserService,
         private readonly userPasswordService: UserPasswordService,
         private readonly userHistoryService: UserHistoryService,
-        private readonly roleService: RoleService
+        private readonly roleService: RoleService,
+        private readonly countryService: CountryService
     ) {}
 
     @Command({
@@ -33,6 +37,9 @@ export class MigrationUserSeed {
         const memberRole: RoleDoc =
             await this.roleService.findOneByName('member');
         const userRole: RoleDoc = await this.roleService.findOneByName('user');
+        const country: CountryDoc = await this.countryService.findOneByAlpha2(
+            ENUM_MESSAGE_LANGUAGE.EN
+        );
 
         try {
             const user1: UserDoc = await this.userService.create(
@@ -40,6 +47,7 @@ export class MigrationUserSeed {
                     role: superAdminRole._id,
                     name: 'superadmin',
                     email: 'superadmin@mail.com',
+                    country: country._id,
                 },
                 passwordHash,
                 ENUM_USER_SIGN_UP_FROM.ADMIN
@@ -50,6 +58,7 @@ export class MigrationUserSeed {
                     role: adminRole._id,
                     name: 'admin',
                     email: 'admin@mail.com',
+                    country: country._id,
                 },
                 passwordHash,
                 ENUM_USER_SIGN_UP_FROM.ADMIN
@@ -59,6 +68,7 @@ export class MigrationUserSeed {
                     role: userRole._id,
                     name: 'user',
                     email: 'user@mail.com',
+                    country: country._id,
                 },
                 passwordHash,
                 ENUM_USER_SIGN_UP_FROM.ADMIN
@@ -68,6 +78,7 @@ export class MigrationUserSeed {
                     role: memberRole._id,
                     name: 'member',
                     email: 'member@mail.com',
+                    country: country._id,
                 },
                 passwordHash,
                 ENUM_USER_SIGN_UP_FROM.ADMIN

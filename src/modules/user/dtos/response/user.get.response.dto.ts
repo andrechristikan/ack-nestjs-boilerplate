@@ -126,6 +126,12 @@ export class UserGetResponseDto extends DatabaseIdResponseDto {
     readonly gender?: ENUM_USER_GENDER;
 
     @ApiProperty({
+        example: faker.string.uuid(),
+        required: true,
+    })
+    readonly country: string;
+
+    @ApiProperty({
         description: 'Date created at',
         example: faker.date.recent(),
         required: true,

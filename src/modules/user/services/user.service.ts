@@ -33,6 +33,7 @@ import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.re
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
 import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
 import { UserUpdateMobileNumberDto } from 'src/modules/user/dtos/request/user.update-mobile-number.dto';
+import { CountryEntity } from 'src/modules/country/repository/entities/country.entity';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -53,7 +54,7 @@ export class UserService implements IUserService {
         return this.userRepository.findAll<UserDoc>(find, options);
     }
 
-    async findAllWithRoles(
+    async findAllWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<IUserDoc[]> {
@@ -99,7 +100,7 @@ export class UserService implements IUserService {
     }
 
     async create(
-        { email, mobileNumber, name, role }: UserCreateRequestDto,
+        { email, name, role, country }: UserCreateRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         signUpFrom: ENUM_USER_SIGN_UP_FROM,
         options?: IDatabaseCreateOptions
@@ -117,17 +118,14 @@ export class UserService implements IUserService {
         create.passwordAttempt = 0;
         create.signUpDate = this.helperDateService.create();
         create.signUpFrom = signUpFrom;
-
-        if (mobileNumber) {
-            create.mobileNumber = mobileNumber;
-        }
+        create.country = country;
 
         return this.userRepository.create<UserEntity>(create, options);
     }
 
     async signUp(
         role: string,
-        { email, name }: UserSignUpRequestDto,
+        { email, name, country }: UserSignUpRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc> {
@@ -144,6 +142,7 @@ export class UserService implements IUserService {
         create.passwordAttempt = 0;
         create.signUpDate = this.helperDateService.create();
         create.signUpFrom = ENUM_USER_SIGN_UP_FROM.PUBLIC;
+        create.country = country;
 
         return this.userRepository.create<UserEntity>(create, options);
     }
@@ -282,14 +281,23 @@ export class UserService implements IUserService {
         return this.userRepository.save(repository, options);
     }
 
-    async joinWithRole(repository: UserDoc): Promise<IUserDoc> {
-        return this.userRepository.join(repository, {
-            field: 'role',
-            localKey: 'role',
-            foreignKey: '_id',
-            model: RoleEntity.name,
-            justOne: true,
-        });
+    async joinWithRoleAndCountry(repository: UserDoc): Promise<IUserDoc> {
+        return this.userRepository.join(repository, [
+            {
+                field: 'role',
+                localKey: 'role',
+                foreignKey: '_id',
+                model: RoleEntity.name,
+                justOne: true,
+            },
+            {
+                field: 'country',
+                localKey: 'country',
+                foreignKey: '_id',
+                model: CountryEntity.name,
+                justOne: true,
+            },
+        ]);
     }
 
     async getPhotoUploadPath(user: string): Promise<string> {
@@ -311,16 +319,25 @@ export class UserService implements IUserService {
             { _id, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
             {
                 ...options,
-                join: {
-                    field: 'role',
-                    localKey: 'role',
-                    foreignKey: '_id',
-                    model: RoleEntity.name,
-                    justOne: true,
-                    condition: {
-                        isActive: true,
+                join: [
+                    {
+                        field: 'role',
+                        localKey: 'role',
+                        foreignKey: '_id',
+                        model: RoleEntity.name,
+                        justOne: true,
+                        condition: {
+                            isActive: true,
+                        },
                     },
-                },
+                    {
+                        field: 'country',
+                        localKey: 'country',
+                        foreignKey: '_id',
+                        model: CountryEntity.name,
+                        justOne: true,
+                    },
+                ],
             }
         );
     }
@@ -333,16 +350,25 @@ export class UserService implements IUserService {
             { email, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
             {
                 ...options,
-                join: {
-                    field: 'role',
-                    localKey: 'role',
-                    foreignKey: '_id',
-                    model: RoleEntity.name,
-                    justOne: true,
-                    condition: {
-                        isActive: true,
+                join: [
+                    {
+                        field: 'role',
+                        localKey: 'role',
+                        foreignKey: '_id',
+                        model: RoleEntity.name,
+                        justOne: true,
+                        condition: {
+                            isActive: true,
+                        },
                     },
-                },
+                    {
+                        field: 'country',
+                        localKey: 'country',
+                        foreignKey: '_id',
+                        model: CountryEntity.name,
+                        justOne: true,
+                    },
+                ],
             }
         );
     }
@@ -359,16 +385,25 @@ export class UserService implements IUserService {
             },
             {
                 ...options,
-                join: {
-                    field: 'role',
-                    localKey: 'role',
-                    foreignKey: '_id',
-                    model: RoleEntity.name,
-                    justOne: true,
-                    condition: {
-                        isActive: true,
+                join: [
+                    {
+                        field: 'role',
+                        localKey: 'role',
+                        foreignKey: '_id',
+                        model: RoleEntity.name,
+                        justOne: true,
+                        condition: {
+                            isActive: true,
+                        },
                     },
-                },
+                    {
+                        field: 'country',
+                        localKey: 'country',
+                        foreignKey: '_id',
+                        model: CountryEntity.name,
+                        justOne: true,
+                    },
+                ],
             }
         );
     }

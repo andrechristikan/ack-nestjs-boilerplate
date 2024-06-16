@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
+import { DatabaseQueryContain } from 'src/common/database/decorators/database.decorator';
 import {
     IDatabaseCreateManyOptions,
     IDatabaseFindAllOptions,
@@ -33,6 +34,26 @@ export class CountryService implements ICountryService {
         options?: IDatabaseFindOneOptions
     ): Promise<CountryDoc> {
         return this.countryRepository.findOne<CountryDoc>(find, options);
+    }
+
+    async findOneByName(
+        name: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<CountryDoc> {
+        return this.countryRepository.findOne<CountryDoc>(
+            DatabaseQueryContain('name', name),
+            options
+        );
+    }
+
+    async findOneByAlpha2(
+        alpha2: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<CountryDoc> {
+        return this.countryRepository.findOne<CountryDoc>(
+            DatabaseQueryContain('alpha2Code', alpha2),
+            options
+        );
     }
 
     async findOneActiveByPhoneCode(

@@ -168,6 +168,13 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
         required: false,
     })
     selfDeletion?: boolean;
+
+    @DatabaseProp({
+        required: true,
+        type: String,
+        ref: CountryEntity.name,
+    })
+    country: string;
 }
 
 export const UserSchema = DatabaseSchema(UserEntity);

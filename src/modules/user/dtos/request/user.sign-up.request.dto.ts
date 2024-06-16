@@ -5,7 +5,6 @@ import { IsPassword } from 'src/common/request/validations/request.is-password.v
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
 
 export class UserSignUpRequestDto extends OmitType(UserCreateRequestDto, [
-    'mobileNumber',
     'role',
 ] as const) {
     @ApiProperty({

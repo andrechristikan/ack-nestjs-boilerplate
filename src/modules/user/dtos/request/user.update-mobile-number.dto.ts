@@ -1,25 +1,12 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, PickType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import {
-    IsNotEmpty,
-    IsString,
-    IsUUID,
-    MaxLength,
-    MinLength,
-} from 'class-validator';
+import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
+import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
 
-export class UserUpdateMobileNumberDto {
-    @ApiProperty({
-        example: faker.string.uuid(),
-        required: true,
-        description: 'Country phone code',
-    })
-    @IsString()
-    @IsUUID()
-    @IsNotEmpty()
-    readonly country: string;
-
+export class UserUpdateMobileNumberDto extends PickType(UserCreateRequestDto, [
+    'country',
+] as const) {
     @ApiProperty({
         example: `8${faker.string.fromCharacters('1234567890', {
             min: 7,
