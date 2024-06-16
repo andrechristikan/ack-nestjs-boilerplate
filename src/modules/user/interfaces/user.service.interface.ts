@@ -12,6 +12,7 @@ import {
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
 import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
+import { UserUpdateMobileNumberDto } from 'src/modules/user/dtos/request/user.update-mobile-number.dto';
 import { UserUpdatePasswordAttemptRequestDto } from 'src/modules/user/dtos/request/user.update-password-attempt.request.dto';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.request.dto';
 import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
@@ -28,7 +29,7 @@ export interface IUserService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<UserDoc[]>;
-    findAllWithRoles(
+    findAllWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<IUserDoc[]>;
@@ -53,20 +54,14 @@ export interface IUserService {
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
     create(
-        {
-            email,
-            mobileNumber,
-            firstName,
-            lastName,
-            role,
-        }: UserCreateRequestDto,
+        { email, name, role, country }: UserCreateRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         signUpFrom: ENUM_USER_SIGN_UP_FROM,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc>;
     signUp(
         role: string,
-        { email, firstName, lastName }: UserSignUpRequestDto,
+        { email, name, country }: UserSignUpRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc>;
@@ -126,7 +121,7 @@ export interface IUserService {
         passwordExpired: Date,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
-    joinWithRole(repository: UserDoc): Promise<IUserDoc>;
+    joinWithRoleAndCountry(repository: UserDoc): Promise<IUserDoc>;
     getPhotoUploadPath(user: string): Promise<string>;
     deleteMany(
         find: Record<string, any>,
@@ -147,12 +142,16 @@ export interface IUserService {
     mapProfile(user: IUserDoc): Promise<UserProfileResponseDto>;
     updateProfile(
         repository: UserDoc,
-        {
-            firstName,
-            lastName,
-            address,
-            mobileNumber,
-        }: UserUpdateProfileRequestDto,
+        { name, familyName, address }: UserUpdateProfileRequestDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
+    updateMobileNumber(
+        repository: UserDoc,
+        { country, number }: UserUpdateMobileNumberDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
+    deleteMobileNumber(
+        repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     mapList(user: IUserDoc[]): Promise<UserListResponseDto[]>;

@@ -22,6 +22,7 @@ export enum ENUM_POLICY_SUBJECT {
     ALL = 'ALL',
     API_KEY = 'API_KEY',
     SETTING = 'SETTING',
+    COUNTRY = 'COUNTRY',
     ROLE = 'ROLE',
     USER = 'USER',
 }

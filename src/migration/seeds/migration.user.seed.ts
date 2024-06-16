@@ -8,6 +8,9 @@ import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import { UserPasswordService } from 'src/modules/user/services/user-password.service';
 import { UserHistoryService } from 'src/modules/user/services/user-history.service';
+import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
+import { CountryService } from 'src/modules/country/services/country.service';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 
 @Injectable()
 export class MigrationUserSeed {
@@ -16,7 +19,8 @@ export class MigrationUserSeed {
         private readonly userService: UserService,
         private readonly userPasswordService: UserPasswordService,
         private readonly userHistoryService: UserHistoryService,
-        private readonly roleService: RoleService
+        private readonly roleService: RoleService,
+        private readonly countryService: CountryService
     ) {}
 
     @Command({
@@ -33,15 +37,17 @@ export class MigrationUserSeed {
         const memberRole: RoleDoc =
             await this.roleService.findOneByName('member');
         const userRole: RoleDoc = await this.roleService.findOneByName('user');
+        const country: CountryDoc = await this.countryService.findOneByAlpha2(
+            ENUM_MESSAGE_LANGUAGE.EN
+        );
 
         try {
             const user1: UserDoc = await this.userService.create(
                 {
                     role: superAdminRole._id,
-                    firstName: 'superadmin',
-                    lastName: 'test',
+                    name: 'superadmin',
                     email: 'superadmin@mail.com',
-                    password,
+                    country: country._id,
                 },
                 passwordHash,
                 ENUM_USER_SIGN_UP_FROM.ADMIN
@@ -50,10 +56,9 @@ export class MigrationUserSeed {
             const user2: UserDoc = await this.userService.create(
                 {
                     role: adminRole._id,
-                    firstName: 'admin',
-                    lastName: 'test',
+                    name: 'admin',
                     email: 'admin@mail.com',
-                    password,
+                    country: country._id,
                 },
                 passwordHash,
                 ENUM_USER_SIGN_UP_FROM.ADMIN
@@ -61,10 +66,9 @@ export class MigrationUserSeed {
             const user3: UserDoc = await this.userService.create(
                 {
                     role: userRole._id,
-                    firstName: 'user',
-                    lastName: 'test',
+                    name: 'user',
                     email: 'user@mail.com',
-                    password,
+                    country: country._id,
                 },
                 passwordHash,
                 ENUM_USER_SIGN_UP_FROM.ADMIN
@@ -72,10 +76,9 @@ export class MigrationUserSeed {
             const user4: UserDoc = await this.userService.create(
                 {
                     role: memberRole._id,
-                    firstName: 'member',
-                    lastName: 'test',
+                    name: 'member',
                     email: 'member@mail.com',
-                    password,
+                    country: country._id,
                 },
                 passwordHash,
                 ENUM_USER_SIGN_UP_FROM.ADMIN

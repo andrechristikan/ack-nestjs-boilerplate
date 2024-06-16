@@ -1,7 +1,7 @@
 import { HeadBucketCommandOutput, UploadPartRequest } from '@aws-sdk/client-s3';
 import {
     AwsS3MultipartDto,
-    AwsS3MultipartPartsDto,
+    AwsS3MultipartPartDto,
 } from 'src/common/aws/dtos/aws.s3-multipart.dto';
 import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
 import {
@@ -43,10 +43,10 @@ export interface IAwsS3Service {
         multipart: AwsS3MultipartDto,
         partNumber: number,
         content: UploadPartRequest['Body'] | string | Uint8Array | Buffer
-    ): Promise<AwsS3MultipartPartsDto>;
+    ): Promise<AwsS3MultipartPartDto>;
     updateMultiPart(
         { size, parts, ...others }: AwsS3MultipartDto,
-        part: AwsS3MultipartPartsDto
+        part: AwsS3MultipartPartDto
     ): Promise<AwsS3MultipartDto>;
     completeMultipart(multipart: AwsS3MultipartDto): Promise<void>;
     abortMultipart(multipart: AwsS3MultipartDto): Promise<void>;

@@ -10,7 +10,6 @@
         "exist": "Role with the provided name already exists.",
         "used": "The role is currently in use and cannot be deleted.",
         "isActiveInvalid": "Invalid active status for the role.",
-        "notFound": "The requested role was not found.",
-        "inactive": "The role is already inactive."
+        "notFound": "The requested role was not found."
     }
 }

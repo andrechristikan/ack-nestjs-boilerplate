@@ -56,7 +56,7 @@ import { HelperStringService } from 'src/common/helper/services/helper.string.se
 import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
 import {
     AwsS3MultipartDto,
-    AwsS3MultipartPartsDto,
+    AwsS3MultipartPartDto,
 } from 'src/common/aws/dtos/aws.s3-multipart.dto';
 import { AWS_S3_MAX_PART_NUMBER } from 'src/common/aws/constants/aws.constant';
 
@@ -460,7 +460,7 @@ export class AwsS3Service implements IAwsS3Service {
         multipart: AwsS3MultipartDto,
         partNumber: number,
         content: string | Uint8Array | Buffer
-    ): Promise<AwsS3MultipartPartsDto> {
+    ): Promise<AwsS3MultipartPartDto> {
         const uploadPartCommand: UploadPartCommand = new UploadPartCommand({
             Bucket: this.bucket,
             Key: multipart.path,
@@ -487,7 +487,7 @@ export class AwsS3Service implements IAwsS3Service {
 
     async updateMultiPart(
         { size, parts, ...others }: AwsS3MultipartDto,
-        part: AwsS3MultipartPartsDto
+        part: AwsS3MultipartPartDto
     ): Promise<AwsS3MultipartDto> {
         parts.push(part);
         return {

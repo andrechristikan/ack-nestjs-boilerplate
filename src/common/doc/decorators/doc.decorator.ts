@@ -241,7 +241,7 @@ export function Doc(options?: IDocOptions): MethodDecorator {
         DocDefault({
             httpStatus: HttpStatus.REQUEST_TIMEOUT,
             messagePath: 'http.serverError.requestTimeout',
-            statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_TIMEOUT_ERROR,
+            statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.TIMEOUT_ERROR,
         })
     );
 }
@@ -261,8 +261,7 @@ export function DocRequest(options?: IDocRequestOptions) {
         docs.push(
             DocDefault({
                 httpStatus: HttpStatus.UNPROCESSABLE_ENTITY,
-                statusCode:
-                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR,
+                statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION_ERROR,
                 messagePath: 'request.validation',
             })
         );
@@ -341,8 +340,7 @@ export function DocAuth(options?: IDocAuthOptions) {
         docs.push(ApiBearerAuth('refreshToken'));
         oneOfUnauthorized.push({
             messagePath: 'auth.error.refreshTokenUnauthorized',
-            statusCode:
-                ENUM_AUTH_STATUS_CODE_ERROR.AUTH_JWT_REFRESH_TOKEN_ERROR,
+            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_REFRESH_TOKEN_ERROR,
         });
     }
 
@@ -350,7 +348,7 @@ export function DocAuth(options?: IDocAuthOptions) {
         docs.push(ApiBearerAuth('accessToken'));
         oneOfUnauthorized.push({
             messagePath: 'auth.error.accessTokenUnauthorized',
-            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_JWT_ACCESS_TOKEN_ERROR,
+            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.JWT_ACCESS_TOKEN_ERROR,
         });
     }
 
@@ -358,7 +356,7 @@ export function DocAuth(options?: IDocAuthOptions) {
         docs.push(ApiBearerAuth('google'));
         oneOfUnauthorized.push({
             messagePath: 'auth.error.socialGoogle',
-            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_SOCIAL_GOOGLE_ERROR,
+            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_ERROR,
         });
     }
 
@@ -366,7 +364,7 @@ export function DocAuth(options?: IDocAuthOptions) {
         docs.push(ApiBearerAuth('apple'));
         oneOfUnauthorized.push({
             messagePath: 'auth.error.socialApple',
-            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.AUTH_SOCIAL_APPLE_ERROR,
+            statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_APPLE_ERROR,
         });
     }
 

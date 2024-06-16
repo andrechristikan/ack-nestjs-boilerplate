@@ -7,6 +7,9 @@ import { IEmailService } from 'src/modules/email/interfaces/email.service.interf
 import { readFileSync } from 'fs';
 import { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
 import { EmailSendDto } from 'src/modules/email/dtos/email.send.dto';
+import { EmailSendTempPasswordDto } from 'src/modules/email/dtos/email.send-temp-password.dto';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { ENUM_HELPER_DATE_FORMAT } from 'src/common/helper/constants/helper.enum.constant';
 
 @Injectable()
 export class EmailService implements IEmailService {
@@ -14,6 +17,7 @@ export class EmailService implements IEmailService {
 
     constructor(
         private readonly awsSESService: AwsSESService,
+        private readonly helperDateService: HelperDateService,
         private readonly configService: ConfigService
     ) {
         this.fromEmail = this.configService.get<string>('email.fromEmail');
@@ -77,10 +81,10 @@ export class EmailService implements IEmailService {
         }
     }
 
-    async createSignUp(): Promise<boolean> {
+    async createWelcome(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
-                name: ENUM_EMAIL.SIGN_UP,
+                name: ENUM_EMAIL.WElCOME,
                 subject: `Welcome`,
                 htmlBody: readFileSync(
                     './templates/email.sign-up.template.html',
@@ -94,10 +98,10 @@ export class EmailService implements IEmailService {
         }
     }
 
-    async getSignUp(): Promise<GetTemplateCommandOutput> {
+    async getWelcome(): Promise<GetTemplateCommandOutput> {
         try {
             const template = await this.awsSESService.getTemplate({
-                name: ENUM_EMAIL.SIGN_UP,
+                name: ENUM_EMAIL.WElCOME,
             });
 
             return template;
@@ -106,10 +110,10 @@ export class EmailService implements IEmailService {
         }
     }
 
-    async deleteSignUp(): Promise<boolean> {
+    async deleteWelcome(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: ENUM_EMAIL.SIGN_UP,
+                name: ENUM_EMAIL.WElCOME,
             });
 
             return true;
@@ -118,14 +122,79 @@ export class EmailService implements IEmailService {
         }
     }
 
-    async sendSignUp({ name, email }: EmailSendDto): Promise<boolean> {
+    async sendWelcome({ name, email }: EmailSendDto): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: ENUM_EMAIL.SIGN_UP,
+                templateName: ENUM_EMAIL.WElCOME,
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {
                     name: title(name),
+                },
+            });
+
+            return true;
+        } catch (err: unknown) {
+            return false;
+        }
+    }
+
+    async createTempPassword(): Promise<boolean> {
+        try {
+            await this.awsSESService.createTemplate({
+                name: ENUM_EMAIL.TEMP_PASSWORD,
+                subject: `Temporary Password`,
+                htmlBody: readFileSync(
+                    './templates/email.temp-password.template.html',
+                    'utf8'
+                ),
+            });
+
+            return true;
+        } catch (err: unknown) {
+            return false;
+        }
+    }
+
+    async getTempPassword(): Promise<GetTemplateCommandOutput> {
+        try {
+            const template = await this.awsSESService.getTemplate({
+                name: ENUM_EMAIL.TEMP_PASSWORD,
+            });
+
+            return template;
+        } catch (err: unknown) {
+            return;
+        }
+    }
+
+    async deleteTempPassword(): Promise<boolean> {
+        try {
+            await this.awsSESService.deleteTemplate({
+                name: ENUM_EMAIL.TEMP_PASSWORD,
+            });
+
+            return true;
+        } catch (err: unknown) {
+            return false;
+        }
+    }
+
+    async sendTempPassword(
+        { name, email }: EmailSendDto,
+        { password, expiredAt }: EmailSendTempPasswordDto
+    ): Promise<boolean> {
+        try {
+            await this.awsSESService.send({
+                templateName: ENUM_EMAIL.TEMP_PASSWORD,
+                recipients: [email],
+                sender: this.fromEmail,
+                templateData: {
+                    name: title(name),
+                    password,
+                    expiredAt: this.helperDateService.format(expiredAt, {
+                        format: ENUM_HELPER_DATE_FORMAT.FRIENDLY_DATE_TIME,
+                    }),
                 },
             });
 

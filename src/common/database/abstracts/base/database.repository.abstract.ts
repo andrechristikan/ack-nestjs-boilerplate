@@ -14,39 +14,40 @@ import {
     IDatabaseFindOneLockOptions,
     IDatabaseRawFindAllOptions,
     IDatabaseRawGetTotalOptions,
+    IDatabaseJoin,
 } from 'src/common/database/interfaces/database.interface';
 
 export abstract class DatabaseRepositoryAbstract<Entity = any> {
-    abstract findAll<T = Entity>(
+    abstract findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions<any>
-    ): Promise<T[]>;
+    ): Promise<Entity[]>;
 
-    abstract findAllDistinct<T = Entity>(
+    abstract findAllDistinct(
         fieldDistinct: string,
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions<any>
-    ): Promise<T[]>;
+    ): Promise<Entity[]>;
 
-    abstract findOne<T = Entity>(
+    abstract findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions<any>
-    ): Promise<T>;
+    ): Promise<Entity>;
 
-    abstract findOneById<T = Entity>(
+    abstract findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions<any>
-    ): Promise<T>;
+    ): Promise<Entity>;
 
-    abstract findOneAndLock<T = Entity>(
+    abstract findOneAndLock(
         find: Record<string, any>,
         options?: IDatabaseFindOneLockOptions<any>
-    ): Promise<T>;
+    ): Promise<Entity>;
 
-    abstract findOneByIdAndLock<T = Entity>(
+    abstract findOneByIdAndLock(
         _id: string,
         options?: IDatabaseFindOneLockOptions<any>
-    ): Promise<T>;
+    ): Promise<Entity>;
 
     abstract getTotal(
         find?: Record<string, any>,
@@ -123,6 +124,11 @@ export abstract class DatabaseRepositoryAbstract<Entity = any> {
         data: Dto,
         options?: IDatabaseManyOptions<any>
     ): Promise<boolean>;
+
+    abstract join<T = any>(
+        repository: Entity,
+        joins: IDatabaseJoin | IDatabaseJoin[]
+    ): Promise<T>;
 
     abstract updateManyRaw(
         find: Record<string, any>,

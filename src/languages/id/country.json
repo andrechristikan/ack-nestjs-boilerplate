@@ -1,0 +1,11 @@
+{
+    "list": "Daftar negara berhasil diambil.",
+    "get": "Detail negara berhasil diambil.",
+    "inactive": "Negara ditandai sebagai tidak aktif.",
+    "active": "Negara ditandai sebagai aktif.",
+    "all": "Ambil semua daftar negara berhasil diambil.",
+    "error": {
+        "isActiveInvalid": "Status aktif tidak valid untuk negara tersebut.",
+        "notFound": "Negara yang diminta tidak ditemukan."
+    }
+}

@@ -3,7 +3,7 @@ import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
 
-export class AwsS3MultipartPartsDto {
+export class AwsS3MultipartPartDto {
     @ApiProperty({
         required: true,
         nullable: false,
@@ -63,11 +63,11 @@ export class AwsS3MultipartDto extends AwsS3Dto {
         nullable: false,
         oneOf: [
             {
-                $ref: getSchemaPath(AwsS3MultipartPartsDto),
+                $ref: getSchemaPath(AwsS3MultipartPartDto),
                 type: 'array',
             },
         ],
     })
-    @Type(() => AwsS3MultipartPartsDto)
-    parts: AwsS3MultipartPartsDto[];
+    @Type(() => AwsS3MultipartPartDto)
+    parts: AwsS3MultipartPartDto[];
 }

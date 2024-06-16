@@ -8,34 +8,30 @@ import {
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
 } from 'src/modules/user/constants/user.enum.constant';
+import { UserUpdateMobileNumberDto } from 'src/modules/user/dtos/request/user.update-mobile-number.dto';
 
 export class UserGetResponseDto extends DatabaseIdResponseDto {
     @ApiProperty({
         required: true,
         nullable: false,
-        maxLength: 50,
+        maxLength: 100,
         minLength: 1,
     })
-    readonly firstName: string;
-
-    @ApiProperty({
-        required: true,
-        nullable: false,
-        maxLength: 50,
-        minLength: 1,
-    })
-    readonly lastName: string;
+    readonly name: string;
 
     @ApiProperty({
         required: false,
-        example: `628${faker.string.fromCharacters('1234567890', {
-            min: 7,
-            max: 11,
-        })}`,
-        maxLength: 20,
-        minLength: 8,
+        maxLength: 50,
+        minLength: 1,
     })
-    readonly mobileNumber?: string;
+    readonly familyName?: string;
+
+    @ApiProperty({
+        required: false,
+        type: () => UserUpdateMobileNumberDto,
+    })
+    @Type(() => UserUpdateMobileNumberDto)
+    readonly mobileNumber?: UserUpdateMobileNumberDto;
 
     @ApiProperty({
         required: true,
@@ -128,6 +124,12 @@ export class UserGetResponseDto extends DatabaseIdResponseDto {
         nullable: true,
     })
     readonly gender?: ENUM_USER_GENDER;
+
+    @ApiProperty({
+        example: faker.string.uuid(),
+        required: true,
+    })
+    readonly country: string;
 
     @ApiProperty({
         description: 'Date created at',

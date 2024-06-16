@@ -1,10 +1,25 @@
-import { PopulateOptions } from 'mongoose';
+import { Document } from 'mongoose';
 import { IPaginationOrder } from 'src/common/pagination/interfaces/pagination.interface';
+
+export interface IDatabaseQueryContainOptions {
+    fullWord: boolean;
+}
+
+export interface IDatabaseJoin {
+    field: string;
+    localKey: string;
+    foreignKey: string;
+    model: any;
+    condition?: Record<string, any>;
+    justOne?: boolean;
+}
+
+export type IDatabaseDocument<T> = T & Document;
 
 // find one
 export interface IDatabaseFindOneOptions<T = any> {
     select?: Record<string, boolean | number> | string;
-    join?: boolean | PopulateOptions | PopulateOptions[];
+    join?: boolean | IDatabaseJoin | IDatabaseJoin[];
     session?: T;
     withDeleted?: boolean;
 }

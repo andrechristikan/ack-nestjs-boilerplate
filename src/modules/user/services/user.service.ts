@@ -32,6 +32,8 @@ import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.resp
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
 import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
+import { UserUpdateMobileNumberDto } from 'src/modules/user/dtos/request/user.update-mobile-number.dto';
+import { CountryEntity } from 'src/modules/country/repository/entities/country.entity';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -52,7 +54,7 @@ export class UserService implements IUserService {
         return this.userRepository.findAll<UserDoc>(find, options);
     }
 
-    async findAllWithRoles(
+    async findAllWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<IUserDoc[]> {
@@ -98,22 +100,14 @@ export class UserService implements IUserService {
     }
 
     async create(
-        {
-            email,
-            mobileNumber,
-            firstName,
-            lastName,
-            role,
-        }: UserCreateRequestDto,
+        { email, name, role, country }: UserCreateRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         signUpFrom: ENUM_USER_SIGN_UP_FROM,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc> {
         const create: UserEntity = new UserEntity();
-        create.firstName = firstName;
-        create.lastName = lastName;
+        create.name = name;
         create.email = email;
-        create.mobileNumber = mobileNumber;
         create.role = role;
         create.status = ENUM_USER_STATUS.ACTIVE;
         create.blocked = false;
@@ -124,19 +118,19 @@ export class UserService implements IUserService {
         create.passwordAttempt = 0;
         create.signUpDate = this.helperDateService.create();
         create.signUpFrom = signUpFrom;
+        create.country = country;
 
         return this.userRepository.create<UserEntity>(create, options);
     }
 
     async signUp(
         role: string,
-        { email, firstName, lastName }: UserSignUpRequestDto,
+        { email, name, country }: UserSignUpRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc> {
         const create: UserEntity = new UserEntity();
-        create.firstName = firstName;
-        create.lastName = lastName;
+        create.name = name;
         create.email = email;
         create.role = role;
         create.status = ENUM_USER_STATUS.ACTIVE;
@@ -148,6 +142,7 @@ export class UserService implements IUserService {
         create.passwordAttempt = 0;
         create.signUpDate = this.helperDateService.create();
         create.signUpFrom = ENUM_USER_SIGN_UP_FROM.PUBLIC;
+        create.country = country;
 
         return this.userRepository.create<UserEntity>(create, options);
     }
@@ -286,14 +281,25 @@ export class UserService implements IUserService {
         return this.userRepository.save(repository, options);
     }
 
-    async joinWithRole(repository: UserDoc): Promise<IUserDoc> {
-        return repository.populate({
-            path: 'role',
-            localField: 'role',
-            foreignField: '_id',
-            model: RoleEntity.name,
-        });
+    async joinWithRoleAndCountry(repository: UserDoc): Promise<IUserDoc> {
+        return this.userRepository.join(repository, [
+            {
+                field: 'role',
+                localKey: 'role',
+                foreignKey: '_id',
+                model: RoleEntity.name,
+                justOne: true,
+            },
+            {
+                field: 'country',
+                localKey: 'country',
+                foreignKey: '_id',
+                model: CountryEntity.name,
+                justOne: true,
+            },
+        ]);
     }
+
     async getPhotoUploadPath(user: string): Promise<string> {
         return this.uploadPath.replace('{user}', user);
     }
@@ -313,15 +319,25 @@ export class UserService implements IUserService {
             { _id, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
             {
                 ...options,
-                join: {
-                    path: 'role',
-                    localField: 'role',
-                    foreignField: '_id',
-                    match: {
-                        isActive: true,
+                join: [
+                    {
+                        field: 'role',
+                        localKey: 'role',
+                        foreignKey: '_id',
+                        model: RoleEntity.name,
+                        justOne: true,
+                        condition: {
+                            isActive: true,
+                        },
                     },
-                    model: RoleEntity.name,
-                },
+                    {
+                        field: 'country',
+                        localKey: 'country',
+                        foreignKey: '_id',
+                        model: CountryEntity.name,
+                        justOne: true,
+                    },
+                ],
             }
         );
     }
@@ -334,15 +350,25 @@ export class UserService implements IUserService {
             { email, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
             {
                 ...options,
-                join: {
-                    path: 'role',
-                    localField: 'role',
-                    foreignField: '_id',
-                    match: {
-                        isActive: true,
+                join: [
+                    {
+                        field: 'role',
+                        localKey: 'role',
+                        foreignKey: '_id',
+                        model: RoleEntity.name,
+                        justOne: true,
+                        condition: {
+                            isActive: true,
+                        },
                     },
-                    model: RoleEntity.name,
-                },
+                    {
+                        field: 'country',
+                        localKey: 'country',
+                        foreignKey: '_id',
+                        model: CountryEntity.name,
+                        justOne: true,
+                    },
+                ],
             }
         );
     }
@@ -359,15 +385,25 @@ export class UserService implements IUserService {
             },
             {
                 ...options,
-                join: {
-                    path: 'role',
-                    localField: 'role',
-                    foreignField: '_id',
-                    match: {
-                        isActive: true,
+                join: [
+                    {
+                        field: 'role',
+                        localKey: 'role',
+                        foreignKey: '_id',
+                        model: RoleEntity.name,
+                        justOne: true,
+                        condition: {
+                            isActive: true,
+                        },
                     },
-                    model: RoleEntity.name,
-                },
+                    {
+                        field: 'country',
+                        localKey: 'country',
+                        foreignKey: '_id',
+                        model: CountryEntity.name,
+                        justOne: true,
+                    },
+                ],
             }
         );
     }
@@ -378,18 +414,34 @@ export class UserService implements IUserService {
 
     async updateProfile(
         repository: UserDoc,
-        {
-            firstName,
-            lastName,
-            address,
-            mobileNumber,
-        }: UserUpdateProfileRequestDto,
+        { name, familyName, address }: UserUpdateProfileRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
-        repository.firstName = firstName;
-        repository.lastName = lastName;
+        repository.name = name;
+        repository.familyName = familyName;
         repository.address = address;
-        repository.mobileNumber = mobileNumber;
+
+        return this.userRepository.save(repository, options);
+    }
+
+    async updateMobileNumber(
+        repository: UserDoc,
+        { country, number }: UserUpdateMobileNumberDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        repository.mobileNumber = {
+            country,
+            number,
+        };
+
+        return this.userRepository.save(repository, options);
+    }
+
+    async deleteMobileNumber(
+        repository: UserDoc,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        repository.mobileNumber = undefined;
 
         return this.userRepository.save(repository, options);
     }

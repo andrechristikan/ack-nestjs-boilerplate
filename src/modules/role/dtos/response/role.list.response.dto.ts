@@ -10,5 +10,5 @@ export class RoleListResponseDto extends OmitType(RoleGetResponseDto, [
         required: true,
     })
     @Transform(({ value }) => value.length)
-    permissions: number;
+    readonly permissions: number;
 }

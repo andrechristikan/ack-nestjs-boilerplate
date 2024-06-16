@@ -1,5 +1,5 @@
 FROM node:lts-alpine
-LABEL maintainer "ack@baibay.id"
+LABEL maintainer "andrechristikan@gmail.com"
 
 ENV NODE_ENV=${NODE_ENV}
 
@@ -10,7 +10,7 @@ COPY package.json yarn.lock ./
 RUN touch .env
 
 RUN mkdir data
-RUN set -x && yarn
+RUN set -x && yarn --frozen-lockfile
 
 COPY . .
 

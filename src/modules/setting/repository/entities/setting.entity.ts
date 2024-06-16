@@ -1,14 +1,17 @@
-import { Prop, SchemaFactory } from '@nestjs/mongoose';
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
-import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
+import {
+    DatabaseEntity,
+    DatabaseProp,
+    DatabaseSchema,
+} from 'src/common/database/decorators/database.decorator';
 import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/constants/setting.enum.constant';
-import { Document } from 'mongoose';
+import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
 
-export const SettingDatabaseName = 'settings';
+export const SettingTableName = 'Settings';
 
-@DatabaseEntity({ collection: SettingDatabaseName })
+@DatabaseEntity({ collection: SettingTableName })
 export class SettingEntity extends DatabaseMongoUUIDEntityAbstract {
-    @Prop({
+    @DatabaseProp({
         required: true,
         index: true,
         unique: true,
@@ -17,20 +20,20 @@ export class SettingEntity extends DatabaseMongoUUIDEntityAbstract {
     })
     name: string;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
         type: String,
     })
     description?: string;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
         type: String,
         enum: ENUM_SETTING_DATA_TYPE,
     })
     type: ENUM_SETTING_DATA_TYPE;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         trim: true,
         type: String,
@@ -38,6 +41,5 @@ export class SettingEntity extends DatabaseMongoUUIDEntityAbstract {
     value: string;
 }
 
-export const SettingSchema = SchemaFactory.createForClass(SettingEntity);
-
-export type SettingDoc = SettingEntity & Document;
+export const SettingSchema = DatabaseSchema(SettingEntity);
+export type SettingDoc = IDatabaseDocument<SettingEntity>;

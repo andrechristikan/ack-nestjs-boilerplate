@@ -6,8 +6,8 @@ export interface IEmailService {
     getChangePassword(): Promise<GetTemplateCommandOutput>;
     deleteChangePassword(): Promise<boolean>;
     sendChangePassword({ name, email }: EmailSendDto): Promise<boolean>;
-    createSignUp(): Promise<boolean>;
-    getSignUp(): Promise<GetTemplateCommandOutput>;
-    deleteSignUp(): Promise<boolean>;
-    sendSignUp({ name, email }: EmailSendDto): Promise<boolean>;
+    createWelcome(): Promise<boolean>;
+    getWelcome(): Promise<GetTemplateCommandOutput>;
+    deleteWelcome(): Promise<boolean>;
+    sendWelcome({ name, email }: EmailSendDto): Promise<boolean>;
 }

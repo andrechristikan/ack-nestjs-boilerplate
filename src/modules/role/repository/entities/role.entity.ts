@@ -1,19 +1,21 @@
-import { Prop, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
-import { DatabaseEntity } from 'src/common/database/decorators/database.decorator';
 import {
-    ENUM_POLICY_ACTION,
-    ENUM_POLICY_ROLE_TYPE,
-    ENUM_POLICY_SUBJECT,
-} from 'src/common/policy/constants/policy.enum.constant';
-import { RolePermissionDto } from 'src/modules/role/dtos/role.permission.dto';
+    DatabaseEntity,
+    DatabaseProp,
+    DatabaseSchema,
+} from 'src/common/database/decorators/database.decorator';
+import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
+import { ENUM_POLICY_ROLE_TYPE } from 'src/common/policy/constants/policy.enum.constant';
+import {
+    RolePermissionEntity,
+    RolePermissionSchema,
+} from 'src/modules/role/repository/entities/role.permission.entity';
 
-export const RoleDatabaseName = 'roles';
+export const RoleTableName = 'Roles';
 
-@DatabaseEntity({ collection: RoleDatabaseName })
+@DatabaseEntity({ collection: RoleTableName })
 export class RoleEntity extends DatabaseMongoUUIDEntityAbstract {
-    @Prop({
+    @DatabaseProp({
         required: true,
         index: true,
         unique: true,
@@ -23,14 +25,14 @@ export class RoleEntity extends DatabaseMongoUUIDEntityAbstract {
     })
     name: string;
 
-    @Prop({
+    @DatabaseProp({
         required: false,
         trim: true,
         type: String,
     })
     description?: string;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         default: true,
         index: true,
@@ -38,7 +40,7 @@ export class RoleEntity extends DatabaseMongoUUIDEntityAbstract {
     })
     isActive: boolean;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         enum: ENUM_POLICY_ROLE_TYPE,
         index: true,
@@ -46,33 +48,13 @@ export class RoleEntity extends DatabaseMongoUUIDEntityAbstract {
     })
     type: ENUM_POLICY_ROLE_TYPE;
 
-    @Prop({
+    @DatabaseProp({
         required: true,
         default: [],
-        _id: false,
-        type: [
-            {
-                subject: {
-                    type: String,
-                    enum: ENUM_POLICY_SUBJECT,
-                    required: true,
-                },
-                action: {
-                    required: true,
-                    type: [
-                        {
-                            required: true,
-                            type: String,
-                            enum: ENUM_POLICY_ACTION,
-                        },
-                    ],
-                },
-            },
-        ],
+        schema: [RolePermissionSchema],
     })
-    permissions: RolePermissionDto[];
+    permissions: RolePermissionEntity[];
 }
 
-export const RoleSchema = SchemaFactory.createForClass(RoleEntity);
-
-export type RoleDoc = RoleEntity & Document;
+export const RoleSchema = DatabaseSchema(RoleEntity);
+export type RoleDoc = IDatabaseDocument<RoleEntity>;

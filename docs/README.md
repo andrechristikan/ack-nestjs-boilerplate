@@ -81,6 +81,16 @@ docker-compose up -d
 
 This project need to do migration for running. [Read this][ack-database-migration-doc]
 
+## Email Migration
+
+The email will automatically create email template through AWS SES
+
+For migrate
+```bash
+yarn migrate:email
+```
+
+
 
 [ack-database-migration-doc]: /docs/database_migration.md
 

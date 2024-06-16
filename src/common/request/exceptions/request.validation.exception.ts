@@ -6,8 +6,7 @@ export class RequestValidationException extends HttpException {
     constructor(errors: ValidationError[]) {
         super(
             {
-                statusCode:
-                    ENUM_REQUEST_STATUS_CODE_ERROR.REQUEST_VALIDATION_ERROR,
+                statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION_ERROR,
                 message: 'request.validation',
                 errors,
             },

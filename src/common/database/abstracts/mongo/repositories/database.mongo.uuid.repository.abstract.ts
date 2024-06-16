@@ -23,6 +23,7 @@ import {
     IDatabaseFindOneLockOptions,
     IDatabaseRawFindAllOptions,
     IDatabaseRawGetTotalOptions,
+    IDatabaseJoin,
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 
@@ -31,11 +32,11 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
     EntityDocument,
 > extends DatabaseRepositoryAbstract<EntityDocument> {
     protected _repository: Model<Entity>;
-    protected _joinOnFind?: PopulateOptions | PopulateOptions[];
+    protected _joinOnFind?: IDatabaseJoin | IDatabaseJoin[];
 
     constructor(
         repository: Model<Entity>,
-        options?: PopulateOptions | PopulateOptions[]
+        options?: IDatabaseJoin | IDatabaseJoin[]
     ) {
         super();
 
@@ -68,8 +69,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         if (options?.join) {
             findAll.populate(
                 typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
+                    ? this._convertJoinOption(this._joinOnFind)
+                    : this._convertJoinOption(options.join)
             );
         }
 
@@ -109,8 +110,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         if (options?.join) {
             findAll.populate(
                 typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
+                    ? this._convertJoinOption(this._joinOnFind)
+                    : this._convertJoinOption(options.join)
             );
         }
 
@@ -137,8 +138,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         if (options?.join) {
             findOne.populate(
                 typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
+                    ? this._convertJoinOption(this._joinOnFind)
+                    : this._convertJoinOption(options.join)
             );
         }
 
@@ -166,8 +167,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         if (options?.join) {
             findOne.populate(
                 typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
+                    ? this._convertJoinOption(this._joinOnFind)
+                    : this._convertJoinOption(options.join)
             );
         }
 
@@ -198,8 +199,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         if (options?.join) {
             findOne.populate(
                 typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
+                    ? this._convertJoinOption(this._joinOnFind)
+                    : this._convertJoinOption(options.join)
             );
         }
 
@@ -230,8 +231,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         if (options?.join) {
             findOne.populate(
                 typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
+                    ? this._convertJoinOption(this._joinOnFind)
+                    : this._convertJoinOption(options.join)
             );
         }
 
@@ -259,8 +260,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         if (options?.join) {
             count.populate(
                 typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
+                    ? this._convertJoinOption(this._joinOnFind)
+                    : this._convertJoinOption(options.join)
             );
         }
 
@@ -292,8 +293,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         if (options?.join) {
             exist.populate(
                 typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
+                    ? this._convertJoinOption(this._joinOnFind)
+                    : this._convertJoinOption(options.join)
             );
         }
 
@@ -382,8 +383,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         if (options?.join) {
             del.populate(
                 typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
+                    ? this._convertJoinOption(this._joinOnFind)
+                    : this._convertJoinOption(options.join)
             );
         }
 
@@ -408,8 +409,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         if (options?.join) {
             del.populate(
                 typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
+                    ? this._convertJoinOption(this._joinOnFind)
+                    : this._convertJoinOption(options.join)
             );
         }
 
@@ -448,8 +449,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         if (options?.join) {
             softDel.populate(
                 typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
+                    ? this._convertJoinOption(this._joinOnFind)
+                    : this._convertJoinOption(options.join)
             );
         }
 
@@ -481,8 +482,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         if (options?.join) {
             softDel.populate(
                 typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
+                    ? this._convertJoinOption(this._joinOnFind)
+                    : this._convertJoinOption(options.join)
             );
         }
 
@@ -521,8 +522,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         if (options?.join) {
             rest.populate(
                 typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
+                    ? this._convertJoinOption(this._joinOnFind)
+                    : this._convertJoinOption(options.join)
             );
         }
 
@@ -554,8 +555,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         if (options?.join) {
             rest.populate(
                 typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
+                    ? this._convertJoinOption(this._joinOnFind)
+                    : this._convertJoinOption(options.join)
             );
         }
 
@@ -586,8 +587,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         if (options?.join) {
             update.populate(
                 typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
+                    ? this._convertJoinOption(this._joinOnFind)
+                    : this._convertJoinOption(options.join)
             );
         }
 
@@ -597,6 +598,15 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         } catch (err: unknown) {
             throw err;
         }
+    }
+
+    async join<T = any>(
+        repository: EntityDocument & Document<string>,
+        joins: IDatabaseJoin | IDatabaseJoin[]
+    ): Promise<T> {
+        const cOptions = this._convertJoinOption(joins);
+
+        return repository.populate(cOptions);
     }
 
     // raw
@@ -617,8 +627,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
         if (options?.join) {
             update.populate(
                 typeof options.join === 'boolean'
-                    ? this._joinOnFind
-                    : (options.join as PopulateOptions | PopulateOptions[])
+                    ? this._convertJoinOption(this._joinOnFind)
+                    : this._convertJoinOption(options.join)
             );
         }
 
@@ -739,5 +749,45 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
 
     async model(): Promise<Model<Entity>> {
         return this._repository;
+    }
+
+    private _convertJoinOption(
+        options: IDatabaseJoin | IDatabaseJoin[]
+    ): PopulateOptions | PopulateOptions[] {
+        if (Array.isArray(options)) {
+            const cOptions: PopulateOptions[] = options.map(e => {
+                const aOptions: PopulateOptions = {
+                    path: e.field,
+                    foreignField: e.foreignKey,
+                    localField: e.localKey,
+                    model: e.model,
+                    match: e.condition,
+                };
+
+                if (e.justOne) {
+                    aOptions.justOne = true;
+                    aOptions.perDocumentLimit = 1;
+                }
+
+                return aOptions;
+            });
+
+            return cOptions;
+        }
+
+        const cOptions: PopulateOptions = {
+            path: options.field,
+            foreignField: options.foreignKey,
+            localField: options.localKey,
+            model: options.model,
+            match: options.condition,
+        };
+
+        if (options.justOne) {
+            cOptions.justOne = true;
+            cOptions.perDocumentLimit = 1;
+        }
+
+        return cOptions;
     }
 }
