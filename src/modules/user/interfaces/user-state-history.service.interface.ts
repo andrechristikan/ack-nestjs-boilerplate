@@ -4,28 +4,29 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { UserHistoryListResponseDto } from 'src/modules/user/dtos/response/user-history.list.response.dto';
-import { UserHistoryDoc } from 'src/modules/user/repository/entities/user-history.entity';
+import { ENUM_USER_HISTORY_STATE } from 'src/modules/user/constants/user-history.enum.constant';
+import { UserStateHistoryListResponseDto } from 'src/modules/user/dtos/response/user-state-history.list.response.dto';
+import { UserStateHistoryDoc } from 'src/modules/user/repository/entities/user-state-history.entity';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 
-export interface IUserHistoryService {
+export interface IUserStateHistoryService {
     findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<UserHistoryDoc[]>;
+    ): Promise<UserStateHistoryDoc[]>;
     findAllByUser(
         user: string,
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<UserHistoryDoc[]>;
+    ): Promise<UserStateHistoryDoc[]>;
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<UserHistoryDoc>;
+    ): Promise<UserStateHistoryDoc>;
     findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<UserHistoryDoc>;
+    ): Promise<UserStateHistoryDoc>;
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
@@ -35,32 +36,33 @@ export interface IUserHistoryService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
-    createCreatedByUser(
+    setState(user: UserDoc): Promise<ENUM_USER_HISTORY_STATE>;
+    createCreated(
         user: UserDoc,
         by: string,
         options?: IDatabaseCreateOptions
-    ): Promise<UserHistoryDoc>;
-    createActiveByUser(
+    ): Promise<UserStateHistoryDoc>;
+    createActive(
         user: UserDoc,
         by: string,
         options?: IDatabaseCreateOptions
-    ): Promise<UserHistoryDoc>;
-    createInactiveByUser(
+    ): Promise<UserStateHistoryDoc>;
+    createInactive(
         user: UserDoc,
         by: string,
         options?: IDatabaseCreateOptions
-    ): Promise<UserHistoryDoc>;
-    createBlockedByUser(
+    ): Promise<UserStateHistoryDoc>;
+    createBlocked(
         user: UserDoc,
         by: string,
         options?: IDatabaseCreateOptions
-    ): Promise<UserHistoryDoc>;
-    createDeletedByUser(
+    ): Promise<UserStateHistoryDoc>;
+    createDeleted(
         user: UserDoc,
         by: string,
         options?: IDatabaseCreateOptions
-    ): Promise<UserHistoryDoc>;
+    ): Promise<UserStateHistoryDoc>;
     mapList(
-        userHistories: UserHistoryDoc[]
-    ): Promise<UserHistoryListResponseDto[]>;
+        userHistories: UserStateHistoryDoc[]
+    ): Promise<UserStateHistoryListResponseDto[]>;
 }

@@ -1,7 +1,8 @@
 {
     "list": "List of users retrieved successfully.",
-    "listHistory": "User history retrieved successfully.",
-    "listPassword": "User password history retrieved successfully.",
+    "stateHistoryList": "User history retrieved successfully.",
+    "passwordHistoryList": "User password history retrieved successfully.",
+    "loginHistoryList": "User login history retrieved successfully.",
     "get": "User details fetched successfully.",
     "create": "New user created successfully.",
     "inactive": "User marked as inactive.",

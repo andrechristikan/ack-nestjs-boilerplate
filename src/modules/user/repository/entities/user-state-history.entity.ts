@@ -5,12 +5,13 @@ import {
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
+import { ENUM_USER_HISTORY_STATE } from 'src/modules/user/constants/user-history.enum.constant';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
-export const UserPasswordTableName = 'UserPasswords';
+export const UserStateHistoryTableName = 'UserStateHistories';
 
-@DatabaseEntity({ collection: UserPasswordTableName })
-export class UserPasswordEntity extends DatabaseMongoUUIDEntityAbstract {
+@DatabaseEntity({ collection: UserStateHistoryTableName })
+export class UserStateHistoryEntity extends DatabaseMongoUUIDEntityAbstract {
     @DatabaseProp({
         required: true,
         index: true,
@@ -23,8 +24,16 @@ export class UserPasswordEntity extends DatabaseMongoUUIDEntityAbstract {
     @DatabaseProp({
         required: true,
         type: String,
+        enum: ENUM_USER_HISTORY_STATE,
     })
-    password: string;
+    beforeState: ENUM_USER_HISTORY_STATE;
+
+    @DatabaseProp({
+        required: true,
+        type: String,
+        enum: ENUM_USER_HISTORY_STATE,
+    })
+    afterState: ENUM_USER_HISTORY_STATE;
 
     @DatabaseProp({
         required: true,
@@ -36,5 +45,5 @@ export class UserPasswordEntity extends DatabaseMongoUUIDEntityAbstract {
     by: string;
 }
 
-export const UserPasswordSchema = DatabaseSchema(UserPasswordEntity);
-export type UserPasswordDoc = IDatabaseDocument<UserPasswordEntity>;
+export const UserStateHistorySchema = DatabaseSchema(UserStateHistoryEntity);
+export type UserStateHistoryDoc = IDatabaseDocument<UserStateHistoryEntity>;
