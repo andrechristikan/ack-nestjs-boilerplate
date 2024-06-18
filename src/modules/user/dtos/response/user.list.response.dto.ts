@@ -6,6 +6,7 @@ import {
     ENUM_USER_SIGN_UP_FROM,
 } from 'src/modules/user/constants/user.enum.constant';
 import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
+import { UserMobileNumberResponseDto } from 'src/modules/user/dtos/response/user.mobile-number.response.dto';
 
 export class UserListResponseDto extends OmitType(UserGetResponseDto, [
     'passwordExpired',
@@ -15,6 +16,7 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
     'address',
     'gender',
     'role',
+    'mobileNumber',
 ] as const) {
     @ApiProperty({
         required: true,
@@ -23,6 +25,14 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
     })
     @Type(() => RoleListResponseDto)
     readonly role: RoleListResponseDto;
+
+    @ApiProperty({
+        required: false,
+        nullable: false,
+        type: UserMobileNumberResponseDto,
+    })
+    @Type(() => RoleListResponseDto)
+    readonly mobileNumber?: UserMobileNumberResponseDto;
 
     @ApiHideProperty()
     @Exclude()

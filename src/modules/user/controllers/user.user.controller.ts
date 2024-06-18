@@ -26,9 +26,9 @@ import {
     UserAuthUpdateMobileNumberDoc,
     UserUserDeleteSelfDoc,
 } from 'src/modules/user/docs/user.user.doc';
-import { UserUpdateMobileNumberDto } from 'src/modules/user/dtos/request/user.update-mobile-number.dto';
+import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { UserHistoryService } from 'src/modules/user/services/user-history.service';
+import { UserStateHistoryService } from 'src/modules/user/services/user-state-history.service';
 import { UserService } from 'src/modules/user/services/user.service';
 
 @ApiTags('modules.user.user')
@@ -40,7 +40,7 @@ export class UserUserController {
     constructor(
         @DatabaseConnection() private readonly databaseConnection: Connection,
         private readonly userService: UserService,
-        private readonly userHistoryService: UserHistoryService
+        private readonly userStateHistoryService: UserStateHistoryService
     ) {}
 
     @UserAuthUpdateMobileNumberDoc()
@@ -52,7 +52,7 @@ export class UserUserController {
     async updateMobileNumber(
         @User() user: UserDoc,
         @Body()
-        body: UserUpdateMobileNumberDto
+        body: UserUpdateMobileNumberRequestDto
     ): Promise<void> {
         await this.userService.updateMobileNumber(user, body);
 
@@ -78,7 +78,7 @@ export class UserUserController {
             await this.userService.selfDelete(user, {
                 session,
             });
-            await this.userHistoryService.createBlockedByUser(user, _id, {
+            await this.userStateHistoryService.createBlocked(user, _id, {
                 session,
             });
 

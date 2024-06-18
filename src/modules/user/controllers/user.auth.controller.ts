@@ -74,7 +74,7 @@ import { UserRefreshResponseDto } from 'src/modules/user/dtos/response/user.refr
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserLoginHistoryService } from 'src/modules/user/services/user-login-history.service';
-import { UserPasswordService } from 'src/modules/user/services/user-password.service';
+import { UserPasswordHistoryService } from 'src/modules/user/services/user-password-history.service';
 import { UserService } from 'src/modules/user/services/user.service';
 
 @ApiTags('modules.auth.user')
@@ -88,7 +88,7 @@ export class UserAuthController {
         private readonly userService: UserService,
         private readonly awsS3Service: AwsS3Service,
         private readonly authService: AuthService,
-        private readonly userPasswordService: UserPasswordService,
+        private readonly userPasswordHistoryService: UserPasswordHistoryService,
         private readonly countryService: CountryService,
         private readonly userLoginHistoryService: UserLoginHistoryService
     ) {}
@@ -152,8 +152,7 @@ export class UserAuthController {
             });
         }
 
-        const userWithRole: IUserDoc =
-            await this.userService.joinWithRoleAndCountry(user);
+        const userWithRole: IUserDoc = await this.userService.join(user);
         if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
                 statusCode:
@@ -262,8 +261,7 @@ export class UserAuthController {
             });
         }
 
-        const userWithRole: IUserDoc =
-            await this.userService.joinWithRoleAndCountry(user);
+        const userWithRole: IUserDoc = await this.userService.join(user);
         if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
                 statusCode:
@@ -372,8 +370,7 @@ export class UserAuthController {
             });
         }
 
-        const userWithRole: IUserDoc =
-            await this.userService.joinWithRoleAndCountry(user);
+        const userWithRole: IUserDoc = await this.userService.join(user);
         if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
                 statusCode:
@@ -522,13 +519,13 @@ export class UserAuthController {
             body.newPassword
         );
         const checkUserPassword =
-            await this.userPasswordService.checkPasswordPeriodByUser(
+            await this.userPasswordHistoryService.checkPasswordPeriodByUser(
                 user,
                 password
             );
         if (checkUserPassword) {
             const passwordPeriod =
-                await this.userPasswordService.getPasswordPeriod();
+                await this.userPasswordHistoryService.getPasswordPeriod();
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_MUST_NEW_ERROR,
                 message: 'user.error.passwordMustNew',
@@ -551,7 +548,9 @@ export class UserAuthController {
             user = await this.userService.updatePassword(user, password, {
                 session,
             });
-            await this.userPasswordService.createByUser(user, { session });
+            await this.userPasswordHistoryService.createByUser(user, {
+                session,
+            });
 
             await session.commitTransaction();
             await session.endSession();

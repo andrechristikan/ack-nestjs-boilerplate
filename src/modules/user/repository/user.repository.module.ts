@@ -2,37 +2,37 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import {
-    UserHistoryEntity,
-    UserHistorySchema,
-} from 'src/modules/user/repository/entities/user-history.entity';
-import {
     UserLoginHistoryEntity,
     UserLoginHistorySchema,
 } from 'src/modules/user/repository/entities/user-login-history.entity';
 import {
-    UserPasswordEntity,
-    UserPasswordSchema,
-} from 'src/modules/user/repository/entities/user-password.entity';
+    UserPasswordHistoryEntity,
+    UserPasswordHistorySchema,
+} from 'src/modules/user/repository/entities/user-password-history.entity';
+import {
+    UserStateHistoryEntity,
+    UserStateHistorySchema,
+} from 'src/modules/user/repository/entities/user-state-history.entity';
 import {
     UserEntity,
     UserSchema,
 } from 'src/modules/user/repository/entities/user.entity';
-import { UserHistoryRepository } from 'src/modules/user/repository/repositories/user-history.repository';
 import { UserLoginHistoryRepository } from 'src/modules/user/repository/repositories/user-login-history.repository';
-import { UserPasswordRepository } from 'src/modules/user/repository/repositories/user-password.repository';
+import { UserPasswordHistoryRepository } from 'src/modules/user/repository/repositories/user-password-history.repository';
+import { UserStateHistoryRepository } from 'src/modules/user/repository/repositories/user-state-history.repository';
 import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
 
 @Module({
     providers: [
         UserRepository,
-        UserHistoryRepository,
-        UserPasswordRepository,
+        UserStateHistoryRepository,
+        UserPasswordHistoryRepository,
         UserLoginHistoryRepository,
     ],
     exports: [
         UserRepository,
-        UserHistoryRepository,
-        UserPasswordRepository,
+        UserStateHistoryRepository,
+        UserPasswordHistoryRepository,
         UserLoginHistoryRepository,
     ],
     controllers: [],
@@ -44,16 +44,16 @@ import { UserRepository } from 'src/modules/user/repository/repositories/user.re
                     schema: UserSchema,
                 },
                 {
-                    name: UserHistoryEntity.name,
-                    schema: UserHistorySchema,
+                    name: UserStateHistoryEntity.name,
+                    schema: UserStateHistorySchema,
                 },
                 {
                     name: UserLoginHistoryEntity.name,
                     schema: UserLoginHistorySchema,
                 },
                 {
-                    name: UserPasswordEntity.name,
-                    schema: UserPasswordSchema,
+                    name: UserPasswordHistoryEntity.name,
+                    schema: UserPasswordHistorySchema,
                 },
             ],
             DATABASE_CONNECTION_NAME

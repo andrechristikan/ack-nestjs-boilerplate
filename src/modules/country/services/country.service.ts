@@ -10,6 +10,7 @@ import {
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { CountryCreateRequestDto } from 'src/modules/country/dtos/request/country.create.request.dto';
+import { CountryGetResponseDto } from 'src/modules/country/dtos/response/country.get.response.dto';
 import { CountryListResponseDto } from 'src/modules/country/dtos/response/country.list.response.dto';
 import { ICountryService } from 'src/modules/country/interfaces/country.service.interface';
 import {
@@ -161,7 +162,11 @@ export class CountryService implements ICountryService {
         );
     }
 
-    async mapList(data: CountryDoc[]): Promise<CountryListResponseDto[]> {
-        return plainToInstance(CountryListResponseDto, data);
+    async mapList(countries: CountryDoc[]): Promise<CountryListResponseDto[]> {
+        return plainToInstance(CountryListResponseDto, countries);
+    }
+
+    async mapGet(county: CountryDoc): Promise<CountryGetResponseDto> {
+        return plainToInstance(CountryGetResponseDto, county);
     }
 }

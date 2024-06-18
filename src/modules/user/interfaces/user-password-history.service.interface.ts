@@ -5,33 +5,33 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { UserPasswordListResponseDto } from 'src/modules/user/dtos/response/user-password.list.response.dto';
-import { UserPasswordDoc } from 'src/modules/user/repository/entities/user-password.entity';
+import { UserPasswordHistoryListResponseDto } from 'src/modules/user/dtos/response/user-password-history.list.response.dto';
+import { UserPasswordHistoryDoc } from 'src/modules/user/repository/entities/user-password-history.entity';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 
-export interface IUserPasswordService {
+export interface IUserPasswordHistoryService {
     findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<UserPasswordDoc[]>;
+    ): Promise<UserPasswordHistoryDoc[]>;
     findAllByUser(
         user: string,
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<UserPasswordDoc[]>;
+    ): Promise<UserPasswordHistoryDoc[]>;
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<UserPasswordDoc>;
+    ): Promise<UserPasswordHistoryDoc>;
     findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<UserPasswordDoc>;
+    ): Promise<UserPasswordHistoryDoc>;
     findOneByUser(
         user: UserDoc,
         password: IAuthPassword,
         options?: IDatabaseFindOneOptions
-    ): Promise<UserPasswordDoc>;
+    ): Promise<UserPasswordHistoryDoc>;
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
@@ -44,15 +44,15 @@ export interface IUserPasswordService {
     createByUser(
         user: UserDoc,
         options?: IDatabaseCreateOptions
-    ): Promise<UserPasswordDoc>;
+    ): Promise<UserPasswordHistoryDoc>;
     createByAdmin(
         user: UserDoc,
         by: string,
         options?: IDatabaseCreateOptions
-    ): Promise<UserPasswordDoc>;
+    ): Promise<UserPasswordHistoryDoc>;
     mapList(
-        userHistories: UserPasswordDoc[]
-    ): Promise<UserPasswordListResponseDto[]>;
+        userHistories: UserPasswordHistoryDoc[]
+    ): Promise<UserPasswordHistoryListResponseDto[]>;
     checkPasswordPeriodByUser(
         user: UserDoc,
         password: IAuthPassword,

@@ -1,7 +1,10 @@
 import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
+import { Exclude } from 'class-transformer';
+import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
+import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 
-export class CountryGetResponseDto {
+export class CountryGetResponseDto extends DatabaseIdResponseDto {
     @ApiProperty({
         required: true,
         type: String,
@@ -82,4 +85,30 @@ export class CountryGetResponseDto {
         example: faker.internet.domainSuffix(),
     })
     readonly domain?: string;
+
+    @ApiProperty({
+        required: false,
+        type: () => AwsS3Dto,
+    })
+    readonly image?: AwsS3Dto;
+
+    @ApiProperty({
+        description: 'Date created at',
+        example: faker.date.recent(),
+        required: true,
+        nullable: false,
+    })
+    readonly createdAt: Date;
+
+    @ApiProperty({
+        description: 'Date updated at',
+        example: faker.date.recent(),
+        required: true,
+        nullable: false,
+    })
+    readonly updatedAt: Date;
+
+    @ApiHideProperty()
+    @Exclude()
+    readonly deletedAt?: Date;
 }

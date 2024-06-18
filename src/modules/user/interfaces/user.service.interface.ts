@@ -12,7 +12,7 @@ import {
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
 import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
-import { UserUpdateMobileNumberDto } from 'src/modules/user/dtos/request/user.update-mobile-number.dto';
+import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
 import { UserUpdatePasswordAttemptRequestDto } from 'src/modules/user/dtos/request/user.update-password-attempt.request.dto';
 import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.request.dto';
 import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
@@ -121,7 +121,7 @@ export interface IUserService {
         passwordExpired: Date,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
-    joinWithRoleAndCountry(repository: UserDoc): Promise<IUserDoc>;
+    join(repository: UserDoc): Promise<IUserDoc>;
     getPhotoUploadPath(user: string): Promise<string>;
     deleteMany(
         find: Record<string, any>,
@@ -147,7 +147,7 @@ export interface IUserService {
     ): Promise<UserDoc>;
     updateMobileNumber(
         repository: UserDoc,
-        { country, number }: UserUpdateMobileNumberDto,
+        { country, number }: UserUpdateMobileNumberRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     deleteMobileNumber(

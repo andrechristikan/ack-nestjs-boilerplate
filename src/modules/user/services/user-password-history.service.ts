@@ -9,23 +9,23 @@ import {
     IDatabaseGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { UserPasswordListResponseDto } from 'src/modules/user/dtos/response/user-password.list.response.dto';
-import { IUserPasswordService } from 'src/modules/user/interfaces/user-password.service.interface';
+import { UserPasswordHistoryListResponseDto } from 'src/modules/user/dtos/response/user-password-history.list.response.dto';
+import { IUserPasswordHistoryService } from 'src/modules/user/interfaces/user-password-history.service.interface';
 import {
-    UserPasswordDoc,
-    UserPasswordEntity,
-} from 'src/modules/user/repository/entities/user-password.entity';
+    UserPasswordHistoryDoc,
+    UserPasswordHistoryEntity,
+} from 'src/modules/user/repository/entities/user-password-history.entity';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { UserPasswordRepository } from 'src/modules/user/repository/repositories/user-password.repository';
+import { UserPasswordHistoryRepository } from 'src/modules/user/repository/repositories/user-password-history.repository';
 
 @Injectable()
-export class UserPasswordService implements IUserPasswordService {
+export class UserPasswordHistoryService implements IUserPasswordHistoryService {
     private readonly passwordPeriod: number;
 
     constructor(
         private readonly configService: ConfigService,
         private readonly helperDateService: HelperDateService,
-        private readonly userPasswordRepository: UserPasswordRepository
+        private readonly userPasswordHistoryRepository: UserPasswordHistoryRepository
     ) {
         this.passwordPeriod = this.configService.get<number>(
             'auth.password.period'
@@ -35,8 +35,8 @@ export class UserPasswordService implements IUserPasswordService {
     async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<UserPasswordDoc[]> {
-        return this.userPasswordRepository.findAll<UserPasswordDoc>(
+    ): Promise<UserPasswordHistoryDoc[]> {
+        return this.userPasswordHistoryRepository.findAll<UserPasswordHistoryDoc>(
             find,
             options
         );
@@ -46,8 +46,8 @@ export class UserPasswordService implements IUserPasswordService {
         user: string,
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<UserPasswordDoc[]> {
-        return this.userPasswordRepository.findAll<UserPasswordDoc>(
+    ): Promise<UserPasswordHistoryDoc[]> {
+        return this.userPasswordHistoryRepository.findAll<UserPasswordHistoryDoc>(
             { ...find, user },
             options
         );
@@ -56,8 +56,8 @@ export class UserPasswordService implements IUserPasswordService {
     async findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<UserPasswordDoc> {
-        return this.userPasswordRepository.findOneById<UserPasswordDoc>(
+    ): Promise<UserPasswordHistoryDoc> {
+        return this.userPasswordHistoryRepository.findOneById<UserPasswordHistoryDoc>(
             _id,
             options
         );
@@ -66,8 +66,8 @@ export class UserPasswordService implements IUserPasswordService {
     async findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<UserPasswordDoc> {
-        return this.userPasswordRepository.findOne<UserPasswordDoc>(
+    ): Promise<UserPasswordHistoryDoc> {
+        return this.userPasswordHistoryRepository.findOne<UserPasswordHistoryDoc>(
             find,
             options
         );
@@ -77,8 +77,8 @@ export class UserPasswordService implements IUserPasswordService {
         user: UserDoc,
         password: IAuthPassword,
         options?: IDatabaseFindOneOptions
-    ): Promise<UserPasswordDoc> {
-        return this.userPasswordRepository.findOne<UserPasswordDoc>(
+    ): Promise<UserPasswordHistoryDoc> {
+        return this.userPasswordHistoryRepository.findOne<UserPasswordHistoryDoc>(
             {
                 user: user._id,
                 password: password.passwordHash,
@@ -91,7 +91,7 @@ export class UserPasswordService implements IUserPasswordService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number> {
-        return this.userPasswordRepository.getTotal(find, options);
+        return this.userPasswordHistoryRepository.getTotal(find, options);
     }
 
     async getTotalByUser(
@@ -99,19 +99,23 @@ export class UserPasswordService implements IUserPasswordService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number> {
-        return this.userPasswordRepository.getTotal({ ...find, user }, options);
+        return this.userPasswordHistoryRepository.getTotal(
+            { ...find, user },
+            options
+        );
     }
 
     async createByUser(
         user: UserDoc,
         options?: IDatabaseCreateOptions
-    ): Promise<UserPasswordDoc> {
-        const create: UserPasswordEntity = new UserPasswordEntity();
+    ): Promise<UserPasswordHistoryDoc> {
+        const create: UserPasswordHistoryEntity =
+            new UserPasswordHistoryEntity();
         create.user = user._id;
         create.by = user._id;
         create.password = user.password;
 
-        return this.userPasswordRepository.create<UserPasswordEntity>(
+        return this.userPasswordHistoryRepository.create<UserPasswordHistoryEntity>(
             create,
             options
         );
@@ -121,35 +125,40 @@ export class UserPasswordService implements IUserPasswordService {
         user: UserDoc,
         by: string,
         options?: IDatabaseCreateOptions
-    ): Promise<UserPasswordDoc> {
-        const create: UserPasswordEntity = new UserPasswordEntity();
+    ): Promise<UserPasswordHistoryDoc> {
+        const create: UserPasswordHistoryEntity =
+            new UserPasswordHistoryEntity();
         create.user = user._id;
         create.by = by;
         create.password = user.password;
 
-        return this.userPasswordRepository.create<UserPasswordEntity>(
+        return this.userPasswordHistoryRepository.create<UserPasswordHistoryEntity>(
             create,
             options
         );
     }
 
     async mapList(
-        userHistories: UserPasswordDoc[]
-    ): Promise<UserPasswordListResponseDto[]> {
-        return plainToInstance(UserPasswordListResponseDto, userHistories);
+        userHistories: UserPasswordHistoryDoc[]
+    ): Promise<UserPasswordHistoryListResponseDto[]> {
+        return plainToInstance(
+            UserPasswordHistoryListResponseDto,
+            userHistories
+        );
     }
     async checkPasswordPeriodByUser(
         user: UserDoc,
         password: IAuthPassword,
         options?: IDatabaseFindOneOptions
     ): Promise<boolean> {
-        const pass = await this.userPasswordRepository.findOne<UserPasswordDoc>(
-            {
-                user: user._id,
-                password: password.passwordHash,
-            },
-            options
-        );
+        const pass =
+            await this.userPasswordHistoryRepository.findOne<UserPasswordHistoryDoc>(
+                {
+                    user: user._id,
+                    password: password.passwordHash,
+                },
+                options
+            );
 
         const today: Date = this.helperDateService.create();
         const passwordPeriod: Date = this.helperDateService.forwardInSeconds(

@@ -22,6 +22,8 @@ import { ResponseMetadataDto } from 'src/common/response/dtos/response.dto';
 @Catch(HttpException)
 export class AppHttpFilter implements ExceptionFilter {
     private readonly debug: boolean;
+    private readonly globalPrefix: string;
+    private readonly docPrefix: string;
     private readonly logger = new Logger(AppHttpFilter.name);
 
     constructor(
@@ -30,6 +32,8 @@ export class AppHttpFilter implements ExceptionFilter {
         private readonly helperDateService: HelperDateService
     ) {
         this.debug = this.configService.get<boolean>('app.debug');
+        this.globalPrefix = this.configService.get<string>('app.globalPrefix');
+        this.docPrefix = this.configService.get<string>('doc.prefix');
     }
 
     async catch(exception: HttpException, host: ArgumentsHost): Promise<void> {
@@ -39,6 +43,15 @@ export class AppHttpFilter implements ExceptionFilter {
 
         if (this.debug) {
             this.logger.error(exception);
+        }
+
+        if (
+            !request.path.startsWith(this.globalPrefix) &&
+            !request.path.startsWith(this.docPrefix)
+        ) {
+            response.redirect(HttpStatus.PERMANENT_REDIRECT, this.docPrefix);
+
+            return;
         }
 
         // set default

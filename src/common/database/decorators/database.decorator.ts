@@ -62,6 +62,16 @@ export function DatabaseQueryIn<T = string>(
         },
     };
 }
+export function DatabaseQueryNin<T = string>(
+    field: string,
+    values: T[]
+): Record<string, any> {
+    return {
+        [field]: {
+            $nin: values,
+        },
+    };
+}
 
 export function DatabaseQueryEqual<T = string>(
     field: string,
@@ -69,6 +79,17 @@ export function DatabaseQueryEqual<T = string>(
 ): Record<string, any> {
     return {
         [field]: value,
+    };
+}
+
+export function DatabaseQueryNotEqual<T = string>(
+    field: string,
+    value: T
+): Record<string, any> {
+    return {
+        [field]: {
+            $ne: value,
+        },
     };
 }
 

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
 import { Request } from 'express';
 import {
     IDatabaseCreateOptions,
@@ -7,6 +8,7 @@ import {
     IDatabaseGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { UserLoginHistoryCreateRequest } from 'src/modules/user/dtos/request/user-login-history.create.request.dto';
+import { UserLoginHistoryListResponseDto } from 'src/modules/user/dtos/response/user-login-history.list.response.dto';
 import { IUserLoginHistoryService } from 'src/modules/user/interfaces/user-login-history.service.interface';
 import {
     UserLoginHistoryDoc,
@@ -32,10 +34,11 @@ export class UserLoginHistoryService implements IUserLoginHistoryService {
 
     async findAllByUser(
         user: string,
+        find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<UserLoginHistoryDoc[]> {
         return this.userLoginHistoryRepository.findAll<UserLoginHistoryDoc>(
-            { user },
+            { user, ...find },
             options
         );
     }
@@ -96,5 +99,11 @@ export class UserLoginHistoryService implements IUserLoginHistoryService {
             create,
             options
         );
+    }
+
+    async mapList(
+        userHistories: UserLoginHistoryDoc[]
+    ): Promise<UserLoginHistoryListResponseDto[]> {
+        return plainToInstance(UserLoginHistoryListResponseDto, userHistories);
     }
 }

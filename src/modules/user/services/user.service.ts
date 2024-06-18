@@ -32,7 +32,7 @@ import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.resp
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
 import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
-import { UserUpdateMobileNumberDto } from 'src/modules/user/dtos/request/user.update-mobile-number.dto';
+import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
 import { CountryEntity } from 'src/modules/country/repository/entities/country.entity';
 
 @Injectable()
@@ -281,7 +281,7 @@ export class UserService implements IUserService {
         return this.userRepository.save(repository, options);
     }
 
-    async joinWithRoleAndCountry(repository: UserDoc): Promise<IUserDoc> {
+    async join(repository: UserDoc): Promise<IUserDoc> {
         return this.userRepository.join(repository, [
             {
                 field: 'role',
@@ -293,6 +293,13 @@ export class UserService implements IUserService {
             {
                 field: 'country',
                 localKey: 'country',
+                foreignKey: '_id',
+                model: CountryEntity.name,
+                justOne: true,
+            },
+            {
+                field: 'mobileNumber.country',
+                localKey: 'mobileNumber.country',
                 foreignKey: '_id',
                 model: CountryEntity.name,
                 justOne: true,
@@ -337,6 +344,13 @@ export class UserService implements IUserService {
                         model: CountryEntity.name,
                         justOne: true,
                     },
+                    {
+                        field: 'mobileNumber.country',
+                        localKey: 'mobileNumber.country',
+                        foreignKey: '_id',
+                        model: CountryEntity.name,
+                        justOne: true,
+                    },
                 ],
             }
         );
@@ -364,6 +378,13 @@ export class UserService implements IUserService {
                     {
                         field: 'country',
                         localKey: 'country',
+                        foreignKey: '_id',
+                        model: CountryEntity.name,
+                        justOne: true,
+                    },
+                    {
+                        field: 'mobileNumber.country',
+                        localKey: 'mobileNumber.country',
                         foreignKey: '_id',
                         model: CountryEntity.name,
                         justOne: true,
@@ -403,6 +424,13 @@ export class UserService implements IUserService {
                         model: CountryEntity.name,
                         justOne: true,
                     },
+                    {
+                        field: 'mobileNumber.country',
+                        localKey: 'mobileNumber.country',
+                        foreignKey: '_id',
+                        model: CountryEntity.name,
+                        justOne: true,
+                    },
                 ],
             }
         );
@@ -426,7 +454,7 @@ export class UserService implements IUserService {
 
     async updateMobileNumber(
         repository: UserDoc,
-        { country, number }: UserUpdateMobileNumberDto,
+        { country, number }: UserUpdateMobileNumberRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.mobileNumber = {

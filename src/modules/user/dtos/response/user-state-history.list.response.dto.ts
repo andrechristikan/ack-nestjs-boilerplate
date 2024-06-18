@@ -4,7 +4,7 @@ import { Exclude } from 'class-transformer';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 import { ENUM_USER_HISTORY_STATE } from 'src/modules/user/constants/user-history.enum.constant';
 
-export class UserHistoryListResponseDto extends DatabaseIdResponseDto {
+export class UserStateHistoryListResponseDto extends DatabaseIdResponseDto {
     @ApiProperty({
         required: true,
         example: faker.string.uuid(),

@@ -8,26 +8,26 @@ import {
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_USER_HISTORY_STATE } from 'src/modules/user/constants/user-history.enum.constant';
 import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
-import { UserHistoryListResponseDto } from 'src/modules/user/dtos/response/user-history.list.response.dto';
-import { IUserHistoryService } from 'src/modules/user/interfaces/user-history.service.interface';
+import { UserStateHistoryListResponseDto } from 'src/modules/user/dtos/response/user-state-history.list.response.dto';
+import { IUserStateHistoryService } from 'src/modules/user/interfaces/user-state-history.service.interface';
 import {
-    UserHistoryDoc,
-    UserHistoryEntity,
-} from 'src/modules/user/repository/entities/user-history.entity';
+    UserStateHistoryDoc,
+    UserStateHistoryEntity,
+} from 'src/modules/user/repository/entities/user-state-history.entity';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { UserHistoryRepository } from 'src/modules/user/repository/repositories/user-history.repository';
+import { UserStateHistoryRepository } from 'src/modules/user/repository/repositories/user-state-history.repository';
 
 @Injectable()
-export class UserHistoryService implements IUserHistoryService {
+export class UserStateHistoryService implements IUserStateHistoryService {
     constructor(
-        private readonly userHistoryRepository: UserHistoryRepository
+        private readonly userStateHistoryRepository: UserStateHistoryRepository
     ) {}
 
     async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<UserHistoryDoc[]> {
-        return this.userHistoryRepository.findAll<UserHistoryDoc>(
+    ): Promise<UserStateHistoryDoc[]> {
+        return this.userStateHistoryRepository.findAll<UserStateHistoryDoc>(
             find,
             options
         );
@@ -37,8 +37,8 @@ export class UserHistoryService implements IUserHistoryService {
         user: string,
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<UserHistoryDoc[]> {
-        return this.userHistoryRepository.findAll<UserHistoryDoc>(
+    ): Promise<UserStateHistoryDoc[]> {
+        return this.userStateHistoryRepository.findAll<UserStateHistoryDoc>(
             { ...find, user },
             options
         );
@@ -47,8 +47,8 @@ export class UserHistoryService implements IUserHistoryService {
     async findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
-    ): Promise<UserHistoryDoc> {
-        return this.userHistoryRepository.findOneById<UserHistoryDoc>(
+    ): Promise<UserStateHistoryDoc> {
+        return this.userStateHistoryRepository.findOneById<UserStateHistoryDoc>(
             _id,
             options
         );
@@ -57,8 +57,8 @@ export class UserHistoryService implements IUserHistoryService {
     async findOne(
         find: Record<string, any>,
         options?: IDatabaseFindOneOptions
-    ): Promise<UserHistoryDoc> {
-        return this.userHistoryRepository.findOne<UserHistoryDoc>(
+    ): Promise<UserStateHistoryDoc> {
+        return this.userStateHistoryRepository.findOne<UserStateHistoryDoc>(
             find,
             options
         );
@@ -68,7 +68,7 @@ export class UserHistoryService implements IUserHistoryService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number> {
-        return this.userHistoryRepository.getTotal(find, options);
+        return this.userStateHistoryRepository.getTotal(find, options);
     }
 
     async getTotalByUser(
@@ -76,10 +76,13 @@ export class UserHistoryService implements IUserHistoryService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number> {
-        return this.userHistoryRepository.getTotal({ ...find, user }, options);
+        return this.userStateHistoryRepository.getTotal(
+            { ...find, user },
+            options
+        );
     }
 
-    async setStateByUser(user: UserDoc): Promise<ENUM_USER_HISTORY_STATE> {
+    async setState(user: UserDoc): Promise<ENUM_USER_HISTORY_STATE> {
         if (user.blocked) {
             return ENUM_USER_HISTORY_STATE.BLOCKED;
         }
@@ -95,98 +98,98 @@ export class UserHistoryService implements IUserHistoryService {
         }
     }
 
-    async createCreatedByUser(
+    async createCreated(
         user: UserDoc,
         by: string,
         options?: IDatabaseCreateOptions
-    ): Promise<UserHistoryDoc> {
-        const create: UserHistoryEntity = new UserHistoryEntity();
+    ): Promise<UserStateHistoryDoc> {
+        const create: UserStateHistoryEntity = new UserStateHistoryEntity();
         create.afterState = ENUM_USER_HISTORY_STATE.ACTIVE;
         create.beforeState = ENUM_USER_HISTORY_STATE.CREATED;
         create.user = user._id;
         create.by = by;
 
-        return this.userHistoryRepository.create<UserHistoryEntity>(
+        return this.userStateHistoryRepository.create<UserStateHistoryEntity>(
             create,
             options
         );
     }
 
-    async createActiveByUser(
+    async createActive(
         user: UserDoc,
         by: string,
         options?: IDatabaseCreateOptions
-    ): Promise<UserHistoryDoc> {
-        const beforeState = await this.setStateByUser(user);
-        const create: UserHistoryEntity = new UserHistoryEntity();
+    ): Promise<UserStateHistoryDoc> {
+        const beforeState = await this.setState(user);
+        const create: UserStateHistoryEntity = new UserStateHistoryEntity();
         create.afterState = ENUM_USER_HISTORY_STATE.ACTIVE;
         create.beforeState = beforeState;
         create.user = user._id;
         create.by = by;
 
-        return this.userHistoryRepository.create<UserHistoryEntity>(
+        return this.userStateHistoryRepository.create<UserStateHistoryEntity>(
             create,
             options
         );
     }
 
-    async createInactiveByUser(
+    async createInactive(
         user: UserDoc,
         by: string,
         options?: IDatabaseCreateOptions
-    ): Promise<UserHistoryDoc> {
-        const beforeState = await this.setStateByUser(user);
-        const create: UserHistoryEntity = new UserHistoryEntity();
+    ): Promise<UserStateHistoryDoc> {
+        const beforeState = await this.setState(user);
+        const create: UserStateHistoryEntity = new UserStateHistoryEntity();
         create.afterState = ENUM_USER_HISTORY_STATE.INACTIVE;
         create.beforeState = beforeState;
         create.user = user._id;
         create.by = by;
 
-        return this.userHistoryRepository.create<UserHistoryEntity>(
+        return this.userStateHistoryRepository.create<UserStateHistoryEntity>(
             create,
             options
         );
     }
 
-    async createBlockedByUser(
+    async createBlocked(
         user: UserDoc,
         by: string,
         options?: IDatabaseCreateOptions
-    ): Promise<UserHistoryDoc> {
-        const beforeState = await this.setStateByUser(user);
-        const create: UserHistoryEntity = new UserHistoryEntity();
+    ): Promise<UserStateHistoryDoc> {
+        const beforeState = await this.setState(user);
+        const create: UserStateHistoryEntity = new UserStateHistoryEntity();
         create.afterState = ENUM_USER_HISTORY_STATE.BLOCKED;
         create.beforeState = beforeState;
         create.user = user._id;
         create.by = by;
 
-        return this.userHistoryRepository.create<UserHistoryEntity>(
+        return this.userStateHistoryRepository.create<UserStateHistoryEntity>(
             create,
             options
         );
     }
 
-    async createDeletedByUser(
+    async createDeleted(
         user: UserDoc,
         by: string,
         options?: IDatabaseCreateOptions
-    ): Promise<UserHistoryDoc> {
-        const beforeState = await this.setStateByUser(user);
-        const create: UserHistoryEntity = new UserHistoryEntity();
+    ): Promise<UserStateHistoryDoc> {
+        const beforeState = await this.setState(user);
+        const create: UserStateHistoryEntity = new UserStateHistoryEntity();
         create.afterState = ENUM_USER_HISTORY_STATE.DELETED;
         create.beforeState = beforeState;
         create.user = user._id;
         create.by = by;
 
-        return this.userHistoryRepository.create<UserHistoryEntity>(
+        return this.userStateHistoryRepository.create<UserStateHistoryEntity>(
             create,
             options
         );
     }
 
     async mapList(
-        userHistories: UserHistoryDoc[]
-    ): Promise<UserHistoryListResponseDto[]> {
-        return plainToInstance(UserHistoryListResponseDto, userHistories);
+        userHistories: UserStateHistoryDoc[]
+    ): Promise<UserStateHistoryListResponseDto[]> {
+        return plainToInstance(UserStateHistoryListResponseDto, userHistories);
     }
 }

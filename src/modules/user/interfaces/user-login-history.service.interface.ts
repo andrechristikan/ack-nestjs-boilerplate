@@ -6,6 +6,7 @@ import {
     IDatabaseGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { UserLoginHistoryCreateRequest } from 'src/modules/user/dtos/request/user-login-history.create.request.dto';
+import { UserLoginHistoryListResponseDto } from 'src/modules/user/dtos/response/user-login-history.list.response.dto';
 import { UserLoginHistoryDoc } from 'src/modules/user/repository/entities/user-login-history.entity';
 
 export interface IUserLoginHistoryService {
@@ -15,6 +16,7 @@ export interface IUserLoginHistoryService {
     ): Promise<UserLoginHistoryDoc[]>;
     findAllByUser(
         user: string,
+        find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<UserLoginHistoryDoc[]>;
     findOneById(
@@ -38,4 +40,7 @@ export interface IUserLoginHistoryService {
         { user }: UserLoginHistoryCreateRequest,
         options?: IDatabaseCreateOptions
     ): Promise<UserLoginHistoryDoc>;
+    mapList(
+        userHistories: UserLoginHistoryDoc[]
+    ): Promise<UserLoginHistoryListResponseDto[]>;
 }

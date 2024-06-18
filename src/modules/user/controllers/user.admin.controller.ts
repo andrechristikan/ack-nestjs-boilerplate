@@ -50,8 +50,9 @@ import {
     UserAdminBlockedDoc,
     UserAdminCreateDoc,
     UserAdminGetDoc,
-    UserAdminGetHistoryListDoc,
-    UserAdminGetPasswordListDoc,
+    UserAdminGetLoginHistoryListDoc,
+    UserAdminGetPasswordHistoryListDoc,
+    UserAdminGetStateHistoryListDoc,
     UserAdminInactiveDoc,
     UserAdminListDoc,
     UserAdminUpdatePasswordDoc,
@@ -86,14 +87,17 @@ import { AuthService } from 'src/common/auth/services/auth.service';
 import { ClientSession, Connection } from 'mongoose';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
-import { UserHistoryService } from 'src/modules/user/services/user-history.service';
-import { UserPasswordService } from 'src/modules/user/services/user-password.service';
-import { UserHistoryDoc } from 'src/modules/user/repository/entities/user-history.entity';
-import { UserPasswordDoc } from 'src/modules/user/repository/entities/user-password.entity';
-import { UserHistoryListResponseDto } from 'src/modules/user/dtos/response/user-history.list.response.dto';
-import { UserPasswordListResponseDto } from 'src/modules/user/dtos/response/user-password.list.response.dto';
 import { CountryService } from 'src/modules/country/services/country.service';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/constants/country.status-code.constant';
+import { UserStateHistoryService } from 'src/modules/user/services/user-state-history.service';
+import { UserPasswordHistoryService } from 'src/modules/user/services/user-password-history.service';
+import { UserStateHistoryDoc } from 'src/modules/user/repository/entities/user-state-history.entity';
+import { UserPasswordHistoryDoc } from 'src/modules/user/repository/entities/user-password-history.entity';
+import { UserStateHistoryListResponseDto } from 'src/modules/user/dtos/response/user-state-history.list.response.dto';
+import { UserPasswordHistoryListResponseDto } from 'src/modules/user/dtos/response/user-password-history.list.response.dto';
+import { UserLoginHistoryDoc } from 'src/modules/user/repository/entities/user-login-history.entity';
+import { UserLoginHistoryListResponseDto } from 'src/modules/user/dtos/response/user-login-history.list.response.dto';
+import { UserLoginHistoryService } from 'src/modules/user/services/user-login-history.service';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -108,8 +112,9 @@ export class UserAdminController {
         private readonly emailService: EmailService,
         private readonly authService: AuthService,
         private readonly userService: UserService,
-        private readonly userHistoryService: UserHistoryService,
-        private readonly userPasswordService: UserPasswordService,
+        private readonly userStateHistoryService: UserStateHistoryService,
+        private readonly userPasswordHistoryService: UserPasswordHistoryService,
+        private readonly userLoginHistoryService: UserLoginHistoryService,
         private readonly countryService: CountryService
     ) {}
 
@@ -182,16 +187,15 @@ export class UserAdminController {
     async get(
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc
     ): Promise<IResponse<UserProfileResponseDto>> {
-        const userWithRole: IUserDoc =
-            await this.userService.joinWithRoleAndCountry(user);
+        const userWithRole: IUserDoc = await this.userService.join(user);
         const mapped: UserProfileResponseDto =
             await this.userService.mapProfile(userWithRole);
 
         return { data: mapped };
     }
 
-    @UserAdminGetHistoryListDoc()
-    @ResponsePaging('user.listHistory')
+    @UserAdminGetStateHistoryListDoc()
+    @ResponsePaging('user.stateHistoryList')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [ENUM_POLICY_ACTION.READ],
@@ -199,25 +203,25 @@ export class UserAdminController {
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
     @ApiKeyPublicProtected()
-    @Get('/get/:user/history/list')
-    async listHistory(
+    @Get('/get/:user/state/history')
+    async stateHistoryList(
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc,
         @PaginationQuery()
         { _search, _limit, _offset, _order }: PaginationListDto
-    ): Promise<IResponsePaging<UserHistoryListResponseDto>> {
+    ): Promise<IResponsePaging<UserStateHistoryListResponseDto>> {
         const find: Record<string, any> = {
             ..._search,
         };
 
-        const userHistories: UserHistoryDoc[] =
-            await this.userHistoryService.findAllByUser(user._id, find, {
+        const userHistories: UserStateHistoryDoc[] =
+            await this.userStateHistoryService.findAllByUser(user._id, find, {
                 paging: {
                     limit: _limit,
                     offset: _offset,
                 },
                 order: _order,
             });
-        const total: number = await this.userHistoryService.getTotalByUser(
+        const total: number = await this.userStateHistoryService.getTotalByUser(
             user._id,
             find
         );
@@ -226,7 +230,8 @@ export class UserAdminController {
             _limit
         );
 
-        const mapped = await this.userHistoryService.mapList(userHistories);
+        const mapped =
+            await this.userStateHistoryService.mapList(userHistories);
 
         return {
             _pagination: { total, totalPage },
@@ -234,8 +239,8 @@ export class UserAdminController {
         };
     }
 
-    @UserAdminGetPasswordListDoc()
-    @ResponsePaging('user.listPassword')
+    @UserAdminGetPasswordHistoryListDoc()
+    @ResponsePaging('user.passwordHistoryList')
     @PolicyAbilityProtected({
         subject: ENUM_POLICY_SUBJECT.USER,
         action: [ENUM_POLICY_ACTION.READ],
@@ -243,25 +248,75 @@ export class UserAdminController {
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
     @ApiKeyPublicProtected()
-    @Get('/get/:user/password/list')
-    async listPassword(
+    @Get('/get/:user/password/history')
+    async passwordHistoryList(
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc,
         @PaginationQuery()
         { _search, _limit, _offset, _order }: PaginationListDto
-    ): Promise<IResponsePaging<UserPasswordListResponseDto>> {
+    ): Promise<IResponsePaging<UserPasswordHistoryListResponseDto>> {
         const find: Record<string, any> = {
             ..._search,
         };
 
-        const userHistories: UserPasswordDoc[] =
-            await this.userPasswordService.findAllByUser(user._id, find, {
+        const userHistories: UserPasswordHistoryDoc[] =
+            await this.userPasswordHistoryService.findAllByUser(
+                user._id,
+                find,
+                {
+                    paging: {
+                        limit: _limit,
+                        offset: _offset,
+                    },
+                    order: _order,
+                }
+            );
+        const total: number =
+            await this.userPasswordHistoryService.getTotalByUser(
+                user._id,
+                find
+            );
+        const totalPage: number = this.paginationService.totalPage(
+            total,
+            _limit
+        );
+
+        const mapped =
+            await this.userPasswordHistoryService.mapList(userHistories);
+
+        return {
+            _pagination: { total, totalPage },
+            data: mapped,
+        };
+    }
+
+    @UserAdminGetLoginHistoryListDoc()
+    @ResponsePaging('user.loginHistoryList')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ],
+    })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @AuthJwtAccessProtected()
+    @ApiKeyPublicProtected()
+    @Get('/get/:user/login/history')
+    async loginHistoryList(
+        @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc,
+        @PaginationQuery()
+        { _search, _limit, _offset, _order }: PaginationListDto
+    ): Promise<IResponsePaging<UserLoginHistoryListResponseDto>> {
+        const find: Record<string, any> = {
+            ..._search,
+        };
+
+        const userHistories: UserLoginHistoryDoc[] =
+            await this.userLoginHistoryService.findAllByUser(user._id, find, {
                 paging: {
                     limit: _limit,
                     offset: _offset,
                 },
                 order: _order,
             });
-        const total: number = await this.userPasswordService.getTotalByUser(
+        const total: number = await this.userLoginHistoryService.getTotalByUser(
             user._id,
             find
         );
@@ -270,7 +325,8 @@ export class UserAdminController {
             _limit
         );
 
-        const mapped = await this.userPasswordService.mapList(userHistories);
+        const mapped =
+            await this.userLoginHistoryService.mapList(userHistories);
 
         return {
             _pagination: { total, totalPage },
@@ -289,7 +345,8 @@ export class UserAdminController {
     @Post('/create')
     async create(
         @Body()
-        { email, role, name, country }: UserCreateRequestDto
+        { email, role, name, country }: UserCreateRequestDto,
+        @AuthJwtPayload('_id') _id: string
     ): Promise<IResponse<DatabaseIdResponseDto>> {
         const promises: Promise<any>[] = [
             this.roleService.findOneById(role),
@@ -337,14 +394,16 @@ export class UserAdminController {
                 ENUM_USER_SIGN_UP_FROM.ADMIN,
                 { session }
             );
-            await this.userHistoryService.createCreatedByUser(
+            await this.userStateHistoryService.createCreated(
                 created,
                 created._id,
                 {
                     session,
                 }
             );
-            await this.userPasswordService.createByUser(created, { session });
+            await this.userPasswordHistoryService.createByAdmin(created, _id, {
+                session,
+            });
 
             const emailSend = {
                 email,
@@ -401,7 +460,7 @@ export class UserAdminController {
 
         try {
             await this.userService.inactive(user, { session });
-            await this.userHistoryService.createInactiveByUser(user, _id, {
+            await this.userStateHistoryService.createInactive(user, _id, {
                 session,
             });
 
@@ -448,7 +507,7 @@ export class UserAdminController {
 
         try {
             await this.userService.active(user, { session });
-            await this.userHistoryService.createActiveByUser(user, _id, {
+            await this.userStateHistoryService.createActive(user, _id, {
                 session,
             });
 
@@ -495,7 +554,7 @@ export class UserAdminController {
 
         try {
             await this.userService.blocked(user, { session });
-            await this.userHistoryService.createBlockedByUser(user, _id, {
+            await this.userStateHistoryService.createBlocked(user, _id, {
                 session,
             });
 
@@ -526,13 +585,7 @@ export class UserAdminController {
     @ApiKeyPublicProtected()
     @Put('/update/:user/password')
     async updatePassword(
-        @Param(
-            'user',
-            RequestRequiredPipe,
-            UserParsePipe,
-            UserNotSelfPipe,
-            UserStatusInactivePipe
-        )
+        @Param('user', RequestRequiredPipe, UserParsePipe, UserNotSelfPipe)
         user: UserDoc,
         @AuthJwtPayload('_id') _id: string
     ): Promise<void> {
@@ -551,7 +604,7 @@ export class UserAdminController {
             user = await this.userService.resetPasswordAttempt(user, {
                 session,
             });
-            await this.userPasswordService.createByAdmin(user, _id, {
+            await this.userPasswordHistoryService.createByAdmin(user, _id, {
                 session,
             });
 
