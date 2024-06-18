@@ -7,7 +7,7 @@ import {
     DocRequest,
     DocResponse,
 } from 'src/common/doc/decorators/doc.decorator';
-import { UserUpdateMobileNumberDto } from 'src/modules/user/dtos/request/user.update-mobile-number.dto';
+import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
 
 export function UserAuthUpdateMobileNumberDoc(): MethodDecorator {
     return applyDecorators(
@@ -16,7 +16,7 @@ export function UserAuthUpdateMobileNumberDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
-            dto: UserUpdateMobileNumberDto,
+            dto: UserUpdateMobileNumberRequestDto,
         }),
         DocAuth({
             xApiKey: true,

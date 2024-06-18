@@ -90,17 +90,18 @@ export class CountryAdminController {
                 order: _order,
             }
         );
-        const mapCountries: CountryListResponseDto[] =
-            await this.countryService.mapList(countries);
         const total: number = await this.countryService.getTotal(find);
         const totalPage: number = this.paginationService.totalPage(
             total,
             _limit
         );
 
+        const mapped: CountryListResponseDto[] =
+            await this.countryService.mapList(countries);
+
         return {
             _pagination: { total, totalPage },
-            data: mapCountries,
+            data: mapped,
         };
     }
 
@@ -117,7 +118,9 @@ export class CountryAdminController {
         @Param('country', RequestRequiredPipe, CountryParsePipe)
         country: CountryDoc
     ): Promise<IResponse<CountryGetResponseDto>> {
-        return { data: country };
+        const mapped: CountryGetResponseDto =
+            await this.countryService.mapGet(country);
+        return { data: mapped };
     }
 
     @CountryAdminInactiveDoc()

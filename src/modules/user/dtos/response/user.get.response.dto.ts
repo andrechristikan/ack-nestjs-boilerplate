@@ -8,7 +8,7 @@ import {
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
 } from 'src/modules/user/constants/user.enum.constant';
-import { UserUpdateMobileNumberDto } from 'src/modules/user/dtos/request/user.update-mobile-number.dto';
+import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
 
 export class UserGetResponseDto extends DatabaseIdResponseDto {
     @ApiProperty({
@@ -28,10 +28,10 @@ export class UserGetResponseDto extends DatabaseIdResponseDto {
 
     @ApiProperty({
         required: false,
-        type: () => UserUpdateMobileNumberDto,
+        type: () => UserUpdateMobileNumberRequestDto,
     })
-    @Type(() => UserUpdateMobileNumberDto)
-    readonly mobileNumber?: UserUpdateMobileNumberDto;
+    @Type(() => UserUpdateMobileNumberRequestDto)
+    readonly mobileNumber?: UserUpdateMobileNumberRequestDto;
 
     @ApiProperty({
         required: true,

@@ -12,6 +12,7 @@ export interface IDatabaseJoin {
     model: any;
     condition?: Record<string, any>;
     justOne?: boolean;
+    join?: this | this[];
 }
 
 export type IDatabaseDocument<T> = T & Document;

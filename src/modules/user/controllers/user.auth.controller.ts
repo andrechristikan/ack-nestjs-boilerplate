@@ -152,8 +152,7 @@ export class UserAuthController {
             });
         }
 
-        const userWithRole: IUserDoc =
-            await this.userService.joinWithRoleAndCountry(user);
+        const userWithRole: IUserDoc = await this.userService.join(user);
         if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
                 statusCode:
@@ -262,8 +261,7 @@ export class UserAuthController {
             });
         }
 
-        const userWithRole: IUserDoc =
-            await this.userService.joinWithRoleAndCountry(user);
+        const userWithRole: IUserDoc = await this.userService.join(user);
         if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
                 statusCode:
@@ -372,8 +370,7 @@ export class UserAuthController {
             });
         }
 
-        const userWithRole: IUserDoc =
-            await this.userService.joinWithRoleAndCountry(user);
+        const userWithRole: IUserDoc = await this.userService.join(user);
         if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
                 statusCode:

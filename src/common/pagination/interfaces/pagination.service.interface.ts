@@ -13,11 +13,16 @@ export interface IPaginationService {
     ): IPaginationOrder;
     search(searchValue: string, availableSearch: string[]): Record<string, any>;
     filterEqual<T = string>(field: string, filterValue: T): Record<string, T>;
+    filterNotEqual<T = string>(
+        field: string,
+        filterValue: T
+    ): Record<string, T>;
     filterContain(field: string, filterValue: string): Record<string, any>;
     filterContainFullMatch(
         field: string,
         filterValue: string
     ): Record<string, any>;
     filterIn<T = string>(field: string, filterValue: T[]): Record<string, any>;
+    filterNin<T = string>(field: string, filterValue: T[]): Record<string, any>;
     filterDate(field: string, filterValue: Date): Record<string, Date>;
 }

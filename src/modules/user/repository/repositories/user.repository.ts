@@ -33,6 +33,13 @@ export class UserRepository extends DatabaseMongoUUIDRepositoryAbstract<
                 model: CountryEntity.name,
                 justOne: true,
             },
+            {
+                field: 'mobileNumber.country',
+                localKey: 'mobileNumber.country',
+                foreignKey: '_id',
+                model: CountryEntity.name,
+                justOne: true,
+            },
         ]);
     }
 }

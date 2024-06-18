@@ -26,7 +26,7 @@ import {
     UserAuthUpdateMobileNumberDoc,
     UserUserDeleteSelfDoc,
 } from 'src/modules/user/docs/user.user.doc';
-import { UserUpdateMobileNumberDto } from 'src/modules/user/dtos/request/user.update-mobile-number.dto';
+import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserStateHistoryService } from 'src/modules/user/services/user-state-history.service';
 import { UserService } from 'src/modules/user/services/user.service';
@@ -52,7 +52,7 @@ export class UserUserController {
     async updateMobileNumber(
         @User() user: UserDoc,
         @Body()
-        body: UserUpdateMobileNumberDto
+        body: UserUpdateMobileNumberRequestDto
     ): Promise<void> {
         await this.userService.updateMobileNumber(user, body);
 

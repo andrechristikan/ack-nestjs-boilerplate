@@ -7,6 +7,7 @@ import {
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { CountryCreateRequestDto } from 'src/modules/country/dtos/request/country.create.request.dto';
+import { CountryGetResponseDto } from 'src/modules/country/dtos/response/country.get.response.dto';
 import { CountryListResponseDto } from 'src/modules/country/dtos/response/country.list.response.dto';
 import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
 
@@ -64,4 +65,5 @@ export interface ICountryService {
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean>;
     mapList(data: CountryDoc[]): Promise<CountryListResponseDto[]>;
+    mapGet(county: CountryDoc): Promise<CountryGetResponseDto>;
 }

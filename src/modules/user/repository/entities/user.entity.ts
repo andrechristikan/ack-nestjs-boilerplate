@@ -42,6 +42,7 @@ export class UserMobileNumberEntity {
 }
 
 export const UserMobileNumberSchema = DatabaseSchema(UserMobileNumberEntity);
+export type UserMobileNumberDoc = IDatabaseDocument<UserMobileNumberEntity>;
 
 @DatabaseEntity({ collection: UserTableName })
 export class UserEntity extends DatabaseMongoUUIDEntityAbstract {

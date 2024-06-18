@@ -187,8 +187,7 @@ export class UserAdminController {
     async get(
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc
     ): Promise<IResponse<UserProfileResponseDto>> {
-        const userWithRole: IUserDoc =
-            await this.userService.joinWithRoleAndCountry(user);
+        const userWithRole: IUserDoc = await this.userService.join(user);
         const mapped: UserProfileResponseDto =
             await this.userService.mapProfile(userWithRole);
 
@@ -586,13 +585,7 @@ export class UserAdminController {
     @ApiKeyPublicProtected()
     @Put('/update/:user/password')
     async updatePassword(
-        @Param(
-            'user',
-            RequestRequiredPipe,
-            UserParsePipe,
-            UserNotSelfPipe,
-            UserStatusInactivePipe
-        )
+        @Param('user', RequestRequiredPipe, UserParsePipe, UserNotSelfPipe)
         user: UserDoc,
         @AuthJwtPayload('_id') _id: string
     ): Promise<void> {

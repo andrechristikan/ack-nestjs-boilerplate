@@ -1,3 +1,5 @@
+import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
+import { AwsS3Schema } from 'src/common/aws/repository/entities/aws.s3.entity';
 import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
 import {
     DatabaseEntity,
@@ -6,9 +8,9 @@ import {
 } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
 
-export const CountryName = 'Countries';
+export const CountryTableName = 'Countries';
 
-@DatabaseEntity({ collection: CountryName })
+@DatabaseEntity({ collection: CountryTableName })
 export class CountryEntity extends DatabaseMongoUUIDEntityAbstract {
     @DatabaseProp({
         required: true,
@@ -30,6 +32,7 @@ export class CountryEntity extends DatabaseMongoUUIDEntityAbstract {
 
     @DatabaseProp({
         required: true,
+        index: true,
         unique: true,
         trim: true,
         maxlength: 3,
@@ -78,9 +81,14 @@ export class CountryEntity extends DatabaseMongoUUIDEntityAbstract {
 
     @DatabaseProp({
         required: false,
-        sparse: true,
     })
     domain?: string;
+
+    @DatabaseProp({
+        required: false,
+        schema: AwsS3Schema,
+    })
+    image?: AwsS3Dto;
 
     @DatabaseProp({
         required: true,

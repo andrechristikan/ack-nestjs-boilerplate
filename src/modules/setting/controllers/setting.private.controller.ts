@@ -1,32 +1,32 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
+import { ApiKeyPrivateProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { FILE_SIZE_IN_BYTES } from 'src/common/file/constants/file.constant';
 import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 import { MessageService } from 'src/common/message/services/message.service';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
-import { SettingPublicCoreDoc } from 'src/modules/setting/docs/setting.public.doc';
+import { SettingPrivateCoreDoc } from 'src/modules/setting/docs/setting.private.doc';
 import { SettingCoreResponseDto } from 'src/modules/setting/dtos/response/setting.core.response.dto';
 import { SettingFileResponseDto } from 'src/modules/setting/dtos/response/setting.file.response.dto';
 import { SettingLanguageResponseDto } from 'src/modules/setting/dtos/response/setting.language.response.dto';
 import { SettingTimezoneResponseDto } from 'src/modules/setting/dtos/response/setting.timezone.response.dto';
 import { SettingService } from 'src/modules/setting/services/setting.service';
 
-@ApiTags('modules.public.setting')
+@ApiTags('modules.private.setting')
 @Controller({
     version: '1',
     path: '/setting',
 })
-export class SettingPublicController {
+export class SettingPrivateController {
     constructor(
         private readonly messageService: MessageService,
         private readonly settingService: SettingService
     ) {}
 
-    @SettingPublicCoreDoc()
+    @SettingPrivateCoreDoc()
     @Response('setting.core')
-    @ApiKeyPublicProtected()
+    @ApiKeyPrivateProtected()
     @Get('/core')
     async getUserMaxCertificate(): Promise<IResponse<SettingCoreResponseDto>> {
         const availableLanguage: ENUM_MESSAGE_LANGUAGE[] =
