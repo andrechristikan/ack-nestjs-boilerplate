@@ -49,9 +49,11 @@ async function bootstrap() {
         });
     }
 
-    logger.log(`==========================================================`);
+    // Swagger
+    await swaggerInit(app);
 
-    logger.log(`Environment Variable`, 'NestApplication');
+    // Listen
+    await app.listen(port, host);
 
     // Validate Env
     const classEnv = plainToInstance(AppEnvDto, process.env);
@@ -64,15 +66,13 @@ async function bootstrap() {
         throw new Error('Env Variable Invalid');
     }
 
+    logger.log(`==========================================================`);
+
+    logger.log(`Environment Variable`, 'NestApplication');
+
     logger.log(JSON.parse(JSON.stringify(process.env)), 'NestApplication');
 
     logger.log(`==========================================================`);
-
-    // Swagger
-    await swaggerInit(app);
-
-    // Listen
-    await app.listen(port, host);
 
     if (env === ENUM_APP_ENVIRONMENT.MIGRATION) {
         logger.log(`On migrate the schema`, 'NestApplication');
