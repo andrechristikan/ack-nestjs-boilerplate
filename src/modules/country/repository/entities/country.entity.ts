@@ -89,13 +89,6 @@ export class CountryEntity extends DatabaseMongoUUIDEntityAbstract {
         schema: AwsS3Schema,
     })
     image?: AwsS3Dto;
-
-    @DatabaseProp({
-        required: true,
-        index: true,
-        default: true,
-    })
-    isActive: boolean;
 }
 
 export const CountrySchema = DatabaseSchema(CountryEntity);

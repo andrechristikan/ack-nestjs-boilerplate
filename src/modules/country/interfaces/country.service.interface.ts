@@ -9,7 +9,10 @@ import {
 import { CountryCreateRequestDto } from 'src/modules/country/dtos/request/country.create.request.dto';
 import { CountryGetResponseDto } from 'src/modules/country/dtos/response/country.get.response.dto';
 import { CountryListResponseDto } from 'src/modules/country/dtos/response/country.list.response.dto';
-import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
+import {
+    CountryDoc,
+    CountryEntity,
+} from 'src/modules/country/repository/entities/country.entity';
 
 export interface ICountryService {
     findAll(
@@ -44,14 +47,6 @@ export interface ICountryService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
-    active(
-        repository: CountryDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<CountryDoc>;
-    inactive(
-        repository: CountryDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<CountryDoc>;
     delete(
         repository: CountryDoc,
         options?: IDatabaseSaveOptions
@@ -64,6 +59,8 @@ export interface ICountryService {
         data: CountryCreateRequestDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean>;
-    mapList(data: CountryDoc[]): Promise<CountryListResponseDto[]>;
-    mapGet(county: CountryDoc): Promise<CountryGetResponseDto>;
+    mapList(
+        countries: CountryDoc[] | CountryEntity[]
+    ): Promise<CountryListResponseDto[]>;
+    mapGet(country: CountryDoc | CountryEntity): Promise<CountryGetResponseDto>;
 }

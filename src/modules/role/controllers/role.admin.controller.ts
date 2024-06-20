@@ -57,10 +57,7 @@ import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.
 import { RoleUpdateRequestDto } from 'src/modules/role/dtos/request/role.update.request.dto';
 import { RoleGetResponseDto } from 'src/modules/role/dtos/response/role.get.response.dto';
 import { RoleListResponseDto } from 'src/modules/role/dtos/response/role.list.response.dto';
-import {
-    RoleActivePipe,
-    RoleInactivePipe,
-} from 'src/modules/role/pipes/role.is-active.pipe';
+import { RoleIsActivePipe } from 'src/modules/role/pipes/role.is-active.pipe';
 import { RoleParsePipe } from 'src/modules/role/pipes/role.parse.pipe';
 import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 import { RoleService } from 'src/modules/role/services/role.service';
@@ -242,7 +239,12 @@ export class RoleAdminController {
     @ApiKeyPublicProtected()
     @Patch('/update/:role/inactive')
     async inactive(
-        @Param('role', RequestRequiredPipe, RoleParsePipe, RoleActivePipe)
+        @Param(
+            'role',
+            RequestRequiredPipe,
+            RoleParsePipe,
+            new RoleIsActivePipe([true])
+        )
         role: RoleDoc
     ): Promise<void> {
         await this.roleService.inactive(role);
@@ -261,7 +263,12 @@ export class RoleAdminController {
     @ApiKeyPublicProtected()
     @Patch('/update/:role/active')
     async active(
-        @Param('role', RequestRequiredPipe, RoleParsePipe, RoleInactivePipe)
+        @Param(
+            'role',
+            RequestRequiredPipe,
+            RoleParsePipe,
+            new RoleIsActivePipe([false])
+        )
         role: RoleDoc
     ): Promise<void> {
         await this.roleService.active(role);

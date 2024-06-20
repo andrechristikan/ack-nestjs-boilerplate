@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { CountryGetResponseDto } from 'src/modules/country/dtos/response/country.get.response.dto';
+import { CountryListResponseDto } from 'src/modules/country/dtos/response/country.list.response.dto';
 
 export class UserMobileNumberResponseDto {
     @ApiProperty({
@@ -19,8 +19,8 @@ export class UserMobileNumberResponseDto {
     @ApiProperty({
         required: true,
         nullable: false,
-        type: CountryGetResponseDto,
+        type: CountryListResponseDto,
     })
-    @Type(() => CountryGetResponseDto)
-    readonly country: CountryGetResponseDto;
+    @Type(() => CountryListResponseDto)
+    readonly country: CountryListResponseDto;
 }

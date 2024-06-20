@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Patch } from '@nestjs/common';
+import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
@@ -31,17 +31,11 @@ import {
     COUNTRY_DEFAULT_IS_ACTIVE,
 } from 'src/modules/country/constants/country.list.constant';
 import {
-    CountryAdminActiveDoc,
     CountryAdminGetDoc,
-    CountryAdminInactiveDoc,
     CountryAdminListDoc,
 } from 'src/modules/country/docs/country.admin.doc';
 import { CountryGetResponseDto } from 'src/modules/country/dtos/response/country.get.response.dto';
 import { CountryListResponseDto } from 'src/modules/country/dtos/response/country.list.response.dto';
-import {
-    CountryActivePipe,
-    CountryInactivePipe,
-} from 'src/modules/country/pipes/country.is-active.pipe';
 import { CountryParsePipe } from 'src/modules/country/pipes/country.parse.pipe';
 import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
 import { CountryService } from 'src/modules/country/services/country.service';
@@ -121,53 +115,5 @@ export class CountryAdminController {
         const mapped: CountryGetResponseDto =
             await this.countryService.mapGet(country);
         return { data: mapped };
-    }
-
-    @CountryAdminInactiveDoc()
-    @Response('country.inactive')
-    @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.COUNTRY,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
-    })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    @AuthJwtAccessProtected()
-    @ApiKeyPublicProtected()
-    @Patch('/update/:country/inactive')
-    async inactive(
-        @Param(
-            'country',
-            RequestRequiredPipe,
-            CountryParsePipe,
-            CountryActivePipe
-        )
-        country: CountryDoc
-    ): Promise<void> {
-        await this.countryService.inactive(country);
-
-        return;
-    }
-
-    @CountryAdminActiveDoc()
-    @Response('country.active')
-    @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.COUNTRY,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
-    })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    @AuthJwtAccessProtected()
-    @ApiKeyPublicProtected()
-    @Patch('/update/:country/active')
-    async active(
-        @Param(
-            'country',
-            RequestRequiredPipe,
-            CountryParsePipe,
-            CountryInactivePipe
-        )
-        country: CountryDoc
-    ): Promise<void> {
-        await this.countryService.active(country);
-
-        return;
     }
 }

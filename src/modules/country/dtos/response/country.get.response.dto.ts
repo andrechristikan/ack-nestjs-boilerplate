@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
-import { Exclude } from 'class-transformer';
+import { Exclude, Type } from 'class-transformer';
 import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 
@@ -90,6 +90,7 @@ export class CountryGetResponseDto extends DatabaseIdResponseDto {
         required: false,
         type: () => AwsS3Dto,
     })
+    @Type(() => AwsS3Dto)
     readonly image?: AwsS3Dto;
 
     @ApiProperty({

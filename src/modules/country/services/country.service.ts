@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
+import { Document } from 'mongoose';
 import { DatabaseQueryContain } from 'src/common/database/decorators/database.decorator';
 import {
     IDatabaseCreateManyOptions,
@@ -94,24 +95,6 @@ export class CountryService implements ICountryService {
         return this.countryRepository.getTotal(find, options);
     }
 
-    async active(
-        repository: CountryDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<CountryDoc> {
-        repository.isActive = true;
-
-        return this.countryRepository.save(repository, options);
-    }
-
-    async inactive(
-        repository: CountryDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<CountryDoc> {
-        repository.isActive = false;
-
-        return this.countryRepository.save(repository, options);
-    }
-
     async delete(
         repository: CountryDoc,
         options?: IDatabaseSaveOptions
@@ -153,7 +136,6 @@ export class CountryService implements ICountryService {
                     create.phoneCode = phoneCode;
                     create.timeZone = timeZone;
                     create.domain = domain;
-                    create.isActive = true;
 
                     return create;
                 }
@@ -162,11 +144,23 @@ export class CountryService implements ICountryService {
         );
     }
 
-    async mapList(countries: CountryDoc[]): Promise<CountryListResponseDto[]> {
-        return plainToInstance(CountryListResponseDto, countries);
+    async mapList(
+        countries: CountryDoc[] | CountryEntity[]
+    ): Promise<CountryListResponseDto[]> {
+        return plainToInstance(
+            CountryListResponseDto,
+            countries.map((e: CountryDoc | CountryEntity) =>
+                e instanceof Document ? e.toObject() : e
+            )
+        );
     }
 
-    async mapGet(county: CountryDoc): Promise<CountryGetResponseDto> {
-        return plainToInstance(CountryGetResponseDto, county);
+    async mapGet(
+        country: CountryDoc | CountryEntity
+    ): Promise<CountryGetResponseDto> {
+        return plainToInstance(
+            CountryGetResponseDto,
+            country instanceof Document ? country.toObject() : country
+        );
     }
 }

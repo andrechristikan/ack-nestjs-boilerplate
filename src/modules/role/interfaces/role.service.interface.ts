@@ -11,8 +11,13 @@ import {
 import { ENUM_POLICY_ROLE_TYPE } from 'src/common/policy/constants/policy.enum.constant';
 import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from 'src/modules/role/dtos/request/role.update.request.dto';
+import { RoleGetResponseDto } from 'src/modules/role/dtos/response/role.get.response.dto';
+import { RoleListResponseDto } from 'src/modules/role/dtos/response/role.list.response.dto';
 import { RoleShortResponseDto } from 'src/modules/role/dtos/response/role.short.response.dto';
-import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
+import {
+    RoleDoc,
+    RoleEntity,
+} from 'src/modules/role/repository/entities/role.entity';
 
 export interface IRoleService {
     findAll(
@@ -85,5 +90,7 @@ export interface IRoleService {
         data: RoleCreateRequestDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean>;
-    mapShort(roles: RoleDoc[]): Promise<RoleShortResponseDto[]>;
+    mapList(roles: RoleDoc[] | RoleEntity[]): Promise<RoleListResponseDto[]>;
+    mapGet(role: RoleDoc | RoleEntity): Promise<RoleGetResponseDto>;
+    mapShort(roles: RoleDoc[] | RoleEntity[]): Promise<RoleShortResponseDto[]>;
 }

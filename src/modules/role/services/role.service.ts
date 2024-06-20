@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
+import { Document } from 'mongoose';
 import {
     IDatabaseCreateOptions,
     IDatabaseExistOptions,
@@ -189,18 +190,32 @@ export class RoleService implements IRoleService {
         return this.roleRepository.createMany<RoleEntity>(create, options);
     }
 
-    async mapList(roles: RoleDoc[]): Promise<RoleListResponseDto[]> {
-        const plainObject: RoleEntity[] = roles.map(e => e.toObject());
-
-        return plainToInstance(RoleListResponseDto, plainObject);
+    async mapList(
+        roles: RoleDoc[] | RoleEntity[]
+    ): Promise<RoleListResponseDto[]> {
+        return plainToInstance(
+            RoleListResponseDto,
+            roles.map((e: RoleDoc | RoleEntity) =>
+                e instanceof Document ? e.toObject() : e
+            )
+        );
     }
 
-    async mapGet(role: RoleDoc): Promise<RoleGetResponseDto> {
-        return plainToInstance(RoleGetResponseDto, role.toObject());
+    async mapGet(role: RoleDoc | RoleEntity): Promise<RoleGetResponseDto> {
+        return plainToInstance(
+            RoleGetResponseDto,
+            role instanceof Document ? role.toObject() : role
+        );
     }
 
-    async mapShort(roles: RoleDoc[]): Promise<RoleShortResponseDto[]> {
-        const plainObject: RoleEntity[] = roles.map(e => e.toObject());
-        return plainToInstance(RoleShortResponseDto, plainObject);
+    async mapShort(
+        roles: RoleDoc[] | RoleEntity[]
+    ): Promise<RoleShortResponseDto[]> {
+        return plainToInstance(
+            RoleShortResponseDto,
+            roles.map((e: RoleDoc | RoleEntity) =>
+                e instanceof Document ? e.toObject() : e
+            )
+        );
     }
 }
