@@ -7,6 +7,7 @@ import swaggerInit from 'src/swagger';
 import { plainToInstance } from 'class-transformer';
 import { AppEnvDto } from 'src/app/dtos/app.env.dto';
 import { MessageService } from 'src/common/message/services/message.service';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule);
@@ -48,12 +49,6 @@ async function bootstrap() {
         });
     }
 
-    // Swagger
-    await swaggerInit(app);
-
-    // Listen
-    await app.listen(port, host);
-
     logger.log(`==========================================================`);
 
     logger.log(`Environment Variable`, 'NestApplication');
@@ -65,12 +60,35 @@ async function bootstrap() {
         const messageService = app.get(MessageService);
         const errorsMessage = messageService.setValidationMessage(errors);
         logger.log(errorsMessage, 'NestApplication');
+
         throw new Error('Env Variable Invalid');
     }
 
     logger.log(JSON.parse(JSON.stringify(process.env)), 'NestApplication');
 
     logger.log(`==========================================================`);
+
+    // Swagger
+    await swaggerInit(app);
+
+    // Listen
+    await app.listen(port, host);
+
+    if (env === ENUM_APP_ENVIRONMENT.MIGRATION) {
+        logger.log(`On migrate the schema`, 'NestApplication');
+
+        await new Promise(resolve => {
+            setTimeout(resolve, 5000);
+        });
+        await app.close();
+
+        logger.log(`Migrate done`, 'NestApplication');
+        logger.log(
+            `==========================================================`
+        );
+
+        return;
+    }
 
     logger.log(`Job is ${jobEnable}`, 'NestApplication');
     logger.log(

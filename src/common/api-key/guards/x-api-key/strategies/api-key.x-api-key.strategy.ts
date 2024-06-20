@@ -116,6 +116,7 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
 
         req.apiKey = {
             _id: apiKey._id,
+            name: apiKey._id,
             key: apiKey.key,
             type: apiKey.type,
         };

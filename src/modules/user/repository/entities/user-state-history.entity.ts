@@ -5,7 +5,7 @@ import {
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
-import { ENUM_USER_HISTORY_STATE } from 'src/modules/user/constants/user-history.enum.constant';
+import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
 export const UserStateHistoryTableName = 'UserStateHistories';
@@ -24,16 +24,16 @@ export class UserStateHistoryEntity extends DatabaseMongoUUIDEntityAbstract {
     @DatabaseProp({
         required: true,
         type: String,
-        enum: ENUM_USER_HISTORY_STATE,
+        enum: ENUM_USER_STATUS,
     })
-    beforeState: ENUM_USER_HISTORY_STATE;
+    beforeState: ENUM_USER_STATUS;
 
     @DatabaseProp({
         required: true,
         type: String,
-        enum: ENUM_USER_HISTORY_STATE,
+        enum: ENUM_USER_STATUS,
     })
-    afterState: ENUM_USER_HISTORY_STATE;
+    afterState: ENUM_USER_STATUS;
 
     @DatabaseProp({
         required: true,

@@ -15,7 +15,7 @@ export class UserNotSelfPipe implements PipeTransform {
 
     async transform(value: string): Promise<string> {
         const { user } = this.request;
-        if (user.user_id === value) {
+        if (user._id === value && user.type) {
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
                 message: 'user.error.notFound',

@@ -12,10 +12,12 @@ import {
 import {
     UserDocParamsId,
     UserDocQueryBlocked,
+    UserDocQueryCountry,
     UserDocQueryRole,
     UserDocQueryStatus,
 } from 'src/modules/user/constants/user.doc.constant';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
+import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
 import { UserLoginHistoryListResponseDto } from 'src/modules/user/dtos/response/user-login-history.list.response.dto';
 import { UserPasswordHistoryListResponseDto } from 'src/modules/user/dtos/response/user-password-history.list.response.dto';
 import { UserStateHistoryListResponseDto } from 'src/modules/user/dtos/response/user-state-history.list.response.dto';
@@ -32,6 +34,7 @@ export function UserAdminListDoc(): MethodDecorator {
                 ...UserDocQueryStatus,
                 ...UserDocQueryBlocked,
                 ...UserDocQueryRole,
+                ...UserDocQueryCountry,
             ],
         }),
         DocAuth({
@@ -165,6 +168,25 @@ export function UserAdminActiveDoc(): MethodDecorator {
         }),
         DocGuard({ role: true, policy: true }),
         DocResponse('user.active')
+    );
+}
+
+export function UserAdminUpdateDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'update a user',
+        }),
+        DocRequest({
+            params: UserDocParamsId,
+            bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
+            dto: UserUpdateRequestDto,
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true, policy: true }),
+        DocResponse('user.update')
     );
 }
 

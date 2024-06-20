@@ -21,13 +21,6 @@ export class UserGetResponseDto extends DatabaseIdResponseDto {
 
     @ApiProperty({
         required: false,
-        maxLength: 50,
-        minLength: 1,
-    })
-    readonly familyName?: string;
-
-    @ApiProperty({
-        required: false,
         type: () => UserUpdateMobileNumberRequestDto,
     })
     @Type(() => UserUpdateMobileNumberRequestDto)
@@ -110,12 +103,6 @@ export class UserGetResponseDto extends DatabaseIdResponseDto {
     })
     @Type(() => AwsS3Dto)
     readonly photo?: AwsS3Dto;
-
-    @ApiProperty({
-        required: false,
-        nullable: true,
-    })
-    readonly address?: string;
 
     @ApiProperty({
         example: ENUM_USER_GENDER.MALE,

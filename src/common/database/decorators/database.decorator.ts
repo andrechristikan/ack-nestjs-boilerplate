@@ -33,8 +33,6 @@ export function DatabaseEntity(options?: SchemaOptions): ClassDecorator {
     return Schema({
         ...options,
         versionKey: false,
-        autoCreate: false,
-        autoIndex: false,
         timestamps: options?.timestamps ?? {
             createdAt: DATABASE_CREATED_AT_FIELD_NAME,
             updatedAt: DATABASE_UPDATED_AT_FIELD_NAME,

@@ -10,7 +10,7 @@ import {
 import { FileSingleDto } from 'src/common/file/dtos/file.single.dto';
 import { UserChangePasswordRequestDto } from 'src/modules/user/dtos/request/user.change-password.request.dto';
 import { UserLoginRequestDto } from 'src/modules/user/dtos/request/user.login.request.dto';
-import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.request.dto';
+import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
 import { UserLoginResponseDto } from 'src/modules/user/dtos/response/user.login.response.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
 import { UserRefreshResponseDto } from 'src/modules/user/dtos/response/user.refresh.response.dto';
@@ -131,7 +131,7 @@ export function UserAuthUpdateProfileDoc(): MethodDecorator {
         }),
         DocRequest({
             bodyType: ENUM_DOC_REQUEST_BODY_TYPE.JSON,
-            dto: UserUpdateProfileRequestDto,
+            dto: UserUpdateRequestDto,
         }),
         DocResponse('user.updateProfile')
     );

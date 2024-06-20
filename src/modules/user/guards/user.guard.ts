@@ -15,9 +15,7 @@ export class UserGuard implements CanActivate {
     async canActivate(context: ExecutionContext): Promise<boolean> {
         const request = context.switchToHttp().getRequest<IRequestApp>();
 
-        const user = await this.userService.findOneByEmailAndActive(
-            request.user._id
-        );
+        const user = await this.userService.findOneActiveById(request.user._id);
         if (!user) {
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND_ERROR,

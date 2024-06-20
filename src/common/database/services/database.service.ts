@@ -25,8 +25,8 @@ export class DatabaseService implements IDatabaseService {
 
         const mongooseOptions: MongooseModuleOptions = {
             uri,
-            autoCreate: true,
-            autoIndex: true,
+            autoCreate: env === ENUM_APP_ENVIRONMENT.MIGRATION,
+            autoIndex: env === ENUM_APP_ENVIRONMENT.MIGRATION,
             ...timeoutOptions,
         };
 

@@ -19,7 +19,6 @@ import { ConfigService } from '@nestjs/config';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { plainToInstance } from 'class-transformer';
-import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import {
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
@@ -27,13 +26,13 @@ import {
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
 import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
 import { UserUpdatePasswordAttemptRequestDto } from 'src/modules/user/dtos/request/user.update-password-attempt.request.dto';
-import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.request.dto';
 import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
-import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
+import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
+import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
 import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
-import { CountryEntity } from 'src/modules/country/repository/entities/country.entity';
+import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -54,6 +53,23 @@ export class UserService implements IUserService {
         return this.userRepository.findAll<UserDoc>(find, options);
     }
 
+    async getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseGetTotalOptions
+    ): Promise<number> {
+        return this.userRepository.getTotal(find, options);
+    }
+
+    async findAllActive(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<UserDoc[]> {
+        return this.userRepository.findAll<UserDoc>(
+            { ...find, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
+            options
+        );
+    }
+
     async findAllWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
@@ -62,6 +78,26 @@ export class UserService implements IUserService {
             ...options,
             join: true,
         });
+    }
+
+    async findAllActiveWithRoleAndCountry(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<IUserDoc[]> {
+        return this.userRepository.findAll<IUserDoc>(
+            { ...find, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
+            { ...options, join: true }
+        );
+    }
+
+    async getTotalActive(
+        find?: Record<string, any>,
+        options?: IDatabaseGetTotalOptions
+    ): Promise<number> {
+        return this.userRepository.getTotal(
+            { ...find, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
+            options
+        );
     }
 
     async findOneById(
@@ -92,11 +128,67 @@ export class UserService implements IUserService {
         return this.userRepository.findOne<UserDoc>({ mobileNumber }, options);
     }
 
-    async getTotal(
+    async findOneActiveById(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<IUserDoc> {
+        return this.userRepository.findOne<IUserDoc>(
+            { _id, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
+            {
+                ...options,
+                join: this.userRepository._joinSchemaActive,
+            }
+        );
+    }
+
+    async findOneActiveByEmail(
+        email: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<IUserDoc> {
+        return this.userRepository.findOne<IUserDoc>(
+            { email, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
+            {
+                ...options,
+                join: this.userRepository._joinSchemaActive,
+            }
+        );
+    }
+
+    async findOneActiveByMobileNumber(
+        mobileNumber: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<IUserDoc> {
+        return this.userRepository.findOne<IUserDoc>(
+            {
+                mobileNumber,
+                status: ENUM_USER_STATUS.ACTIVE,
+                blocked: false,
+            },
+            {
+                ...options,
+                join: this.userRepository._joinSchemaActive,
+            }
+        );
+    }
+
+    async findOneWithRoleAndCountry(
         find?: Record<string, any>,
-        options?: IDatabaseGetTotalOptions
-    ): Promise<number> {
-        return this.userRepository.getTotal(find, options);
+        options?: IDatabaseFindAllOptions
+    ): Promise<IUserDoc> {
+        return this.userRepository.findOne<IUserDoc>(find, {
+            ...options,
+            join: true,
+        });
+    }
+
+    async findOneWithRoleAndCountryById(
+        _id: string,
+        options?: IDatabaseFindAllOptions
+    ): Promise<IUserDoc> {
+        return this.userRepository.findOneById<IUserDoc>(_id, {
+            ...options,
+            join: true,
+        });
     }
 
     async create(
@@ -110,7 +202,6 @@ export class UserService implements IUserService {
         create.email = email;
         create.role = role;
         create.status = ENUM_USER_STATUS.ACTIVE;
-        create.blocked = false;
         create.password = passwordHash;
         create.salt = salt;
         create.passwordExpired = passwordExpired;
@@ -134,7 +225,6 @@ export class UserService implements IUserService {
         create.email = email;
         create.role = role;
         create.status = ENUM_USER_STATUS.ACTIVE;
-        create.blocked = false;
         create.password = passwordHash;
         create.salt = salt;
         create.passwordExpired = passwordExpired;
@@ -221,6 +311,7 @@ export class UserService implements IUserService {
     ): Promise<UserDoc> {
         repository.status = ENUM_USER_STATUS.DELETED;
         repository.selfDeletion = true;
+        repository.deletedAt = this.helperDateService.create();
 
         return this.userRepository.save(repository, options);
     }
@@ -229,16 +320,7 @@ export class UserService implements IUserService {
         repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
-        repository.blocked = true;
-
-        return this.userRepository.save(repository, options);
-    }
-
-    async unblocked(
-        repository: UserDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc> {
-        repository.blocked = false;
+        repository.status = ENUM_USER_STATUS.BLOCKED;
 
         return this.userRepository.save(repository, options);
     }
@@ -282,29 +364,10 @@ export class UserService implements IUserService {
     }
 
     async join(repository: UserDoc): Promise<IUserDoc> {
-        return this.userRepository.join(repository, [
-            {
-                field: 'role',
-                localKey: 'role',
-                foreignKey: '_id',
-                model: RoleEntity.name,
-                justOne: true,
-            },
-            {
-                field: 'country',
-                localKey: 'country',
-                foreignKey: '_id',
-                model: CountryEntity.name,
-                justOne: true,
-            },
-            {
-                field: 'mobileNumber.country',
-                localKey: 'mobileNumber.country',
-                foreignKey: '_id',
-                model: CountryEntity.name,
-                justOne: true,
-            },
-        ]);
+        return this.userRepository.join(
+            repository,
+            this.userRepository._joinOnFind
+        );
     }
 
     async getPhotoUploadPath(user: string): Promise<string> {
@@ -318,136 +381,17 @@ export class UserService implements IUserService {
         return this.userRepository.deleteMany(find, options);
     }
 
-    async findOneByIdAndActive(
-        _id: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<IUserDoc> {
-        return this.userRepository.findOne<IUserDoc>(
-            { _id, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
-            {
-                ...options,
-                join: [
-                    {
-                        field: 'role',
-                        localKey: 'role',
-                        foreignKey: '_id',
-                        model: RoleEntity.name,
-                        justOne: true,
-                        condition: {
-                            isActive: true,
-                        },
-                    },
-                    {
-                        field: 'country',
-                        localKey: 'country',
-                        foreignKey: '_id',
-                        model: CountryEntity.name,
-                        justOne: true,
-                    },
-                    {
-                        field: 'mobileNumber.country',
-                        localKey: 'mobileNumber.country',
-                        foreignKey: '_id',
-                        model: CountryEntity.name,
-                        justOne: true,
-                    },
-                ],
-            }
-        );
-    }
-
-    async findOneByEmailAndActive(
-        email: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<IUserDoc> {
-        return this.userRepository.findOne<IUserDoc>(
-            { email, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
-            {
-                ...options,
-                join: [
-                    {
-                        field: 'role',
-                        localKey: 'role',
-                        foreignKey: '_id',
-                        model: RoleEntity.name,
-                        justOne: true,
-                        condition: {
-                            isActive: true,
-                        },
-                    },
-                    {
-                        field: 'country',
-                        localKey: 'country',
-                        foreignKey: '_id',
-                        model: CountryEntity.name,
-                        justOne: true,
-                    },
-                    {
-                        field: 'mobileNumber.country',
-                        localKey: 'mobileNumber.country',
-                        foreignKey: '_id',
-                        model: CountryEntity.name,
-                        justOne: true,
-                    },
-                ],
-            }
-        );
-    }
-
-    async findOneByMobileNumberAndActive(
-        mobileNumber: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<IUserDoc> {
-        return this.userRepository.findOne<IUserDoc>(
-            {
-                mobileNumber,
-                status: ENUM_USER_STATUS.ACTIVE,
-                blocked: false,
-            },
-            {
-                ...options,
-                join: [
-                    {
-                        field: 'role',
-                        localKey: 'role',
-                        foreignKey: '_id',
-                        model: RoleEntity.name,
-                        justOne: true,
-                        condition: {
-                            isActive: true,
-                        },
-                    },
-                    {
-                        field: 'country',
-                        localKey: 'country',
-                        foreignKey: '_id',
-                        model: CountryEntity.name,
-                        justOne: true,
-                    },
-                    {
-                        field: 'mobileNumber.country',
-                        localKey: 'mobileNumber.country',
-                        foreignKey: '_id',
-                        model: CountryEntity.name,
-                        justOne: true,
-                    },
-                ],
-            }
-        );
-    }
-
     async mapProfile(user: IUserDoc): Promise<UserProfileResponseDto> {
         return plainToInstance(UserProfileResponseDto, user.toObject());
     }
 
-    async updateProfile(
+    async update(
         repository: UserDoc,
-        { name, familyName, address }: UserUpdateProfileRequestDto,
+        { country, name }: UserUpdateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
+        repository.country = country;
         repository.name = name;
-        repository.familyName = familyName;
-        repository.address = address;
 
         return this.userRepository.save(repository, options);
     }
@@ -474,10 +418,17 @@ export class UserService implements IUserService {
         return this.userRepository.save(repository, options);
     }
 
-    async mapList(user: IUserDoc[]): Promise<UserListResponseDto[]> {
+    async mapList(users: IUserDoc[]): Promise<UserListResponseDto[]> {
         return plainToInstance(
             UserListResponseDto,
-            user.map(u => u.toObject())
+            users.map(u => u.toObject())
+        );
+    }
+
+    async mapShort(users: IUserDoc[]): Promise<UserShortResponseDto[]> {
+        return plainToInstance(
+            UserShortResponseDto,
+            users.map(u => u.toObject())
         );
     }
 

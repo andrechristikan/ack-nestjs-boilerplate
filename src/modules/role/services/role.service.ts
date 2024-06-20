@@ -10,10 +10,12 @@ import {
     IDatabaseCreateManyOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { ENUM_POLICY_ROLE_TYPE } from 'src/common/policy/constants/policy.enum.constant';
 import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from 'src/modules/role/dtos/request/role.update.request.dto';
 import { RoleGetResponseDto } from 'src/modules/role/dtos/response/role.get.response.dto';
 import { RoleListResponseDto } from 'src/modules/role/dtos/response/role.list.response.dto';
+import { RoleShortResponseDto } from 'src/modules/role/dtos/response/role.short.response.dto';
 import { IRoleService } from 'src/modules/role/interfaces/role.service.interface';
 import {
     RoleDoc,
@@ -30,6 +32,33 @@ export class RoleService implements IRoleService {
         options?: IDatabaseFindAllOptions
     ): Promise<RoleDoc[]> {
         return this.roleRepository.findAll<RoleDoc>(find, options);
+    }
+
+    async findAllActive(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<RoleDoc[]> {
+        return this.roleRepository.findAll<RoleDoc>(
+            { ...find, isActive: true },
+            options
+        );
+    }
+
+    async getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseGetTotalOptions
+    ): Promise<number> {
+        return this.roleRepository.getTotal(find, options);
+    }
+
+    async getTotalActive(
+        find?: Record<string, any>,
+        options?: IDatabaseGetTotalOptions
+    ): Promise<number> {
+        return this.roleRepository.getTotal(
+            { ...find, isActive: true },
+            options
+        );
     }
 
     async findOneById(
@@ -53,11 +82,25 @@ export class RoleService implements IRoleService {
         return this.roleRepository.findOne<RoleDoc>({ name }, options);
     }
 
-    async getTotal(
-        find?: Record<string, any>,
-        options?: IDatabaseGetTotalOptions
-    ): Promise<number> {
-        return this.roleRepository.getTotal(find, options);
+    async findOneActiveById(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<RoleDoc> {
+        return this.roleRepository.findOne<RoleDoc>(
+            { _id, isActive: true },
+            options
+        );
+    }
+
+    async findOneActiveByIdAndType(
+        _id: string,
+        type: ENUM_POLICY_ROLE_TYPE,
+        options?: IDatabaseFindOneOptions
+    ): Promise<RoleDoc> {
+        return this.roleRepository.findOne<RoleDoc>(
+            { type, _id, isActive: true },
+            options
+        );
     }
 
     async existByName(
@@ -154,5 +197,10 @@ export class RoleService implements IRoleService {
 
     async mapGet(role: RoleDoc): Promise<RoleGetResponseDto> {
         return plainToInstance(RoleGetResponseDto, role.toObject());
+    }
+
+    async mapShort(roles: RoleDoc[]): Promise<RoleShortResponseDto[]> {
+        const plainObject: RoleEntity[] = roles.map(e => e.toObject());
+        return plainToInstance(RoleShortResponseDto, plainObject);
     }
 }

@@ -4,7 +4,10 @@ import { AuthJwtAccessPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.acces
 import { AuthJwtRefreshPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
 import { AuthSocialApplePayloadDto } from 'src/common/auth/dtos/social/auth.social.apple-payload.dto';
 import { AuthSocialGooglePayloadDto } from 'src/common/auth/dtos/social/auth.social.google-payload.dto';
-import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
+import {
+    IAuthPassword,
+    IAuthPasswordOptions,
+} from 'src/common/auth/interfaces/auth.interface';
 
 export interface IAuthService {
     createAccessToken(payload: AuthJwtAccessPayloadDto): Promise<string>;
@@ -27,7 +30,10 @@ export interface IAuthService {
         loginDate,
     }: AuthJwtAccessPayloadDto): Promise<AuthJwtRefreshPayloadDto>;
     createSalt(length: number): Promise<string>;
-    createPassword(password: string): Promise<IAuthPassword>;
+    createPassword(
+        password: string,
+        options?: IAuthPasswordOptions
+    ): Promise<IAuthPassword>;
     createPasswordRandom(): Promise<string>;
     checkPasswordExpired(passwordExpired: Date): Promise<boolean>;
     getTokenType(): Promise<string>;

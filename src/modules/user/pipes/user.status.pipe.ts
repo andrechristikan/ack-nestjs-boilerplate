@@ -4,23 +4,14 @@ import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.sta
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 
 @Injectable()
-export class UserStatusActivePipe implements PipeTransform {
-    async transform(value: UserDoc): Promise<UserDoc> {
-        if (value.status === ENUM_USER_STATUS.ACTIVE) {
-            throw new BadRequestException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID_ERROR,
-                message: 'user.error.statusInvalid',
-            });
-        }
-
-        return value;
+export class UserStatusPipe implements PipeTransform {
+    private readonly status: ENUM_USER_STATUS[];
+    constructor(status: ENUM_USER_STATUS[]) {
+        this.status = status;
     }
-}
 
-@Injectable()
-export class UserStatusInactivePipe implements PipeTransform {
     async transform(value: UserDoc): Promise<UserDoc> {
-        if (value.status === ENUM_USER_STATUS.ACTIVE) {
+        if (!this.status.includes(value.status)) {
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID_ERROR,
                 message: 'user.error.statusInvalid',

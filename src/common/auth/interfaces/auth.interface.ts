@@ -4,3 +4,7 @@ export interface IAuthPassword {
     passwordExpired: Date;
     passwordCreated: Date;
 }
+
+export interface IAuthPasswordOptions {
+    temporary: boolean;
+}

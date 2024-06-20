@@ -11,13 +11,13 @@ import {
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
-import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
 import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
 import { UserUpdatePasswordAttemptRequestDto } from 'src/modules/user/dtos/request/user.update-password-attempt.request.dto';
-import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.request.dto';
+import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
 import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
+import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import {
     UserDoc,
@@ -29,10 +29,26 @@ export interface IUserService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<UserDoc[]>;
+    getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseGetTotalOptions
+    ): Promise<number>;
+    findAllActive(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<UserDoc[]>;
     findAllWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<IUserDoc[]>;
+    findAllActiveWithRoleAndCountry(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<IUserDoc[]>;
+    getTotalActive(
+        find?: Record<string, any>,
+        options?: IDatabaseGetTotalOptions
+    ): Promise<number>;
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
@@ -49,20 +65,30 @@ export interface IUserService {
         mobileNumber: string,
         options?: IDatabaseFindOneOptions
     ): Promise<UserDoc>;
-    getTotal(
+    findOneActiveById(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<IUserDoc>;
+    findOneActiveByEmail(
+        email: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<IUserDoc>;
+    findOneActiveByMobileNumber(
+        mobileNumber: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<IUserDoc>;
+    findOneWithRoleAndCountry(
         find?: Record<string, any>,
-        options?: IDatabaseGetTotalOptions
-    ): Promise<number>;
+        options?: IDatabaseFindAllOptions
+    ): Promise<IUserDoc>;
+    findOneWithRoleAndCountryById(
+        _id: string,
+        options?: IDatabaseFindAllOptions
+    ): Promise<IUserDoc>;
     create(
         { email, name, role, country }: UserCreateRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         signUpFrom: ENUM_USER_SIGN_UP_FROM,
-        options?: IDatabaseCreateOptions
-    ): Promise<UserDoc>;
-    signUp(
-        role: string,
-        { email, name, country }: UserSignUpRequestDto,
-        { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc>;
     existByEmail(
@@ -91,15 +117,7 @@ export interface IUserService {
         repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
-    selfDelete(
-        repository: UserDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc>;
     blocked(
-        repository: UserDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc>;
-    unblocked(
         repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
@@ -127,22 +145,10 @@ export interface IUserService {
         find: Record<string, any>,
         options?: IDatabaseManyOptions
     ): Promise<boolean>;
-    findOneByIdAndActive(
-        _id: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<IUserDoc>;
-    findOneByEmailAndActive(
-        email: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<IUserDoc>;
-    findOneByMobileNumberAndActive(
-        mobileNumber: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<IUserDoc>;
     mapProfile(user: IUserDoc): Promise<UserProfileResponseDto>;
-    updateProfile(
+    update(
         repository: UserDoc,
-        { name, familyName, address }: UserUpdateProfileRequestDto,
+        { country, name }: UserUpdateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     updateMobileNumber(
@@ -154,6 +160,7 @@ export interface IUserService {
         repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
-    mapList(user: IUserDoc[]): Promise<UserListResponseDto[]>;
+    mapList(users: IUserDoc[]): Promise<UserListResponseDto[]>;
+    mapShort(users: IUserDoc[]): Promise<UserShortResponseDto[]>;
     mapGet(user: IUserDoc): Promise<UserGetResponseDto>;
 }

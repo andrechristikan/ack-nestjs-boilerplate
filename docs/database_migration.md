@@ -5,6 +5,12 @@
 
 The Database migration used [NestJs-Command][ref-nestjscommand]
 
+For migrate the schema
+
+```bash
+yarn migrate
+```
+
 For seeding
 
 ```bash

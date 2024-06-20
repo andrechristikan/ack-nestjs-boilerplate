@@ -11,9 +11,11 @@ export function UserProtected(): MethodDecorator {
     return applyDecorators(UseGuards(UserGuard));
 }
 
-export const User = createParamDecorator(<T>(_, ctx: ExecutionContext): T => {
-    const { __user } = ctx
-        .switchToHttp()
-        .getRequest<IRequestApp & { __user: T }>();
-    return __user;
-});
+export const User = createParamDecorator(
+    <T>(_: unknown, ctx: ExecutionContext): T => {
+        const { __user } = ctx
+            .switchToHttp()
+            .getRequest<IRequestApp & { __user: T }>();
+        return __user;
+    }
+);

@@ -10,9 +10,9 @@ import {
     NotFoundException,
     Patch,
     Post,
-    Put,
     UploadedFile,
     Req,
+    Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
@@ -67,7 +67,7 @@ import {
 } from 'src/modules/user/docs/user.auth.doc';
 import { UserChangePasswordRequestDto } from 'src/modules/user/dtos/request/user.change-password.request.dto';
 import { UserLoginRequestDto } from 'src/modules/user/dtos/request/user.login.request.dto';
-import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.request.dto';
+import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
 import { UserLoginResponseDto } from 'src/modules/user/dtos/response/user.login.response.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
 import { UserRefreshResponseDto } from 'src/modules/user/dtos/response/user.refresh.response.dto';
@@ -102,7 +102,7 @@ export class UserAuthController {
         @Body() { email, password }: UserLoginRequestDto,
         @Req() request: Request
     ): Promise<IResponse<UserLoginResponseDto>> {
-        const user: UserDoc = await this.userService.findOneByEmail(email);
+        let user: UserDoc = await this.userService.findOneByEmail(email);
         if (!user) {
             throw new NotFoundException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
@@ -127,24 +127,17 @@ export class UserAuthController {
             user.password
         );
         if (!validate) {
-            await this.userService.increasePasswordAttempt(user);
+            user = await this.userService.increasePasswordAttempt(user);
 
             throw new BadRequestException({
                 statusCode:
                     ENUM_USER_STATUS_CODE_ERROR.PASSWORD_NOT_MATCH_ERROR,
                 message: 'user.error.passwordNotMatch',
+                data: {
+                    attempt: user.passwordAttempt,
+                },
             });
-        } else if (user.blocked) {
-            throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_BLOCKED_ERROR,
-                message: 'user.error.blocked',
-            });
-        } else if (user.status === ENUM_USER_STATUS.DELETED) {
-            throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_DELETED_ERROR,
-                message: 'user.error.deleted',
-            });
-        } else if (user.status === ENUM_USER_STATUS.INACTIVE) {
+        } else if (user.status !== ENUM_USER_STATUS.ACTIVE) {
             throw new ForbiddenException({
                 statusCode:
                     ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_INACTIVE_ERROR,
@@ -194,7 +187,11 @@ export class UserAuthController {
             await session.abortTransaction();
             await session.endSession();
 
-            throw err;
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
         }
 
         const roleType = userWithRole.role.type;
@@ -243,17 +240,7 @@ export class UserAuthController {
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
                 message: 'user.error.notFound',
             });
-        } else if (user.blocked) {
-            throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_BLOCKED_ERROR,
-                message: 'user.error.blocked',
-            });
-        } else if (user.status === ENUM_USER_STATUS.DELETED) {
-            throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_DELETED_ERROR,
-                message: 'user.error.deleted',
-            });
-        } else if (user.status === ENUM_USER_STATUS.INACTIVE) {
+        } else if (user.status !== ENUM_USER_STATUS.INACTIVE) {
             throw new ForbiddenException({
                 statusCode:
                     ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_INACTIVE_ERROR,
@@ -303,7 +290,11 @@ export class UserAuthController {
             await session.abortTransaction();
             await session.endSession();
 
-            throw err;
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
         }
 
         const roleType = userWithRole.role.type;
@@ -352,17 +343,7 @@ export class UserAuthController {
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
                 message: 'user.error.notFound',
             });
-        } else if (user.blocked) {
-            throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_BLOCKED_ERROR,
-                message: 'user.error.blocked',
-            });
-        } else if (user.status === ENUM_USER_STATUS.DELETED) {
-            throw new ForbiddenException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_DELETED_ERROR,
-                message: 'user.error.deleted',
-            });
-        } else if (user.status === ENUM_USER_STATUS.INACTIVE) {
+        } else if (user.status !== ENUM_USER_STATUS.INACTIVE) {
             throw new ForbiddenException({
                 statusCode:
                     ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_INACTIVE_ERROR,
@@ -411,7 +392,12 @@ export class UserAuthController {
         } catch (err: any) {
             await session.abortTransaction();
             await session.endSession();
-            throw err;
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
         }
 
         const roleType = userWithRole.role.type;
@@ -456,7 +442,7 @@ export class UserAuthController {
         @AuthJwtToken() refreshToken: string,
         @AuthJwtPayload<AuthJwtRefreshPayloadDto>()
         { loginFrom }: AuthJwtRefreshPayloadDto,
-        @User(true) user: IUserDoc
+        @User() user: IUserDoc
     ): Promise<IResponse<UserRefreshResponseDto>> {
         const roleType = user.role.type;
         const tokenType: string = await this.authService.getTokenType();
@@ -531,7 +517,9 @@ export class UserAuthController {
                 message: 'user.error.passwordMustNew',
                 _metadata: {
                     customProperty: {
-                        period: passwordPeriod,
+                        messageProperties: {
+                            period: passwordPeriod,
+                        },
                     },
                 },
             });
@@ -573,7 +561,7 @@ export class UserAuthController {
     @ApiKeyPublicProtected()
     @Get('/profile')
     async profile(
-        @User(true) user: IUserDoc
+        @User() user: IUserDoc
     ): Promise<IResponse<UserProfileResponseDto>> {
         const mapped: UserProfileResponseDto =
             await this.userService.mapProfile(user);
@@ -589,7 +577,7 @@ export class UserAuthController {
     async updateProfile(
         @User() user: UserDoc,
         @Body()
-        { country, ...body }: UserUpdateProfileRequestDto
+        { country, ...body }: UserUpdateRequestDto
     ): Promise<void> {
         const checkCountry = this.countryService.findOneActiveById(country);
         if (!checkCountry) {
@@ -599,7 +587,7 @@ export class UserAuthController {
             });
         }
 
-        await this.userService.updateProfile(user, { country, ...body });
+        await this.userService.update(user, { country, ...body });
 
         return;
     }

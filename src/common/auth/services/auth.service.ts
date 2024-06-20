@@ -9,7 +9,10 @@ import { HelperStringService } from 'src/common/helper/services/helper.string.se
 import { IAuthService } from 'src/common/auth/interfaces/auth.service.interface';
 import { AuthJwtAccessPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.access-payload.dto';
 import { AuthJwtRefreshPayloadDto } from 'src/common/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
-import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
+import {
+    IAuthPassword,
+    IAuthPasswordOptions,
+} from 'src/common/auth/interfaces/auth.interface';
 import { AuthSocialApplePayloadDto } from 'src/common/auth/dtos/social/auth.social.apple-payload.dto';
 import { AuthSocialGooglePayloadDto } from 'src/common/auth/dtos/social/auth.social.google-payload.dto';
 import { ENUM_AUTH_LOGIN_FROM } from 'src/common/auth/constants/auth.enum.constant';
@@ -32,6 +35,7 @@ export class AuthService implements IAuthService {
 
     // password
     private readonly passwordExpiredIn: number;
+    private readonly passwordExpiredTemporary: number;
     private readonly passwordSaltLength: number;
 
     private readonly passwordAttempt: boolean;
@@ -77,9 +81,13 @@ export class AuthService implements IAuthService {
         this.passwordExpiredIn = this.configService.get<number>(
             'auth.password.expiredIn'
         );
+        this.passwordExpiredTemporary = this.configService.get<number>(
+            'auth.password.expiredInTemporary'
+        );
         this.passwordSaltLength = this.configService.get<number>(
             'auth.password.saltLength'
         );
+
         this.passwordAttempt = this.configService.get<boolean>(
             'auth.password.attempt'
         );
@@ -206,11 +214,16 @@ export class AuthService implements IAuthService {
         return this.helperHashService.randomSalt(length);
     }
 
-    async createPassword(password: string): Promise<IAuthPassword> {
+    async createPassword(
+        password: string,
+        options?: IAuthPasswordOptions
+    ): Promise<IAuthPassword> {
         const salt: string = await this.createSalt(this.passwordSaltLength);
 
         const passwordExpired: Date = this.helperDateService.forwardInSeconds(
-            this.passwordExpiredIn
+            options?.temporary
+                ? this.passwordExpiredTemporary
+                : this.passwordExpiredIn
         );
         const passwordCreated: Date = this.helperDateService.create();
         const passwordHash = this.helperHashService.bcrypt(password, salt);

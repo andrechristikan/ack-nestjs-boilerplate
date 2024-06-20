@@ -146,6 +146,7 @@ export class UserPasswordHistoryService implements IUserPasswordHistoryService {
             userHistories
         );
     }
+
     async checkPasswordPeriodByUser(
         user: UserDoc,
         password: IAuthPassword,

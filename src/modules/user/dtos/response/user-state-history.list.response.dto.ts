@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
-import { ENUM_USER_HISTORY_STATE } from 'src/modules/user/constants/user-history.enum.constant';
+import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
 
 export class UserStateHistoryListResponseDto extends DatabaseIdResponseDto {
     @ApiProperty({
@@ -13,17 +13,17 @@ export class UserStateHistoryListResponseDto extends DatabaseIdResponseDto {
 
     @ApiProperty({
         required: true,
-        enum: ENUM_USER_HISTORY_STATE,
-        example: ENUM_USER_HISTORY_STATE.ACTIVE,
+        enum: ENUM_USER_STATUS,
+        example: ENUM_USER_STATUS.ACTIVE,
     })
-    readonly beforeState: ENUM_USER_HISTORY_STATE;
+    readonly beforeState: ENUM_USER_STATUS;
 
     @ApiProperty({
         required: true,
-        enum: ENUM_USER_HISTORY_STATE,
-        example: ENUM_USER_HISTORY_STATE.ACTIVE,
+        enum: ENUM_USER_STATUS,
+        example: ENUM_USER_STATUS.ACTIVE,
     })
-    readonly afterState: ENUM_USER_HISTORY_STATE;
+    readonly afterState: ENUM_USER_STATUS;
 
     @ApiProperty({
         required: true,

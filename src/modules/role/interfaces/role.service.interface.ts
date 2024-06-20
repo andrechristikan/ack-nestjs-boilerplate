@@ -8,12 +8,18 @@ import {
     IDatabaseManyOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { ENUM_POLICY_ROLE_TYPE } from 'src/common/policy/constants/policy.enum.constant';
 import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from 'src/modules/role/dtos/request/role.update.request.dto';
+import { RoleShortResponseDto } from 'src/modules/role/dtos/response/role.short.response.dto';
 import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 
 export interface IRoleService {
     findAll(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<RoleDoc[]>;
+    findAllActive(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<RoleDoc[]>;
@@ -29,7 +35,20 @@ export interface IRoleService {
         name: string,
         options?: IDatabaseFindOneOptions
     ): Promise<RoleDoc>;
+    findOneActiveById(
+        _id: string,
+        options?: IDatabaseFindOneOptions
+    ): Promise<RoleDoc>;
+    findOneActiveByIdAndType(
+        _id: string,
+        type: ENUM_POLICY_ROLE_TYPE,
+        options?: IDatabaseFindOneOptions
+    ): Promise<RoleDoc>;
     getTotal(
+        find?: Record<string, any>,
+        options?: IDatabaseGetTotalOptions
+    ): Promise<number>;
+    getTotalActive(
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
@@ -66,4 +85,5 @@ export interface IRoleService {
         data: RoleCreateRequestDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean>;
+    mapShort(roles: RoleDoc[]): Promise<RoleShortResponseDto[]>;
 }

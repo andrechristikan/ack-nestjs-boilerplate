@@ -31,8 +31,8 @@ export abstract class DatabaseMongoUUIDRepositoryAbstract<
     Entity,
     EntityDocument,
 > extends DatabaseRepositoryAbstract<EntityDocument> {
-    protected _repository: Model<Entity>;
-    protected _joinOnFind?: IDatabaseJoin | IDatabaseJoin[];
+    protected readonly _repository: Model<Entity>;
+    readonly _joinOnFind?: IDatabaseJoin | IDatabaseJoin[];
 
     constructor(
         repository: Model<Entity>,

@@ -23,9 +23,8 @@ import {
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { UserService } from 'src/modules/user/services/user.service';
 import {
-    USER_DEFAULT_AVAILABLE_ORDER_BY,
+    USER_DEFAULT_AVAILABLE_SEARCH,
     USER_DEFAULT_BLOCKED,
-    USER_DEFAULT_ORDER_BY,
     USER_DEFAULT_STATUS,
 } from 'src/modules/user/constants/user.list.constant';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
@@ -55,6 +54,7 @@ import {
     UserAdminGetStateHistoryListDoc,
     UserAdminInactiveDoc,
     UserAdminListDoc,
+    UserAdminUpdateDoc,
     UserAdminUpdatePasswordDoc,
 } from 'src/modules/user/docs/user.admin.doc';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
@@ -68,11 +68,6 @@ import {
 } from 'src/modules/user/constants/user.enum.constant';
 import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
 import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
-import {
-    UserStatusActivePipe,
-    UserStatusInactivePipe,
-} from 'src/modules/user/pipes/user.status.pipe';
-import { UserNotBlockedPipe } from 'src/modules/user/pipes/user.blocked.pipe';
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
 import { UserNotSelfPipe } from 'src/modules/user/pipes/user.not-self.pipe';
@@ -89,15 +84,17 @@ import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.co
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { CountryService } from 'src/modules/country/services/country.service';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/constants/country.status-code.constant';
+import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
+import { UserLoginHistoryService } from 'src/modules/user/services/user-login-history.service';
 import { UserStateHistoryService } from 'src/modules/user/services/user-state-history.service';
 import { UserPasswordHistoryService } from 'src/modules/user/services/user-password-history.service';
-import { UserStateHistoryDoc } from 'src/modules/user/repository/entities/user-state-history.entity';
-import { UserPasswordHistoryDoc } from 'src/modules/user/repository/entities/user-password-history.entity';
 import { UserStateHistoryListResponseDto } from 'src/modules/user/dtos/response/user-state-history.list.response.dto';
+import { UserStateHistoryDoc } from 'src/modules/user/repository/entities/user-state-history.entity';
 import { UserPasswordHistoryListResponseDto } from 'src/modules/user/dtos/response/user-password-history.list.response.dto';
-import { UserLoginHistoryDoc } from 'src/modules/user/repository/entities/user-login-history.entity';
+import { UserPasswordHistoryDoc } from 'src/modules/user/repository/entities/user-password-history.entity';
 import { UserLoginHistoryListResponseDto } from 'src/modules/user/dtos/response/user-login-history.list.response.dto';
-import { UserLoginHistoryService } from 'src/modules/user/services/user-login-history.service';
+import { UserLoginHistoryDoc } from 'src/modules/user/repository/entities/user-login-history.entity';
+import { UserStatusPipe } from 'src/modules/user/pipes/user.status.pipe';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -130,8 +127,7 @@ export class UserAdminController {
     @Get('/list')
     async list(
         @PaginationQuery({
-            defaultOrderBy: USER_DEFAULT_ORDER_BY,
-            availableOrderBy: USER_DEFAULT_AVAILABLE_ORDER_BY,
+            availableSearch: USER_DEFAULT_AVAILABLE_SEARCH,
         })
         { _search, _limit, _offset, _order }: PaginationListDto,
         @PaginationQueryFilterInEnum(
@@ -143,13 +139,16 @@ export class UserAdminController {
         @PaginationQueryFilterInBoolean('blocked', USER_DEFAULT_BLOCKED)
         blocked: Record<string, any>,
         @PaginationQueryFilterEqual('role')
-        role: Record<string, any>
+        role: Record<string, any>,
+        @PaginationQueryFilterEqual('country')
+        country: Record<string, any>
     ): Promise<IResponsePaging<UserListResponseDto>> {
         const find: Record<string, any> = {
             ..._search,
             ...status,
             ...blocked,
             ...role,
+            ...country,
         };
 
         const users: IUserDoc[] =
@@ -405,12 +404,8 @@ export class UserAdminController {
                 session,
             });
 
-            const emailSend = {
-                email,
-                name,
-            };
-            await this.emailService.sendWelcome(emailSend);
-            await this.emailService.sendTempPassword(emailSend, {
+            await this.emailService.sendWelcome(created);
+            await this.emailService.sendTempPassword(created, {
                 password: passwordString,
                 expiredAt: password.passwordExpired,
             });
@@ -433,6 +428,39 @@ export class UserAdminController {
         }
     }
 
+    @UserAdminUpdateDoc()
+    @Response('user.update')
+    @PolicyAbilityProtected({
+        subject: ENUM_POLICY_SUBJECT.USER,
+        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
+    })
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
+    @AuthJwtAccessProtected()
+    @ApiKeyPublicProtected()
+    @Put('/update/:user')
+    async update(
+        @Param(
+            'user',
+            RequestRequiredPipe,
+            UserParsePipe,
+            UserNotSelfPipe,
+            new UserStatusPipe([ENUM_USER_STATUS.ACTIVE])
+        )
+        user: UserDoc,
+        @Body() { name, country }: UserUpdateRequestDto
+    ): Promise<void> {
+        const checkCountry =
+            await this.countryService.findOneActiveById(country);
+        if (!checkCountry) {
+            throw new NotFoundException({
+                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                message: 'country.error.notFound',
+            });
+        }
+
+        await this.userService.update(user, { name, country });
+    }
+
     @UserAdminInactiveDoc()
     @Response('user.inactive')
     @PolicyAbilityProtected({
@@ -449,7 +477,7 @@ export class UserAdminController {
             RequestRequiredPipe,
             UserParsePipe,
             UserNotSelfPipe,
-            UserStatusActivePipe
+            new UserStatusPipe([ENUM_USER_STATUS.ACTIVE])
         )
         user: UserDoc,
         @AuthJwtPayload('_id') _id: string
@@ -496,7 +524,7 @@ export class UserAdminController {
             RequestRequiredPipe,
             UserParsePipe,
             UserNotSelfPipe,
-            UserStatusInactivePipe
+            new UserStatusPipe([ENUM_USER_STATUS.INACTIVE])
         )
         user: UserDoc,
         @AuthJwtPayload('_id') _id: string
@@ -543,7 +571,10 @@ export class UserAdminController {
             RequestRequiredPipe,
             UserParsePipe,
             UserNotSelfPipe,
-            UserNotBlockedPipe
+            new UserStatusPipe([
+                ENUM_USER_STATUS.INACTIVE,
+                ENUM_USER_STATUS.ACTIVE,
+            ])
         )
         user: UserDoc,
         @AuthJwtPayload('_id') _id: string
@@ -596,8 +627,10 @@ export class UserAdminController {
         try {
             const passwordString =
                 await this.authService.createPasswordRandom();
-            const password =
-                await this.authService.createPassword(passwordString);
+            const password = await this.authService.createPassword(
+                passwordString,
+                { temporary: true }
+            );
             user = await this.userService.updatePassword(user, password, {
                 session,
             });
@@ -608,11 +641,7 @@ export class UserAdminController {
                 session,
             });
 
-            const emailSend = {
-                email: user.email,
-                name: user.name,
-            };
-            await this.emailService.sendTempPassword(emailSend, {
+            await this.emailService.sendTempPassword(user, {
                 password: passwordString,
                 expiredAt: password.passwordExpired,
             });

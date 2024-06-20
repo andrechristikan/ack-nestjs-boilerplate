@@ -21,6 +21,16 @@ export const UserDocQueryRole = [
     },
 ];
 
+export const UserDocQueryCountry = [
+    {
+        name: 'country',
+        allowEmptyValue: true,
+        required: false,
+        type: 'string',
+        example: faker.string.uuid(),
+    },
+];
+
 export const UserDocQueryStatus = [
     {
         name: 'status',

@@ -14,6 +14,33 @@ export class UserRepository extends DatabaseMongoUUIDRepositoryAbstract<
     UserEntity,
     UserDoc
 > {
+    readonly _joinSchemaActive = [
+        {
+            field: 'role',
+            localKey: 'role',
+            foreignKey: '_id',
+            model: RoleEntity.name,
+            justOne: true,
+            condition: {
+                isActive: true,
+            },
+        },
+        {
+            field: 'country',
+            localKey: 'country',
+            foreignKey: '_id',
+            model: CountryEntity.name,
+            justOne: true,
+        },
+        {
+            field: 'mobileNumber.country',
+            localKey: 'mobileNumber.country',
+            foreignKey: '_id',
+            model: CountryEntity.name,
+            justOne: true,
+        },
+    ];
+
     constructor(
         @DatabaseModel(UserEntity.name)
         private readonly userModel: Model<UserEntity>

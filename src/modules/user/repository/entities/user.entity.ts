@@ -57,14 +57,6 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
 
     @DatabaseProp({
         required: false,
-        trim: true,
-        type: String,
-        maxlength: 50,
-    })
-    familyName?: string;
-
-    @DatabaseProp({
-        required: false,
         schema: UserMobileNumberSchema,
     })
     mobileNumber?: UserMobileNumberEntity;
@@ -140,24 +132,10 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
     status: ENUM_USER_STATUS;
 
     @DatabaseProp({
-        required: true,
-        default: false,
-        index: true,
-        type: Boolean,
-    })
-    blocked: boolean;
-
-    @DatabaseProp({
         required: false,
         schema: AwsS3Schema,
     })
     photo?: AwsS3Entity;
-
-    @DatabaseProp({
-        required: false,
-        maxlength: 200,
-    })
-    address?: string;
 
     @DatabaseProp({
         required: false,

@@ -6,14 +6,10 @@ import {
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ClientSession } from 'mongoose';
-import { Connection } from 'mongoose';
+import { ClientSession, Connection } from 'mongoose';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
 import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
-import {
-    AuthJwtAccessProtected,
-    AuthJwtPayload,
-} from 'src/common/auth/decorators/auth.jwt.decorator';
+import { AuthJwtAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { ENUM_POLICY_ROLE_TYPE } from 'src/common/policy/constants/policy.enum.constant';
 import { PolicyRoleProtected } from 'src/common/policy/decorators/policy.decorator';
@@ -46,6 +42,7 @@ export class UserUserController {
     @UserAuthUpdateMobileNumberDoc()
     @Response('user.updateMobileNumber')
     @UserProtected()
+    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.USER)
     @AuthJwtAccessProtected()
     @ApiKeyPublicProtected()
     @Put('/update/mobile-number')
@@ -66,10 +63,7 @@ export class UserUserController {
     @AuthJwtAccessProtected()
     @ApiKeyPublicProtected()
     @Delete('/delete')
-    async deleteSelf(
-        @User() user: UserDoc,
-        @AuthJwtPayload('_id') _id: string
-    ): Promise<void> {
+    async deleteSelf(@User() user: UserDoc): Promise<void> {
         const session: ClientSession =
             await this.databaseConnection.startSession();
         session.startTransaction();
@@ -78,7 +72,7 @@ export class UserUserController {
             await this.userService.selfDelete(user, {
                 session,
             });
-            await this.userStateHistoryService.createBlocked(user, _id, {
+            await this.userStateHistoryService.createBlocked(user, user._id, {
                 session,
             });
 

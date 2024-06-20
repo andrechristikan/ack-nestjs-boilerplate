@@ -4,7 +4,6 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { ENUM_USER_HISTORY_STATE } from 'src/modules/user/constants/user-history.enum.constant';
 import { UserStateHistoryListResponseDto } from 'src/modules/user/dtos/response/user-state-history.list.response.dto';
 import { UserStateHistoryDoc } from 'src/modules/user/repository/entities/user-state-history.entity';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
@@ -36,7 +35,6 @@ export interface IUserStateHistoryService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
-    setState(user: UserDoc): Promise<ENUM_USER_HISTORY_STATE>;
     createCreated(
         user: UserDoc,
         by: string,

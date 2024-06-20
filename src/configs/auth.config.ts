@@ -29,10 +29,11 @@ export default registerAs(
         },
 
         password: {
-            attempt: false,
+            attempt: true,
             maxAttempt: 5,
             saltLength: 8,
             expiredIn: ms('182d') / 1000, // 182 days
+            expiredInTemporary: ms('3d') / 1000, // 3 days
             period: ms('90d') / 1000,
         },
 

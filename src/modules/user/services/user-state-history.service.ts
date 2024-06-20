@@ -6,7 +6,6 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { ENUM_USER_HISTORY_STATE } from 'src/modules/user/constants/user-history.enum.constant';
 import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
 import { UserStateHistoryListResponseDto } from 'src/modules/user/dtos/response/user-state-history.list.response.dto';
 import { IUserStateHistoryService } from 'src/modules/user/interfaces/user-state-history.service.interface';
@@ -82,30 +81,14 @@ export class UserStateHistoryService implements IUserStateHistoryService {
         );
     }
 
-    async setState(user: UserDoc): Promise<ENUM_USER_HISTORY_STATE> {
-        if (user.blocked) {
-            return ENUM_USER_HISTORY_STATE.BLOCKED;
-        }
-
-        switch (user.status) {
-            case ENUM_USER_STATUS.DELETED:
-                return ENUM_USER_HISTORY_STATE.DELETED;
-            case ENUM_USER_STATUS.ACTIVE:
-                return ENUM_USER_HISTORY_STATE.ACTIVE;
-            case ENUM_USER_STATUS.INACTIVE:
-            default:
-                return ENUM_USER_HISTORY_STATE.INACTIVE;
-        }
-    }
-
     async createCreated(
         user: UserDoc,
         by: string,
         options?: IDatabaseCreateOptions
     ): Promise<UserStateHistoryDoc> {
         const create: UserStateHistoryEntity = new UserStateHistoryEntity();
-        create.afterState = ENUM_USER_HISTORY_STATE.ACTIVE;
-        create.beforeState = ENUM_USER_HISTORY_STATE.CREATED;
+        create.afterState = ENUM_USER_STATUS.ACTIVE;
+        create.beforeState = ENUM_USER_STATUS.CREATED;
         create.user = user._id;
         create.by = by;
 
@@ -120,10 +103,9 @@ export class UserStateHistoryService implements IUserStateHistoryService {
         by: string,
         options?: IDatabaseCreateOptions
     ): Promise<UserStateHistoryDoc> {
-        const beforeState = await this.setState(user);
         const create: UserStateHistoryEntity = new UserStateHistoryEntity();
-        create.afterState = ENUM_USER_HISTORY_STATE.ACTIVE;
-        create.beforeState = beforeState;
+        create.afterState = ENUM_USER_STATUS.ACTIVE;
+        create.beforeState = user.status;
         create.user = user._id;
         create.by = by;
 
@@ -138,10 +120,9 @@ export class UserStateHistoryService implements IUserStateHistoryService {
         by: string,
         options?: IDatabaseCreateOptions
     ): Promise<UserStateHistoryDoc> {
-        const beforeState = await this.setState(user);
         const create: UserStateHistoryEntity = new UserStateHistoryEntity();
-        create.afterState = ENUM_USER_HISTORY_STATE.INACTIVE;
-        create.beforeState = beforeState;
+        create.afterState = ENUM_USER_STATUS.INACTIVE;
+        create.beforeState = user.status;
         create.user = user._id;
         create.by = by;
 
@@ -156,10 +137,9 @@ export class UserStateHistoryService implements IUserStateHistoryService {
         by: string,
         options?: IDatabaseCreateOptions
     ): Promise<UserStateHistoryDoc> {
-        const beforeState = await this.setState(user);
         const create: UserStateHistoryEntity = new UserStateHistoryEntity();
-        create.afterState = ENUM_USER_HISTORY_STATE.BLOCKED;
-        create.beforeState = beforeState;
+        create.afterState = ENUM_USER_STATUS.BLOCKED;
+        create.beforeState = user.status;
         create.user = user._id;
         create.by = by;
 
@@ -174,10 +154,9 @@ export class UserStateHistoryService implements IUserStateHistoryService {
         by: string,
         options?: IDatabaseCreateOptions
     ): Promise<UserStateHistoryDoc> {
-        const beforeState = await this.setState(user);
         const create: UserStateHistoryEntity = new UserStateHistoryEntity();
-        create.afterState = ENUM_USER_HISTORY_STATE.DELETED;
-        create.beforeState = beforeState;
+        create.afterState = ENUM_USER_STATUS.DELETED;
+        create.beforeState = user.status;
         create.user = user._id;
         create.by = by;
 
