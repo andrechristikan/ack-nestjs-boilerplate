@@ -1,6 +1,6 @@
 import { ApiProperty, OmitType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { CountryListResponseDto } from 'src/modules/country/dtos/response/country.list.response.dto';
+import { CountryShortResponseDto } from 'src/modules/country/dtos/response/country.short.response.dto';
 import { RoleGetResponseDto } from 'src/modules/role/dtos/response/role.get.response.dto';
 import { RoleListResponseDto } from 'src/modules/role/dtos/response/role.list.response.dto';
 import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
@@ -22,10 +22,10 @@ export class UserProfileResponseDto extends OmitType(UserGetResponseDto, [
     @ApiProperty({
         required: true,
         nullable: false,
-        type: CountryListResponseDto,
+        type: CountryShortResponseDto,
     })
-    @Type(() => CountryListResponseDto)
-    readonly country: CountryListResponseDto;
+    @Type(() => CountryShortResponseDto)
+    readonly country: CountryShortResponseDto;
 
     @ApiProperty({
         required: false,

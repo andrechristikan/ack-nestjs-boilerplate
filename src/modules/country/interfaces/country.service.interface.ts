@@ -9,6 +9,7 @@ import {
 import { CountryCreateRequestDto } from 'src/modules/country/dtos/request/country.create.request.dto';
 import { CountryGetResponseDto } from 'src/modules/country/dtos/response/country.get.response.dto';
 import { CountryListResponseDto } from 'src/modules/country/dtos/response/country.list.response.dto';
+import { CountryShortResponseDto } from 'src/modules/country/dtos/response/country.short.response.dto';
 import {
     CountryDoc,
     CountryEntity,
@@ -63,4 +64,7 @@ export interface ICountryService {
         countries: CountryDoc[] | CountryEntity[]
     ): Promise<CountryListResponseDto[]>;
     mapGet(country: CountryDoc | CountryEntity): Promise<CountryGetResponseDto>;
+    mapShort(
+        countries: CountryDoc[] | CountryEntity[]
+    ): Promise<CountryShortResponseDto[]>;
 }

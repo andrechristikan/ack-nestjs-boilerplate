@@ -1,6 +1,6 @@
 import { ApiHideProperty, ApiProperty, OmitType } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
-import { CountryListResponseDto } from 'src/modules/country/dtos/response/country.list.response.dto';
+import { CountryShortResponseDto } from 'src/modules/country/dtos/response/country.short.response.dto';
 import { RoleListResponseDto } from 'src/modules/role/dtos/response/role.list.response.dto';
 import {
     ENUM_USER_GENDER,
@@ -30,10 +30,10 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
     @ApiProperty({
         required: true,
         nullable: false,
-        type: CountryListResponseDto,
+        type: CountryShortResponseDto,
     })
-    @Type(() => CountryListResponseDto)
-    readonly country: CountryListResponseDto;
+    @Type(() => CountryShortResponseDto)
+    readonly country: CountryShortResponseDto;
 
     @ApiHideProperty()
     @Exclude()
