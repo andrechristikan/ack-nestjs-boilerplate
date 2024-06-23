@@ -17,7 +17,10 @@ import { UserRepository } from 'src/modules/user/repository/repositories/user.re
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { ConfigService } from '@nestjs/config';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
-import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
+import {
+    IUserDoc,
+    IUserEntity,
+} from 'src/modules/user/interfaces/user.interface';
 import { plainToInstance } from 'class-transformer';
 import {
     ENUM_USER_SIGN_UP_FROM,
@@ -33,6 +36,7 @@ import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.
 import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
 import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
 import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
+import { Document } from 'mongoose';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -381,10 +385,6 @@ export class UserService implements IUserService {
         return this.userRepository.deleteMany(find, options);
     }
 
-    async mapProfile(user: IUserDoc): Promise<UserProfileResponseDto> {
-        return plainToInstance(UserProfileResponseDto, user.toObject());
-    }
-
     async update(
         repository: UserDoc,
         { country, name }: UserUpdateRequestDto,
@@ -418,21 +418,41 @@ export class UserService implements IUserService {
         return this.userRepository.save(repository, options);
     }
 
-    async mapList(users: IUserDoc[]): Promise<UserListResponseDto[]> {
+    async mapProfile(
+        user: IUserDoc | IUserEntity
+    ): Promise<UserProfileResponseDto> {
+        return plainToInstance(
+            UserProfileResponseDto,
+            user instanceof Document ? user.toObject() : user
+        );
+    }
+
+    async mapList(
+        users: IUserDoc[] | IUserEntity[]
+    ): Promise<UserListResponseDto[]> {
         return plainToInstance(
             UserListResponseDto,
-            users.map(u => u.toObject())
+            users.map((u: IUserDoc | IUserEntity) =>
+                u instanceof Document ? u.toObject() : u
+            )
         );
     }
 
-    async mapShort(users: IUserDoc[]): Promise<UserShortResponseDto[]> {
+    async mapShort(
+        users: IUserDoc[] | IUserEntity[]
+    ): Promise<UserShortResponseDto[]> {
         return plainToInstance(
             UserShortResponseDto,
-            users.map(u => u.toObject())
+            users.map((u: IUserDoc | IUserEntity) =>
+                u instanceof Document ? u.toObject() : u
+            )
         );
     }
 
-    async mapGet(user: IUserDoc): Promise<UserGetResponseDto> {
-        return plainToInstance(UserGetResponseDto, user.toObject());
+    async mapGet(user: IUserDoc | IUserEntity): Promise<UserGetResponseDto> {
+        return plainToInstance(
+            UserGetResponseDto,
+            user instanceof Document ? user.toObject() : user
+        );
     }
 }

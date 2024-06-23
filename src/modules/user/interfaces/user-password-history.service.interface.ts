@@ -10,7 +10,10 @@ import {
     UserCreatePasswordRequestDto,
 } from 'src/modules/user/dtos/request/user.create-password.request.dto';
 import { UserPasswordHistoryListResponseDto } from 'src/modules/user/dtos/response/user-password-history.list.response.dto';
-import { IUserPasswordHistoryDoc } from 'src/modules/user/interfaces/user.interface';
+import {
+    IUserPasswordHistoryDoc,
+    IUserPasswordHistoryEntity,
+} from 'src/modules/user/interfaces/user.interface';
 import { UserPasswordHistoryDoc } from 'src/modules/user/repository/entities/user-password-history.entity';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 
@@ -56,13 +59,13 @@ export interface IUserPasswordHistoryService {
         { type, by }: UserCreatePasswordByAdminRequestDto,
         options?: IDatabaseCreateOptions
     ): Promise<UserPasswordHistoryDoc>;
-    mapList(
-        userHistories: IUserPasswordHistoryDoc[]
-    ): Promise<UserPasswordHistoryListResponseDto[]>;
     checkPasswordPeriodByUser(
         user: UserDoc,
         password: IAuthPassword,
         options?: IDatabaseFindOneOptions
     ): Promise<boolean>;
     getPasswordPeriod(): Promise<number>;
+    mapList(
+        userHistories: IUserPasswordHistoryDoc[] | IUserPasswordHistoryEntity[]
+    ): Promise<UserPasswordHistoryListResponseDto[]>;
 }

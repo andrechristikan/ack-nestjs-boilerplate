@@ -5,7 +5,10 @@ import {
     IDatabaseGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { UserStateHistoryListResponseDto } from 'src/modules/user/dtos/response/user-state-history.list.response.dto';
-import { IUserStateHistoryDoc } from 'src/modules/user/interfaces/user.interface';
+import {
+    IUserStateHistoryDoc,
+    IUserStateHistoryEntity,
+} from 'src/modules/user/interfaces/user.interface';
 import { UserStateHistoryDoc } from 'src/modules/user/repository/entities/user-state-history.entity';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 
@@ -62,6 +65,6 @@ export interface IUserStateHistoryService {
         options?: IDatabaseCreateOptions
     ): Promise<UserStateHistoryDoc>;
     mapList(
-        userHistories: IUserStateHistoryDoc[]
+        userHistories: IUserStateHistoryDoc[] | IUserStateHistoryEntity[]
     ): Promise<UserStateHistoryListResponseDto[]>;
 }

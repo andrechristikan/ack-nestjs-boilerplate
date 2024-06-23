@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
+import { Document } from 'mongoose';
 import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import {
     IDatabaseCreateOptions,
@@ -15,7 +16,10 @@ import {
 } from 'src/modules/user/dtos/request/user.create-password.request.dto';
 import { UserPasswordHistoryListResponseDto } from 'src/modules/user/dtos/response/user-password-history.list.response.dto';
 import { IUserPasswordHistoryService } from 'src/modules/user/interfaces/user-password-history.service.interface';
-import { IUserPasswordHistoryDoc } from 'src/modules/user/interfaces/user.interface';
+import {
+    IUserPasswordHistoryDoc,
+    IUserPasswordHistoryEntity,
+} from 'src/modules/user/interfaces/user.interface';
 import {
     UserPasswordHistoryDoc,
     UserPasswordHistoryEntity,
@@ -146,15 +150,6 @@ export class UserPasswordHistoryService implements IUserPasswordHistoryService {
         );
     }
 
-    async mapList(
-        userHistories: IUserPasswordHistoryDoc[]
-    ): Promise<UserPasswordHistoryListResponseDto[]> {
-        return plainToInstance(
-            UserPasswordHistoryListResponseDto,
-            userHistories
-        );
-    }
-
     async checkPasswordPeriodByUser(
         user: UserDoc,
         password: IAuthPassword,
@@ -180,5 +175,17 @@ export class UserPasswordHistoryService implements IUserPasswordHistoryService {
 
     async getPasswordPeriod(): Promise<number> {
         return this.passwordPeriod;
+    }
+
+    async mapList(
+        userHistories: IUserPasswordHistoryDoc[] | IUserPasswordHistoryEntity[]
+    ): Promise<UserPasswordHistoryListResponseDto[]> {
+        return plainToInstance(
+            UserPasswordHistoryListResponseDto,
+            userHistories.map(
+                (e: IUserPasswordHistoryDoc | IUserPasswordHistoryEntity) =>
+                    e instanceof Document ? e.toObject() : e
+            )
+        );
     }
 }

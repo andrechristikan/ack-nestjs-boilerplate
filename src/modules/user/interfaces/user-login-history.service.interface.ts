@@ -7,7 +7,10 @@ import {
 } from 'src/common/database/interfaces/database.interface';
 import { UserLoginHistoryCreateRequest } from 'src/modules/user/dtos/request/user-login-history.create.request.dto';
 import { UserLoginHistoryListResponseDto } from 'src/modules/user/dtos/response/user-login-history.list.response.dto';
-import { UserLoginHistoryDoc } from 'src/modules/user/repository/entities/user-login-history.entity';
+import {
+    UserLoginHistoryDoc,
+    UserLoginHistoryEntity,
+} from 'src/modules/user/repository/entities/user-login-history.entity';
 
 export interface IUserLoginHistoryService {
     findAll(
@@ -41,6 +44,6 @@ export interface IUserLoginHistoryService {
         options?: IDatabaseCreateOptions
     ): Promise<UserLoginHistoryDoc>;
     mapList(
-        userHistories: UserLoginHistoryDoc[]
+        userLogins: UserLoginHistoryDoc[] | UserLoginHistoryEntity[]
     ): Promise<UserLoginHistoryListResponseDto[]>;
 }

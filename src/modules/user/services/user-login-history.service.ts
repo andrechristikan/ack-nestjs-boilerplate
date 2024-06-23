@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { Request } from 'express';
+import { Document } from 'mongoose';
 import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
@@ -102,8 +103,13 @@ export class UserLoginHistoryService implements IUserLoginHistoryService {
     }
 
     async mapList(
-        userHistories: UserLoginHistoryDoc[]
+        userLogins: UserLoginHistoryDoc[] | UserLoginHistoryEntity[]
     ): Promise<UserLoginHistoryListResponseDto[]> {
-        return plainToInstance(UserLoginHistoryListResponseDto, userHistories);
+        return plainToInstance(
+            UserLoginHistoryListResponseDto,
+            userLogins.map((e: UserLoginHistoryDoc | UserLoginHistoryEntity) =>
+                e instanceof Document ? e.toObject() : e
+            )
+        );
     }
 }

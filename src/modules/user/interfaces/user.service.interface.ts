@@ -18,7 +18,10 @@ import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.resp
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
 import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
-import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
+import {
+    IUserDoc,
+    IUserEntity,
+} from 'src/modules/user/interfaces/user.interface';
 import {
     UserDoc,
     UserEntity,
@@ -145,7 +148,6 @@ export interface IUserService {
         find: Record<string, any>,
         options?: IDatabaseManyOptions
     ): Promise<boolean>;
-    mapProfile(user: IUserDoc): Promise<UserProfileResponseDto>;
     update(
         repository: UserDoc,
         { country, name }: UserUpdateRequestDto,
@@ -160,7 +162,10 @@ export interface IUserService {
         repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
-    mapList(users: IUserDoc[]): Promise<UserListResponseDto[]>;
-    mapShort(users: IUserDoc[]): Promise<UserShortResponseDto[]>;
-    mapGet(user: IUserDoc): Promise<UserGetResponseDto>;
+    mapProfile(user: IUserDoc | IUserEntity): Promise<UserProfileResponseDto>;
+    mapList(users: IUserDoc[] | IUserEntity[]): Promise<UserListResponseDto[]>;
+    mapShort(
+        users: IUserDoc[] | IUserEntity[]
+    ): Promise<UserShortResponseDto[]>;
+    mapGet(user: IUserDoc | IUserEntity): Promise<UserGetResponseDto>;
 }
