@@ -1,8 +1,9 @@
 import { faker } from '@faker-js/faker';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
-import { Exclude } from 'class-transformer';
+import { Exclude, Type } from 'class-transformer';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
+import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
 
 export class UserStateHistoryListResponseDto extends DatabaseIdResponseDto {
     @ApiProperty({
@@ -27,9 +28,10 @@ export class UserStateHistoryListResponseDto extends DatabaseIdResponseDto {
 
     @ApiProperty({
         required: true,
-        example: faker.string.uuid(),
+        type: () => UserShortResponseDto,
     })
-    readonly by: string;
+    @Type(() => UserShortResponseDto)
+    readonly by: UserShortResponseDto;
 
     @ApiProperty({
         description: 'Date created at',

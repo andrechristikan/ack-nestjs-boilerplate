@@ -49,12 +49,6 @@ async function bootstrap() {
         });
     }
 
-    // Swagger
-    await swaggerInit(app);
-
-    // Listen
-    await app.listen(port, host);
-
     // Validate Env
     const classEnv = plainToInstance(AppEnvDto, process.env);
     const errors = await validate(classEnv);
@@ -65,6 +59,12 @@ async function bootstrap() {
 
         throw new Error('Env Variable Invalid');
     }
+
+    // Swagger
+    await swaggerInit(app);
+
+    // Listen
+    await app.listen(port, host);
 
     logger.log(`==========================================================`);
 

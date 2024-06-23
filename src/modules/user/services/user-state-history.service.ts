@@ -9,6 +9,7 @@ import {
 import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
 import { UserStateHistoryListResponseDto } from 'src/modules/user/dtos/response/user-state-history.list.response.dto';
 import { IUserStateHistoryService } from 'src/modules/user/interfaces/user-state-history.service.interface';
+import { IUserStateHistoryDoc } from 'src/modules/user/interfaces/user.interface';
 import {
     UserStateHistoryDoc,
     UserStateHistoryEntity,
@@ -25,10 +26,10 @@ export class UserStateHistoryService implements IUserStateHistoryService {
     async findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<UserStateHistoryDoc[]> {
-        return this.userStateHistoryRepository.findAll<UserStateHistoryDoc>(
+    ): Promise<IUserStateHistoryDoc[]> {
+        return this.userStateHistoryRepository.findAll<IUserStateHistoryDoc>(
             find,
-            options
+            { ...options, join: true }
         );
     }
 
@@ -36,10 +37,10 @@ export class UserStateHistoryService implements IUserStateHistoryService {
         user: string,
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<UserStateHistoryDoc[]> {
-        return this.userStateHistoryRepository.findAll<UserStateHistoryDoc>(
+    ): Promise<IUserStateHistoryDoc[]> {
+        return this.userStateHistoryRepository.findAll<IUserStateHistoryDoc>(
             { ...find, user },
-            options
+            { ...options, join: true }
         );
     }
 
@@ -167,7 +168,7 @@ export class UserStateHistoryService implements IUserStateHistoryService {
     }
 
     async mapList(
-        userHistories: UserStateHistoryDoc[]
+        userHistories: IUserStateHistoryDoc[]
     ): Promise<UserStateHistoryListResponseDto[]> {
         return plainToInstance(UserStateHistoryListResponseDto, userHistories);
     }

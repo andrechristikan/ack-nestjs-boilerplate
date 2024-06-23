@@ -1,14 +1,25 @@
 import { faker } from '@faker-js/faker';
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
+import {
+    ApiHideProperty,
+    ApiProperty,
+    IntersectionType,
+    PickType,
+} from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
+import { ENUM_USER_PASSWORD_TYPE } from 'src/modules/user/constants/user.enum.constant';
+import { UserStateHistoryListResponseDto } from 'src/modules/user/dtos/response/user-state-history.list.response.dto';
 
-export class UserPasswordHistoryListResponseDto extends DatabaseIdResponseDto {
+export class UserPasswordHistoryListResponseDto extends IntersectionType(
+    PickType(UserStateHistoryListResponseDto, ['user', 'by']),
+    DatabaseIdResponseDto
+) {
     @ApiProperty({
         required: true,
-        example: faker.string.uuid(),
+        enum: ENUM_USER_PASSWORD_TYPE,
+        example: ENUM_USER_PASSWORD_TYPE.TEMPORARY_PASSWORD,
     })
-    readonly user: string;
+    readonly type: ENUM_USER_PASSWORD_TYPE;
 
     @ApiHideProperty()
     @Exclude()

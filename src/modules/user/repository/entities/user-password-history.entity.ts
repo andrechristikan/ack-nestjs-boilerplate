@@ -5,6 +5,7 @@ import {
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
+import { ENUM_USER_PASSWORD_TYPE } from 'src/modules/user/constants/user.enum.constant';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
 export const UserPasswordHistoryTableName = 'UserPasswordHistories';
@@ -25,6 +26,13 @@ export class UserPasswordHistoryEntity extends DatabaseMongoUUIDEntityAbstract {
         type: String,
     })
     password: string;
+
+    @DatabaseProp({
+        required: true,
+        type: String,
+        enum: ENUM_USER_PASSWORD_TYPE,
+    })
+    type: ENUM_USER_PASSWORD_TYPE;
 
     @DatabaseProp({
         required: true,

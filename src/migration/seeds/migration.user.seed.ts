@@ -5,10 +5,12 @@ import { UserService } from 'src/modules/user/services/user.service';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
+import {
+    ENUM_USER_PASSWORD_TYPE,
+    ENUM_USER_SIGN_UP_FROM,
+} from 'src/modules/user/constants/user.enum.constant';
 import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
 import { CountryService } from 'src/modules/country/services/country.service';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 import { UserPasswordHistoryService } from 'src/modules/user/services/user-password-history.service';
 import { UserStateHistoryService } from 'src/modules/user/services/user-state-history.service';
 
@@ -37,9 +39,8 @@ export class MigrationUserSeed {
         const memberRole: RoleDoc =
             await this.roleService.findOneByName('member');
         const userRole: RoleDoc = await this.roleService.findOneByName('user');
-        const country: CountryDoc = await this.countryService.findOneByAlpha2(
-            ENUM_MESSAGE_LANGUAGE.EN
-        );
+        const country: CountryDoc =
+            await this.countryService.findOneByAlpha2('SG');
 
         try {
             const user1: UserDoc = await this.userService.create(
@@ -88,22 +89,22 @@ export class MigrationUserSeed {
             await this.userStateHistoryService.createCreated(user2, user2._id);
             await this.userStateHistoryService.createCreated(user3, user3._id);
             await this.userStateHistoryService.createCreated(user4, user4._id);
-            await this.userPasswordHistoryService.createByAdmin(
-                user1,
-                user1._id
-            );
-            await this.userPasswordHistoryService.createByAdmin(
-                user2,
-                user1._id
-            );
-            await this.userPasswordHistoryService.createByAdmin(
-                user3,
-                user1._id
-            );
-            await this.userPasswordHistoryService.createByAdmin(
-                user4,
-                user1._id
-            );
+            await this.userPasswordHistoryService.createByAdmin(user1, {
+                by: user1._id,
+                type: ENUM_USER_PASSWORD_TYPE.SIGN_UP_PASSWORD,
+            });
+            await this.userPasswordHistoryService.createByAdmin(user2, {
+                by: user1._id,
+                type: ENUM_USER_PASSWORD_TYPE.SIGN_UP_PASSWORD,
+            });
+            await this.userPasswordHistoryService.createByAdmin(user3, {
+                by: user1._id,
+                type: ENUM_USER_PASSWORD_TYPE.SIGN_UP_PASSWORD,
+            });
+            await this.userPasswordHistoryService.createByAdmin(user4, {
+                by: user1._id,
+                type: ENUM_USER_PASSWORD_TYPE.SIGN_UP_PASSWORD,
+            });
         } catch (err: any) {
             throw new Error(err.message);
         }

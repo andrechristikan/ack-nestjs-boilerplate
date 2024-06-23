@@ -49,7 +49,10 @@ import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/constants/country.status-code.constant';
 import { CountryService } from 'src/modules/country/services/country.service';
-import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
+import {
+    ENUM_USER_PASSWORD_TYPE,
+    ENUM_USER_STATUS,
+} from 'src/modules/user/constants/user.enum.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import {
     User,
@@ -536,9 +539,15 @@ export class UserAuthController {
             user = await this.userService.updatePassword(user, password, {
                 session,
             });
-            await this.userPasswordHistoryService.createByUser(user, {
-                session,
-            });
+            await this.userPasswordHistoryService.createByUser(
+                user,
+                {
+                    type: ENUM_USER_PASSWORD_TYPE.CHANGE_PASSWORD,
+                },
+                {
+                    session,
+                }
+            );
 
             await session.commitTransaction();
             await session.endSession();

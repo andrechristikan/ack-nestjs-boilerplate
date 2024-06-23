@@ -5,7 +5,12 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
+import {
+    UserCreatePasswordByAdminRequestDto,
+    UserCreatePasswordRequestDto,
+} from 'src/modules/user/dtos/request/user.create-password.request.dto';
 import { UserPasswordHistoryListResponseDto } from 'src/modules/user/dtos/response/user-password-history.list.response.dto';
+import { IUserPasswordHistoryDoc } from 'src/modules/user/interfaces/user.interface';
 import { UserPasswordHistoryDoc } from 'src/modules/user/repository/entities/user-password-history.entity';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 
@@ -13,12 +18,12 @@ export interface IUserPasswordHistoryService {
     findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<UserPasswordHistoryDoc[]>;
+    ): Promise<IUserPasswordHistoryDoc[]>;
     findAllByUser(
         user: string,
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<UserPasswordHistoryDoc[]>;
+    ): Promise<IUserPasswordHistoryDoc[]>;
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
@@ -43,15 +48,16 @@ export interface IUserPasswordHistoryService {
     ): Promise<number>;
     createByUser(
         user: UserDoc,
+        { type }: UserCreatePasswordRequestDto,
         options?: IDatabaseCreateOptions
     ): Promise<UserPasswordHistoryDoc>;
     createByAdmin(
         user: UserDoc,
-        by: string,
+        { type, by }: UserCreatePasswordByAdminRequestDto,
         options?: IDatabaseCreateOptions
     ): Promise<UserPasswordHistoryDoc>;
     mapList(
-        userHistories: UserPasswordHistoryDoc[]
+        userHistories: IUserPasswordHistoryDoc[]
     ): Promise<UserPasswordHistoryListResponseDto[]>;
     checkPasswordPeriodByUser(
         user: UserDoc,

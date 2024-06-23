@@ -6,6 +6,7 @@ import {
     UserStateHistoryDoc,
     UserStateHistoryEntity,
 } from 'src/modules/user/repository/entities/user-state-history.entity';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
 @Injectable()
 export class UserStateHistoryRepository extends DatabaseMongoUUIDRepositoryAbstract<
@@ -16,6 +17,12 @@ export class UserStateHistoryRepository extends DatabaseMongoUUIDRepositoryAbstr
         @DatabaseModel(UserStateHistoryEntity.name)
         private readonly userStateHistoryModel: Model<UserStateHistoryEntity>
     ) {
-        super(userStateHistoryModel);
+        super(userStateHistoryModel, {
+            field: 'by',
+            localKey: 'by',
+            foreignKey: '_id',
+            model: UserEntity.name,
+            justOne: true,
+        });
     }
 }

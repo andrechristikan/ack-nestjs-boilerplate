@@ -18,6 +18,7 @@ import { CountryService } from 'src/modules/country/services/country.service';
 import { EmailService } from 'src/modules/email/services/email.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
+import { ENUM_USER_PASSWORD_TYPE } from 'src/modules/user/constants/user.enum.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { UserPublicSignUpDoc } from 'src/modules/user/docs/user.public.doc';
 import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
@@ -96,9 +97,15 @@ export class UserPublicController {
             await this.userStateHistoryService.createCreated(user, user._id, {
                 session,
             });
-            await this.userPasswordHistoryService.createByUser(user, {
-                session,
-            });
+            await this.userPasswordHistoryService.createByUser(
+                user,
+                {
+                    type: ENUM_USER_PASSWORD_TYPE.SIGN_UP_PASSWORD,
+                },
+                {
+                    session,
+                }
+            );
 
             await this.emailService.sendWelcome({
                 email,

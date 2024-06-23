@@ -5,6 +5,7 @@ import {
     IDatabaseGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { UserStateHistoryListResponseDto } from 'src/modules/user/dtos/response/user-state-history.list.response.dto';
+import { IUserStateHistoryDoc } from 'src/modules/user/interfaces/user.interface';
 import { UserStateHistoryDoc } from 'src/modules/user/repository/entities/user-state-history.entity';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 
@@ -12,12 +13,12 @@ export interface IUserStateHistoryService {
     findAll(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<UserStateHistoryDoc[]>;
+    ): Promise<IUserStateHistoryDoc[]>;
     findAllByUser(
         user: string,
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<UserStateHistoryDoc[]>;
+    ): Promise<IUserStateHistoryDoc[]>;
     findOneById(
         _id: string,
         options?: IDatabaseFindOneOptions
@@ -61,6 +62,6 @@ export interface IUserStateHistoryService {
         options?: IDatabaseCreateOptions
     ): Promise<UserStateHistoryDoc>;
     mapList(
-        userHistories: UserStateHistoryDoc[]
+        userHistories: IUserStateHistoryDoc[]
     ): Promise<UserStateHistoryListResponseDto[]>;
 }

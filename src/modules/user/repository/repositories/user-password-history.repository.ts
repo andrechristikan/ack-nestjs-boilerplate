@@ -6,6 +6,7 @@ import {
     UserPasswordHistoryDoc,
     UserPasswordHistoryEntity,
 } from 'src/modules/user/repository/entities/user-password-history.entity';
+import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
 @Injectable()
 export class UserPasswordHistoryRepository extends DatabaseMongoUUIDRepositoryAbstract<
@@ -16,6 +17,12 @@ export class UserPasswordHistoryRepository extends DatabaseMongoUUIDRepositoryAb
         @DatabaseModel(UserPasswordHistoryEntity.name)
         private readonly userPasswordHistoryModel: Model<UserPasswordHistoryEntity>
     ) {
-        super(userPasswordHistoryModel);
+        super(userPasswordHistoryModel, {
+            field: 'by',
+            localKey: 'by',
+            foreignKey: '_id',
+            model: UserEntity.name,
+            justOne: true,
+        });
     }
 }

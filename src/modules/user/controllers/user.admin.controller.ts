@@ -20,7 +20,11 @@ import {
     IResponse,
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
-import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
+import {
+    IUserDoc,
+    IUserPasswordHistoryDoc,
+    IUserStateHistoryDoc,
+} from 'src/modules/user/interfaces/user.interface';
 import { UserService } from 'src/modules/user/services/user.service';
 import {
     USER_DEFAULT_AVAILABLE_SEARCH,
@@ -63,6 +67,7 @@ import {
     AuthJwtPayload,
 } from 'src/common/auth/decorators/auth.jwt.decorator';
 import {
+    ENUM_USER_PASSWORD_TYPE,
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
 } from 'src/modules/user/constants/user.enum.constant';
@@ -89,9 +94,7 @@ import { UserLoginHistoryService } from 'src/modules/user/services/user-login-hi
 import { UserStateHistoryService } from 'src/modules/user/services/user-state-history.service';
 import { UserPasswordHistoryService } from 'src/modules/user/services/user-password-history.service';
 import { UserStateHistoryListResponseDto } from 'src/modules/user/dtos/response/user-state-history.list.response.dto';
-import { UserStateHistoryDoc } from 'src/modules/user/repository/entities/user-state-history.entity';
 import { UserPasswordHistoryListResponseDto } from 'src/modules/user/dtos/response/user-password-history.list.response.dto';
-import { UserPasswordHistoryDoc } from 'src/modules/user/repository/entities/user-password-history.entity';
 import { UserLoginHistoryListResponseDto } from 'src/modules/user/dtos/response/user-login-history.list.response.dto';
 import { UserLoginHistoryDoc } from 'src/modules/user/repository/entities/user-login-history.entity';
 import { UserStatusPipe } from 'src/modules/user/pipes/user.status.pipe';
@@ -212,7 +215,7 @@ export class UserAdminController {
             ..._search,
         };
 
-        const userHistories: UserStateHistoryDoc[] =
+        const userHistories: IUserStateHistoryDoc[] =
             await this.userStateHistoryService.findAllByUser(user._id, find, {
                 paging: {
                     limit: _limit,
@@ -257,7 +260,7 @@ export class UserAdminController {
             ..._search,
         };
 
-        const userHistories: UserPasswordHistoryDoc[] =
+        const userHistories: IUserPasswordHistoryDoc[] =
             await this.userPasswordHistoryService.findAllByUser(
                 user._id,
                 find,
@@ -400,9 +403,16 @@ export class UserAdminController {
                     session,
                 }
             );
-            await this.userPasswordHistoryService.createByAdmin(created, _id, {
-                session,
-            });
+            await this.userPasswordHistoryService.createByAdmin(
+                created,
+                {
+                    by: _id,
+                    type: ENUM_USER_PASSWORD_TYPE.TEMPORARY_PASSWORD,
+                },
+                {
+                    session,
+                }
+            );
 
             await this.emailService.sendWelcome(created);
             await this.emailService.sendTempPassword(created, {
@@ -637,9 +647,16 @@ export class UserAdminController {
             user = await this.userService.resetPasswordAttempt(user, {
                 session,
             });
-            await this.userPasswordHistoryService.createByAdmin(user, _id, {
-                session,
-            });
+            await this.userPasswordHistoryService.createByAdmin(
+                user,
+                {
+                    by: _id,
+                    type: ENUM_USER_PASSWORD_TYPE.CHANGE_PASSWORD,
+                },
+                {
+                    session,
+                }
+            );
 
             await this.emailService.sendTempPassword(user, {
                 password: passwordString,
