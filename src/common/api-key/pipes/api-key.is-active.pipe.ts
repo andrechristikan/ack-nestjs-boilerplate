@@ -3,25 +3,17 @@ import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api
 import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
 
 @Injectable()
-export class ApiKeyActivePipe implements PipeTransform {
-    async transform(value: ApiKeyDoc): Promise<ApiKeyDoc> {
-        if (!value.isActive) {
-            throw new BadRequestException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.IS_ACTIVE_ERROR,
-                message: 'apiKey.error.isActiveInvalid',
-            });
-        }
+export class ApiKeyIsActivePipe implements PipeTransform {
+    private readonly isActive: boolean[];
 
-        return value;
+    constructor(isActive: boolean[]) {
+        this.isActive = isActive;
     }
-}
 
-@Injectable()
-export class ApiKeyInactivePipe implements PipeTransform {
     async transform(value: ApiKeyDoc): Promise<ApiKeyDoc> {
-        if (value.isActive) {
+        if (!this.isActive.includes(value.isActive)) {
             throw new BadRequestException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.IS_ACTIVE_ERROR,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.IS_ACTIVE,
                 message: 'apiKey.error.isActiveInvalid',
             });
         }

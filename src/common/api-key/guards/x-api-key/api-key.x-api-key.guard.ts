@@ -21,8 +21,7 @@ export class ApiKeyXApiKeyGuard extends AuthGuard('x-api-key') {
     ): IApiKeyPayload {
         if (!apiKey || info?.message === 'Missing Api Key') {
             throw new UnauthorizedException({
-                statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_REQUIRED_ERROR,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_REQUIRED,
                 message: 'apiKey.error.xApiKey.required',
             });
         } else if (err) {
@@ -30,23 +29,21 @@ export class ApiKeyXApiKeyGuard extends AuthGuard('x-api-key') {
 
             if (
                 statusCode ===
-                ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_NOT_FOUND_ERROR
+                ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_NOT_FOUND
             ) {
                 throw new ForbiddenException({
                     statusCode,
                     message: 'apiKey.error.xApiKey.notFound',
                 });
             } else if (
-                statusCode ===
-                ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INACTIVE_ERROR
+                statusCode === ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INACTIVE
             ) {
                 throw new ForbiddenException({
                     statusCode,
                     message: 'apiKey.error.xApiKey.inactive',
                 });
             } else if (
-                statusCode ===
-                ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_EXPIRED_ERROR
+                statusCode === ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_EXPIRED
             ) {
                 throw new ForbiddenException({
                     statusCode,
@@ -55,8 +52,7 @@ export class ApiKeyXApiKeyGuard extends AuthGuard('x-api-key') {
             }
 
             throw new UnauthorizedException({
-                statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID_ERROR,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID,
                 message: 'apiKey.error.xApiKey.invalid',
             });
         }

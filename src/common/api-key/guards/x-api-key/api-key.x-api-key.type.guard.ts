@@ -27,8 +27,7 @@ export class ApiKeyXApiKeyTypeGuard implements CanActivate {
 
         if (!required.includes(apiKey.type)) {
             throw new BadRequestException({
-                statusCode:
-                    ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_FORBIDDEN_ERROR,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_FORBIDDEN,
                 message: 'apiKey.error.xApiKey.forbidden',
             });
         }

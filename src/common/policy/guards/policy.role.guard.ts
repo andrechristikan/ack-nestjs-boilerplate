@@ -30,7 +30,7 @@ export class PolicyRoleGuard implements CanActivate {
 
         if (!role.includes(type)) {
             throw new ForbiddenException({
-                statusCode: ENUM_POLICY_STATUS_CODE_ERROR.ROLE_FORBIDDEN_ERROR,
+                statusCode: ENUM_POLICY_STATUS_CODE_ERROR.ROLE_FORBIDDEN,
                 message: 'policy.error.roleForbidden',
             });
         }

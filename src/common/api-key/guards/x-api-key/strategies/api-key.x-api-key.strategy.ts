@@ -44,7 +44,7 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
         if (xApiKeyArr.length !== 2) {
             verified(
                 new Error(
-                    `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID_ERROR}`
+                    `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID}`
                 ),
                 null,
                 null
@@ -62,7 +62,7 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
         if (!apiKey) {
             verified(
                 new Error(
-                    `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_NOT_FOUND_ERROR}`
+                    `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_NOT_FOUND}`
                 ),
                 null,
                 null
@@ -72,7 +72,7 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
         } else if (!apiKey.isActive) {
             verified(
                 new Error(
-                    `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INACTIVE_ERROR}`
+                    `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INACTIVE}`
                 ),
                 null,
                 null
@@ -83,7 +83,7 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
             if (today < apiKey.startDate) {
                 verified(
                     new Error(
-                        `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INACTIVE_ERROR}`
+                        `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INACTIVE}`
                     ),
                     null,
                     null
@@ -91,7 +91,7 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
             } else if (today > apiKey.endDate) {
                 verified(
                     new Error(
-                        `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_EXPIRED_ERROR}`
+                        `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_EXPIRED}`
                     ),
                     null,
                     null
@@ -105,7 +105,7 @@ export class ApiKeyXApiKeyStrategy extends PassportStrategy(
         if (!validateApiKey) {
             verified(
                 new Error(
-                    `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID_ERROR}`
+                    `${ENUM_API_KEY_STATUS_CODE_ERROR.X_API_KEY_INVALID}`
                 ),
                 null,
                 null

@@ -13,7 +13,7 @@ export class UserStatusPipe implements PipeTransform {
     async transform(value: UserDoc): Promise<UserDoc> {
         if (!this.status.includes(value.status)) {
             throw new BadRequestException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.STATUS_INVALID,
                 message: 'user.error.statusInvalid',
             });
         }

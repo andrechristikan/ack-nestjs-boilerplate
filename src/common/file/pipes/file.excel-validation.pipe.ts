@@ -26,8 +26,7 @@ export class FileExcelValidationPipe<T> implements PipeTransform {
     async validate(value: IFileRows<T>[]): Promise<void> {
         if (!value || value.length === 0) {
             throw new UnprocessableEntityException({
-                statusCode:
-                    ENUM_FILE_STATUS_CODE_ERROR.REQUIRED_EXTRACT_FIRST_ERROR,
+                statusCode: ENUM_FILE_STATUS_CODE_ERROR.REQUIRED_EXTRACT_FIRST,
                 message: 'file.error.requiredParseFirst',
             });
         }

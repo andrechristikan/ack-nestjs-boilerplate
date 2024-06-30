@@ -49,8 +49,7 @@ export class PolicyAbilityGuard implements CanActivate {
 
         if (!check) {
             throw new ForbiddenException({
-                statusCode:
-                    ENUM_POLICY_STATUS_CODE_ERROR.ABILITY_FORBIDDEN_ERROR,
+                statusCode: ENUM_POLICY_STATUS_CODE_ERROR.ABILITY_FORBIDDEN,
                 message: 'policy.error.abilityForbidden',
             });
         }

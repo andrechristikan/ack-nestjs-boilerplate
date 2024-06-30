@@ -61,17 +61,17 @@ export class UserPublicController {
 
         if (!role) {
             throw new NotFoundException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'role.error.notFound',
             });
         } else if (!checkCountry) {
             throw new NotFoundException({
-                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'country.error.notFound',
             });
         } else if (emailExist) {
             throw new ConflictException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_EXIST_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_EXIST,
                 message: 'user.error.emailExist',
             });
         }
@@ -119,7 +119,7 @@ export class UserPublicController {
             await session.endSession();
 
             throw new InternalServerErrorException({
-                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
                 _error: err.message,
             });

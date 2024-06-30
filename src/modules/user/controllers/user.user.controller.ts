@@ -85,7 +85,7 @@ export class UserUserController {
             await session.endSession();
 
             throw new InternalServerErrorException({
-                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
                 _error: err.message,
             });

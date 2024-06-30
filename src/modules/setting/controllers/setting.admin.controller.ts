@@ -132,8 +132,7 @@ export class SettingAdminController {
         const check = this.settingService.checkValue(setting.type, body.value);
         if (!check) {
             throw new BadRequestException({
-                statusCode:
-                    ENUM_SETTING_STATUS_CODE_ERROR.VALUE_NOT_ALLOWED_ERROR,
+                statusCode: ENUM_SETTING_STATUS_CODE_ERROR.VALUE_NOT_ALLOWED,
                 message: 'setting.error.valueNotAllowed',
             });
         }

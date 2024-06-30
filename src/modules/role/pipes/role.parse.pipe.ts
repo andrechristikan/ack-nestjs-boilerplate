@@ -11,7 +11,7 @@ export class RoleParsePipe implements PipeTransform {
         const role: RoleDoc = await this.roleService.findOneById(value);
         if (!role) {
             throw new NotFoundException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'role.error.notFound',
             });
         }

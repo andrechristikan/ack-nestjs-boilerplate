@@ -161,7 +161,7 @@ export class RoleAdminController {
         const exist: boolean = await this.roleService.existByName(name);
         if (exist) {
             throw new ConflictException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.EXIST_ERROR,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.EXIST,
                 message: 'role.error.exist',
             });
         }
@@ -218,7 +218,7 @@ export class RoleAdminController {
         });
         if (used) {
             throw new ConflictException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.USED_ERROR,
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.USED,
                 message: 'role.error.used',
             });
         }

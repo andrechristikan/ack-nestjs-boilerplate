@@ -12,7 +12,7 @@ export class CountryParsePipe implements PipeTransform {
             await this.countryService.findOneById(value);
         if (!country) {
             throw new NotFoundException({
-                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'country.error.notFound',
             });
         }

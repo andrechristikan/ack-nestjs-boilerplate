@@ -49,6 +49,7 @@ import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/constants/country.status-code.constant';
 import { CountryService } from 'src/modules/country/services/country.service';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
 import {
     ENUM_USER_PASSWORD_TYPE,
     ENUM_USER_STATUS,
@@ -108,7 +109,7 @@ export class UserAuthController {
         let user: UserDoc = await this.userService.findOneByEmail(email);
         if (!user) {
             throw new NotFoundException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'user.error.notFound',
             });
         }
@@ -119,8 +120,7 @@ export class UserAuthController {
             await this.authService.getPasswordMaxAttempt();
         if (passwordAttempt && user.passwordAttempt >= passwordMaxAttempt) {
             throw new ForbiddenException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.PASSWORD_ATTEMPT_MAX_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_ATTEMPT_MAX,
                 message: 'user.error.passwordAttemptMax',
             });
         }
@@ -133,8 +133,7 @@ export class UserAuthController {
             user = await this.userService.increasePasswordAttempt(user);
 
             throw new BadRequestException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.PASSWORD_NOT_MATCH_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_NOT_MATCH,
                 message: 'user.error.passwordNotMatch',
                 data: {
                     attempt: user.passwordAttempt,
@@ -142,8 +141,7 @@ export class UserAuthController {
             });
         } else if (user.status !== ENUM_USER_STATUS.ACTIVE) {
             throw new ForbiddenException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_INACTIVE_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
                 message: 'user.error.inactive',
             });
         }
@@ -151,9 +149,8 @@ export class UserAuthController {
         const userWithRole: IUserDoc = await this.userService.join(user);
         if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_ROLE_INACTIVE_ERROR,
-                message: 'user.error.roleInactive',
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
+                message: 'role.error.inactive',
             });
         }
 
@@ -170,8 +167,7 @@ export class UserAuthController {
                 );
             if (checkPasswordExpired) {
                 throw new ForbiddenException({
-                    statusCode:
-                        ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED_ERROR,
+                    statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
                     message: 'user.error.passwordExpired',
                 });
             }
@@ -191,7 +187,7 @@ export class UserAuthController {
             await session.endSession();
 
             throw new InternalServerErrorException({
-                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
                 _error: err.message,
             });
@@ -240,13 +236,12 @@ export class UserAuthController {
         const user: UserDoc = await this.userService.findOneByEmail(email);
         if (!user) {
             throw new NotFoundException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'user.error.notFound',
             });
         } else if (user.status !== ENUM_USER_STATUS.INACTIVE) {
             throw new ForbiddenException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_INACTIVE_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
                 message: 'user.error.inactive',
             });
         }
@@ -254,9 +249,8 @@ export class UserAuthController {
         const userWithRole: IUserDoc = await this.userService.join(user);
         if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_ROLE_INACTIVE_ERROR,
-                message: 'user.error.roleInactive',
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
+                message: 'role.error.inactive',
             });
         }
 
@@ -273,8 +267,7 @@ export class UserAuthController {
                 );
             if (checkPasswordExpired) {
                 throw new ForbiddenException({
-                    statusCode:
-                        ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED_ERROR,
+                    statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
                     message: 'user.error.passwordExpired',
                 });
             }
@@ -294,7 +287,7 @@ export class UserAuthController {
             await session.endSession();
 
             throw new InternalServerErrorException({
-                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
                 _error: err.message,
             });
@@ -343,13 +336,12 @@ export class UserAuthController {
         const user: UserDoc = await this.userService.findOneByEmail(email);
         if (!user) {
             throw new NotFoundException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'user.error.notFound',
             });
         } else if (user.status !== ENUM_USER_STATUS.INACTIVE) {
             throw new ForbiddenException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_INACTIVE_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
                 message: 'user.error.inactive',
             });
         }
@@ -357,9 +349,8 @@ export class UserAuthController {
         const userWithRole: IUserDoc = await this.userService.join(user);
         if (!userWithRole.role.isActive) {
             throw new ForbiddenException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.FORBIDDEN_ROLE_INACTIVE_ERROR,
-                message: 'user.error.roleInactive',
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
+                message: 'role.error.inactive',
             });
         }
 
@@ -376,8 +367,7 @@ export class UserAuthController {
                 );
             if (checkPasswordExpired) {
                 throw new ForbiddenException({
-                    statusCode:
-                        ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED_ERROR,
+                    statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
                     message: 'user.error.passwordExpired',
                 });
             }
@@ -397,7 +387,7 @@ export class UserAuthController {
             await session.endSession();
 
             throw new InternalServerErrorException({
-                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
                 _error: err.message,
             });
@@ -484,8 +474,7 @@ export class UserAuthController {
             await this.authService.getPasswordMaxAttempt();
         if (passwordAttempt && user.passwordAttempt >= passwordMaxAttempt) {
             throw new ForbiddenException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.PASSWORD_ATTEMPT_MAX_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_ATTEMPT_MAX,
                 message: 'user.error.passwordAttemptMax',
             });
         }
@@ -498,8 +487,7 @@ export class UserAuthController {
             await this.userService.increasePasswordAttempt(user);
 
             throw new BadRequestException({
-                statusCode:
-                    ENUM_USER_STATUS_CODE_ERROR.PASSWORD_NOT_MATCH_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_NOT_MATCH,
                 message: 'user.error.passwordNotMatch',
             });
         }
@@ -516,7 +504,7 @@ export class UserAuthController {
             const passwordPeriod =
                 await this.userPasswordHistoryService.getPasswordPeriod();
             throw new BadRequestException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_MUST_NEW_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_MUST_NEW,
                 message: 'user.error.passwordMustNew',
                 _metadata: {
                     customProperty: {
@@ -556,7 +544,7 @@ export class UserAuthController {
             await session.endSession();
 
             throw new InternalServerErrorException({
-                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN_ERROR,
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
                 message: 'http.serverError.internalServerError',
                 _error: err.message,
             });
@@ -591,7 +579,7 @@ export class UserAuthController {
         const checkCountry = this.countryService.findOneActiveById(country);
         if (!checkCountry) {
             throw new NotFoundException({
-                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'country.error.notFound',
             });
         }

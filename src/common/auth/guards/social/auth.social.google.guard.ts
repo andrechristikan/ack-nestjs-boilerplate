@@ -21,7 +21,7 @@ export class AuthSocialGoogleGuard implements CanActivate {
         const acArr = authorization?.split('Bearer ') ?? [];
         if (acArr.length !== 2) {
             throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_ERROR,
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE,
                 message: 'auth.error.socialGoogle',
             });
         }
@@ -39,7 +39,7 @@ export class AuthSocialGoogleGuard implements CanActivate {
             return true;
         } catch (err: any) {
             throw new UnauthorizedException({
-                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE_ERROR,
+                statusCode: ENUM_AUTH_STATUS_CODE_ERROR.SOCIAL_GOOGLE,
                 message: 'auth.error.socialGoogle',
             });
         }

@@ -18,7 +18,7 @@ export class UserGuard implements CanActivate {
         const user = await this.userService.findOneActiveById(request.user._id);
         if (!user) {
             throw new NotFoundException({
-                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'user.error.notFound',
             });
         }

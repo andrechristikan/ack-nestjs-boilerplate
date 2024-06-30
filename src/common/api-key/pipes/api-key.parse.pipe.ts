@@ -11,7 +11,7 @@ export class ApiKeyParsePipe implements PipeTransform {
         const apiKey: ApiKeyDoc = await this.apiKeyService.findOneById(value);
         if (!apiKey) {
             throw new NotFoundException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'apiKey.error.notFound',
             });
         }

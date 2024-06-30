@@ -12,7 +12,7 @@ export class SettingParsePipe implements PipeTransform {
             await this.settingService.findOneById(value);
         if (!setting) {
             throw new NotFoundException({
-                statusCode: ENUM_SETTING_STATUS_CODE_ERROR.NOT_FOUND_ERROR,
+                statusCode: ENUM_SETTING_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'setting.error.notFound',
             });
         }

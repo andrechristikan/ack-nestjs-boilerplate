@@ -29,7 +29,7 @@ export class FileExcelParsePipe<T> implements PipeTransform {
 
         if (!supportedFiles.includes(mimetype)) {
             throw new UnsupportedMediaTypeException({
-                statusCode: ENUM_FILE_STATUS_CODE_ERROR.MIME_ERROR,
+                statusCode: ENUM_FILE_STATUS_CODE_ERROR.MIME_INVALID,
                 message: 'file.error.mimeInvalid',
             });
         }

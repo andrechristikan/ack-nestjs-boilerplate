@@ -50,10 +50,6 @@ import { ApiKeyCreateResponseDto } from 'src/common/api-key/dtos/response/api-ke
 import { ApiKeyGetResponseDto } from 'src/common/api-key/dtos/response/api-key.get.response.dto';
 import { ApiKeyListResponseDto } from 'src/common/api-key/dtos/response/api-key.list.response.dto';
 import { ApiKeyResetResponseDto } from 'src/common/api-key/dtos/response/api-key.reset.dto';
-import {
-    ApiKeyActivePipe,
-    ApiKeyInactivePipe,
-} from 'src/common/api-key/pipes/api-key.is-active.pipe';
 import { ApiKeyParsePipe } from 'src/common/api-key/pipes/api-key.parse.pipe';
 import { ApiKeyDoc } from 'src/common/api-key/repository/entities/api-key.entity';
 import { ApiKeyService } from 'src/common/api-key/services/api-key.service';
@@ -68,6 +64,7 @@ import {
     PolicyRoleProtected,
 } from 'src/common/policy/decorators/policy.decorator';
 import { ApiKeyNotExpiredPipe } from 'src/common/api-key/pipes/api-key.expired.pipe';
+import { ApiKeyIsActivePipe } from 'src/common/api-key/pipes/api-key.is-active.pipe';
 
 @ApiTags('common.admin.apiKey')
 @Controller({
@@ -184,7 +181,7 @@ export class ApiKeyAdminController {
             'apiKey',
             RequestRequiredPipe,
             ApiKeyParsePipe,
-            ApiKeyActivePipe,
+            new ApiKeyIsActivePipe([true]),
             ApiKeyNotExpiredPipe
         )
         apiKey: ApiKeyDoc
@@ -213,7 +210,7 @@ export class ApiKeyAdminController {
             'apiKey',
             RequestRequiredPipe,
             ApiKeyParsePipe,
-            ApiKeyActivePipe,
+            new ApiKeyIsActivePipe([true]),
             ApiKeyNotExpiredPipe
         )
         apiKey: ApiKeyDoc
@@ -238,7 +235,7 @@ export class ApiKeyAdminController {
             'apiKey',
             RequestRequiredPipe,
             ApiKeyParsePipe,
-            ApiKeyActivePipe,
+            new ApiKeyIsActivePipe([true]),
             ApiKeyNotExpiredPipe
         )
         apiKey: ApiKeyDoc
@@ -263,7 +260,7 @@ export class ApiKeyAdminController {
             'apiKey',
             RequestRequiredPipe,
             ApiKeyParsePipe,
-            ApiKeyInactivePipe,
+            new ApiKeyIsActivePipe([false]),
             ApiKeyNotExpiredPipe
         )
         apiKey: ApiKeyDoc
@@ -285,7 +282,12 @@ export class ApiKeyAdminController {
     @Put('/update/:apiKey/date')
     async updateDate(
         @Body() body: ApiKeyUpdateDateRequestDto,
-        @Param('apiKey', RequestRequiredPipe, ApiKeyParsePipe, ApiKeyActivePipe)
+        @Param(
+            'apiKey',
+            RequestRequiredPipe,
+            ApiKeyParsePipe,
+            new ApiKeyIsActivePipe([true])
+        )
         apiKey: ApiKeyDoc
     ): Promise<IResponse<void>> {
         await this.apiKeyService.updateDate(apiKey, body);

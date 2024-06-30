@@ -12,7 +12,7 @@ export class ApiKeyNotExpiredPipe implements PipeTransform {
 
         if (value.startDate && value.endDate && today > value.endDate) {
             throw new BadRequestException({
-                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.EXPIRED_ERROR,
+                statusCode: ENUM_API_KEY_STATUS_CODE_ERROR.EXPIRED,
                 message: 'apiKey.error.expired',
             });
         }
