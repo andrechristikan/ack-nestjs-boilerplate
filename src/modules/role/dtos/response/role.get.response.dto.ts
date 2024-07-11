@@ -12,7 +12,7 @@ export class RoleGetResponseDto extends DatabaseIdResponseDto {
         required: true,
         nullable: false,
     })
-    readonly name: string;
+    name: string;
 
     @ApiProperty({
         description: 'Description of role',
@@ -20,7 +20,7 @@ export class RoleGetResponseDto extends DatabaseIdResponseDto {
         required: false,
         nullable: true,
     })
-    readonly description?: string;
+    description?: string;
 
     @ApiProperty({
         description: 'Active flag of role',
@@ -28,7 +28,7 @@ export class RoleGetResponseDto extends DatabaseIdResponseDto {
         required: true,
         nullable: false,
     })
-    readonly isActive: boolean;
+    isActive: boolean;
 
     @ApiProperty({
         description: 'Representative for role type',
@@ -36,7 +36,7 @@ export class RoleGetResponseDto extends DatabaseIdResponseDto {
         required: true,
         nullable: false,
     })
-    readonly type: ENUM_POLICY_ROLE_TYPE;
+    type: ENUM_POLICY_ROLE_TYPE;
 
     @ApiProperty({
         type: RolePermissionDto,
@@ -45,7 +45,7 @@ export class RoleGetResponseDto extends DatabaseIdResponseDto {
         default: [],
     })
     @Type(() => RolePermissionDto)
-    readonly permissions: RolePermissionDto;
+    permissions: RolePermissionDto;
 
     @ApiProperty({
         description: 'Date created at',
@@ -53,7 +53,7 @@ export class RoleGetResponseDto extends DatabaseIdResponseDto {
         required: true,
         nullable: false,
     })
-    readonly createdAt: Date;
+    createdAt: Date;
 
     @ApiProperty({
         description: 'Date updated at',
@@ -61,9 +61,9 @@ export class RoleGetResponseDto extends DatabaseIdResponseDto {
         required: true,
         nullable: false,
     })
-    readonly updatedAt: Date;
+    updatedAt: Date;
 
     @ApiHideProperty()
     @Exclude()
-    readonly deletedAt?: Date;
+    deletedAt?: Date;
 }

@@ -10,28 +10,28 @@ export class UserStateHistoryListResponseDto extends DatabaseIdResponseDto {
         required: true,
         example: faker.string.uuid(),
     })
-    readonly user: string;
+    user: string;
 
     @ApiProperty({
         required: true,
         enum: ENUM_USER_STATUS,
         example: ENUM_USER_STATUS.ACTIVE,
     })
-    readonly beforeState: ENUM_USER_STATUS;
+    beforeState: ENUM_USER_STATUS;
 
     @ApiProperty({
         required: true,
         enum: ENUM_USER_STATUS,
         example: ENUM_USER_STATUS.ACTIVE,
     })
-    readonly afterState: ENUM_USER_STATUS;
+    afterState: ENUM_USER_STATUS;
 
     @ApiProperty({
         required: true,
-        type: () => UserShortResponseDto,
+        type: UserShortResponseDto,
     })
     @Type(() => UserShortResponseDto)
-    readonly by: UserShortResponseDto;
+    by: UserShortResponseDto;
 
     @ApiProperty({
         description: 'Date created at',
@@ -39,7 +39,7 @@ export class UserStateHistoryListResponseDto extends DatabaseIdResponseDto {
         required: true,
         nullable: false,
     })
-    readonly createdAt: Date;
+    createdAt: Date;
 
     @ApiProperty({
         description: 'Date updated at',
@@ -47,9 +47,9 @@ export class UserStateHistoryListResponseDto extends DatabaseIdResponseDto {
         required: true,
         nullable: false,
     })
-    readonly updatedAt: Date;
+    updatedAt: Date;
 
     @ApiHideProperty()
     @Exclude()
-    readonly deletedAt?: Date;
+    deletedAt?: Date;
 }

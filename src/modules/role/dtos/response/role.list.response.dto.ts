@@ -8,12 +8,12 @@ export class RoleListResponseDto extends OmitType(RoleGetResponseDto, [
 ] as const) {
     @ApiHideProperty()
     @Exclude()
-    readonly description?: string;
+    description?: string;
 
     @ApiProperty({
         description: 'count of permissions',
         required: true,
     })
     @Transform(({ value }) => value.length)
-    readonly permissions: number;
+    permissions: number;
 }

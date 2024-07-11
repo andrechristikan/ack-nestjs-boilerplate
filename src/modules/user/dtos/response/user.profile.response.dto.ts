@@ -17,7 +17,7 @@ export class UserProfileResponseDto extends OmitType(UserGetResponseDto, [
         type: RoleGetResponseDto,
     })
     @Type(() => RoleGetResponseDto)
-    readonly role: RoleGetResponseDto;
+    role: RoleGetResponseDto;
 
     @ApiProperty({
         required: true,
@@ -25,7 +25,7 @@ export class UserProfileResponseDto extends OmitType(UserGetResponseDto, [
         type: CountryShortResponseDto,
     })
     @Type(() => CountryShortResponseDto)
-    readonly country: CountryShortResponseDto;
+    country: CountryShortResponseDto;
 
     @ApiProperty({
         required: false,
@@ -33,5 +33,5 @@ export class UserProfileResponseDto extends OmitType(UserGetResponseDto, [
         type: UserMobileNumberResponseDto,
     })
     @Type(() => RoleListResponseDto)
-    readonly mobileNumber?: UserMobileNumberResponseDto;
+    mobileNumber?: UserMobileNumberResponseDto;
 }

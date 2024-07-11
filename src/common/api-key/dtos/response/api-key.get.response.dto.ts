@@ -38,7 +38,7 @@ export class ApiKeyGetResponseDto extends ApiKeyPayloadDto {
         required: true,
         nullable: false,
     })
-    readonly createdAt: Date;
+    createdAt: Date;
 
     @ApiProperty({
         description: 'Date updated at',
@@ -46,9 +46,9 @@ export class ApiKeyGetResponseDto extends ApiKeyPayloadDto {
         required: true,
         nullable: false,
     })
-    readonly updatedAt: Date;
+    updatedAt: Date;
 
     @ApiHideProperty()
     @Exclude()
-    readonly deletedAt?: Date;
+    deletedAt?: Date;
 }

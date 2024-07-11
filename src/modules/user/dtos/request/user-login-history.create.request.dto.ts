@@ -9,5 +9,5 @@ export class UserLoginHistoryCreateRequest {
     })
     @IsNotEmpty()
     @IsUUID()
-    readonly user: string;
+    user: string;
 }

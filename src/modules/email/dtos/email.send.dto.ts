@@ -6,11 +6,11 @@ export class EmailSendDto {
         type: 'string',
         example: faker.person.fullName(),
     })
-    readonly name: string;
+    name: string;
 
     @ApiProperty({
         type: 'string',
         example: faker.internet.email(),
     })
-    readonly email: string;
+    email: string;
 }

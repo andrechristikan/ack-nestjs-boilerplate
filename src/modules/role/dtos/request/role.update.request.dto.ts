@@ -27,7 +27,7 @@ export class RoleUpdateRequestDto {
     @IsString()
     @IsOptional()
     @Type(() => String)
-    readonly description?: string;
+    description?: string;
 
     @ApiProperty({
         description: 'Representative for role type',
@@ -36,7 +36,7 @@ export class RoleUpdateRequestDto {
     })
     @IsEnum(ENUM_POLICY_ROLE_TYPE)
     @IsNotEmpty()
-    readonly type: ENUM_POLICY_ROLE_TYPE;
+    type: ENUM_POLICY_ROLE_TYPE;
 
     @ApiProperty({
         required: true,
@@ -59,5 +59,5 @@ export class RoleUpdateRequestDto {
     @Transform(({ value, obj }) =>
         obj.type !== ENUM_POLICY_ROLE_TYPE.ADMIN ? [] : value
     )
-    readonly permissions: RolePermissionDto[];
+    permissions: RolePermissionDto[];
 }

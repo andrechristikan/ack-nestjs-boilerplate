@@ -19,7 +19,7 @@ export class UserChangePasswordRequestDto {
     @IsPassword()
     @MinLength(8)
     @MaxLength(50)
-    readonly newPassword: string;
+    newPassword: string;
 
     @ApiProperty({
         description: 'old string password',
@@ -30,5 +30,5 @@ export class UserChangePasswordRequestDto {
     })
     @IsString()
     @IsNotEmpty()
-    readonly oldPassword: string;
+    oldPassword: string;
 }

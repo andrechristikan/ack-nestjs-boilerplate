@@ -25,7 +25,7 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
         type: RoleListResponseDto,
     })
     @Type(() => RoleListResponseDto)
-    readonly role: RoleListResponseDto;
+    role: RoleListResponseDto;
 
     @ApiProperty({
         required: true,
@@ -33,29 +33,29 @@ export class UserListResponseDto extends OmitType(UserGetResponseDto, [
         type: CountryShortResponseDto,
     })
     @Type(() => CountryShortResponseDto)
-    readonly country: CountryShortResponseDto;
+    country: CountryShortResponseDto;
 
     @ApiHideProperty()
     @Exclude()
-    readonly mobileNumber?: UserUpdateMobileNumberRequestDto;
+    mobileNumber?: UserUpdateMobileNumberRequestDto;
 
     @ApiHideProperty()
     @Exclude()
-    readonly passwordExpired: Date;
+    passwordExpired: Date;
 
     @ApiHideProperty()
     @Exclude()
-    readonly passwordCreated: Date;
+    passwordCreated: Date;
 
     @ApiHideProperty()
     @Exclude()
-    readonly signUpDate: Date;
+    signUpDate: Date;
 
     @ApiHideProperty()
     @Exclude()
-    readonly signUpFrom: ENUM_USER_SIGN_UP_FROM;
+    signUpFrom: ENUM_USER_SIGN_UP_FROM;
 
     @ApiHideProperty()
     @Exclude()
-    readonly gender?: ENUM_USER_GENDER;
+    gender?: ENUM_USER_GENDER;
 }

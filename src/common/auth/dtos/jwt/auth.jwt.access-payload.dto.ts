@@ -52,39 +52,39 @@ export class AuthJwtAccessPayloadDto {
         nullable: false,
         example: faker.date.recent(),
     })
-    readonly loginDate: Date;
+    loginDate: Date;
 
     @ApiProperty({
         required: true,
         nullable: false,
         enum: ENUM_AUTH_LOGIN_FROM,
     })
-    readonly loginFrom: ENUM_AUTH_LOGIN_FROM;
+    loginFrom: ENUM_AUTH_LOGIN_FROM;
 
     @ApiProperty({
         required: true,
         nullable: false,
     })
-    readonly _id: string;
+    _id: string;
 
     @ApiProperty({
         required: true,
         nullable: false,
     })
-    readonly email: string;
+    email: string;
 
     @ApiProperty({
         required: true,
         nullable: false,
     })
-    readonly role: string;
+    role: string;
 
     @ApiProperty({
         required: true,
         nullable: false,
         enum: ENUM_POLICY_ROLE_TYPE,
     })
-    readonly type: ENUM_POLICY_ROLE_TYPE;
+    type: ENUM_POLICY_ROLE_TYPE;
 
     @ApiProperty({
         required: true,
@@ -94,5 +94,5 @@ export class AuthJwtAccessPayloadDto {
         default: [],
     })
     @Type(() => AuthJwtAccessPayloadPermissionDto)
-    readonly permissions: AuthJwtAccessPayloadPermissionDto[];
+    permissions: AuthJwtAccessPayloadPermissionDto[];
 }

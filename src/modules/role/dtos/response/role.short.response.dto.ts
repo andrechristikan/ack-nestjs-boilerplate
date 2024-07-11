@@ -10,17 +10,17 @@ export class RoleShortResponseDto extends OmitType(RoleListResponseDto, [
 ] as const) {
     @ApiHideProperty()
     @Exclude()
-    readonly permissions: number;
+    permissions: number;
 
     @ApiHideProperty()
     @Exclude()
-    readonly isActive: boolean;
+    isActive: boolean;
 
     @ApiHideProperty()
     @Exclude()
-    readonly createdAt: Date;
+    createdAt: Date;
 
     @ApiHideProperty()
     @Exclude()
-    readonly updatedAt: Date;
+    updatedAt: Date;
 }

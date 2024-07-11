@@ -11,7 +11,7 @@ export class SettingGetResponseDto<T = any> extends DatabaseIdResponseDto {
         required: true,
         nullable: false,
     })
-    readonly name: string;
+    name: string;
 
     @ApiProperty({
         description: 'Description of setting',
@@ -19,7 +19,7 @@ export class SettingGetResponseDto<T = any> extends DatabaseIdResponseDto {
         required: false,
         nullable: true,
     })
-    readonly description?: string;
+    description?: string;
 
     @ApiProperty({
         description: 'Data type of setting',
@@ -28,7 +28,7 @@ export class SettingGetResponseDto<T = any> extends DatabaseIdResponseDto {
         nullable: false,
         enum: ENUM_SETTING_DATA_TYPE,
     })
-    readonly type: ENUM_SETTING_DATA_TYPE;
+    type: ENUM_SETTING_DATA_TYPE;
 
     @ApiProperty({
         description: 'Value of string, can be type string/boolean/number',
@@ -40,7 +40,7 @@ export class SettingGetResponseDto<T = any> extends DatabaseIdResponseDto {
         required: true,
         nullable: false,
     })
-    readonly value: T;
+    value: T;
 
     @ApiProperty({
         description: 'Date created at',
@@ -48,7 +48,7 @@ export class SettingGetResponseDto<T = any> extends DatabaseIdResponseDto {
         required: true,
         nullable: false,
     })
-    readonly createdAt: Date;
+    createdAt: Date;
 
     @ApiProperty({
         description: 'Date updated at',
@@ -56,9 +56,9 @@ export class SettingGetResponseDto<T = any> extends DatabaseIdResponseDto {
         required: true,
         nullable: false,
     })
-    readonly updatedAt: Date;
+    updatedAt: Date;
 
     @ApiHideProperty()
     @Exclude()
-    readonly deletedAt?: Date;
+    deletedAt?: Date;
 }

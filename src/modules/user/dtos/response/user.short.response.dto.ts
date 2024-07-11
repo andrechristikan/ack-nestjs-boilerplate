@@ -15,25 +15,25 @@ export class UserShortResponseDto extends OmitType(UserListResponseDto, [
 ]) {
     @ApiHideProperty()
     @Exclude()
-    readonly role: RoleListResponseDto;
+    role: RoleListResponseDto;
 
     @ApiHideProperty()
     @Exclude()
-    readonly status: ENUM_USER_STATUS;
+    status: ENUM_USER_STATUS;
 
     @ApiHideProperty()
     @Exclude()
-    readonly blocked: boolean;
+    blocked: boolean;
 
     @ApiHideProperty()
     @Exclude()
-    readonly photo?: AwsS3Dto;
+    photo?: AwsS3Dto;
 
     @ApiHideProperty()
     @Exclude()
-    readonly createdAt: Date;
+    createdAt: Date;
 
     @ApiHideProperty()
     @Exclude()
-    readonly updatedAt: Date;
+    updatedAt: Date;
 }

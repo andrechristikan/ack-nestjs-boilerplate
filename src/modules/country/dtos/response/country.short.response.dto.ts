@@ -8,9 +8,9 @@ export class CountryShortResponseDto extends OmitType(CountryListResponseDto, [
 ]) {
     @ApiHideProperty()
     @Exclude()
-    readonly createdAt: Date;
+    createdAt: Date;
 
     @ApiHideProperty()
     @Exclude()
-    readonly updatedAt: Date;
+    updatedAt: Date;
 }

@@ -23,5 +23,5 @@ export class RoleCreateRequestDto extends IntersectionType(
     @MinLength(3)
     @MaxLength(30)
     @Type(() => String)
-    readonly name: string;
+    name: string;
 }

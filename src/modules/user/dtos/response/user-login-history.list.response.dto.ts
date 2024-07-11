@@ -8,7 +8,7 @@ export class UserLoginHistoryListResponseDto extends DatabaseIdResponseDto {
         required: true,
         example: faker.string.uuid(),
     })
-    readonly user: string;
+    user: string;
 
     @ApiProperty({
         description: 'Date created at',
@@ -16,7 +16,7 @@ export class UserLoginHistoryListResponseDto extends DatabaseIdResponseDto {
         required: true,
         nullable: false,
     })
-    readonly createdAt: Date;
+    createdAt: Date;
 
     @ApiProperty({
         description: 'Date updated at',
@@ -24,9 +24,9 @@ export class UserLoginHistoryListResponseDto extends DatabaseIdResponseDto {
         required: true,
         nullable: false,
     })
-    readonly updatedAt: Date;
+    updatedAt: Date;
 
     @ApiHideProperty()
     @Exclude()
-    readonly deletedAt?: Date;
+    deletedAt?: Date;
 }

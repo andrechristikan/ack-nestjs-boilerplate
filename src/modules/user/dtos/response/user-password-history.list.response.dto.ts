@@ -19,11 +19,11 @@ export class UserPasswordHistoryListResponseDto extends IntersectionType(
         enum: ENUM_USER_PASSWORD_TYPE,
         example: ENUM_USER_PASSWORD_TYPE.TEMPORARY_PASSWORD,
     })
-    readonly type: ENUM_USER_PASSWORD_TYPE;
+    type: ENUM_USER_PASSWORD_TYPE;
 
     @ApiHideProperty()
     @Exclude()
-    readonly password: string;
+    password: string;
 
     @ApiProperty({
         description: 'Date created at',
@@ -31,7 +31,7 @@ export class UserPasswordHistoryListResponseDto extends IntersectionType(
         required: true,
         nullable: false,
     })
-    readonly createdAt: Date;
+    createdAt: Date;
 
     @ApiProperty({
         description: 'Date updated at',
@@ -39,9 +39,9 @@ export class UserPasswordHistoryListResponseDto extends IntersectionType(
         required: true,
         nullable: false,
     })
-    readonly updatedAt: Date;
+    updatedAt: Date;
 
     @ApiHideProperty()
     @Exclude()
-    readonly deletedAt?: Date;
+    deletedAt?: Date;
 }

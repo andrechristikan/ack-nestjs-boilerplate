@@ -20,5 +20,5 @@ export class UserSignUpRequestDto extends OmitType(UserCreateRequestDto, [
     @IsPassword()
     @MinLength(8)
     @MaxLength(50)
-    readonly password: string;
+    password: string;
 }

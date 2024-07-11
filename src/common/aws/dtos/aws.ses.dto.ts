@@ -132,7 +132,7 @@ export class AwsSESSendBulkDto extends OmitType(AwsSESSendDto, [
     @ApiProperty({
         required: true,
         isArray: true,
-        type: () => AwsSESSendBulkRecipientsDto,
+        type: AwsSESSendBulkRecipientsDto,
     })
     @IsNotEmpty()
     @IsArray()

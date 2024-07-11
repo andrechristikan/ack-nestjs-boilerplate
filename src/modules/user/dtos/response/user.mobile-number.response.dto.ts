@@ -14,7 +14,7 @@ export class UserMobileNumberResponseDto {
         minLength: 8,
     })
     @Type(() => String)
-    readonly number: string;
+    number: string;
 
     @ApiProperty({
         required: true,
@@ -22,5 +22,5 @@ export class UserMobileNumberResponseDto {
         type: CountryShortResponseDto,
     })
     @Type(() => CountryShortResponseDto)
-    readonly country: CountryShortResponseDto;
+    country: CountryShortResponseDto;
 }

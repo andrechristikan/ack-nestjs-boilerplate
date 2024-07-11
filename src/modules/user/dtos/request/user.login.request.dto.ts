@@ -10,7 +10,7 @@ export class UserLoginRequestDto {
     })
     @IsString()
     @IsNotEmpty()
-    readonly email: string;
+    email: string;
 
     @ApiProperty({
         description: 'string password',
@@ -20,5 +20,5 @@ export class UserLoginRequestDto {
     })
     @IsString()
     @IsNotEmpty()
-    readonly password: string;
+    password: string;
 }

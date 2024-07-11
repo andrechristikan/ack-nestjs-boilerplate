@@ -13,7 +13,7 @@ export class CountryGetResponseDto extends DatabaseIdResponseDto {
         maxLength: 100,
         minLength: 1,
     })
-    readonly name: string;
+    name: string;
 
     @ApiProperty({
         required: true,
@@ -23,7 +23,7 @@ export class CountryGetResponseDto extends DatabaseIdResponseDto {
         maxLength: 2,
         minLength: 2,
     })
-    readonly alpha2Code: string;
+    alpha2Code: string;
 
     @ApiProperty({
         required: true,
@@ -33,7 +33,7 @@ export class CountryGetResponseDto extends DatabaseIdResponseDto {
         maxLength: 3,
         minLength: 3,
     })
-    readonly alpha3Code: string;
+    alpha3Code: string;
 
     @ApiProperty({
         required: true,
@@ -43,7 +43,7 @@ export class CountryGetResponseDto extends DatabaseIdResponseDto {
         maxLength: 3,
         minLength: 3,
     })
-    readonly numericCode: string;
+    numericCode: string;
 
     @ApiProperty({
         required: true,
@@ -53,7 +53,7 @@ export class CountryGetResponseDto extends DatabaseIdResponseDto {
         maxLength: 2,
         minLength: 2,
     })
-    readonly fipsCode: string;
+    fipsCode: string;
 
     @ApiProperty({
         required: true,
@@ -65,33 +65,33 @@ export class CountryGetResponseDto extends DatabaseIdResponseDto {
         isArray: true,
         default: [],
     })
-    readonly phoneCode: string[];
+    phoneCode: string[];
 
     @ApiProperty({
         required: true,
         example: faker.location.country(),
     })
-    readonly continent: string;
+    continent: string;
 
     @ApiProperty({
         required: true,
         example: faker.location.timeZone(),
     })
-    readonly timeZone: string;
+    timeZone: string;
 
     @ApiProperty({
         required: false,
         description: 'Top level domain',
         example: faker.internet.domainSuffix(),
     })
-    readonly domain?: string;
+    domain?: string;
 
     @ApiProperty({
         required: false,
-        type: () => AwsS3Dto,
+        type: AwsS3Dto,
     })
     @Type(() => AwsS3Dto)
-    readonly image?: AwsS3Dto;
+    image?: AwsS3Dto;
 
     @ApiProperty({
         description: 'Date created at',
@@ -99,7 +99,7 @@ export class CountryGetResponseDto extends DatabaseIdResponseDto {
         required: true,
         nullable: false,
     })
-    readonly createdAt: Date;
+    createdAt: Date;
 
     @ApiProperty({
         description: 'Date updated at',
@@ -107,9 +107,9 @@ export class CountryGetResponseDto extends DatabaseIdResponseDto {
         required: true,
         nullable: false,
     })
-    readonly updatedAt: Date;
+    updatedAt: Date;
 
     @ApiHideProperty()
     @Exclude()
-    readonly deletedAt?: Date;
+    deletedAt?: Date;
 }

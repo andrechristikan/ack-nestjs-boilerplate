@@ -12,7 +12,7 @@ export class UserCreatePasswordRequestDto {
     @IsEnum(ENUM_USER_PASSWORD_TYPE)
     @IsString()
     @IsEmpty()
-    readonly type: ENUM_USER_PASSWORD_TYPE;
+    type: ENUM_USER_PASSWORD_TYPE;
 }
 
 export class UserCreatePasswordByAdminRequestDto extends UserCreatePasswordRequestDto {
@@ -22,5 +22,5 @@ export class UserCreatePasswordByAdminRequestDto extends UserCreatePasswordReque
     })
     @IsNotEmpty()
     @IsUUID()
-    readonly by: string;
+    by: string;
 }

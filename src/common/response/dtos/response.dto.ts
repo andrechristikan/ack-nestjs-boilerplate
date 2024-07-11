@@ -36,7 +36,7 @@ export class ResponseDto {
         required: true,
         nullable: false,
         description: 'Contain metadata about API',
-        type: () => ResponseMetadataDto,
+        type: ResponseMetadataDto,
         example: {
             language: 'en',
             timestamp: 1660190937231,

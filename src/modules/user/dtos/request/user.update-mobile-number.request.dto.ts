@@ -22,5 +22,5 @@ export class UserUpdateMobileNumberRequestDto extends PickType(
     @MinLength(8)
     @MaxLength(20)
     @Type(() => String)
-    readonly number: string;
+    number: string;
 }

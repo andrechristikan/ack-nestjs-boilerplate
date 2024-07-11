@@ -112,13 +112,13 @@ export class ResponsePagingMetadataPaginationDto extends ResponsePagingMetadataR
 export class ResponsePagingMetadataDto extends ResponseMetadataDto {
     @ApiProperty({
         required: false,
-        type: () => ResponsePagingMetadataCursorDto,
+        type: ResponsePagingMetadataCursorDto,
     })
     cursor?: ResponsePagingMetadataCursorDto;
 
     @ApiProperty({
         required: false,
-        type: () => ResponsePagingMetadataPaginationDto,
+        type: ResponsePagingMetadataPaginationDto,
     })
     pagination?: ResponsePagingMetadataPaginationDto;
 }
@@ -132,7 +132,7 @@ export class ResponsePagingDto extends PickType(ResponseDto, [
         required: true,
         nullable: false,
         description: 'Contain metadata about API',
-        type: () => ResponsePagingMetadataDto,
+        type: ResponsePagingMetadataDto,
         example: {
             language: 'en',
             timestamp: 1660190937231,
@@ -161,7 +161,7 @@ export class ResponsePagingDto extends PickType(ResponseDto, [
             },
         },
     })
-    readonly _metadata: ResponsePagingMetadataDto;
+    _metadata: ResponsePagingMetadataDto;
 
     @ApiHideProperty()
     data?: Record<string, any>[];

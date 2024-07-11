@@ -7,7 +7,7 @@ export class UserLoginResponseDto {
         required: true,
         nullable: false,
     })
-    readonly tokenType: string;
+    tokenType: string;
 
     @ApiProperty({
         example: ENUM_POLICY_ROLE_TYPE.USER,
@@ -15,7 +15,7 @@ export class UserLoginResponseDto {
         required: true,
         nullable: false,
     })
-    readonly roleType: ENUM_POLICY_ROLE_TYPE;
+    roleType: ENUM_POLICY_ROLE_TYPE;
 
     @ApiProperty({
         example: 3600,
@@ -23,17 +23,17 @@ export class UserLoginResponseDto {
         required: true,
         nullable: false,
     })
-    readonly expiresIn: number;
+    expiresIn: number;
 
     @ApiProperty({
         required: true,
         nullable: false,
     })
-    readonly accessToken: string;
+    accessToken: string;
 
     @ApiProperty({
         required: true,
         nullable: false,
     })
-    readonly refreshToken: string;
+    refreshToken: string;
 }
