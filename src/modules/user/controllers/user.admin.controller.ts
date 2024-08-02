@@ -20,34 +20,41 @@ import {
     IResponse,
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
-import {
-    IUserDoc,
-    IUserPasswordHistoryDoc,
-    IUserStateHistoryDoc,
-} from 'src/modules/user/interfaces/user.interface';
-import { UserService } from 'src/modules/user/services/user.service';
-import {
-    USER_DEFAULT_AVAILABLE_SEARCH,
-    USER_DEFAULT_BLOCKED,
-    USER_DEFAULT_STATUS,
-} from 'src/modules/user/constants/user.list.constant';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import {
     PaginationQuery,
     PaginationQueryFilterEqual,
-    PaginationQueryFilterInBoolean,
     PaginationQueryFilterInEnum,
 } from 'src/common/pagination/decorators/pagination.decorator';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
-} from 'src/common/policy/decorators/policy.decorator';
+} from 'src/modules/policy/decorators/policy.decorator';
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from 'src/common/policy/constants/policy.enum.constant';
+} from 'src/modules/policy/constants/policy.enum.constant';
+import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
+import {
+    AuthJwtAccessProtected,
+    AuthJwtPayload,
+} from 'src/modules/auth/decorators/auth.jwt.decorator';
+import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
+import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
+import { EmailService } from 'src/modules/email/services/email.service';
+import { RoleService } from 'src/modules/role/services/role.service';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
+import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
+import { AuthService } from 'src/modules/auth/services/auth.service';
+import { ClientSession, Connection } from 'mongoose';
+import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
+import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/constants/country.status-code.constant';
+import { CountryService } from 'src/modules/country/services/country.service';
+import { UserLoginHistoryService } from 'src/modules/user/services/user-login-history.service';
+import { UserStateHistoryService } from 'src/modules/user/services/user-state-history.service';
+import { UserPasswordHistoryService } from 'src/modules/user/services/user-password-history.service';
 import {
     UserAdminActiveDoc,
     UserAdminBlockedDoc,
@@ -61,43 +68,34 @@ import {
     UserAdminUpdateDoc,
     UserAdminUpdatePasswordDoc,
 } from 'src/modules/user/docs/user.admin.doc';
-import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
-import {
-    AuthJwtAccessProtected,
-    AuthJwtPayload,
-} from 'src/common/auth/decorators/auth.jwt.decorator';
 import {
     ENUM_USER_PASSWORD_TYPE,
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
 } from 'src/modules/user/constants/user.enum.constant';
-import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
-import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
+import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
-import { UserNotSelfPipe } from 'src/modules/user/pipes/user.not-self.pipe';
-import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
-import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
-import { EmailService } from 'src/modules/email/services/email.service';
-import { RoleService } from 'src/modules/role/services/role.service';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
-import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
-import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
-import { AuthService } from 'src/common/auth/services/auth.service';
-import { ClientSession, Connection } from 'mongoose';
-import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
-import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
-import { CountryService } from 'src/modules/country/services/country.service';
-import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/constants/country.status-code.constant';
-import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
-import { UserLoginHistoryService } from 'src/modules/user/services/user-login-history.service';
-import { UserStateHistoryService } from 'src/modules/user/services/user-state-history.service';
-import { UserPasswordHistoryService } from 'src/modules/user/services/user-password-history.service';
 import { UserStateHistoryListResponseDto } from 'src/modules/user/dtos/response/user-state-history.list.response.dto';
 import { UserPasswordHistoryListResponseDto } from 'src/modules/user/dtos/response/user-password-history.list.response.dto';
+import { UserService } from 'src/modules/user/services/user.service';
+import {
+    USER_DEFAULT_AVAILABLE_SEARCH,
+    USER_DEFAULT_STATUS,
+} from 'src/modules/user/constants/user.list.constant';
+import {
+    IUserDoc,
+    IUserPasswordHistoryDoc,
+    IUserStateHistoryDoc,
+} from 'src/modules/user/interfaces/user.interface';
+import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserLoginHistoryListResponseDto } from 'src/modules/user/dtos/response/user-login-history.list.response.dto';
 import { UserLoginHistoryDoc } from 'src/modules/user/repository/entities/user-login-history.entity';
+import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
+import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
+import { UserNotSelfPipe } from 'src/modules/user/pipes/user.not-self.pipe';
 import { UserStatusPipe } from 'src/modules/user/pipes/user.status.pipe';
+import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -126,7 +124,7 @@ export class UserAdminController {
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
-    @ApiKeyPublicProtected()
+    @ApiKeyProtected()
     @Get('/list')
     async list(
         @PaginationQuery({
@@ -139,8 +137,6 @@ export class UserAdminController {
             ENUM_USER_STATUS
         )
         status: Record<string, any>,
-        @PaginationQueryFilterInBoolean('blocked', USER_DEFAULT_BLOCKED)
-        blocked: Record<string, any>,
         @PaginationQueryFilterEqual('role')
         role: Record<string, any>,
         @PaginationQueryFilterEqual('country')
@@ -149,7 +145,6 @@ export class UserAdminController {
         const find: Record<string, any> = {
             ..._search,
             ...status,
-            ...blocked,
             ...role,
             ...country,
         };
@@ -184,7 +179,7 @@ export class UserAdminController {
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
-    @ApiKeyPublicProtected()
+    @ApiKeyProtected()
     @Get('/get/:user')
     async get(
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc
@@ -204,7 +199,7 @@ export class UserAdminController {
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
-    @ApiKeyPublicProtected()
+    @ApiKeyProtected()
     @Get('/get/:user/state/history')
     async stateHistoryList(
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc,
@@ -249,7 +244,7 @@ export class UserAdminController {
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
-    @ApiKeyPublicProtected()
+    @ApiKeyProtected()
     @Get('/get/:user/password/history')
     async passwordHistoryList(
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc,
@@ -299,7 +294,7 @@ export class UserAdminController {
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
-    @ApiKeyPublicProtected()
+    @ApiKeyProtected()
     @Get('/get/:user/login/history')
     async loginHistoryList(
         @Param('user', RequestRequiredPipe, UserParsePipe) user: UserDoc,
@@ -414,11 +409,16 @@ export class UserAdminController {
                 }
             );
 
-            await this.emailService.sendWelcome(created);
-            await this.emailService.sendTempPassword(created, {
-                password: passwordString,
-                expiredAt: password.passwordExpired,
-            });
+            await this.emailService.sendWelcomeAdmin(
+                {
+                    email: created.email,
+                    name: created.name,
+                },
+                {
+                    passwordExpiredAt: password.passwordExpired,
+                    password: passwordString,
+                }
+            );
 
             await session.commitTransaction();
             await session.endSession();
@@ -446,7 +446,7 @@ export class UserAdminController {
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
-    @ApiKeyPublicProtected()
+    @ApiKeyProtected()
     @Put('/update/:user')
     async update(
         @Param(
@@ -457,8 +457,20 @@ export class UserAdminController {
             new UserStatusPipe([ENUM_USER_STATUS.ACTIVE])
         )
         user: UserDoc,
-        @Body() { name, country }: UserUpdateRequestDto
+        @Body() { name, country, role }: UserUpdateRequestDto
     ): Promise<void> {
+        const userRole = await this.roleService.findOneActiveById(user.role);
+        const checkRole = await this.roleService.findOneActiveByIdAndType(
+            role,
+            userRole.type
+        );
+        if (!checkRole) {
+            throw new NotFoundException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'role.error.notFound',
+            });
+        }
+
         const checkCountry =
             await this.countryService.findOneActiveById(country);
         if (!checkCountry) {
@@ -468,7 +480,7 @@ export class UserAdminController {
             });
         }
 
-        await this.userService.update(user, { name, country });
+        await this.userService.update(user, { name, country, role });
     }
 
     @UserAdminInactiveDoc()
@@ -479,7 +491,7 @@ export class UserAdminController {
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
-    @ApiKeyPublicProtected()
+    @ApiKeyProtected()
     @Patch('/update/:user/inactive')
     async inactive(
         @Param(
@@ -526,7 +538,7 @@ export class UserAdminController {
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
-    @ApiKeyPublicProtected()
+    @ApiKeyProtected()
     @Patch('/update/:user/active')
     async active(
         @Param(
@@ -573,7 +585,7 @@ export class UserAdminController {
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
-    @ApiKeyPublicProtected()
+    @ApiKeyProtected()
     @Patch('/update/:user/blocked')
     async blocked(
         @Param(
@@ -623,7 +635,7 @@ export class UserAdminController {
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
-    @ApiKeyPublicProtected()
+    @ApiKeyProtected()
     @Put('/update/:user/password')
     async updatePassword(
         @Param('user', RequestRequiredPipe, UserParsePipe, UserNotSelfPipe)
@@ -639,7 +651,9 @@ export class UserAdminController {
                 await this.authService.createPasswordRandom();
             const password = await this.authService.createPassword(
                 passwordString,
-                { temporary: true }
+                {
+                    temporary: true,
+                }
             );
             user = await this.userService.updatePassword(user, password, {
                 session,
@@ -658,10 +672,16 @@ export class UserAdminController {
                 }
             );
 
-            await this.emailService.sendTempPassword(user, {
-                password: passwordString,
-                expiredAt: password.passwordExpired,
-            });
+            await this.emailService.sendTempPassword(
+                {
+                    email: user.email,
+                    name: user.name,
+                },
+                {
+                    passwordExpiredAt: password.passwordExpired,
+                    password: passwordString,
+                }
+            );
 
             await session.commitTransaction();
             await session.endSession();

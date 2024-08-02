@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { AES, enc, mode, pad } from 'crypto-js';
 import { IHelperEncryptionService } from 'src/common/helper/interfaces/helper.encryption-service.interface';
@@ -9,7 +10,15 @@ import {
 
 @Injectable()
 export class HelperEncryptionService implements IHelperEncryptionService {
-    constructor(private readonly jwtService: JwtService) {}
+    private readonly debug: boolean;
+    private readonly logger = new Logger(HelperEncryptionService.name);
+
+    constructor(
+        private readonly jwtService: JwtService,
+        private readonly configService: ConfigService
+    ) {
+        this.debug = this.configService.get<boolean>('app.debug');
+    }
 
     base64Encrypt(data: string): string {
         const buff: Buffer = Buffer.from(data, 'utf8');
@@ -89,6 +98,10 @@ export class HelperEncryptionService implements IHelperEncryptionService {
 
             return true;
         } catch (err: unknown) {
+            if (this.debug) {
+                this.logger.error(err);
+            }
+
             return false;
         }
     }

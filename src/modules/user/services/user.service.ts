@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { IUserService } from 'src/modules/user/interfaces/user.service.interface';
 import {
     IDatabaseCreateOptions,
     IDatabaseExistOptions,
@@ -9,34 +8,37 @@ import {
     IDatabaseManyOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
+import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { ConfigService } from '@nestjs/config';
+import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
+import { plainToInstance } from 'class-transformer';
+import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
+import { Document } from 'mongoose';
+import { DatabaseQueryIn } from 'src/common/database/decorators/database.decorator';
+import { IUserService } from 'src/modules/user/interfaces/user.service.interface';
+import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
 import {
     UserDoc,
     UserEntity,
 } from 'src/modules/user/repository/entities/user.entity';
-import { UserRepository } from 'src/modules/user/repository/repositories/user.repository';
-import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { ConfigService } from '@nestjs/config';
-import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
 import {
+    IUserCheckIds,
     IUserDoc,
     IUserEntity,
 } from 'src/modules/user/interfaces/user.interface';
-import { plainToInstance } from 'class-transformer';
 import {
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
 } from 'src/modules/user/constants/user.enum.constant';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
-import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
 import { UserUpdatePasswordAttemptRequestDto } from 'src/modules/user/dtos/request/user.update-password-attempt.request.dto';
-import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
-import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
-import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
 import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
-import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
 import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
+import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
+import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
+import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
+import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
 import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
-import { Document } from 'mongoose';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -67,10 +69,13 @@ export class UserService implements IUserService {
     async findAllActive(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<UserDoc[]> {
-        return this.userRepository.findAll<UserDoc>(
-            { ...find, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
-            options
+    ): Promise<IUserDoc[]> {
+        return this.userRepository.findAll<IUserDoc>(
+            { ...find, status: ENUM_USER_STATUS.ACTIVE },
+            {
+                ...options,
+                join: this.userRepository._joinSchemaActive,
+            }
         );
     }
 
@@ -89,8 +94,11 @@ export class UserService implements IUserService {
         options?: IDatabaseFindAllOptions
     ): Promise<IUserDoc[]> {
         return this.userRepository.findAll<IUserDoc>(
-            { ...find, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
-            { ...options, join: true }
+            { ...find, status: ENUM_USER_STATUS.ACTIVE },
+            {
+                ...options,
+                join: this.userRepository._joinSchemaActive,
+            }
         );
     }
 
@@ -99,8 +107,11 @@ export class UserService implements IUserService {
         options?: IDatabaseGetTotalOptions
     ): Promise<number> {
         return this.userRepository.getTotal(
-            { ...find, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
-            options
+            { ...find, status: ENUM_USER_STATUS.ACTIVE },
+            {
+                ...options,
+                join: this.userRepository._joinSchemaActive,
+            }
         );
     }
 
@@ -137,7 +148,7 @@ export class UserService implements IUserService {
         options?: IDatabaseFindOneOptions
     ): Promise<IUserDoc> {
         return this.userRepository.findOne<IUserDoc>(
-            { _id, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
+            { _id, status: ENUM_USER_STATUS.ACTIVE },
             {
                 ...options,
                 join: this.userRepository._joinSchemaActive,
@@ -150,7 +161,7 @@ export class UserService implements IUserService {
         options?: IDatabaseFindOneOptions
     ): Promise<IUserDoc> {
         return this.userRepository.findOne<IUserDoc>(
-            { email, status: ENUM_USER_STATUS.ACTIVE, blocked: false },
+            { email, status: ENUM_USER_STATUS.ACTIVE },
             {
                 ...options,
                 join: this.userRepository._joinSchemaActive,
@@ -166,7 +177,6 @@ export class UserService implements IUserService {
             {
                 mobileNumber,
                 status: ENUM_USER_STATUS.ACTIVE,
-                blocked: false,
             },
             {
                 ...options,
@@ -268,6 +278,26 @@ export class UserService implements IUserService {
         );
     }
 
+    async checkExistByIds(
+        ids: string[],
+        options?: IDatabaseExistOptions
+    ): Promise<IUserCheckIds> {
+        const usr: IUserDoc[] = await this.userRepository.findAll<IUserDoc>(
+            DatabaseQueryIn('_id', ids),
+            {
+                ...options,
+                join: true,
+            }
+        );
+        const notFound = usr.filter((e: IUserDoc) => !ids.includes(e._id));
+        const found = usr.filter((e: IUserDoc) => ids.includes(e._id));
+
+        return {
+            notFound,
+            found,
+        };
+    }
+
     async updatePhoto(
         repository: UserDoc,
         photo: AwsS3Dto,
@@ -305,17 +335,6 @@ export class UserService implements IUserService {
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.status = ENUM_USER_STATUS.INACTIVE;
-
-        return this.userRepository.save(repository, options);
-    }
-
-    async selfDelete(
-        repository: UserDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<UserDoc> {
-        repository.status = ENUM_USER_STATUS.DELETED;
-        repository.selfDeletion = true;
-        repository.deletedAt = this.helperDateService.create();
 
         return this.userRepository.save(repository, options);
     }
@@ -387,11 +406,12 @@ export class UserService implements IUserService {
 
     async update(
         repository: UserDoc,
-        { country, name }: UserUpdateRequestDto,
+        { country, name, role }: UserUpdateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc> {
         repository.country = country;
         repository.name = name;
+        repository.role = role;
 
         return this.userRepository.save(repository, options);
     }

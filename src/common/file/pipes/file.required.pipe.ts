@@ -24,8 +24,8 @@ export class FileRequiredPipe implements PipeTransform {
     async validate(value: IFile | IFile[]): Promise<void> {
         if (
             !value ||
-            Object.keys(value).length === 0 ||
-            (Array.isArray(value) && value.length === 0)
+            (Array.isArray(value) && value.length === 0) ||
+            Object.keys(value).length === 0
         ) {
             throw new UnprocessableEntityException({
                 statusCode: ENUM_FILE_STATUS_CODE_ERROR.REQUIRED,

@@ -31,9 +31,9 @@ import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/cons
 import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { ResponseDto } from 'src/common/response/dtos/response.dto';
 import { ResponsePagingDto } from 'src/common/response/dtos/response.paging.dto';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/common/api-key/constants/api-key.status-code.constant';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/common/auth/constants/auth.status-code.constant';
-import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/common/policy/constants/policy.status-code.constant';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/constants/api-key.status-code.constant';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/modules/auth/constants/auth.status-code.constant';
+import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/modules/policy/constants/policy.status-code.constant';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
 
 export function DocDefault<T>(options: IDocDefaultOptions<T>): MethodDecorator {

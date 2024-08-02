@@ -36,8 +36,7 @@ export interface IDocRequestOptions<T = any> {
     dto?: ClassConstructor<T>;
 }
 
-export interface IDocRequestFileOptions
-    extends Omit<IDocRequestOptions, 'bodyType'> {}
+export type IDocRequestFileOptions = Omit<IDocRequestOptions, 'bodyType'>;
 
 export interface IDocGuardOptions {
     policy?: boolean;

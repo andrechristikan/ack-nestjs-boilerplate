@@ -1,12 +1,15 @@
+
 version: '3.8'
+name: ack
+
 services:
-  boilerack:
+  service:
     build: 
       context: .
       args:
         NODE_ENV: 'development'
-    container_name: boilerack
-    hostname: boilerack
+    container_name: service
+    hostname: service
     ports:
       - 3000:3000
     volumes:
@@ -14,3 +17,73 @@ services:
       - .env/:/app/.env
     restart: always
 
+  mongodb1:
+    container_name: mongodb1
+    hostname: mongodb1
+    image: mongo:7.0.8
+    restart: always
+    ports:
+      - "27017:27017"
+    links:
+      - mongodb2
+      - mongodb3
+    depends_on:
+      mongodb2:
+        condition: service_started
+      mongodb3:
+        condition: service_started
+    networks:
+      - app-network
+    volumes:
+      - mongodb1_data:/data/db
+      - mongodb1_config:/data/configdb
+    command: mongod --bind_ip_all --replSet rs0 --port 27017
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'host.docker.internal:27017',priority:1},{_id:1,host:'host.docker.internal:27018',priority:0.5},{_id:2,host:'host.docker.internal:27019',priority:0.5}]}) }" | mongosh --port 27017 --quiet
+      interval: 5s
+      timeout: 30s
+      start_period: 0s
+      start_interval: 1s
+      retries: 30
+
+  mongodb2:
+    container_name: mongodb2
+    hostname: mongodb2
+    image: mongo:7.0.8
+    networks:
+      - app-network
+    restart: always
+    ports:
+      - "27018:27018"
+    volumes:
+      - mongodb2_data:/data/db
+      - mongodb2_config:/data/configdb
+    command: mongod --bind_ip_all --replSet rs0 --port 27018
+
+  mongodb3:
+    container_name: mongodb3
+    hostname: mongodb3
+    image: mongo:7.0.8
+    networks:
+      - app-network
+    restart: always
+    ports:
+      - "27019:27019"
+    volumes:
+      - mongodb3_data:/data/db
+      - mongodb3_config:/data/configdb
+    command: mongod --bind_ip_all --replSet rs0 --port 27019
+
+volumes:
+  mongodb1_data:
+  mongodb2_data:
+  mongodb3_data:
+  mongodb1_config:
+  mongodb2_config:
+  mongodb3_config:
+
+networks:
+  app-network:
+    driver: bridge

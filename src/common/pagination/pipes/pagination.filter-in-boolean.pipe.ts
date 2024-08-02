@@ -33,15 +33,8 @@ export function PaginationFilterInBooleanPipe(
                   )
                 : defaultValue;
 
-            if (finalValue.length === 2) {
-                return undefined;
-            }
-
             this.addToRequestInstance(finalValue);
-            return this.paginationService.filterEqual<boolean>(
-                field,
-                finalValue[0]
-            );
+            return this.paginationService.filterIn<boolean>(field, finalValue);
         }
 
         addToRequestInstance(value: any): void {

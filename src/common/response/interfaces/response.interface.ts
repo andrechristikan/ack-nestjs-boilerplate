@@ -23,7 +23,6 @@ export interface IResponseOptions {
 
 export interface IResponseFileExcelOptions {
     type?: ENUM_HELPER_FILE_EXCEL_TYPE;
-    password?: string;
 }
 
 // response

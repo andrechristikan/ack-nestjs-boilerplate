@@ -8,7 +8,7 @@ import { writeFileSync } from 'fs';
 export default async function (app: NestApplication) {
     const configService = app.get(ConfigService);
     const env: string = configService.get<string>('app.env');
-    const logger = new Logger();
+    const logger = new Logger('NestJs-Swagger');
 
     const docName: string = configService.get<string>('doc.name');
     const docDesc: string = configService.get<string>('doc.description');

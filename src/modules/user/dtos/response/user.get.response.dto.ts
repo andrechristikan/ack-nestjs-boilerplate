@@ -89,13 +89,6 @@ export class UserGetResponseDto extends DatabaseIdResponseDto {
     status: ENUM_USER_STATUS;
 
     @ApiProperty({
-        required: true,
-        nullable: false,
-        example: false,
-    })
-    blocked: boolean;
-
-    @ApiProperty({
         nullable: true,
         required: false,
         type: AwsS3Dto,

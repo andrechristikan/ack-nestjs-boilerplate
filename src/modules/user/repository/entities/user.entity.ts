@@ -66,7 +66,6 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
         unique: true,
         index: true,
         trim: true,
-        lowercase: true,
         type: String,
         maxlength: 100,
     })
@@ -142,11 +141,6 @@ export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
         enum: ENUM_USER_GENDER,
     })
     gender?: ENUM_USER_GENDER;
-
-    @DatabaseProp({
-        required: false,
-    })
-    selfDeletion?: boolean;
 
     @DatabaseProp({
         required: true,

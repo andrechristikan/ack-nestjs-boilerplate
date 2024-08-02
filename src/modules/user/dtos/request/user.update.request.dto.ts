@@ -4,4 +4,5 @@ import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.
 export class UserUpdateRequestDto extends PickType(UserCreateRequestDto, [
     'name',
     'country',
+    'role',
 ] as const) {}

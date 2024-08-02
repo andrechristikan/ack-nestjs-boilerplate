@@ -5,10 +5,6 @@ export interface IFileRows<T = any> {
     sheetName?: string;
 }
 
-export interface IFileReadOptions {
-    password?: string;
-}
-
 export interface IFileUploadSingle {
     field: string;
     fileSize: number;
@@ -18,8 +14,9 @@ export interface IFileUploadMultiple extends IFileUploadSingle {
     maxFiles: number;
 }
 
-export interface IFileUploadMultipleField
-    extends Omit<IFileUploadMultiple, 'fileSize'> {}
+export type IFileUploadMultipleField = Omit<IFileUploadMultiple, 'fileSize'>;
 
-export interface IFileUploadMultipleFieldOptions
-    extends Pick<IFileUploadSingle, 'fileSize'> {}
+export type IFileUploadMultipleFieldOptions = Pick<
+    IFileUploadSingle,
+    'fileSize'
+>;

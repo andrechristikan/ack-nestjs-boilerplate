@@ -32,9 +32,9 @@ export default registerAs(
             attempt: true,
             maxAttempt: 5,
             saltLength: 8,
-            expiredIn: ms('182d') / 1000, // 182 days
+            expiredIn: ms('182d') / 1000, // 0.5 years
             expiredInTemporary: ms('3d') / 1000, // 3 days
-            period: ms('90d') / 1000,
+            period: ms('90d') / 1000, // 3 months
         },
 
         apple: {

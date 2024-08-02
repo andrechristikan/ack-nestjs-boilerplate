@@ -41,14 +41,3 @@ export const UserDocQueryStatus = [
         description: "value with ',' delimiter",
     },
 ];
-
-export const UserDocQueryBlocked = [
-    {
-        name: 'blocked',
-        allowEmptyValue: true,
-        required: false,
-        type: 'string',
-        example: 'true,false',
-        description: "value with ',' delimiter",
-    },
-];

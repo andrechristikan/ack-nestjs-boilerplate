@@ -1,4 +1,4 @@
-import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
+import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
@@ -6,16 +6,16 @@ import {
     IDatabaseGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
 import {
-    UserCreatePasswordByAdminRequestDto,
-    UserCreatePasswordRequestDto,
-} from 'src/modules/user/dtos/request/user.create-password.request.dto';
-import { UserPasswordHistoryListResponseDto } from 'src/modules/user/dtos/response/user-password-history.list.response.dto';
-import {
     IUserPasswordHistoryDoc,
     IUserPasswordHistoryEntity,
 } from 'src/modules/user/interfaces/user.interface';
 import { UserPasswordHistoryDoc } from 'src/modules/user/repository/entities/user-password-history.entity';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
+import {
+    UserCreatePasswordByAdminRequestDto,
+    UserCreatePasswordRequestDto,
+} from 'src/modules/user/dtos/request/user.create-password.request.dto';
+import { UserPasswordHistoryListResponseDto } from 'src/modules/user/dtos/response/user-password-history.list.response.dto';
 
 export interface IUserPasswordHistoryService {
     findAll(

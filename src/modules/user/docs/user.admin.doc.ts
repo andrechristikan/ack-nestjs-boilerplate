@@ -11,7 +11,6 @@ import {
 } from 'src/common/doc/decorators/doc.decorator';
 import {
     UserDocParamsId,
-    UserDocQueryBlocked,
     UserDocQueryCountry,
     UserDocQueryRole,
     UserDocQueryStatus,
@@ -32,7 +31,6 @@ export function UserAdminListDoc(): MethodDecorator {
         DocRequest({
             queries: [
                 ...UserDocQueryStatus,
-                ...UserDocQueryBlocked,
                 ...UserDocQueryRole,
                 ...UserDocQueryCountry,
             ],

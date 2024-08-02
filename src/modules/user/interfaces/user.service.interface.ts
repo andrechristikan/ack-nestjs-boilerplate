@@ -1,4 +1,4 @@
-import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
+import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
 import {
     IDatabaseCreateOptions,
@@ -9,23 +9,25 @@ import {
     IDatabaseManyOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
-import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
-import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
-import { UserUpdatePasswordAttemptRequestDto } from 'src/modules/user/dtos/request/user.update-password-attempt.request.dto';
-import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
-import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
-import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
-import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
-import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
-import {
-    IUserDoc,
-    IUserEntity,
-} from 'src/modules/user/interfaces/user.interface';
 import {
     UserDoc,
     UserEntity,
 } from 'src/modules/user/repository/entities/user.entity';
+import {
+    IUserCheckIds,
+    IUserDoc,
+    IUserEntity,
+} from 'src/modules/user/interfaces/user.interface';
+import { UserUpdatePasswordAttemptRequestDto } from 'src/modules/user/dtos/request/user.update-password-attempt.request.dto';
+import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
+import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
+import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
+import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
+import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
+import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
+import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
+import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
+import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
 
 export interface IUserService {
     findAll(
@@ -39,7 +41,7 @@ export interface IUserService {
     findAllActive(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
-    ): Promise<UserDoc[]>;
+    ): Promise<IUserDoc[]>;
     findAllWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
@@ -94,6 +96,12 @@ export interface IUserService {
         signUpFrom: ENUM_USER_SIGN_UP_FROM,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc>;
+    signUp(
+        role: string,
+        { email, name, country }: UserSignUpRequestDto,
+        { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
+        options?: IDatabaseCreateOptions
+    ): Promise<UserDoc>;
     existByEmail(
         email: string,
         options?: IDatabaseExistOptions
@@ -102,6 +110,10 @@ export interface IUserService {
         mobileNumber: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean>;
+    checkExistByIds(
+        ids: string[],
+        options?: IDatabaseExistOptions
+    ): Promise<IUserCheckIds>;
     updatePhoto(
         repository: UserDoc,
         photo: AwsS3Dto,
@@ -150,7 +162,7 @@ export interface IUserService {
     ): Promise<boolean>;
     update(
         repository: UserDoc,
-        { country, name }: UserUpdateRequestDto,
+        { country, name, role }: UserUpdateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
     updateMobileNumber(

@@ -16,9 +16,9 @@ export class HealthAwsS3Indicator extends HealthIndicator {
         try {
             await this.awsS3Service.checkBucketExistence();
             return this.getStatus(key, true);
-        } catch (err: unknown) {
+        } catch (err: any) {
             throw new HealthCheckError(
-                'HealthAwsS3Indicator failed',
+                `HealthAwsS3Indicator Failed - ${err?.message}`,
                 this.getStatus(key, false)
             );
         }

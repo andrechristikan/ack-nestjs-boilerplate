@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import { Document } from 'mongoose';
-import { IAuthPassword } from 'src/common/auth/interfaces/auth.interface';
+import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import {
     IDatabaseCreateOptions,
     IDatabaseFindAllOptions,
@@ -10,12 +10,8 @@ import {
     IDatabaseGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import {
-    UserCreatePasswordByAdminRequestDto,
-    UserCreatePasswordRequestDto,
-} from 'src/modules/user/dtos/request/user.create-password.request.dto';
-import { UserPasswordHistoryListResponseDto } from 'src/modules/user/dtos/response/user-password-history.list.response.dto';
 import { IUserPasswordHistoryService } from 'src/modules/user/interfaces/user-password-history.service.interface';
+import { UserPasswordHistoryRepository } from 'src/modules/user/repository/repositories/user-password-history.repository';
 import {
     IUserPasswordHistoryDoc,
     IUserPasswordHistoryEntity,
@@ -25,7 +21,11 @@ import {
     UserPasswordHistoryEntity,
 } from 'src/modules/user/repository/entities/user-password-history.entity';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { UserPasswordHistoryRepository } from 'src/modules/user/repository/repositories/user-password-history.repository';
+import {
+    UserCreatePasswordByAdminRequestDto,
+    UserCreatePasswordRequestDto,
+} from 'src/modules/user/dtos/request/user.create-password.request.dto';
+import { UserPasswordHistoryListResponseDto } from 'src/modules/user/dtos/response/user-password-history.list.response.dto';
 
 @Injectable()
 export class UserPasswordHistoryService implements IUserPasswordHistoryService {

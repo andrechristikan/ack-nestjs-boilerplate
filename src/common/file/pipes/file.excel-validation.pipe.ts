@@ -9,10 +9,12 @@ import { IFileRows } from 'src/common/file/interfaces/file.interface';
 
 //! only for excel and use after FileParsePipe
 @Injectable()
-export class FileExcelValidationPipe<T> implements PipeTransform {
+export class FileExcelValidationPipe<T, N = Record<string, any>>
+    implements PipeTransform
+{
     constructor(private readonly dto: any) {}
 
-    async transform(value: IFileRows<T>[]): Promise<IFileRows<T>[]> {
+    async transform(value: IFileRows<N>[]): Promise<IFileRows<T>[]> {
         if (!value) {
             return;
         }
@@ -23,7 +25,7 @@ export class FileExcelValidationPipe<T> implements PipeTransform {
         return dtos;
     }
 
-    async validate(value: IFileRows<T>[]): Promise<void> {
+    async validate(value: IFileRows<N>[]): Promise<void> {
         if (!value || value.length === 0) {
             throw new UnprocessableEntityException({
                 statusCode: ENUM_FILE_STATUS_CODE_ERROR.REQUIRED_EXTRACT_FIRST,
@@ -35,7 +37,7 @@ export class FileExcelValidationPipe<T> implements PipeTransform {
     }
 
     async validateParse(
-        value: IFileRows<T>[],
+        value: IFileRows<N>[],
         classDtos: any
     ): Promise<IFileRows<T>[]> {
         const errors: IMessageValidationImportErrorParam[] = [];
@@ -49,7 +51,7 @@ export class FileExcelValidationPipe<T> implements PipeTransform {
                 errors.push({
                     row: index,
                     sheetName: parse.sheetName,
-                    error: validator,
+                    errors: validator,
                 });
             } else {
                 dtos.push({

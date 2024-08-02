@@ -10,10 +10,7 @@ import { map } from 'rxjs/operators';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 import { Reflector } from '@nestjs/core';
-import {
-    RESPONSE_FILE_EXCEL_PASSWORD_META_KEY,
-    RESPONSE_FILE_EXCEL_TYPE_META_KEY,
-} from 'src/common/response/constants/response.constant';
+import { RESPONSE_FILE_EXCEL_TYPE_META_KEY } from 'src/common/response/constants/response.constant';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/constants/helper.enum.constant';
 import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
@@ -46,11 +43,6 @@ export class ResponseFileExcelInterceptor
                             context.getHandler()
                         );
 
-                    const password: string = this.reflector.get<string>(
-                        RESPONSE_FILE_EXCEL_PASSWORD_META_KEY,
-                        context.getHandler()
-                    );
-
                     // set default response
                     const responseData = (await res) as IResponseFileExcel;
 
@@ -68,10 +60,7 @@ export class ResponseFileExcelInterceptor
                     if (type === ENUM_HELPER_FILE_EXCEL_TYPE.XLSX) {
                         // create file
                         const file: Buffer = this.fileService.writeExcel(
-                            responseData.data,
-                            {
-                                password,
-                            }
+                            responseData.data
                         );
 
                         // set headers

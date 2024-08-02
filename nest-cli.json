@@ -1,18 +1,16 @@
 {
-  "collection": "@nestjs/schematics",
-  "sourceRoot": "src",
-  "compilerOptions": {
-    "plugins": [
-      "@nestjs/swagger"
-  ],
-    "assets": [
-      { 
-        "include": "languages/**/*", 
-        "outDir": "dist/src" 
-      }
-    ],
-    "webpack": false,
-    "deleteOutDir": true,
-    "watchAssets": true
-  }
+    "collection": "@nestjs/schematics",
+    "sourceRoot": "src",
+    "compilerOptions": {
+        "plugins": ["@nestjs/swagger"],
+        "assets": [
+            {
+                "include": "languages/**/*",
+                "outDir": "dist/src"
+            }
+        ],
+        "webpack": false,
+        "deleteOutDir": true,
+        "watchAssets": true
+    }
 }

@@ -6,11 +6,11 @@ import { DatabaseService } from 'src/common/database/services/database.service';
 import { MessageModule } from 'src/common/message/message.module';
 import { HelperModule } from 'src/common/helper/helper.module';
 import { RequestModule } from 'src/common/request/request.module';
-import { PolicyModule } from 'src/common/policy/policy.module';
-import { AuthModule } from 'src/common/auth/auth.module';
+import { PolicyModule } from 'src/modules/policy/policy.module';
+import { AuthModule } from 'src/modules/auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import configs from 'src/configs';
-import { ApiKeyModule } from 'src/common/api-key/api-key.module';
+import { ApiKeyModule } from 'src/modules/api-key/api-key.module';
 
 @Module({
     controllers: [],

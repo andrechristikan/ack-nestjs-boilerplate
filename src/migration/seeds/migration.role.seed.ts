@@ -4,7 +4,7 @@ import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from 'src/common/policy/constants/policy.enum.constant';
+} from 'src/modules/policy/constants/policy.enum.constant';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
 
@@ -17,7 +17,7 @@ export class MigrationRoleSeed {
         describe: 'seed roles',
     })
     async seeds(): Promise<void> {
-        const dataAdmin: RoleCreateRequestDto[] = [
+        const data: RoleCreateRequestDto[] = [
             {
                 name: 'superadmin',
                 type: ENUM_POLICY_ROLE_TYPE.SUPER_ADMIN,
@@ -34,12 +34,7 @@ export class MigrationRoleSeed {
             {
                 name: 'member',
                 type: ENUM_POLICY_ROLE_TYPE.USER,
-                permissions: [
-                    {
-                        subject: ENUM_POLICY_SUBJECT.API_KEY,
-                        action: [ENUM_POLICY_ACTION.MANAGE],
-                    },
-                ],
+                permissions: [],
             },
             {
                 name: 'user',
@@ -49,9 +44,9 @@ export class MigrationRoleSeed {
         ];
 
         try {
-            await this.roleService.createMany(dataAdmin);
+            await this.roleService.createMany(data);
         } catch (err: any) {
-            throw new Error(err.message);
+            throw new Error(err);
         }
 
         return;
@@ -65,7 +60,7 @@ export class MigrationRoleSeed {
         try {
             await this.roleService.deleteMany({});
         } catch (err: any) {
-            throw new Error(err.message);
+            throw new Error(err);
         }
 
         return;

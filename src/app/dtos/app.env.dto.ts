@@ -6,6 +6,7 @@ import {
     IsNumber,
     IsOptional,
     IsString,
+    IsUrl,
 } from 'class-validator';
 import {
     ENUM_APP_ENVIRONMENT,
@@ -78,10 +79,6 @@ export class AppEnvDto {
 
     @IsNotEmpty()
     @IsString()
-    AUTH_JWT_SUBJECT: string;
-
-    @IsNotEmpty()
-    @IsString()
     AUTH_JWT_AUDIENCE: string;
 
     @IsNotEmpty()
@@ -151,4 +148,9 @@ export class AppEnvDto {
     @IsOptional()
     @IsString()
     SENTRY_DSN?: string;
+
+    @IsNotEmpty()
+    @IsUrl()
+    @IsString()
+    CLIENT_URL: string;
 }

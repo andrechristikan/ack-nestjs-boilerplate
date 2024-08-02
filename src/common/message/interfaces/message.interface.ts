@@ -16,9 +16,9 @@ export interface IMessageValidationError {
 }
 
 export interface IMessageValidationImportErrorParam {
-    sheetName: string;
+    sheetName?: string;
     row: number;
-    error: ValidationError[];
+    errors: ValidationError[];
 }
 
 export interface IMessageValidationImportError

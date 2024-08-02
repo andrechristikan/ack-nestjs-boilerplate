@@ -45,6 +45,10 @@ export interface IUserDoc
     mobileNumber?: IUserMobileNumberDoc;
 }
 
+export interface IUserCheckIds {
+    found: IUserDoc[];
+    notFound: IUserDoc[];
+}
 export interface IUserPasswordHistoryEntity
     extends Omit<UserPasswordHistoryEntity, 'by'> {
     by: UserEntity;

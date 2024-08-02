@@ -16,7 +16,10 @@ async function bootstrap() {
     const env: string = configService.get<string>('app.env');
     const timezone: string = configService.get<string>('app.timezone');
     const host: string = configService.get<string>('app.http.host');
-    const port: number = configService.get<number>('app.http.port');
+    const port: number =
+        env !== ENUM_APP_ENVIRONMENT.MIGRATION
+            ? configService.get<number>('app.http.port')
+            : 9999;
     const globalPrefix: string = configService.get<string>('app.globalPrefix');
     const versioningPrefix: string = configService.get<string>(
         'app.urlVersion.prefix'
@@ -30,7 +33,7 @@ async function bootstrap() {
     );
     const jobEnable: boolean = configService.get<boolean>('app.jobEnable');
 
-    const logger = new Logger();
+    const logger = new Logger('NestJs-Main');
     process.env.NODE_ENV = env;
     process.env.TZ = timezone;
 
@@ -77,9 +80,6 @@ async function bootstrap() {
     if (env === ENUM_APP_ENVIRONMENT.MIGRATION) {
         logger.log(`On migrate the schema`, 'NestApplication');
 
-        await new Promise(resolve => {
-            setTimeout(resolve, 5000);
-        });
         await app.close();
 
         logger.log(`Migrate done`, 'NestApplication');

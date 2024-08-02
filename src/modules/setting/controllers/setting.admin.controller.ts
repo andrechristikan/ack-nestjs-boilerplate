@@ -7,21 +7,10 @@ import {
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 import { PaginationQuery } from 'src/common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
-import {
-    ENUM_POLICY_ACTION,
-    ENUM_POLICY_ROLE_TYPE,
-    ENUM_POLICY_SUBJECT,
-} from 'src/common/policy/constants/policy.enum.constant';
-import {
-    PolicyAbilityProtected,
-    PolicyRoleProtected,
-} from 'src/common/policy/decorators/policy.decorator';
 import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
 import {
     Response,
@@ -31,6 +20,17 @@ import {
     IResponse,
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
+import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
+import { AuthJwtAccessProtected } from 'src/modules/auth/decorators/auth.jwt.decorator';
+import {
+    ENUM_POLICY_ACTION,
+    ENUM_POLICY_ROLE_TYPE,
+    ENUM_POLICY_SUBJECT,
+} from 'src/modules/policy/constants/policy.enum.constant';
+import {
+    PolicyAbilityProtected,
+    PolicyRoleProtected,
+} from 'src/modules/policy/decorators/policy.decorator';
 import { SETTING_DEFAULT_AVAILABLE_SEARCH } from 'src/modules/setting/constants/setting.list.constant';
 import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/modules/setting/constants/setting.status-code.constant';
 import {
@@ -64,7 +64,7 @@ export class SettingAdminController {
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
-    @ApiKeyPublicProtected()
+    @ApiKeyProtected()
     @Get('/list')
     async list(
         @PaginationQuery({

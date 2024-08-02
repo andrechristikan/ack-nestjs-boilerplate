@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from 'src/common/auth/auth.module';
+import { AuthModule } from 'src/modules/auth/auth.module';
 import { CountryModule } from 'src/modules/country/country.module';
 import { EmailModule } from 'src/modules/email/email.module';
 import { HelloPublicController } from 'src/modules/hello/controllers/hello.public.controller';

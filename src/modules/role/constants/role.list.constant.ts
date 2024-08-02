@@ -1,4 +1,4 @@
-import { ENUM_POLICY_ROLE_TYPE } from 'src/common/policy/constants/policy.enum.constant';
+import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/constants/policy.enum.constant';
 
 export const ROLE_DEFAULT_AVAILABLE_SEARCH = ['name'];
 export const ROLE_DEFAULT_IS_ACTIVE = [true, false];

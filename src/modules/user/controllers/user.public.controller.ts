@@ -9,10 +9,10 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { ClientSession, Connection } from 'mongoose';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
-import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
-import { AuthService } from 'src/common/auth/services/auth.service';
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
+import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
+import { AuthService } from 'src/modules/auth/services/auth.service';
 import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/constants/country.status-code.constant';
 import { CountryService } from 'src/modules/country/services/country.service';
 import { EmailService } from 'src/modules/email/services/email.service';
@@ -45,7 +45,7 @@ export class UserPublicController {
 
     @UserPublicSignUpDoc()
     @Response('user.signUp')
-    @ApiKeyPublicProtected()
+    @ApiKeyProtected()
     @Post('/sign-up')
     async signUp(
         @Body()

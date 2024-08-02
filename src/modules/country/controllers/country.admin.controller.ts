@@ -1,7 +1,7 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ApiKeyPublicProtected } from 'src/common/api-key/decorators/api-key.decorator';
-import { AuthJwtAccessProtected } from 'src/common/auth/decorators/auth.jwt.decorator';
+import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
+import { AuthJwtAccessProtected } from 'src/modules/auth/decorators/auth.jwt.decorator';
 import {
     PaginationQuery,
     PaginationQueryFilterInBoolean,
@@ -12,11 +12,11 @@ import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from 'src/common/policy/constants/policy.enum.constant';
+} from 'src/modules/policy/constants/policy.enum.constant';
 import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
-} from 'src/common/policy/decorators/policy.decorator';
+} from 'src/modules/policy/decorators/policy.decorator';
 import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
 import {
     Response,
@@ -59,7 +59,7 @@ export class CountryAdminController {
     })
     @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
     @AuthJwtAccessProtected()
-    @ApiKeyPublicProtected()
+    @ApiKeyProtected()
     @Get('/list')
     async list(
         @PaginationQuery({

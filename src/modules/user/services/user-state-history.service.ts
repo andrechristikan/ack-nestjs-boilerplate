@@ -33,7 +33,10 @@ export class UserStateHistoryService implements IUserStateHistoryService {
     ): Promise<IUserStateHistoryDoc[]> {
         return this.userStateHistoryRepository.findAll<IUserStateHistoryDoc>(
             find,
-            { ...options, join: true }
+            {
+                ...options,
+                join: true,
+            }
         );
     }
 

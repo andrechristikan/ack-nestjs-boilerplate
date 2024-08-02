@@ -2,10 +2,10 @@ import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-
 @Injectable()
 export class UserStatusPipe implements PipeTransform {
     private readonly status: ENUM_USER_STATUS[];
+
     constructor(status: ENUM_USER_STATUS[]) {
         this.status = status;
     }

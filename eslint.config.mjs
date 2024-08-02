@@ -46,4 +46,28 @@ export default [
             '@typescript-eslint/no-explicit-any': 'off',
         },
     },
+    {
+        name: 'ts/test',
+        files: ['test/**/*.{ts,tsx}'],
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+            parser: tsParser,
+            parserOptions: {
+                project: 'tsconfig.json',
+                tsconfigRootDir: '.',
+            },
+        },
+        linterOptions: {
+            noInlineConfig: false,
+            reportUnusedDisableDirectives: true,
+        },
+        plugins: {
+            '@typescript-eslint': tsEsLintPlugin,
+        },
+        rules: {
+            ...rules,
+            '@typescript-eslint/no-explicit-any': 'off',
+        },
+    },
 ];

@@ -67,8 +67,23 @@ export class MessageService implements IMessageService {
     ): IMessageValidationError[] {
         const messages: IMessageValidationError[] = [];
         for (const error of errors) {
-            const property = error.property ?? 'unknown';
+            const property = error.property;
             const constraints: string[] = Object.keys(error.constraints ?? []);
+
+            if (constraints.length === 0) {
+                messages.push({
+                    property,
+                    message: this.setMessage('request.unknownMessage', {
+                        customLanguage: options?.customLanguage,
+                        properties: {
+                            property,
+                            value: error.value,
+                        },
+                    }),
+                });
+
+                continue;
+            }
 
             for (const constraint of constraints) {
                 const message = this.setMessage(`request.${constraint}`, {
@@ -96,7 +111,7 @@ export class MessageService implements IMessageService {
         return errors.map(val => ({
             row: val.row,
             sheetName: val.sheetName,
-            errors: this.setValidationMessage(val.error, options),
+            errors: this.setValidationMessage(val.errors, options),
         }));
     }
 }

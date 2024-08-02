@@ -8,7 +8,6 @@ import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.re
 export class UserShortResponseDto extends OmitType(UserListResponseDto, [
     'role',
     'status',
-    'blocked',
     'photo',
     'createdAt',
     'updatedAt',
@@ -20,10 +19,6 @@ export class UserShortResponseDto extends OmitType(UserListResponseDto, [
     @ApiHideProperty()
     @Exclude()
     status: ENUM_USER_STATUS;
-
-    @ApiHideProperty()
-    @Exclude()
-    blocked: boolean;
 
     @ApiHideProperty()
     @Exclude()

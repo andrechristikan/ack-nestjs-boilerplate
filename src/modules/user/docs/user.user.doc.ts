@@ -9,7 +9,7 @@ import {
 } from 'src/common/doc/decorators/doc.decorator';
 import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
 
-export function UserAuthUpdateMobileNumberDoc(): MethodDecorator {
+export function UserUserUpdateMobileNumberDoc(): MethodDecorator {
     return applyDecorators(
         Doc({
             summary: 'user update mobile number',
@@ -24,19 +24,5 @@ export function UserAuthUpdateMobileNumberDoc(): MethodDecorator {
         }),
         DocGuard({ role: true }),
         DocResponse('user.updateMobileNumber')
-    );
-}
-
-export function UserUserDeleteSelfDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'user delete their account',
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true }),
-        DocResponse('user.deleteSelf')
     );
 }

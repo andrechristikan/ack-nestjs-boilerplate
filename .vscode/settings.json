@@ -5,31 +5,30 @@
         "typescript",
         "typescriptreact"
     ],
-    "eslint.experimental.useFlatConfig": true,
+    "search.exclude": {
+        "package-lock.json": true
+    },
+
+    "editor.tabSize": 4,
+    "eslint.useFlatConfig": true,
+    "eslint.debug": true,
+    "eslint.options": {
+        "overrideConfigFile": "eslint.config.mjs"
+    },
+
     "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+    "editor.formatOnSave": false,
     "editor.codeActionsOnSave": {
         "source.fixAll.eslint": "explicit"
     },
+
     "typescript.preferences.importModuleSpecifier": "non-relative",
-    "[typescript]": {
+    "[typescript][json][jsonc][yaml]": {
+        "editor.formatOnSave": true,
         "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "[dockercompose]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "[yaml]": {
-        "editor.defaultFormatter": "redhat.vscode-yaml"
     },
     "[dockerfile]": {
-        "editor.defaultFormatter": "foxundermoon.shell-format"
-    },
-    "[handlebars]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "[javascript]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "[dotenv]": {
-        "editor.defaultFormatter": "foxundermoon.shell-format"
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "ms-azuretools.vscode-docker"
     }
 }

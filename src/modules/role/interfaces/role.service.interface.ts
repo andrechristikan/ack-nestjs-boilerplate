@@ -8,7 +8,7 @@ import {
     IDatabaseManyOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/common/policy/constants/policy.enum.constant';
+import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/constants/policy.enum.constant';
 import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from 'src/modules/role/dtos/request/role.update.request.dto';
 import { RoleGetResponseDto } from 'src/modules/role/dtos/response/role.get.response.dto';

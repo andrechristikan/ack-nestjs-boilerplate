@@ -1,8 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-    IFileReadOptions,
-    IFileRows,
-} from 'src/common/file/interfaces/file.interface';
+import { IFileRows } from 'src/common/file/interfaces/file.interface';
 import { IFileService } from 'src/common/file/interfaces/file.service.interface';
 import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/constants/helper.enum.constant';
 import { utils, write, read } from 'xlsx';
@@ -29,10 +26,7 @@ export class FileService implements IFileService {
         return buff;
     }
 
-    writeExcel<T = any>(
-        rows: IFileRows<T>[],
-        options?: IFileReadOptions
-    ): Buffer {
+    writeExcel<T = any>(rows: IFileRows<T>[]): Buffer {
         // workbook
         const workbook = utils.book_new();
 
@@ -50,16 +44,12 @@ export class FileService implements IFileService {
         const buff: Buffer = write(workbook, {
             type: 'buffer',
             bookType: ENUM_HELPER_FILE_EXCEL_TYPE.XLSX,
-            password: options?.password,
         });
 
         return buff;
     }
 
-    writeExcelFromArray<T = any>(
-        rows: T[][],
-        options?: IFileReadOptions
-    ): Buffer {
+    writeExcelFromArray<T = any>(rows: T[][]): Buffer {
         // workbook
         const workbook = utils.book_new();
 
@@ -71,7 +61,6 @@ export class FileService implements IFileService {
         const buff: Buffer = write(workbook, {
             type: 'buffer',
             bookType: ENUM_HELPER_FILE_EXCEL_TYPE.XLSX,
-            password: options?.password,
         });
 
         return buff;
@@ -95,11 +84,10 @@ export class FileService implements IFileService {
         };
     }
 
-    readExcel(file: Buffer, options?: IFileReadOptions): IFileRows[] {
+    readExcel(file: Buffer): IFileRows[] {
         // workbook
         const workbook = read(file, {
             type: 'buffer',
-            password: options?.password,
         });
 
         // worksheet
