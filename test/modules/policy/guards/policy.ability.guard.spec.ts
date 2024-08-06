@@ -10,8 +10,8 @@ import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/constants/policy.enum.constant';
-import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/modules/policy/constants/policy.status-code.constant';
+} from 'src/modules/policy/enums/policy.enum';
+import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/modules/policy/enums/policy.status-code.enum';
 import { PolicyAbilityFactory } from 'src/modules/policy/factories/policy.factory';
 import { PolicyAbilityGuard } from 'src/modules/policy/guards/policy.ability.guard';
 import { IPolicyAbility } from 'src/modules/policy/interfaces/policy.interface';

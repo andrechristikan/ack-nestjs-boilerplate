@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmpty, IsEnum, IsNotEmpty, IsString, IsUUID } from 'class-validator';
-import { ENUM_USER_PASSWORD_TYPE } from 'src/modules/user/constants/user.enum.constant';
+import { ENUM_USER_PASSWORD_TYPE } from 'src/modules/user/enums/user.enum';
 
 export class UserCreatePasswordRequestDto {
     @ApiProperty({

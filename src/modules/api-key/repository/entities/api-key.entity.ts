@@ -4,7 +4,7 @@ import {
     DatabaseProp,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
-import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/constants/api-key.enum.constant';
+import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/enums/api-key.enum';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
 
 export const ApiKeyTableName = 'ApiKeys';

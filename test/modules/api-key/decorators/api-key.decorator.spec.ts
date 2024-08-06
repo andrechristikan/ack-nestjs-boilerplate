@@ -3,12 +3,12 @@ import { createMock } from '@golevelup/ts-jest';
 import { ExecutionContext, SetMetadata, UseGuards } from '@nestjs/common';
 import { ROUTE_ARGS_METADATA } from '@nestjs/common/constants';
 import { API_KEY_X_TYPE_META_KEY } from 'src/modules/api-key/constants/api-key.constant';
-import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/constants/api-key.enum.constant';
 import {
     ApiKeyPayload,
     ApiKeyProtected,
     ApiKeySystemProtected,
 } from 'src/modules/api-key/decorators/api-key.decorator';
+import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/enums/api-key.enum';
 import { ApiKeyXApiKeyGuard } from 'src/modules/api-key/guards/x-api-key/api-key.x-api-key.guard';
 import { ApiKeyXApiKeyTypeGuard } from 'src/modules/api-key/guards/x-api-key/api-key.x-api-key.type.guard';
 

@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
+import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
 
 export const UserDocParamsId = [
     {

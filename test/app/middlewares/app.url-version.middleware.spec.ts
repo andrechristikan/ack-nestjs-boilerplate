@@ -4,8 +4,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Response } from 'express';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ConfigService } from '@nestjs/config';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 import { AppUrlVersionMiddleware } from 'src/app/middlewares/app.url-version.middleware';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 
 describe('AppUrlVersionMiddleware', () => {
     describe('Development Environment', () => {

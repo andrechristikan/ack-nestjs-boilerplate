@@ -1,6 +1,6 @@
 import { UnsupportedMediaTypeException } from '@nestjs/common';
-import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
-import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
+import { ENUM_FILE_MIME } from 'src/common/file/enums/file.enum';
+import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/enums/file.status-code.enum';
 import { FileTypePipe } from 'src/common/file/pipes/file.type.pipe';
 
 describe('FileTypePipe', () => {

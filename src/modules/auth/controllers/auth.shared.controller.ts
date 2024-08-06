@@ -11,7 +11,6 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ClientSession, Connection } from 'mongoose';
-import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -27,8 +26,8 @@ import { DatabaseConnection } from 'src/common/database/decorators/database.deco
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { EmailService } from 'src/modules/email/services/email.service';
-import { ENUM_USER_PASSWORD_TYPE } from 'src/modules/user/constants/user.enum.constant';
-import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
+import { ENUM_USER_PASSWORD_TYPE } from 'src/modules/user/enums/user.enum';
+import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
 import { UserPasswordHistoryService } from 'src/modules/user/services/user-password-history.service';
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthRefreshResponseDto } from 'src/modules/auth/dtos/response/auth.refresh.response.dto';
@@ -37,6 +36,7 @@ import {
     AuthSharedChangePasswordDoc,
     AuthSharedRefreshDoc,
 } from 'src/modules/auth/docs/auth.shared.doc';
+import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
 
 @ApiTags('modules.shared.auth')
 @Controller({

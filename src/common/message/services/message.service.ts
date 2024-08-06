@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { ValidationError } from 'class-validator';
 import { I18nService } from 'nestjs-i18n';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
 import {
     IMessageErrorOptions,
     IMessageSetOptions,

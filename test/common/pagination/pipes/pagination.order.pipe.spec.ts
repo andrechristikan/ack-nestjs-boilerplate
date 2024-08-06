@@ -1,6 +1,6 @@
 import { PipeTransform } from '@nestjs/common';
 import { PAGINATION_DEFAULT_ORDER_DIRECTION } from 'src/common/pagination/constants/pagination.constant';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
 import { PaginationOrderPipe } from 'src/common/pagination/pipes/pagination.order.pipe';
 
 describe('PaginationOrderPipe', () => {

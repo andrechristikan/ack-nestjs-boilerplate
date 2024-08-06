@@ -1,12 +1,12 @@
 import 'reflect-metadata';
 import { faker } from '@faker-js/faker';
 import { plainToInstance } from 'class-transformer';
+import { AppEnvDto } from 'src/app/dtos/app.env.dto';
 import {
     ENUM_APP_ENVIRONMENT,
     ENUM_APP_TIMEZONE,
-} from 'src/app/constants/app.enum.constant';
-import { AppEnvDto } from 'src/app/dtos/app.env.dto';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
+} from 'src/app/enums/app.enum';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
 
 describe('AppEnvDto', () => {
     afterEach(() => {

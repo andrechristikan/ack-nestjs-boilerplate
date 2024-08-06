@@ -26,13 +26,13 @@ import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/constants/policy.enum.constant';
+} from 'src/modules/policy/enums/policy.enum';
 import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
 } from 'src/modules/policy/decorators/policy.decorator';
 import { SETTING_DEFAULT_AVAILABLE_SEARCH } from 'src/modules/setting/constants/setting.list.constant';
-import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/modules/setting/constants/setting.status-code.constant';
+import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/modules/setting/enums/setting.status-code.enum';
 import {
     SettingAdminGetDoc,
     SettingAdminListDoc,

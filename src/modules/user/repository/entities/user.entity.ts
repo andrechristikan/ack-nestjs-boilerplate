@@ -15,7 +15,7 @@ import {
     ENUM_USER_GENDER,
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
-} from 'src/modules/user/constants/user.enum.constant';
+} from 'src/modules/user/enums/user.enum';
 
 export const UserTableName = 'Users';
 

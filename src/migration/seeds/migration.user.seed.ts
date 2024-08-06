@@ -8,7 +8,7 @@ import { RoleService } from 'src/modules/role/services/role.service';
 import {
     ENUM_USER_PASSWORD_TYPE,
     ENUM_USER_SIGN_UP_FROM,
-} from 'src/modules/user/constants/user.enum.constant';
+} from 'src/modules/user/enums/user.enum';
 import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
 import { CountryService } from 'src/modules/country/services/country.service';
 import { UserPasswordHistoryService } from 'src/modules/user/services/user-password-history.service';

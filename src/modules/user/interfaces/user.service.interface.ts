@@ -19,7 +19,7 @@ import {
     IUserEntity,
 } from 'src/modules/user/interfaces/user.interface';
 import { UserUpdatePasswordAttemptRequestDto } from 'src/modules/user/dtos/request/user.update-password-attempt.request.dto';
-import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/constants/user.enum.constant';
+import { ENUM_USER_SIGN_UP_FROM } from 'src/modules/user/enums/user.enum';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
 import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
 import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';

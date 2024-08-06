@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { AuthJwtRefreshPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
 import { AuthJwtRefreshStrategy } from 'src/modules/auth/guards/jwt/strategies/auth.jwt.refresh.strategy';
-import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/constants/auth.enum.constant';
+import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
 
 describe('AuthJwtRefreshStrategy', () => {
     let strategy: AuthJwtRefreshStrategy;

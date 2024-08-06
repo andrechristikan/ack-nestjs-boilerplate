@@ -34,7 +34,7 @@ import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/constants/policy.enum.constant';
+} from 'src/modules/policy/enums/policy.enum';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
 import {
     AuthJwtAccessProtected,
@@ -44,13 +44,12 @@ import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.p
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 import { EmailService } from 'src/modules/email/services/email.service';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/enums/role.status-code.enum';
 import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import { AuthService } from 'src/modules/auth/services/auth.service';
 import { ClientSession, Connection } from 'mongoose';
-import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
-import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/constants/country.status-code.constant';
+import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
 import { CountryService } from 'src/modules/country/services/country.service';
 import { UserLoginHistoryService } from 'src/modules/user/services/user-login-history.service';
 import { UserStateHistoryService } from 'src/modules/user/services/user-state-history.service';
@@ -72,7 +71,7 @@ import {
     ENUM_USER_PASSWORD_TYPE,
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
-} from 'src/modules/user/constants/user.enum.constant';
+} from 'src/modules/user/enums/user.enum';
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
 import { UserParsePipe } from 'src/modules/user/pipes/user.parse.pipe';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
@@ -92,10 +91,11 @@ import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserLoginHistoryListResponseDto } from 'src/modules/user/dtos/response/user-login-history.list.response.dto';
 import { UserLoginHistoryDoc } from 'src/modules/user/repository/entities/user-login-history.entity';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
-import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
+import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
 import { UserNotSelfPipe } from 'src/modules/user/pipes/user.not-self.pipe';
 import { UserStatusPipe } from 'src/modules/user/pipes/user.status.pipe';
 import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
+import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
 
 @ApiTags('modules.admin.user')
 @Controller({

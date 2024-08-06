@@ -15,16 +15,14 @@ export default [
             '.github/*',
             '.husky/*',
             'coverage/*',
-            'data/*',
             'dist/*',
             'docs/*',
-            'logs/*',
             'node_modules/*',
         ],
     },
     {
         name: 'ts/default',
-        files: ['src/**/*.{ts,tsx}', 'test/**/*.{ts,tsx}'],
+        files: ['src/**/*.ts'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'module',
@@ -48,7 +46,7 @@ export default [
     },
     {
         name: 'ts/test',
-        files: ['test/**/*.{ts,tsx}'],
+        files: ['test/**/*.ts'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'module',

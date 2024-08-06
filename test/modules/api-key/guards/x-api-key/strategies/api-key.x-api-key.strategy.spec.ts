@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/constants/api-key.status-code.constant';
 import { ApiKeyXApiKeyStrategy } from 'src/modules/api-key/guards/x-api-key/strategies/api-key.x-api-key.strategy';
 import { ApiKeyService } from 'src/modules/api-key/services/api-key.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/enums/api-key.status-code.enum';
 
 describe('ApiKeyXApiKeyStrategy', () => {
     let strategy: ApiKeyXApiKeyStrategy;

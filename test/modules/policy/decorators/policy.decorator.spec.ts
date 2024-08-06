@@ -4,14 +4,14 @@ import {
     POLICY_ROLE_META_KEY,
 } from 'src/modules/policy/constants/policy.constant';
 import {
-    ENUM_POLICY_ACTION,
-    ENUM_POLICY_ROLE_TYPE,
-    ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/constants/policy.enum.constant';
-import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
 } from 'src/modules/policy/decorators/policy.decorator';
+import {
+    ENUM_POLICY_ACTION,
+    ENUM_POLICY_ROLE_TYPE,
+    ENUM_POLICY_SUBJECT,
+} from 'src/modules/policy/enums/policy.enum';
 import { PolicyAbilityGuard } from 'src/modules/policy/guards/policy.ability.guard';
 import { PolicyRoleGuard } from 'src/modules/policy/guards/policy.role.guard';
 

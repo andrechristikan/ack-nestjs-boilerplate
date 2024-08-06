@@ -119,7 +119,7 @@
     "typescript-eslint": "^8.0.0"
   },
   "lint-staged": {
-    "**/*.{ts}": [
+    "**/*.ts": [
       "prettier --write '{src,test}/**/*.ts'",
       "eslint",
       "stop-only --file"

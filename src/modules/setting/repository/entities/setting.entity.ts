@@ -4,7 +4,7 @@ import {
     DatabaseProp,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
-import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/constants/setting.enum.constant';
+import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/enums/setting.enum';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
 
 export const SettingTableName = 'Settings';

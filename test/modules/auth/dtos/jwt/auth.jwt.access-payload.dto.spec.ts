@@ -1,15 +1,15 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/constants/auth.enum.constant';
 import {
     AuthJwtAccessPayloadDto,
     AuthJwtAccessPayloadPermissionDto,
 } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
+import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/constants/policy.enum.constant';
+} from 'src/modules/policy/enums/policy.enum';
 
 describe('AuthJwtAccessPayloadDto', () => {
     it('should be defined', () => {

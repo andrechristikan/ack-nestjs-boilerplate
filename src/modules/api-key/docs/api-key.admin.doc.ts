@@ -1,6 +1,5 @@
 import { applyDecorators, HttpStatus } from '@nestjs/common';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
     Doc,
     DocAuth,
@@ -12,12 +11,13 @@ import {
     DocResponse,
     DocResponsePaging,
 } from 'src/common/doc/decorators/doc.decorator';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
 import {
     ApiKeyDocParamsId,
     ApiKeyDocQueryIsActive,
     ApiKeyDocQueryType,
 } from 'src/modules/api-key/constants/api-key.doc.constant';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/constants/api-key.status-code.constant';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/enums/api-key.status-code.enum';
 import { ApiKeyCreateRequestDto } from 'src/modules/api-key/dtos/request/api-key.create.request.dto';
 import { ApiKeyUpdateDateRequestDto } from 'src/modules/api-key/dtos/request/api-key.update-date.request.dto';
 import { ApiKeyUpdateRequestDto } from 'src/modules/api-key/dtos/request/api-key.update.request.dto';

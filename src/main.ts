@@ -7,7 +7,7 @@ import swaggerInit from 'src/swagger';
 import { plainToInstance } from 'class-transformer';
 import { AppEnvDto } from 'src/app/dtos/app.env.dto';
 import { MessageService } from 'src/common/message/services/message.service';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 
 async function bootstrap() {
     const app: NestApplication = await NestFactory.create(AppModule);

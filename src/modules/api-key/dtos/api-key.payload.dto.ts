@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty } from '@nestjs/swagger';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
-import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/constants/api-key.enum.constant';
+import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/enums/api-key.enum';
 
 export class ApiKeyPayloadDto extends DatabaseIdResponseDto {
     @ApiProperty({

@@ -4,7 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Response } from 'express';
 import { lastValueFrom, of } from 'rxjs';
 import { FileService } from 'src/common/file/services/file.service';
-import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/constants/helper.enum.constant';
+import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/enums/helper.enum';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { RESPONSE_FILE_EXCEL_TYPE_META_KEY } from 'src/common/response/constants/response.constant';
 import { ResponseFileExcelInterceptor } from 'src/common/response/interceptors/response.file.interceptor';

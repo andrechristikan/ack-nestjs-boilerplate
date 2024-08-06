@@ -2,11 +2,11 @@ import { ExecutionContext } from '@nestjs/common';
 import { createMock } from '@golevelup/ts-jest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Response } from 'express';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { AppCustomLanguageMiddleware } from 'src/app/middlewares/app.custom-language.middleware';
 import { HelperArrayService } from 'src/common/helper/services/helper.array.service';
 import { ConfigService } from '@nestjs/config';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
 
 describe('AppCustomLanguageMiddleware', () => {
     let middleware: AppCustomLanguageMiddleware;

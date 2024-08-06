@@ -1,6 +1,6 @@
 import { UnprocessableEntityException } from '@nestjs/common';
 import { IsString, ValidationError } from 'class-validator';
-import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
+import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/enums/file.status-code.enum';
 import { FileImportException } from 'src/common/file/exceptions/file.import.exception';
 import { FileExcelValidationPipe } from 'src/common/file/pipes/file.excel-validation.pipe';
 

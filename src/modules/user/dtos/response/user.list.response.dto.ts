@@ -5,7 +5,7 @@ import { RoleListResponseDto } from 'src/modules/role/dtos/response/role.list.re
 import {
     ENUM_USER_GENDER,
     ENUM_USER_SIGN_UP_FROM,
-} from 'src/modules/user/constants/user.enum.constant';
+} from 'src/modules/user/enums/user.enum';
 import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
 import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
 

@@ -1,9 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/constants/api-key.status-code.constant';
 import { ApiKeyNotExpiredPipe } from 'src/modules/api-key/pipes/api-key.expired.pipe';
 import { ApiKeyDoc } from 'src/modules/api-key/repository/entities/api-key.entity';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/enums/api-key.status-code.enum';
 
 const mockHelperDateService = {
     create: jest.fn(),

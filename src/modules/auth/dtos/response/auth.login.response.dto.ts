@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/constants/policy.enum.constant';
+import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 
 export class AuthLoginResponseDto {
     @ApiProperty({

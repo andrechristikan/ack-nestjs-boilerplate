@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/constants/api-key.status-code.constant';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/enums/api-key.status-code.enum';
 import { ApiKeyParsePipe } from 'src/modules/api-key/pipes/api-key.parse.pipe';
 import { ApiKeyService } from 'src/modules/api-key/services/api-key.service';
 

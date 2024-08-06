@@ -7,7 +7,7 @@ import {
     DatabaseQueryNotEqual,
     DatabaseQueryOr,
 } from 'src/common/database/decorators/database.decorator';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
 
 describe('PaginationService', () => {

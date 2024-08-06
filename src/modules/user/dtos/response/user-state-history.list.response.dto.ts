@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
-import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
+import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
 import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
 
 export class UserStateHistoryListResponseDto extends DatabaseIdResponseDto {

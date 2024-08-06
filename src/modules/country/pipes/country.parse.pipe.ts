@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, PipeTransform } from '@nestjs/common';
-import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/constants/country.status-code.constant';
+import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
 import { CountryDoc } from 'src/modules/country/repository/entities/country.entity';
 import { CountryService } from 'src/modules/country/services/country.service';
 

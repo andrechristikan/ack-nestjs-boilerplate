@@ -6,9 +6,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Response } from 'express';
 import { lastValueFrom, of } from 'rxjs';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
 import { MessageService } from 'src/common/message/services/message.service';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
 import {
     RESPONSE_MESSAGE_PATH_META_KEY,
     RESPONSE_MESSAGE_PROPERTIES_META_KEY,

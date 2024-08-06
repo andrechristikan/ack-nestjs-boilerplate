@@ -1,6 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/modules/auth/constants/auth.status-code.constant';
 import { Test, TestingModule } from '@nestjs/testing';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/modules/auth/enums/auth.status-code.enum';
 import { AuthJwtRefreshGuard } from 'src/modules/auth/guards/jwt/auth.jwt.refresh.guard';
 
 describe('AuthJwtRefreshGuard', () => {

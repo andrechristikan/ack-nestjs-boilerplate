@@ -1,7 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Response, NextFunction } from 'express';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 
 @Injectable()

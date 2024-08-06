@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
+import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/enums/file.status-code.enum';
 import { FileImportException } from 'src/common/file/exceptions/file.import.exception';
 import { IMessageValidationImportErrorParam } from 'src/common/message/interfaces/message.interface';
 

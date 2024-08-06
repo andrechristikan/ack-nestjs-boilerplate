@@ -1,7 +1,7 @@
 import { PipeTransform } from '@nestjs/common';
 import moment from 'moment';
 import { DatabaseQueryEqual } from 'src/common/database/decorators/database.decorator';
-import { ENUM_PAGINATION_FILTER_DATE_TIME_OPTIONS } from 'src/common/pagination/constants/pagination.enum.constant';
+import { ENUM_PAGINATION_FILTER_DATE_TIME_OPTIONS } from 'src/common/pagination/enums/pagination.enum';
 import { PaginationFilterDatePipe } from 'src/common/pagination/pipes/pagination.filter-date.pipe';
 
 describe('PaginationFilterDatePipe', () => {

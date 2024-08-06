@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
-import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/constants/setting.enum.constant';
+import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/enums/setting.enum';
 
 export class SettingGetResponseDto<T = any> extends DatabaseIdResponseDto {
     @ApiProperty({

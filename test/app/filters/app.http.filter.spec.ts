@@ -6,7 +6,7 @@ import { MessageService } from 'src/common/message/services/message.service';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { AppHttpFilter } from 'src/app/filters/app.http.filter';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
 
 describe('AppHttpFilter', () => {
     let appHttpFilter: AppHttpFilter;

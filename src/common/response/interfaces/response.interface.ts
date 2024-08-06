@@ -1,6 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { IFileRows } from 'src/common/file/interfaces/file.interface';
-import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/constants/helper.enum.constant';
+import { ENUM_HELPER_FILE_EXCEL_TYPE } from 'src/common/helper/enums/helper.enum';
 import { IMessageOptionsProperties } from 'src/common/message/interfaces/message.interface';
 
 export interface IResponseCustomProperty {

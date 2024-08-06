@@ -10,7 +10,7 @@ import {
     IHelperDateRoundDownOptions,
     IHelperDateSetTimeOptions,
 } from 'src/common/helper/interfaces/helper.interface';
-import { ENUM_HELPER_DATE_DIFF } from 'src/common/helper/constants/helper.enum.constant';
+import { ENUM_HELPER_DATE_DIFF } from 'src/common/helper/enums/helper.enum';
 
 class MockConfigService {
     get(): string {

@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/constants/api-key.status-code.constant';
 import { ApiKeyXApiKeyGuard } from 'src/modules/api-key/guards/x-api-key/api-key.x-api-key.guard';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/enums/api-key.status-code.enum';
 
 describe('ApiKeyXApiKeyGuard', () => {
     let guard: ApiKeyXApiKeyGuard;

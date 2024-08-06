@@ -3,7 +3,7 @@ import { version } from 'package.json';
 import {
     ENUM_APP_ENVIRONMENT,
     ENUM_APP_TIMEZONE,
-} from 'src/app/constants/app.enum.constant';
+} from 'src/app/enums/app.enum';
 
 export default registerAs(
     'app',

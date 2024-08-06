@@ -13,9 +13,9 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { ClientSession, Connection } from 'mongoose';
-import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/constants/app.status-code.constant';
+import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
-import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/constants/auth.enum.constant';
+import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
 import { AuthJwtPayload } from 'src/modules/auth/decorators/auth.jwt.decorator';
 import { AuthSocialGoogleProtected } from 'src/modules/auth/decorators/auth.social.decorator';
 import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
@@ -25,7 +25,7 @@ import { AuthService } from 'src/modules/auth/services/auth.service';
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/enums/role.status-code.enum';
 import { AuthLoginResponseDto } from 'src/modules/auth/dtos/response/auth.login.response.dto';
 import {
     AuthPublicLoginCredentialDoc,
@@ -35,8 +35,8 @@ import { AuthLoginRequestDto } from 'src/modules/auth/dtos/request/auth.login.re
 import { UserService } from 'src/modules/user/services/user.service';
 import { UserLoginHistoryService } from 'src/modules/user/services/user-login-history.service';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
-import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/constants/user.status-code.constant';
-import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
+import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
+import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 
 @ApiTags('modules.public.auth')

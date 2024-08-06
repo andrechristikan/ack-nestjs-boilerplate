@@ -5,7 +5,7 @@ import {
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
-import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
+import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
 import { UserEntity } from 'src/modules/user/repository/entities/user.entity';
 
 export const UserStateHistoryTableName = 'UserStateHistories';

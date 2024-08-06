@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/enums/request.status-code.enum';
 import { RequestValidationException } from 'src/common/request/exceptions/request.validation.exception';
 
 describe('RequestValidationException', () => {

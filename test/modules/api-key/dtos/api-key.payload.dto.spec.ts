@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import { faker } from '@faker-js/faker';
-import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/constants/api-key.enum.constant';
 import { ApiKeyPayloadDto } from 'src/modules/api-key/dtos/api-key.payload.dto';
 import { plainToInstance } from 'class-transformer';
+import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/enums/api-key.enum';
 
 describe('ApiKeyPayloadDto', () => {
     it('should create a valid ApiKeyPayloadDto object', () => {

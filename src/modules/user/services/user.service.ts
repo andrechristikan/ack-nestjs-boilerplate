@@ -29,7 +29,7 @@ import {
 import {
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
-} from 'src/modules/user/constants/user.enum.constant';
+} from 'src/modules/user/enums/user.enum';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
 import { UserUpdatePasswordAttemptRequestDto } from 'src/modules/user/dtos/request/user.update-password-attempt.request.dto';
 import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';

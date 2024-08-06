@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { plainToInstance } from 'class-transformer';
 import { AuthLoginResponseDto } from 'src/modules/auth/dtos/response/auth.login.response.dto';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/constants/policy.enum.constant';
+import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 
 describe('AuthLoginResponseDto', () => {
     afterEach(() => {

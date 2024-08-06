@@ -1,4 +1,3 @@
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import {
     PaginationQuery,
     PaginationQueryFilterDate,
@@ -9,6 +8,7 @@ import {
     PaginationQueryFilterNotEqual,
     PaginationQueryFilterStringContain,
 } from 'src/common/pagination/decorators/pagination.decorator';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
 import { PaginationFilterDatePipe } from 'src/common/pagination/pipes/pagination.filter-date.pipe';
 import { PaginationFilterEqualPipe } from 'src/common/pagination/pipes/pagination.filter-equal.pipe';
 import { PaginationFilterInBooleanPipe } from 'src/common/pagination/pipes/pagination.filter-in-boolean.pipe';

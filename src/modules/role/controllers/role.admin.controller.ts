@@ -33,7 +33,7 @@ import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/constants/policy.enum.constant';
+} from 'src/modules/policy/enums/policy.enum';
 import {
     PolicyAbilityProtected,
     PolicyRoleProtected,
@@ -43,7 +43,7 @@ import {
     ROLE_DEFAULT_IS_ACTIVE,
     ROLE_DEFAULT_POLICY_ROLE_TYPE,
 } from 'src/modules/role/constants/role.list.constant';
-import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/constants/role.status-code.constant';
+import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/enums/role.status-code.enum';
 import {
     RoleAdminActiveDoc,
     RoleAdminCreateDoc,

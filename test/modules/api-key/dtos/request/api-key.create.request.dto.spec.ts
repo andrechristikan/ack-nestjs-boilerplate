@@ -1,8 +1,8 @@
-import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/constants/api-key.enum.constant';
 import { faker } from '@faker-js/faker';
 import { ApiKeyCreateRawRequestDto } from 'src/modules/api-key/dtos/request/api-key.create.request.dto';
 import { plainToInstance } from 'class-transformer';
 import { validate, ValidationError } from 'class-validator';
+import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/enums/api-key.enum';
 
 describe('ApiKeyCreateRawRequestDto', () => {
     it('should create a valid', () => {

@@ -25,7 +25,7 @@ import {
     IResponse,
     IResponsePaging,
 } from 'src/common/response/interfaces/response.interface';
-import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/constants/api-key.enum.constant';
+import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/enums/api-key.enum';
 import {
     API_KEY_DEFAULT_AVAILABLE_SEARCH,
     API_KEY_DEFAULT_IS_ACTIVE,
@@ -58,7 +58,7 @@ import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/constants/policy.enum.constant';
+} from 'src/modules/policy/enums/policy.enum';
 import {
     PolicyAbilityProtected,
     PolicyRoleProtected,

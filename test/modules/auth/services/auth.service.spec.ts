@@ -6,10 +6,10 @@ import { HelperHashService } from 'src/common/helper/services/helper.hash.servic
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { AuthService } from 'src/modules/auth/services/auth.service';
 import { plainToInstance } from 'class-transformer';
-import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/constants/auth.enum.constant';
 import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
 import verifyAppleToken from 'verify-apple-id-token';
 import { OAuth2Client } from 'google-auth-library';
+import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
 
 jest.mock('verify-apple-id-token');
 

@@ -196,6 +196,8 @@ describe('HelperEncryptionService', () => {
                 throw new Error('Invalid token');
             });
 
+            jest.spyOn(service['logger'], 'error').mockImplementation();
+
             const opts: IHelperJwtOptions = {
                 audience: 'audience',
                 expiredIn: 1,

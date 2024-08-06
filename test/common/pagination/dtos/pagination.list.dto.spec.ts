@@ -1,6 +1,6 @@
 import { plainToInstance } from 'class-transformer';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
 
 describe('PaginationListDto', () => {
     afterEach(() => {

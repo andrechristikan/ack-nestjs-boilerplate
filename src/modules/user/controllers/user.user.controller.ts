@@ -5,7 +5,7 @@ import {
     AuthJwtAccessProtected,
     AuthJwtPayload,
 } from 'src/modules/auth/decorators/auth.jwt.decorator';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/constants/policy.enum.constant';
+import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import { PolicyRoleProtected } from 'src/modules/policy/decorators/policy.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';

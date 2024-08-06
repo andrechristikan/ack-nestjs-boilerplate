@@ -2,7 +2,6 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ApiKeySystemProtected } from 'src/modules/api-key/decorators/api-key.decorator';
 import { FILE_SIZE_IN_BYTES } from 'src/common/file/constants/file.constant';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
 import { MessageService } from 'src/common/message/services/message.service';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
@@ -12,6 +11,7 @@ import { SettingLanguageResponseDto } from 'src/modules/setting/dtos/response/se
 import { SettingTimezoneResponseDto } from 'src/modules/setting/dtos/response/setting.timezone.response.dto';
 import { SettingService } from 'src/modules/setting/services/setting.service';
 import { SettingSystemCoreDoc } from 'src/modules/setting/docs/setting.system.doc';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
 
 @ApiTags('modules.system.setting')
 @Controller({

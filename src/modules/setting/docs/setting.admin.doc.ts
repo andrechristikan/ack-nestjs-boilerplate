@@ -1,6 +1,5 @@
 import { HttpStatus, applyDecorators } from '@nestjs/common';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
     Doc,
     DocAuth,
@@ -11,8 +10,9 @@ import {
     DocResponse,
     DocResponsePaging,
 } from 'src/common/doc/decorators/doc.decorator';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
 import { SettingDocParamsId } from 'src/modules/setting/constants/setting.doc.constant';
-import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/modules/setting/constants/setting.status-code.constant';
+import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/modules/setting/enums/setting.status-code.enum';
 import { SettingUpdateRequestDto } from 'src/modules/setting/dtos/request/setting.update.request.dto';
 import { SettingGetResponseDto } from 'src/modules/setting/dtos/response/setting.get.response.dto';
 import { SettingListResponseDto } from 'src/modules/setting/dtos/response/setting.list.response.dto';

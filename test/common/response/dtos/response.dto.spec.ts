@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { plainToInstance } from 'class-transformer';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
 import { ResponseDto } from 'src/common/response/dtos/response.dto';
 
 describe('ResponseDto', () => {

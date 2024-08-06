@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { plainToInstance } from 'class-transformer';
-import { ENUM_FILE_MIME } from 'src/common/file/constants/file.enum.constant';
+import { ENUM_FILE_MIME } from 'src/common/file/enums/file.enum';
 import { CountryGetResponseDto } from 'src/modules/country/dtos/response/country.get.response.dto';
 
 describe('CountryGetResponseDto', () => {

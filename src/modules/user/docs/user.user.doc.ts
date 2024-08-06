@@ -1,5 +1,4 @@
 import { applyDecorators } from '@nestjs/common';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
     Doc,
     DocAuth,
@@ -7,6 +6,7 @@ import {
     DocRequest,
     DocResponse,
 } from 'src/common/doc/decorators/doc.decorator';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
 import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
 
 export function UserUserUpdateMobileNumberDoc(): MethodDecorator {

@@ -5,8 +5,8 @@ import { AuthJwtAccessStrategy } from 'src/modules/auth/guards/jwt/strategies/au
 import {
     ENUM_POLICY_ROLE_TYPE,
     ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/constants/policy.enum.constant';
-import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/constants/auth.enum.constant';
+} from 'src/modules/policy/enums/policy.enum';
+import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
 
 describe('AuthJwtAccessStrategy', () => {
     let strategy: AuthJwtAccessStrategy;

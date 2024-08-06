@@ -8,10 +8,10 @@ import {
     IDatabaseManyOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { ENUM_HELPER_DATE_FORMAT } from 'src/common/helper/constants/helper.enum.constant';
+import { ENUM_HELPER_DATE_FORMAT } from 'src/common/helper/enums/helper.enum';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperNumberService } from 'src/common/helper/services/helper.number.service';
-import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/constants/setting.enum.constant';
+import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/enums/setting.enum';
 import { SettingCreateRequestDto } from 'src/modules/setting/dtos/request/setting.create.request.dto';
 import { SettingUpdateRequestDto } from 'src/modules/setting/dtos/request/setting.update.request.dto';
 import { SettingGetResponseDto } from 'src/modules/setting/dtos/response/setting.get.response.dto';

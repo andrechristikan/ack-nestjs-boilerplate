@@ -1,11 +1,11 @@
 import { applyDecorators } from '@nestjs/common';
-import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/constants/doc.enum.constant';
 import {
     Doc,
     DocAuth,
     DocRequest,
     DocResponse,
 } from 'src/common/doc/decorators/doc.decorator';
+import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
 import { AuthLoginRequestDto } from 'src/modules/auth/dtos/request/auth.login.request.dto';
 import { AuthLoginResponseDto } from 'src/modules/auth/dtos/response/auth.login.response.dto';
 

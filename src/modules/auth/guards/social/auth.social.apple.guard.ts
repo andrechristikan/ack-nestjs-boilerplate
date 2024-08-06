@@ -5,7 +5,7 @@ import {
     UnauthorizedException,
 } from '@nestjs/common';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/modules/auth/constants/auth.status-code.constant';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/modules/auth/enums/auth.status-code.enum';
 import { AuthSocialApplePayloadDto } from 'src/modules/auth/dtos/social/auth.social.apple-payload.dto';
 import { AuthService } from 'src/modules/auth/services/auth.service';
 

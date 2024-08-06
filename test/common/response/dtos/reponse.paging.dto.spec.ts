@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { plainToInstance } from 'class-transformer';
-import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/constants/message.enum.constant';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { ENUM_MESSAGE_LANGUAGE } from 'src/common/message/enums/message.enum';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
 import { ResponsePagingDto } from 'src/common/response/dtos/response.paging.dto';
 
 describe('ResponsePagingDto', () => {

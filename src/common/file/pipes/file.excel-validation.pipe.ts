@@ -1,11 +1,11 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { PipeTransform } from '@nestjs/common/interfaces';
-import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
 import { IMessageValidationImportErrorParam } from 'src/common/message/interfaces/message.interface';
 import { FileImportException } from 'src/common/file/exceptions/file.import.exception';
 import { plainToInstance } from 'class-transformer';
 import { ValidationError, validate } from 'class-validator';
 import { IFileRows } from 'src/common/file/interfaces/file.interface';
+import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/enums/file.status-code.enum';
 
 //! only for excel and use after FileParsePipe
 @Injectable()

@@ -7,7 +7,7 @@ import {
     IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { ENUM_USER_STATUS } from 'src/modules/user/constants/user.enum.constant';
+import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
 import { UserStateHistoryListResponseDto } from 'src/modules/user/dtos/response/user-state-history.list.response.dto';
 import { IUserStateHistoryService } from 'src/modules/user/interfaces/user-state-history.service.interface';
 import {

@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/constants/api-key.status-code.constant';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/enums/api-key.status-code.enum';
 import { ApiKeyIsActivePipe } from 'src/modules/api-key/pipes/api-key.is-active.pipe';
 import { ApiKeyDoc } from 'src/modules/api-key/repository/entities/api-key.entity';
 

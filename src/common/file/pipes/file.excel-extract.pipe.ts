@@ -3,8 +3,8 @@ import { PipeTransform } from '@nestjs/common/interfaces';
 import {
     ENUM_FILE_MIME,
     ENUM_FILE_MIME_EXCEL,
-} from 'src/common/file/constants/file.enum.constant';
-import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/constants/file.status-code.constant';
+} from 'src/common/file/enums/file.enum';
+import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/enums/file.status-code.enum';
 import { IFile, IFileRows } from 'src/common/file/interfaces/file.interface';
 import { FileService } from 'src/common/file/services/file.service';
 

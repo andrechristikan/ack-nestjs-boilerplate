@@ -8,9 +8,9 @@ import { createMock } from '@golevelup/ts-jest';
 import { throwError } from 'rxjs';
 import { Test, TestingModule } from '@nestjs/testing';
 import { RequestTimeoutInterceptor } from 'src/common/request/interceptors/request.timeout.interceptor';
-import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/constants/request.status-code.constant';
 import { marbles } from 'rxjs-marbles/jest';
 import { REQUEST_CUSTOM_TIMEOUT_VALUE_META_KEY } from 'src/common/request/constants/request.constant';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/enums/request.status-code.enum';
 
 describe('RequestTimeoutInterceptor', () => {
     let interceptor: RequestTimeoutInterceptor;

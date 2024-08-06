@@ -3,10 +3,10 @@ import { createMock } from '@golevelup/ts-jest';
 import { Test } from '@nestjs/testing';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { ConfigService } from '@nestjs/config';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
 import { Response } from 'express';
 import { AppCorsMiddleware } from 'src/app/middlewares/app.cors.middleware';
 import cors from 'cors';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 
 /* eslint-disable */
 jest.mock('cors', () =>

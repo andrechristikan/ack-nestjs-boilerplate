@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException } from '@nestjs/common';
-import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/modules/auth/constants/auth.status-code.constant';
 import { AuthJwtAccessGuard } from 'src/modules/auth/guards/jwt/auth.jwt.access.guard';
+import { ENUM_AUTH_STATUS_CODE_ERROR } from 'src/modules/auth/enums/auth.status-code.enum';
 
 describe('AuthJwtAccessGuard', () => {
     let guard: AuthJwtAccessGuard;

@@ -6,14 +6,14 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/modules/policy/constants/policy.status-code.constant';
+import { ENUM_POLICY_STATUS_CODE_ERROR } from 'src/modules/policy/enums/policy.status-code.enum';
 import { PolicyAbilityFactory } from 'src/modules/policy/factories/policy.factory';
 import {
     IPolicyAbility,
     IPolicyAbilityHandlerCallback,
 } from 'src/modules/policy/interfaces/policy.interface';
 import { POLICY_ABILITY_META_KEY } from 'src/modules/policy/constants/policy.constant';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/constants/policy.enum.constant';
+import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 
 @Injectable()
 export class PolicyAbilityGuard implements CanActivate {

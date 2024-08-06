@@ -5,7 +5,7 @@ import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_REQUEST_ACTION,
     ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/constants/policy.enum.constant';
+} from 'src/modules/policy/enums/policy.enum';
 import {
     IPolicyAbility,
     IPolicyAbilityFlat,

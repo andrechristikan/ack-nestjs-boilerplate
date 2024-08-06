@@ -7,7 +7,7 @@ import {
 } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
-import { ENUM_USER_PASSWORD_TYPE } from 'src/modules/user/constants/user.enum.constant';
+import { ENUM_USER_PASSWORD_TYPE } from 'src/modules/user/enums/user.enum';
 import { UserStateHistoryListResponseDto } from 'src/modules/user/dtos/response/user-state-history.list.response.dto';
 
 export class UserPasswordHistoryListResponseDto extends IntersectionType(

@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { plainToInstance } from 'class-transformer';
 import mongoose from 'mongoose';
-import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/constants/api-key.enum.constant';
 import {
     ApiKeyCreateRawRequestDto,
     ApiKeyCreateRequestDto,
@@ -27,6 +26,7 @@ import {
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
+import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/enums/api-key.enum';
 
 const mockHelperStringService = {
     random: jest.fn(),

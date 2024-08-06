@@ -2,7 +2,7 @@ import { AuthJwtAccessPayloadPermissionDto } from 'src/modules/auth/dtos/jwt/aut
 import {
     ENUM_POLICY_ACTION,
     ENUM_POLICY_SUBJECT,
-} from 'src/modules/policy/constants/policy.enum.constant';
+} from 'src/modules/policy/enums/policy.enum';
 import { PolicyAbilityFactory } from 'src/modules/policy/factories/policy.factory';
 
 describe('PolicyAbilityFactory', () => {

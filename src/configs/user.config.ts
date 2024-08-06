@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 
 export default registerAs(
     'user',

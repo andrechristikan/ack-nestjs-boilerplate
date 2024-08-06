@@ -12,7 +12,7 @@ import {
     ThrottlerModuleOptions,
 } from '@nestjs/throttler';
 import { SentryModule } from '@ntegral/nestjs-sentry';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 import { AppGeneralFilter } from 'src/app/filters/app.general.filter';
 import { AppHttpFilter } from 'src/app/filters/app.http.filter';
 import { AppValidationImportFilter } from 'src/app/filters/app.validation-import.filter';

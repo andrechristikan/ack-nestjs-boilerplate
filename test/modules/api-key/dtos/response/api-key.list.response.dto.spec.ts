@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import { ApiKeyListResponseDto } from 'src/modules/api-key/dtos/response/api-key.list.response.dto';
 import { faker } from '@faker-js/faker';
-import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/constants/api-key.enum.constant';
 import { plainToInstance } from 'class-transformer';
+import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/enums/api-key.enum';
 
 describe('ApiKeyListResponseDto', () => {
     it('should create a valid ApiKeyListResponseDto object', () => {

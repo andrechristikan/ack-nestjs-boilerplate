@@ -3,8 +3,8 @@ import { ApiKeyXApiKeyTypeGuard } from 'src/modules/api-key/guards/x-api-key/api
 import { Reflector } from '@nestjs/core';
 import { BadRequestException, ExecutionContext } from '@nestjs/common';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
-import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/constants/api-key.enum.constant';
-import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/constants/api-key.status-code.constant';
+import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/enums/api-key.enum';
+import { ENUM_API_KEY_STATUS_CODE_ERROR } from 'src/modules/api-key/enums/api-key.status-code.enum';
 
 const mockReflector = {
     getAllAndOverride: jest.fn(),

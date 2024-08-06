@@ -2,7 +2,7 @@ import { faker } from '@faker-js/faker';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import mongoose from 'mongoose';
-import { ENUM_APP_ENVIRONMENT } from 'src/app/constants/app.enum.constant';
+import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 import { DatabaseService } from 'src/common/database/services/database.service';
 
 jest.mock('mongoose', () => ({

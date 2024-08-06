@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/constants/policy.enum.constant';
+import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 
 export const RoleDocQueryIsActive = [
     {

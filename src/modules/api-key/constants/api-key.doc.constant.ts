@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/constants/api-key.enum.constant';
+import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/enums/api-key.enum';
 
 export const ApiKeyDocQueryIsActive = [
     {

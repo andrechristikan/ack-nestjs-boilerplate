@@ -25,7 +25,7 @@ import {
     IDatabaseRawGetTotalOptions,
     IDatabaseJoin,
 } from 'src/common/database/interfaces/database.interface';
-import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/constants/pagination.enum.constant';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
 
 export abstract class DatabaseMongoUUIDRepositoryAbstract<
     Entity,
