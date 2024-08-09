@@ -1,11 +1,11 @@
 import { faker } from '@faker-js/faker';
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
-import { Exclude, Type } from 'class-transformer';
-import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
+import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { DatabaseDto } from 'src/common/database/dtos/database.dto';
 import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import { RolePermissionDto } from 'src/modules/role/dtos/role.permission.dto';
 
-export class RoleGetResponseDto extends DatabaseIdResponseDto {
+export class RoleGetResponseDto extends DatabaseDto {
     @ApiProperty({
         description: 'Name of role',
         example: faker.person.jobTitle(),
@@ -46,24 +46,4 @@ export class RoleGetResponseDto extends DatabaseIdResponseDto {
     })
     @Type(() => RolePermissionDto)
     permissions: RolePermissionDto;
-
-    @ApiProperty({
-        description: 'Date created at',
-        example: faker.date.recent(),
-        required: true,
-        nullable: false,
-    })
-    createdAt: Date;
-
-    @ApiProperty({
-        description: 'Date updated at',
-        example: faker.date.recent(),
-        required: true,
-        nullable: false,
-    })
-    updatedAt: Date;
-
-    @ApiHideProperty()
-    @Exclude()
-    deletedAt?: Date;
 }

@@ -1,10 +1,10 @@
 import { faker } from '@faker-js/faker';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
-import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
-import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
+import { DatabaseDto } from 'src/common/database/dtos/database.dto';
+import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 
-export class CountryGetResponseDto extends DatabaseIdResponseDto {
+export class CountryGetResponseDto extends DatabaseDto {
     @ApiProperty({
         required: true,
         type: String,

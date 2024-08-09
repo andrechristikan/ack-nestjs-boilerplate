@@ -7,7 +7,6 @@ import {
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 import { PaginationQuery } from 'src/common/pagination/decorators/pagination.decorator';
 import { PaginationListDto } from 'src/common/pagination/dtos/pagination.list.dto';
 import { PaginationService } from 'src/common/pagination/services/pagination.service';
@@ -44,6 +43,7 @@ import { SettingListResponseDto } from 'src/modules/setting/dtos/response/settin
 import { SettingParsePipe } from 'src/modules/setting/pipes/setting.parse.pipe';
 import { SettingDoc } from 'src/modules/setting/repository/entities/setting.entity';
 import { SettingService } from 'src/modules/setting/services/setting.service';
+import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 
 @ApiTags('modules.admin.setting')
 @Controller({

@@ -11,6 +11,8 @@ import { AuthModule } from 'src/modules/auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import configs from 'src/configs';
 import { ApiKeyModule } from 'src/modules/api-key/api-key.module';
+import { PaginationModule } from 'src/common/pagination/pagination.module';
+import { FileModule } from 'src/common/file/file.module';
 
 @Module({
     controllers: [],
@@ -37,6 +39,8 @@ import { ApiKeyModule } from 'src/modules/api-key/api-key.module';
         PolicyModule.forRoot(),
         AuthModule.forRoot(),
         ApiKeyModule.forRoot(),
+        PaginationModule.forRoot(),
+        FileModule.forRoot(),
     ],
 })
 export class CommonModule {}

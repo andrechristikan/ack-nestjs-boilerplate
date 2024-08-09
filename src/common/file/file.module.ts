@@ -1,10 +1,16 @@
-import { Module } from '@nestjs/common';
+import { DynamicModule, Global, Module } from '@nestjs/common';
 import { FileService } from 'src/common/file/services/file.service';
 
-@Module({
-    providers: [FileService],
-    exports: [FileService],
-    controllers: [],
-    imports: [],
-})
-export class FileModule {}
+@Global()
+@Module({})
+export class FileModule {
+    static forRoot(): DynamicModule {
+        return {
+            module: FileModule,
+            providers: [FileService],
+            exports: [FileService],
+            imports: [],
+            controllers: [],
+        };
+    }
+}

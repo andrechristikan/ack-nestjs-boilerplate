@@ -8,7 +8,7 @@ import {
     AwsSESSendBulkRecipientsDto,
     AwsSESSendDto,
     AwsSESUpdateTemplateDto,
-} from 'src/common/aws/dtos/aws.ses.dto';
+} from 'src/modules/aws/dtos/aws.ses.dto';
 
 describe('aws.ses.dto.ts', () => {
     it('should create a valid AwsSESCreateTemplateDto object', () => {

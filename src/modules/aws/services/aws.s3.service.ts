@@ -1,12 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-    IAwsS3PutItem,
-    IAwsS3PutItemOptions,
-    IAwsS3PutItemWithAclOptions,
-    IAwsS3RandomFilename,
-} from 'src/common/aws/interfaces/aws.interface';
-import { IAwsS3Service } from 'src/common/aws/interfaces/aws.s3-service.interface';
 import { Readable } from 'stream';
 import {
     S3Client,
@@ -53,12 +46,19 @@ import {
     CompletedPart,
 } from '@aws-sdk/client-s3';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
-import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
+import { IAwsS3Service } from 'src/modules/aws/interfaces/aws.s3-service.interface';
+import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
+import {
+    IAwsS3PutItem,
+    IAwsS3PutItemOptions,
+    IAwsS3PutItemWithAclOptions,
+    IAwsS3RandomFilename,
+} from 'src/modules/aws/interfaces/aws.interface';
 import {
     AwsS3MultipartDto,
     AwsS3MultipartPartDto,
-} from 'src/common/aws/dtos/aws.s3-multipart.dto';
-import { AWS_S3_MAX_PART_NUMBER } from 'src/common/aws/constants/aws.constant';
+} from 'src/modules/aws/dtos/aws.s3-multipart.dto';
+import { AWS_S3_MAX_PART_NUMBER } from 'src/modules/aws/constants/aws.constant';
 
 @Injectable()
 export class AwsS3Service implements IAwsS3Service {

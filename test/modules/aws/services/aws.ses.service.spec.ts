@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { SESClient } from '@aws-sdk/client-ses';
-import { AwsSESService } from 'src/common/aws/services/aws.ses.service';
+import { AwsSESService } from 'src/modules/aws/services/aws.ses.service';
 import {
     AwsSESGetTemplateDto,
     AwsSESCreateTemplateDto,
-} from 'src/common/aws/dtos/aws.ses.dto';
+} from 'src/modules/aws/dtos/aws.ses.dto';
 
 const mockConfigService = {
     get: jest.fn().mockImplementation((key: string) => {

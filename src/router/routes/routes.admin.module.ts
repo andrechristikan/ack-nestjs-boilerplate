@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { PaginationModule } from 'src/common/pagination/pagination.module';
 import { ApiKeyModule } from 'src/modules/api-key/api-key.module';
 import { ApiKeyAdminController } from 'src/modules/api-key/controllers/api-key.admin.controller';
 import { AuthModule } from 'src/modules/auth/auth.module';
@@ -24,7 +23,6 @@ import { UserModule } from 'src/modules/user/user.module';
     exports: [],
     imports: [
         ApiKeyModule,
-        PaginationModule,
         SettingModule,
         RoleModule,
         UserModule,

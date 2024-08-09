@@ -1,5 +1,4 @@
 import { applyDecorators, HttpStatus } from '@nestjs/common';
-import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 import {
     Doc,
     DocAuth,
@@ -25,6 +24,7 @@ import { ApiKeyCreateResponseDto } from 'src/modules/api-key/dtos/response/api-k
 import { ApiKeyGetResponseDto } from 'src/modules/api-key/dtos/response/api-key.get.response.dto';
 import { ApiKeyListResponseDto } from 'src/modules/api-key/dtos/response/api-key.list.response.dto';
 import { ApiKeyResetResponseDto } from 'src/modules/api-key/dtos/response/api-key.reset.dto';
+import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 
 export function ApiKeyAdminListDoc(): MethodDecorator {
     return applyDecorators(

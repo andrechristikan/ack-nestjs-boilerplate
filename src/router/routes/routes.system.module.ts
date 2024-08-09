@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TerminusModule } from '@nestjs/terminus';
-import { PaginationModule } from 'src/common/pagination/pagination.module';
 import { CountrySystemController } from 'src/modules/country/controllers/country.system.controller';
 import { CountryModule } from 'src/modules/country/country.module';
 import { HealthSystemController } from 'src/modules/health/controllers/health.system.controller';
@@ -23,7 +22,6 @@ import { UserModule } from 'src/modules/user/user.module';
     imports: [
         HealthModule,
         TerminusModule,
-        PaginationModule,
         SettingModule,
         CountryModule,
         UserModule,

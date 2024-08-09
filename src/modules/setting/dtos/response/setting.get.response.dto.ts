@@ -1,10 +1,8 @@
-import { faker } from '@faker-js/faker';
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
-import { Exclude } from 'class-transformer';
-import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
+import { ApiProperty } from '@nestjs/swagger';
+import { DatabaseDto } from 'src/common/database/dtos/database.dto';
 import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/enums/setting.enum';
 
-export class SettingGetResponseDto<T = any> extends DatabaseIdResponseDto {
+export class SettingGetResponseDto<T = any> extends DatabaseDto {
     @ApiProperty({
         description: 'Name of setting',
         example: 'MaintenanceOn',
@@ -41,24 +39,4 @@ export class SettingGetResponseDto<T = any> extends DatabaseIdResponseDto {
         nullable: false,
     })
     value: T;
-
-    @ApiProperty({
-        description: 'Date created at',
-        example: faker.date.recent(),
-        required: true,
-        nullable: false,
-    })
-    createdAt: Date;
-
-    @ApiProperty({
-        description: 'Date updated at',
-        example: faker.date.recent(),
-        required: true,
-        nullable: false,
-    })
-    updatedAt: Date;
-
-    @ApiHideProperty()
-    @Exclude()
-    deletedAt?: Date;
 }

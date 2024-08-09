@@ -1,8 +1,5 @@
 import { Controller, Get, Post, UploadedFile } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
-import { IAwsS3RandomFilename } from 'src/common/aws/interfaces/aws.interface';
-import { AwsS3Service } from 'src/common/aws/services/aws.s3.service';
 import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
 import { ENUM_FILE_MIME_IMAGE } from 'src/common/file/enums/file.enum';
 import { IFile } from 'src/common/file/interfaces/file.interface';
@@ -16,6 +13,9 @@ import {
     AuthJwtPayload,
 } from 'src/modules/auth/decorators/auth.jwt.decorator';
 import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
+import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
+import { IAwsS3RandomFilename } from 'src/modules/aws/interfaces/aws.interface';
+import { AwsS3Service } from 'src/modules/aws/services/aws.s3.service';
 import {
     UserSharedProfileDoc,
     UserSharedUploadProfileDoc,

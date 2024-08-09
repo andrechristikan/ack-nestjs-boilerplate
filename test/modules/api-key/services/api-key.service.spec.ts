@@ -18,10 +18,11 @@ import { ApiKeyRepository } from 'src/modules/api-key/repository/repositories/ap
 import { ApiKeyService } from 'src/modules/api-key/services/api-key.service';
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
-    IDatabaseFindOneOptions,
-    IDatabaseManyOptions,
+    IDatabaseOptions,
     IDatabaseSaveOptions,
+    IDatabaseUpdateManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
@@ -67,10 +68,11 @@ describe('ApiKeyService', () => {
     let helperStringService: HelperStringService;
 
     let findAllOpts: IDatabaseFindAllOptions;
-    let findOneOpts: IDatabaseFindOneOptions;
+    let findOneOpts: IDatabaseOptions;
     let createOpts: IDatabaseCreateOptions;
     let saveOpts: IDatabaseSaveOptions;
-    let manyOpts: IDatabaseManyOptions;
+    let deleteManyOpts: IDatabaseDeleteManyOptions;
+    let updateManyOpts: IDatabaseUpdateManyOptions;
     let apiKeyDoc: ApiKeyDoc;
     let find: Record<string, any>;
     let id: string;
@@ -90,6 +92,7 @@ describe('ApiKeyService', () => {
         createdAt: faker.date.recent(),
         updatedAt: faker.date.recent(),
         deletedAt: faker.date.recent(),
+        deleted: false,
     };
 
     beforeEach(async () => {
@@ -134,11 +137,18 @@ describe('ApiKeyService', () => {
 
         (configService.get as jest.Mock).mockReturnValueOnce('get');
 
-        findAllOpts = {};
+        findAllOpts = {
+            order: {},
+            paging: {
+                limit: 1,
+                offset: 0,
+            },
+        };
         findOneOpts = {};
         createOpts = {};
         saveOpts = {};
-        manyOpts = {};
+        deleteManyOpts = {};
+        updateManyOpts = {};
         apiKeyDoc = {} as ApiKeyDoc;
         // apiKeyEntity = ;
         find = {};
@@ -316,7 +326,9 @@ describe('ApiKeyService', () => {
             (apiKeyRepository.deleteMany as jest.Mock).mockReturnValueOnce(
                 true
             );
-            expect(await service.deleteMany(find, manyOpts)).toEqual(true);
+            expect(await service.deleteMany(find, deleteManyOpts)).toEqual(
+                true
+            );
         });
     });
 
@@ -325,7 +337,9 @@ describe('ApiKeyService', () => {
             (apiKeyRepository.updateMany as jest.Mock).mockReturnValueOnce(
                 true
             );
-            expect(await service.inactiveManyByEndDate(manyOpts)).toEqual(true);
+            expect(await service.inactiveManyByEndDate(updateManyOpts)).toEqual(
+                true
+            );
         });
     });
 

@@ -61,14 +61,9 @@
 
 ## Todo
 
-* [x] Refactor to version 6, more straightforward
-* [x] Add message remaining
-* [ ] Refactor unit test
-* [ ] Update Documentation, add behaviors
-* [ ] Update Documentation, and include an diagram for easier comprehension
-* [ ] Add Redis
-* [ ] Move to stateful Authorization Token (security and ux reason)
-* [ ] Implement GraphQL, just an options for running ?
+* [ ] Move doc into 1 docs
+* [ ] Add Redis for bullmq (cronjob or queue), and cached.
+* [ ] Move to stateful Authorization Token (security and ux reason). Session login, password history, and user activity
 
 ## Prerequisites
 

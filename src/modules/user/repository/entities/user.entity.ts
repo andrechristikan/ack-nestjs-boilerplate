@@ -1,7 +1,3 @@
-import {
-    AwsS3Entity,
-    AwsS3Schema,
-} from 'src/common/aws/repository/entities/aws.s3.entity';
 import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.abstract';
 import {
     DatabaseEntity,
@@ -9,6 +5,10 @@ import {
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
+import {
+    AwsS3Entity,
+    AwsS3Schema,
+} from 'src/modules/aws/repository/entities/aws.s3.entity';
 import { CountryEntity } from 'src/modules/country/repository/entities/country.entity';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
 import {

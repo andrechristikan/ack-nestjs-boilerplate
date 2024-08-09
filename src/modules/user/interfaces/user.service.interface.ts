@@ -1,5 +1,4 @@
 import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
-import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
 import {
     IDatabaseCreateOptions,
     IDatabaseDeleteManyOptions,
@@ -28,6 +27,7 @@ import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.re
 import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
 import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
 import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
+import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 
 export interface IUserService {
     findAll(

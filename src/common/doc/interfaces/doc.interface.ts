@@ -49,16 +49,7 @@ export interface IDocResponseOptions<T = any> {
     dto?: ClassConstructor<T>;
 }
 
-export interface IDocResponsePagingOptions<T = any>
-    extends Omit<IDocResponseOptions<T>, 'dto'> {
-    dto: ClassConstructor<T>;
-}
-
 export interface IDocResponseFileOptions
     extends Omit<IDocResponseOptions, 'dto' | 'statusCode'> {
     fileType?: ENUM_FILE_MIME;
-}
-
-export interface IDocErrorOptions<T> extends IDocResponseOptions<T> {
-    messagePath: string;
 }

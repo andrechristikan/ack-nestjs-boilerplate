@@ -1,12 +1,12 @@
 import {
-    AwsS3MultipartPartEntity,
-    AwsS3MultipartPartSchema,
-} from 'src/common/aws/repository/entities/aws.s3-multipart-part.entity';
-import {
     DatabaseEntity,
     DatabaseProp,
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
+import {
+    AwsS3MultipartPartEntity,
+    AwsS3MultipartPartSchema,
+} from 'src/modules/aws/repository/entities/aws.s3-multipart-part.entity';
 
 @DatabaseEntity({ timestamps: false, _id: false })
 export class AwsS3MultipartEntity {

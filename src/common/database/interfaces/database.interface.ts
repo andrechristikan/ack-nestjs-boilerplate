@@ -45,9 +45,6 @@ export interface IDatabaseSoftDeleteOptions
 
 // Bulk
 export type IDatabaseCreateManyOptions = Pick<IDatabaseOptions, 'session'>;
-export interface IDatabaseCreateMany {
-    _id: string[];
-}
 export interface IDatabaseUpdateManyOptions
     extends Pick<IDatabaseOptions, 'session' | 'withDeleted'> {
     upsert?: boolean;

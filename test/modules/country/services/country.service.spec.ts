@@ -33,6 +33,7 @@ describe('CountryService', () => {
         timeZone: 'Asia/Jakarta',
         createdAt: faker.date.recent(),
         updatedAt: faker.date.recent(),
+        deleted: false,
     } as CountryEntity;
 
     const countryDoc: CountryDoc = {
@@ -55,6 +56,7 @@ describe('CountryService', () => {
         timeZone: 'Asia/Singapore',
         createdAt: faker.date.recent(),
         updatedAt: faker.date.recent(),
+        deleted: false,
     } as CountryEntity;
 
     const countryOtherDoc: CountryDoc = {
@@ -546,6 +548,43 @@ describe('CountryService', () => {
             );
             expect(result).toBe(true);
         });
+
+        it('should throw an error', async () => {
+            const dto: CountryCreateRequestDto[] = [
+                {
+                    name: faker.location.country(),
+                    alpha2Code: faker.location.countryCode(),
+                    alpha3Code: faker.location.countryCode(),
+                    numericCode: faker.location.countryCode(),
+                    continent: faker.location.county(),
+                    fipsCode: faker.location.countryCode(),
+                    phoneCode: ['62'],
+                    timeZone: faker.lorem.word(),
+                    domain: faker.internet.domainSuffix(),
+                },
+                {
+                    name: faker.location.country(),
+                    alpha2Code: faker.location.countryCode(),
+                    alpha3Code: faker.location.countryCode(),
+                    numericCode: faker.location.countryCode(),
+                    continent: faker.location.county(),
+                    fipsCode: faker.location.countryCode(),
+                    phoneCode: ['62'],
+                    timeZone: faker.lorem.word(),
+                    domain: faker.internet.domainSuffix(),
+                },
+            ];
+            mockCountryRepository.createMany.mockRejectedValue(
+                new Error('test error')
+            );
+
+            try {
+                await service.createMany(dto);
+            } catch (err: any) {
+                expect(err).toBeInstanceOf(Error);
+                expect(err).toEqual(new Error('test error'));
+            }
+        });
     });
 
     describe('deleteMany', () => {
@@ -572,6 +611,21 @@ describe('CountryService', () => {
                 { session }
             );
             expect(result).toBe(true);
+        });
+
+        it('should throw an error', async () => {
+            mockCountryRepository.deleteMany.mockRejectedValue(
+                new Error('test error')
+            );
+
+            const session: any = jest.fn();
+
+            try {
+                await service.deleteMany({}, { session });
+            } catch (err: any) {
+                expect(err).toBeInstanceOf(Error);
+                expect(err).toEqual(new Error('test error'));
+            }
         });
     });
 

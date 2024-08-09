@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
+import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 
 export class AwsS3MultipartPartDto {
     @ApiProperty({

@@ -4,7 +4,7 @@ import { plainToInstance } from 'class-transformer';
 import {
     AwsS3MultipartDto,
     AwsS3MultipartPartDto,
-} from 'src/common/aws/dtos/aws.s3-multipart.dto';
+} from 'src/modules/aws/dtos/aws.s3-multipart.dto';
 
 describe('aws.s3-multipart.dto.ts', () => {
     it('should create a valid AwsS3MultipartPartDto object', () => {

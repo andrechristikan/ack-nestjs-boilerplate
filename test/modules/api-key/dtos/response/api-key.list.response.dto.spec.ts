@@ -18,6 +18,7 @@ describe('ApiKeyListResponseDto', () => {
             createdAt: faker.date.recent(),
             updatedAt: faker.date.recent(),
             deletedAt: faker.date.recent(),
+            deleted: false,
         };
 
         const dto = plainToInstance(

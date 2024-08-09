@@ -60,16 +60,16 @@ describe('AuthService', () => {
                         get: jest.fn((key: string) => {
                             const config = {
                                 'auth.jwt.accessToken.secretKey': 'secretKey',
-                                'auth.jwt.accessToken.expirationTime': 3600000,
+                                'auth.jwt.accessToken.expirationTime': 3600,
                                 'auth.jwt.refreshToken.secretKey':
                                     'refreshSecretKey',
-                                'auth.jwt.refreshToken.expirationTime': 7200000,
+                                'auth.jwt.refreshToken.expirationTime': 7200,
                                 'auth.jwt.prefixAuthorization': 'Bearer',
                                 'auth.jwt.subject': 'subject',
                                 'auth.jwt.audience': 'audience',
                                 'auth.jwt.issuer': 'issuer',
-                                'auth.password.expiredIn': 3600000,
-                                'auth.password.expiredInTemporary': 1800000,
+                                'auth.password.expiredIn': 3600,
+                                'auth.password.expiredInTemporary': 1800,
                                 'auth.password.saltLength': 16,
                                 'auth.password.attempt': true,
                                 'auth.password.maxAttempt': 5,

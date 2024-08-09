@@ -1,5 +1,4 @@
 import { HttpStatus, applyDecorators } from '@nestjs/common';
-import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 import {
     Doc,
     DocAuth,
@@ -16,6 +15,7 @@ import { ENUM_SETTING_STATUS_CODE_ERROR } from 'src/modules/setting/enums/settin
 import { SettingUpdateRequestDto } from 'src/modules/setting/dtos/request/setting.update.request.dto';
 import { SettingGetResponseDto } from 'src/modules/setting/dtos/response/setting.get.response.dto';
 import { SettingListResponseDto } from 'src/modules/setting/dtos/response/setting.list.response.dto';
+import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 
 export function SettingAdminListDoc(): MethodDecorator {
     return applyDecorators(

@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { faker } from '@faker-js/faker';
 import { plainToInstance } from 'class-transformer';
-import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
+import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 
 describe('aws.s3.dto.ts', () => {
     it('should create a valid AwsS3Dto object', () => {

@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AwsSESService } from 'src/common/aws/services/aws.ses.service';
 import { ENUM_EMAIL } from 'src/modules/email/enums/email.enum';
 import { title } from 'case';
 import { ConfigService } from '@nestjs/config';
@@ -11,6 +10,7 @@ import { HelperDateService } from 'src/common/helper/services/helper.date.servic
 import { EmailTempPasswordDto } from 'src/modules/email/dtos/email.temp-password.dto';
 import { EmailWelcomeAdminDto } from 'src/modules/email/dtos/email.welcome-admin.dto';
 import { ENUM_HELPER_DATE_FORMAT } from 'src/common/helper/enums/helper.enum';
+import { AwsSESService } from 'src/modules/aws/services/aws.ses.service';
 
 @Injectable()
 export class EmailService implements IEmailService {

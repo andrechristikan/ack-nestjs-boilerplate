@@ -38,7 +38,6 @@ import {
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from 'src/modules/auth/decorators/auth.jwt.decorator';
 import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
-import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 import { EmailService } from 'src/modules/email/services/email.service';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/enums/role.status-code.enum';
@@ -78,6 +77,7 @@ import { UserNotSelfPipe } from 'src/modules/user/pipes/user.not-self.pipe';
 import { UserStatusPipe } from 'src/modules/user/pipes/user.status.pipe';
 import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
+import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 
 @ApiTags('modules.admin.user')
 @Controller({

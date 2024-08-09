@@ -1,30 +1,9 @@
-import { faker } from '@faker-js/faker';
-import { ApiProperty } from '@nestjs/swagger';
-import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
-import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/enums/api-key.enum';
+import { PickType } from '@nestjs/swagger';
+import { ApiKeyGetResponseDto } from 'src/modules/api-key/dtos/response/api-key.get.response.dto';
 
-export class ApiKeyPayloadDto extends DatabaseIdResponseDto {
-    @ApiProperty({
-        description: 'Alias name of api key',
-        example: faker.person.jobTitle(),
-        required: true,
-        nullable: false,
-    })
-    name: string;
-
-    @ApiProperty({
-        description: 'Type of api key',
-        example: ENUM_API_KEY_TYPE.DEFAULT,
-        required: true,
-        nullable: false,
-    })
-    type: ENUM_API_KEY_TYPE;
-
-    @ApiProperty({
-        description: 'Unique key of api key',
-        example: faker.string.alpha(15),
-        required: true,
-        nullable: false,
-    })
-    key: string;
-}
+export class ApiKeyPayloadDto extends PickType(ApiKeyGetResponseDto, [
+    '_id',
+    'name',
+    'type',
+    'key',
+] as const) {}

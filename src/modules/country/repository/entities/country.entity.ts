@@ -1,5 +1,3 @@
-import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
-import { AwsS3Schema } from 'src/common/aws/repository/entities/aws.s3.entity';
 import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.abstract';
 import {
     DatabaseEntity,
@@ -7,6 +5,8 @@ import {
     DatabaseSchema,
 } from 'src/common/database/decorators/database.decorator';
 import { IDatabaseDocument } from 'src/common/database/interfaces/database.interface';
+import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
+import { AwsS3Schema } from 'src/modules/aws/repository/entities/aws.s3.entity';
 
 export const CountryTableName = 'Countries';
 

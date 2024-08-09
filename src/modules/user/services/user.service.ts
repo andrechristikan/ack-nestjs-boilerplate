@@ -13,7 +13,6 @@ import { HelperDateService } from 'src/common/helper/services/helper.date.servic
 import { ConfigService } from '@nestjs/config';
 import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import { plainToInstance } from 'class-transformer';
-import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
 import { Document } from 'mongoose';
 import { DatabaseQueryContain } from 'src/common/database/decorators/database.decorator';
 import { IUserService } from 'src/modules/user/interfaces/user.service.interface';
@@ -39,6 +38,7 @@ import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.re
 import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
 import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
 import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
+import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 
 @Injectable()
 export class UserService implements IUserService {

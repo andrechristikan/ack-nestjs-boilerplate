@@ -1,16 +1,16 @@
 import { faker } from '@faker-js/faker';
 import { ApiHideProperty, ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Exclude, Type } from 'class-transformer';
-import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
-import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 import {
     ENUM_USER_GENDER,
     ENUM_USER_SIGN_UP_FROM,
     ENUM_USER_STATUS,
 } from 'src/modules/user/enums/user.enum';
 import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
+import { DatabaseDto } from 'src/common/database/dtos/database.dto';
+import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 
-export class UserGetResponseDto extends DatabaseIdResponseDto {
+export class UserGetResponseDto extends DatabaseDto {
     @ApiProperty({
         required: true,
         nullable: false,
@@ -110,24 +110,4 @@ export class UserGetResponseDto extends DatabaseIdResponseDto {
         required: true,
     })
     country: string;
-
-    @ApiProperty({
-        description: 'Date created at',
-        example: faker.date.recent(),
-        required: true,
-        nullable: false,
-    })
-    createdAt: Date;
-
-    @ApiProperty({
-        description: 'Date updated at',
-        example: faker.date.recent(),
-        required: true,
-        nullable: false,
-    })
-    updatedAt: Date;
-
-    @ApiHideProperty()
-    @Exclude()
-    deletedAt?: Date;
 }

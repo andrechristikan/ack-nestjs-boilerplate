@@ -8,8 +8,8 @@ import {
     PutObjectCommandOutput,
     ObjectCannedACL,
 } from '@aws-sdk/client-s3';
-import { AwsS3Service } from 'src/common/aws/services/aws.s3.service';
-import { AWS_S3_MAX_PART_NUMBER } from 'src/common/aws/constants/aws.constant';
+import { AwsS3Service } from 'src/modules/aws/services/aws.s3.service';
+import { AWS_S3_MAX_PART_NUMBER } from 'src/modules/aws/constants/aws.constant';
 
 const mockConfigService = {
     get: jest.fn().mockImplementation((key: string) => {

@@ -1,9 +1,10 @@
 import { faker } from '@faker-js/faker';
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
-import { ApiKeyPayloadDto } from 'src/modules/api-key/dtos/api-key.payload.dto';
+import { DatabaseDto } from 'src/common/database/dtos/database.dto';
+import { ENUM_API_KEY_TYPE } from 'src/modules/api-key/enums/api-key.enum';
 
-export class ApiKeyGetResponseDto extends ApiKeyPayloadDto {
+export class ApiKeyGetResponseDto extends DatabaseDto {
     @ApiHideProperty()
     @Exclude()
     hash: string;
@@ -33,22 +34,26 @@ export class ApiKeyGetResponseDto extends ApiKeyPayloadDto {
     endDate?: Date;
 
     @ApiProperty({
-        description: 'Date created at',
-        example: faker.date.recent(),
+        description: 'Alias name of api key',
+        example: faker.person.jobTitle(),
         required: true,
         nullable: false,
     })
-    createdAt: Date;
+    name: string;
 
     @ApiProperty({
-        description: 'Date updated at',
-        example: faker.date.recent(),
+        description: 'Type of api key',
+        example: ENUM_API_KEY_TYPE.DEFAULT,
         required: true,
         nullable: false,
     })
-    updatedAt: Date;
+    type: ENUM_API_KEY_TYPE;
 
-    @ApiHideProperty()
-    @Exclude()
-    deletedAt?: Date;
+    @ApiProperty({
+        description: 'Unique key of api key',
+        example: faker.string.alpha(15),
+        required: true,
+        nullable: false,
+    })
+    key: string;
 }

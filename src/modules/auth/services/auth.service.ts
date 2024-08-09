@@ -260,11 +260,11 @@ export class AuthService implements IAuthService {
     }
 
     async getAccessTokenExpirationTime(): Promise<number> {
-        return this.jwtAccessTokenExpirationTime / 1000;
+        return this.jwtAccessTokenExpirationTime;
     }
 
     async getRefreshTokenExpirationTime(): Promise<number> {
-        return this.jwtRefreshTokenExpirationTime / 1000;
+        return this.jwtRefreshTokenExpirationTime;
     }
 
     async getIssuer(): Promise<string> {

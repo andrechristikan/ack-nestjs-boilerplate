@@ -9,7 +9,6 @@ import {
     Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 import {
     PaginationQuery,
     PaginationQueryFilterInBoolean,
@@ -60,6 +59,7 @@ import { RoleParsePipe } from 'src/modules/role/pipes/role.parse.pipe';
 import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { UserService } from 'src/modules/user/services/user.service';
+import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
 
 @ApiTags('modules.admin.role')
 @Controller({
