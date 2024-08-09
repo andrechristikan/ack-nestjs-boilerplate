@@ -10,7 +10,9 @@ import { MessageService } from 'src/common/message/services/message.service';
 import { ENUM_APP_ENVIRONMENT } from 'src/app/enums/app.enum';
 
 async function bootstrap() {
-    const app: NestApplication = await NestFactory.create(AppModule);
+    const app: NestApplication = await NestFactory.create(AppModule, {
+        abortOnError: false,
+    });
     const configService = app.get(ConfigService);
     const databaseUri: string = configService.get<string>('database.uri');
     const env: string = configService.get<string>('app.env');
@@ -58,7 +60,7 @@ async function bootstrap() {
     if (errors.length > 0) {
         const messageService = app.get(MessageService);
         const errorsMessage = messageService.setValidationMessage(errors);
-        logger.log(errorsMessage, 'NestApplication');
+        logger.log(errorsMessage);
 
         throw new Error('Env Variable Invalid');
     }
@@ -71,18 +73,18 @@ async function bootstrap() {
 
     logger.log(`==========================================================`);
 
-    logger.log(`Environment Variable`, 'NestApplication');
+    logger.log(`Environment Variable`);
 
-    logger.log(JSON.parse(JSON.stringify(process.env)), 'NestApplication');
+    logger.log(JSON.parse(JSON.stringify(process.env)));
 
     logger.log(`==========================================================`);
 
     if (env === ENUM_APP_ENVIRONMENT.MIGRATION) {
-        logger.log(`On migrate the schema`, 'NestApplication');
+        logger.log(`On migrate the schema`);
 
         await app.close();
 
-        logger.log(`Migrate done`, 'NestApplication');
+        logger.log(`Migrate done`);
         logger.log(
             `==========================================================`
         );
@@ -90,20 +92,20 @@ async function bootstrap() {
         return;
     }
 
-    logger.log(`Job is ${jobEnable}`, 'NestApplication');
+    logger.log(`Job is ${jobEnable}`);
     logger.log(
         `Http is ${httpEnable}, ${
             httpEnable ? 'routes registered' : 'no routes registered'
         }`,
         'NestApplication'
     );
-    logger.log(`Http versioning is ${versionEnable}`, 'NestApplication');
+    logger.log(`Http versioning is ${versionEnable}`);
 
     logger.log(
         `Http Server running on ${await app.getUrl()}`,
         'NestApplication'
     );
-    logger.log(`Database uri ${databaseUri}`, 'NestApplication');
+    logger.log(`Database uri ${databaseUri}`);
 
     logger.log(`==========================================================`);
 }

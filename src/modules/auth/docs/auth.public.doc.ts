@@ -36,3 +36,15 @@ export function AuthPublicLoginSocialGoogleDoc(): MethodDecorator {
         })
     );
 }
+
+export function AuthPublicLoginSocialAppleDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'login with social apple',
+        }),
+        DocAuth({ xApiKey: true, apple: true }),
+        DocResponse<AuthLoginResponseDto>('auth.loginWithSocialApple', {
+            dto: AuthLoginResponseDto,
+        })
+    );
+}

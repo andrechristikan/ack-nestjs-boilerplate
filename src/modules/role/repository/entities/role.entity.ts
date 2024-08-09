@@ -1,4 +1,4 @@
-import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
+import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.abstract';
 import {
     DatabaseEntity,
     DatabaseProp,
@@ -14,7 +14,7 @@ import {
 export const RoleTableName = 'Roles';
 
 @DatabaseEntity({ collection: RoleTableName })
-export class RoleEntity extends DatabaseMongoUUIDEntityAbstract {
+export class RoleEntity extends DatabaseEntityAbstract {
     @DatabaseProp({
         required: true,
         index: true,

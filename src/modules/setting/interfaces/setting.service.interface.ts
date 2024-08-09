@@ -1,9 +1,9 @@
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
-    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseManyOptions,
+    IDatabaseOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_SETTING_DATA_TYPE } from 'src/modules/setting/enums/setting.enum';
@@ -20,15 +20,12 @@ export interface ISettingService {
     ): Promise<SettingDoc[]>;
     findOne(
         find: Record<string, any>,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<SettingDoc>;
-    findOneById(
-        _id: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<SettingDoc>;
+    findOneById(_id: string, options?: IDatabaseOptions): Promise<SettingDoc>;
     findOneByName(
         name: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<SettingDoc>;
     getTotal(
         find?: Record<string, any>,
@@ -40,16 +37,12 @@ export interface ISettingService {
     ): Promise<SettingDoc>;
     update(
         repository: SettingDoc,
-        { value, description }: SettingUpdateRequestDto,
-        options?: IDatabaseSaveOptions
-    ): Promise<SettingDoc>;
-    delete(
-        repository: SettingDoc,
+        { description, value }: SettingUpdateRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<SettingDoc>;
     deleteMany(
         find: Record<string, any>,
-        options?: IDatabaseManyOptions
+        options?: IDatabaseDeleteManyOptions
     ): Promise<boolean>;
     getValue<T>(type: ENUM_SETTING_DATA_TYPE, value: string): T;
     checkValue(type: ENUM_SETTING_DATA_TYPE, value: string): boolean;
@@ -58,5 +51,5 @@ export interface ISettingService {
     mapList<T = any>(
         settings: SettingDoc[]
     ): Promise<SettingListResponseDto<T>[]>;
-    mapGet<T = any>(settings: SettingDoc): Promise<SettingGetResponseDto<T>>;
+    mapGet<T = any>(setting: SettingDoc): Promise<SettingGetResponseDto<T>>;
 }

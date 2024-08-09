@@ -2,19 +2,19 @@ import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
 import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteManyOptions,
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
-    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseManyOptions,
+    IDatabaseOptions,
     IDatabaseSaveOptions,
+    IDatabaseUpdateOptions,
 } from 'src/common/database/interfaces/database.interface';
 import {
     UserDoc,
     UserEntity,
 } from 'src/modules/user/repository/entities/user.entity';
 import {
-    IUserCheckIds,
     IUserDoc,
     IUserEntity,
 } from 'src/modules/user/interfaces/user.interface';
@@ -38,14 +38,28 @@ export interface IUserService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
-    findAllActive(
-        find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<IUserDoc[]>;
+    findOneById(_id: string, options?: IDatabaseOptions): Promise<UserDoc>;
+    findOne(
+        find: Record<string, any>,
+        options?: IDatabaseOptions
+    ): Promise<UserDoc>;
+    findOneByEmail(email: string, options?: IDatabaseOptions): Promise<UserDoc>;
+    findOneByMobileNumber(
+        mobileNumber: string,
+        options?: IDatabaseOptions
+    ): Promise<UserDoc>;
     findAllWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<IUserDoc[]>;
+    findOneWithRoleAndCountry(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<IUserDoc>;
+    findOneWithRoleAndCountryById(
+        _id: string,
+        options?: IDatabaseFindAllOptions
+    ): Promise<IUserDoc>;
     findAllActiveWithRoleAndCountry(
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
@@ -54,41 +68,17 @@ export interface IUserService {
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
-    findOneById(
-        _id: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<UserDoc>;
-    findOne(
-        find: Record<string, any>,
-        options?: IDatabaseFindOneOptions
-    ): Promise<UserDoc>;
-    findOneByEmail(
-        email: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<UserDoc>;
-    findOneByMobileNumber(
-        mobileNumber: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<UserDoc>;
     findOneActiveById(
         _id: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<IUserDoc>;
     findOneActiveByEmail(
         email: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<IUserDoc>;
     findOneActiveByMobileNumber(
         mobileNumber: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<IUserDoc>;
-    findOneWithRoleAndCountry(
-        find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<IUserDoc>;
-    findOneWithRoleAndCountryById(
-        _id: string,
-        options?: IDatabaseFindAllOptions
+        options?: IDatabaseOptions
     ): Promise<IUserDoc>;
     create(
         { email, name, role, country }: UserCreateRequestDto,
@@ -110,10 +100,6 @@ export interface IUserService {
         mobileNumber: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean>;
-    checkExistByIds(
-        ids: string[],
-        options?: IDatabaseExistOptions
-    ): Promise<IUserCheckIds>;
     updatePhoto(
         repository: UserDoc,
         photo: AwsS3Dto,
@@ -143,7 +129,7 @@ export interface IUserService {
     ): Promise<UserDoc>;
     increasePasswordAttempt(
         repository: UserDoc,
-        options?: IDatabaseSaveOptions
+        options?: IDatabaseUpdateOptions
     ): Promise<UserDoc>;
     resetPasswordAttempt(
         repository: UserDoc,
@@ -154,12 +140,6 @@ export interface IUserService {
         passwordExpired: Date,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
-    join(repository: UserDoc): Promise<IUserDoc>;
-    getPhotoUploadPath(user: string): Promise<string>;
-    deleteMany(
-        find: Record<string, any>,
-        options?: IDatabaseManyOptions
-    ): Promise<boolean>;
     update(
         repository: UserDoc,
         { country, name, role }: UserUpdateRequestDto,
@@ -170,10 +150,16 @@ export interface IUserService {
         { country, number }: UserUpdateMobileNumberRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
-    deleteMobileNumber(
+    removeMobileNumber(
         repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
+    deleteMany(
+        find: Record<string, any>,
+        options?: IDatabaseDeleteManyOptions
+    ): Promise<boolean>;
+    join(repository: UserDoc): Promise<IUserDoc>;
+    getPhotoUploadPath(user: string): Promise<string>;
     mapProfile(user: IUserDoc | IUserEntity): Promise<UserProfileResponseDto>;
     mapList(users: IUserDoc[] | IUserEntity[]): Promise<UserListResponseDto[]>;
     mapShort(

@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
-    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseManyOptions,
+    IDatabaseOptions,
     IDatabaseSaveOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { ENUM_HELPER_DATE_FORMAT } from 'src/common/helper/enums/helper.enum';
@@ -45,28 +45,28 @@ export class SettingService implements ISettingService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<SettingDoc[]> {
-        return this.settingRepository.findAll<SettingDoc>(find, options);
+        return this.settingRepository.findAll(find, options);
     }
 
     async findOne(
         find: Record<string, any>,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<SettingDoc> {
-        return this.settingRepository.findOne<SettingDoc>(find, options);
+        return this.settingRepository.findOne(find, options);
     }
 
     async findOneById(
         _id: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<SettingDoc> {
-        return this.settingRepository.findOneById<SettingDoc>(_id, options);
+        return this.settingRepository.findOneById(_id, options);
     }
 
     async findOneByName(
         name: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<SettingDoc> {
-        return this.settingRepository.findOne<SettingDoc>({ name }, options);
+        return this.settingRepository.findOne({ name }, options);
     }
 
     async getTotal(
@@ -82,7 +82,7 @@ export class SettingService implements ISettingService {
     ): Promise<SettingDoc> {
         const create: SettingEntity = new SettingEntity();
         create.name = name;
-        create.description = description ?? undefined;
+        create.description = description;
         create.value = value;
         create.type = type;
 
@@ -100,18 +100,17 @@ export class SettingService implements ISettingService {
         return this.settingRepository.save(repository, options);
     }
 
-    async delete(
-        repository: SettingDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<SettingDoc> {
-        return this.settingRepository.softDelete(repository, options);
-    }
-
     async deleteMany(
         find: Record<string, any>,
-        options?: IDatabaseManyOptions
+        options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
-        return this.settingRepository.deleteMany(find, options);
+        try {
+            await this.settingRepository.deleteMany(find, options);
+
+            return true;
+        } catch (error: unknown) {
+            throw error;
+        }
     }
 
     getValue<T>(type: ENUM_SETTING_DATA_TYPE, value: string): T {

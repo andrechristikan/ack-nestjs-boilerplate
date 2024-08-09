@@ -9,7 +9,6 @@ import { RoleSystemController } from 'src/modules/role/controllers/role.system.c
 import { RoleModule } from 'src/modules/role/role.module';
 import { SettingSystemController } from 'src/modules/setting/controllers/setting.system.controller';
 import { SettingModule } from 'src/modules/setting/setting.module';
-import { UserSystemController } from 'src/modules/user/controllers/user.system.controller';
 import { UserModule } from 'src/modules/user/user.module';
 
 @Module({
@@ -17,7 +16,6 @@ import { UserModule } from 'src/modules/user/user.module';
         HealthSystemController,
         SettingSystemController,
         CountrySystemController,
-        UserSystemController,
         RoleSystemController,
     ],
     providers: [],

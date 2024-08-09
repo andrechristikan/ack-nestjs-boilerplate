@@ -7,14 +7,6 @@ import {
     RoleEntity,
 } from 'src/modules/role/repository/entities/role.entity';
 import {
-    UserPasswordHistoryDoc,
-    UserPasswordHistoryEntity,
-} from 'src/modules/user/repository/entities/user-password-history.entity';
-import {
-    UserStateHistoryDoc,
-    UserStateHistoryEntity,
-} from 'src/modules/user/repository/entities/user-state-history.entity';
-import {
     UserDoc,
     UserEntity,
     UserMobileNumberDoc,
@@ -43,27 +35,4 @@ export interface IUserDoc
     role: RoleDoc;
     country: CountryDoc;
     mobileNumber?: IUserMobileNumberDoc;
-}
-
-export interface IUserCheckIds {
-    found: IUserDoc[];
-    notFound: IUserDoc[];
-}
-export interface IUserPasswordHistoryEntity
-    extends Omit<UserPasswordHistoryEntity, 'by'> {
-    by: UserEntity;
-}
-
-export interface IUserPasswordHistoryDoc
-    extends Omit<UserPasswordHistoryDoc, 'by'> {
-    by: UserDoc;
-}
-
-export interface IUserStateHistoryEntity
-    extends Omit<UserStateHistoryEntity, 'by'> {
-    by: UserEntity;
-}
-
-export interface IUserStateHistoryDoc extends Omit<UserStateHistoryDoc, 'by'> {
-    by: UserDoc;
 }

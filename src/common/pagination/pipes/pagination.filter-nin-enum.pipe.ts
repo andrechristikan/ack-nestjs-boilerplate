@@ -31,7 +31,7 @@ export function PaginationFilterNinEnumPipe<T>(
             const finalValue: T[] = value
                 ? this.helperArrayService.getIntersection<T>(
                       value.split(',') as T[],
-                      defaultEnum as T[]
+                      Object.values(defaultEnum) as T[]
                   )
                 : (defaultValue as T[]);
 

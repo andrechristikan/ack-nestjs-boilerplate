@@ -1,10 +1,11 @@
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
-    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseManyOptions,
+    IDatabaseOptions,
     IDatabaseSaveOptions,
+    IDatabaseUpdateManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import {
     ApiKeyCreateRawRequestDto,
@@ -26,21 +27,15 @@ export interface IApiKeyService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<ApiKeyDoc[]>;
-    findOneById(
-        _id: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<ApiKeyDoc>;
+    findOneById(_id: string, options?: IDatabaseOptions): Promise<ApiKeyDoc>;
     findOne(
         find: Record<string, any>,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<ApiKeyDoc>;
-    findOneByKey(
-        key: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<ApiKeyDoc>;
+    findOneByKey(key: string, options?: IDatabaseOptions): Promise<ApiKeyDoc>;
     findOneByActiveKey(
         key: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<ApiKeyDoc>;
     getTotal(
         find?: Record<string, any>,
@@ -93,9 +88,11 @@ export interface IApiKeyService {
     createHashApiKey(key: string, secret: string): Promise<string>;
     deleteMany(
         find: Record<string, any>,
-        options?: IDatabaseManyOptions
+        options?: IDatabaseDeleteManyOptions
     ): Promise<boolean>;
-    inactiveManyByEndDate(options?: IDatabaseManyOptions): Promise<boolean>;
+    inactiveManyByEndDate(
+        options?: IDatabaseUpdateManyOptions
+    ): Promise<boolean>;
     mapList(
         apiKeys: ApiKeyDoc[] | ApiKeyEntity[]
     ): Promise<ApiKeyListResponseDto[]>;

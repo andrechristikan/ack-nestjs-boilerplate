@@ -5,13 +5,12 @@ import {
     IDatabaseCreateOptions,
     IDatabaseExistOptions,
     IDatabaseFindAllOptions,
-    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseManyOptions,
     IDatabaseCreateManyOptions,
     IDatabaseSaveOptions,
+    IDatabaseOptions,
+    IDatabaseDeleteManyOptions,
 } from 'src/common/database/interfaces/database.interface';
-import { ENUM_POLICY_ROLE_TYPE } from 'src/modules/policy/enums/policy.enum';
 import { RoleCreateRequestDto } from 'src/modules/role/dtos/request/role.create.request.dto';
 import { RoleUpdateRequestDto } from 'src/modules/role/dtos/request/role.update.request.dto';
 import { RoleGetResponseDto } from 'src/modules/role/dtos/response/role.get.response.dto';
@@ -32,17 +31,7 @@ export class RoleService implements IRoleService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<RoleDoc[]> {
-        return this.roleRepository.findAll<RoleDoc>(find, options);
-    }
-
-    async findAllActive(
-        find?: Record<string, any>,
-        options?: IDatabaseFindAllOptions
-    ): Promise<RoleDoc[]> {
-        return this.roleRepository.findAll<RoleDoc>(
-            { ...find, isActive: true },
-            options
-        );
+        return this.roleRepository.findAll(find, options);
     }
 
     async getTotal(
@@ -50,6 +39,16 @@ export class RoleService implements IRoleService {
         options?: IDatabaseGetTotalOptions
     ): Promise<number> {
         return this.roleRepository.getTotal(find, options);
+    }
+
+    async findAllActive(
+        find?: Record<string, any>,
+        options?: IDatabaseFindAllOptions
+    ): Promise<RoleDoc[]> {
+        return this.roleRepository.findAll(
+            { ...find, isActive: true },
+            options
+        );
     }
 
     async getTotalActive(
@@ -64,44 +63,30 @@ export class RoleService implements IRoleService {
 
     async findOneById(
         _id: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<RoleDoc> {
-        return this.roleRepository.findOneById<RoleDoc>(_id, options);
+        return this.roleRepository.findOneById(_id, options);
     }
 
     async findOne(
         find: Record<string, any>,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<RoleDoc> {
-        return this.roleRepository.findOne<RoleDoc>(find, options);
+        return this.roleRepository.findOne(find, options);
     }
 
     async findOneByName(
         name: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<RoleDoc> {
-        return this.roleRepository.findOne<RoleDoc>({ name }, options);
+        return this.roleRepository.findOne({ name }, options);
     }
 
     async findOneActiveById(
         _id: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<RoleDoc> {
-        return this.roleRepository.findOne<RoleDoc>(
-            { _id, isActive: true },
-            options
-        );
-    }
-
-    async findOneActiveByIdAndType(
-        _id: string,
-        type: ENUM_POLICY_ROLE_TYPE,
-        options?: IDatabaseFindOneOptions
-    ): Promise<RoleDoc> {
-        return this.roleRepository.findOne<RoleDoc>(
-            { type, _id, isActive: true },
-            options
-        );
+        return this.roleRepository.findOne({ _id, isActive: true }, options);
     }
 
     async existByName(
@@ -160,34 +145,42 @@ export class RoleService implements IRoleService {
         return this.roleRepository.save(repository, options);
     }
 
-    async delete(
-        repository: RoleDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<RoleDoc> {
-        return this.roleRepository.delete(repository, options);
-    }
-
     async deleteMany(
         find: Record<string, any>,
-        options?: IDatabaseManyOptions
+        options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
-        return this.roleRepository.deleteMany(find, options);
+        try {
+            await this.roleRepository.deleteMany(find, options);
+
+            return true;
+        } catch (error: unknown) {
+            throw error;
+        }
     }
 
     async createMany(
         data: RoleCreateRequestDto[],
         options?: IDatabaseCreateManyOptions
     ): Promise<boolean> {
-        const create: RoleEntity[] = data.map(({ type, name, permissions }) => {
-            const entity: RoleEntity = new RoleEntity();
-            entity.type = type;
-            entity.isActive = true;
-            entity.name = name;
-            entity.permissions = permissions;
+        try {
+            const create: RoleEntity[] = data.map(
+                ({ type, name, permissions }) => {
+                    const entity: RoleEntity = new RoleEntity();
+                    entity.type = type;
+                    entity.isActive = true;
+                    entity.name = name;
+                    entity.permissions = permissions;
 
-            return entity;
-        });
-        return this.roleRepository.createMany<RoleEntity>(create, options);
+                    return entity;
+                }
+            ) as RoleEntity[];
+
+            await this.roleRepository.createMany<RoleEntity>(create, options);
+
+            return true;
+        } catch (error: unknown) {
+            throw error;
+        }
     }
 
     async mapList(

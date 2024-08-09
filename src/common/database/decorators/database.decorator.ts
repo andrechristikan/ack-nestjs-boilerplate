@@ -9,11 +9,7 @@ import {
     SchemaOptions,
 } from '@nestjs/mongoose';
 import { Schema as MongooseSchema } from 'mongoose';
-import {
-    DATABASE_CONNECTION_NAME,
-    DATABASE_CREATED_AT_FIELD_NAME,
-    DATABASE_UPDATED_AT_FIELD_NAME,
-} from 'src/common/database/constants/database.constant';
+import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import { IDatabaseQueryContainOptions } from 'src/common/database/interfaces/database.interface';
 
 export function DatabaseConnection(
@@ -32,10 +28,9 @@ export function DatabaseModel(
 export function DatabaseEntity(options?: SchemaOptions): ClassDecorator {
     return Schema({
         ...options,
-        versionKey: false,
         timestamps: options?.timestamps ?? {
-            createdAt: DATABASE_CREATED_AT_FIELD_NAME,
-            updatedAt: DATABASE_UPDATED_AT_FIELD_NAME,
+            createdAt: true,
+            updatedAt: true,
         },
     });
 }

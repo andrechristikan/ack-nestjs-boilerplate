@@ -1,6 +1,6 @@
 import { AwsS3Dto } from 'src/common/aws/dtos/aws.s3.dto';
 import { AwsS3Schema } from 'src/common/aws/repository/entities/aws.s3.entity';
-import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
+import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.abstract';
 import {
     DatabaseEntity,
     DatabaseProp,
@@ -11,7 +11,7 @@ import { IDatabaseDocument } from 'src/common/database/interfaces/database.inter
 export const CountryTableName = 'Countries';
 
 @DatabaseEntity({ collection: CountryTableName })
-export class CountryEntity extends DatabaseMongoUUIDEntityAbstract {
+export class CountryEntity extends DatabaseEntityAbstract {
     @DatabaseProp({
         required: true,
         index: true,

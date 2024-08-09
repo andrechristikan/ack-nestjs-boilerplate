@@ -1,4 +1,4 @@
-import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
+import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.abstract';
 import {
     DatabaseEntity,
     DatabaseProp,
@@ -10,7 +10,7 @@ import { IDatabaseDocument } from 'src/common/database/interfaces/database.inter
 export const SettingTableName = 'Settings';
 
 @DatabaseEntity({ collection: SettingTableName })
-export class SettingEntity extends DatabaseMongoUUIDEntityAbstract {
+export class SettingEntity extends DatabaseEntityAbstract {
     @DatabaseProp({
         required: true,
         index: true,

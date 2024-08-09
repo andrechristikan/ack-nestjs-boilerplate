@@ -3,11 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import {
     IDatabaseCreateOptions,
+    IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
-    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseManyOptions,
+    IDatabaseOptions,
     IDatabaseSaveOptions,
+    IDatabaseUpdateManyOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { HelperDateService } from 'src/common/helper/services/helper.date.service';
 import { HelperHashService } from 'src/common/helper/services/helper.hash.service';
@@ -48,33 +49,33 @@ export class ApiKeyService implements IApiKeyService {
         find?: Record<string, any>,
         options?: IDatabaseFindAllOptions
     ): Promise<ApiKeyDoc[]> {
-        return this.apiKeyRepository.findAll<ApiKeyDoc>(find, options);
+        return this.apiKeyRepository.findAll(find, options);
     }
 
     async findOneById(
         _id: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<ApiKeyDoc> {
-        return this.apiKeyRepository.findOneById<ApiKeyDoc>(_id, options);
+        return this.apiKeyRepository.findOneById(_id, options);
     }
 
     async findOne(
         find: Record<string, any>,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<ApiKeyDoc> {
-        return this.apiKeyRepository.findOne<ApiKeyDoc>(find, options);
+        return this.apiKeyRepository.findOne(find, options);
     }
 
     async findOneByKey(
         key: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<ApiKeyDoc> {
         return this.apiKeyRepository.findOne<ApiKeyDoc>({ key }, options);
     }
 
     async findOneByActiveKey(
         key: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<ApiKeyDoc> {
         return this.apiKeyRepository.findOne<ApiKeyDoc>(
             {
@@ -238,26 +239,38 @@ export class ApiKeyService implements IApiKeyService {
 
     async deleteMany(
         find: Record<string, any>,
-        options?: IDatabaseManyOptions
+        options?: IDatabaseDeleteManyOptions
     ): Promise<boolean> {
-        return this.apiKeyRepository.deleteMany(find, options);
+        try {
+            await this.apiKeyRepository.deleteMany(find, options);
+
+            return true;
+        } catch (error: unknown) {
+            throw error;
+        }
     }
 
     async inactiveManyByEndDate(
-        options?: IDatabaseManyOptions
+        options?: IDatabaseUpdateManyOptions
     ): Promise<boolean> {
-        return this.apiKeyRepository.updateMany(
-            {
-                endDate: {
-                    $lte: this.helperDateService.create(),
+        try {
+            await this.apiKeyRepository.updateMany(
+                {
+                    endDate: {
+                        $lte: this.helperDateService.create(),
+                    },
+                    isActive: true,
                 },
-                isActive: true,
-            },
-            {
-                isActive: false,
-            },
-            options
-        );
+                {
+                    isActive: false,
+                },
+                options
+            );
+
+            return true;
+        } catch (error: unknown) {
+            throw error;
+        }
     }
 
     async mapList(

@@ -5,39 +5,37 @@ import {
     ForbiddenException,
     HttpCode,
     HttpStatus,
-    InternalServerErrorException,
     NotFoundException,
     Post,
-    Req,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
-import { ClientSession, Connection } from 'mongoose';
-import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
 import { ENUM_AUTH_LOGIN_FROM } from 'src/modules/auth/enums/auth.enum';
 import { AuthJwtPayload } from 'src/modules/auth/decorators/auth.jwt.decorator';
-import { AuthSocialGoogleProtected } from 'src/modules/auth/decorators/auth.social.decorator';
+import {
+    AuthSocialAppleProtected,
+    AuthSocialGoogleProtected,
+} from 'src/modules/auth/decorators/auth.social.decorator';
 import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
 import { AuthJwtRefreshPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.refresh-payload.dto';
 import { AuthSocialGooglePayloadDto } from 'src/modules/auth/dtos/social/auth.social.google-payload.dto';
 import { AuthService } from 'src/modules/auth/services/auth.service';
-import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/enums/role.status-code.enum';
 import { AuthLoginResponseDto } from 'src/modules/auth/dtos/response/auth.login.response.dto';
 import {
     AuthPublicLoginCredentialDoc,
+    AuthPublicLoginSocialAppleDoc,
     AuthPublicLoginSocialGoogleDoc,
 } from 'src/modules/auth/docs/auth.public.doc';
 import { AuthLoginRequestDto } from 'src/modules/auth/dtos/request/auth.login.request.dto';
 import { UserService } from 'src/modules/user/services/user.service';
-import { UserLoginHistoryService } from 'src/modules/user/services/user-login-history.service';
 import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
 import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
+import { AuthSocialApplePayloadDto } from 'src/modules/auth/dtos/social/auth.social.apple-payload.dto';
 
 @ApiTags('modules.public.auth')
 @Controller({
@@ -46,10 +44,8 @@ import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 })
 export class AuthPublicController {
     constructor(
-        @DatabaseConnection() private readonly databaseConnection: Connection,
         private readonly userService: UserService,
-        private readonly authService: AuthService,
-        private readonly userLoginHistoryService: UserLoginHistoryService
+        private readonly authService: AuthService
     ) {}
 
     @AuthPublicLoginCredentialDoc()
@@ -58,8 +54,7 @@ export class AuthPublicController {
     @HttpCode(HttpStatus.OK)
     @Post('/login/credential')
     async loginWithCredential(
-        @Body() { email, password }: AuthLoginRequestDto,
-        @Req() request: Request
+        @Body() { email, password }: AuthLoginRequestDto
     ): Promise<IResponse<AuthLoginResponseDto>> {
         let user: UserDoc = await this.userService.findOneByEmail(email);
         if (!user) {
@@ -109,43 +104,14 @@ export class AuthPublicController {
             });
         }
 
-        const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
-
-        await this.userService.resetPasswordAttempt(user, { session });
+        await this.userService.resetPasswordAttempt(user);
 
         const checkPasswordExpired: boolean =
             await this.authService.checkPasswordExpired(user.passwordExpired);
         if (checkPasswordExpired) {
-            await session.abortTransaction();
-            await session.endSession();
-
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
                 message: 'user.error.passwordExpired',
-            });
-        }
-
-        try {
-            await this.userLoginHistoryService.create(
-                request,
-                {
-                    user: user._id,
-                },
-                { session }
-            );
-
-            await session.commitTransaction();
-            await session.endSession();
-        } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
-
-            throw new InternalServerErrorException({
-                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
             });
         }
 
@@ -190,8 +156,7 @@ export class AuthPublicController {
     @Post('/login/social/google')
     async loginWithGoogle(
         @AuthJwtPayload<AuthSocialGooglePayloadDto>()
-        { email }: AuthSocialGooglePayloadDto,
-        @Req() request: Request
+        { email }: AuthSocialGooglePayloadDto
     ): Promise<IResponse<AuthLoginResponseDto>> {
         const user: UserDoc = await this.userService.findOneByEmail(email);
         if (!user) {
@@ -199,7 +164,7 @@ export class AuthPublicController {
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
                 message: 'user.error.notFound',
             });
-        } else if (user.status !== ENUM_USER_STATUS.INACTIVE) {
+        } else if (user.status !== ENUM_USER_STATUS.ACTIVE) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
                 message: 'user.error.inactive',
@@ -214,43 +179,89 @@ export class AuthPublicController {
             });
         }
 
-        const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
-
-        await this.userService.resetPasswordAttempt(user, { session });
+        await this.userService.resetPasswordAttempt(user);
 
         const checkPasswordExpired: boolean =
             await this.authService.checkPasswordExpired(user.passwordExpired);
         if (checkPasswordExpired) {
-            await session.abortTransaction();
-            await session.endSession();
-
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
                 message: 'user.error.passwordExpired',
             });
         }
 
-        try {
-            await this.userLoginHistoryService.create(
-                request,
-                {
-                    user: user._id,
-                },
-                { session }
+        const roleType = userWithRole.role.type;
+        const tokenType: string = await this.authService.getTokenType();
+
+        const expiresInAccessToken: number =
+            await this.authService.getAccessTokenExpirationTime();
+        const payloadAccessToken: AuthJwtAccessPayloadDto =
+            await this.authService.createPayloadAccessToken(
+                userWithRole,
+                ENUM_AUTH_LOGIN_FROM.SOCIAL_GOOGLE
             );
+        const accessToken: string = await this.authService.createAccessToken(
+            user.email,
+            payloadAccessToken
+        );
 
-            await session.commitTransaction();
-            await session.endSession();
-        } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
+        const payloadRefreshToken: AuthJwtRefreshPayloadDto =
+            await this.authService.createPayloadRefreshToken(
+                payloadAccessToken
+            );
+        const refreshToken: string = await this.authService.createRefreshToken(
+            user.email,
+            payloadRefreshToken
+        );
 
-            throw new InternalServerErrorException({
-                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
+        return {
+            data: {
+                tokenType,
+                roleType,
+                expiresIn: expiresInAccessToken,
+                accessToken,
+                refreshToken,
+            },
+        };
+    }
+
+    @AuthPublicLoginSocialAppleDoc()
+    @Response('user.loginWithSocialApple')
+    @AuthSocialAppleProtected()
+    @Post('/login/social/apple')
+    async loginWithApple(
+        @AuthJwtPayload<AuthSocialApplePayloadDto>()
+        { email }: AuthSocialApplePayloadDto
+    ): Promise<IResponse<AuthLoginResponseDto>> {
+        const user: UserDoc = await this.userService.findOneByEmail(email);
+        if (!user) {
+            throw new NotFoundException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'user.error.notFound',
+            });
+        } else if (user.status !== ENUM_USER_STATUS.ACTIVE) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
+                message: 'user.error.inactive',
+            });
+        }
+
+        const userWithRole: IUserDoc = await this.userService.join(user);
+        if (!userWithRole.role.isActive) {
+            throw new ForbiddenException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.INACTIVE_FORBIDDEN,
+                message: 'role.error.inactive',
+            });
+        }
+
+        await this.userService.resetPasswordAttempt(user);
+
+        const checkPasswordExpired: boolean =
+            await this.authService.checkPasswordExpired(user.passwordExpired);
+        if (checkPasswordExpired) {
+            throw new ForbiddenException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
+                message: 'user.error.passwordExpired',
             });
         }
 

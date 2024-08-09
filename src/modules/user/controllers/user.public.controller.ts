@@ -18,12 +18,9 @@ import { CountryService } from 'src/modules/country/services/country.service';
 import { EmailService } from 'src/modules/email/services/email.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/enums/role.status-code.enum';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { ENUM_USER_PASSWORD_TYPE } from 'src/modules/user/enums/user.enum';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
 import { UserPublicSignUpDoc } from 'src/modules/user/docs/user.public.doc';
 import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
-import { UserPasswordHistoryService } from 'src/modules/user/services/user-password-history.service';
-import { UserStateHistoryService } from 'src/modules/user/services/user-state-history.service';
 import { UserService } from 'src/modules/user/services/user.service';
 
 @ApiTags('modules.public.user')
@@ -35,8 +32,6 @@ export class UserPublicController {
     constructor(
         @DatabaseConnection() private readonly databaseConnection: Connection,
         private readonly userService: UserService,
-        private readonly userStateHistoryService: UserStateHistoryService,
-        private readonly userPasswordHistoryService: UserPasswordHistoryService,
         private readonly authService: AuthService,
         private readonly roleService: RoleService,
         private readonly emailService: EmailService,
@@ -83,7 +78,7 @@ export class UserPublicController {
         session.startTransaction();
 
         try {
-            const user = await this.userService.signUp(
+            await this.userService.signUp(
                 role._id,
                 {
                     email,
@@ -93,18 +88,6 @@ export class UserPublicController {
                 },
                 password,
                 { session }
-            );
-            await this.userStateHistoryService.createCreated(user, user._id, {
-                session,
-            });
-            await this.userPasswordHistoryService.createByUser(
-                user,
-                {
-                    type: ENUM_USER_PASSWORD_TYPE.SIGN_UP_PASSWORD,
-                },
-                {
-                    session,
-                }
             );
 
             await this.emailService.sendWelcome({

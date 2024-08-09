@@ -2,7 +2,6 @@ import {
     Body,
     ConflictException,
     Controller,
-    Delete,
     Get,
     Param,
     Patch,
@@ -47,7 +46,6 @@ import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/enums/role.status-
 import {
     RoleAdminActiveDoc,
     RoleAdminCreateDoc,
-    RoleAdminDeleteDoc,
     RoleAdminGetDoc,
     RoleAdminInactiveDoc,
     RoleAdminListDoc,
@@ -61,7 +59,6 @@ import { RoleIsActivePipe } from 'src/modules/role/pipes/role.is-active.pipe';
 import { RoleParsePipe } from 'src/modules/role/pipes/role.parse.pipe';
 import { RoleDoc } from 'src/modules/role/repository/entities/role.entity';
 import { RoleService } from 'src/modules/role/services/role.service';
-import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserService } from 'src/modules/user/services/user.service';
 
 @ApiTags('modules.admin.role')
@@ -198,34 +195,6 @@ export class RoleAdminController {
         return {
             data: { _id: role._id },
         };
-    }
-
-    @RoleAdminDeleteDoc()
-    @Response('role.delete')
-    @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.ROLE,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.DELETE],
-    })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Delete('/delete/:role')
-    async delete(
-        @Param('role', RequestRequiredPipe, RoleParsePipe) role: RoleDoc
-    ): Promise<void> {
-        const used: UserDoc = await this.userService.findOne({
-            role: role._id,
-        });
-        if (used) {
-            throw new ConflictException({
-                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.USED,
-                message: 'role.error.used',
-            });
-        }
-
-        await this.roleService.delete(role);
-
-        return;
     }
 
     @RoleAdminInactiveDoc()

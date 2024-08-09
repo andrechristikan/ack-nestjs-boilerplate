@@ -1,10 +1,9 @@
 import {
     IDatabaseCreateManyOptions,
+    IDatabaseDeleteManyOptions,
     IDatabaseFindAllOptions,
-    IDatabaseFindOneOptions,
     IDatabaseGetTotalOptions,
-    IDatabaseManyOptions,
-    IDatabaseSaveOptions,
+    IDatabaseOptions,
 } from 'src/common/database/interfaces/database.interface';
 import { CountryCreateRequestDto } from 'src/modules/country/dtos/request/country.create.request.dto';
 import { CountryGetResponseDto } from 'src/modules/country/dtos/response/country.get.response.dto';
@@ -22,39 +21,32 @@ export interface ICountryService {
     ): Promise<CountryDoc[]>;
     findOne(
         find: Record<string, any>,
-        options?: IDatabaseFindOneOptions
-    ): Promise<CountryDoc>;
-    findOneByAlpha2(
-        alpha2: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<CountryDoc>;
     findOneByName(
         name: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
+    ): Promise<CountryDoc>;
+    findOneByAlpha2(
+        alpha2: string,
+        options?: IDatabaseOptions
     ): Promise<CountryDoc>;
     findOneActiveByPhoneCode(
         phoneCode: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<CountryDoc>;
-    findOneById(
-        _id: string,
-        options?: IDatabaseFindOneOptions
-    ): Promise<CountryDoc>;
+    findOneById(_id: string, options?: IDatabaseOptions): Promise<CountryDoc>;
     findOneActiveById(
         _id: string,
-        options?: IDatabaseFindOneOptions
+        options?: IDatabaseOptions
     ): Promise<CountryDoc>;
     getTotal(
         find?: Record<string, any>,
         options?: IDatabaseGetTotalOptions
     ): Promise<number>;
-    delete(
-        repository: CountryDoc,
-        options?: IDatabaseSaveOptions
-    ): Promise<CountryDoc>;
     deleteMany(
         find: Record<string, any>,
-        options?: IDatabaseManyOptions
+        options?: IDatabaseDeleteManyOptions
     ): Promise<boolean>;
     createMany(
         data: CountryCreateRequestDto[],

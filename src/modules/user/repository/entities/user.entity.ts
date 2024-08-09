@@ -2,7 +2,7 @@ import {
     AwsS3Entity,
     AwsS3Schema,
 } from 'src/common/aws/repository/entities/aws.s3.entity';
-import { DatabaseMongoUUIDEntityAbstract } from 'src/common/database/abstracts/mongo/entities/database.mongo.uuid.entity.abstract';
+import { DatabaseEntityAbstract } from 'src/common/database/abstracts/database.entity.abstract';
 import {
     DatabaseEntity,
     DatabaseProp,
@@ -45,7 +45,7 @@ export const UserMobileNumberSchema = DatabaseSchema(UserMobileNumberEntity);
 export type UserMobileNumberDoc = IDatabaseDocument<UserMobileNumberEntity>;
 
 @DatabaseEntity({ collection: UserTableName })
-export class UserEntity extends DatabaseMongoUUIDEntityAbstract {
+export class UserEntity extends DatabaseEntityAbstract {
     @DatabaseProp({
         required: true,
         index: true,

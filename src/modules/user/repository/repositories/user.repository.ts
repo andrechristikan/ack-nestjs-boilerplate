@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { Model } from 'mongoose';
-import { DatabaseMongoUUIDRepositoryAbstract } from 'src/common/database/abstracts/mongo/repositories/database.mongo.uuid.repository.abstract';
+import { Model, PopulateOptions } from 'mongoose';
+import { DatabaseRepositoryAbstract } from 'src/common/database/abstracts/database.repository.abstract';
 import { DatabaseModel } from 'src/common/database/decorators/database.decorator';
 import { CountryEntity } from 'src/modules/country/repository/entities/country.entity';
 import { RoleEntity } from 'src/modules/role/repository/entities/role.entity';
@@ -10,32 +10,32 @@ import {
 } from 'src/modules/user/repository/entities/user.entity';
 
 @Injectable()
-export class UserRepository extends DatabaseMongoUUIDRepositoryAbstract<
+export class UserRepository extends DatabaseRepositoryAbstract<
     UserEntity,
     UserDoc
 > {
-    readonly _joinSchemaActive = [
+    readonly _joinActive: PopulateOptions[] = [
         {
-            field: 'role',
-            localKey: 'role',
-            foreignKey: '_id',
+            path: 'role',
+            localField: 'role',
+            foreignField: '_id',
             model: RoleEntity.name,
             justOne: true,
-            condition: {
+            match: {
                 isActive: true,
             },
         },
         {
-            field: 'country',
-            localKey: 'country',
-            foreignKey: '_id',
+            path: 'country',
+            localField: 'country',
+            foreignField: '_id',
             model: CountryEntity.name,
             justOne: true,
         },
         {
-            field: 'mobileNumber.country',
-            localKey: 'mobileNumber.country',
-            foreignKey: '_id',
+            path: 'mobileNumber.country',
+            localField: 'mobileNumber.country',
+            foreignField: '_id',
             model: CountryEntity.name,
             justOne: true,
         },
@@ -47,23 +47,23 @@ export class UserRepository extends DatabaseMongoUUIDRepositoryAbstract<
     ) {
         super(userModel, [
             {
-                field: 'role',
-                localKey: 'role',
-                foreignKey: '_id',
+                path: 'role',
+                localField: 'role',
+                foreignField: '_id',
                 model: RoleEntity.name,
                 justOne: true,
             },
             {
-                field: 'country',
-                localKey: 'country',
-                foreignKey: '_id',
+                path: 'country',
+                localField: 'country',
+                foreignField: '_id',
                 model: CountryEntity.name,
                 justOne: true,
             },
             {
-                field: 'mobileNumber.country',
-                localKey: 'mobileNumber.country',
-                foreignKey: '_id',
+                path: 'mobileNumber.country',
+                localField: 'mobileNumber.country',
+                foreignField: '_id',
                 model: CountryEntity.name,
                 justOne: true,
             },
