@@ -5,6 +5,6 @@ export default registerAs(
     'message',
     (): Record<string, any> => ({
         availableLanguage: Object.values(ENUM_MESSAGE_LANGUAGE),
-        language: process.env.APP_LANGUAGE ?? ENUM_MESSAGE_LANGUAGE.EN,
+        language: process.env.APP_LANGUAGE,
     })
 );

@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { plainToInstance } from 'class-transformer';
 import mongoose from 'mongoose';
 import { DatabaseQueryContain } from 'src/common/database/decorators/database.decorator';
+import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
 import { CountryCreateRequestDto } from 'src/modules/country/dtos/request/country.create.request.dto';
 import { CountryGetResponseDto } from 'src/modules/country/dtos/response/country.get.response.dto';
 import { CountryListResponseDto } from 'src/modules/country/dtos/response/country.list.response.dto';
@@ -122,6 +123,9 @@ describe('CountryService', () => {
                     select: {
                         _id: true,
                     },
+                    order: {
+                        _id: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
+                    },
                 }
             );
             expect(mockCountryRepository.findAll).toHaveBeenCalledWith(
@@ -133,6 +137,9 @@ describe('CountryService', () => {
                     },
                     select: {
                         _id: true,
+                    },
+                    order: {
+                        _id: ENUM_PAGINATION_ORDER_DIRECTION_TYPE.ASC,
                     },
                 }
             );
@@ -410,40 +417,6 @@ describe('CountryService', () => {
         });
     });
 
-    describe('delete', () => {
-        it('should delete a country', async () => {
-            mockCountryRepository.softDelete.mockImplementation(
-                () => countryDoc
-            );
-
-            const result = await service.delete(countryDoc);
-
-            expect(mockCountryRepository.softDelete).toHaveBeenCalledWith(
-                countryDoc,
-                undefined
-            );
-            expect(result).toBe(countryDoc);
-        });
-
-        it('should delete a country with options', async () => {
-            mockCountryRepository.softDelete.mockImplementation(
-                () => countryDoc
-            );
-            const session = jest.fn();
-            const result = await service.delete(countryDoc, {
-                session,
-            });
-
-            expect(mockCountryRepository.softDelete).toHaveBeenCalledWith(
-                countryDoc,
-                {
-                    session,
-                }
-            );
-            expect(result).toBe(countryDoc);
-        });
-    });
-
     describe('createMany', () => {
         it('should create many country', async () => {
             const dto: CountryCreateRequestDto[] = [
@@ -562,7 +535,7 @@ describe('CountryService', () => {
 
             mockCountryRepository.createMany.mockResolvedValue(true);
 
-            const session = jest.fn();
+            const session: any = jest.fn();
             const result = await service.createMany(dto, { session });
 
             expect(mockCountryRepository.createMany).toHaveBeenCalledWith(
@@ -591,11 +564,12 @@ describe('CountryService', () => {
         it('should delete many countries with options', async () => {
             mockCountryRepository.deleteMany.mockResolvedValue(true);
 
-            const result = await service.deleteMany({}, { join: true });
+            const session: any = jest.fn();
+            const result = await service.deleteMany({}, { session });
 
             expect(mockCountryRepository.deleteMany).toHaveBeenCalledWith(
                 {},
-                { join: true }
+                { session }
             );
             expect(result).toBe(true);
         });

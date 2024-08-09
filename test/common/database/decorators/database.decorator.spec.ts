@@ -5,11 +5,7 @@ import {
     Schema,
     SchemaFactory,
 } from '@nestjs/mongoose';
-import {
-    DATABASE_CONNECTION_NAME,
-    DATABASE_CREATED_AT_FIELD_NAME,
-    DATABASE_UPDATED_AT_FIELD_NAME,
-} from 'src/common/database/constants/database.constant';
+import { DATABASE_CONNECTION_NAME } from 'src/common/database/constants/database.constant';
 import {
     DatabaseConnection,
     DatabaseEntity,
@@ -82,10 +78,9 @@ describe('Database Decorators', () => {
             DatabaseEntity();
 
             expect(Schema).toHaveBeenCalledWith({
-                versionKey: false,
                 timestamps: {
-                    createdAt: DATABASE_CREATED_AT_FIELD_NAME,
-                    updatedAt: DATABASE_UPDATED_AT_FIELD_NAME,
+                    createdAt: true,
+                    updatedAt: true,
                 },
             });
         });
@@ -97,10 +92,9 @@ describe('Database Decorators', () => {
 
             expect(Schema).toHaveBeenCalledWith({
                 _id: false,
-                versionKey: false,
                 timestamps: {
-                    createdAt: DATABASE_CREATED_AT_FIELD_NAME,
-                    updatedAt: DATABASE_UPDATED_AT_FIELD_NAME,
+                    createdAt: true,
+                    updatedAt: true,
                 },
             });
         });
