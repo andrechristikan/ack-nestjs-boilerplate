@@ -7,6 +7,7 @@ import { ArgumentsHost } from '@nestjs/common/interfaces';
 import { Response } from 'express';
 import { IRequestApp } from 'src/common/request/interfaces/request.interface';
 import { AppValidationImportFilter } from 'src/app/filters/app.validation-import.filter';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/enums/request.status-code.enum';
 
 class MockMessageService {
     getLanguage = jest.fn().mockReturnValue('en');
@@ -105,7 +106,7 @@ describe('AppValidationImportFilter', () => {
         );
         expect(mockResponse.status).toHaveBeenCalledWith(422);
         expect(mockResponse.json).toHaveBeenCalledWith({
-            statusCode: 5024,
+            statusCode: ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION_ERROR,
             message: 'file.error.validationDto',
             errors: [],
             _metadata: {

@@ -26,19 +26,23 @@
 - [ACK NestJs Boilerplate  🔥 🚀](#ack-nestjs-boilerplate---)
   - [Table of contents](#table-of-contents)
   - [Important](#important)
-  - [Todo](#todo)
   - [Prerequisites](#prerequisites)
   - [Build with](#build-with)
   - [Objective](#objective)
   - [Features](#features)
     - [Main Features](#main-features)
-    - [Database](#database)
-    - [Security](#security)
-    - [Setting](#setting)
-    - [Others](#others)
-  - [Third Party Integration](#third-party-integration)
   - [Installation](#installation)
+    - [Clone Repo](#clone-repo)
+    - [Install Dependencies](#install-dependencies)
+    - [Create environment](#create-environment)
+    - [Database Migration and Seed](#database-migration-and-seed)
+    - [Email Migration](#email-migration)
+    - [Run Project](#run-project)
+  - [Installation with Docker](#installation-with-docker)
+  - [Test](#test)
   - [Swagger](#swagger)
+    - [API Key Test](#api-key-test)
+    - [User Test](#user-test)
   - [License](#license)
   - [Contribute](#contribute)
   - [Contact](#contact)
@@ -58,12 +62,6 @@
     2. Documentation will `disable`.
     3. Global prefix will remove. Before is `/api`.
 * For monitoring, this project will use `sentry.io`, and only send `500` or `internal server error`.
-
-## Todo
-
-* [ ] Move doc into 1 docs
-* [ ] Add Redis for bullmq (cronjob or queue), and cached.
-* [ ] Move to stateful Authorization Token (security and ux reason). Session login, password history, and user activity
 
 ## Prerequisites
 
@@ -116,65 +114,146 @@ Describes which version.
 * NestJs 10.x 🥳
 * Typescript 🚀
 * Production ready 🔥
+* MongoDB integrate by using [mongoose][ref-mongoose] 🎉
 * Repository Design Pattern (Multi Repository, can mix with other orm)
-* Swagger / OpenAPI 3 included
 * Authentication (`Access Token`, `Refresh Token`, `API Key`, `Google SSO`, `Apple SSO`)
+* Swagger / OpenAPI 3 included
 * Authorization, Role Management.
 * Support multi-language `i18n` 🗣, can controllable with request header `x-custom-lang`
 * Request validation for all request params, query, dan body with `class-validation`
-* Serialization with `class-transformer`
 * Url Versioning, default version is `1`
 * Server Side Pagination
 * Import and export data with CSV or Excel by using `decorator`
 * Sentry.io for Monitoring Tools
-
-### Database
-
-* MongoDB integrate by using [mongoose][ref-mongoose] 🎉
-* Multi Database
-* Database Transaction
-* Database Soft Delete
-* Database Migration
-
-
-### Security
-
-* Apply `helmet`, `cors`, and `throttler`
-* Timeout awareness and can override ⌛️
-
-### Setting
-
-* Support environment file
-* Centralize configuration 🤖
-* Centralize response structure
-* Centralize exception filter
-* Setting from database 🗿
-
-### Others
-
 * Support Docker installation
 * Support CI/CD (Eg: Github Action) 
 * Husky GitHook for run linter before commit 🐶
 * Linter with EsLint for Typescript
 
-
-## Third Party Integration
-
-* AWS S3
-* AWS SES
-* AWS EC2
-* AWC ECS (ongoing)
-* Sentry.io
-* Google SSO
-* Apple SSO
-
 ## Installation
 
-Installation will describe in difference doc. [here][doc-installation].
+Before start, we need to install some packages and tools.
+The recommended version is the LTS version for every tool and package.
+
+> Make sure to check that the tools have been installed successfully.
+
+1. [NodeJs][ref-nodejs]
+2. [MongoDB][ref-mongodb]
+3. [Yarn][ref-yarn]
+4. [Git][ref-git]
+
+
+### Clone Repo
+
+Clone the project with git.
+
+```bash
+git clone https://github.com/andrechristikan/ack-nestjs-boilerplate.git
+```
+
+### Install Dependencies
+
+This project needs some dependencies. Let's go install it.
+
+```bash
+yarn install
+```
+
+### Create environment
+
+Make your own environment file with a copy of `env.example` and adjust values to suit your own environment.
+
+```bash
+cp .env.example .env
+```
+
+### Database Migration and Seed
+
+By default the options of `AutoCreate` and `AutoIndex` will be `false`. Thats means the schema in MongoDb will not change with the latest.
+So to update the schema we need to run
+
+```bash
+yarn migrate
+```
+
+After migrate the schema, also we need to run data seed
+
+```bash
+yarn seed
+```
+
+### Email Migration
+
+> Optional
+
+The email will automatically create email template through AWS SES if we set the value at `.env` file
+
+For migrate
+```bash
+yarn migrate:email
+```
+
+### Run Project
+
+Finally, Cheers 🍻🍻 !!! you passed all steps.
+
+Now you can run the project.
+
+```bash
+yarn start:dev
+```
+
+## Installation with Docker
+
+For docker installation, we need more tools to be installed.
+
+1. [Docker][ref-docker]
+2. [Docker-Compose][ref-dockercompose]
+
+Make your own environment file with a copy of `env.example` and adjust values to suit your own environment.
+
+```bash
+cp .env.example .env
+```
+
+then run
+
+```bash
+docker-compose up -d
+```
+
+## Test
+
+The project only provide `unit testing`.
+
+```bash
+yarn test
+```
 
 ## Swagger
 
 You can check The Swagger after running this project. Url `localhost:3000/docs` and don't for get to put `x-api-key` on header.
+
+
+### API Key Test
+
+api key: `v8VB0yY887lMpTA2VJMV`
+api key secret: `zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg`
+
+### User Test
+
+1. Super Admin
+   - email: `superadmin@mail.com`
+   - password: `aaAA@123`
+2. Admin
+   - email: `admin@mail.com`
+   - password: `aaAA@123`
+3. Member
+   - email: `member@mail.com`
+   - password: `aaAA@123`
+4. User
+   - email: `user@mail.com`
+   - password: `aaAA@123`
 
 ## License
 
@@ -185,12 +264,12 @@ Distributed under [MIT licensed][license].
 How to contribute in this repo
 
 1. Fork the repository
-2. Create your branch (git checkout -b my-branch)
+2. Create your branch `git checkout -b my-branch`
 3. Commit any changes to your branch
 4. Push your changes to your remote branch
 5. Open a pull request
 
-If your code behind commit with the original / main / master branch, please update your code and resolve the conflict.
+If your code behind commit with the `original/main branch`, please update your code and resolve the conflict.
 
 ## Contact
 
@@ -231,9 +310,6 @@ If your code behind commit with the original / main / master branch, please upda
 
 <!-- license -->
 [license]: LICENSE.md
-
-<!-- documentation -->
-[doc-installation]: /docs/installation.md
 
 <!-- Reference -->
 [ref-nestjs]: http://nestjs.com

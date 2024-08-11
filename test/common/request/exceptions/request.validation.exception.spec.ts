@@ -31,15 +31,12 @@ describe('RequestValidationException', () => {
     });
 
     it('should be RequestValidationException', () => {
-        const status = exception.getStatus();
-        const response = exception.getResponse() as unknown as any;
-
         expect(exception).toBeInstanceOf(RequestValidationException);
         expect(exception.message).toEqual('request.validation');
-        expect(status).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
-        expect(response.statusCode).toEqual(
+        expect(exception.httpStatus).toEqual(HttpStatus.UNPROCESSABLE_ENTITY);
+        expect(exception.statusCode).toEqual(
             ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION_ERROR
         );
-        expect(response.errors).toEqual(errors);
+        expect(exception.errors).toEqual(errors);
     });
 });

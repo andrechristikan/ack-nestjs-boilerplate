@@ -1,7 +1,7 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
-import { ENUM_FILE_STATUS_CODE_ERROR } from 'src/common/file/enums/file.status-code.enum';
+import { HttpStatus } from '@nestjs/common';
 import { FileImportException } from 'src/common/file/exceptions/file.import.exception';
 import { IMessageValidationImportErrorParam } from 'src/common/message/interfaces/message.interface';
+import { ENUM_REQUEST_STATUS_CODE_ERROR } from 'src/common/request/enums/request.status-code.enum';
 
 describe('FileImportException', () => {
     it('should create a HttpException with the correct status code and message', () => {
@@ -22,12 +22,12 @@ describe('FileImportException', () => {
 
         const exception = new FileImportException(errors);
 
-        expect(exception).toBeInstanceOf(HttpException);
-        expect(exception.getStatus()).toBe(HttpStatus.UNPROCESSABLE_ENTITY);
-        expect(exception.getResponse()).toEqual({
-            statusCode: ENUM_FILE_STATUS_CODE_ERROR.VALIDATION_DTO,
-            message: 'file.error.validationDto',
-            errors,
-        });
+        expect(exception).toBeInstanceOf(FileImportException);
+        expect(exception.httpStatus).toBe(HttpStatus.UNPROCESSABLE_ENTITY);
+        expect(exception.statusCode).toEqual(
+            ENUM_REQUEST_STATUS_CODE_ERROR.VALIDATION_ERROR
+        );
+        expect(exception.message).toEqual('file.error.validationDto');
+        expect(exception.errors).toEqual(errors);
     });
 });

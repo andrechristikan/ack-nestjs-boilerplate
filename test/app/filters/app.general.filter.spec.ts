@@ -104,6 +104,10 @@ describe('AppGeneralFilter', () => {
                 }),
             } as ArgumentsHost;
 
+            (mockResponse.setHeader as jest.Mock).mockReturnValue(mockResponse);
+            (mockResponse.status as jest.Mock).mockReturnValue(mockResponse);
+            jest.spyOn(mockResponse, 'json').mockReturnValue(mockResponse);
+
             await appGeneralFilter.catch(
                 validationException,
                 mockArgumentsHost

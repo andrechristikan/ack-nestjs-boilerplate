@@ -1,10 +1,4 @@
-import {
-    ExceptionFilter,
-    Catch,
-    ArgumentsHost,
-    HttpStatus,
-    Logger,
-} from '@nestjs/common';
+import { ExceptionFilter, Catch, ArgumentsHost, Logger } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
@@ -41,11 +35,6 @@ export class AppValidationFilter implements ExceptionFilter {
             this.logger.error(exception);
         }
 
-        // set default
-        const responseException = exception.getResponse() as IAppException;
-        const statusHttp: HttpStatus = exception.getStatus();
-        const statusCode = responseException.statusCode;
-
         // metadata
         const xLanguage: string =
             request.__language ?? this.messageService.getLanguage();
@@ -69,12 +58,12 @@ export class AppValidationFilter implements ExceptionFilter {
             customLanguage: xLanguage,
         });
         const errors: IMessageValidationError[] =
-            this.messageService.setValidationMessage(responseException.errors, {
+            this.messageService.setValidationMessage(exception.errors, {
                 customLanguage: xLanguage,
             });
 
         const responseBody: IAppException = {
-            statusCode,
+            statusCode: exception.statusCode,
             message,
             errors,
             _metadata: metadata,
@@ -86,7 +75,7 @@ export class AppValidationFilter implements ExceptionFilter {
             .setHeader('x-timezone', xTimezone)
             .setHeader('x-version', xVersion)
             .setHeader('x-repo-version', xRepoVersion)
-            .status(statusHttp)
+            .status(exception.httpStatus)
             .json(responseBody);
 
         return;
