@@ -3,11 +3,14 @@ import {
     AwsS3MultipartDto,
     AwsS3MultipartPartDto,
 } from 'src/modules/aws/dtos/aws.s3-multipart.dto';
+import { AwsS3PresignUrlDto } from 'src/modules/aws/dtos/aws.s3-presign-url.dto';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 import {
     IAwsS3PutItem,
     IAwsS3PutItemOptions,
     IAwsS3PutItemWithAclOptions,
+    IAwsS3PutPresignUrlFile,
+    IAwsS3PutPresignUrlOptions,
 } from 'src/modules/aws/interfaces/aws.interface';
 import { Readable } from 'stream';
 
@@ -50,6 +53,8 @@ export interface IAwsS3Service {
     ): Promise<AwsS3MultipartDto>;
     completeMultipart(multipart: AwsS3MultipartDto): Promise<void>;
     abortMultipart(multipart: AwsS3MultipartDto): Promise<void>;
-    getFilenameFromCompletedUrl(completedUrl: string): Promise<string>;
-    createRandomFilename(path?: string): Promise<Record<string, any>>;
+    setPresignUrl(
+        { filename, size, duration }: IAwsS3PutPresignUrlFile,
+        options?: IAwsS3PutPresignUrlOptions
+    ): Promise<AwsS3PresignUrlDto>;
 }

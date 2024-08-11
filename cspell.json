@@ -37,7 +37,11 @@
         "ssword",
         "safestring",
         "testuser",
-        "emiting"
+        "emiting",
+        "presignUrl",
+        "presign",
+        "presigner",
+        "presigned"
     ],
     "ignorePaths": [
         "node_modules/**",

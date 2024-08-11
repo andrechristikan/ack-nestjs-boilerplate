@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import {
     S3Client,
     ListBucketsCommandOutput,
@@ -10,6 +9,15 @@ import {
 } from '@aws-sdk/client-s3';
 import { AwsS3Service } from 'src/modules/aws/services/aws.s3.service';
 import { AWS_S3_MAX_PART_NUMBER } from 'src/modules/aws/constants/aws.constant';
+import {
+    IAwsS3PutPresignUrlFile,
+    IAwsS3PutPresignUrlOptions,
+} from 'src/modules/aws/interfaces/aws.interface';
+import presign from '@aws-sdk/s3-request-presigner';
+
+jest.mock('@aws-sdk/s3-request-presigner', () => ({
+    getSignedUrl: jest.fn().mockReturnValue('https://example.com/aws-presign'),
+}));
 
 const mockConfigService = {
     get: jest.fn().mockImplementation((key: string) => {
@@ -25,13 +33,9 @@ const mockConfigService = {
             case 'aws.s3.baseUrl':
                 return 'mockBaseUrl';
             default:
-                return null;
+                return 10000;
         }
     }),
-};
-
-const mockHelperStringService = {
-    random: jest.fn().mockReturnValue('mockRandomString'),
 };
 
 const mockS3Client = {
@@ -46,10 +50,6 @@ describe('AwsS3Service', () => {
             providers: [
                 AwsS3Service,
                 { provide: ConfigService, useValue: mockConfigService },
-                {
-                    provide: HelperStringService,
-                    useValue: mockHelperStringService,
-                },
                 { provide: S3Client, useValue: mockS3Client },
             ],
         }).compile();
@@ -109,7 +109,7 @@ describe('AwsS3Service', () => {
     describe('listItemInBucket', () => {
         it('should return a list of items in the bucket', async () => {
             const mockOutput: ListObjectsV2CommandOutput = {
-                Contents: [{ Key: 'mock/path/file.txt', Size: 1234 }],
+                Contents: [{ Key: '/mock/path/file.txt', Size: 1234 }],
                 $metadata: { httpStatusCode: 200 },
             };
             jest.spyOn(service['s3Client'], 'send').mockReturnValue(
@@ -120,8 +120,8 @@ describe('AwsS3Service', () => {
             expect(result).toEqual([
                 {
                     bucket: 'mockBucket',
-                    path: 'mock/path',
-                    pathWithFilename: 'mock/path/file.txt',
+                    path: '/mock/path',
+                    pathWithFilename: '/mock/path/file.txt',
                     filename: 'file.txt',
                     completedUrl: 'mockBaseUrl/mock/path/file.txt',
                     baseUrl: 'mockBaseUrl',
@@ -189,8 +189,8 @@ describe('AwsS3Service', () => {
             const result = await service.putItemInBucket(file, options);
             expect(result).toEqual({
                 bucket: 'mockBucket',
-                path: 'mock/path',
-                pathWithFilename: 'mock/path/customFilename.txt',
+                path: '/mock/path',
+                pathWithFilename: '/mock/path/customFilename.txt',
                 filename: 'customFilename.txt',
                 completedUrl: 'mockBaseUrl/mock/path/customFilename.txt',
                 baseUrl: 'mockBaseUrl',
@@ -239,8 +239,8 @@ describe('AwsS3Service', () => {
             const result = await service.putItemInBucketWithAcl(file, options);
             expect(result).toEqual({
                 bucket: 'mockBucket',
-                path: 'mock/path',
-                pathWithFilename: 'mock/path/customFilename.txt',
+                path: '/mock/path',
+                pathWithFilename: '/mock/path/customFilename.txt',
                 filename: 'customFilename.txt',
                 completedUrl: 'mockBaseUrl/mock/path/customFilename.txt',
                 baseUrl: 'mockBaseUrl',
@@ -360,8 +360,8 @@ describe('AwsS3Service', () => {
             const result = await service.createMultiPart(file, 1, options);
             expect(result).toEqual({
                 bucket: 'mockBucket',
-                path: 'mock/path',
-                pathWithFilename: 'mock/path/customFilename.txt',
+                path: '/mock/path',
+                pathWithFilename: '/mock/path/customFilename.txt',
                 filename: 'customFilename.txt',
                 completedUrl: 'mockBaseUrl/mock/path/customFilename.txt',
                 baseUrl: 'mockBaseUrl',
@@ -389,8 +389,8 @@ describe('AwsS3Service', () => {
             const result = await service.createMultiPart(file, 1);
             expect(result).toEqual({
                 bucket: 'mockBucket',
-                path: '',
-                pathWithFilename: 'file.txt',
+                path: '/',
+                pathWithFilename: '/file.txt',
                 filename: 'file.txt',
                 completedUrl: 'mockBaseUrl/file.txt',
                 baseUrl: 'mockBaseUrl',
@@ -461,8 +461,8 @@ describe('AwsS3Service', () => {
             );
             expect(result).toEqual({
                 bucket: 'mockBucket',
-                path: 'mock/path',
-                pathWithFilename: 'mock/path/customFilename.txt',
+                path: '/mock/path',
+                pathWithFilename: '/mock/path/customFilename.txt',
                 filename: 'customFilename.txt',
                 completedUrl: 'mockBaseUrl/mock/path/customFilename.txt',
                 baseUrl: 'mockBaseUrl',
@@ -490,8 +490,8 @@ describe('AwsS3Service', () => {
             const result = await service.createMultiPartWithAcl(file, 1);
             expect(result).toEqual({
                 bucket: 'mockBucket',
-                path: '',
-                pathWithFilename: 'file.txt',
+                path: '/',
+                pathWithFilename: '/file.txt',
                 filename: 'file.txt',
                 completedUrl: 'mockBaseUrl/file.txt',
                 baseUrl: 'mockBaseUrl',
@@ -635,39 +635,69 @@ describe('AwsS3Service', () => {
         });
     });
 
-    describe('getFilenameFromCompletedUrl', () => {
-        it('should get filename from completed url', async () => {
-            expect(
-                await service.getFilenameFromCompletedUrl(
-                    'mockBaseUrl/file.txt'
-                )
-            ).toEqual('/file.txt');
-        });
-    });
+    describe('setPresignUrl', () => {
+        it('should return presign url', async () => {
+            const file: IAwsS3PutPresignUrlFile = {
+                filename: 'file.txt',
+                size: 1024,
+                duration: 1,
+            };
 
-    describe('createRandomFilename', () => {
-        it('should create random filename', async () => {
-            jest.spyOn(
-                service['helperStringService'],
-                'random'
-            ).mockReturnValueOnce('random');
-
-            expect(await service.createRandomFilename('/path')).toEqual({
-                path: '/path',
-                customFilename: 'random',
-            });
-        });
-
-        it('should create random filename with no path', async () => {
-            jest.spyOn(
-                service['helperStringService'],
-                'random'
-            ).mockReturnValueOnce('random');
-
-            expect(await service.createRandomFilename()).toEqual({
+            const result = await service.setPresignUrl(file);
+            expect(result).toEqual({
+                bucket: 'mockBucket',
                 path: '/',
-                customFilename: 'random',
+                pathWithFilename: '/file.txt',
+                filename: 'file.txt',
+                completedUrl: 'https://example.com/aws-presign',
+                baseUrl: 'mockBaseUrl',
+                mime: 'txt',
+                size: 1024,
+                duration: 1,
+                expiredIn: 10000,
             });
+        });
+
+        it('should return presign url with options', async () => {
+            const file: IAwsS3PutPresignUrlFile = {
+                filename: 'file.txt',
+                size: 1024,
+                duration: 1,
+            };
+
+            const options: IAwsS3PutPresignUrlOptions = {
+                path: '/path/new',
+            };
+
+            const result = await service.setPresignUrl(file, options);
+            expect(result).toEqual({
+                bucket: 'mockBucket',
+                path: '/path/new',
+                pathWithFilename: '/path/new/file.txt',
+                filename: 'file.txt',
+                completedUrl: 'https://example.com/aws-presign',
+                baseUrl: 'mockBaseUrl',
+                mime: 'txt',
+                size: 1024,
+                duration: 1,
+                expiredIn: 10000,
+            });
+        });
+
+        it('should throw an error if S3Client send fails', async () => {
+            jest.spyOn(presign, 'getSignedUrl').mockRejectedValue(
+                new Error('presign error')
+            );
+
+            const file: IAwsS3PutPresignUrlFile = {
+                filename: 'file.txt',
+                size: 1024,
+                duration: 1,
+            };
+
+            await expect(service.setPresignUrl(file)).rejects.toThrow(
+                new Error('presign error')
+            );
         });
     });
 });

@@ -23,9 +23,7 @@ describe('AppCustomLanguageMiddleware', () => {
     };
 
     const mockHelperArrayService = {
-        getIntersection: jest
-            .fn()
-            .mockImplementation(() => [ENUM_MESSAGE_LANGUAGE.EN]),
+        getIntersection: jest.fn().mockReturnValue([ENUM_MESSAGE_LANGUAGE.EN]),
     };
 
     beforeEach(async () => {
@@ -58,6 +56,8 @@ describe('AppCustomLanguageMiddleware', () => {
             const request = context.switchToHttp().getRequest<IRequestApp>();
             const response = context.switchToHttp().getResponse<Response>();
             const next = jest.fn();
+
+            request.headers['x-custom-lang'] = ENUM_MESSAGE_LANGUAGE.EN;
             middleware.use(request, response, next);
 
             expect(request.__language).toBeDefined();

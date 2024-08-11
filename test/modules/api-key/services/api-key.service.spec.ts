@@ -330,6 +330,15 @@ describe('ApiKeyService', () => {
                 true
             );
         });
+
+        it('should throw an error if there repository error', async () => {
+            (apiKeyRepository.deleteMany as jest.Mock).mockRejectedValue(
+                new Error('repository error')
+            );
+            expect(service.deleteMany(find, deleteManyOpts)).rejects.toThrow(
+                new Error('repository error')
+            );
+        });
     });
 
     describe('inactiveManyByEndDate', () => {
@@ -340,6 +349,15 @@ describe('ApiKeyService', () => {
             expect(await service.inactiveManyByEndDate(updateManyOpts)).toEqual(
                 true
             );
+        });
+
+        it('should throw an error if there repository error', async () => {
+            (apiKeyRepository.updateMany as jest.Mock).mockRejectedValue(
+                new Error('repository error')
+            );
+            expect(
+                service.inactiveManyByEndDate(updateManyOpts)
+            ).rejects.toThrow(new Error('repository error'));
         });
     });
 

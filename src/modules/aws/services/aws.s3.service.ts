@@ -45,31 +45,31 @@ import {
     ObjectCannedACL,
     CompletedPart,
 } from '@aws-sdk/client-s3';
-import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { IAwsS3Service } from 'src/modules/aws/interfaces/aws.s3-service.interface';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 import {
     IAwsS3PutItem,
     IAwsS3PutItemOptions,
     IAwsS3PutItemWithAclOptions,
-    IAwsS3RandomFilename,
+    IAwsS3PutPresignUrlFile,
+    IAwsS3PutPresignUrlOptions,
 } from 'src/modules/aws/interfaces/aws.interface';
 import {
     AwsS3MultipartDto,
     AwsS3MultipartPartDto,
 } from 'src/modules/aws/dtos/aws.s3-multipart.dto';
 import { AWS_S3_MAX_PART_NUMBER } from 'src/modules/aws/constants/aws.constant';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { AwsS3PresignUrlDto } from 'src/modules/aws/dtos/aws.s3-presign-url.dto';
 
 @Injectable()
 export class AwsS3Service implements IAwsS3Service {
     private readonly s3Client: S3Client;
     private readonly bucket: string;
     private readonly baseUrl: string;
+    private readonly presignUrlExpired: number;
 
-    constructor(
-        private readonly configService: ConfigService,
-        private readonly helperStringService: HelperStringService
-    ) {
+    constructor(private readonly configService: ConfigService) {
         this.s3Client = new S3Client({
             credentials: {
                 accessKeyId: this.configService.get<string>(
@@ -84,6 +84,9 @@ export class AwsS3Service implements IAwsS3Service {
 
         this.bucket = this.configService.get<string>('aws.s3.bucket');
         this.baseUrl = this.configService.get<string>('aws.s3.baseUrl');
+        this.presignUrlExpired = this.configService.get<number>(
+            'aws.s3.presignUrlExpired'
+        );
     }
 
     async checkBucketExistence(): Promise<HeadBucketCommandOutput> {
@@ -119,10 +122,10 @@ export class AwsS3Service implements IAwsS3Service {
         }
     }
 
-    async listItemInBucket(prefix?: string): Promise<AwsS3Dto[]> {
+    async listItemInBucket(path?: string): Promise<AwsS3Dto[]> {
         const command: ListObjectsV2Command = new ListObjectsV2Command({
             Bucket: this.bucket,
-            Prefix: prefix,
+            Prefix: path,
         });
 
         try {
@@ -148,7 +151,7 @@ export class AwsS3Service implements IAwsS3Service {
                     path,
                     pathWithFilename: val.Key,
                     filename: filename,
-                    completedUrl: `${this.baseUrl}/${val.Key}`,
+                    completedUrl: `${this.baseUrl}${val.Key}`,
                     baseUrl: this.baseUrl,
                     mime,
                     size: val.Size,
@@ -184,18 +187,17 @@ export class AwsS3Service implements IAwsS3Service {
         file: IAwsS3PutItem,
         options?: IAwsS3PutItemOptions
     ): Promise<AwsS3Dto> {
-        let path: string = options?.path;
-        path = path?.startsWith('/') ? path.replace('/', '') : path;
-
+        const path: string = `/${options?.path?.replace(/^\/*|\/*$/g, '') ?? ''}`;
         const mime: string = file.originalname.substring(
             file.originalname.lastIndexOf('.') + 1,
             file.originalname.length
         );
         const filename = options?.customFilename
-            ? `${options?.customFilename}.${mime}`
-            : file.originalname;
+            ? `${options?.customFilename.replace(/^\/*|\/*$/g, '')}.${mime}`
+            : file.originalname.replace(/^\/*|\/*$/g, '');
         const content: string | Uint8Array | Buffer = file.buffer;
-        const key: string = path ? `${path}/${filename}` : filename;
+        const key: string =
+            path === '/' ? `${path}${filename}` : `${path}/${filename}`;
         const command: PutObjectCommand = new PutObjectCommand({
             Bucket: this.bucket,
             Key: key,
@@ -213,7 +215,7 @@ export class AwsS3Service implements IAwsS3Service {
                 path,
                 pathWithFilename: key,
                 filename: filename,
-                completedUrl: `${this.baseUrl}/${key}`,
+                completedUrl: `${this.baseUrl}${key}`,
                 baseUrl: this.baseUrl,
                 mime,
                 size: file.size,
@@ -227,8 +229,7 @@ export class AwsS3Service implements IAwsS3Service {
         file: IAwsS3PutItem,
         options?: IAwsS3PutItemWithAclOptions
     ): Promise<AwsS3Dto> {
-        let path: string = options?.path;
-        path = path?.startsWith('/') ? path.replace('/', '') : path;
+        const path: string = `/${options?.path?.replace(/^\/*|\/*$/g, '') ?? ''}`;
         const acl: ObjectCannedACL = options?.acl
             ? (options.acl as ObjectCannedACL)
             : ObjectCannedACL.public_read;
@@ -238,10 +239,12 @@ export class AwsS3Service implements IAwsS3Service {
             file.originalname.length
         );
         const filename = options?.customFilename
-            ? `${options?.customFilename}.${mime}`
-            : file.originalname;
+            ? `${options?.customFilename.replace(/^\/*|\/*$/g, '')}.${mime}`
+            : file.originalname.replace(/^\/*|\/*$/g, '');
         const content: string | Uint8Array | Buffer = file.buffer;
-        const key: string = path ? `${path}/${filename}` : filename;
+
+        const key: string =
+            path === '/' ? `${path}${filename}` : `${path}/${filename}`;
         const command: PutObjectCommand = new PutObjectCommand({
             Bucket: this.bucket,
             Key: key,
@@ -260,7 +263,7 @@ export class AwsS3Service implements IAwsS3Service {
                 path,
                 pathWithFilename: key,
                 filename: filename,
-                completedUrl: `${this.baseUrl}/${key}`,
+                completedUrl: `${this.baseUrl}${key}`,
                 baseUrl: this.baseUrl,
                 mime,
                 size: file.size,
@@ -363,17 +366,18 @@ export class AwsS3Service implements IAwsS3Service {
                 `Max part number is greater than ${AWS_S3_MAX_PART_NUMBER}`
             );
         }
-        let path: string = options?.path ?? '/';
-        path = path.startsWith('/') ? path.replace('/', '') : path;
 
+        const path: string = `/${options?.path?.replace(/^\/*|\/*$/g, '') ?? ''}`;
         const mime: string = file.originalname.substring(
             file.originalname.lastIndexOf('.') + 1,
             file.originalname.length
         );
         const filename = options?.customFilename
-            ? `${options?.customFilename}.${mime}`
-            : file.originalname;
-        const key: string = path ? `${path}/${filename}` : filename;
+            ? `${options?.customFilename.replace(/^\/*|\/*$/g, '')}.${mime}`
+            : file.originalname.replace(/^\/*|\/*$/g, '');
+
+        const key: string =
+            path === '/' ? `${path}${filename}` : `${path}/${filename}`;
         const multiPartCommand: CreateMultipartUploadCommand =
             new CreateMultipartUploadCommand({
                 Bucket: this.bucket,
@@ -392,7 +396,7 @@ export class AwsS3Service implements IAwsS3Service {
                 path,
                 pathWithFilename: key,
                 filename: filename,
-                completedUrl: `${this.baseUrl}/${key}`,
+                completedUrl: `${this.baseUrl}${key}`,
                 baseUrl: this.baseUrl,
                 mime,
                 size: 0,
@@ -410,8 +414,7 @@ export class AwsS3Service implements IAwsS3Service {
         maxPartNumber: number,
         options?: IAwsS3PutItemWithAclOptions
     ): Promise<AwsS3MultipartDto> {
-        let path: string = options?.path ?? '/';
-        path = path.startsWith('/') ? path.replace('/', '') : path;
+        const path: string = `/${options?.path?.replace(/^\/*|\/*$/g, '') ?? ''}`;
         const acl: ObjectCannedACL = options?.acl
             ? (options.acl as ObjectCannedACL)
             : ObjectCannedACL.public_read;
@@ -421,9 +424,11 @@ export class AwsS3Service implements IAwsS3Service {
             file.originalname.length
         );
         const filename = options?.customFilename
-            ? `${options?.customFilename}.${mime}`
-            : file.originalname;
-        const key: string = path ? `${path}/${filename}` : filename;
+            ? `${options?.customFilename.replace(/^\/*|\/*$/g, '')}.${mime}`
+            : file.originalname.replace(/^\/*|\/*$/g, '');
+
+        const key: string =
+            path === '/' ? `${path}${filename}` : `${path}/${filename}`;
         const multiPartCommand: CreateMultipartUploadCommand =
             new CreateMultipartUploadCommand({
                 Bucket: this.bucket,
@@ -443,7 +448,7 @@ export class AwsS3Service implements IAwsS3Service {
                 path,
                 pathWithFilename: key,
                 filename: filename,
-                completedUrl: `${this.baseUrl}/${key}`,
+                completedUrl: `${this.baseUrl}${key}`,
                 baseUrl: this.baseUrl,
                 mime,
                 size: 0,
@@ -541,16 +546,42 @@ export class AwsS3Service implements IAwsS3Service {
         }
     }
 
-    async getFilenameFromCompletedUrl(completedUrl: string): Promise<string> {
-        return completedUrl.replace(`${this.baseUrl}`, '');
-    }
+    async setPresignUrl(
+        { filename, size, duration }: IAwsS3PutPresignUrlFile,
+        options?: IAwsS3PutPresignUrlOptions
+    ): Promise<AwsS3PresignUrlDto> {
+        try {
+            const path: string = `/${options?.path?.replace(/^\/*|\/*$/g, '') ?? ''}`;
+            const key: string =
+                path === '/' ? `${path}${filename}` : `${path}/${filename}`;
+            const mime: string = filename.substring(
+                filename.lastIndexOf('.') + 1,
+                filename.length
+            );
 
-    async createRandomFilename(path?: string): Promise<IAwsS3RandomFilename> {
-        const filename: string = this.helperStringService.random(20);
+            const command = new PutObjectCommand({
+                Bucket: this.bucket,
+                Key: key,
+                ContentType: mime,
+            });
+            const presignUrl = await getSignedUrl(this.s3Client, command, {
+                expiresIn: this.presignUrlExpired,
+            });
 
-        return {
-            path: path ?? '/',
-            customFilename: filename,
-        };
+            return {
+                bucket: this.bucket,
+                pathWithFilename: key,
+                path,
+                completedUrl: presignUrl,
+                expiredIn: this.presignUrlExpired,
+                size,
+                mime,
+                filename,
+                baseUrl: this.baseUrl,
+                duration,
+            };
+        } catch (err) {
+            throw err;
+        }
     }
 }
