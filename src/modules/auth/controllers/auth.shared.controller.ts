@@ -25,7 +25,6 @@ import { AuthService } from 'src/modules/auth/services/auth.service';
 import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
 import { Response } from 'src/common/response/decorators/response.decorator';
 import { IResponse } from 'src/common/response/interfaces/response.interface';
-import { EmailService } from 'src/modules/email/services/email.service';
 import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-code.enum';
 import { UserService } from 'src/modules/user/services/user.service';
 import { AuthRefreshResponseDto } from 'src/modules/auth/dtos/response/auth.refresh.response.dto';
@@ -35,6 +34,10 @@ import {
     AuthSharedRefreshDoc,
 } from 'src/modules/auth/docs/auth.shared.doc';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
+import { WorkerQueue } from 'src/worker/decorators/worker.decorator';
+import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
+import { Queue } from 'bullmq';
+import { ENUM_EMAIL } from 'src/modules/email/enums/email.enum';
 
 @ApiTags('modules.shared.auth')
 @Controller({
@@ -44,9 +47,10 @@ import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
 export class AuthSharedController {
     constructor(
         @DatabaseConnection() private readonly databaseConnection: Connection,
+        @WorkerQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
+        private readonly emailQueue: Queue,
         private readonly userService: UserService,
-        private readonly authService: AuthService,
-        private readonly emailService: EmailService
+        private readonly authService: AuthService
     ) {}
 
     @AuthSharedRefreshDoc()
@@ -104,7 +108,7 @@ export class AuthSharedController {
         if (passwordAttempt && user.passwordAttempt >= passwordMaxAttempt) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_ATTEMPT_MAX,
-                message: 'user.error.passwordAttemptMax',
+                message: 'auth.error.passwordAttemptMax',
             });
         }
 
@@ -117,7 +121,7 @@ export class AuthSharedController {
 
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_NOT_MATCH,
-                message: 'user.error.passwordNotMatch',
+                message: 'auth.error.passwordNotMatch',
             });
         }
 
@@ -137,10 +141,19 @@ export class AuthSharedController {
                 session,
             });
 
-            await this.emailService.sendChangePassword({
-                email: user.email,
-                name: user.name,
-            });
+            this.emailQueue.add(
+                ENUM_EMAIL.CHANGE_PASSWORD,
+                {
+                    email: user.email,
+                    name: user.name,
+                },
+                {
+                    debounce: {
+                        id: `${ENUM_EMAIL.CHANGE_PASSWORD}-${user._id}`,
+                        ttl: 1000,
+                    },
+                }
+            );
 
             await session.commitTransaction();
             await session.endSession();

@@ -26,6 +26,7 @@
 - [ACK NestJs Boilerplate  🔥 🚀](#ack-nestjs-boilerplate---)
   - [Table of contents](#table-of-contents)
   - [Important](#important)
+  - [TODO](#todo)
   - [Prerequisites](#prerequisites)
   - [Build with](#build-with)
   - [Objective](#objective)
@@ -41,8 +42,10 @@
   - [Installation with Docker](#installation-with-docker)
   - [Test](#test)
   - [Swagger](#swagger)
-    - [API Key Test](#api-key-test)
-    - [User Test](#user-test)
+    - [API Key](#api-key)
+    - [User](#user)
+  - [BullMQ Board](#bullmq-board)
+    - [User](#user-1)
   - [License](#license)
   - [Contribute](#contribute)
   - [Contact](#contact)
@@ -62,6 +65,16 @@
     2. Documentation will `disable`.
     3. Global prefix will remove. Before is `/api`.
 * For monitoring, this project will use `sentry.io`, and only send `500` or `internal server error`.
+
+## TODO
+
+- [ ] Update Email Template
+- [ ] Move to Stateful Authorization
+      1. Session Module
+      2. Password Period Module
+      3. Export Module
+      4. Reset Password Module
+      5. Verification Module
 
 ## Prerequisites
 
@@ -235,12 +248,12 @@ yarn test
 You can check The Swagger after running this project. Url `localhost:3000/docs` and don't for get to put `x-api-key` on header.
 
 
-### API Key Test
+### API Key
 
 api key: `v8VB0yY887lMpTA2VJMV`
 api key secret: `zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg`
 
-### User Test
+### User
 
 1. Super Admin
    - email: `superadmin@mail.com`
@@ -254,6 +267,15 @@ api key secret: `zeZbtGTugBTn3Qd5UXtSZBwt7gn3bg`
 4. User
    - email: `user@mail.com`
    - password: `aaAA@123`
+  
+## BullMQ Board
+
+You can check and monitor your queue. Url `localhost:3001`
+
+### User
+ - email: `admin`
+ - password: `admin123`
+
 
 ## License
 

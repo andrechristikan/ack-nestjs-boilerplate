@@ -56,6 +56,17 @@ export class UserEntity extends DatabaseEntityAbstract {
     name: string;
 
     @DatabaseProp({
+        required: true,
+        index: true,
+        trim: true,
+        type: String,
+        maxlength: 50,
+        minlength: 3,
+        unique: true,
+    })
+    username: string;
+
+    @DatabaseProp({
         required: false,
         schema: UserMobileNumberSchema,
     })

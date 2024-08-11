@@ -41,7 +41,8 @@
         "presignUrl",
         "presign",
         "presigner",
-        "presigned"
+        "presigned",
+        "bullmq"
     ],
     "ignorePaths": [
         "node_modules/**",

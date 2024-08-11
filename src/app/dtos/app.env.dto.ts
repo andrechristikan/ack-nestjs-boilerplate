@@ -145,6 +145,24 @@ export class AppEnvDto {
     @IsString()
     AUTH_SOCIAL_APPLE_SIGN_IN_CLIENT_ID?: string;
 
+    @IsNotEmpty()
+    @IsString()
+    REDIS_HOST: string;
+
+    @IsNumber()
+    @IsNotEmpty()
+    @Type(() => Number)
+    REDIS_PORT: number;
+
+    @IsOptional()
+    @IsString()
+    REDIS_PASSWORD?: string;
+
+    @IsNotEmpty()
+    @IsBoolean()
+    @Type(() => Boolean)
+    REDIS_TLS: boolean;
+
     @IsOptional()
     @IsString()
     SENTRY_DSN?: string;

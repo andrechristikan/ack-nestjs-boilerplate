@@ -110,7 +110,7 @@ export class EmailService implements IEmailService {
     async createWelcome(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
-                name: ENUM_EMAIL.WElCOME,
+                name: ENUM_EMAIL.WELCOME,
                 subject: `Welcome`,
                 htmlBody: readFileSync(
                     './templates/email.welcome.template.html',
@@ -130,14 +130,14 @@ export class EmailService implements IEmailService {
 
     async getWelcome(): Promise<GetTemplateCommandOutput> {
         return this.awsSESService.getTemplate({
-            name: ENUM_EMAIL.WElCOME,
+            name: ENUM_EMAIL.WELCOME,
         });
     }
 
     async deleteWelcome(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: ENUM_EMAIL.WElCOME,
+                name: ENUM_EMAIL.WELCOME,
             });
 
             return true;
@@ -153,7 +153,7 @@ export class EmailService implements IEmailService {
     async sendWelcome({ name, email }: EmailSendDto): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: ENUM_EMAIL.WElCOME,
+                templateName: ENUM_EMAIL.WELCOME,
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {
@@ -178,7 +178,7 @@ export class EmailService implements IEmailService {
     async createWelcomeAdmin(): Promise<boolean> {
         try {
             await this.awsSESService.createTemplate({
-                name: ENUM_EMAIL.WElCOME_ADMIN,
+                name: ENUM_EMAIL.WELCOME_ADMIN,
                 subject: `Welcome`,
                 htmlBody: readFileSync(
                     './templates/email.welcome-admin.template.html',
@@ -198,14 +198,14 @@ export class EmailService implements IEmailService {
 
     async getWelcomeAdmin(): Promise<GetTemplateCommandOutput> {
         return this.awsSESService.getTemplate({
-            name: ENUM_EMAIL.WElCOME_ADMIN,
+            name: ENUM_EMAIL.WELCOME_ADMIN,
         });
     }
 
     async deleteWelcomeAdmin(): Promise<boolean> {
         try {
             await this.awsSESService.deleteTemplate({
-                name: ENUM_EMAIL.WElCOME_ADMIN,
+                name: ENUM_EMAIL.WELCOME_ADMIN,
             });
 
             return true;
@@ -224,7 +224,7 @@ export class EmailService implements IEmailService {
     ): Promise<boolean> {
         try {
             await this.awsSESService.send({
-                templateName: ENUM_EMAIL.WElCOME,
+                templateName: ENUM_EMAIL.WELCOME,
                 recipients: [email],
                 sender: this.fromEmail,
                 templateData: {

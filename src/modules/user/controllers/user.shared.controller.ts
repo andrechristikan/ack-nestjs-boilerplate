@@ -14,7 +14,6 @@ import {
 } from 'src/modules/auth/decorators/auth.jwt.decorator';
 import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
-import { IAwsS3RandomFilename } from 'src/modules/aws/interfaces/aws.interface';
 import { AwsS3Service } from 'src/modules/aws/services/aws.s3.service';
 import {
     UserSharedProfileDoc,
@@ -34,6 +33,7 @@ export class UserSharedController {
         private readonly userService: UserService
     ) {}
 
+    // TODO: UPDATE PROFILE
     @UserSharedProfileDoc()
     @Response('user.profile')
     @AuthJwtAccessProtected()
@@ -70,17 +70,16 @@ export class UserSharedController {
         file: IFile
     ): Promise<void> {
         const user = await this.userService.findOneById(_id);
-
-        const pathPrefix: string = await this.userService.getPhotoUploadPath(
+        const path: string = await this.userService.getPhotoUploadPath(
             user._id
         );
-        const randomFilename: IAwsS3RandomFilename =
-            await this.awsS3Service.createRandomFilename(pathPrefix);
+        const randomFilename: string =
+            await this.userService.createRandomFilenamePhoto();
 
-        const aws: AwsS3Dto = await this.awsS3Service.putItemInBucket(
-            file,
-            randomFilename
-        );
+        const aws: AwsS3Dto = await this.awsS3Service.putItemInBucket(file, {
+            customFilename: randomFilename,
+            path,
+        });
         await this.userService.updatePhoto(user, aws);
 
         return;

@@ -16,11 +16,45 @@ services:
       - ./src/:/app/src/
       - .env/:/app/.env
     restart: always
+    networks:
+      - app-network
+
+  redis:
+      image: redis:latest
+      container_name: redis
+      hostname: redis
+      restart: always
+      ports:
+          - '6379:6379'
+      volumes:
+          - redis_data:/data
+      networks:
+          - app-network
+      healthcheck:
+          test: ['CMD', 'redis-cli', 'ping']
+          interval: 10s
+          timeout: 30s
+          retries: 5
+
+  bullboard:
+    image: deadly0/bull-board:latest
+    container_name: bullboard
+    restart: always
+    ports:
+      - 3001:3000
+    networks:
+      - app-network
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - USER_LOGIN=admin
+      - USER_PASSWORD=admin123
 
   mongodb1:
     container_name: mongodb1
     hostname: mongodb1
-    image: mongo:7.0.8
+    image: mongo:latest
     restart: always
     ports:
       - "27017:27017"
@@ -46,12 +80,12 @@ services:
       timeout: 30s
       start_period: 0s
       start_interval: 1s
-      retries: 30
+      retries: 5
 
   mongodb2:
     container_name: mongodb2
     hostname: mongodb2
-    image: mongo:7.0.8
+    image: mongo:latest
     networks:
       - app-network
     restart: always
@@ -65,7 +99,7 @@ services:
   mongodb3:
     container_name: mongodb3
     hostname: mongodb3
-    image: mongo:7.0.8
+    image: mongo:latest
     networks:
       - app-network
     restart: always
@@ -83,6 +117,7 @@ volumes:
   mongodb1_config:
   mongodb2_config:
   mongodb3_config:
+  redis_data:
 
 networks:
   app-network:

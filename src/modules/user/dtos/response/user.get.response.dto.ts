@@ -20,6 +20,14 @@ export class UserGetResponseDto extends DatabaseDto {
     name: string;
 
     @ApiProperty({
+        required: true,
+        nullable: false,
+        maxLength: 50,
+        minLength: 3,
+    })
+    username: string;
+
+    @ApiProperty({
         required: false,
         type: UserUpdateMobileNumberRequestDto,
     })

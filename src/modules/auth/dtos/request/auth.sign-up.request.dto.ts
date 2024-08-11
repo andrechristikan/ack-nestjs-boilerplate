@@ -4,7 +4,7 @@ import { IsNotEmpty, MaxLength, MinLength } from 'class-validator';
 import { IsPassword } from 'src/common/request/validations/request.is-password.validation';
 import { UserCreateRequestDto } from 'src/modules/user/dtos/request/user.create.request.dto';
 
-export class UserSignUpRequestDto extends OmitType(UserCreateRequestDto, [
+export class AuthSignUpRequestDto extends OmitType(UserCreateRequestDto, [
     'role',
 ] as const) {
     @ApiProperty({

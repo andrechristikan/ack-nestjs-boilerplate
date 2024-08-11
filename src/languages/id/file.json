@@ -1,8 +1,0 @@
-{
-    "error": {
-        "validationDto": "Data yang diberikan tidak memenuhi kriteria validasi.",
-        "mimeInvalid": "Jenis MIME dari file tidak valid.",
-        "requiredParseFirst": "Parsing data diperlukan sebelum operasi ini.",
-        "required": "Kolom ini wajib diisi dan tidak boleh dikosongkan."
-    }
-}

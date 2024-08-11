@@ -20,6 +20,7 @@ export enum ENUM_POLICY_REQUEST_ACTION {
 
 export enum ENUM_POLICY_SUBJECT {
     ALL = 'ALL',
+    AUTH = 'AUTH',
     API_KEY = 'API_KEY',
     SETTING = 'SETTING',
     COUNTRY = 'COUNTRY',

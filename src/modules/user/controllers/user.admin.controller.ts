@@ -38,7 +38,6 @@ import {
 import { ApiKeyProtected } from 'src/modules/api-key/decorators/api-key.decorator';
 import { AuthJwtAccessProtected } from 'src/modules/auth/decorators/auth.jwt.decorator';
 import { RequestRequiredPipe } from 'src/common/request/pipes/request.required.pipe';
-import { EmailService } from 'src/modules/email/services/email.service';
 import { RoleService } from 'src/modules/role/services/role.service';
 import { ENUM_ROLE_STATUS_CODE_ERROR } from 'src/modules/role/enums/role.status-code.enum';
 import { IAuthPassword } from 'src/modules/auth/interfaces/auth.interface';
@@ -55,7 +54,6 @@ import {
     UserAdminInactiveDoc,
     UserAdminListDoc,
     UserAdminUpdateDoc,
-    UserAdminUpdatePasswordDoc,
 } from 'src/modules/user/docs/user.admin.doc';
 import {
     ENUM_USER_SIGN_UP_FROM,
@@ -78,6 +76,10 @@ import { UserStatusPipe } from 'src/modules/user/pipes/user.status.pipe';
 import { UserUpdateRequestDto } from 'src/modules/user/dtos/request/user.update.request.dto';
 import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
 import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/database.id.response.dto';
+import { ENUM_EMAIL } from 'src/modules/email/enums/email.enum';
+import { Queue } from 'bullmq';
+import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
+import { WorkerQueue } from 'src/worker/decorators/worker.decorator';
 
 @ApiTags('modules.admin.user')
 @Controller({
@@ -87,9 +89,10 @@ import { DatabaseIdResponseDto } from 'src/common/database/dtos/response/databas
 export class UserAdminController {
     constructor(
         @DatabaseConnection() private readonly databaseConnection: Connection,
+        @WorkerQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
+        private readonly emailQueue: Queue,
         private readonly paginationService: PaginationService,
         private readonly roleService: RoleService,
-        private readonly emailService: EmailService,
         private readonly authService: AuthService,
         private readonly userService: UserService,
         private readonly countryService: CountryService
@@ -230,14 +233,19 @@ export class UserAdminController {
                 { session }
             );
 
-            await this.emailService.sendWelcomeAdmin(
+            this.emailQueue.add(
+                ENUM_EMAIL.WELCOME_ADMIN,
                 {
                     email: created.email,
                     name: created.name,
-                },
-                {
                     passwordExpiredAt: password.passwordExpired,
                     password: passwordString,
+                },
+                {
+                    debounce: {
+                        id: `${ENUM_EMAIL.WELCOME_ADMIN}-${created._id}`,
+                        ttl: 1000,
+                    },
                 }
             );
 
@@ -415,67 +423,6 @@ export class UserAdminController {
 
         try {
             await this.userService.blocked(user, { session });
-
-            await session.commitTransaction();
-            await session.endSession();
-
-            return;
-        } catch (err: any) {
-            await session.abortTransaction();
-            await session.endSession();
-
-            throw new InternalServerErrorException({
-                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
-                message: 'http.serverError.internalServerError',
-                _error: err.message,
-            });
-        }
-    }
-
-    @UserAdminUpdatePasswordDoc()
-    @Response('user.updatePassword')
-    @PolicyAbilityProtected({
-        subject: ENUM_POLICY_SUBJECT.USER,
-        action: [ENUM_POLICY_ACTION.READ, ENUM_POLICY_ACTION.UPDATE],
-    })
-    @PolicyRoleProtected(ENUM_POLICY_ROLE_TYPE.ADMIN)
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Put('/update/:user/password')
-    async updatePassword(
-        @Param('user', RequestRequiredPipe, UserParsePipe, UserNotSelfPipe)
-        user: UserDoc
-    ): Promise<void> {
-        const session: ClientSession =
-            await this.databaseConnection.startSession();
-        session.startTransaction();
-
-        try {
-            const passwordString =
-                await this.authService.createPasswordRandom();
-            const password = await this.authService.createPassword(
-                passwordString,
-                {
-                    temporary: true,
-                }
-            );
-            user = await this.userService.updatePassword(user, password, {
-                session,
-            });
-            user = await this.userService.resetPasswordAttempt(user, {
-                session,
-            });
-
-            await this.emailService.sendTempPassword(
-                {
-                    email: user.email,
-                    name: user.name,
-                },
-                {
-                    passwordExpiredAt: password.passwordExpired,
-                    password: passwordString,
-                }
-            );
 
             await session.commitTransaction();
             await session.endSession();

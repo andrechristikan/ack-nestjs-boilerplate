@@ -75,6 +75,13 @@ describe('AppEnvDto', () => {
             }),
             AWS_SES_REGION: faker.lorem.word(),
 
+            REDIS_HOST: faker.internet.url(),
+            REDIS_PORT: 3001,
+            REDIS_PASSWORD: faker.string.alphanumeric({
+                length: 10,
+            }),
+            REDIS_TLS: false,
+
             SENTRY_DSN: faker.internet.url(),
 
             CLIENT_URL: faker.internet.url(),

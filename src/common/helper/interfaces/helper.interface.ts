@@ -19,9 +19,6 @@ export interface IHelperJwtOptions
 }
 
 // Helper String
-export interface IHelperStringRandomOptions {
-    safe?: boolean;
-}
 
 export interface IHelperStringCurrencyOptions {
     locale?: string;

@@ -26,8 +26,9 @@ import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.prof
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
 import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
 import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
-import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
+import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up.request.dto';
+import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
 
 export interface IUserService {
     findAll(
@@ -88,12 +89,16 @@ export interface IUserService {
     ): Promise<UserDoc>;
     signUp(
         role: string,
-        { email, name, country }: UserSignUpRequestDto,
+        { email, name, country }: AuthSignUpRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc>;
     existByEmail(
         email: string,
+        options?: IDatabaseExistOptions
+    ): Promise<boolean>;
+    existByUsername(
+        username: string,
         options?: IDatabaseExistOptions
     ): Promise<boolean>;
     existByMobileNumber(
@@ -150,6 +155,11 @@ export interface IUserService {
         { country, number }: UserUpdateMobileNumberRequestDto,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
+    updateClaimUsername(
+        repository: UserDoc,
+        { username }: UserUpdateClaimUsernameRequestDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
     removeMobileNumber(
         repository: UserDoc,
         options?: IDatabaseSaveOptions
@@ -161,6 +171,9 @@ export interface IUserService {
     join(repository: UserDoc): Promise<IUserDoc>;
     getPhotoUploadPath(user: string): Promise<string>;
     mapProfile(user: IUserDoc | IUserEntity): Promise<UserProfileResponseDto>;
+    createRandomFilenamePhoto(): Promise<string>;
+    createRandomUsername(): Promise<string>;
+    checkUsername(username: string): Promise<boolean>;
     mapList(users: IUserDoc[] | IUserEntity[]): Promise<UserListResponseDto[]>;
     mapShort(
         users: IUserDoc[] | IUserEntity[]

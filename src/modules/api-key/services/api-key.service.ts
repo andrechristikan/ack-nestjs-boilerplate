@@ -221,16 +221,12 @@ export class ApiKeyService implements IApiKeyService {
     }
 
     async createKey(): Promise<string> {
-        const random: string = this.helperStringService.random(25, {
-            safe: false,
-        });
+        const random: string = this.helperStringService.random(25);
         return `${this.env}_${random}`;
     }
 
     async createSecret(): Promise<string> {
-        return this.helperStringService.random(35, {
-            safe: false,
-        });
+        return this.helperStringService.random(35);
     }
 
     async createHashApiKey(key: string, secret: string): Promise<string> {

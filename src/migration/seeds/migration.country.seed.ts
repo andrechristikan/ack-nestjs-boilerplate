@@ -25,17 +25,6 @@ export class MigrationCountrySeed {
                     continent: 'Asia',
                     timeZone: 'Asia/Jakarta',
                 },
-                {
-                    name: 'Singapore',
-                    alpha2Code: 'SG',
-                    alpha3Code: 'SGP',
-                    domain: 'sg',
-                    fipsCode: 'SN',
-                    numericCode: '702',
-                    phoneCode: ['65'],
-                    continent: 'Asia',
-                    timeZone: 'Asia/Singapore',
-                },
             ];
 
             await this.countryService.createMany(data);

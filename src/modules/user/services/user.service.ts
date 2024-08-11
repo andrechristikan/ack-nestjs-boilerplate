@@ -37,18 +37,29 @@ import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.prof
 import { UserListResponseDto } from 'src/modules/user/dtos/response/user.list.response.dto';
 import { UserShortResponseDto } from 'src/modules/user/dtos/response/user.short.response.dto';
 import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.response.dto';
-import { UserSignUpRequestDto } from 'src/modules/user/dtos/request/user.sign-up.request.dto';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
+import { HelperStringService } from 'src/common/helper/services/helper.string.service';
+import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up.request.dto';
+import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
 
 @Injectable()
 export class UserService implements IUserService {
+    private readonly usernamePrefix: string;
+    private readonly usernamePattern: RegExp;
     private readonly uploadPath: string;
 
     constructor(
         private readonly userRepository: UserRepository,
         private readonly helperDateService: HelperDateService,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly helperStringService: HelperStringService
     ) {
+        this.usernamePrefix = this.configService.get<string>(
+            'user.usernamePrefix'
+        );
+        this.usernamePattern = this.configService.get<RegExp>(
+            'user.usernamePattern'
+        );
         this.uploadPath = this.configService.get<string>('user.uploadPath');
     }
 
@@ -198,6 +209,8 @@ export class UserService implements IUserService {
         signUpFrom: ENUM_USER_SIGN_UP_FROM,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc> {
+        const username = await this.createRandomUsername();
+
         const create: UserEntity = new UserEntity();
         create.name = name;
         create.email = email;
@@ -211,16 +224,19 @@ export class UserService implements IUserService {
         create.signUpDate = this.helperDateService.create();
         create.signUpFrom = signUpFrom;
         create.country = country;
+        create.username = username;
 
         return this.userRepository.create<UserEntity>(create, options);
     }
 
     async signUp(
         role: string,
-        { email, name, country }: UserSignUpRequestDto,
+        { email, name, country }: AuthSignUpRequestDto,
         { passwordExpired, passwordHash, salt, passwordCreated }: IAuthPassword,
         options?: IDatabaseCreateOptions
     ): Promise<UserDoc> {
+        const username = await this.createRandomUsername();
+
         const create: UserEntity = new UserEntity();
         create.name = name;
         create.email = email;
@@ -234,6 +250,7 @@ export class UserService implements IUserService {
         create.signUpDate = this.helperDateService.create();
         create.signUpFrom = ENUM_USER_SIGN_UP_FROM.PUBLIC;
         create.country = country;
+        create.username = username;
 
         return this.userRepository.create<UserEntity>(create, options);
     }
@@ -244,6 +261,16 @@ export class UserService implements IUserService {
     ): Promise<boolean> {
         return this.userRepository.exists(
             DatabaseQueryContain('email', email, { fullWord: true }),
+            { ...options, withDeleted: true }
+        );
+    }
+
+    async existByUsername(
+        username: string,
+        options?: IDatabaseExistOptions
+    ): Promise<boolean> {
+        return this.userRepository.exists(
+            DatabaseQueryContain('username', username, { fullWord: true }),
             { ...options, withDeleted: true }
         );
     }
@@ -379,6 +406,16 @@ export class UserService implements IUserService {
         return this.userRepository.save(repository, options);
     }
 
+    async updateClaimUsername(
+        repository: UserDoc,
+        { username }: UserUpdateClaimUsernameRequestDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        repository.username = username;
+
+        return this.userRepository.save(repository, options);
+    }
+
     async removeMobileNumber(
         repository: UserDoc,
         options?: IDatabaseSaveOptions
@@ -407,6 +444,20 @@ export class UserService implements IUserService {
 
     async getPhotoUploadPath(user: string): Promise<string> {
         return this.uploadPath.replace('{user}', user);
+    }
+
+    async createRandomFilenamePhoto(): Promise<string> {
+        return this.helperStringService.random(10);
+    }
+
+    async createRandomUsername(): Promise<string> {
+        const suffix = this.helperStringService.random(6);
+
+        return `${this.usernamePrefix}-${suffix}`;
+    }
+
+    async checkUsername(username: string): Promise<boolean> {
+        return username.search(this.usernamePattern) === -1;
     }
 
     async mapProfile(

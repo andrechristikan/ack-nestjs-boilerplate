@@ -2,7 +2,6 @@ import { Test } from '@nestjs/testing';
 import {
     IHelperStringCurrencyOptions,
     IHelperStringPasswordOptions,
-    IHelperStringRandomOptions,
 } from 'src/common/helper/interfaces/helper.interface';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 
@@ -40,19 +39,7 @@ describe('HelperStringService', () => {
 
     describe('random', () => {
         it('should return random alphanumeric', () => {
-            const opts: IHelperStringRandomOptions = {
-                safe: true,
-            };
-
-            expect(service.random(10, opts)).toMatch(/^[a-zA-Z0-9]+$/);
-        });
-
-        it('should return random numeric', () => {
-            const opts: IHelperStringRandomOptions = {
-                safe: false,
-            };
-
-            expect(service.random(10, opts)).toMatch(/^\d+$/);
+            expect(service.random(10)).toMatch(/^[a-zA-Z0-9]+$/);
         });
     });
 

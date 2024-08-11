@@ -152,20 +152,3 @@ export function UserAdminBlockedDoc(): MethodDecorator {
         DocResponse('user.blocked')
     );
 }
-
-export function UserAdminUpdatePasswordDoc(): MethodDecorator {
-    return applyDecorators(
-        Doc({
-            summary: 'update user password',
-        }),
-        DocRequest({
-            params: UserDocParamsId,
-        }),
-        DocAuth({
-            xApiKey: true,
-            jwtAccessToken: true,
-        }),
-        DocGuard({ role: true, policy: true }),
-        DocResponse('user.updatePassword')
-    );
-}

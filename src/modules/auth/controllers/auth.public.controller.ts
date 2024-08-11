@@ -1,10 +1,12 @@
 import {
     BadRequestException,
     Body,
+    ConflictException,
     Controller,
     ForbiddenException,
     HttpCode,
     HttpStatus,
+    InternalServerErrorException,
     NotFoundException,
     Post,
 } from '@nestjs/common';
@@ -28,6 +30,7 @@ import {
     AuthPublicLoginCredentialDoc,
     AuthPublicLoginSocialAppleDoc,
     AuthPublicLoginSocialGoogleDoc,
+    AuthPublicSignUpDoc,
 } from 'src/modules/auth/docs/auth.public.doc';
 import { AuthLoginRequestDto } from 'src/modules/auth/dtos/request/auth.login.request.dto';
 import { UserService } from 'src/modules/user/services/user.service';
@@ -36,6 +39,18 @@ import { ENUM_USER_STATUS_CODE_ERROR } from 'src/modules/user/enums/user.status-
 import { ENUM_USER_STATUS } from 'src/modules/user/enums/user.enum';
 import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
 import { AuthSocialApplePayloadDto } from 'src/modules/auth/dtos/social/auth.social.apple-payload.dto';
+import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up.request.dto';
+import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
+import { ClientSession } from 'mongoose';
+import { ENUM_EMAIL } from 'src/modules/email/enums/email.enum';
+import { ENUM_APP_STATUS_CODE_ERROR } from 'src/app/enums/app.status-code.enum';
+import { DatabaseConnection } from 'src/common/database/decorators/database.decorator';
+import { ENUM_WORKER_QUEUES } from 'src/worker/enums/worker.enum';
+import { WorkerQueue } from 'src/worker/decorators/worker.decorator';
+import { Connection } from 'mongoose';
+import { Queue } from 'bullmq';
+import { CountryService } from 'src/modules/country/services/country.service';
+import { RoleService } from 'src/modules/role/services/role.service';
 
 @ApiTags('modules.public.auth')
 @Controller({
@@ -44,8 +59,13 @@ import { AuthSocialApplePayloadDto } from 'src/modules/auth/dtos/social/auth.soc
 })
 export class AuthPublicController {
     constructor(
+        @DatabaseConnection() private readonly databaseConnection: Connection,
+        @WorkerQueue(ENUM_WORKER_QUEUES.EMAIL_QUEUE)
+        private readonly emailQueue: Queue,
         private readonly userService: UserService,
-        private readonly authService: AuthService
+        private readonly authService: AuthService,
+        private readonly countryService: CountryService,
+        private readonly roleService: RoleService
     ) {}
 
     @AuthPublicLoginCredentialDoc()
@@ -71,7 +91,7 @@ export class AuthPublicController {
         if (passwordAttempt && user.passwordAttempt >= passwordMaxAttempt) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_ATTEMPT_MAX,
-                message: 'user.error.passwordAttemptMax',
+                message: 'auth.error.passwordAttemptMax',
             });
         }
 
@@ -84,7 +104,7 @@ export class AuthPublicController {
 
             throw new BadRequestException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_NOT_MATCH,
-                message: 'user.error.passwordNotMatch',
+                message: 'auth.error.passwordNotMatch',
                 data: {
                     attempt: user.passwordAttempt,
                 },
@@ -111,7 +131,7 @@ export class AuthPublicController {
         if (checkPasswordExpired) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
-                message: 'user.error.passwordExpired',
+                message: 'auth.error.passwordExpired',
             });
         }
 
@@ -186,7 +206,7 @@ export class AuthPublicController {
         if (checkPasswordExpired) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
-                message: 'user.error.passwordExpired',
+                message: 'auth.error.passwordExpired',
             });
         }
 
@@ -261,7 +281,7 @@ export class AuthPublicController {
         if (checkPasswordExpired) {
             throw new ForbiddenException({
                 statusCode: ENUM_USER_STATUS_CODE_ERROR.PASSWORD_EXPIRED,
-                message: 'user.error.passwordExpired',
+                message: 'auth.error.passwordExpired',
             });
         }
 
@@ -298,5 +318,87 @@ export class AuthPublicController {
                 refreshToken,
             },
         };
+    }
+
+    @AuthPublicSignUpDoc()
+    @Response('auth.signUp')
+    @ApiKeyProtected()
+    @Post('/sign-up')
+    async signUp(
+        @Body()
+        { email, name, password: passwordString, country }: AuthSignUpRequestDto
+    ): Promise<void> {
+        const promises: Promise<any>[] = [
+            this.roleService.findOneByName('user'),
+            this.userService.existByEmail(email),
+            this.countryService.findOneActiveById(country),
+        ];
+
+        const [role, emailExist, checkCountry] = await Promise.all(promises);
+
+        if (!role) {
+            throw new NotFoundException({
+                statusCode: ENUM_ROLE_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'role.error.notFound',
+            });
+        } else if (!checkCountry) {
+            throw new NotFoundException({
+                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'country.error.notFound',
+            });
+        } else if (emailExist) {
+            throw new ConflictException({
+                statusCode: ENUM_USER_STATUS_CODE_ERROR.EMAIL_EXIST,
+                message: 'user.error.emailExist',
+            });
+        }
+
+        const password = await this.authService.createPassword(passwordString);
+
+        const session: ClientSession =
+            await this.databaseConnection.startSession();
+        session.startTransaction();
+
+        try {
+            const user = await this.userService.signUp(
+                role._id,
+                {
+                    email,
+                    name,
+                    password: passwordString,
+                    country,
+                },
+                password,
+                { session }
+            );
+
+            this.emailQueue.add(
+                ENUM_EMAIL.WELCOME,
+                {
+                    email,
+                    name,
+                },
+                {
+                    debounce: {
+                        id: `${ENUM_EMAIL.WELCOME}-${user._id}`,
+                        ttl: 1000,
+                    },
+                }
+            );
+
+            await session.commitTransaction();
+            await session.endSession();
+        } catch (err: any) {
+            await session.abortTransaction();
+            await session.endSession();
+
+            throw new InternalServerErrorException({
+                statusCode: ENUM_APP_STATUS_CODE_ERROR.UNKNOWN,
+                message: 'http.serverError.internalServerError',
+                _error: err.message,
+            });
+        }
+
+        return;
     }
 }
