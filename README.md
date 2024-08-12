@@ -71,10 +71,11 @@
 - [ ] Update Email Template
 - [ ] Move to Stateful Authorization
       1. Session Module
-      2. Password Period Module
-      3. Export Module
-      4. Reset Password Module
-      5. Verification Module
+      2. Device Module
+      3. Password Period Module
+      4. Export Module
+      5. Reset Password Module
+      6. Verification Module
 
 ## Prerequisites
 
