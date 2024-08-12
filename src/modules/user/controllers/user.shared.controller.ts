@@ -1,4 +1,12 @@
-import { Controller, Get, Post, UploadedFile } from '@nestjs/common';
+import {
+    Body,
+    Controller,
+    Get,
+    NotFoundException,
+    Post,
+    Put,
+    UploadedFile,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { FileUploadSingle } from 'src/common/file/decorators/file.decorator';
 import { ENUM_FILE_MIME_IMAGE } from 'src/common/file/enums/file.enum';
@@ -15,11 +23,21 @@ import {
 import { AuthJwtAccessPayloadDto } from 'src/modules/auth/dtos/jwt/auth.jwt.access-payload.dto';
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 import { AwsS3Service } from 'src/modules/aws/services/aws.s3.service';
+import { ENUM_COUNTRY_STATUS_CODE_ERROR } from 'src/modules/country/enums/country.status-code.enum';
+import { CountryService } from 'src/modules/country/services/country.service';
 import {
     UserSharedProfileDoc,
+    UserSharedUpdateProfileDoc,
     UserSharedUploadProfileDoc,
 } from 'src/modules/user/docs/user.shared.doc';
+import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
 import { UserProfileResponseDto } from 'src/modules/user/dtos/response/user.profile.response.dto';
+import { IUserDoc } from 'src/modules/user/interfaces/user.interface';
+import {
+    UserActiveParsePipe,
+    UserParsePipe,
+} from 'src/modules/user/pipes/user.parse.pipe';
+import { UserDoc } from 'src/modules/user/repository/entities/user.entity';
 import { UserService } from 'src/modules/user/services/user.service';
 
 @ApiTags('modules.shared.user')
@@ -30,24 +48,46 @@ import { UserService } from 'src/modules/user/services/user.service';
 export class UserSharedController {
     constructor(
         private readonly awsS3Service: AwsS3Service,
-        private readonly userService: UserService
+        private readonly userService: UserService,
+        private readonly countryService: CountryService
     ) {}
 
-    // TODO: UPDATE PROFILE
     @UserSharedProfileDoc()
     @Response('user.profile')
     @AuthJwtAccessProtected()
     @ApiKeyProtected()
     @Get('/profile')
     async profile(
-        @AuthJwtPayload<AuthJwtAccessPayloadDto>()
-        { _id }: AuthJwtAccessPayloadDto
+        @AuthJwtPayload<AuthJwtAccessPayloadDto>('_id', UserActiveParsePipe)
+        user: IUserDoc
     ): Promise<IResponse<UserProfileResponseDto>> {
-        const user = await this.userService.findOneWithRoleAndCountryById(_id);
-
         const mapped: UserProfileResponseDto =
             await this.userService.mapProfile(user);
         return { data: mapped };
+    }
+
+    @UserSharedUpdateProfileDoc()
+    @Response('user.updateProfile')
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Put('/profile/update')
+    async updateProfile(
+        @AuthJwtPayload<AuthJwtAccessPayloadDto>('_id', UserParsePipe)
+        user: UserDoc,
+        @Body()
+        { country, ...body }: UserUpdateProfileRequestDto
+    ): Promise<void> {
+        const checkCountry = this.countryService.findOneActiveById(country);
+        if (!checkCountry) {
+            throw new NotFoundException({
+                statusCode: ENUM_COUNTRY_STATUS_CODE_ERROR.NOT_FOUND,
+                message: 'country.error.notFound',
+            });
+        }
+
+        await this.userService.updateProfile(user, { country, ...body });
+
+        return;
     }
 
     @UserSharedUploadProfileDoc()
@@ -57,8 +97,8 @@ export class UserSharedController {
     @ApiKeyProtected()
     @Post('/profile/upload')
     async updateProfileUpload(
-        @AuthJwtPayload<AuthJwtAccessPayloadDto>()
-        { _id }: AuthJwtAccessPayloadDto,
+        @AuthJwtPayload<AuthJwtAccessPayloadDto>('_id', UserParsePipe)
+        user: UserDoc,
         @UploadedFile(
             new FileRequiredPipe(),
             new FileTypePipe([
@@ -69,7 +109,6 @@ export class UserSharedController {
         )
         file: IFile
     ): Promise<void> {
-        const user = await this.userService.findOneById(_id);
         const path: string = await this.userService.getPhotoUploadPath(
             user._id
         );

@@ -10,6 +10,20 @@ import { ENUM_DOC_REQUEST_BODY_TYPE } from 'src/common/doc/enums/doc.enum';
 import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
 import { UserUpdateMobileNumberRequestDto } from 'src/modules/user/dtos/request/user.update-mobile-number.request.dto';
 
+export function UserUserDeleteDoc(): MethodDecorator {
+    return applyDecorators(
+        Doc({
+            summary: 'user delete their account',
+        }),
+        DocAuth({
+            xApiKey: true,
+            jwtAccessToken: true,
+        }),
+        DocGuard({ role: true }),
+        DocResponse('user.delete')
+    );
+}
+
 export function UserUserUpdateUsernameDoc(): MethodDecorator {
     return applyDecorators(
         Doc({

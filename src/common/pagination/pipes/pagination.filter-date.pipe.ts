@@ -21,7 +21,7 @@ export function PaginationFilterDatePipe(
 
         async transform(value: string): Promise<Record<string, Date | string>> {
             if (!value) {
-                return undefined;
+                return;
             }
 
             if (options?.raw) {

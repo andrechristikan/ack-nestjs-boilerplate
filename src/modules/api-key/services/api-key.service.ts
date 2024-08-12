@@ -210,7 +210,7 @@ export class ApiKeyService implements IApiKeyService {
         repository: ApiKeyDoc,
         options?: IDatabaseSaveOptions
     ): Promise<ApiKeyDoc> {
-        return this.apiKeyRepository.softDelete(repository, options);
+        return this.apiKeyRepository.softDelete(repository, null, options);
     }
 
     async validateHashApiKey(

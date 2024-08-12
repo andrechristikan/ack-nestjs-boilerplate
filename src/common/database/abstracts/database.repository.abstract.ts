@@ -18,15 +18,13 @@ import {
     IDatabaseFindAllOptions,
     IDatabaseGetTotalOptions,
     IDatabaseOptions,
-    IDatabaseRestoreManyOptions,
     IDatabaseSaveOptions,
-    IDatabaseSoftDeleteManyOptions,
-    IDatabaseSoftDeleteOptions,
     IDatabaseUpdateManyOptions,
     IDatabaseUpdateOptions,
 } from 'src/common/database/interfaces/database.interface';
 import MongoDB from 'mongodb';
 import { ENUM_PAGINATION_ORDER_DIRECTION_TYPE } from 'src/common/pagination/enums/pagination.enum';
+import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
 
 export abstract class DatabaseRepositoryAbstract<
     Entity extends DatabaseEntityAbstract,
@@ -337,11 +335,12 @@ export abstract class DatabaseRepositoryAbstract<
     // Soft delete
     async softDelete(
         repository: EntityDocument,
-        options?: IDatabaseSoftDeleteOptions
+        dto?: DatabaseSoftDeleteDto,
+        options?: IDatabaseOptions
     ): Promise<EntityDocument> {
         repository.deletedAt = new Date();
         repository.deleted = true;
-        repository.deletedBy = options?.deletedBy;
+        repository.deletedBy = dto?.deletedBy;
 
         return repository.save(options);
     }
@@ -415,7 +414,8 @@ export abstract class DatabaseRepositoryAbstract<
 
     async softDeleteMany(
         find: Record<string, any>,
-        options?: IDatabaseSoftDeleteManyOptions
+        dto?: DatabaseSoftDeleteDto,
+        options?: IDatabaseOptions
     ): Promise<MongoDB.UpdateResult> {
         return this._repository.updateMany(
             {
@@ -426,7 +426,7 @@ export abstract class DatabaseRepositoryAbstract<
                 $set: {
                     deletedAt: new Date(),
                     deleted: true,
-                    deletedBy: options?.deletedBy,
+                    deletedBy: dto?.deletedBy,
                 },
             },
             { ...options, rawResult: true }
@@ -435,7 +435,7 @@ export abstract class DatabaseRepositoryAbstract<
 
     async restoreMany(
         find: Record<string, any>,
-        options?: IDatabaseRestoreManyOptions
+        options?: IDatabaseOptions
     ): Promise<MongoDB.UpdateResult> {
         return this._repository.updateMany(
             {

@@ -41,6 +41,8 @@ import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 import { HelperStringService } from 'src/common/helper/services/helper.string.service';
 import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up.request.dto';
 import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
+import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
+import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
 
 @Injectable()
 export class UserService implements IUserService {
@@ -425,6 +427,14 @@ export class UserService implements IUserService {
         return this.userRepository.save(repository, options);
     }
 
+    async delete(
+        repository: UserDoc,
+        dto: DatabaseSoftDeleteDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        return this.userRepository.softDelete(repository, dto, options);
+    }
+
     async deleteMany(
         find: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
@@ -436,6 +446,19 @@ export class UserService implements IUserService {
         } catch (error: unknown) {
             throw error;
         }
+    }
+
+    async updateProfile(
+        repository: UserDoc,
+        { country, name, address, familyName }: UserUpdateProfileRequestDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc> {
+        repository.country = country;
+        repository.name = name;
+        repository.address = address;
+        repository.familyName = familyName;
+
+        return this.userRepository.save(repository, options);
     }
 
     async join(repository: UserDoc): Promise<IUserDoc> {

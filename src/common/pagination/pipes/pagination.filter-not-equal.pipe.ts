@@ -20,7 +20,7 @@ export function PaginationFilterNotEqualPipe(
             value: string
         ): Promise<Record<string, string | number>> {
             if (!value) {
-                return undefined;
+                return;
             }
 
             if (options?.raw) {

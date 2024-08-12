@@ -28,6 +28,7 @@ export class UserMobileNumberEntity {
         required: true,
         type: String,
         ref: CountryEntity.name,
+        trim: true,
     })
     country: string;
 
@@ -86,12 +87,14 @@ export class UserEntity extends DatabaseEntityAbstract {
         required: true,
         ref: RoleEntity.name,
         index: true,
+        trim: true,
     })
     role: string;
 
     @DatabaseProp({
         required: true,
         type: String,
+        trim: true,
     })
     password: string;
 
@@ -117,6 +120,7 @@ export class UserEntity extends DatabaseEntityAbstract {
     @DatabaseProp({
         required: true,
         type: Date,
+        trim: true,
     })
     signUpDate: Date;
 
@@ -157,8 +161,23 @@ export class UserEntity extends DatabaseEntityAbstract {
         required: true,
         type: String,
         ref: CountryEntity.name,
+        trim: true,
     })
     country: string;
+
+    @DatabaseProp({
+        required: false,
+        maxlength: 200,
+        trim: true,
+    })
+    address?: string;
+
+    @DatabaseProp({
+        required: false,
+        maxlength: 50,
+        trim: true,
+    })
+    familyName?: string;
 }
 
 export const UserSchema = DatabaseSchema(UserEntity);

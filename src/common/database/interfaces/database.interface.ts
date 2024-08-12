@@ -37,20 +37,12 @@ export type IDatabaseUpdateOptions = Omit<IDatabaseOptions, 'select' | 'join'>;
 export type IDatabaseDeleteOptions = Omit<IDatabaseOptions, 'select' | 'join'>;
 export type IDatabaseSaveOptions = Pick<IDatabaseOptions, 'session'>;
 
-// Soft delete
-export interface IDatabaseSoftDeleteOptions
-    extends Pick<IDatabaseOptions, 'session'> {
-    deletedBy?: string;
-}
-
 // Bulk
 export type IDatabaseCreateManyOptions = Pick<IDatabaseOptions, 'session'>;
 export interface IDatabaseUpdateManyOptions
     extends Pick<IDatabaseOptions, 'session' | 'withDeleted'> {
     upsert?: boolean;
 }
-export type IDatabaseSoftDeleteManyOptions = IDatabaseSoftDeleteOptions;
-export type IDatabaseRestoreManyOptions = IDatabaseSoftDeleteOptions;
 export type IDatabaseDeleteManyOptions = Pick<
     IDatabaseOptions,
     'session' | 'withDeleted'

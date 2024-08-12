@@ -29,6 +29,8 @@ import { UserGetResponseDto } from 'src/modules/user/dtos/response/user.get.resp
 import { AwsS3Dto } from 'src/modules/aws/dtos/aws.s3.dto';
 import { AuthSignUpRequestDto } from 'src/modules/auth/dtos/request/auth.sign-up.request.dto';
 import { UserUpdateClaimUsernameRequestDto } from 'src/modules/user/dtos/request/user.update-claim-username.dto';
+import { DatabaseSoftDeleteDto } from 'src/common/database/dtos/database.soft-delete.dto';
+import { UserUpdateProfileRequestDto } from 'src/modules/user/dtos/request/user.update-profile.dto';
 
 export interface IUserService {
     findAll(
@@ -164,10 +166,20 @@ export interface IUserService {
         repository: UserDoc,
         options?: IDatabaseSaveOptions
     ): Promise<UserDoc>;
+    delete(
+        repository: UserDoc,
+        dto: DatabaseSoftDeleteDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
     deleteMany(
         find: Record<string, any>,
         options?: IDatabaseDeleteManyOptions
     ): Promise<boolean>;
+    updateProfile(
+        repository: UserDoc,
+        { country, name, address, familyName }: UserUpdateProfileRequestDto,
+        options?: IDatabaseSaveOptions
+    ): Promise<UserDoc>;
     join(repository: UserDoc): Promise<IUserDoc>;
     getPhotoUploadPath(user: string): Promise<string>;
     mapProfile(user: IUserDoc | IUserEntity): Promise<UserProfileResponseDto>;

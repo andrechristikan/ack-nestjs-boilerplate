@@ -18,7 +18,7 @@ export function PaginationFilterStringContainPipe(
 
         async transform(value: string): Promise<Record<string, any>> {
             if (!value) {
-                return undefined;
+                return;
             }
 
             if (options?.raw) {
